@@ -263,6 +263,22 @@
                     app:tint="@color/profile_accent" />
             </FrameLayout>
 
+            <FrameLayout
+                android:id="@+id/actionBackgroundButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_action_square"
+                android:contentDescription="Фон чата">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_photo_library"
+                    app:tint="@color/profile_accent" />
+            </FrameLayout>
+
         </LinearLayout>
 
         <!-- Инфо-карта -->

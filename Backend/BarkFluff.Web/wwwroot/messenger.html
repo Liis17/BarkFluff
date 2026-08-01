@@ -3452,6 +3452,19 @@
             align-items: center;
             justify-content: center;
         }
+        .chat-background-selector-grid { padding: 12px 20px 24px; }
+        .chat-background-selector-grid .sd-bg-card {
+            border: 0;
+            font: inherit;
+            color: var(--text-main);
+            background: var(--input-bg);
+        }
+        .chat-background-selector-grid .sd-bg-card.none-card {
+            aspect-ratio: auto;
+            min-height: 84px;
+            padding: 12px;
+            text-align: center;
+        }
 
         .confirm-overlay.visible { display: flex; }
 
@@ -5123,6 +5136,7 @@
                         <path d="m22 8-6 4 6 4V8z"></path>
                     </svg>
                 </button>
+                <button class="profile-action-btn icon-only" id="profileBackgroundButton" title="Фон чата" aria-label="Фон чата">▧</button>
             </div>
             <div class="profile-info-section profile-details-card">
                 <div class="profile-info-item">
@@ -5218,6 +5232,12 @@
             </div>
             <div class="group-section">
                 <div class="group-section-head">
+                    <span class="group-section-title">Фон чата</span>
+                    <button class="group-add-btn" id="groupBackgroundButton">Выбрать</button>
+                </div>
+            </div>
+            <div class="group-section">
+                <div class="group-section-head">
                     <span class="group-section-title">Участники</span>
                     <button class="group-add-btn" id="groupAddBtn">+ Добавить</button>
                 </div>
@@ -5240,6 +5260,17 @@
             </div>
         </div>
         <input type="file" id="groupAvatarInput" accept="image/*" style="display:none">
+    </div>
+
+    <div class="profile-overlay" id="chatBackgroundSelector">
+        <div class="profile-panel">
+            <button class="profile-close" id="chatBackgroundSelectorClose">&times;</button>
+            <div class="profile-header">
+                <div class="profile-name" id="chatBackgroundSelectorTitle">Фон чата</div>
+                <div class="profile-status-line">Выберите изображение или вернитесь к глобальному фону</div>
+            </div>
+            <div class="sd-bg-grid chat-background-selector-grid" id="chatBackgroundSelectorGrid"></div>
+        </div>
     </div>
 
     <!-- Message context menu -->

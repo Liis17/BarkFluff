@@ -17,7 +17,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 Миграции применяются автоматически при старте.
 
-> ⚠️ **Известный баг тулинга (актуально минимум на `dotnet ef`/EFCore 10.0.8):** `dotnet ef migrations add` в этом окружении падает `System.MissingMethodException: Method not found: 'System.String Microsoft.EntityFrameworkCore.Diagnostics.AbstractionsStrings.ArgumentIsEmpty(System.Object)'`. Затрагивает любой сервис, не только Users. Обход — писать миграцию вручную: 3 файла в `Persistence/Migrations/` (`{timestamp}_{Name}.cs` Up/Down, `{timestamp}_{Name}.Designer.cs` с `[Migration]`+`[DbContext]`+полным `BuildTargetModel`, и обновить `*ContextModelSnapshot.cs`). Образец в Users — `20260417120000_AddUserPrivacy.*`. Проверка drift без БД (эта команда РАБОТАЕТ, в отличие от `migrations add`): `dotnet ef migrations has-pending-model-changes --project ... --no-build`. **Важно:** если в snapshot руками прописан `.HasDefaultValueSql(...)`/`.ValueGeneratedOnAdd()` (как у `User.Uuid` выше), это же нужно продублировать Fluent-конфигом в `OnModelCreating` — иначе snapshot разойдётся с рантайм-моделью и `ctx.Database.Migrate()` при старте упадёт `PendingModelChangesWarning` (крэш-луп контейнера).
+> ⚠️ **Известный баг тулинга (актуально минимум на `dotnet ef`/EFCore 10.0.8):** `dotnet ef migrations add` в этом окружении падает `System.MissingMethodException: Method not found: 'System.String Microsoft.EntityFrameworkCore.Diagnostics.AbstractionsStrings.ArgumentIsEmpty(System.Object)'`. Затрагивает любой сервис, не только Users. Обход — писать миграцию вручную: 3 файла в `Persistence/Migrations/` (`{timestamp}_{Name}.cs` Up/Down, `{timestamp}_{Name}.Designer.cs` с `[Migration]`+`[DbContext]` и маркером, ссылающимся на snapshot, и обновить `*ContextModelSnapshot.cs`). Образец в Users — `20260417120000_AddUserPrivacy.*`. Проверка drift без БД (эта команда РАБОТАЕТ, в отличие от `migrations add`): `dotnet ef migrations has-pending-model-changes --project ... --no-build`. **Важно:** если в snapshot руками прописан `.HasDefaultValueSql(...)`/`.ValueGeneratedOnAdd()` (как у `User.Uuid` выше), это же нужно продублировать Fluent-конфигом в `OnModelCreating` — иначе snapshot разойдётся с рантайм-моделью и `ctx.Database.Migrate()` при старте упадёт `PendingModelChangesWarning` (крэш-луп контейнера).
 
 ## Архитектура
 
@@ -28,7 +28,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ### Слои
 
-- `Domain/` — `User` (включая `Uuid` — глобальный идентификатор для федерации, см. ниже), `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `ChatFolder`, `DevicePrekeyBundle`, `OneTimePrekey`
+- `Domain/` — `User` (включая `Uuid` — глобальный идентификатор для федерации, см. ниже), `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `UserSettings`, `UserChatSettings`, `ChatFolder`, `DevicePrekeyBundle`, `OneTimePrekey`
 - `Features/` — MediatR команды/запросы (CQRS)
 - `Host/` — gRPC-сервисы
 - `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage`, `ChatFolderStorage`, `PrekeyStorage` (Transient)
@@ -104,6 +104,9 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `AcceptLegalConsent(revision)`           | Зафиксировать принятие соглашения и политики  | Пишет `User.AcceptedLegalRevision` + `AcceptedLegalAt`. Пустая `revision` не записывается (warning в лог). См. [[#Согласие с документами]] |
 | `GetPersonalization()`                   | Персонализация текущего пользователя          |                                                                      |
 | `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                                |
+| `GetUserSettings()`                     | Синхронизируемые настройки фонов              | Глобальный фон и все per-chat override текущего пользователя         |
+| `SetGlobalChatBackground(file_id)`      | Установить глобальный фон                     | Пустой `file_id` удаляет глобальный фон                              |
+| `SetChatBackground(chat_id, file_id)`   | Установить фон конкретного чата               | Пустой `file_id` удаляет override и возвращает глобальный фон        |
 | `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера                 |
 | `SetProfilePoster(fileId)`               | Установить (или удалить) постер профиля       | Пустой `fileId` → удаление; не трогает `ChatBackgroundFileIds`       |
 | `RegisterPrekeyBundle(...)`              | Зарегистрировать X3DH bundle текущего устройства | Идемпотентно (повторный вызов перезаписывает identity/signed prekey, дополняет one-time pool без дубликатов). DeviceId — из JWT |
@@ -219,6 +222,12 @@ Feature: `Features/Legal/AcceptLegalConsent/` (по образцу `Features/Pri
 | `ChatBackgroundFileIds` | `string[]` | Массив FileId фоновых изображений чатов, загруженных пользователем |
 
 Запись создаётся по требованию при первом обращении (`GetOrCreate`). Хранится в таблице `UserPersonalizations` (PostgreSQL `text[]` для массива).
+
+### Синхронизируемые фоны чатов
+
+`UserSettings` — 1:1 с `User`, содержит nullable `GlobalChatBackgroundFileId`. `UserChatSettings` хранит персональные override с уникальным индексом `(UserId, ChatId)`; фон всегда виден и меняется только владельцем настройки, не другими участниками чата. При отсутствии записи чата клиент применяет глобальный фон.
+
+`GetUserSettings` отдаёт глобальное значение и весь список override при старте клиента. `SetChatBackground` с пустым FileId удаляет запись. При удалении FileId из `UserPersonalization.ChatBackgroundFileIds` `UpdatePersonalization` очищает все ссылки на этот файл — и глобальную, и chat-specific.
 
 ## Папки чатов
 

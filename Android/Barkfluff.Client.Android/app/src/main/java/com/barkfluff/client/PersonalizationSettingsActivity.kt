@@ -470,9 +470,16 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 chatRepository.getFileDownloadUrl(fileId).getOrNull()
             },
             onSelect = { fileId ->
-                globalParam.chatBackgroundFileId = fileId
-                backgroundAdapter.selectedFileId = fileId
-                updatePreviewBackground(fileId)
+                lifecycleScope.launch {
+                    val result = grpcManager.setGlobalChatBackground(fileId)
+                    if (result.isSuccess) {
+                        globalParam.chatBackgroundFileId = fileId
+                        backgroundAdapter.selectedFileId = fileId
+                        updatePreviewBackground(fileId)
+                    } else {
+                        Toast.makeText(this@PersonalizationSettingsActivity, "Не удалось установить фон", Toast.LENGTH_SHORT).show()
+                    }
+                }
             },
             onDelete = { fileId ->
                 deleteBackground(fileId)
@@ -623,7 +630,15 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun syncPersonalizationToServer() {
         lifecycleScope.launch {
             try {
-                grpcManager.updatePersonalizationBackgrounds(backgroundFileIds.toList())
+                val result = grpcManager.updatePersonalizationBackgrounds(backgroundFileIds.toList())
+                if (result.isSuccess) {
+                    grpcManager.getUserSettings().onSuccess { settings ->
+                        globalParam.applyChatBackgroundSettings(
+                            settings.globalChatBackgroundFileId,
+                            settings.chatBackgroundFileIds
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка синхронизации персонализации", e)
             }

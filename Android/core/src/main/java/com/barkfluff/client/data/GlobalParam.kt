@@ -208,10 +208,39 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getInt(KEY_CHAT_CORNER_RADIUS, 20)
         set(value) = sharedPreferences.edit().putInt(KEY_CHAT_CORNER_RADIUS, value).apply()
 
-    /** FileId выбранного фона чата (пусто = нет фона). */
+    /** Кэш синхронизируемого глобального фона чатов (пусто = нет фона). */
     var chatBackgroundFileId: String
         get() = sharedPreferences.getString(KEY_CHAT_BACKGROUND_FILE_ID, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_CHAT_BACKGROUND_FILE_ID, value).apply()
+
+    /** Персональные переопределения фонов вида chatId|fileId, загруженные с сервера. */
+    var chatBackgroundOverrides: Map<String, String>
+        get() = sharedPreferences.getStringSet(KEY_CHAT_BACKGROUND_OVERRIDES, emptySet())
+            ?.mapNotNull { item ->
+                val delimiter = item.indexOf('|')
+                if (delimiter > 0 && delimiter < item.lastIndex) {
+                    item.substring(0, delimiter) to item.substring(delimiter + 1)
+                } else null
+            }
+            ?.toMap()
+            ?: emptyMap()
+        set(value) = sharedPreferences.edit()
+            .putStringSet(KEY_CHAT_BACKGROUND_OVERRIDES, value.map { (chatId, fileId) -> "$chatId|$fileId" }.toSet())
+            .apply()
+
+    fun chatBackgroundFileIdFor(chatId: String): String =
+        chatBackgroundOverrides[chatId] ?: chatBackgroundFileId
+
+    fun setChatBackgroundOverride(chatId: String, fileId: String) {
+        val updated = chatBackgroundOverrides.toMutableMap()
+        if (fileId.isBlank()) updated.remove(chatId) else updated[chatId] = fileId
+        chatBackgroundOverrides = updated
+    }
+
+    fun applyChatBackgroundSettings(globalFileId: String, overrides: Map<String, String>) {
+        chatBackgroundFileId = globalFileId
+        chatBackgroundOverrides = overrides
+    }
 
     /** Применять ли блюр к фону чата. */
     var chatBackgroundBlur: Boolean
@@ -415,6 +444,7 @@ class GlobalParam(private val context: Context) {
         // Персонализация
         private const val KEY_CHAT_CORNER_RADIUS = "chat_corner_radius"
         private const val KEY_CHAT_BACKGROUND_FILE_ID = "chat_background_file_id"
+        private const val KEY_CHAT_BACKGROUND_OVERRIDES = "chat_background_overrides"
         private const val KEY_CHAT_BACKGROUND_BLUR = "chat_background_blur"
         private const val KEY_CHAT_BACKGROUND_BLUR_RADIUS = "chat_background_blur_radius"
         private const val KEY_CHAT_BACKGROUND_DIM = "chat_background_dim"

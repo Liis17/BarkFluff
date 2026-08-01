@@ -27,6 +27,9 @@ using BarkFluff.Users.Features.Personalization.GetPersonalization;
 using BarkFluff.Users.Features.Personalization.GetProfilePoster;
 using BarkFluff.Users.Features.Personalization.SetProfilePoster;
 using BarkFluff.Users.Features.Personalization.UpdatePersonalization;
+using BarkFluff.Users.Features.UserSettings.GetUserSettings;
+using BarkFluff.Users.Features.UserSettings.SetChatBackground;
+using BarkFluff.Users.Features.UserSettings.SetGlobalChatBackground;
 using BarkFluff.Users.Features.Prekeys.FetchPrekeyBundle;
 using BarkFluff.Users.Features.Prekeys.ListPeerDevices;
 using BarkFluff.Users.Features.Prekeys.RegisterPrekeyBundle;
@@ -319,6 +322,30 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         _metrics.Increment("personalization_updates");
         await _mediator.Send(new UpdatePersonalizationCommand { Personalization = request.Personalization });
         return new UpdatePersonalizationResponse();
+    }
+
+    public override Task<GetUserSettingsResponse> GetUserSettings(GetUserSettingsRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetUserSettingsQuery());
+    }
+
+    public override async Task<SetGlobalChatBackgroundResponse> SetGlobalChatBackground(SetGlobalChatBackgroundRequest request, ServerCallContext context)
+    {
+        await _mediator.Send(new SetGlobalChatBackgroundCommand
+        {
+            FileId = string.IsNullOrEmpty(request.ChatBackgroundFileId) ? null : request.ChatBackgroundFileId,
+        });
+        return new SetGlobalChatBackgroundResponse();
+    }
+
+    public override async Task<SetChatBackgroundResponse> SetChatBackground(SetChatBackgroundRequest request, ServerCallContext context)
+    {
+        await _mediator.Send(new SetChatBackgroundCommand
+        {
+            ChatId = ParseChatGuid(request.ChatId),
+            FileId = string.IsNullOrEmpty(request.ChatBackgroundFileId) ? null : request.ChatBackgroundFileId,
+        });
+        return new SetChatBackgroundResponse();
     }
 
     public override Task<GetProfilePosterResponse> GetProfilePoster(GetProfilePosterRequest request, ServerCallContext context)

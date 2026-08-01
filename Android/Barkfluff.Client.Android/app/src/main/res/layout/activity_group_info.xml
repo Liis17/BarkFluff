@@ -129,6 +129,16 @@
             android:textSize="13.5sp"
             tools:text="6 участников · 3 в сети" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/chooseBackgroundButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:text="Фон чата"
+            app:icon="@drawable/ic_photo_library" />
+
         <!-- Инфо-карта: ID чата -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

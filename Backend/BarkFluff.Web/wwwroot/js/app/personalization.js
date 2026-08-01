@@ -1,7 +1,5 @@
 /**
- * Chat personalization — local (per-device) cosmetic settings + applied background.
- * Mirrors Android GlobalParam / macOS @AppStorage: stored in localStorage,
- * applied to the real chat via CSS variables on :root, plus a backdrop layer.
+ * Chat personalization — local cosmetic settings plus synced background selection.
  *
  * Requires: BF.api, BF.files
  * Exposes:  BF.personalization
@@ -15,20 +13,23 @@
         radius: 'bf_pers_bubble_radius',
         blurOn: 'bf_pers_bg_blur_enabled',
         blurR:  'bf_pers_bg_blur_radius',
-        dim:    'bf_pers_bg_dim',
-        bgId:   'bf_pers_bg_file_id'
+        dim:    'bf_pers_bg_dim'
     };
 
     var DEFAULTS = {
         radius: 16,
         blurOn: false,
         blurR:  8,
-        dim:    30,
-        bgId:   ''
+        dim:    30
     };
 
     var listeners = [];
     var resolvedBgUrl = '';
+    var globalBackgroundFileId = '';
+    var chatBackgroundFileIds = new Map();
+    var activeChatId = '';
+    var activeBackgroundFileId = '';
+    var resolveVersion = 0;
 
     function readInt(key, def) {
         var v = localStorage.getItem(key);
@@ -66,6 +67,7 @@
     }
 
     function resolveBgUrl(fileId) {
+        var version = ++resolveVersion;
         if (!fileId) {
             resolvedBgUrl = '';
             applyAll();
@@ -77,11 +79,13 @@
             return Promise.resolve('');
         }
         return BF.files.getFileUrls([fileId]).then(function (urls) {
+            if (version !== resolveVersion) return '';
             var u = urls && urls[0];
             resolvedBgUrl = u ? (u.url || u.previewUrl || '') : '';
             applyAll();
             return resolvedBgUrl;
         }).catch(function () {
+            if (version !== resolveVersion) return '';
             resolvedBgUrl = '';
             applyAll();
             return '';
@@ -89,23 +93,9 @@
     }
 
     function init() {
-        // Apply cached values immediately so UI doesn't flash defaults.
+        // Background choice is server-owned; deliberately ignore the legacy local key.
         applyAll();
-        var bgId = readStr(KEYS.bgId, DEFAULTS.bgId);
-        if (bgId) resolveBgUrl(bgId);
-
-        // Reconcile with server: drop bgId if it's no longer in the user's collection.
-        if (BF.api && BF.api.getPersonalization) {
-            BF.api.getPersonalization().then(function (data) {
-                var pers = (data && data.personalization) || {};
-                var ids = pers.chatBackgroundFileIds || [];
-                var cur = readStr(KEYS.bgId, '');
-                if (cur && ids.indexOf(cur) < 0) {
-                    localStorage.removeItem(KEYS.bgId);
-                    resolveBgUrl('');
-                }
-            }).catch(function () {});
-        }
+        return reloadSettings();
     }
 
     function getRadius() { return readInt(KEYS.radius, DEFAULTS.radius); }
@@ -128,17 +118,51 @@
         localStorage.setItem(KEYS.dim, String(v));
         applyAll();
     }
-    function getBackgroundFileId() { return readStr(KEYS.bgId, DEFAULTS.bgId); }
+    function applyForChat(chatId) {
+        activeChatId = chatId || '';
+        activeBackgroundFileId = chatBackgroundFileIds.get(activeChatId) || globalBackgroundFileId;
+        return resolveBgUrl(activeBackgroundFileId);
+    }
+    function getBackgroundFileId() { return globalBackgroundFileId; }
+    function getChatBackgroundFileId(chatId) {
+        return chatBackgroundFileIds.get(chatId || '') || '';
+    }
     function setBackgroundFileId(fileId) {
-        if (fileId) localStorage.setItem(KEYS.bgId, fileId);
-        else localStorage.removeItem(KEYS.bgId);
-        return resolveBgUrl(fileId || '');
+        return BF.api.setGlobalChatBackground(fileId || '').then(function () {
+            globalBackgroundFileId = fileId || '';
+            return applyForChat(activeChatId);
+        });
+    }
+    function setChatBackgroundFileId(chatId, fileId) {
+        return BF.api.setChatBackground(chatId, fileId || '').then(function () {
+            if (fileId) chatBackgroundFileIds.set(chatId, fileId);
+            else chatBackgroundFileIds.delete(chatId);
+            if (activeChatId === chatId) return applyForChat(chatId);
+        });
+    }
+    function reloadSettings() {
+        if (!BF.api || !BF.api.getUserSettings) return Promise.resolve();
+        return BF.api.getUserSettings().then(function (data) {
+            var settings = (data && data.settings) || {};
+            globalBackgroundFileId = settings.globalChatBackgroundFileId || '';
+            chatBackgroundFileIds.clear();
+            (settings.chatBackgrounds || []).forEach(function (item) {
+                if (item.chatId && item.chatBackgroundFileId) {
+                    chatBackgroundFileIds.set(item.chatId, item.chatBackgroundFileId);
+                }
+            });
+            return applyForChat(activeChatId);
+        });
     }
     function getResolvedBackgroundUrl() { return resolvedBgUrl; }
 
     /** Стереть все локальные настройки персонализации — вызывается при логауте. */
     function clearAll() {
         Object.keys(KEYS).forEach(function (k) { localStorage.removeItem(KEYS[k]); });
+        globalBackgroundFileId = '';
+        chatBackgroundFileIds.clear();
+        activeChatId = '';
+        activeBackgroundFileId = '';
         resolveBgUrl('');
         applyAll();
     }
@@ -160,6 +184,10 @@
         getDim: getDim, setDim: setDim,
         getBackgroundFileId: getBackgroundFileId,
         setBackgroundFileId: setBackgroundFileId,
+        getChatBackgroundFileId: getChatBackgroundFileId,
+        setChatBackgroundFileId: setChatBackgroundFileId,
+        applyForChat: applyForChat,
+        reloadSettings: reloadSettings,
         getResolvedBackgroundUrl: getResolvedBackgroundUrl,
         clearAll: clearAll,
         onChange: onChange,
