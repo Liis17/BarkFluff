@@ -313,8 +313,6 @@
             return;
         }
 
-        var info = getCurrentChatInfo() || {};
-        var isGroup = !!info.isGroupChat;
         var myId = getMyUserId();
 
         var chain = Promise.resolve();
@@ -324,7 +322,6 @@
                 return BF.messages.buildMessageElement(
                     pi.message,
                     myId,
-                    isGroup,
                     getUserFn,
                     showMediaOverlay,
                     { knownMessageIds: new Set(), onReplyClick: function (id) { closeListModal(); scrollToMessageFn(id); } }

@@ -405,13 +405,12 @@
      * Build a single message DOM element.
      * @param {Object} msg — mapped message object from BF.api
      * @param {number} myUserId
-     * @param {boolean} isGroupChat
      * @param {Function} [getUserFn] — async function(userId) → user
      * @param {Function} [onMediaClick] — function(type, url, fileId)
-     * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId) }
+     * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId), groupedWithPrevious: boolean, showSenderAvatar: boolean }
      * @returns {Promise<HTMLElement>}
      */
-    function buildMessageElement(msg, myUserId, isGroupChat, getUserFn, onMediaClick, opts) {
+    function buildMessageElement(msg, myUserId, getUserFn, onMediaClick, opts) {
         // Системные сообщения (kick, pin/unpin/unpin-all, и т.п.) — центрированная
         // таблетка без облачка, как в Telegram.
         if (msg.type === 2 || msg.type === 'SYSTEM') {
@@ -446,20 +445,19 @@
         var isReply = !!(fwd && knownIds && fwd.originalMessageId && knownIds.has(fwd.originalMessageId));
 
         var group = document.createElement('div');
-        group.className = 'msg-group ' + direction;
+        group.className = 'msg-group ' + direction + (opts && opts.groupedWithPrevious ? ' grouped-with-previous' : '');
         group.dataset.msgId = msg.id;
 
         var promise = Promise.resolve();
 
-        if (!isOutgoing && isGroupChat && getUserFn) {
+        if (!isOutgoing && opts && opts.showSenderAvatar && getUserFn) {
             promise = getUserFn(msg.senderId).then(function (sender) {
                 if (sender) {
                     var fullName = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username;
-                    var nameEl = document.createElement('div');
-                    nameEl.className = 'msg-sender';
-
                     var avEl = document.createElement('span');
                     avEl.className = 'msg-sender-avatar';
+                    avEl.dataset.senderName = fullName || 'Пользователь';
+                    avEl.setAttribute('aria-label', fullName || 'Пользователь');
                     var pic = sender.profilePicturePreview || sender.profilePicture;
                     if (pic) {
                         var img = document.createElement('img');
@@ -468,13 +466,8 @@
                     } else {
                         avEl.textContent = (fullName || '?')[0].toUpperCase();
                     }
-                    nameEl.appendChild(avEl);
-
-                    var nameText = document.createElement('span');
-                    nameText.textContent = fullName;
-                    nameEl.appendChild(nameText);
-
-                    group.appendChild(nameEl);
+                    group.classList.add('has-sender-avatar');
+                    group.appendChild(avEl);
                 }
             });
         }
