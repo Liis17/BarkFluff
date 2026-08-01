@@ -82,24 +82,6 @@ public class UpdateGroupChatCommandHandler : IRequestHandler<UpdateGroupChatComm
             throw new IsNotGroupChatException();
         }
 
-        var groupChatInfo = await _chatsStorage.GetGroupChatInfo(request.ChatId);
-
-        if (groupChatInfo == null)
-        {
-            _logger.LogWarning("Информация о групповом чате {ChatId} не найдена", request.ChatId);
-            throw new NoAccessToChatException();
-        }
-
-        if (!groupChatInfo.UsersCanKick.Contains(_userContext.UserId))
-        {
-            _logger.LogWarning(
-                "Пользователь {UserId} не имеет прав на изменение чата {ChatId}",
-                _userContext.UserId,
-                request.ChatId
-            );
-            throw new NoPermissionException();
-        }
-
         string? newTitle = null;
 
         if (request.Title is not null)

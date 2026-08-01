@@ -33,7 +33,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `CreateGroupChat` | Создание группы с системным сообщением |
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
 | `AddUser` | Добавление участника в группу (зеркало `KickUser`): проверка прав по `GroupChatInfo.UsersCanKick`, проверка что не состоит (`UserAlreadyMemberChatException`), системное сообщение, рассылка членам + новому |
-| `UpdateGroupChat` | Смена названия и/или аватара группы. Права по `GroupChatInfo.UsersCanKick`. Аватар валидируется через Files (`UploadFileType.ChatPicture`→URL). Системное сообщение, рассылка, возвращает обновлённый `Chat` |
+| `UpdateGroupChat` | Смена названия и/или аватара группы любым её участником. `GroupChatInfo.UsersCanKick` используется только для добавления и исключения участников. Аватар валидируется через Files (`UploadFileType.ChatPicture`→URL). Системное сообщение, рассылка, возвращает обновлённый `Chat` |
 | `MarkAsRead` | PostgreSQL array операции; публикует `MessageReadEvent` только при первом прочтении конкретным пользователем. `NewReadBy` сохраняет полный snapshot читателей для клиентов, `NewReaders` содержит только новых читателей для push-побочных эффектов. Повторный вызов идемпотентен и событие не создаёт |
 | `GetPersonChatId` | Получить или создать обычный личный чат (поддерживает self-chat); при дублях выбирает чат с самым свежим неудалённым сообщением |
 | `GetChatInfo` | Счётчик непрочитанных, последнее сообщение |
