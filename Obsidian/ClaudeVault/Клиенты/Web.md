@@ -39,8 +39,9 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
 
 ### Real-time
-- `js/app/realtime.js` (`BF.realtime`) — server-streaming подписки [[Backend/Updates|UpdatesApi]] (new/read/edited/deleted/pinned/...) и [[Backend/Onliner|OnlinerApi]]. Реконнект с backoff 2→30с, превентивный age-timer (180с), watchdog по молчанию (90с), реакция на `visibilitychange`, forced refresh при коде 16, событие `resync` для дозагрузки пропущенного.
+- `js/app/realtime.js` (`BF.realtime`) — server-streaming подписки [[Backend/Updates|UpdatesApi]] (new/read/edited/deleted/pinned/...) и [[Backend/Onliner|OnlinerApi]]. Реконнект с backoff 2→30с, превентивный age-timer (180с), watchdog по молчанию (90с), реакция на `visibilitychange`, forced refresh при коде 16, событие `resync` для дозагрузки пропущенного. `connection_status` сохраняет `connected` и передаёт транспортное `state`: `offline` (только browser offline), `reconnecting` или `connected`; ручной `reconnect()` сбрасывает backoff и инвалидирует отложенные попытки предыдущего цикла.
 - События раздаются через `BF.realtime.on(event, cb)`; UI слушает их в `js/app/main.js`.
+- `#connectionBanner` — глобальная доступная плашка проблемы соединения с «Нет сети» / «Переподключаемся…» и ручным «Повторить», видимая также в мобильном списке чатов. После восстановления `main.js` ждёт catch-up списка и открытого чата; только успешный проход кратко (3 с) показывает в чате «Синхронизировано».
 
 ### Файлы и медиа
 - `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).

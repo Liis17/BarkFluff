@@ -488,7 +488,6 @@
         }
 
         /* Контент чата над фоновыми слоями (.messages-bg-layer / .messages-bg-dim) */
-        .chat-area > .connection-banner,
         .chat-area > .chat-header,
         .chat-area > .pinned-bar,
         .chat-area > .chat-empty,
@@ -503,24 +502,65 @@
             display: none;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 6px 16px;
-            background: rgba(220, 38, 38, 0.08);
+            gap: 8px;
+            position: fixed;
+            z-index: 11;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: calc(100vw - 32px);
+            padding: 8px 10px 8px 14px;
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--dialog-bg) 92%, #dc2626);
             color: var(--error);
             font-size: 13px;
             font-weight: 500;
-            border-bottom: 1px solid rgba(220, 38, 38, 0.15);
-            animation: connectionPulse 2s ease-in-out infinite;
+            border: 1px solid rgba(220, 38, 38, 0.22);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
         }
 
         .connection-banner.visible { display: flex; }
 
+        .connection-banner.offline { color: var(--text-main); }
+
         .connection-banner-icon { font-size: 15px; }
 
-        @keyframes connectionPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+        .connection-retry-btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 5px 9px;
+            background: var(--error);
+            color: #fff;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
         }
+
+        .connection-retry-btn:disabled {
+            cursor: default;
+            opacity: 0.6;
+        }
+
+        .connection-synced {
+            display: none;
+            position: absolute;
+            z-index: 2;
+            top: 74px;
+            left: 50%;
+            transform: translateX(-50%);
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--dialog-bg) 92%, #16a34a);
+            color: #15803d;
+            border: 1px solid rgba(22, 163, 74, 0.24);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .connection-synced.visible { display: flex; }
 
         .chat-empty {
             flex: 1;
@@ -4780,12 +4820,18 @@
             </div>
         </div>
 
+        <div class="connection-banner" id="connectionBanner" role="status" aria-live="polite">
+            <span class="connection-banner-icon" aria-hidden="true">&#9888;</span>
+            <span id="connectionBannerText">Переподключаемся…</span>
+            <button class="connection-retry-btn" id="connectionRetryButton" type="button">Повторить</button>
+        </div>
+
         <div class="chat-area">
             <div class="messages-bg-layer" id="messagesBgLayer"></div>
             <div class="messages-bg-dim" id="messagesBgDim"></div>
-            <div class="connection-banner" id="connectionBanner">
-                <span class="connection-banner-icon">&#9888;</span>
-                <span>Подключение к серверу...</span>
+            <div class="connection-synced" id="connectionSynced" role="status" aria-live="polite">
+                <span aria-hidden="true">&#10003;</span>
+                <span>Синхронизировано</span>
             </div>
             <div class="chat-header" id="chatHeader">
                 <button class="btn-back-to-list" id="btnBackToList" title="Назад к чатам">&#8592;</button>
