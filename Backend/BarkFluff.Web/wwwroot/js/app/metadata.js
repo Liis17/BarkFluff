@@ -23,8 +23,7 @@
             'x-device-name': toBase64(dev.getBrowserName()),
             'x-os-name': toBase64(dev.getOsName()),
             'x-app-name': toBase64(dev.getAppName()),
-            'x-app-version': toBase64(dev.getAppVersion()),
-            'x-ip-address': toBase64('0.0.0.0')
+            'x-app-version': toBase64(dev.getAppVersion())
         };
         if (token) {
             m['x-auth-token'] = token;
