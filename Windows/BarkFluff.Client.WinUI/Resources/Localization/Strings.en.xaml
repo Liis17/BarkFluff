@@ -97,6 +97,7 @@
     <x:String x:Key="Error_PasswordResetFailed">Unable to start password recovery. Try again later.</x:String>
     <x:String x:Key="Error_PasswordResetCodeInvalid">The reset code is invalid or expired.</x:String>
     <x:String x:Key="Messenger_Search">Search chats and people</x:String>
+    <x:String x:Key="Messenger_Reconnecting">Reconnecting…</x:String>
     <x:String x:Key="Messenger_Send">Send</x:String>
     <x:String x:Key="Messenger_Empty">Select a chat to start messaging</x:String>
     <x:String x:Key="Messenger_StatusOffline">Offline</x:String>

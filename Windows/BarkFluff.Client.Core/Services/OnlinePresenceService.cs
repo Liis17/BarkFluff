@@ -34,6 +34,8 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
 
     public event EventHandler<UserPresence>? PresenceChanged;
 
+    public event EventHandler<bool>? ConnectionChanged;
+
     public UserPresence? TryGet(long userId) => _presence.TryGetValue(userId, out var presence) ? presence : null;
 
     public async Task WatchAsync(IReadOnlyCollection<long> userIds, CancellationToken cancellationToken = default)
@@ -161,7 +163,7 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
                 return stream;
             },
             Publish,
-            onConnectedChanged: null,
+            isConnected => ConnectionChanged?.Invoke(this, isConnected),
             StreamRetryLoop.Backoff,
             cancellationToken);
 

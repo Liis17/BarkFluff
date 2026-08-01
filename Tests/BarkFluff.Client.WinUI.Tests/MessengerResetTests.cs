@@ -13,11 +13,13 @@ public sealed class MessengerResetTests
         var messenger = new FakeMessengerService();
         messenger.Chats.Add(MessengerTestDoubles.CreateChat("a", "Alice", peerUserId: 2));
         messenger.Chats.Add(MessengerTestDoubles.CreateChat("b", "Bob", peerUserId: 3));
-        var viewModel = MessengerTestDoubles.CreateViewModel(messenger);
+        var realtime = new FakeRealtimeMessengerService();
+        var viewModel = MessengerTestDoubles.CreateViewModel(messenger, realtime);
         await viewModel.LoadAsync();
         viewModel.SelectedChat = viewModel.Chats[0];
         viewModel.DraftText = "unsent";
         viewModel.SearchText = "ali";
+        realtime.RaiseConnection(false);
 
         viewModel.Reset();
 
@@ -29,5 +31,7 @@ public sealed class MessengerResetTests
         Assert.Equal(string.Empty, viewModel.SearchText);
         Assert.False(viewModel.IsPrivateUnlockVisible);
         Assert.Equal(string.Empty, viewModel.PrivatePassphrase);
+        // Циклы остановлены вместе с сессией: «переподключение…» иначе залипло бы навсегда.
+        Assert.False(viewModel.IsReconnecting);
     }
 }

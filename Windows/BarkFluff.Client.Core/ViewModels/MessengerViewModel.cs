@@ -27,6 +27,9 @@ public sealed partial class MessengerViewModel : ObservableObject
     private CancellationTokenSource? _readBatchCancellationTokenSource;
     private int _messageLoadVersion;
     private bool _isFeedAtBottom = true;
+    // До первого подключения индикатор не показываем: у стримов ещё не было повода упасть.
+    private bool _isRealtimeConnected = true;
+    private bool _isPresenceConnected = true;
 
     public MessengerViewModel(
         IMessengerService messenger,
@@ -45,7 +48,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         _realtimeMessenger.MessageReceived += OnMessageReceived;
         _realtimeMessenger.MessageRead += OnMessageRead;
         _realtimeMessenger.PrivateMessageRead += OnPrivateMessageRead;
+        _realtimeMessenger.ConnectionChanged += OnRealtimeConnectionChanged;
         _presence.PresenceChanged += OnPresenceChanged;
+        _presence.ConnectionChanged += OnPresenceConnectionChanged;
     }
 
     public ObservableCollection<ChatItemViewModel> Chats { get; } = [];
@@ -60,13 +65,28 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     public bool IsChatPlaceholderVisible => SelectedChat is null;
 
+    /// <summary>Пока связь восстанавливается, статус собеседника устарел — шапка показывает вместо него индикатор.</summary>
+    public bool IsPresenceLabelVisible => !IsReconnecting && SelectedChat?.HasPresence == true;
+
+    public bool IsChatHeaderReconnectingVisible => IsReconnecting && HasSelectedChat;
+
+    /// <summary>
+    /// Дубль над списком чатов: шапка целиком скрыта, пока чат не выбран, и обрыв связи
+    /// на пустом мессенджере был бы невидим. С заголовочным индикатором не совмещается.
+    /// </summary>
+    public bool IsChatListReconnectingVisible => IsReconnecting && !HasSelectedChat;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedChat), nameof(IsChatPlaceholderVisible))]
+    [NotifyPropertyChangedFor(nameof(IsPresenceLabelVisible), nameof(IsChatHeaderReconnectingVisible), nameof(IsChatListReconnectingVisible))]
     private ChatItemViewModel? _selectedChat;
     [ObservableProperty] private string _draftText = string.Empty;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private MessageScrollRequest? _scrollRequest;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPresenceLabelVisible), nameof(IsChatHeaderReconnectingVisible), nameof(IsChatListReconnectingVisible))]
+    private bool _isReconnecting;
     [ObservableProperty] private bool _isPrivateUnlockVisible;
     [ObservableProperty] private string _privatePassphrase = string.Empty;
     [ObservableProperty] private string? _privateUnlockError;
@@ -124,6 +144,11 @@ public sealed partial class MessengerViewModel : ObservableObject
         DraftText = string.Empty;
         SearchText = string.Empty;
         ScrollRequest = null;
+        // Циклы остановлены вместе с сессией, о восстановлении связи сообщить уже некому:
+        // без сброса «переподключение…» перешло бы в следующую сессию и залипло.
+        _isRealtimeConnected = true;
+        _isPresenceConnected = true;
+        IsReconnecting = false;
         CancelPrivateUnlock();
     }
 
@@ -685,6 +710,20 @@ public sealed partial class MessengerViewModel : ObservableObject
                 chat.IsOnline = presence.IsOnline;
                 chat.LastSeen = presence.LastSeen;
             }
+        });
+
+    private void OnRealtimeConnectionChanged(object? sender, bool isConnected) =>
+        _uiDispatcher.Post(() =>
+        {
+            _isRealtimeConnected = isConnected;
+            IsReconnecting = !_isRealtimeConnected || !_isPresenceConnected;
+        });
+
+    private void OnPresenceConnectionChanged(object? sender, bool isConnected) =>
+        _uiDispatcher.Post(() =>
+        {
+            _isPresenceConnected = isConnected;
+            IsReconnecting = !_isRealtimeConnected || !_isPresenceConnected;
         });
 
     private void OnMessageRead(object? sender, MessageReadReceipt receipt)

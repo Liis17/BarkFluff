@@ -98,12 +98,15 @@ internal sealed class FakeRealtimeMessengerService : IRealtimeMessengerService
     public event EventHandler<IncomingMessage>? MessageReceived;
     public event EventHandler<MessageReadReceipt>? MessageRead;
     public event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
+    public event EventHandler<bool>? ConnectionChanged;
 
     public void Raise(IncomingMessage message) => MessageReceived?.Invoke(this, message);
 
     public void Raise(MessageReadReceipt receipt) => MessageRead?.Invoke(this, receipt);
 
     public void Raise(PrivateMessageReadReceipt receipt) => PrivateMessageRead?.Invoke(this, receipt);
+
+    public void RaiseConnection(bool isConnected) => ConnectionChanged?.Invoke(this, isConnected);
 
     public Task StartAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
@@ -121,6 +124,7 @@ internal sealed class FakeOnlinePresenceService : IOnlinePresenceService
     private readonly Dictionary<long, UserPresence> _known = [];
 
     public event EventHandler<UserPresence>? PresenceChanged;
+    public event EventHandler<bool>? ConnectionChanged;
 
     public List<long[]> WatchedSets { get; } = [];
 
@@ -133,6 +137,8 @@ internal sealed class FakeOnlinePresenceService : IOnlinePresenceService
         _known[presence.UserId] = presence;
         PresenceChanged?.Invoke(this, presence);
     }
+
+    public void RaiseConnection(bool isConnected) => ConnectionChanged?.Invoke(this, isConnected);
 
     public UserPresence? TryGet(long userId) => _known.TryGetValue(userId, out var presence) ? presence : null;
 
