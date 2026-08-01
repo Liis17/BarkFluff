@@ -74,21 +74,14 @@ public class RemoteDockerService
     public async Task<IReadOnlyList<DiscoveredRemoteContainerDto>> DiscoverContainersAsync(Guid serverId, CancellationToken cancellationToken = default)
     {
         var server = RequireServer(serverId);
-        var result = await _sshClient.RunAsync(server, "docker ps --all --format '{{json .}}'", cancellationToken);
-        ThrowIfFailed(result, "Не удалось получить список Docker-контейнеров");
-
         var trackedNames = _db.Containers.Find(x => x.ServerId == serverId)
             .Select(x => x.ContainerName)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var containers = ParseDockerPsOutput(result.Stdout);
-        foreach (var container in containers)
-        {
-            var metadata = await ReadComposeMetadataAsync(server, container.ContainerName, cancellationToken);
-            container.IsComposeManaged = metadata.CanUpdate;
-        }
-
-        return containers.Where(x => !trackedNames.Contains(x.ContainerName)).ToList();
+        var containers = await ListContainersWithComposeMetadataAsync(server, cancellationToken);
+        return containers.Select(x => x.Container)
+            .Where(x => !trackedNames.Contains(x.ContainerName))
+            .ToList();
     }
 
     public async Task<RemoteContainerStatusDto?> AddContainerAsync(Guid serverId, string containerName, CancellationToken cancellationToken = default)
@@ -100,24 +93,21 @@ public class RemoteDockerService
         if (_db.Containers.Exists(x => x.ServerId == serverId && x.ContainerName == normalizedName))
             throw new InvalidOperationException("Контейнер уже добавлен");
 
-        var discovery = await _sshClient.RunAsync(server,
-            $"docker ps --all --filter {EscapeShell($"name=^/{normalizedName}$")} --format '{{{{json .}}}}'", cancellationToken);
-        ThrowIfFailed(discovery, "Не удалось проверить Docker-контейнер");
-        var found = ParseDockerPsOutput(discovery.Stdout).FirstOrDefault();
+        var found = (await ListContainersWithComposeMetadataAsync(server, cancellationToken))
+            .FirstOrDefault(x => string.Equals(x.Container.ContainerName, normalizedName, StringComparison.OrdinalIgnoreCase));
         if (found is null)
             return null;
 
-        var metadata = await ReadComposeMetadataAsync(server, found.ContainerName, cancellationToken);
         var container = new RemoteContainer
         {
             ServerId = serverId,
-            ContainerName = found.ContainerName,
-            ComposeServiceName = metadata.ServiceName,
-            ComposeFiles = metadata.ConfigFiles,
-            ComposeWorkingDirectory = metadata.WorkingDirectory
+            ContainerName = found.Container.ContainerName,
+            ComposeServiceName = found.Metadata.ServiceName,
+            ComposeFiles = found.Metadata.ConfigFiles,
+            ComposeWorkingDirectory = found.Metadata.WorkingDirectory
         };
         _db.Containers.Insert(container);
-        return ToStatusDto(container, found.State, found.Status);
+        return ToStatusDto(container, found.Container.State, found.Container.Status);
     }
 
     public async Task<IReadOnlyList<RemoteContainerStatusDto>> GetContainersStatusAsync(Guid serverId, CancellationToken cancellationToken = default)
@@ -126,28 +116,16 @@ public class RemoteDockerService
         var containers = _db.Containers.Find(x => x.ServerId == serverId)
             .OrderBy(x => x.ContainerName)
             .ToList();
-        var statuses = new List<RemoteContainerStatusDto>();
+        if (containers.Count == 0)
+            return [];
 
-        foreach (var container in containers)
-        {
-            try
-            {
-                var result = await _sshClient.RunAsync(server,
-                    $"docker ps --all --filter {EscapeShell($"name=^/{container.ContainerName}$")} --format '{{{{json .}}}}'", cancellationToken);
-                ThrowIfFailed(result, $"Не удалось получить статус {container.ContainerName}");
-                var status = ParseDockerPsOutput(result.Stdout).FirstOrDefault();
-                statuses.Add(status is null
-                    ? ToStatusDto(container, "not_found", "Не найден")
-                    : ToStatusDto(container, status.State, status.Status));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Ошибка получения статуса {ContainerName} на {Server}", container.ContainerName, server.Name);
-                statuses.Add(ToStatusDto(container, "error", ex.Message));
-            }
-        }
+        var currentContainers = (await ListContainersAsync(server, cancellationToken))
+            .ToDictionary(x => x.ContainerName, StringComparer.OrdinalIgnoreCase);
 
-        return statuses;
+        return containers.Select(container => currentContainers.TryGetValue(container.ContainerName, out var status)
+                ? ToStatusDto(container, status.State, status.Status)
+                : ToStatusDto(container, "not_found", "Не найден"))
+            .ToList();
     }
 
     public bool DeleteContainer(Guid serverId, Guid containerId)
@@ -201,16 +179,63 @@ public class RemoteDockerService
         }
     }
 
-    private async Task<ComposeMetadata> ReadComposeMetadataAsync(RemoteServer server, string containerName, CancellationToken cancellationToken)
+    private async Task<List<DiscoveredRemoteContainerDto>> ListContainersAsync(RemoteServer server, CancellationToken cancellationToken)
     {
-        var result = await _sshClient.RunAsync(server,
-            $"docker inspect {EscapeShell(containerName)} --format '{{{{json .Config.Labels}}}}'", cancellationToken);
-        if (result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.Stdout))
-            return new ComposeMetadata();
+        var result = await _sshClient.RunAsync(server, "docker ps --all --format '{{json .}}'", cancellationToken);
+        ThrowIfFailed(result, "Не удалось получить список Docker-контейнеров");
+        return ParseDockerPsOutput(result.Stdout);
+    }
 
+    private async Task<List<DiscoveredContainerWithMetadata>> ListContainersWithComposeMetadataAsync(
+        RemoteServer server, CancellationToken cancellationToken)
+    {
+        const string separator = "__BARKFLUFF_REMOTE_CONTAINER_LABELS__";
+        var result = await _sshClient.RunAsync(server,
+            "docker ps --all --format '{{json .}}' || exit $?; " +
+            $"printf '\\n{separator}\\n'; " +
+            "docker ps --all --quiet | xargs -r docker inspect --format '{{.Name}}\\t{{json .Config.Labels}}' || true",
+            cancellationToken);
+        ThrowIfFailed(result, "Не удалось получить список Docker-контейнеров");
+
+        var separatorIndex = result.Stdout.IndexOf(separator, StringComparison.Ordinal);
+        var containersOutput = separatorIndex < 0 ? result.Stdout : result.Stdout[..separatorIndex];
+        var labelsOutput = separatorIndex < 0 ? string.Empty : result.Stdout[(separatorIndex + separator.Length)..];
+        var metadataByContainer = ParseComposeMetadataOutput(labelsOutput);
+
+        return ParseDockerPsOutput(containersOutput)
+            .Select(container => new DiscoveredContainerWithMetadata(
+                container,
+                metadataByContainer.GetValueOrDefault(container.ContainerName) ?? new ComposeMetadata()))
+            .Select(item =>
+            {
+                item.Container.IsComposeManaged = item.Metadata.CanUpdate;
+                return item;
+            })
+            .ToList();
+    }
+
+    private static Dictionary<string, ComposeMetadata> ParseComposeMetadataOutput(string output)
+    {
+        var result = new Dictionary<string, ComposeMetadata>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separatorIndex = line.IndexOf('\t');
+            if (separatorIndex <= 0)
+                continue;
+
+            var containerName = line[..separatorIndex].Trim().TrimStart('/');
+            var metadata = ParseComposeMetadata(line[(separatorIndex + 1)..]);
+            result[containerName] = metadata;
+        }
+
+        return result;
+    }
+
+    private static ComposeMetadata ParseComposeMetadata(string labelsJson)
+    {
         try
         {
-            var labels = JsonSerializer.Deserialize<Dictionary<string, string>>(result.Stdout) ?? [];
+            var labels = JsonSerializer.Deserialize<Dictionary<string, string>>(labelsJson) ?? [];
             return new ComposeMetadata
             {
                 ServiceName = labels.GetValueOrDefault("com.docker.compose.service"),
@@ -322,6 +347,8 @@ public class RemoteDockerService
             && !string.IsNullOrWhiteSpace(ConfigFiles)
             && !string.IsNullOrWhiteSpace(WorkingDirectory);
     }
+
+    private record DiscoveredContainerWithMetadata(DiscoveredRemoteContainerDto Container, ComposeMetadata Metadata);
 }
 
 internal static class JsonElementExtensions

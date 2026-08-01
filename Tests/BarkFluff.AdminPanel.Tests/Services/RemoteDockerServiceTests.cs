@@ -80,6 +80,50 @@ public class RemoteDockerServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task DiscoverContainersAsync_UsesOneSshCommandForAllContainers()
+    {
+        using var db = new RemoteDockerDbContext(_dbPath);
+        var server = new RemoteServer { Name = "Node", Host = "host", Username = "root", Password = "secret" };
+        db.Servers.Insert(server);
+        var ssh = new FakeSshClient
+        {
+            DockerPsOutput = """
+                {"ID":"abc","Image":"barkfluff/web","Names":"web","State":"running","Status":"Up 1 minute"}
+                {"ID":"def","Image":"postgres","Names":"postgres","State":"running","Status":"Up 1 minute"}
+                """,
+            LabelsOutput = """{"com.docker.compose.service":"web","com.docker.compose.project.config_files":"/srv/docker-compose.yml","com.docker.compose.project.working_dir":"/srv"}"""
+        };
+        var service = CreateService(db, ssh);
+
+        await service.DiscoverContainersAsync(server.Id);
+
+        Assert.Single(ssh.Commands);
+    }
+
+    [Fact]
+    public async Task GetContainersStatusAsync_UsesOneSshCommandForAllTrackedContainers()
+    {
+        using var db = new RemoteDockerDbContext(_dbPath);
+        var server = new RemoteServer { Name = "Node", Host = "host", Username = "root", Password = "secret" };
+        db.Servers.Insert(server);
+        db.Containers.Insert(new RemoteContainer { ServerId = server.Id, ContainerName = "web" });
+        db.Containers.Insert(new RemoteContainer { ServerId = server.Id, ContainerName = "postgres" });
+        var ssh = new FakeSshClient
+        {
+            DockerPsOutput = """
+                {"ID":"abc","Image":"barkfluff/web","Names":"web","State":"running","Status":"Up 1 minute"}
+                {"ID":"def","Image":"postgres","Names":"postgres","State":"running","Status":"Up 1 minute"}
+                """
+        };
+        var service = CreateService(db, ssh);
+
+        var statuses = await service.GetContainersStatusAsync(server.Id);
+
+        Assert.Equal(2, statuses.Count);
+        Assert.Single(ssh.Commands);
+    }
+
+    [Fact]
     public async Task ExecuteActionAsync_RejectsUpdateForNonComposeContainer()
     {
         using var db = new RemoteDockerDbContext(_dbPath);
@@ -144,8 +188,9 @@ public class RemoteDockerServiceTests : IDisposable
         public Task<RemoteSshCommandResult> RunAsync(RemoteServer server, string command, CancellationToken cancellationToken = default)
         {
             Commands.Add(command);
-            var output = command.StartsWith("docker ps", StringComparison.Ordinal) ? DockerPsOutput
-                : command.StartsWith("docker inspect", StringComparison.Ordinal) ? LabelsOutput
+            var output = command.Contains("docker inspect", StringComparison.Ordinal)
+                ? $"{DockerPsOutput}\n__BARKFLUFF_REMOTE_CONTAINER_LABELS__\n/web\t{LabelsOutput}"
+                : command.StartsWith("docker ps", StringComparison.Ordinal) ? DockerPsOutput
                 : string.Empty;
             return Task.FromResult(new RemoteSshCommandResult(output, string.Empty, 0));
         }
