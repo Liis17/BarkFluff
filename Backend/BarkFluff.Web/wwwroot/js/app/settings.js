@@ -334,17 +334,17 @@
             : pushSupported
                 ? 'Показывать новые события, когда приложение скрыто или закрыто'
                 : 'Недоступно: нужен HTTPS и настроенный Firebase Web Push';
-        var pushToggle = makeToggle(
+        var pushToggle = makeToggleRow(
             'Браузерные уведомления',
             pushDescription,
             pushStatus === 'enabled',
-            function (next, control) {
-                if (!pushSupported || pushStatus === 'denied') { control.setValue(false); return; }
-                control.setDisabled(true);
+            function (next) {
+                if (!pushSupported || pushStatus === 'denied') { pushToggle.setValue(false); return; }
+                pushToggle.setDisabled(true);
                 (next ? BF.push.enable() : BF.push.disable()).then(function (success) {
-                    control.setValue(next && !!success);
+                    pushToggle.setValue(next && !!success);
                     if (next && !success && BF.push.status && BF.push.status() === 'denied') renderMain();
-                }).finally(function () { control.setDisabled(false); });
+                }).finally(function () { pushToggle.setDisabled(false); });
             });
         if (!pushSupported || pushStatus === 'denied') pushToggle.setDisabled(true);
         secNotifications.appendChild(pushToggle.row);
