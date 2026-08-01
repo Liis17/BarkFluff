@@ -636,7 +636,7 @@
             if (activeCallId === d.callId) { titleEl.textContent = titleEl.textContent.replace('Звонок', 'В разговоре'); startTimer(); }
         });
         BF.calls.on('peer_rejected', function (d) {
-            if (activeCallId === d.callId) timerEl.textContent = 'Отклонён';
+            if (activeCallId === d.callId) teardown();
         });
         BF.calls.on('ring_dismiss', function (d) {
             if (ringCallId === d.callId) hideRing();
