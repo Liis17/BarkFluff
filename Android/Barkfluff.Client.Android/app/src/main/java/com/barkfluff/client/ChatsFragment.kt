@@ -109,10 +109,7 @@ class ChatsFragment : Fragment() {
         subscribeToRealtimeEvents()
         viewLifecycleOwner.lifecycleScope.launch {
             chatDraftRepository.drafts.collect { drafts ->
-                localDraftStates = drafts.mapNotNull { (chatId, draft) ->
-                    if (draft.syncState == com.barkfluff.client.drafts.ChatDraftSyncState.SYNCED) null
-                    else chatId to draft.isActive
-                }.toMap()
+                localDraftStates = drafts.mapValues { it.value.isActive }
                 if (::chatAdapter.isInitialized) applyFolderFilter()
             }
         }

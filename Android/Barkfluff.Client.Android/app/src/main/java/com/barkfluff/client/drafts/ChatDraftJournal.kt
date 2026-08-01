@@ -30,6 +30,7 @@ object ChatDraftJournal {
             LocalChatDraft(
                 text = text,
                 replyToMessageId = replyToMessageId,
+                revision = current?.revision.orEmpty(),
                 generation = nextGeneration,
                 syncState = ChatDraftSyncState.DIRTY
             )
@@ -37,7 +38,7 @@ object ChatDraftJournal {
     }
 
     fun markSynced(current: LocalChatDraft, generation: Long, revision: String): LocalChatDraft =
-        if (current.generation != generation || current.syncState != ChatDraftSyncState.DIRTY) current
+        if (current.generation != generation || current.syncState == ChatDraftSyncState.DELETE_PENDING) current
         else current.copy(revision = revision, syncState = ChatDraftSyncState.SYNCED)
 
     fun removeIfGenerationMatches(current: LocalChatDraft?, generation: Long): LocalChatDraft? =

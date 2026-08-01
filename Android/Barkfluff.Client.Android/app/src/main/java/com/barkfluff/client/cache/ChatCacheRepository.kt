@@ -3,6 +3,7 @@ package com.barkfluff.client.cache
 import android.content.Context
 import android.util.Base64
 import androidx.room.Dao
+import androidx.room.ColumnInfo
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
@@ -95,7 +96,7 @@ data class CachedChatEntity(
     val lastActivityAt: Long,
     val privateInviteStateNumber: Int,
     val privateInviterUserId: Long,
-    val hasDraft: Boolean
+    @ColumnInfo(defaultValue = "0") val hasDraft: Boolean
 )
 
 @Entity(tableName = "cached_chat_drafts", primaryKeys = ["scopeId", "chatId"])
@@ -613,9 +614,9 @@ class ChatCacheRepository(context: Context) {
         const val KEY_PASSPHRASE = "database_passphrase"
         const val SEPARATOR = ""
         val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE cached_chats ADD COLUMN hasDraft INTEGER NOT NULL DEFAULT 0")
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cached_chats ADD COLUMN hasDraft INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
                     "CREATE TABLE IF NOT EXISTS cached_chat_drafts (" +
                         "scopeId TEXT NOT NULL, chatId TEXT NOT NULL, text TEXT NOT NULL, " +
                         "replyToMessageId INTEGER NOT NULL, revision TEXT NOT NULL, " +
