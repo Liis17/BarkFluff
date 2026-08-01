@@ -91,7 +91,7 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 
 ### Группировка сообщений
 - Последовательные сообщения одного отправителя объединяются визуально, если между ними не больше пяти минут и нет разделителя даты: вертикальный зазор уменьшается на 2px.
-- У входящих сообщений аватар показывается только у последнего сообщения такой последовательности, слева от облачка; это действует и в личных, и в групповых чатах. Имя находится в tooltip при наведении на аватар.
+- В групповых чатах у входящих сообщений резервируется одинаковая левая колонка для аватара; сам аватар показывается только у последнего сообщения последовательности. В личных чатах аватара и колонки нет. Имя находится в tooltip при наведении на аватар.
 
 ### Motion UI
 - `index.html` и `messenger.html` используют общий ease-out-токен `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)` для коротких UI-переходов.
@@ -127,7 +127,7 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - смена названия (карандаш → `BF.api.updateGroupChat(chatId, title)`) и аватара (`BF.files.uploadFile(file, 6 /*CHAT_PICTURE*/)` → `updateGroupChat(chatId, null, fileId)`);
 - список участников (`BF.api.listChatMembers`, аватары резолвятся через `getUser`), добавление через инлайн-поиск (`searchUsers` → `addUser`) и удаление (`kickUser`);
 - вкладки Медиа/Файлы (общая `renderChatMedia(type, container)`, бывшая `loadProfileMedia`).
-Аватарки чужих сообщений в ленте (`messages.js` → `.msg-sender-avatar`) показываются и в личных, и в групповых чатах. API-обёртки `listChatMembers/addUser/kickUser/updateGroupChat` — в `api.js`. Бэкенд-методы готовы в [[Backend/Messages]], proto-bundle уже сгенерирован. Live-обновление шапки/состава у других участников не делается — приходит системное сообщение (паритет с Android).
+Аватарки чужих сообщений в ленте групповых чатов (`messages.js` → `.msg-sender-avatar`). API-обёртки `listChatMembers/addUser/kickUser/updateGroupChat` — в `api.js`. Бэкенд-методы готовы в [[Backend/Messages]], proto-bundle уже сгенерирован. Live-обновление шапки/состава у других участников не делается — приходит системное сообщение (паритет с Android).
 
 ## Связи
 - [[Backend/BarkFluff.Web]] — хост (YARP gRPC-Web↔gRPC + статика).

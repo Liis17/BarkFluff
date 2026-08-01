@@ -407,7 +407,7 @@
      * @param {number} myUserId
      * @param {Function} [getUserFn] — async function(userId) → user
      * @param {Function} [onMediaClick] — function(type, url, fileId)
-     * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId), groupedWithPrevious: boolean, showSenderAvatar: boolean }
+     * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId), groupedWithPrevious: boolean, showSenderAvatar: boolean, showSenderGutter: boolean }
      * @returns {Promise<HTMLElement>}
      */
     function buildMessageElement(msg, myUserId, getUserFn, onMediaClick, opts) {
@@ -446,6 +446,7 @@
 
         var group = document.createElement('div');
         group.className = 'msg-group ' + direction + (opts && opts.groupedWithPrevious ? ' grouped-with-previous' : '');
+        if (!isOutgoing && opts && opts.showSenderGutter) group.classList.add('has-sender-gutter');
         group.dataset.msgId = msg.id;
 
         var promise = Promise.resolve();
