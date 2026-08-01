@@ -125,7 +125,7 @@ public class DevicesStorage(UsersContext context)
         await context.SaveChangesAsync();
     }
 
-    public async Task SetFirebaseToken(Guid deviceId, long userId, string token)
+    public async Task SetFirebaseToken(Guid deviceId, long userId, string token, DevicePushPlatform pushPlatform)
     {
         var device = await context.UserDevices
             .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
@@ -134,10 +134,23 @@ public class DevicesStorage(UsersContext context)
             throw new InvalidOperationException("Устройство не найдено");
 
         device.FirebaseDeviceToken = token;
+        device.PushPlatform = pushPlatform;
         await context.SaveChangesAsync();
     }
 
-    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokens(List<long> userIds, Guid? mutedChatFilter = null)
+    public async Task ClearFirebaseToken(Guid deviceId, long userId)
+    {
+        var device = await context.UserDevices
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
+
+        if (device == null)
+            throw new InvalidOperationException("Устройство не найдено");
+
+        device.FirebaseDeviceToken = null;
+        await context.SaveChangesAsync();
+    }
+
+    public async Task<List<(long UserId, string DeviceId, string FirebaseToken, DevicePushPlatform PushPlatform)>> GetDevicesWithFirebaseTokens(List<long> userIds, Guid? mutedChatFilter = null)
     {
         var now = DateTime.UtcNow;
         var query = context.UserDevices
@@ -152,23 +165,23 @@ public class DevicesStorage(UsersContext context)
         }
 
         return await query
-            .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
+            .Select(d => new ValueTuple<long, string, string, DevicePushPlatform>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!, d.PushPlatform))
             .ToListAsync();
     }
 
-    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokensByDeviceIds(List<Guid> deviceIds)
+    public async Task<List<(long UserId, string DeviceId, string FirebaseToken, DevicePushPlatform PushPlatform)>> GetDevicesWithFirebaseTokensByDeviceIds(List<Guid> deviceIds)
     {
         return await context.UserDevices
             .Where(d => deviceIds.Contains(d.Id) && d.FirebaseDeviceToken != null && d.NotificationsEnabled)
-            .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
+            .Select(d => new ValueTuple<long, string, string, DevicePushPlatform>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!, d.PushPlatform))
             .ToListAsync();
     }
 
-    public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetAllDevicesWithFirebaseTokens()
+    public async Task<List<(long UserId, string DeviceId, string FirebaseToken, DevicePushPlatform PushPlatform)>> GetAllDevicesWithFirebaseTokens()
     {
         return await context.UserDevices
             .Where(d => d.FirebaseDeviceToken != null && d.NotificationsEnabled)
-            .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
+            .Select(d => new ValueTuple<long, string, string, DevicePushPlatform>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!, d.PushPlatform))
             .ToListAsync();
     }
 

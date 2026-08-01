@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#8c351c">
     <title>Мессенджер</title>
     <!-- Mobile redirect removed: responsive layout handles all screen sizes -->
     <link id="favicon" rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -5588,6 +5590,8 @@
     <!-- LiveKit JS SDK (window.LivekitClient) -->
     <script src="/js/vendor/livekit-client.bundle.js?v=calls-1"></script>
     <script src="/js/vendor/hash-wasm.umd.min.js?v=private-chats-1"></script>
+    <script src="/pwa-config.js"></script>
+    <script src="/js/vendor/firebase-messaging-compat.bundle.js"></script>
     <!-- App modules -->
     <script src="/js/app/device.js"></script>
     <script src="/js/app/tokens.js"></script>
@@ -5610,6 +5614,7 @@
     <script src="/js/app/imageeditor.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-1"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
+    <script src="/js/app/push.js"></script>
     <script src="/js/app/main.js?v=private-chats-1"></script>
     <script>
     /* Inject theme picker into settings dialog */

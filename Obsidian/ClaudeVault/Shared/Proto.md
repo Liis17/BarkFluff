@@ -81,6 +81,7 @@ dotnet build BarkFluff.Proto.csproj
 - `onliner_api.proto`: `user_uuids`/`user_uuid` в Subscribe/Change/Status/Typing-сообщениях; новый сервис `OnlinerServerApi` (Фаза 4) — UpsertRemoteStatus/InjectRemoteTyping
 - `navigator_api.proto`: `ServerInfo` +5 полей (server_name, federation_endpoint, signing_keys, tls_spki_sha256, federation_protocol_versions) + `NavigatorSigningKey`; `NavigatorApi.GetServerByName` (Фаза 1)
 - `beacon_api.proto`: `GetServerInfoResponse.server_name` (16), `federation_enabled` (17) — **реализовано** (не заглушка): Beacon читает `Federation:ServerName`/`Federation:Enabled` из Configuration, см. [[Backend/Beacon]]
+- `users_api.proto`: `PushPlatform` (`ANDROID`, `WEB`) в `SetFirebaseTokenRequest` и `DeviceFirebaseToken`; `UsersApi.ClearFirebaseToken` очищает FCM-привязку текущего устройства. Это позволяет [[Backend/CloudMessaging]] отправлять Android и PWA разные, privacy-safe payload.
 - `federation_api.proto`/`federation_internal_api.proto` пока **не подключены** ни в один сервисный `.csproj` (Federation-сервиса ещё нет, Фаза 1) — только в `BarkFluff.Proto.csproj` (см. ниже), чтобы codegen валидировал синтаксис при сборке
 
 ## Подключение в .csproj

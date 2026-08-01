@@ -76,12 +76,19 @@ public class IncomingCallPushConsumer : IConsumer<IncomingCallPushEvent>
                 new GetDevicesWithFirebaseTokensRequest { UserIds = { message.RecipientUserIds } },
                 cancellationToken: context.CancellationToken);
 
-            var fcmTokens = tokensResponse.Tokens
+            var androidTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform != PushPlatform.Web)
                 .Select(t => t.FirebaseToken)
                 .Where(t => !string.IsNullOrEmpty(t))
                 .ToList();
 
-            if (fcmTokens.Count == 0)
+            var webTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform == PushPlatform.Web)
+                .Select(t => t.FirebaseToken)
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToList();
+
+            if (androidTokens.Count == 0 && webTokens.Count == 0)
             {
                 _logger.LogDebug("Нет устройств с Firebase токенами у получателей звонка {CallId}", message.CallId);
                 return;
@@ -90,17 +97,19 @@ public class IncomingCallPushConsumer : IConsumer<IncomingCallPushEvent>
             var startedAtUnix = new DateTimeOffset(
                 DateTime.SpecifyKind(message.StartedAt, DateTimeKind.Utc)).ToUnixTimeSeconds();
 
-            await _firebaseService.SendIncomingCallBatchAsync(
-                fcmTokens,
-                message.CallId.ToString(),
-                message.CallerUserId,
-                chatId,
-                message.MediaType,
-                startedAtUnix,
-                callerName,
-                avatarUrl,
-                chatTitle,
-                context.CancellationToken);
+            if (androidTokens.Count > 0)
+            {
+                await _firebaseService.SendIncomingCallBatchAsync(
+                    androidTokens, message.CallId.ToString(), message.CallerUserId, chatId, message.MediaType,
+                    startedAtUnix, callerName, avatarUrl, chatTitle, context.CancellationToken);
+            }
+
+            if (webTokens.Count > 0)
+            {
+                await _firebaseService.SendWebIncomingCallBatchAsync(
+                    webTokens, message.CallId.ToString(), message.CallerUserId, chatId, callerName, avatarUrl,
+                    context.CancellationToken);
+            }
         }
         catch (Exception ex)
         {

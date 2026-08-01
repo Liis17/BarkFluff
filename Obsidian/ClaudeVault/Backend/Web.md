@@ -268,6 +268,12 @@ QR-вход на странице логина — анонимный поток
 
 YARP-маршрут `fast-auth` входит в `streamingServices` set — `ActivityTimeout: 24h`.
 
+## PWA и публичная Firebase-конфигурация
+
+Хост отдаёт `/pwa-config.js` с `Cache-Control: no-store`: только публичные параметры зарегистрированного Firebase Web App (`apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`) и VAPID public key из `Web:Push:*`. Если конфигурация неполна, в browser выставляется `BF_PWA_CONFIG = null`, а push-переключатель сообщает, что функция недоступна. Закрытые Firebase credentials здесь не хранятся — они остаются в [[Backend/CloudMessaging]].
+
+`scripts/firebase-compat-entry.js` собирается esbuild в `wwwroot/js/vendor/firebase-messaging-compat.bundle.js`; Docker повторяет эту сборку. `service-worker.js` подключает bundle и `/pwa-config.js`, принимает FCM data-only события и показывает безопасные уведомления. Новая версия worker ждёт явного подтверждения пользователя и получает `SKIP_WAITING` только после выбора «Обновить», поэтому не меняет оболочку посреди сессии.
+
 ## Зависимости
 
 - `Yarp.ReverseProxy` 2.3.0 + `AWSSDK.Core` 4.0.7.4
