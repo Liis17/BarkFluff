@@ -162,6 +162,13 @@ services:
       FilesService__Host: "http://files:7005"
       UpdatesService__Host: "http://updates:7015"
       OnlinerService__Host: "http://onliner:7009"
+      Web__Push__VapidKey: "${WEB_PUSH_VAPID_KEY}"
+      Web__Push__Firebase__ApiKey: "${WEB_PUSH_FIREBASE_API_KEY}"
+      Web__Push__Firebase__AuthDomain: "${WEB_PUSH_FIREBASE_AUTH_DOMAIN}"
+      Web__Push__Firebase__ProjectId: "${WEB_PUSH_FIREBASE_PROJECT_ID}"
+      Web__Push__Firebase__StorageBucket: "${WEB_PUSH_FIREBASE_STORAGE_BUCKET}"
+      Web__Push__Firebase__MessagingSenderId: "${WEB_PUSH_FIREBASE_MESSAGING_SENDER_ID}"
+      Web__Push__Firebase__AppId: "${WEB_PUSH_FIREBASE_APP_ID}"
     networks:
       - barkfluff-network
     depends_on:

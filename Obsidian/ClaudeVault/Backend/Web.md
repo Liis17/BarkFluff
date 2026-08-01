@@ -274,6 +274,8 @@ YARP-маршрут `fast-auth` входит в `streamingServices` set — `Act
 
 `scripts/firebase-compat-entry.js` собирается esbuild в `wwwroot/js/vendor/firebase-messaging-compat.bundle.js`; Docker повторяет эту сборку. `service-worker.js` подключает bundle и `/pwa-config.js`, принимает FCM data-only события и показывает безопасные уведомления. Новая версия worker ждёт явного подтверждения пользователя и получает `SKIP_WAITING` только после выбора «Обновить», поэтому не меняет оболочку посреди сессии.
 
+В `docker/backend/docker-compose-dev-backend.yml` переменные из `.env` пробрасываются в контейнер `web` как `Web__Push__*`. Шаблон значений и источники в Firebase Console — `docker/backend/sample-backend.env`; это только публичные Firebase Web/VAPID данные, не service-account ключи.
+
 ## Зависимости
 
 - `Yarp.ReverseProxy` 2.3.0 + `AWSSDK.Core` 4.0.7.4
