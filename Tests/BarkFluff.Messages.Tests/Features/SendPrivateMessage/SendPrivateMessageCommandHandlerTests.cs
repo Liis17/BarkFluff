@@ -32,7 +32,7 @@ public class SendPrivateMessageCommandHandlerTests
     public async Task Handle_ValidMessage_SendsAndReturnsResponse()
     {
         var userId = 1L;
-        var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [userId, 2], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
+        var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [userId, 2], kdfSalt: new byte[32], passphraseVerifier: new byte[32], privateInviteState: Domain.PrivateChatInviteState.Accepted);
         var handler = CreateHandler(userId);
 
         var result = await handler.Handle(new SendPrivateMessageCommand
@@ -204,7 +204,7 @@ public class SendPrivateMessageCommandHandlerTests
     public async Task Handle_PublishesNewEncryptedMessageEvent()
     {
         var userId = 1L;
-        var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [userId, 2], kdfSalt: new byte[32], passphraseVerifier: new byte[32]);
+        var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [userId, 2], kdfSalt: new byte[32], passphraseVerifier: new byte[32], privateInviteState: Domain.PrivateChatInviteState.Accepted);
         var handler = CreateHandler(userId);
 
         await handler.Handle(new SendPrivateMessageCommand
