@@ -20,5 +20,10 @@ public class CallSessionConfiguration : IEntityTypeConfiguration<CallSession>
         builder.HasIndex(c => c.CalleeUserId);
         builder.HasIndex(c => c.ChatId);
         builder.HasIndex(c => c.Status);
+        // Гарантия на уровне PostgreSQL: параллельные запросы не создадут два звонка в одном чате.
+        builder.HasIndex(c => c.ChatId)
+            .HasDatabaseName("IX_CallSessions_OneActiveGroupCall")
+            .HasFilter("\"ChatId\" IS NOT NULL AND \"Status\" IN (0, 1)")
+            .IsUnique();
     }
 }

@@ -3,6 +3,7 @@ using System;
 using BarkFluff.Calls.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BarkFluff.Calls.Persistence.Migrations
 {
     [DbContext(typeof(CallsContext))]
-    partial class CallsContextModelSnapshot : ModelSnapshot
+    [Migration("20260801081155_AddActiveGroupCallConstraint")]
+    partial class AddActiveGroupCallConstraint
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
