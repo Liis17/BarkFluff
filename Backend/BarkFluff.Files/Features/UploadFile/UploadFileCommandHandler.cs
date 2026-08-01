@@ -31,7 +31,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
 
     private readonly List<UploadFileType> _filesToNeedGeneratePreview
-        = [UploadFileType.ChatPicture, UploadFileType.MessageAttachmentImage, UploadFileType.UserAvatar];
+        = [UploadFileType.ChatPicture, UploadFileType.MessageAttachmentImage, UploadFileType.MessageAttachmentGif, UploadFileType.UserAvatar];
 
     private readonly Dictionary<UploadFileType, int> _customFileTypeWidth = new()
     {

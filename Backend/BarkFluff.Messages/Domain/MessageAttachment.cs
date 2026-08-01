@@ -22,7 +22,7 @@ public class MessageAttachment
     /// <summary>NULL = локальный файл (существующее поведение); NOT NULL = байты на origin-ноде.</summary>
     public string? OriginServer { get; set; }
 
-    /// <summary>Снапшот имени. Только для remote — у локальных filename берётся из Files при рендере.</summary>
+    /// <summary>Снапшот имени файла для поиска и рендера без дополнительного похода в Files.</summary>
     public string? FileName { get; set; }
 
     public string? PreviewFileId { get; set; }

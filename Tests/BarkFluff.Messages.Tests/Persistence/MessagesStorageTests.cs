@@ -140,4 +140,80 @@ public class MessagesStorageTests
         var reloaded = await _h.MessagesStorage.GetMessageById(msg.Id);
         reloaded!.IsDeleted.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task GetChatAttachmentsAsync_SearchesDocumentNamesCaseInsensitively()
+    {
+        var chat = await _h.SeedChat(memberUserIds: [1, 2]);
+        var matching = await _h.SeedMessage(chat.Id, 1, "matching");
+        matching.Content!.Attachments!.Add(new Domain.MessageAttachment
+        {
+            Type = Domain.MessageAttachmentType.Document,
+            FileId = Guid.NewGuid().ToString(),
+            FileName = "Budget_2026.pdf"
+        });
+        var other = await _h.SeedMessage(chat.Id, 1, "other", isDeleted: true);
+        other.Content!.Attachments!.Add(new Domain.MessageAttachment
+        {
+            Type = Domain.MessageAttachmentType.Document,
+            FileId = Guid.NewGuid().ToString(),
+            FileName = "budget-deleted.pdf"
+        });
+        await _h.DbContext.SaveChangesAsync();
+
+        var (attachments, totalCount) = await _h.MessagesStorage.GetChatAttachmentsAsync(
+            chat.Id, Domain.MessageAttachmentType.Document, 0, 30, true, "dGeT_2026");
+
+        totalCount.Should().Be(1);
+        attachments.Should().ContainSingle();
+        attachments[0].MessageId.Should().Be(matching.Id);
+    }
+
+    [Fact]
+    public async Task GetChatAttachmentsAsync_SearchPaginatesAndSortsDocuments()
+    {
+        var chat = await _h.SeedChat(memberUserIds: [1, 2]);
+        var oldest = await _h.SeedMessage(chat.Id, 1, sentAt: new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc));
+        var newest = await _h.SeedMessage(chat.Id, 1, sentAt: new DateTime(2026, 1, 3, 10, 0, 0, DateTimeKind.Utc));
+        var middle = await _h.SeedMessage(chat.Id, 1, sentAt: new DateTime(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc));
+        foreach (var message in new[] { oldest, newest, middle })
+        {
+            message.Content!.Attachments!.Add(new Domain.MessageAttachment
+            {
+                Type = Domain.MessageAttachmentType.Document,
+                FileId = Guid.NewGuid().ToString(),
+                FileName = "report.pdf"
+            });
+        }
+        await _h.DbContext.SaveChangesAsync();
+
+        var (attachments, totalCount) = await _h.MessagesStorage.GetChatAttachmentsAsync(
+            chat.Id, Domain.MessageAttachmentType.Document, 1, 1, true, "REPORT");
+
+        totalCount.Should().Be(3);
+        attachments.Should().ContainSingle();
+        attachments[0].MessageId.Should().Be(middle.Id);
+    }
+
+    [Fact]
+    public async Task SetDocumentFileNamesAsync_FillsLegacyDocumentNames()
+    {
+        var chat = await _h.SeedChat(memberUserIds: [1, 2]);
+        var message = await _h.SeedMessage(chat.Id, 1);
+        var fileId = Guid.NewGuid().ToString();
+        message.Content!.Attachments!.Add(new Domain.MessageAttachment
+        {
+            Type = Domain.MessageAttachmentType.Document,
+            FileId = fileId
+        });
+        await _h.DbContext.SaveChangesAsync();
+
+        var missingIds = await _h.MessagesStorage.GetDocumentFileIdsMissingNamesAsync(chat.Id);
+        await _h.MessagesStorage.SetDocumentFileNamesAsync(new Dictionary<string, string> { [fileId] = "archive.zip" });
+
+        missingIds.Should().ContainSingle().Which.Should().Be(fileId);
+        var (attachments, _) = await _h.MessagesStorage.GetChatAttachmentsAsync(
+            chat.Id, Domain.MessageAttachmentType.Document, 0, 30, true, "archive");
+        attachments.Should().ContainSingle().Which.FileName.Should().Be("archive.zip");
+    }
 }
