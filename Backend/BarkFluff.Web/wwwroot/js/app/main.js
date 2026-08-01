@@ -522,8 +522,7 @@
         return p.then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
-            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
-            messages.forEach(function (msg) {
+            messages.forEach(function (msg, index) {
                 chain = chain.then(function () {
                     var msgDate = u.formatDate(msg.sentAt);
                     if (msgDate !== lastDate) {
@@ -534,7 +533,7 @@
                         sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                         messagesInner.appendChild(sep);
                     }
-                    return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts).then(function (el) {
+                    return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
                         el.dataset.date = msgDate;
                         messagesInner.appendChild(el);
                     });
@@ -555,28 +554,62 @@
         var p = fileIds.length > 0 ? BF.files.getFileUrls(fileIds) : Promise.resolve();
 
         return p.then(function () {
-            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
-            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts);
+            return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg));
         });
+    }
+
+    function canGroupMessages(previous, current) {
+        if (!previous || !current || previous.type === 2 || previous.type === 'SYSTEM' || current.type === 2 || current.type === 'SYSTEM') return false;
+        if (previous.senderId !== current.senderId || !previous.sentAt || !current.sentAt) return false;
+        return current.sentAt >= previous.sentAt &&
+            current.sentAt - previous.sentAt <= 5 * 60 * 1000 &&
+            u.formatDate(previous.sentAt) === u.formatDate(current.sentAt);
+    }
+
+    function buildMessageOptions(msg, index) {
+        if (index == null) index = messages.indexOf(msg);
+        if (index < 0) index = messages.findIndex(function (item) { return item.id === msg.id; });
+
+        var previous = index > 0 ? messages[index - 1] : null;
+        var next = index >= 0 && index < messages.length - 1 ? messages[index + 1] : null;
+        var groupedWithPrevious = canGroupMessages(previous, msg);
+        return {
+            knownMessageIds: knownMessageIds,
+            onReplyClick: scrollToMessage,
+            groupedWithPrevious: groupedWithPrevious,
+            showSenderAvatar: msg.senderId !== myUserId && !canGroupMessages(msg, next)
+        };
     }
 
     function appendMessageToView(msg) {
         if (msg && msg.id) knownMessageIds.add(msg.id);
-        return buildMessageViewElement(msg).then(function (el) {
-            var msgDate = u.formatDate(msg.sentAt);
-            var lastMsgDate = null;
-            for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
-                if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
-            }
-            if (msgDate !== lastMsgDate) {
-                var sep = document.createElement('div');
-                sep.className = 'msg-date-separator';
-                sep.dataset.date = msgDate;
-                sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
-                messagesInner.appendChild(sep);
-            }
-            el.dataset.date = u.formatDate(msg.sentAt);
-            messagesInner.appendChild(el);
+        var previous = messages.length > 1 ? messages[messages.length - 2] : null;
+        var refreshPrevious = previous && previous.senderId !== myUserId && canGroupMessages(previous, msg)
+            ? buildMessageViewElement(previous).then(function (replacement) {
+                var previousEl = findMessageGroup(previous.id);
+                if (!previousEl || !previousEl.isConnected) return;
+                replacement.dataset.date = previousEl.dataset.date;
+                previousEl.replaceWith(replacement);
+            })
+            : Promise.resolve();
+
+        return refreshPrevious.then(function () {
+            return buildMessageViewElement(msg).then(function (el) {
+                var msgDate = u.formatDate(msg.sentAt);
+                var lastMsgDate = null;
+                for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
+                    if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
+                }
+                if (msgDate !== lastMsgDate) {
+                    var sep = document.createElement('div');
+                    sep.className = 'msg-date-separator';
+                    sep.dataset.date = msgDate;
+                    sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
+                    messagesInner.appendChild(sep);
+                }
+                el.dataset.date = msgDate;
+                messagesInner.appendChild(el);
+            });
         });
     }
 
@@ -2845,11 +2878,8 @@
         messages[idx] = updatedMsg;
         var oldEl = messagesInner.querySelector('.msg-group[data-msg-id="' + updatedMsg.id + '"]');
         if (!oldEl) return;
-        var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
         BF.messages.buildMessageElement(
-            updatedMsg, myUserId,
-            !!(currentChatInfo && currentChatInfo.isGroupChat),
-            getUser, showMediaOverlay, bldOpts
+            updatedMsg, myUserId, getUser, showMediaOverlay, buildMessageOptions(updatedMsg, idx)
         ).then(function (newEl) {
             newEl.dataset.date = oldEl.dataset.date;
             oldEl.replaceWith(newEl);
@@ -2870,9 +2900,7 @@
             knownMessageIds.delete(msgIdNum);
             knownMessageIds.delete(msgIdStr);
         }
-        var el = messagesInner.querySelector('.msg-group[data-msg-id="' + msgIdStr + '"]');
-        console.log('[main] applyMessageDelete: idx=', idx, 'domEl=', !!el);
-        if (el) el.remove();
+        if (idx >= 0) renderMessages();
 
         // Обновляем lastMessage чат-листа для всех чатов, где это сообщение последнее.
         var anyChatTouched = false;
