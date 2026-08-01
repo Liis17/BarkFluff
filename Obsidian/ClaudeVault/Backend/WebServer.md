@@ -21,7 +21,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 | `HomeController` | `GET /` | Отдаёт `html/barkfluff.html` |
 | `InstallController` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Скрипты установки (Windows и Linux, release и beta) |
 | `DownloadController` | `GET /download/installer` | `Barkfluff.Updater.CLI.exe` |
-| `FallbackController` | `GET /{**catchAll}` | `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService |
+| `FallbackController` | `GET /{**catchAll}` | `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService; пусто в ответе → `html/404.html` с кодом 404 |
 | `UserApiController` | `GET /api/user/{username}` | REST API профиля |
 | `VersionApiController` | `GET /api/versions` | Версии клиентов (Android/Windows/macOS, release+beta) |
 | `SupportChatController` | `POST /api/support/send`, `GET /api/support/messages/{chatId}` | Чат поддержки |
@@ -34,6 +34,10 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 - **`UserProfileService`** — gRPC запросы профилей, кеш 30 мин (не найденных — 5 мин, `IMemoryCache`). Возвращает `UserProfileData` включая `ProfilePosterUrl`.
 - **`UserPageService`** — читает `html/userpage.html`, заменяет `%%username%%`. Специальная обработка: если username == `li_is` (без учёта регистра), отдаётся `html/UniqueUsers/paws.page.html` с анимированными лапками на фоне.
+
+> **Валидация пути.** До подстановки путь проверяется регексом `^[a-zA-Z0-9_]{3,32}$` — тем же, что `UsernameFormatValidator` в [[Backend/Users]]. Не подошло (слэши, кавычки, теги, длина) → пустая строка → `FallbackController` отдаёт 404. Подстановка дополнительно проходит `HtmlEncoder` — `%%username%%` попадает не только в разметку, но и в JS-строку `const USERNAME = "…"` шаблона, поэтому одной валидации мало, если формат username когда-нибудь расширят.
+>
+> Существующий username от несуществующего страница **не отличает** — оба дают 200 с шаблоном, факт регистрации выясняет уже клиентский `fetch('/api/user/…')`. Это осознанно: по коду ответа нельзя перебрать список аккаунтов. 404 отдаётся только на то, что username быть не может в принципе, поэтому о пользователях он ничего не сообщает.
 
 > **Кнопка «Написать в браузере» (`#webChatBtn`)** в обоих шаблонах (`userpage.html` + `paws.page.html`): при клике пишет cookie `bf_open_chat=<username>` (`domain=.barkfluff.com`, `max-age=300`, `SameSite=Lax`) и редиректит на `https://web.barkfluff.com`. Веб-мессенджер [[Backend/Web]] после загрузки читает эту cookie и открывает чат с пользователем (см. `maybeOpenChatFromCookie` в `main.js`). Логика повторяет deep-link Android (`bf://user-username=<username>`).
 - **`LegalPageService`** — файлы из `html/legal/` по имени страницы; также обрабатывает `selfhosted.html`
@@ -69,6 +73,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 ## Статика
 
 - `html/barkfluff.html` — главная страница
+- `html/404.html` — страница «не найдено» (палитра главной, RU/EN по `localStorage.bf_lang`, шрифт не грузится извне — только системный fallback)
 - `html/userpage.html` — шаблон страницы пользователя
 - `html/UniqueUsers/paws.page.html` — **специальная** страница для пользователя `li_is`: как userpage, но с анимированными полупрозрачными лапками-следами (SVG, CSS keyframes) на заднем плане
 - `html/selfhosted.html` — инструкция по развёртыванию своей ноды, см. ниже
@@ -86,7 +91,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 Общего layout у `html/` не существует — каждая страница самостоятельна. Поэтому баннер сделан **одним внешним файлом** и подключается строкой `<script src="/assets/cookie-notice.js" defer></script>` перед `</body>`. Раздаётся через whitelist `AssetsController._allowedFiles` (там же прописан `text/javascript`), в `.csproj` добавлен `<Content Include="files\cookie-notice.js">`.
 
-⚠️ Новая страница сайта → добавить эту строку вручную. Сейчас подключено в 8 файлах: `barkfluff.html`, `userpage.html`, `selfhosted.html`, `UniqueUsers/paws.page.html`, все четыре `legal/*.html`. Каталог `html/new/` (WIP-редизайн) не подключён.
+⚠️ Новая страница сайта → добавить эту строку вручную. Сейчас подключено в 9 файлах: `barkfluff.html`, `404.html`, `userpage.html`, `selfhosted.html`, `UniqueUsers/paws.page.html`, все четыре `legal/*.html`. Каталог `html/new/` (WIP-редизайн) не подключён.
 
 - Локализация RU/EN — собственный словарь `S` внутри скрипта, язык берётся из `document.documentElement.lang` / `localStorage.bf_lang` (та же схема, что у `barkfluff.html` и `legal/*.html`). Свой обработчик на `#langToggle`, потому что `applyLang` главной страницы работает по фиксированному списку id.
 - Стили инжектит сам скрипт, цвета через `var(--panel, var(--bg-2, …))` и т.п. — наборы CSS-переменных у главной страницы и legal-страниц разные.

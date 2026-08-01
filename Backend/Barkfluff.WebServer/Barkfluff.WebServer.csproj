@@ -55,6 +55,9 @@
     <Content Include="html\barkfluff.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="html\404.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="html\legal\account-deletion.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

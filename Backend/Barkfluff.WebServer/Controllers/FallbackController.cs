@@ -47,10 +47,24 @@ namespace Barkfluff.WebServer.Controllers
 
             if (string.IsNullOrEmpty(userPageHtml))
             {
-                return NotFound("Page not found");
+                return NotFoundPage();
             }
 
             return Content(userPageHtml, "text/html");
+        }
+
+        private IActionResult NotFoundPage()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "html", "404.html");
+
+            if (!System.IO.File.Exists(path))
+            {
+                return NotFound("Page not found");
+            }
+
+            var result = Content(System.IO.File.ReadAllText(path), "text/html");
+            result.StatusCode = StatusCodes.Status404NotFound;
+            return result;
         }
     }
 }
