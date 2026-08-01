@@ -93,12 +93,18 @@
     // Currently subscribed chat ID for typing status (for reconnection)
     var currentTypingChatId = null;
 
-    // Connection status: true when at least one core stream is alive
+    // Connection status: true when at least one core stream is alive. The richer
+    // state distinguishes an offline browser from an incomplete reconnect.
     var updatesConnected = false;
     var readConnected = false;
     var editedConnected = false;
     var deletedConnected = false;
     var _lastEmittedStatus = null;
+    // Incrementing this invalidates delayed retries and token requests started by
+    // an earlier reconnect cycle.
+    var _reconnectGeneration = 0;
+    var retryTimers = {};
+    var openingSubscriptions = {};
 
     // Был ли поток уже открыт хотя бы раз. Нужно, чтобы отличить первое открытие
     // (startAll) от ПЕРЕоткрытия (backoff/watchdog/age-timer/visibility). Любой реконнект
@@ -161,16 +167,60 @@
 
     function emitConnectionStatus() {
         var connected = updatesConnected || readConnected || editedConnected || deletedConnected;
-        if (connected !== _lastEmittedStatus) {
-            _lastEmittedStatus = connected;
-            emit('connection_status', { connected: connected });
+        var state = navigator.onLine === false
+            ? 'offline'
+            : (updatesConnected && readConnected && editedConnected && deletedConnected
+                ? 'connected'
+                : 'reconnecting');
+        if (!_lastEmittedStatus ||
+            connected !== _lastEmittedStatus.connected ||
+            state !== _lastEmittedStatus.state) {
+            _lastEmittedStatus = { connected: connected, state: state };
+            emit('connection_status', { connected: connected, state: state });
         }
+    }
+
+    function clearRetry(streamName) {
+        if (!retryTimers[streamName]) return;
+        clearTimeout(retryTimers[streamName]);
+        delete retryTimers[streamName];
+    }
+
+    function clearAllRetries() {
+        Object.keys(retryTimers).forEach(clearRetry);
+    }
+
+    function scheduleReconnect(streamName, callback, delay) {
+        if (retryTimers[streamName]) return;
+        var generation = _reconnectGeneration;
+        var timer = setTimeout(function () {
+            if (retryTimers[streamName] !== timer) return;
+            delete retryTimers[streamName];
+            if (_started && generation === _reconnectGeneration) callback();
+        }, delay);
+        retryTimers[streamName] = timer;
+    }
+
+    function beginSubscription(streamName) {
+        var generation = _reconnectGeneration;
+        if (openingSubscriptions[streamName] === generation) return null;
+        openingSubscriptions[streamName] = generation;
+        clearRetry(streamName);
+        return generation;
+    }
+
+    function finishSubscriptionStart(streamName, generation) {
+        if (openingSubscriptions[streamName] === generation) delete openingSubscriptions[streamName];
     }
 
     // --- Updates: new messages ---
 
     function subscribeNewMessages(forceRefresh) {
+        var generation = beginSubscription('updates');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('updates', generation); return; }
+            finishSubscriptionStart('updates', generation);
             if (!token) { handleNoToken(); return; }
             if (updatesEverOpened && _started) emit('resync', { source: 'new_messages' });
             updatesEverOpened = true;
@@ -179,7 +229,8 @@
             var req = new proto.SubscribeNewMessagesRequest();
 
             if (updatesStream) { try { updatesStream.cancel(); } catch (e) {} }
-            updatesStream = BF.clients.updates.subscribeNewMessages(req, meta);
+            clearRetry('updates');
+            var stream = updatesStream = BF.clients.updates.subscribeNewMessages(req, meta);
             updatesOpenedAt = Date.now();
             if (updatesAgeTimer) clearTimeout(updatesAgeTimer);
             updatesAgeTimer = setTimeout(function () {
@@ -189,6 +240,7 @@
             updatesLastActivity = Date.now();
 
             updatesStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || updatesStream !== stream) return;
                 updatesBackoff = INITIAL_BACKOFF;
                 updatesLastActivity = Date.now();
                 if (!updatesConnected) { updatesConnected = true; emitConnectionStatus(); }
@@ -202,6 +254,7 @@
             });
 
             updatesStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || updatesStream !== stream) return;
                 updatesLastActivity = Date.now();
                 if (status && status.code === 0) {
                     updatesBackoff = INITIAL_BACKOFF;
@@ -210,25 +263,27 @@
             });
 
             updatesStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || updatesStream !== stream) return;
                 updatesConnected = false;
                 emitConnectionStatus();
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeNewMessages(true); }, 0);
+                    scheduleReconnect('updates', function () { subscribeNewMessages(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeNewMessages(false); }, updatesBackoff);
+                    scheduleReconnect('updates', function () { subscribeNewMessages(false); }, updatesBackoff);
                     updatesBackoff = Math.min(updatesBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             updatesStream.on('end', function () {
+                if (generation !== _reconnectGeneration || updatesStream !== stream) return;
                 updatesConnected = false;
                 emitConnectionStatus();
                 // Штатное закрытие после длительной сессии — backoff не растим.
                 if (Date.now() - updatesOpenedAt > STABLE_STREAM_THRESHOLD) {
                     updatesBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribeNewMessages(false); }, updatesBackoff);
+                if (_started) scheduleReconnect('updates', function () { subscribeNewMessages(false); }, updatesBackoff);
             });
 
             // Mark as connected optimistically after opening
@@ -240,7 +295,11 @@
     // --- Updates: message read ---
 
     function subscribeMessagesRead(forceRefresh) {
+        var generation = beginSubscription('read');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('read', generation); return; }
+            finishSubscriptionStart('read', generation);
             if (!token) { handleNoToken(); return; }
             if (readEverOpened && _started) emit('resync', { source: 'messages_read' });
             readEverOpened = true;
@@ -249,7 +308,8 @@
             var req = new proto.SubscribeMessagesReadRequest();
 
             if (readStream) { try { readStream.cancel(); } catch (e) {} }
-            readStream = BF.clients.updates.subscribeMessagesRead(req, meta);
+            clearRetry('read');
+            var stream = readStream = BF.clients.updates.subscribeMessagesRead(req, meta);
             readOpenedAt = Date.now();
             if (readAgeTimer) clearTimeout(readAgeTimer);
             readAgeTimer = setTimeout(function () {
@@ -259,6 +319,7 @@
             readLastActivity = Date.now();
 
             readStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || readStream !== stream) return;
                 readBackoff = INITIAL_BACKOFF;
                 readLastActivity = Date.now();
                 if (!readConnected) { readConnected = true; emitConnectionStatus(); }
@@ -270,6 +331,7 @@
             });
 
             readStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || readStream !== stream) return;
                 readLastActivity = Date.now();
                 if (status && status.code === 0) {
                     readBackoff = INITIAL_BACKOFF;
@@ -278,24 +340,26 @@
             });
 
             readStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || readStream !== stream) return;
                 readConnected = false;
                 emitConnectionStatus();
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeMessagesRead(true); }, 0);
+                    scheduleReconnect('read', function () { subscribeMessagesRead(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeMessagesRead(false); }, readBackoff);
+                    scheduleReconnect('read', function () { subscribeMessagesRead(false); }, readBackoff);
                     readBackoff = Math.min(readBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             readStream.on('end', function () {
+                if (generation !== _reconnectGeneration || readStream !== stream) return;
                 readConnected = false;
                 emitConnectionStatus();
                 if (Date.now() - readOpenedAt > STABLE_STREAM_THRESHOLD) {
                     readBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribeMessagesRead(false); }, readBackoff);
+                if (_started) scheduleReconnect('read', function () { subscribeMessagesRead(false); }, readBackoff);
             });
 
             readConnected = true;
@@ -306,7 +370,11 @@
     // --- Updates: message edited ---
 
     function subscribeMessagesEdited(forceRefresh) {
+        var generation = beginSubscription('edited');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('edited', generation); return; }
+            finishSubscriptionStart('edited', generation);
             if (!token) { handleNoToken(); return; }
             if (editedEverOpened && _started) emit('resync', { source: 'messages_edited' });
             editedEverOpened = true;
@@ -315,7 +383,8 @@
             var req = new proto.SubscribeMessagesEditedRequest();
 
             if (editedStream) { try { editedStream.cancel(); } catch (e) {} }
-            editedStream = BF.clients.updates.subscribeMessagesEdited(req, meta);
+            clearRetry('edited');
+            var stream = editedStream = BF.clients.updates.subscribeMessagesEdited(req, meta);
             editedOpenedAt = Date.now();
             if (editedAgeTimer) clearTimeout(editedAgeTimer);
             editedAgeTimer = setTimeout(function () {
@@ -325,6 +394,7 @@
             editedLastActivity = Date.now();
 
             editedStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || editedStream !== stream) return;
                 editedBackoff = INITIAL_BACKOFF;
                 editedLastActivity = Date.now();
                 if (!editedConnected) { editedConnected = true; emitConnectionStatus(); }
@@ -338,6 +408,7 @@
             });
 
             editedStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || editedStream !== stream) return;
                 editedLastActivity = Date.now();
                 if (status && status.code === 0) {
                     editedBackoff = INITIAL_BACKOFF;
@@ -346,24 +417,26 @@
             });
 
             editedStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || editedStream !== stream) return;
                 editedConnected = false;
                 emitConnectionStatus();
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeMessagesEdited(true); }, 0);
+                    scheduleReconnect('edited', function () { subscribeMessagesEdited(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeMessagesEdited(false); }, editedBackoff);
+                    scheduleReconnect('edited', function () { subscribeMessagesEdited(false); }, editedBackoff);
                     editedBackoff = Math.min(editedBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             editedStream.on('end', function () {
+                if (generation !== _reconnectGeneration || editedStream !== stream) return;
                 editedConnected = false;
                 emitConnectionStatus();
                 if (Date.now() - editedOpenedAt > STABLE_STREAM_THRESHOLD) {
                     editedBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribeMessagesEdited(false); }, editedBackoff);
+                if (_started) scheduleReconnect('edited', function () { subscribeMessagesEdited(false); }, editedBackoff);
             });
 
             editedConnected = true;
@@ -374,7 +447,11 @@
     // --- Updates: message deleted ---
 
     function subscribeMessagesDeleted(forceRefresh) {
+        var generation = beginSubscription('deleted');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('deleted', generation); return; }
+            finishSubscriptionStart('deleted', generation);
             if (!token) { handleNoToken(); return; }
             if (deletedEverOpened && _started) emit('resync', { source: 'messages_deleted' });
             deletedEverOpened = true;
@@ -383,7 +460,8 @@
             var req = new proto.SubscribeMessagesDeletedRequest();
 
             if (deletedStream) { try { deletedStream.cancel(); } catch (e) {} }
-            deletedStream = BF.clients.updates.subscribeMessagesDeleted(req, meta);
+            clearRetry('deleted');
+            var stream = deletedStream = BF.clients.updates.subscribeMessagesDeleted(req, meta);
             deletedOpenedAt = Date.now();
             if (deletedAgeTimer) clearTimeout(deletedAgeTimer);
             deletedAgeTimer = setTimeout(function () {
@@ -393,6 +471,7 @@
             deletedLastActivity = Date.now();
 
             deletedStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || deletedStream !== stream) return;
                 deletedBackoff = INITIAL_BACKOFF;
                 deletedLastActivity = Date.now();
                 if (!deletedConnected) { deletedConnected = true; emitConnectionStatus(); }
@@ -403,6 +482,7 @@
             });
 
             deletedStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || deletedStream !== stream) return;
                 deletedLastActivity = Date.now();
                 if (status && status.code === 0) {
                     deletedBackoff = INITIAL_BACKOFF;
@@ -411,24 +491,26 @@
             });
 
             deletedStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || deletedStream !== stream) return;
                 deletedConnected = false;
                 emitConnectionStatus();
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeMessagesDeleted(true); }, 0);
+                    scheduleReconnect('deleted', function () { subscribeMessagesDeleted(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeMessagesDeleted(false); }, deletedBackoff);
+                    scheduleReconnect('deleted', function () { subscribeMessagesDeleted(false); }, deletedBackoff);
                     deletedBackoff = Math.min(deletedBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             deletedStream.on('end', function () {
+                if (generation !== _reconnectGeneration || deletedStream !== stream) return;
                 deletedConnected = false;
                 emitConnectionStatus();
                 if (Date.now() - deletedOpenedAt > STABLE_STREAM_THRESHOLD) {
                     deletedBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribeMessagesDeleted(false); }, deletedBackoff);
+                if (_started) scheduleReconnect('deleted', function () { subscribeMessagesDeleted(false); }, deletedBackoff);
             });
 
             deletedConnected = true;
@@ -439,14 +521,19 @@
     // --- Updates: message pinned ---
 
     function subscribeMessagesPinned(forceRefresh) {
+        var generation = beginSubscription('pinned');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('pinned', generation); return; }
+            finishSubscriptionStart('pinned', generation);
             if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesPinnedRequest();
 
             if (pinnedStream) { try { pinnedStream.cancel(); } catch (e) {} }
-            pinnedStream = BF.clients.updates.subscribeMessagesPinned(req, meta);
+            clearRetry('pinned');
+            var stream = pinnedStream = BF.clients.updates.subscribeMessagesPinned(req, meta);
             pinnedOpenedAt = Date.now();
             if (pinnedAgeTimer) clearTimeout(pinnedAgeTimer);
             pinnedAgeTimer = setTimeout(function () {
@@ -456,6 +543,7 @@
             pinnedLastActivity = Date.now();
 
             pinnedStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || pinnedStream !== stream) return;
                 pinnedBackoff = INITIAL_BACKOFF;
                 pinnedLastActivity = Date.now();
                 var pa = evt.getPinnedAt && evt.getPinnedAt();
@@ -468,25 +556,28 @@
             });
 
             pinnedStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || pinnedStream !== stream) return;
                 pinnedLastActivity = Date.now();
                 if (status && status.code === 0) pinnedBackoff = INITIAL_BACKOFF;
             });
 
             pinnedStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || pinnedStream !== stream) return;
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeMessagesPinned(true); }, 0);
+                    scheduleReconnect('pinned', function () { subscribeMessagesPinned(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeMessagesPinned(false); }, pinnedBackoff);
+                    scheduleReconnect('pinned', function () { subscribeMessagesPinned(false); }, pinnedBackoff);
                     pinnedBackoff = Math.min(pinnedBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             pinnedStream.on('end', function () {
+                if (generation !== _reconnectGeneration || pinnedStream !== stream) return;
                 if (Date.now() - pinnedOpenedAt > STABLE_STREAM_THRESHOLD) {
                     pinnedBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribeMessagesPinned(false); }, pinnedBackoff);
+                if (_started) scheduleReconnect('pinned', function () { subscribeMessagesPinned(false); }, pinnedBackoff);
             });
         }, function () { handleNoToken(); });
     }
@@ -494,14 +585,19 @@
     // --- Updates: message unpinned ---
 
     function subscribeMessagesUnpinned(forceRefresh) {
+        var generation = beginSubscription('unpinned');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('unpinned', generation); return; }
+            finishSubscriptionStart('unpinned', generation);
             if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesUnpinnedRequest();
 
             if (unpinnedStream) { try { unpinnedStream.cancel(); } catch (e) {} }
-            unpinnedStream = BF.clients.updates.subscribeMessagesUnpinned(req, meta);
+            clearRetry('unpinned');
+            var stream = unpinnedStream = BF.clients.updates.subscribeMessagesUnpinned(req, meta);
             unpinnedOpenedAt = Date.now();
             if (unpinnedAgeTimer) clearTimeout(unpinnedAgeTimer);
             unpinnedAgeTimer = setTimeout(function () {
@@ -511,6 +607,7 @@
             unpinnedLastActivity = Date.now();
 
             unpinnedStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || unpinnedStream !== stream) return;
                 unpinnedBackoff = INITIAL_BACKOFF;
                 unpinnedLastActivity = Date.now();
                 emit('message_unpinned', {
@@ -520,25 +617,28 @@
             });
 
             unpinnedStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || unpinnedStream !== stream) return;
                 unpinnedLastActivity = Date.now();
                 if (status && status.code === 0) unpinnedBackoff = INITIAL_BACKOFF;
             });
 
             unpinnedStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || unpinnedStream !== stream) return;
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeMessagesUnpinned(true); }, 0);
+                    scheduleReconnect('unpinned', function () { subscribeMessagesUnpinned(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeMessagesUnpinned(false); }, unpinnedBackoff);
+                    scheduleReconnect('unpinned', function () { subscribeMessagesUnpinned(false); }, unpinnedBackoff);
                     unpinnedBackoff = Math.min(unpinnedBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             unpinnedStream.on('end', function () {
+                if (generation !== _reconnectGeneration || unpinnedStream !== stream) return;
                 if (Date.now() - unpinnedOpenedAt > STABLE_STREAM_THRESHOLD) {
                     unpinnedBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribeMessagesUnpinned(false); }, unpinnedBackoff);
+                if (_started) scheduleReconnect('unpinned', function () { subscribeMessagesUnpinned(false); }, unpinnedBackoff);
             });
         }, function () { handleNoToken(); });
     }
@@ -546,14 +646,19 @@
     // --- Updates: all messages unpinned ---
 
     function subscribeAllMessagesUnpinned(forceRefresh) {
+        var generation = beginSubscription('allUnpinned');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('allUnpinned', generation); return; }
+            finishSubscriptionStart('allUnpinned', generation);
             if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeAllMessagesUnpinnedRequest();
 
             if (allUnpinnedStream) { try { allUnpinnedStream.cancel(); } catch (e) {} }
-            allUnpinnedStream = BF.clients.updates.subscribeAllMessagesUnpinned(req, meta);
+            clearRetry('allUnpinned');
+            var stream = allUnpinnedStream = BF.clients.updates.subscribeAllMessagesUnpinned(req, meta);
             allUnpinnedOpenedAt = Date.now();
             if (allUnpinnedAgeTimer) clearTimeout(allUnpinnedAgeTimer);
             allUnpinnedAgeTimer = setTimeout(function () {
@@ -563,31 +668,35 @@
             allUnpinnedLastActivity = Date.now();
 
             allUnpinnedStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || allUnpinnedStream !== stream) return;
                 allUnpinnedBackoff = INITIAL_BACKOFF;
                 allUnpinnedLastActivity = Date.now();
                 emit('all_messages_unpinned', { chatId: evt.getChatId() });
             });
 
             allUnpinnedStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || allUnpinnedStream !== stream) return;
                 allUnpinnedLastActivity = Date.now();
                 if (status && status.code === 0) allUnpinnedBackoff = INITIAL_BACKOFF;
             });
 
             allUnpinnedStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || allUnpinnedStream !== stream) return;
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeAllMessagesUnpinned(true); }, 0);
+                    scheduleReconnect('allUnpinned', function () { subscribeAllMessagesUnpinned(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeAllMessagesUnpinned(false); }, allUnpinnedBackoff);
+                    scheduleReconnect('allUnpinned', function () { subscribeAllMessagesUnpinned(false); }, allUnpinnedBackoff);
                     allUnpinnedBackoff = Math.min(allUnpinnedBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             allUnpinnedStream.on('end', function () {
+                if (generation !== _reconnectGeneration || allUnpinnedStream !== stream) return;
                 if (Date.now() - allUnpinnedOpenedAt > STABLE_STREAM_THRESHOLD) {
                     allUnpinnedBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribeAllMessagesUnpinned(false); }, allUnpinnedBackoff);
+                if (_started) scheduleReconnect('allUnpinned', function () { subscribeAllMessagesUnpinned(false); }, allUnpinnedBackoff);
             });
         }, function () { handleNoToken(); });
     }
@@ -595,7 +704,11 @@
     // --- Updates: новые сообщения приватных чатов (шифротекст; расшифровка в UI) ---
 
     function subscribePrivateMessages(forceRefresh) {
+        var generation = beginSubscription('privateMessages');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('privateMessages', generation); return; }
+            finishSubscriptionStart('privateMessages', generation);
             if (!token) { handleNoToken(); return; }
             if (privateMsgEverOpened && _started) emit('resync', { source: 'private_messages' });
             privateMsgEverOpened = true;
@@ -604,7 +717,8 @@
             var req = new proto.SubscribePrivateMessagesRequest();
 
             if (privateMsgStream) { try { privateMsgStream.cancel(); } catch (e) {} }
-            privateMsgStream = BF.clients.updates.subscribePrivateMessages(req, meta);
+            clearRetry('privateMessages');
+            var stream = privateMsgStream = BF.clients.updates.subscribePrivateMessages(req, meta);
             privateMsgOpenedAt = Date.now();
             if (privateMsgAgeTimer) clearTimeout(privateMsgAgeTimer);
             privateMsgAgeTimer = setTimeout(function () {
@@ -614,6 +728,7 @@
             privateMsgLastActivity = Date.now();
 
             privateMsgStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || privateMsgStream !== stream) return;
                 privateMsgBackoff = INITIAL_BACKOFF;
                 privateMsgLastActivity = Date.now();
                 var msg = evt.getMessage();
@@ -626,25 +741,28 @@
             });
 
             privateMsgStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || privateMsgStream !== stream) return;
                 privateMsgLastActivity = Date.now();
                 if (status && status.code === 0) privateMsgBackoff = INITIAL_BACKOFF;
             });
 
             privateMsgStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || privateMsgStream !== stream) return;
                 if (!_started) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribePrivateMessages(true); }, 0);
+                    scheduleReconnect('privateMessages', function () { subscribePrivateMessages(true); }, 0);
                 } else {
-                    setTimeout(function () { subscribePrivateMessages(false); }, privateMsgBackoff);
+                    scheduleReconnect('privateMessages', function () { subscribePrivateMessages(false); }, privateMsgBackoff);
                     privateMsgBackoff = Math.min(privateMsgBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             privateMsgStream.on('end', function () {
+                if (generation !== _reconnectGeneration || privateMsgStream !== stream) return;
                 if (Date.now() - privateMsgOpenedAt > STABLE_STREAM_THRESHOLD) {
                     privateMsgBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(function () { subscribePrivateMessages(false); }, privateMsgBackoff);
+                if (_started) scheduleReconnect('privateMessages', function () { subscribePrivateMessages(false); }, privateMsgBackoff);
             });
         }, function () { handleNoToken(); });
     }
@@ -655,7 +773,11 @@
         if (!userIds || userIds.length === 0) return;
         currentOnlineUserIds = userIds.slice();
 
+        var generation = beginSubscription('online');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('online', generation); return; }
+            finishSubscriptionStart('online', generation);
             if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.onliner;
@@ -663,7 +785,8 @@
             req.setUserIdsList(userIds);
 
             if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} }
-            onlineStream = BF.clients.onliner.subscribeToOnlineStatus(req, meta);
+            clearRetry('online');
+            var stream = onlineStream = BF.clients.onliner.subscribeToOnlineStatus(req, meta);
             onlineOpenedAt = Date.now();
             if (onlineAgeTimer) clearTimeout(onlineAgeTimer);
             onlineAgeTimer = setTimeout(function () {
@@ -673,6 +796,7 @@
             onlineLastActivity = Date.now();
 
             onlineStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || onlineStream !== stream) return;
                 onlineBackoff = INITIAL_BACKOFF;
                 onlineLastActivity = Date.now();
                 emit('online_status', {
@@ -683,26 +807,29 @@
             });
 
             onlineStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || onlineStream !== stream) return;
                 onlineLastActivity = Date.now();
                 if (status && status.code === 0) onlineBackoff = INITIAL_BACKOFF;
             });
 
             onlineStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || onlineStream !== stream) return;
                 if (!_started || currentOnlineUserIds.length === 0) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeOnline(currentOnlineUserIds, true); }, 0);
+                    scheduleReconnect('online', function () { subscribeOnline(currentOnlineUserIds, true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeOnline(currentOnlineUserIds, false); }, onlineBackoff);
+                    scheduleReconnect('online', function () { subscribeOnline(currentOnlineUserIds, false); }, onlineBackoff);
                     onlineBackoff = Math.min(onlineBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             onlineStream.on('end', function () {
+                if (generation !== _reconnectGeneration || onlineStream !== stream) return;
                 if (Date.now() - onlineOpenedAt > STABLE_STREAM_THRESHOLD) {
                     onlineBackoff = INITIAL_BACKOFF;
                 }
                 if (_started && currentOnlineUserIds.length > 0) {
-                    setTimeout(function () { subscribeOnline(currentOnlineUserIds, false); }, onlineBackoff);
+                    scheduleReconnect('online', function () { subscribeOnline(currentOnlineUserIds, false); }, onlineBackoff);
                 }
             });
         }, function () { handleNoToken(); });
@@ -742,7 +869,11 @@
         if (!chatId) return;
         currentTypingChatId = chatId;
 
+        var generation = beginSubscription('typing');
+        if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('typing', generation); return; }
+            finishSubscriptionStart('typing', generation);
             if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.onliner;
@@ -750,7 +881,8 @@
             req.setChatIdsList([chatId]);
 
             if (typingStream) { try { typingStream.cancel(); } catch (e) {} }
-            typingStream = BF.clients.onliner.subscribeToTyping(req, meta);
+            clearRetry('typing');
+            var stream = typingStream = BF.clients.onliner.subscribeToTyping(req, meta);
             typingOpenedAt = Date.now();
             if (typingAgeTimer) clearTimeout(typingAgeTimer);
             typingAgeTimer = setTimeout(function () {
@@ -760,6 +892,7 @@
             typingLastActivity = Date.now();
 
             typingStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || typingStream !== stream) return;
                 typingBackoff = INITIAL_BACKOFF;
                 typingLastActivity = Date.now();
                 emit('typing', {
@@ -770,26 +903,29 @@
             });
 
             typingStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || typingStream !== stream) return;
                 typingLastActivity = Date.now();
                 if (status && status.code === 0) typingBackoff = INITIAL_BACKOFF;
             });
 
             typingStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || typingStream !== stream) return;
                 if (!_started || !currentTypingChatId) return;
                 if (isAuthError(err)) {
-                    setTimeout(function () { subscribeTyping(currentTypingChatId, true); }, 0);
+                    scheduleReconnect('typing', function () { subscribeTyping(currentTypingChatId, true); }, 0);
                 } else {
-                    setTimeout(function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
+                    scheduleReconnect('typing', function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
                     typingBackoff = Math.min(typingBackoff * 2, MAX_BACKOFF);
                 }
             });
 
             typingStream.on('end', function () {
+                if (generation !== _reconnectGeneration || typingStream !== stream) return;
                 if (Date.now() - typingOpenedAt > STABLE_STREAM_THRESHOLD) {
                     typingBackoff = INITIAL_BACKOFF;
                 }
                 if (_started && currentTypingChatId) {
-                    setTimeout(function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
+                    scheduleReconnect('typing', function () { subscribeTyping(currentTypingChatId, false); }, typingBackoff);
                 }
             });
         }, function () { handleNoToken(); });
@@ -912,14 +1048,17 @@
     // Сеть вернулась (ОС сообщила) — не ждём до 30с backoff'а, реконнектим сразу.
     window.addEventListener('online', function () {
         if (!_started) return;
-        reconnectDeadStreams();
+        reconnect();
         BF.api.setOnlineStatus().catch(function () {});
+    });
+
+    window.addEventListener('offline', function () {
+        if (_started) emitConnectionStatus();
     });
 
     // --- Start/stop all subscriptions ---
 
-    function startAll() {
-        _started = true;
+    function resetReconnectBackoffs() {
         updatesBackoff = INITIAL_BACKOFF;
         readBackoff = INITIAL_BACKOFF;
         editedBackoff = INITIAL_BACKOFF;
@@ -928,6 +1067,11 @@
         unpinnedBackoff = INITIAL_BACKOFF;
         allUnpinnedBackoff = INITIAL_BACKOFF;
         privateMsgBackoff = INITIAL_BACKOFF;
+        onlineBackoff = INITIAL_BACKOFF;
+        typingBackoff = INITIAL_BACKOFF;
+    }
+
+    function subscribeAllActiveStreams() {
         subscribeNewMessages();
         subscribeMessagesRead();
         subscribeMessagesEdited();
@@ -936,11 +1080,24 @@
         subscribeMessagesUnpinned();
         subscribeAllMessagesUnpinned();
         subscribePrivateMessages();
+        if (currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
+        if (currentTypingChatId) subscribeTyping(currentTypingChatId);
+    }
+
+    function startAll() {
+        _reconnectGeneration++;
+        clearAllRetries();
+        _started = true;
+        resetReconnectBackoffs();
+        emitConnectionStatus();
+        subscribeAllActiveStreams();
         startKeepAlive();
         startWatchdog();
     }
 
     function stopAll() {
+        _reconnectGeneration++;
+        clearAllRetries();
         _started = false;
         if (updatesStream) { try { updatesStream.cancel(); } catch (e) {} updatesStream = null; }
         if (readStream) { try { readStream.cancel(); } catch (e) {} readStream = null; }
@@ -979,26 +1136,20 @@
         emitConnectionStatus();
     }
 
-    // Reconnect all streams (e.g., after token refresh)
+    // Reconnect all active streams (e.g., after token refresh or a manual retry).
+    // A new generation cancels pending backoff callbacks from the prior attempt.
     function reconnect() {
-        updatesBackoff = INITIAL_BACKOFF;
-        readBackoff = INITIAL_BACKOFF;
-        editedBackoff = INITIAL_BACKOFF;
-        deletedBackoff = INITIAL_BACKOFF;
-        pinnedBackoff = INITIAL_BACKOFF;
-        unpinnedBackoff = INITIAL_BACKOFF;
-        allUnpinnedBackoff = INITIAL_BACKOFF;
-        privateMsgBackoff = INITIAL_BACKOFF;
-        onlineBackoff = INITIAL_BACKOFF;
-        subscribeNewMessages();
-        subscribeMessagesRead();
-        subscribeMessagesEdited();
-        subscribeMessagesDeleted();
-        subscribeMessagesPinned();
-        subscribeMessagesUnpinned();
-        subscribeAllMessagesUnpinned();
-        subscribePrivateMessages();
-        if (currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
+        if (!_started || navigator.onLine === false) return false;
+        _reconnectGeneration++;
+        clearAllRetries();
+        resetReconnectBackoffs();
+        updatesConnected = false;
+        readConnected = false;
+        editedConnected = false;
+        deletedConnected = false;
+        emitConnectionStatus();
+        subscribeAllActiveStreams();
+        return true;
     }
 
     function isConnected() {
