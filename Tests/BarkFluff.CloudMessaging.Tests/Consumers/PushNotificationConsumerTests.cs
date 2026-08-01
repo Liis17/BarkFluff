@@ -173,6 +173,46 @@ public class PushNotificationConsumerTests
     }
 
     [Fact]
+    public async Task Consume_WebToken_SendsOnlyTheWebNotificationContract()
+    {
+        var consumer = CreateConsumer();
+        var @event = new PushNotificationEvent
+        {
+            ChatId = Guid.NewGuid(),
+            SenderId = 7,
+            MessageId = 9,
+            RecipientUserIds = [2],
+            MessageText = "Это содержимое не должно попасть в web payload",
+            ContentType = 3,
+            ImagePreviewUrl = "https://example.test/preview.png"
+        };
+
+        SetupGetById(new User { Id = 7, FirstName = "Иван", LastName = "Петров" });
+        SetupGetChatInfo(new GetChatInfoResponse { IsGroupChat = true, Title = "Секретная группа" });
+        SetupGetDevicesWithTokens(new DeviceFirebaseToken
+        {
+            UserId = 2,
+            FirebaseToken = "web-token",
+            PushPlatform = PushPlatform.Web
+        });
+
+        await consumer.Consume(CreateContext(@event).Object);
+
+        _firebaseService.Verify(f => f.SendWebNotificationBatchAsync(
+            It.Is<IReadOnlyList<string>>(tokens => tokens.SequenceEqual(new[] { "web-token" })),
+            "Иван Петров",
+            @event.ChatId.ToString(),
+            7,
+            9,
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _firebaseService.Verify(f => f.SendNotificationBatchAsync(
+            It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<long>(), It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Consume_SenderHasOnlyFirstName_UsesFirstName()
     {
         var consumer = CreateConsumer();
@@ -458,10 +498,8 @@ public class PushNotificationConsumerTests
             Times.Once);
     }
 
-    // Consumer не делает ранний выход при пустых после фильтрации токенах:
-    // он вызывает Firebase с пустым списком (guard на Count == 0 живёт уже в FirebaseService).
     [Fact]
-    public async Task Consume_AllTokensEmpty_CallsFirebaseWithEmptyTokenList()
+    public async Task Consume_AllTokensEmpty_DoesNotCallFirebase()
     {
         var consumer = CreateConsumer();
         var @event = new PushNotificationEvent
@@ -498,7 +536,7 @@ public class PushNotificationConsumerTests
                 It.IsAny<string>(),
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.Never);
     }
 
     [Fact]

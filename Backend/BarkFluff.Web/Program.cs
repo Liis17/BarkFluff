@@ -10,6 +10,7 @@ using Serilog;
 
 using System.Net;
 using System.Text;
+using System.Text.Json;
 
 using Yarp.ReverseProxy.Configuration;
 
@@ -265,6 +266,41 @@ app.Use(async (ctx, next) =>
 app.UseStaticFiles();
 
 app.MapHealthChecks("/health");
+
+// Firebase web configuration and the VAPID key are public client identifiers.
+// Service-account credentials deliberately remain exclusive to CloudMessaging.
+app.MapGet("/pwa-config.js", (HttpContext ctx, IConfiguration configuration) =>
+{
+    ctx.Response.Headers.CacheControl = "no-store";
+    var firebase = configuration.GetSection("Web:Push:Firebase");
+    var vapidKey = configuration["Web:Push:VapidKey"];
+    var apiKey = firebase["ApiKey"];
+    var authDomain = firebase["AuthDomain"];
+    var projectId = firebase["ProjectId"];
+    var messagingSenderId = firebase["MessagingSenderId"];
+    var appId = firebase["AppId"];
+
+    if (new[] { vapidKey, apiKey, authDomain, projectId, messagingSenderId, appId }
+        .Any(string.IsNullOrWhiteSpace))
+    {
+        return Results.Text("self.BF_PWA_CONFIG = null;", "application/javascript", Encoding.UTF8);
+    }
+
+    var script = "self.BF_PWA_CONFIG = " + JsonSerializer.Serialize(new
+    {
+        firebase = new
+        {
+            apiKey,
+            authDomain,
+            projectId,
+            storageBucket = firebase["StorageBucket"] ?? string.Empty,
+            messagingSenderId,
+            appId
+        },
+        vapidKey
+    }) + ";";
+    return Results.Text(script, "application/javascript", Encoding.UTF8);
+});
 
 app.MapGet("/messenger", (IWebHostEnvironment env) =>
     Results.File(Path.Combine(env.WebRootPath, "messenger.html"), "text/html"));

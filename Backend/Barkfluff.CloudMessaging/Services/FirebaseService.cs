@@ -202,6 +202,27 @@ public class FirebaseService
     }
 
     /// <summary>
+    /// Отправляет web-получателям payload без содержимого сообщения и вложений.
+    /// </summary>
+    public virtual Task SendWebNotificationBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string senderName,
+        string chatId,
+        long senderId,
+        long messageId,
+        string? avatarUrl,
+        CancellationToken cancellationToken = default) =>
+        SendWebDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "new_message",
+            ["chat_id"] = chatId,
+            ["sender_id"] = senderId.ToString(),
+            ["message_id"] = messageId.ToString(),
+            ["sender_name"] = senderName,
+            ["avatar_url"] = avatarUrl ?? ""
+        }, cancellationToken);
+
+    /// <summary>
     /// Отправляет data-only команду на удаление нотификации чата на всех указанных FCM-токенах.
     /// Клиент по type="dismiss_chat_notifications" вызывает NotificationManager.cancel.
     /// </summary>
@@ -342,6 +363,24 @@ public class FirebaseService
         }
     }
 
+    public virtual Task SendWebIncomingCallBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string callId,
+        long callerUserId,
+        string chatId,
+        string callerName,
+        string? avatarUrl,
+        CancellationToken cancellationToken = default) =>
+        SendWebDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "incoming_call",
+            ["call_id"] = callId,
+            ["caller_user_id"] = callerUserId.ToString(),
+            ["chat_id"] = chatId,
+            ["caller_name"] = callerName,
+            ["avatar_url"] = avatarUrl ?? ""
+        }, cancellationToken);
+
     /// <summary>
     /// Отправляет data-only уведомление о запросе на приватный чат (type=private_chat_invite).
     /// Текст локализуется на клиенте, сервер строк не шлёт.
@@ -393,6 +432,22 @@ public class FirebaseService
         }
     }
 
+    public virtual Task SendWebPrivateChatInviteBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string chatId,
+        long inviterUserId,
+        string inviterName,
+        string? avatarUrl,
+        CancellationToken cancellationToken = default) =>
+        SendWebDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "private_chat_invite",
+            ["chat_id"] = chatId,
+            ["inviter_user_id"] = inviterUserId.ToString(),
+            ["inviter_name"] = inviterName,
+            ["avatar_url"] = avatarUrl ?? ""
+        }, cancellationToken);
+
     /// <summary>
     /// Отправляет data-only команду погасить нотификацию входящего звонка (type=dismiss_call).
     /// </summary>
@@ -438,6 +493,26 @@ public class FirebaseService
             _logger.LogError(ex, "Неожиданная ошибка при отправке dismiss_call push. CallId: {CallId}", callId);
         }
     }
+
+    public virtual Task SendWebCallDismissBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string callId,
+        CancellationToken cancellationToken = default) =>
+        SendWebDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "dismiss_call",
+            ["call_id"] = callId
+        }, cancellationToken);
+
+    public virtual Task SendWebDismissBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string chatId,
+        CancellationToken cancellationToken = default) =>
+        SendWebDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "dismiss_chat_notifications",
+            ["chat_id"] = chatId
+        }, cancellationToken);
 
     /// <summary>
     /// Отправляет произвольное push-уведомление с native Notification-блоком
@@ -545,6 +620,49 @@ public class FirebaseService
             totalFailure);
 
         return (totalSuccess, totalFailure);
+    }
+
+    public virtual Task SendWebAdminBroadcastBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        CancellationToken cancellationToken = default) =>
+        SendWebDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "admin_broadcast"
+        }, cancellationToken);
+
+    private async Task SendWebDataBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        Dictionary<string, string> data,
+        CancellationToken cancellationToken)
+    {
+        if (_messaging == null)
+        {
+            _logger.LogWarning("Firebase messaging not initialized, skipping web push");
+            return;
+        }
+
+        if (fcmTokens.Count == 0)
+            return;
+
+        try
+        {
+            var response = await _messaging.SendEachForMulticastAsync(new MulticastMessage
+            {
+                Tokens = [.. fcmTokens],
+                Data = data
+            }, cancellationToken);
+
+            _metrics?.Add("web_pushes_sent", response.SuccessCount);
+            _metrics?.Add("web_pushes_failed", response.FailureCount);
+            _logger.LogInformation(
+                "Web push {Type} отправлен. Tokens: {Total}, Success: {Success}, Failed: {Failed}",
+                data["type"], fcmTokens.Count, response.SuccessCount, response.FailureCount);
+        }
+        catch (Exception ex)
+        {
+            _metrics?.Add("web_pushes_failed", fcmTokens.Count);
+            _logger.LogError(ex, "Неожиданная ошибка при отправке web push {Type}", data["type"]);
+        }
     }
 
     private static string TruncateMessage(string? text, int maxLength)

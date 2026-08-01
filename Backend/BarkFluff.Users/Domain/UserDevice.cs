@@ -25,5 +25,13 @@ public class UserDevice
 
     public string? FirebaseDeviceToken { get; set; }
 
+    public DevicePushPlatform PushPlatform { get; set; } = DevicePushPlatform.Android;
+
     public bool NotificationsEnabled { get; set; } = true;
+}
+
+public enum DevicePushPlatform
+{
+    Android = 1,
+    Web = 2
 }

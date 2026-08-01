@@ -29,7 +29,7 @@ public class SetFirebaseTokenCommandHandler(
             return Unit.Value;
         }
 
-        await devicesStorage.SetFirebaseToken(deviceGuid, userContext.UserId, request.FirebaseToken);
+        await devicesStorage.SetFirebaseToken(deviceGuid, userContext.UserId, request.FirebaseToken, request.PushPlatform);
 
         logger.LogInformation(
             "Firebase токен установлен для устройства {DeviceId} пользователя {UserId}",

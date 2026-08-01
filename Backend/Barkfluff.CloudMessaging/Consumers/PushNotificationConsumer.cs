@@ -89,32 +89,37 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
                 return;
             }
 
-            var fcmTokens = tokensResponse.Tokens
+            var androidTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform != PushPlatform.Web)
                 .Select(t => t.FirebaseToken)
                 .Where(t => !string.IsNullOrEmpty(t))
                 .ToList();
 
-            // Один батч-запрос к FCM вместо N последовательных
-            await _firebaseService.SendNotificationBatchAsync(
-                fcmTokens,
-                senderName,
-                message.MessageText ?? string.Empty,
-                message.ChatId.ToString(),
-                message.SenderId,
-                message.MessageId,
-                senderAvatarUrl,
-                chatTitle,
-                chatAvatarUrl,
-                isGroupChat,
-                message.ContentType,
-                message.ImagePreviewUrl,
-                message.AttachmentCount,
-                context.CancellationToken);
+            var webTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform == PushPlatform.Web)
+                .Select(t => t.FirebaseToken)
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToList();
+
+            if (androidTokens.Count > 0)
+            {
+                await _firebaseService.SendNotificationBatchAsync(
+                    androidTokens, senderName, message.MessageText ?? string.Empty, message.ChatId.ToString(),
+                    message.SenderId, message.MessageId, senderAvatarUrl, chatTitle, chatAvatarUrl, isGroupChat,
+                    message.ContentType, message.ImagePreviewUrl, message.AttachmentCount, context.CancellationToken);
+            }
+
+            if (webTokens.Count > 0)
+            {
+                await _firebaseService.SendWebNotificationBatchAsync(
+                    webTokens, senderName, message.ChatId.ToString(), message.SenderId, message.MessageId,
+                    senderAvatarUrl, context.CancellationToken);
+            }
 
             _logger.LogInformation(
                 "Push-уведомления отправлены. Отправитель: {SenderName}, Устройств: {Count}, IsGroupChat: {IsGroupChat}",
                 senderName,
-                fcmTokens.Count,
+                androidTokens.Count + webTokens.Count,
                 isGroupChat);
         }
         catch (Exception ex)
