@@ -19,6 +19,12 @@ public class PersonalizationStorage
         return _usersContext.UserPersonalizations.FirstOrDefaultAsync(p => p.UserId == userId);
     }
 
+    public async Task<bool> HasChatBackgroundFile(long userId, string fileId)
+    {
+        var personalization = await Get(userId);
+        return personalization?.ChatBackgroundFileIds.Contains(fileId) == true;
+    }
+
     public async Task<UserPersonalization> GetOrCreate(long userId)
     {
         var existing = await Get(userId);

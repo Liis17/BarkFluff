@@ -10,6 +10,7 @@ import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 
 /**
  * SplashActivity - точка входа приложения
@@ -171,8 +172,10 @@ class SplashActivity : AppCompatActivity() {
                 grpcManager.createUsersClient(usersAddress, this)
             }
 
-            // Загружаем данные текущего пользователя
+            // Загружаем профиль и синхронизируемые настройки параллельно.
+            val userSettingsDeferred = async { grpcManager.getUserSettings() }
             var userDataResult = grpcManager.getCurrentUserData()
+            var reloadUserSettings = false
 
             // Если 401 — токен инвалидирован на сервере, пробуем обновить принудительно
             if (userDataResult.isFailure) {
@@ -187,6 +190,7 @@ class SplashActivity : AppCompatActivity() {
                     }
                     // Повторяем запрос с новым токеном
                     userDataResult = grpcManager.getCurrentUserData()
+                    reloadUserSettings = true
                 }
             }
 
@@ -199,6 +203,20 @@ class SplashActivity : AppCompatActivity() {
                     globalParam.lastName = userData.lastName
                     globalParam.description = userData.bio
                 }
+            }
+            // Настройки фонов не входят в публичный профиль: забираем отдельным RPC при запуске.
+            // Ошибка не блокирует вход — до следующего удачного старта используется кэш.
+            val userSettingsResult = if (reloadUserSettings) {
+                userSettingsDeferred.cancel()
+                grpcManager.getUserSettings()
+            } else {
+                userSettingsDeferred.await()
+            }
+            userSettingsResult.onSuccess { settings ->
+                globalParam.applyChatBackgroundSettings(
+                    settings.globalChatBackgroundFileId,
+                    settings.chatBackgroundFileIds
+                )
             }
             // Отправляем актуальный FCM-токен на сервер (уже залогинен — не пересоздаём)
             try {

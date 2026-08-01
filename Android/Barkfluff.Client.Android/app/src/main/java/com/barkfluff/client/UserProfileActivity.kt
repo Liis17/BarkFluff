@@ -27,6 +27,7 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -154,6 +155,36 @@ class UserProfileActivity : AppCompatActivity() {
         isChatMuted = chatId in globalParam.mutedChatIds
         updateNotifyIcon()
         binding.actionNotifyButton.setOnClickListener { toggleChatMute() }
+        binding.actionBackgroundButton.setOnClickListener { showChatBackgroundDialog() }
+    }
+
+    private fun showChatBackgroundDialog() {
+        lifecycleScope.launch {
+            val fileIds = grpcManager.getPersonalization().getOrElse {
+                Toast.makeText(this@UserProfileActivity, "Не удалось загрузить фоны", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val labels = listOf("Использовать глобальный фон") + fileIds.map { "Фон ${it.take(8)}" }
+            val current = globalParam.chatBackgroundOverrides[chatId]
+            var selected = fileIds.indexOf(current).takeIf { it >= 0 }?.plus(1) ?: 0
+            MaterialAlertDialogBuilder(this@UserProfileActivity)
+                .setTitle("Фон чата")
+                .setSingleChoiceItems(labels.toTypedArray(), selected) { _, which -> selected = which }
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Применить") { _, _ ->
+                    lifecycleScope.launch {
+                        val fileId = if (selected == 0) "" else fileIds[selected - 1]
+                        val result = grpcManager.setChatBackground(chatId, fileId)
+                        if (result.isSuccess) {
+                            globalParam.setChatBackgroundOverride(chatId, fileId)
+                            Toast.makeText(this@UserProfileActivity, "Фон чата обновлён", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@UserProfileActivity, "Не удалось установить фон", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .show()
+        }
     }
 
     private fun updateNotifyIcon() {

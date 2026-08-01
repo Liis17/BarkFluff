@@ -22,6 +22,7 @@ import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import java.util.regex.Pattern
 
 /**
@@ -266,7 +267,8 @@ class LoginActivity : AppCompatActivity() {
                     if (usersAddress.isNotBlank()) {
                         val usersResult = grpcManager.createUsersClient(usersAddress, this@LoginActivity)
                         if (usersResult.isSuccess) {
-                            // Загружаем данные пользователя
+                            // Загружаем профиль и синхронизируемые настройки параллельно.
+                            val userSettingsDeferred = async { grpcManager.getUserSettings() }
                             val userDataResult = grpcManager.getCurrentUserData()
                             if (userDataResult.isSuccess) {
                                 val userData = userDataResult.getOrNull()
@@ -288,6 +290,12 @@ class LoginActivity : AppCompatActivity() {
 
                                     Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
                                 }
+                            }
+                            userSettingsDeferred.await().onSuccess { settings ->
+                                globalParam.applyChatBackgroundSettings(
+                                    settings.globalChatBackgroundFileId,
+                                    settings.chatBackgroundFileIds
+                                )
                             }
                         }
                     }

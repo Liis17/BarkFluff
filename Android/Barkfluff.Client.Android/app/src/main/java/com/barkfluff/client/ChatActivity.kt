@@ -589,7 +589,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupChatBackground() {
-        val fileId = globalParam.chatBackgroundFileId
+        val fileId = globalParam.chatBackgroundFileIdFor(chatId)
         applyDimOverlay()
         if (fileId.isBlank()) {
             binding.chatBackgroundImage.visibility = View.GONE
@@ -3506,6 +3506,7 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        setupChatBackground()
         // Обновляем список, чтобы отразить изменения кэша (например, после удаления видео из кэша)
         if (::messageAdapter.isInitialized) {
             messageAdapter.messageCornerRadiusDp = globalParam.chatMessageCornerRadius
