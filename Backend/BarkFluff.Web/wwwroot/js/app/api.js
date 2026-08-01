@@ -94,7 +94,8 @@
             lastActivityAt: ch.getLastActivityAt ? tsToMs(ch.getLastActivityAt()) : null,
             // PrivateChatInviteState: 0=PENDING, 1=ACCEPTED, 2=REJECTED
             privateInviteState: ch.getPrivateInviteState ? ch.getPrivateInviteState() : 0,
-            privateInviterUserId: ch.getPrivateInviterUserId ? ch.getPrivateInviterUserId() : 0
+            privateInviterUserId: ch.getPrivateInviterUserId ? ch.getPrivateInviterUserId() : 0,
+            hasDraft: ch.getHasDraft ? ch.getHasDraft() : false
         };
     }
 
@@ -185,6 +186,43 @@
                 countUnread: resp.getCountUnread(),
                 membersId: resp.getMembersIdList()
             };
+        });
+    }
+
+    function mapChatDraft(draft) {
+        if (!draft) return null;
+        return {
+            text: draft.getText(),
+            replyToMessageId: draft.getReplyToMessageId(),
+            revision: draft.getRevision(),
+            updatedAt: draft.getUpdatedAt ? tsToMs(draft.getUpdatedAt()) : null
+        };
+    }
+
+    function getChatDraft(chatId) {
+        var req = new (msgPb().GetChatDraftRequest)();
+        req.setChatId(chatId);
+        return c().authCall(messages().getChatDraft.bind(messages()), req).then(function (resp) {
+            return { draft: mapChatDraft(resp.getDraft()) };
+        });
+    }
+
+    function upsertChatDraft(chatId, text, replyToMessageId) {
+        var req = new (msgPb().UpsertChatDraftRequest)();
+        req.setChatId(chatId);
+        req.setText(text || '');
+        req.setReplyToMessageId(replyToMessageId || 0);
+        return c().authCall(messages().upsertChatDraft.bind(messages()), req).then(function (resp) {
+            return { draft: mapChatDraft(resp.getDraft()) };
+        });
+    }
+
+    function deleteChatDraft(chatId, revision) {
+        var req = new (msgPb().DeleteChatDraftRequest)();
+        req.setChatId(chatId);
+        req.setExpectedRevision(revision || '');
+        return c().authCall(messages().deleteChatDraft.bind(messages()), req).then(function (resp) {
+            return { deleted: resp.getDeleted() };
         });
     }
 
@@ -829,6 +867,9 @@
     window.BF.api = {
         listChats: listChats,
         getChatInfo: getChatInfo,
+        getChatDraft: getChatDraft,
+        upsertChatDraft: upsertChatDraft,
+        deleteChatDraft: deleteChatDraft,
         getPersonChatId: getPersonChatId,
         listMessages: listMessages,
         sendMessage: sendMessage,

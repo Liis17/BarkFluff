@@ -63,6 +63,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `RejectSecretChatInvite` | Отклонить инвайт: `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
 | `SendSecretMessage` | Отправить opaque envelope конкретному устройству через `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч). Публикует `NewSecretMessageEvent` + silent push. Лимит envelope 16Б-16КиБ |
 | `AckSecretMessage` | Подтвердить доставку секретного сообщения — `SecretMessageBuffer.AckMessageAsync(deviceId, messageId)`. Idempotent |
+| `GetChatDraft` / `UpsertChatDraft` / `DeleteChatDraft` | Кросс-клиентский черновик обычного чата: текст ≤4096 и выбранный reply. Хранится по `(ChatId, UserId)`; Upsert создаёт новую revision, Delete удаляет только совпавшую версию после отправки. Private/Secret исключены |
 
 ### gRPC-сервисы
 
@@ -198,6 +199,7 @@ MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
 - `ChatMembers.UserId long NULL` (remote-участник fed-DM), `ChatMembers.ServerName text NULL` (домен remote-участника; NULL для локальных).
 - `FederatedMessageEvents(ChatId, FederatedId, EventBytes, ReceivedAt, OriginServer, EventId)` — wire-байты последнего применённого state-event (для catch-up 2.6: отдаётся с той же подписью origin). `OriginServer`/`EventId` (этап 2.4) — метка последнего применённого события для LWW tie-break последующих правок/удалений.
 - `FederatedReadStates(ChatId, UserUuid, LastReadFederatedMessageId, ReadAt)` — этап 2.4: прочтения remote-участников fed-DM («прочитано до X»); локальные читатели остаются в `Message.ReadBy`.
+- `ChatDrafts(ChatId, UserId, Text, ReplyToMessageId, UpdatedAt, Revision)` — серверные черновики обычных чатов с составным PK `(ChatId, UserId)` и каскадным удалением вместе с чатом. `ListChats` возвращает `Chat.has_draft` пакетно.
 
 ### Импорт (входящие fed-события)
 
