@@ -573,18 +573,21 @@
         var previous = index > 0 ? messages[index - 1] : null;
         var next = index >= 0 && index < messages.length - 1 ? messages[index + 1] : null;
         var groupedWithPrevious = canGroupMessages(previous, msg);
+        var showSenderGutter = !!(currentChatInfo && currentChatInfo.isGroupChat) && msg.senderId !== myUserId;
         return {
             knownMessageIds: knownMessageIds,
             onReplyClick: scrollToMessage,
             groupedWithPrevious: groupedWithPrevious,
-            showSenderAvatar: msg.senderId !== myUserId && !canGroupMessages(msg, next)
+            showSenderGutter: showSenderGutter,
+            showSenderAvatar: showSenderGutter && !canGroupMessages(msg, next)
         };
     }
 
     function appendMessageToView(msg) {
         if (msg && msg.id) knownMessageIds.add(msg.id);
         var previous = messages.length > 1 ? messages[messages.length - 2] : null;
-        var refreshPrevious = previous && previous.senderId !== myUserId && canGroupMessages(previous, msg)
+        var refreshPrevious = previous && currentChatInfo && currentChatInfo.isGroupChat &&
+            previous.senderId !== myUserId && canGroupMessages(previous, msg)
             ? buildMessageViewElement(previous).then(function (replacement) {
                 var previousEl = findMessageGroup(previous.id);
                 if (!previousEl || !previousEl.isConnected) return;
