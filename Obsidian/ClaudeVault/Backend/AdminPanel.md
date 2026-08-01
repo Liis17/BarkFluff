@@ -41,8 +41,15 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
 - `MetricsCacheDbContext` — кеш метрик из Seq: `HourlyStats`, `HourlyTraffic`, `HourlyServiceMetrics`, `CompressionRuns` (история ежедневного сжатия логов-метрик) (`db/metrics_cache.db`)
+- `RemoteDockerDbContext` — удалённые SSH-серверы и отслеживаемые Docker-контейнеры (`db/remote_docker.db`)
 
-Оба — Singleton.
+Все — Singleton. В `docker/backend/docker-compose-dev-backend.yml` каталог `/app/db` проброшен на хост как `./admindata`; файлы базы не должны добавляться в Git.
+
+### Удалённые Docker-серверы
+
+SSH-параметры больше не передаются через `.env` или Docker Compose. На странице `/services` администратор создаёт сервер (имя, host, порт, пользователь, пароль); соединение проверяется до сохранения. Пароль хранится в LiteDB и API наружу не возвращает — только признак его наличия.
+
+Для каждого сервера страница через SSH находит все `docker ps -a` контейнеры и добавляет выбранные в постоянный список. У контейнеров Docker Compose сохраняются метки service/config_files/working_dir: для них доступны start/stop/restart и pull + recreate. У обычных Docker-контейнеров доступно только start/stop/restart. Сервер можно изменить или удалить, а отслеживаемый контейнер — добавить или убрать из списка; удаление записи не удаляет Docker-контейнер.
 
 ### gRPC-клиенты (подключается как клиент, не сервер)
 

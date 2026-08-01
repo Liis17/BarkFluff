@@ -237,14 +237,6 @@ services:
       IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
       BotsService__Host: "${BOTS_SERVICE_HOST:-http://bots:7027}"
       BotsService__Token: "${BOTS_SERVICE_TOKEN:-}"
-      RemoteServers__Navigator__Host: "${NAVIGATOR_SSH_HOST:-}"
-      RemoteServers__Navigator__Port: "${NAVIGATOR_SSH_PORT:-22}"
-      RemoteServers__Navigator__Username: "${NAVIGATOR_SSH_USER:-root}"
-      RemoteServers__Navigator__Password: "${NAVIGATOR_SSH_PASSWORD:-}"
-      RemoteServers__Msk__Host: "${MSK_SSH_HOST:-}"
-      RemoteServers__Msk__Port: "${MSK_SSH_PORT:-22}"
-      RemoteServers__Msk__Username: "${MSK_SSH_USER:-root}"
-      RemoteServers__Msk__Password: "${MSK_SSH_PASSWORD:-}"
       Mail__SmtpHost: "${MAIL_SMTP_HOST:-}"
       Mail__SmtpPort: "${MAIL_SMTP_PORT:-587}"
       Mail__ImapHost: "${MAIL_IMAP_HOST:-}"
@@ -264,7 +256,7 @@ services:
       Mail__Accounts__4__Password: "${MAIL_SECURITY_PASSWORD:-}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - admin_panel_data:/app/db
+      - ./admindata:/app/db
       - ./docker-compose.yml:/docker-compose.yml:ro
       - ./.env:/.env:ro
     networks:
@@ -419,4 +411,3 @@ volumes:
   minio_data:
   backup_volume:
   seq_data:
-  admin_panel_data:

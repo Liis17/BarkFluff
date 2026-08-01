@@ -1,311 +1,331 @@
+using Barkfluff.AdminPanel.Data;
+using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
-
-using Microsoft.Extensions.Options;
-
-using Renci.SshNet;
 
 using System.Text.Json;
 
 namespace Barkfluff.AdminPanel.Services;
 
-public record RemoteContainerInfo(string Label, string ServiceName, string ComposePath, string WorkDir);
-
-public record RemoteServerInfoDto(string Host, int Port, string Username, string Password);
-
-public class RemoteContainerStatusDto
-{
-    public string Label { get; set; } = string.Empty;
-    public string ServiceName { get; set; } = string.Empty;
-    public string State { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-}
-
 public class RemoteDockerService
 {
-    private readonly IOptionsMonitor<RemoteServersSettings> _settings;
+    private readonly RemoteDockerDbContext _db;
+    private readonly IRemoteSshClient _sshClient;
     private readonly ILogger<RemoteDockerService> _logger;
 
-    private static readonly Dictionary<string, List<RemoteContainerInfo>> ServerContainers = new()
+    public RemoteDockerService(RemoteDockerDbContext db, IRemoteSshClient sshClient, ILogger<RemoteDockerService> logger)
     {
-        ["navigator"] =
-        [
-            new("Navigator", "navigator-dev",
-                "/root/hueker/barkfluff/docker-compose-dev.yml",
-                "/root/hueker/barkfluff")
-        ],
-        ["msk"] =
-        [
-            new("ClientStorage", "clientstorage-dev",
-                "/root/hueker/clientstorage/docker-compose-dev.yml",
-                "/root/hueker/clientstorage"),
-            new("WebServer", "webserver-dev",
-                "/root/hueker/web/docker-compose-dev.yml",
-                "/root/hueker/web"),
-            new("Nginx", "nginx",
-                "/root/hueker/nginx/docker-compose-msk.yml",
-                "/root/hueker/nginx")
-        ]
-    };
-
-    public RemoteDockerService(IOptionsMonitor<RemoteServersSettings> settings, ILogger<RemoteDockerService> logger)
-    {
-        _settings = settings;
+        _db = db;
+        _sshClient = sshClient;
         _logger = logger;
     }
 
-    public async Task<List<RemoteContainerStatusDto>> GetContainersStatusAsync(string server)
+    public IReadOnlyList<RemoteServerDto> GetServers() => _db.Servers.FindAll()
+        .OrderBy(x => x.Name)
+        .Select(ToDto)
+        .ToList();
+
+    public async Task<RemoteServerDto> CreateServerAsync(SaveRemoteServerRequest request, CancellationToken cancellationToken = default)
     {
-        if (!ServerContainers.TryGetValue(server, out var containers))
-            return [];
+        ValidateServerRequest(request, passwordRequired: true);
+        EnsureServerNameIsAvailable(request.Name, null);
 
-        var serverConfig = GetServerConfig(server);
-        if (string.IsNullOrEmpty(serverConfig.Host))
-            return containers.Select(c => new RemoteContainerStatusDto
-            {
-                Label = c.Label,
-                ServiceName = c.ServiceName,
-                State = "unconfigured",
-                Status = "Сервер не настроен"
-            }).ToList();
+        var server = new RemoteServer
+        {
+            Name = request.Name.Trim(),
+            Host = request.Host.Trim(),
+            Port = request.Port,
+            Username = request.Username.Trim(),
+            Password = request.Password!
+        };
 
-        var results = new List<RemoteContainerStatusDto>();
+        await _sshClient.TestConnectionAsync(server, cancellationToken);
+        _db.Servers.Insert(server);
+        return ToDto(server);
+    }
+
+    public async Task<RemoteServerDto?> UpdateServerAsync(Guid serverId, SaveRemoteServerRequest request, CancellationToken cancellationToken = default)
+    {
+        var server = _db.Servers.FindById(serverId);
+        if (server is null)
+            return null;
+
+        ValidateServerRequest(request, passwordRequired: false);
+        EnsureServerNameIsAvailable(request.Name, serverId);
+
+        server.Name = request.Name.Trim();
+        server.Host = request.Host.Trim();
+        server.Port = request.Port;
+        server.Username = request.Username.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Password))
+            server.Password = request.Password;
+        server.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _sshClient.TestConnectionAsync(server, cancellationToken);
+        _db.Servers.Update(server);
+        return ToDto(server);
+    }
+
+    public bool DeleteServer(Guid serverId)
+    {
+        _db.Containers.DeleteMany(x => x.ServerId == serverId);
+        return _db.Servers.Delete(serverId);
+    }
+
+    public async Task<IReadOnlyList<DiscoveredRemoteContainerDto>> DiscoverContainersAsync(Guid serverId, CancellationToken cancellationToken = default)
+    {
+        var server = RequireServer(serverId);
+        var result = await _sshClient.RunAsync(server, "docker ps --all --format '{{json .}}'", cancellationToken);
+        ThrowIfFailed(result, "Не удалось получить список Docker-контейнеров");
+
+        var trackedNames = _db.Containers.Find(x => x.ServerId == serverId)
+            .Select(x => x.ContainerName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var containers = ParseDockerPsOutput(result.Stdout);
+        foreach (var container in containers)
+        {
+            var metadata = await ReadComposeMetadataAsync(server, container.ContainerName, cancellationToken);
+            container.IsComposeManaged = metadata.CanUpdate;
+        }
+
+        return containers.Where(x => !trackedNames.Contains(x.ContainerName)).ToList();
+    }
+
+    public async Task<RemoteContainerStatusDto?> AddContainerAsync(Guid serverId, string containerName, CancellationToken cancellationToken = default)
+    {
+        var server = RequireServer(serverId);
+        var normalizedName = containerName.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedName))
+            throw new ArgumentException("Не указано имя контейнера");
+        if (_db.Containers.Exists(x => x.ServerId == serverId && x.ContainerName == normalizedName))
+            throw new InvalidOperationException("Контейнер уже добавлен");
+
+        var discovery = await _sshClient.RunAsync(server,
+            $"docker ps --all --filter {EscapeShell($"name=^/{normalizedName}$")} --format '{{{{json .}}}}'", cancellationToken);
+        ThrowIfFailed(discovery, "Не удалось проверить Docker-контейнер");
+        var found = ParseDockerPsOutput(discovery.Stdout).FirstOrDefault();
+        if (found is null)
+            return null;
+
+        var metadata = await ReadComposeMetadataAsync(server, found.ContainerName, cancellationToken);
+        var container = new RemoteContainer
+        {
+            ServerId = serverId,
+            ContainerName = found.ContainerName,
+            ComposeServiceName = metadata.ServiceName,
+            ComposeFiles = metadata.ConfigFiles,
+            ComposeWorkingDirectory = metadata.WorkingDirectory
+        };
+        _db.Containers.Insert(container);
+        return ToStatusDto(container, found.State, found.Status);
+    }
+
+    public async Task<IReadOnlyList<RemoteContainerStatusDto>> GetContainersStatusAsync(Guid serverId, CancellationToken cancellationToken = default)
+    {
+        var server = RequireServer(serverId);
+        var containers = _db.Containers.Find(x => x.ServerId == serverId)
+            .OrderBy(x => x.ContainerName)
+            .ToList();
+        var statuses = new List<RemoteContainerStatusDto>();
 
         foreach (var container in containers)
         {
             try
             {
-                var cmd = $"docker ps --all" +
-                          $" --filter \"label=com.docker.compose.service={container.ServiceName}\"" +
-                          $" --filter \"label=com.docker.compose.project.working_dir={container.WorkDir}\"" +
-                          $" --format \"{{{{json .}}}}\"";
-
-                var (stdout, _, _) = await RunSshCommandAsync(serverConfig, cmd);
-
-                // Fallback: если working_dir label не совпала с конфигом — ищем только по имени сервиса.
-                // Это случается когда compose запускался из другой директории чем указана в WorkDir.
-                if (string.IsNullOrWhiteSpace(stdout))
-                {
-                    var fallbackCmd = $"docker ps --all" +
-                                      $" --filter \"label=com.docker.compose.service={container.ServiceName}\"" +
-                                      $" --format \"{{{{json .}}}}\"";
-                    (stdout, _, _) = await RunSshCommandAsync(serverConfig, fallbackCmd);
-                }
-
-                results.Add(ParseDockerPsOutput(stdout, container));
+                var result = await _sshClient.RunAsync(server,
+                    $"docker ps --all --filter {EscapeShell($"name=^/{container.ContainerName}$")} --format '{{{{json .}}}}'", cancellationToken);
+                ThrowIfFailed(result, $"Не удалось получить статус {container.ContainerName}");
+                var status = ParseDockerPsOutput(result.Stdout).FirstOrDefault();
+                statuses.Add(status is null
+                    ? ToStatusDto(container, "not_found", "Не найден")
+                    : ToStatusDto(container, status.State, status.Status));
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Ошибка получения статуса {ServiceName} на {Server}", container.ServiceName, server);
-                results.Add(new RemoteContainerStatusDto
-                {
-                    Label = container.Label,
-                    ServiceName = container.ServiceName,
-                    State = "error",
-                    Status = $"Ошибка: {ex.Message}"
-                });
+                _logger.LogWarning(ex, "Ошибка получения статуса {ContainerName} на {Server}", container.ContainerName, server.Name);
+                statuses.Add(ToStatusDto(container, "error", ex.Message));
             }
         }
 
-        return results;
+        return statuses;
     }
 
-    public async Task<ContainerActionResponseDto> StartAsync(string server, string serviceName)
+    public bool DeleteContainer(Guid serverId, Guid containerId)
     {
-        // Используем "up -d" вместо "start" — работает и для остановленных и для удалённых контейнеров
-        return await ExecuteComposeActionAsync(server, serviceName, "up_d");
+        var container = _db.Containers.FindById(containerId);
+        return container is not null && container.ServerId == serverId && _db.Containers.Delete(containerId);
     }
 
-    public async Task<ContainerActionResponseDto> StopAsync(string server, string serviceName)
+    public async Task<ContainerActionResponseDto> ExecuteActionAsync(Guid serverId, Guid containerId, string action,
+        CancellationToken cancellationToken = default)
     {
-        return await ExecuteComposeActionAsync(server, serviceName, "stop");
-    }
-
-    public async Task<ContainerActionResponseDto> RestartAsync(string server, string serviceName)
-    {
-        return await ExecuteComposeActionAsync(server, serviceName, "restart");
-    }
-
-    public async Task<ContainerActionResponseDto> PullAndRecreateAsync(string server, string serviceName)
-    {
-        var serverConfig = GetServerConfig(server);
-        if (string.IsNullOrEmpty(serverConfig.Host))
-            return Fail($"Сервер {server} не настроен");
-
-        var container = FindContainer(server, serviceName);
-        if (container is null)
-            return Fail($"Сервис {serviceName} не найден на сервере {server}");
+        var server = RequireServer(serverId);
+        var container = _db.Containers.FindById(containerId);
+        if (container is null || container.ServerId != serverId)
+            return Fail("Контейнер не найден");
 
         try
         {
-            var workDir = EscapeShell(container.WorkDir);
-            var composePath = EscapeShell(container.ComposePath);
-            var service = EscapeShell(container.ServiceName);
+            string command;
+            switch (action)
+            {
+                case "start":
+                    command = $"docker start {EscapeShell(container.ContainerName)}";
+                    break;
+                case "stop":
+                    command = $"docker stop -t 30 {EscapeShell(container.ContainerName)}";
+                    break;
+                case "restart":
+                    command = $"docker restart -t 30 {EscapeShell(container.ContainerName)}";
+                    break;
+                case "pull":
+                    if (!container.CanUpdate)
+                        return Fail("Обновление доступно только для контейнеров Docker Compose");
+                    command = BuildComposeUpdateCommand(container);
+                    break;
+                default:
+                    return Fail("Неизвестное действие");
+            }
 
-            var cmd = $"cd {workDir}" +
-                      $" && docker compose -f {composePath} pull {service}" +
-                      $" && docker compose -f {composePath} up --force-recreate -d {service}" +
-                      $" && docker image prune -f";
+            var result = await _sshClient.RunAsync(server, command, cancellationToken);
+            if (result.ExitCode != 0)
+                return Fail($"Ошибка {ActionLabel(action)} контейнера {container.ContainerName}", result.Stderr);
 
-            var (_, stderr, exit) = await RunSshCommandAsync(serverConfig, cmd);
-
-            if (exit != 0)
-                return Fail($"Ошибка обновления {serviceName}", stderr);
-
-            _logger.LogInformation("Сервис {ServiceName} на {Server} обновлён", serviceName, server);
-            return Ok($"Сервис {serviceName} успешно обновлён");
+            _logger.LogInformation("Действие {Action} над {ContainerName} на {Server} выполнено", action, container.ContainerName, server.Name);
+            return Ok($"Контейнер {container.ContainerName} успешно {ActionLabel(action)}");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка обновления {ServiceName} на {Server}", serviceName, server);
-            return Fail($"Ошибка обновления {serviceName}", ex.Message);
+            _logger.LogError(ex, "Ошибка {Action} контейнера {ContainerName} на {Server}", action, container.ContainerName, server.Name);
+            return Fail($"Ошибка {ActionLabel(action)} контейнера {container.ContainerName}", ex.Message);
         }
     }
 
-    private async Task<ContainerActionResponseDto> ExecuteComposeActionAsync(string server, string serviceName, string action)
+    private async Task<ComposeMetadata> ReadComposeMetadataAsync(RemoteServer server, string containerName, CancellationToken cancellationToken)
     {
-        var serverConfig = GetServerConfig(server);
-        if (string.IsNullOrEmpty(serverConfig.Host))
-            return Fail($"Сервер {server} не настроен");
-
-        var container = FindContainer(server, serviceName);
-        if (container is null)
-            return Fail($"Сервис {serviceName} не найден на сервере {server}");
+        var result = await _sshClient.RunAsync(server,
+            $"docker inspect {EscapeShell(containerName)} --format '{{{{json .Config.Labels}}}}'", cancellationToken);
+        if (result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.Stdout))
+            return new ComposeMetadata();
 
         try
         {
-            var workDir = EscapeShell(container.WorkDir);
-            var composePath = EscapeShell(container.ComposePath);
-            var service = EscapeShell(container.ServiceName);
-
-            // up_d → "up -d" (два аргумента для compose), остальные — одиночные глаголы
-            var composeArgs = action == "up_d" ? $"up -d {service}" : $"{action} {service}";
-            var cmd = $"cd {workDir} && docker compose -f {composePath} {composeArgs}";
-
-            var (_, stderr, exit) = await RunSshCommandAsync(serverConfig, cmd);
-
-            if (exit != 0)
-                return Fail($"Ошибка {action} {serviceName}", stderr);
-
-            _logger.LogInformation("Действие {Action} над {ServiceName} на {Server} выполнено", action, serviceName, server);
-            return Ok($"Действие над {serviceName} выполнено успешно");
+            var labels = JsonSerializer.Deserialize<Dictionary<string, string>>(result.Stdout) ?? [];
+            return new ComposeMetadata
+            {
+                ServiceName = labels.GetValueOrDefault("com.docker.compose.service"),
+                ConfigFiles = labels.GetValueOrDefault("com.docker.compose.project.config_files"),
+                WorkingDirectory = labels.GetValueOrDefault("com.docker.compose.project.working_dir")
+            };
         }
-        catch (Exception ex)
+        catch (JsonException)
         {
-            _logger.LogError(ex, "Ошибка {Action} {ServiceName} на {Server}", action, serviceName, server);
-            return Fail($"Ошибка {action} {serviceName}", ex.Message);
+            return new ComposeMetadata();
         }
     }
 
-    private async Task<(string stdout, string stderr, int exit)> RunSshCommandAsync(RemoteServerSettings config, string command)
+    private static List<DiscoveredRemoteContainerDto> ParseDockerPsOutput(string output)
     {
-        var passwordAuth = new PasswordAuthenticationMethod(config.Username, config.Password);
-
-        // Keyboard-interactive как fallback — многие серверы (Ubuntu 22.04+) принимают только этот метод,
-        // даже если с виду это обычный пароль. Стандартный ssh-клиент пробует оба метода автоматически.
-        var kbdAuth = new KeyboardInteractiveAuthenticationMethod(config.Username);
-        kbdAuth.AuthenticationPrompt += (_, e) =>
+        var containers = new List<DiscoveredRemoteContainerDto>();
+        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            foreach (var prompt in e.Prompts)
-                prompt.Response = config.Password;
-        };
-
-        var sshConn = new Renci.SshNet.ConnectionInfo(
-            config.Host, config.Port, config.Username, passwordAuth, kbdAuth);
-
-        using var client = new SshClient(sshConn);
-
-        await Task.Run(() => client.Connect());
-        try
-        {
-            using var cmd = client.RunCommand(command);
-            return (cmd.Result, cmd.Error, cmd.ExitStatus ?? 0);
-        }
-        finally
-        {
-            client.Disconnect();
-        }
-    }
-
-    private RemoteContainerStatusDto ParseDockerPsOutput(string output, RemoteContainerInfo container)
-    {
-        var dto = new RemoteContainerStatusDto
-        {
-            Label = container.Label,
-            ServiceName = container.ServiceName,
-            State = "not_found",
-            Status = "Не найден"
-        };
-
-        if (string.IsNullOrWhiteSpace(output))
-            return dto;
-
-        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var trimmed = line.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-                continue;
-
             try
             {
-                using var doc = JsonDocument.Parse(trimmed);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("State", out var state))
-                    dto.State = state.GetString() ?? "unknown";
-
-                if (root.TryGetProperty("Status", out var status))
-                    dto.Status = status.GetString() ?? string.Empty;
-
-                break;
+                using var document = JsonDocument.Parse(line);
+                var root = document.RootElement;
+                containers.Add(new DiscoveredRemoteContainerDto
+                {
+                    Id = root.GetPropertyOrDefault("ID"),
+                    ContainerName = root.GetPropertyOrDefault("Names"),
+                    Image = root.GetPropertyOrDefault("Image"),
+                    State = root.GetPropertyOrDefault("State"),
+                    Status = root.GetPropertyOrDefault("Status")
+                });
             }
-            catch
+            catch (JsonException)
             {
-                // строка не является JSON-объектом — пропускаем
+                // Docker can return a non-JSON line only when its output is corrupted; ignore it.
             }
         }
-
-        return dto;
+        return containers.Where(x => !string.IsNullOrWhiteSpace(x.ContainerName)).ToList();
     }
 
-    public async Task<string> InspectContainerLabelsAsync(string server, string containerName)
+    private static string BuildComposeUpdateCommand(RemoteContainer container)
     {
-        var serverConfig = GetServerConfig(server);
-        if (string.IsNullOrEmpty(serverConfig.Host))
-            return "Сервер не настроен";
-
-        var cmd = $"docker inspect {EscapeShell(containerName)}" +
-                  $" --format \"{{{{range $k,$v := .Config.Labels}}}}{{{{$k}}}}={{{{$v}}}}\\n{{{{end}}}}\"" +
-                  $" 2>&1 || echo 'container_not_found'";
-
-        var (stdout, stderr, _) = await RunSshCommandAsync(serverConfig, cmd);
-        return string.IsNullOrWhiteSpace(stdout) ? (stderr.Trim() is { Length: > 0 } e ? e : "нет вывода") : stdout.Trim();
+        var composeArguments = string.Join(" ", container.ComposeFiles!
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => $"-f {EscapeShell(x)}"));
+        var service = EscapeShell(container.ComposeServiceName!);
+        return $"cd {EscapeShell(container.ComposeWorkingDirectory!)}" +
+               $" && docker compose {composeArguments} pull {service}" +
+               $" && docker compose {composeArguments} up --force-recreate -d {service}" +
+               " && docker image prune -f";
     }
 
-    public RemoteServerInfoDto GetServerInfo(string server)
+    private RemoteServer RequireServer(Guid serverId) => _db.Servers.FindById(serverId)
+        ?? throw new KeyNotFoundException("Сервер не найден");
+
+    private void EnsureServerNameIsAvailable(string name, Guid? exceptId)
     {
-        var config = GetServerConfig(server);
-        return new RemoteServerInfoDto(config.Host, config.Port, config.Username, config.Password);
+        var existing = _db.Servers.FindOne(x => x.Name == name.Trim());
+        if (existing is not null && existing.Id != exceptId)
+            throw new ArgumentException("Сервер с таким названием уже существует");
     }
 
-    private RemoteServerSettings GetServerConfig(string server) => server switch
+    private static void ValidateServerRequest(SaveRemoteServerRequest request, bool passwordRequired)
     {
-        "navigator" => _settings.CurrentValue.Navigator,
-        "msk" => _settings.CurrentValue.Msk,
-        _ => new RemoteServerSettings()
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Host) || string.IsNullOrWhiteSpace(request.Username))
+            throw new ArgumentException("Название, host и пользователь обязательны");
+        if (request.Port is < 1 or > 65535)
+            throw new ArgumentException("SSH-порт должен быть от 1 до 65535");
+        if (passwordRequired && string.IsNullOrWhiteSpace(request.Password))
+            throw new ArgumentException("SSH-пароль обязателен");
+    }
+
+    private static void ThrowIfFailed(RemoteSshCommandResult result, string message)
+    {
+        if (result.ExitCode != 0)
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.Stderr) ? message : result.Stderr.Trim());
+    }
+
+    private static RemoteServerDto ToDto(RemoteServer server) => new(server.Id, server.Name, server.Host, server.Port,
+        server.Username, !string.IsNullOrWhiteSpace(server.Password), server.CreatedAtUtc, server.UpdatedAtUtc);
+
+    private static RemoteContainerStatusDto ToStatusDto(RemoteContainer container, string state, string status) => new()
+    {
+        Id = container.Id,
+        ContainerName = container.ContainerName,
+        ComposeServiceName = container.ComposeServiceName,
+        CanUpdate = container.CanUpdate,
+        State = state,
+        Status = status
     };
 
-    private static RemoteContainerInfo? FindContainer(string server, string serviceName)
-    {
-        if (!ServerContainers.TryGetValue(server, out var list))
-            return null;
-        return list.FirstOrDefault(c => c.ServiceName == serviceName);
-    }
-
     private static string EscapeShell(string value) => $"'{value.Replace("'", "'\\''")}'";
+    private static string ActionLabel(string action) => action switch
+    {
+        "start" => "запущен",
+        "stop" => "остановлен",
+        "restart" => "перезапущен",
+        "pull" => "обновлён",
+        _ => "обработан"
+    };
+    private static ContainerActionResponseDto Ok(string message) => new() { Success = true, Message = message };
+    private static ContainerActionResponseDto Fail(string message, string? details = null) => new() { Success = false, Message = message, ErrorDetails = details };
 
-    private static ContainerActionResponseDto Ok(string message) =>
-        new() { Success = true, Message = message };
+    private class ComposeMetadata
+    {
+        public string? ServiceName { get; init; }
+        public string? ConfigFiles { get; init; }
+        public string? WorkingDirectory { get; init; }
+        public bool CanUpdate => !string.IsNullOrWhiteSpace(ServiceName)
+            && !string.IsNullOrWhiteSpace(ConfigFiles)
+            && !string.IsNullOrWhiteSpace(WorkingDirectory);
+    }
+}
 
-    private static ContainerActionResponseDto Fail(string message, string? details = null) =>
-        new() { Success = false, Message = message, ErrorDetails = details };
+internal static class JsonElementExtensions
+{
+    public static string GetPropertyOrDefault(this JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) ? property.GetString() ?? string.Empty : string.Empty;
 }

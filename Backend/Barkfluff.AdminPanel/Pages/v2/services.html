@@ -138,19 +138,14 @@
 
         <div class="md-page">
             <div class="panel">
-                <!-- Tabs -->
-                <div class="tab-bar">
+                <div class="tab-bar" id="serverTabs">
                     <button id="tab-barkfluff" class="tab active" onclick="switchTab('barkfluff')">
                         <span class="msr">dns</span>
                         BarkFluff Server
                     </button>
-                    <button id="tab-navigator" class="tab" onclick="switchTab('navigator')">
-                        <span class="msr">explore</span>
-                        Navigator Server
-                    </button>
-                    <button id="tab-msk" class="tab" onclick="switchTab('msk')">
-                        <span class="msr">apartment</span>
-                        MSK Server
+                    <button class="tab" onclick="openServerDialog()" title="Добавить сервер">
+                        <span class="msr">add</span>
+                        Добавить сервер
                     </button>
                 </div>
 
@@ -198,50 +193,42 @@
                     </div>
                 </div>
 
-                <!-- Navigator panel -->
-                <div id="panel-navigator" class="server-panel" style="display:none;">
-                    <div class="server-info-strip">
-                        <div class="item"><span class="label">Host</span><span class="value" id="info-navigator-host">—</span></div>
-                        <div class="item"><span class="label">Port</span><span class="value" id="info-navigator-port">—</span></div>
-                        <div class="item"><span class="label">User</span><span class="value" id="info-navigator-user">—</span></div>
-                        <div class="item">
-                            <span class="label">Password</span>
-                            <span class="value" id="info-navigator-pass" style="letter-spacing:.2em;">—</span>
-                        </div>
-                    </div>
-                    <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
-                        <table class="md-table">
-                            <thead><tr><th>Сервис</th><th>Статус</th><th style="text-align:center;">Действия</th></tr></thead>
-                            <tbody id="remote-navigator-body">
-                                <tr><td colspan="3" class="empty-cell">Загрузка...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- MSK panel -->
-                <div id="panel-msk" class="server-panel" style="display:none;">
-                    <div class="server-info-strip">
-                        <div class="item"><span class="label">Host</span><span class="value" id="info-msk-host">—</span></div>
-                        <div class="item"><span class="label">Port</span><span class="value" id="info-msk-port">—</span></div>
-                        <div class="item"><span class="label">User</span><span class="value" id="info-msk-user">—</span></div>
-                        <div class="item">
-                            <span class="label">Password</span>
-                            <span class="value" id="info-msk-pass" style="letter-spacing:.2em;">—</span>
-                        </div>
-                    </div>
-                    <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
-                        <table class="md-table">
-                            <thead><tr><th>Сервис</th><th>Статус</th><th style="text-align:center;">Действия</th></tr></thead>
-                            <tbody id="remote-msk-body">
-                                <tr><td colspan="3" class="empty-cell">Загрузка...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <div id="remotePanels"></div>
             </div>
         </div>
     </main>
+</div>
+
+<div id="serverDialogScrim" class="md-scrim">
+    <form class="md-dialog" id="serverForm">
+        <div class="md-dialog-header"><h3 id="serverDialogTitle">Добавить сервер</h3></div>
+        <div class="md-dialog-body" style="display:grid;gap:12px;">
+            <input class="md-input-outlined" id="serverName" placeholder="Название сервера" required maxlength="80">
+            <input class="md-input-outlined" id="serverHost" placeholder="Host или IP-адрес" required>
+            <div style="display:grid;grid-template-columns:110px 1fr;gap:12px;">
+                <input class="md-input-outlined" id="serverPort" type="number" min="1" max="65535" value="22" required>
+                <input class="md-input-outlined" id="serverUsername" placeholder="SSH-пользователь" value="root" required>
+            </div>
+            <input class="md-input-outlined" id="serverPassword" type="password" placeholder="SSH-пароль" required>
+            <div id="serverPasswordHint" style="display:none;font-size:12px;">Оставьте пустым, чтобы не менять пароль.</div>
+            <div id="serverDialogError" style="display:none;color:var(--md-error);font-size:13px;"></div>
+        </div>
+        <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" onclick="closeDialog('serverDialogScrim')">Отмена</button>
+            <button class="md-btn md-btn-filled" id="saveServerBtn" type="submit">Проверить и сохранить</button>
+        </div>
+    </form>
+</div>
+
+<div id="containerDialogScrim" class="md-scrim">
+    <div class="md-dialog md-dialog-lg">
+        <div class="md-dialog-header"><h3>Добавить контейнер</h3></div>
+        <div class="md-dialog-body">
+            <div id="discoveredContainers" class="md-table-wrap">Загрузка контейнеров…</div>
+            <div id="containerDialogError" style="display:none;color:var(--md-error);font-size:13px;"></div>
+        </div>
+        <div class="md-dialog-actions"><button class="md-btn md-btn-text" onclick="closeDialog('containerDialogScrim')">Закрыть</button></div>
+    </div>
 </div>
 
 <!-- Progress modal -->
@@ -513,86 +500,191 @@
         catch { showNotification('error', 'Не удалось запустить обновление'); }
     }
 
-    // ---- Tabs ----
-    function switchTab(name) {
-        ['barkfluff','navigator','msk'].forEach(t => {
-            document.getElementById('tab-' + t).classList.toggle('active', t === name);
-            document.getElementById('panel-' + t).style.display = t === name ? '' : 'none';
-        });
-        if (name === 'navigator' || name === 'msk') loadRemoteServer(name);
+    // ---- Remote servers ----
+    let remoteServers = [];
+    let activeTab = 'barkfluff';
+    let editingServerId = null;
+    let containerServerId = null;
+
+    function switchTab(id) {
+        activeTab = id;
+        document.querySelectorAll('[data-server-tab]').forEach(tab => tab.classList.toggle('active', tab.dataset.serverTab === id));
+        document.getElementById('panel-barkfluff').style.display = id === 'barkfluff' ? '' : 'none';
+        document.querySelectorAll('.remote-server-panel').forEach(panel => panel.style.display = panel.dataset.serverId === id ? '' : 'none');
+        if (id !== 'barkfluff') loadRemoteContainers(id);
     }
 
-    async function loadRemoteServer(name) {
+    async function loadRemoteServers(selectServerId = null) {
         try {
-            const r = await fetch(`/api/remote/${name}/config`);
-            if (r.ok) {
-                const info = await r.json();
-                document.getElementById(`info-${name}-host`).textContent = info.host || '—';
-                document.getElementById(`info-${name}-port`).textContent = info.port || '22';
-                document.getElementById(`info-${name}-user`).textContent = info.username || '—';
-                const passEl = document.getElementById(`info-${name}-pass`);
-                passEl.textContent = info.password ? '•'.repeat(Math.min(info.password.length, 24)) : '—';
-            }
-        } catch {}
-        await loadRemoteContainers(name);
+            const response = await fetch('/api/remote/servers');
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            remoteServers = await response.json();
+            renderRemoteServers();
+            const selected = selectServerId || (activeTab !== 'barkfluff' && remoteServers.some(s => s.id === activeTab) ? activeTab : 'barkfluff');
+            switchTab(selected);
+        } catch (e) {
+            showNotification('error', 'Не удалось загрузить серверы: ' + e.message);
+        }
     }
 
-    async function loadRemoteContainers(name) {
-        const tbody = document.getElementById(`remote-${name}-body`);
+    function renderRemoteServers() {
+        const tabs = document.getElementById('serverTabs');
+        tabs.innerHTML = `<button id="tab-barkfluff" data-server-tab="barkfluff" class="tab" onclick="switchTab('barkfluff')"><span class="msr">dns</span>BarkFluff Server</button>`
+            + remoteServers.map(server => `<button data-server-tab="${server.id}" class="tab" onclick="switchTab('${server.id}')"><span class="msr">dns</span>${escapeHtml(server.name)}</button>`).join('')
+            + `<button class="tab" onclick="openServerDialog()" title="Добавить сервер"><span class="msr">add</span>Добавить сервер</button>`;
+
+        document.getElementById('remotePanels').innerHTML = remoteServers.map(server => `
+            <div class="server-panel remote-server-panel" data-server-id="${server.id}" style="display:none;">
+                <div class="server-info-strip">
+                    <div class="item"><span class="label">Host</span><span class="value">${escapeHtml(server.host)}</span></div>
+                    <div class="item"><span class="label">Port</span><span class="value">${server.port}</span></div>
+                    <div class="item"><span class="label">User</span><span class="value">${escapeHtml(server.username)}</span></div>
+                    <div class="item"><span class="label">Password</span><span class="value">${server.isPasswordConfigured ? 'настроен' : '—'}</span></div>
+                </div>
+                <div class="actions-row">
+                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openContainerDialog('${server.id}')"><span class="msr size-18">add</span>Добавить контейнер</button>
+                    <div class="spacer"></div>
+                    <button class="md-icon-btn" title="Изменить сервер" onclick="openServerDialog('${server.id}')"><span class="msr">edit</span></button>
+                    <button class="md-icon-btn" title="Удалить сервер" onclick="deleteServer('${server.id}')"><span class="msr">delete</span></button>
+                    <button class="md-icon-btn" title="Обновить контейнеры" onclick="loadRemoteContainers('${server.id}')"><span class="msr">refresh</span></button>
+                </div>
+                <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
+                    <table class="md-table"><thead><tr><th>Контейнер</th><th>Статус</th><th style="text-align:center;">Действия</th></tr></thead>
+                    <tbody id="remote-${server.id}-body"><tr><td colspan="3" class="empty-cell">Загрузка...</td></tr></tbody></table>
+                </div>
+            </div>`).join('');
+    }
+
+    async function loadRemoteContainers(serverId) {
+        const tbody = document.getElementById(`remote-${serverId}-body`);
+        if (!tbody) return;
         try {
-            const r = await fetch(`/api/remote/${name}/containers`);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const data = await r.json();
-            if (!data || !data.length) {
-                tbody.innerHTML = `<tr><td colspan="3" class="empty-cell">Нет данных</td></tr>`;
+            const response = await fetch(`/api/remote/servers/${serverId}/containers`);
+            if (!response.ok) throw new Error(await responseMessage(response));
+            const containers = await response.json();
+            if (!containers.length) {
+                tbody.innerHTML = `<tr><td colspan="3" class="empty-cell">Контейнеры ещё не добавлены</td></tr>`;
                 return;
             }
-            tbody.innerHTML = data.map(svc => {
-                const isRunning = svc.state === 'running';
-                const isUnconfigured = svc.state === 'unconfigured';
-                const actions = isUnconfigured
-                    ? '<span style="color:var(--md-outline);">—</span>'
-                    : `<button class="md-icon-btn" title="${isRunning?'Остановить':'Запустить'}" onclick="handleRemoteAction(event, '${name}', '${svc.serviceName}', '${isRunning?'stop':'start'}')"><span class="msr size-20">${isRunning?'stop':'play_arrow'}</span></button>
-                       <button class="md-icon-btn" title="Перезапустить" onclick="handleRemoteAction(event, '${name}', '${svc.serviceName}', 'restart')"><span class="msr size-20">restart_alt</span></button>
-                       <button class="md-icon-btn" title="Обновить образ" onclick="handleRemoteAction(event, '${name}', '${svc.serviceName}', 'pull')"><span class="msr size-20">cloud_download</span></button>`;
-                const statusHint = svc.status && svc.state !== 'unconfigured' && svc.state !== 'not_found'
-                    ? `<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(svc.status)}</span>` : '';
-                return `
-                <tr>
-                    <td><div style="display:flex;align-items:center;gap:8px;font-weight:500;"><span class="msr size-18" style="color:var(--md-primary);">dns</span>${escapeHtml(svc.label)}<span style="font-size:12px;color:var(--md-on-surface-variant);font-weight:400;">${escapeHtml(svc.serviceName)}</span></div></td>
-                    <td>${statusBadgeHtml(svc.state)}${statusHint}</td>
-                    <td><div style="display:flex;justify-content:center;gap:4px;">${actions}</div></td>
-                </tr>`;
+            tbody.innerHTML = containers.map(container => {
+                const running = container.state === 'running';
+                const update = container.canUpdate
+                    ? `<button class="md-icon-btn" title="Обновить образ" onclick="handleRemoteAction(event,'${serverId}','${container.id}','pull')"><span class="msr size-20">cloud_download</span></button>`
+                    : `<button class="md-icon-btn" disabled title="Контейнер запущен не через Docker Compose"><span class="msr size-20">cloud_off</span></button>`;
+                return `<tr><td><div style="font-weight:500;">${escapeHtml(container.containerName)}${container.composeServiceName ? `<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(container.composeServiceName)}</span>` : ''}</div></td>
+                    <td>${statusBadgeHtml(container.state)}<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(container.status || '')}</span></td>
+                    <td><div style="display:flex;justify-content:center;gap:4px;"><button class="md-icon-btn" title="${running ? 'Остановить' : 'Запустить'}" onclick="handleRemoteAction(event,'${serverId}','${container.id}','${running ? 'stop' : 'start'}')"><span class="msr size-20">${running ? 'stop' : 'play_arrow'}</span></button>
+                    <button class="md-icon-btn" title="Перезапустить" onclick="handleRemoteAction(event,'${serverId}','${container.id}','restart')"><span class="msr size-20">restart_alt</span></button>${update}<button class="md-icon-btn" title="Убрать из списка" onclick="deleteContainer('${serverId}','${container.id}')"><span class="msr size-20">delete</span></button></div></td></tr>`;
             }).join('');
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="3" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
         }
     }
 
-    async function handleRemoteAction(event, serverId, serviceName, action) {
+    async function handleRemoteAction(event, serverId, containerId, action) {
         event.stopPropagation();
         const names = { start:'запуска', stop:'остановки', restart:'перезапуска', pull:'обновления' };
-        if (!confirm(`Выполнить действие "${names[action]}" для ${serviceName}?`)) return;
-        const btn = event.currentTarget;
-        const orig = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
+        if (!confirm(`Выполнить действие "${names[action]}" для контейнера?`)) return;
+        const button = event.currentTarget;
+        const original = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
         try {
-            const r = await fetch(`/api/remote/${serverId}/containers/${serviceName}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
-            const result = await r.json();
-            if (result.success) {
-                showNotification('success', result.message);
-                setTimeout(() => loadRemoteContainers(serverId), 3000);
-            } else {
-                showNotification('error', result.message || 'Ошибка');
-            }
-        } catch (e) {
-            showNotification('error', 'Ошибка: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = orig;
-        }
+            const response = await fetch(`/api/remote/servers/${serverId}/containers/${containerId}/${action}`, { method:'POST' });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || 'Ошибка действия');
+            showNotification('success', result.message);
+            setTimeout(() => loadRemoteContainers(serverId), 1500);
+        } catch (e) { showNotification('error', e.message); }
+        finally { button.disabled = false; button.innerHTML = original; }
     }
+
+    function openServerDialog(serverId = null) {
+        editingServerId = serverId;
+        const server = remoteServers.find(item => item.id === serverId);
+        document.getElementById('serverDialogTitle').textContent = server ? 'Изменить сервер' : 'Добавить сервер';
+        document.getElementById('serverName').value = server?.name || '';
+        document.getElementById('serverHost').value = server?.host || '';
+        document.getElementById('serverPort').value = server?.port || 22;
+        document.getElementById('serverUsername').value = server?.username || 'root';
+        const password = document.getElementById('serverPassword');
+        password.value = '';
+        password.required = !server;
+        password.placeholder = server ? 'Новый SSH-пароль (необязательно)' : 'SSH-пароль';
+        document.getElementById('serverPasswordHint').style.display = server ? '' : 'none';
+        hideDialogError('serverDialogError');
+        document.getElementById('serverDialogScrim').classList.add('open');
+    }
+
+    async function saveServer(event) {
+        event.preventDefault();
+        const request = {
+            name: document.getElementById('serverName').value,
+            host: document.getElementById('serverHost').value,
+            port: Number(document.getElementById('serverPort').value),
+            username: document.getElementById('serverUsername').value,
+            password: document.getElementById('serverPassword').value || null
+        };
+        const button = document.getElementById('saveServerBtn');
+        button.disabled = true;
+        try {
+            const response = await fetch(editingServerId ? `/api/remote/servers/${editingServerId}` : '/api/remote/servers', {
+                method: editingServerId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(request)
+            });
+            if (!response.ok) throw new Error(await responseMessage(response));
+            const server = await response.json();
+            closeDialog('serverDialogScrim');
+            showNotification('success', 'Сервер сохранён');
+            await loadRemoteServers(server.id);
+        } catch (e) { showDialogError('serverDialogError', e.message); }
+        finally { button.disabled = false; }
+    }
+
+    async function deleteServer(serverId) {
+        const server = remoteServers.find(item => item.id === serverId);
+        if (!confirm(`Удалить сервер "${server?.name || ''}" и все его контейнеры из панели?`)) return;
+        const response = await fetch(`/api/remote/servers/${serverId}`, { method:'DELETE' });
+        if (!response.ok) { showNotification('error', await responseMessage(response)); return; }
+        showNotification('success', 'Сервер удалён');
+        await loadRemoteServers();
+    }
+
+    async function openContainerDialog(serverId) {
+        containerServerId = serverId;
+        document.getElementById('discoveredContainers').textContent = 'Загрузка контейнеров…';
+        hideDialogError('containerDialogError');
+        document.getElementById('containerDialogScrim').classList.add('open');
+        try {
+            const response = await fetch(`/api/remote/servers/${serverId}/discover`);
+            if (!response.ok) throw new Error(await responseMessage(response));
+            const containers = await response.json();
+            document.getElementById('discoveredContainers').innerHTML = containers.length ? `<table class="md-table"><thead><tr><th>Контейнер</th><th>Образ</th><th>Тип</th><th></th></tr></thead><tbody>${containers.map(container => `<tr><td>${escapeHtml(container.containerName)}</td><td>${escapeHtml(container.image)}</td><td>${container.isComposeManaged ? 'Docker Compose' : 'Docker'}</td><td><button class="md-btn md-btn-text" onclick="addDiscoveredContainer('${container.containerName}')">Добавить</button></td></tr>`).join('')}</tbody></table>` : 'Новых контейнеров не найдено.';
+        } catch (e) { showDialogError('containerDialogError', e.message); }
+    }
+
+    async function addDiscoveredContainer(containerName) {
+        try {
+            const response = await fetch(`/api/remote/servers/${containerServerId}/containers`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({containerName}) });
+            if (!response.ok) throw new Error(await responseMessage(response));
+            closeDialog('containerDialogScrim');
+            showNotification('success', 'Контейнер добавлен');
+            await loadRemoteContainers(containerServerId);
+        } catch (e) { showDialogError('containerDialogError', e.message); }
+    }
+
+    async function deleteContainer(serverId, containerId) {
+        if (!confirm('Убрать контейнер из списка панели? Сам Docker-контейнер не будет удалён.')) return;
+        const response = await fetch(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE' });
+        if (!response.ok) { showNotification('error', await responseMessage(response)); return; }
+        await loadRemoteContainers(serverId);
+    }
+
+    function closeDialog(id) { document.getElementById(id).classList.remove('open'); }
+    function showDialogError(id, message) { const el = document.getElementById(id); el.textContent = message; el.style.display = ''; }
+    function hideDialogError(id) { document.getElementById(id).style.display = 'none'; }
+    async function responseMessage(response) { try { return (await response.json()).message || `HTTP ${response.status}`; } catch { return `HTTP ${response.status}`; } }
+
+    document.getElementById('serverForm').addEventListener('submit', saveServer);
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти из панели?')) return;
@@ -605,12 +697,13 @@
         const auth = await checkAuth();
         if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? `Создан: ${formatDate(auth.createdAt)}` : '');
-        await Promise.all([loadServices(), loadAdminPanelUpdateStatus()]);
+        await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers()]);
         document.getElementById('loading-overlay').classList.add('hidden');
         setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
         refreshInterval = setInterval(() => {
             loadServices();
             loadAdminPanelUpdateStatus();
+            if (activeTab !== 'barkfluff') loadRemoteContainers(activeTab);
         }, 30000);
     })();
 </script>
