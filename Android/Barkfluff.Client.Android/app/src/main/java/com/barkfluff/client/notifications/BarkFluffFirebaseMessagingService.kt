@@ -6,6 +6,7 @@ import coil.ImageLoader
 import coil.request.ImageRequest
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.calls.CallTelecomManager
+import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
@@ -16,11 +17,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
         private const val TAG = "BarkFluffFCM"
+
+        // Сколько ждём аватар звонящего перед показом звонка
+        private const val AVATAR_PREFETCH_TIMEOUT_MS = 2500L
 
         // MessageAttachmentType enum values from proto
         private const val ATTACHMENT_TYPE_IMAGE = 1
@@ -221,27 +226,41 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         val callerUserId = data["caller_user_id"]?.toLongOrNull() ?: 0L
         val chatId = data["chat_id"].orEmpty()
         val chatTitle = data["chat_title"].orEmpty()
+        val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
 
-        CallTelecomManager.reportIncomingCall(
-            context = applicationContext,
-            callId = callId,
-            callerName = callerName,
-            mediaType = mediaType,
-            callerUserId = callerUserId,
-            chatId = chatId,
-            chatTitle = chatTitle
-        )
+        serviceScope.launch {
+            // Аватар готовим до показа звонка: при убитом приложении процесс поднимает FCM,
+            // gRPC-клиентов ещё нет, и звонок успевал показаться только с инициалами.
+            val prefetched = withTimeoutOrNull(AVATAR_PREFETCH_TIMEOUT_MS) {
+                IncomingCallPrefetch.prepareAvatar(applicationContext, callId, callerUserId, avatarUrl)
+            }
+            if (prefetched == null) {
+                Log.w(TAG, "incoming_call: аватар не готов за ${AVATAR_PREFETCH_TIMEOUT_MS}мс, показываем с инициалами")
+            }
 
-        NotificationHelper.showIncomingCallNotification(
-            context = applicationContext,
-            callId = callId,
-            callerName = callerName,
-            mediaType = mediaType,
-            callerUserId = callerUserId,
-            chatId = chatId,
-            chatTitle = chatTitle
-        )
-        Log.d(TAG, "incoming_call notification shown: callId=$callId, mediaType=$mediaType")
+            withContext(Dispatchers.Main) {
+                CallTelecomManager.reportIncomingCall(
+                    context = applicationContext,
+                    callId = callId,
+                    callerName = callerName,
+                    mediaType = mediaType,
+                    callerUserId = callerUserId,
+                    chatId = chatId,
+                    chatTitle = chatTitle
+                )
+
+                NotificationHelper.showIncomingCallNotification(
+                    context = applicationContext,
+                    callId = callId,
+                    callerName = callerName,
+                    mediaType = mediaType,
+                    callerUserId = callerUserId,
+                    chatId = chatId,
+                    chatTitle = chatTitle
+                )
+            }
+            Log.d(TAG, "incoming_call notification shown: callId=$callId, mediaType=$mediaType")
+        }
     }
 
     /**
