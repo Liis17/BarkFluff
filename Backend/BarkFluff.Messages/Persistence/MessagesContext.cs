@@ -29,6 +29,8 @@ public class MessagesContext : DbContext
 
     public DbSet<FederatedReadState> FederatedReadStates { get; set; }
 
+    public DbSet<ChatDraft> ChatDrafts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
@@ -39,6 +41,7 @@ public class MessagesContext : DbContext
         modelBuilder.ApplyConfiguration(new PrivateChatReadStateConfiguration());
         modelBuilder.ApplyConfiguration(new FederatedMessageEventConfiguration());
         modelBuilder.ApplyConfiguration(new FederatedReadStateConfiguration());
+        modelBuilder.ApplyConfiguration(new ChatDraftConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

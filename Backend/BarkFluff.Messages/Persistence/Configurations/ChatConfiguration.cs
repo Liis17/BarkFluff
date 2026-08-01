@@ -21,6 +21,8 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 
         builder.Ignore(x => x.PrivateInviterUserId);
 
+        builder.Ignore(x => x.HasDraft);
+
         builder.Property(x => x.Type)
             .HasDefaultValue(ChatType.Regular);
 

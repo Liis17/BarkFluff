@@ -39,6 +39,7 @@ public class ListChatsCommandHandlerTests
             _h.ChatsStorage,
             Mock.Of<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
             _chatCache,
+            _h.ChatDraftsStorage,
             _usersClient.Object,
             _filesClient.Object,
             TestHelper.CreateLogger<ListChatsCommandHandler>());
@@ -67,6 +68,19 @@ public class ListChatsCommandHandlerTests
         var result = await handler.Handle(new ListChatsCommand { Skip = 0, Size = 10 }, CancellationToken.None);
 
         result.Chats.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Handle_MarksOnlyCurrentUsersRegularChatWithDraft()
+    {
+        var chat = await _h.SeedChat(memberUserIds: [1, 2]);
+        await _h.SeedMessage(chat.Id, 1, "hello");
+        await _h.ChatDraftsStorage.UpsertAsync(chat.Id, 1, "Черновик", null);
+        await _h.ChatDraftsStorage.UpsertAsync(chat.Id, 2, "Чужой черновик", null);
+
+        var result = await CreateHandler(1).Handle(new ListChatsCommand { Skip = 0, Size = 10 }, CancellationToken.None);
+
+        result.Chats.Should().ContainSingle().Which.HasDraft.Should().BeTrue();
     }
 
     [Fact]
