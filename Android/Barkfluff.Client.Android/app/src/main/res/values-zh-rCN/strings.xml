@@ -563,6 +563,8 @@
     <string name="profile_tab_media">媒体</string>
     <string name="profile_tab_voice">语音</string>
     <string name="profile_no_voice">没有语音消息</string>
+    <string name="profile_files_search_hint">搜索文件</string>
+    <string name="profile_files_not_found">未找到文件</string>
     <string name="profile_copied">已复制</string>
     <string name="group_online_count">%1$d 名成员 · %2$d 在线</string>
     <string name="group_members_count">%1$d 名成员</string>
