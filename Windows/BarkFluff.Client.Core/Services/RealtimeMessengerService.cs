@@ -1,3 +1,4 @@
+using BarkFluff.Client.Core.Infrastructure.Realtime;
 using BarkFluff.WebApi.Core.MessengerData;
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
@@ -77,79 +78,47 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
         _lifecycleLock.Dispose();
     }
 
-    private async Task ListenNewMessagesAsync(GlobalParam parameters, CancellationToken cancellationToken)
-    {
-        var (error, stream) = await _webApi.JustUpdate(parameters, cancellationToken);
-        if (!error.IsSuccess || stream is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await foreach (var update in stream.WithCancellation(cancellationToken))
+    private Task ListenNewMessagesAsync(GlobalParam parameters, CancellationToken cancellationToken) =>
+        StreamRetryLoop.RunAsync(
+            async token =>
             {
-                if (update.Message is null)
+                var (error, stream) = await _webApi.JustUpdate(parameters, token);
+                return error.IsSuccess ? stream : null;
+            },
+            update =>
+            {
+                if (update.Message is not null)
                 {
-                    continue;
+                    MessageReceived?.Invoke(this, new IncomingMessage(update.ChatId, WebApiClient.MapEventMessage(update.Message, update.ChatId)));
                 }
+            },
+            onConnectedChanged: null,
+            StreamRetryLoop.Backoff,
+            cancellationToken);
 
-                MessageReceived?.Invoke(this, new IncomingMessage(update.ChatId, WebApiClient.MapEventMessage(update.Message, update.ChatId)));
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception)
-        {
-        }
-    }
-
-    private async Task ListenMessageReadsAsync(GlobalParam parameters, CancellationToken cancellationToken)
-    {
-        var (error, stream) = await _webApi.SubscribeToReadReceipts(parameters, cancellationToken);
-        if (!error.IsSuccess || stream is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await foreach (var update in stream.WithCancellation(cancellationToken))
+    private Task ListenMessageReadsAsync(GlobalParam parameters, CancellationToken cancellationToken) =>
+        StreamRetryLoop.RunAsync(
+            async token =>
             {
-                MessageRead?.Invoke(this, new MessageReadReceipt(update.ChatId, update.MessageId, update.NewReadBy.ToArray()));
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception)
-        {
-        }
-    }
+                var (error, stream) = await _webApi.SubscribeToReadReceipts(parameters, token);
+                return error.IsSuccess ? stream : null;
+            },
+            update => MessageRead?.Invoke(this, new MessageReadReceipt(update.ChatId, update.MessageId, update.NewReadBy.ToArray())),
+            onConnectedChanged: null,
+            StreamRetryLoop.Backoff,
+            cancellationToken);
 
-    private async Task ListenPrivateMessageReadsAsync(GlobalParam parameters, CancellationToken cancellationToken)
-    {
-        var (error, stream) = await _webApi.SubscribeToPrivateMessagesRead(parameters, cancellationToken);
-        if (!error.IsSuccess || stream is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await foreach (var update in stream.WithCancellation(cancellationToken))
+    private Task ListenPrivateMessageReadsAsync(GlobalParam parameters, CancellationToken cancellationToken) =>
+        StreamRetryLoop.RunAsync(
+            async token =>
             {
-                PrivateMessageRead?.Invoke(this, new PrivateMessageReadReceipt(update.ChatId, update.UserId, update.LastReadMessageId));
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception)
-        {
-        }
-    }
+                var (error, stream) = await _webApi.SubscribeToPrivateMessagesRead(parameters, token);
+                return error.IsSuccess ? stream : null;
+            },
+            update => PrivateMessageRead?.Invoke(this, new PrivateMessageReadReceipt(update.ChatId, update.UserId, update.LastReadMessageId)),
+            onConnectedChanged: null,
+            StreamRetryLoop.Backoff,
+            cancellationToken);
 
     private async Task StopCoreAsync()
     {
