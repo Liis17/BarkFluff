@@ -1,3 +1,4 @@
+using BarkFluff.Client.Core.Infrastructure.Realtime;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.WebApi.Core.MessengerData;
 
@@ -61,16 +62,20 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
                 if (changeError.IsSuccess)
                 {
                     await ApplySnapshotAsync(requested, parameters);
+                    return;
                 }
 
-                return;
+                // Цикл переподключения живёт и при оборванном стриме, поэтому непустой _statusTask
+                // больше не означает подписку на сервере — менять в ней нечего. Пересоздаём цикл,
+                // иначе новый набор пользователей ждал бы следующего обрыва.
+                await StopCoreAsync();
             }
 
+            // Только после StopCoreAsync: он обнуляет набор наблюдаемых.
             _watchedUserIds = requested;
             _cancellationTokenSource = new CancellationTokenSource();
-            _statusTask = ListenOnlineStatusesAsync(requested, parameters, _cancellationTokenSource.Token);
+            _statusTask = ListenOnlineStatusesAsync(parameters, _cancellationTokenSource.Token);
             _keepAliveTask = KeepAliveAsync(parameters, _cancellationTokenSource.Token);
-            await ApplySnapshotAsync(requested, parameters);
         }
         finally
         {
@@ -138,28 +143,27 @@ public sealed class OnlinePresenceService : IOnlinePresenceService
         PresenceChanged?.Invoke(this, presence);
     }
 
-    private async Task ListenOnlineStatusesAsync(long[] userIds, GlobalParam parameters, CancellationToken cancellationToken)
-    {
-        var (error, stream) = await _webApi.SubscribeToOnlineStatus([.. userIds], parameters, cancellationToken);
-        if (!error.IsSuccess || stream is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await foreach (var status in stream.WithCancellation(cancellationToken))
+    private Task ListenOnlineStatusesAsync(GlobalParam parameters, CancellationToken cancellationToken) =>
+        StreamRetryLoop.RunAsync(
+            async token =>
             {
-                Publish(status);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception)
-        {
-        }
-    }
+                // Набор читается на каждой попытке: пока связи не было, список чатов мог смениться.
+                var userIds = _watchedUserIds;
+                var (error, stream) = await _webApi.SubscribeToOnlineStatus([.. userIds], parameters, token);
+                if (!error.IsSuccess || stream is null)
+                {
+                    return null;
+                }
+
+                // Снимок нужен после каждого подключения, а не только после первого: стрим отдаёт
+                // одни изменения, и сменившиеся за время обрыва статусы иначе не догнать.
+                await ApplySnapshotAsync(userIds, parameters);
+                return stream;
+            },
+            Publish,
+            onConnectedChanged: null,
+            StreamRetryLoop.Backoff,
+            cancellationToken);
 
     private async Task KeepAliveAsync(GlobalParam parameters, CancellationToken cancellationToken)
     {
