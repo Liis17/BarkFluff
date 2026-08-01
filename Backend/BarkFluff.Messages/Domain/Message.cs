@@ -31,4 +31,15 @@ public class Message
     public Guid? FederatedId { get; set; }
 
     public Guid? SenderUuid { get; set; }
+
+    public void ClearContent()
+    {
+        if (Content is null)
+        {
+            return;
+        }
+
+        Content.Text = string.Empty;
+        Content.Attachments?.Clear();
+    }
 }

@@ -115,6 +115,7 @@ public class ApplyFederatedDeleteCommandHandler : IRequestHandler<ApplyFederated
         }
 
         message.IsDeleted = true;
+        message.ClearContent();
         message.LastChangeAt = originTs;
         await _messagesStorage.SaveChangesAsync();
 
