@@ -266,6 +266,11 @@ UpgradeLog*.htm
 ServiceFabricBackup/
 *.rptproj.bak
 
+# Runtime data bind-mounted by docker/backend/docker-compose-dev-backend.yml
+/docker/backend/admindata/
+/docker/backend/data/
+/docker/backend/backups/
+
 # SQL Server files
 *.mdf
 *.ldf
