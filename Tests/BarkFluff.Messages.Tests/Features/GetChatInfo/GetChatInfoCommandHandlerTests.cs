@@ -21,6 +21,13 @@ public class GetChatInfoCommandHandlerTests
         _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
         _cacheMock = new Mock<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
         _chatCache = new ChatCache(_cacheMock.Object, TestHelper.CreateLogger<ChatCache>());
+        _usersClient
+            .Setup(client => client.GetMutedChatIdsAsync(
+                It.IsAny<GetMutedChatIdsRequest>(),
+                null,
+                null,
+                It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncCall(new GetMutedChatIdsResponse()));
     }
 
     private GetChatInfoCommandHandler CreateHandler(long userId)
@@ -117,5 +124,15 @@ public class GetChatInfoCommandHandlerTests
     {
         _cacheMock.Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))
             .ReturnsAsync(value != null ? System.Text.Encoding.UTF8.GetBytes(value) : null);
+    }
+
+    private static AsyncUnaryCall<TResponse> CreateAsyncCall<TResponse>(TResponse response)
+    {
+        return new AsyncUnaryCall<TResponse>(
+            Task.FromResult(response),
+            Task.FromResult(new Metadata()),
+            () => Status.DefaultSuccess,
+            () => new Metadata(),
+            () => { });
     }
 }

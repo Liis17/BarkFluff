@@ -87,6 +87,8 @@ public class CreatePrivateChatCommandHandler : IRequestHandler<CreatePrivateChat
             return new CreatePrivateChatResponse { Chat = creation.Chat.ToGrpc(), Created = false };
         }
 
+        await _inviteStore.SetAsync(creation.Chat.Id, request.PeerUserId);
+
         var invitedAt = DateTime.UtcNow;
         await _queueSender.SendInvite(
             creation.Chat.Id,
