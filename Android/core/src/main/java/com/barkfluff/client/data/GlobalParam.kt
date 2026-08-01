@@ -219,21 +219,25 @@ class GlobalParam(private val context: Context) {
             ?.mapNotNull { item ->
                 val delimiter = item.indexOf('|')
                 if (delimiter > 0 && delimiter < item.lastIndex) {
-                    item.substring(0, delimiter) to item.substring(delimiter + 1)
+                    canonicalChatId(item.substring(0, delimiter)) to item.substring(delimiter + 1)
                 } else null
             }
             ?.toMap()
             ?: emptyMap()
         set(value) = sharedPreferences.edit()
-            .putStringSet(KEY_CHAT_BACKGROUND_OVERRIDES, value.map { (chatId, fileId) -> "$chatId|$fileId" }.toSet())
+            .putStringSet(
+                KEY_CHAT_BACKGROUND_OVERRIDES,
+                value.map { (chatId, fileId) -> "${canonicalChatId(chatId)}|$fileId" }.toSet()
+            )
             .apply()
 
     fun chatBackgroundFileIdFor(chatId: String): String =
-        chatBackgroundOverrides[chatId] ?: chatBackgroundFileId
+        chatBackgroundOverrides[canonicalChatId(chatId)] ?: chatBackgroundFileId
 
     fun setChatBackgroundOverride(chatId: String, fileId: String) {
         val updated = chatBackgroundOverrides.toMutableMap()
-        if (fileId.isBlank()) updated.remove(chatId) else updated[chatId] = fileId
+        val key = canonicalChatId(chatId)
+        if (fileId.isBlank()) updated.remove(key) else updated[key] = fileId
         chatBackgroundOverrides = updated
     }
 
@@ -241,6 +245,9 @@ class GlobalParam(private val context: Context) {
         chatBackgroundFileId = globalFileId
         chatBackgroundOverrides = overrides
     }
+
+    private fun canonicalChatId(chatId: String): String =
+        runCatching { UUID.fromString(chatId).toString() }.getOrDefault(chatId)
 
     /** Применять ли блюр к фону чата. */
     var chatBackgroundBlur: Boolean

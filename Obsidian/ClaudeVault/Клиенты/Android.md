@@ -485,7 +485,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 ## Раздел «Персонализация» — локальные параметры
 
-Выбранное изображение фона синхронизируется через [[Backend/Users]]: при login и Splash `GrpcManager.getUserSettings()` загружается параллельно с профилем и обновляет кэш `GlobalParam`. `chatBackgroundFileId` — глобальный фон, `chatBackgroundOverrides` — map `chatId → fileId`; `ChatActivity` выбирает override, иначе глобальное значение. Старые локальные выбранные изображения намеренно заменяются серверным ответом. Blur, затемнение и скругление пузырей остаются локальными.
+Выбранное изображение фона синхронизируется через [[Backend/Users]]: при login и Splash `GrpcManager.getUserSettings()` загружается параллельно с профилем и обновляет кэш `GlobalParam`. `ChatActivity` повторяет запрос при открытии и возврате: это покрывает быстрый offline-start, в котором Splash сразу открывает сохранённый список чатов. `chatBackgroundFileId` — глобальный фон, `chatBackgroundOverrides` — map `chatId → fileId`; UUID-ключи нормализуются, а `ChatActivity` выбирает override, иначе глобальное значение. Устаревшая асинхронная загрузка глобального изображения не может перерисовать уже полученный override. Старые локальные выбранные изображения намеренно заменяются серверным ответом. Blur, затемнение и скругление пузырей остаются локальными.
 
 `PersonalizationSettingsActivity` устанавливает глобальный фон через `SetGlobalChatBackground`. В `UserProfileActivity` и `GroupInfoActivity` доступен selector фона конкретного чата: «Использовать глобальный фон» удаляет override через `SetChatBackground(chatId, "")`; прочие пункты используют каталог `GetPersonalization`.
 
