@@ -171,6 +171,11 @@
         });
     }
 
+    function chatTabTitle(user) {
+        var name = ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || 'Пользователь';
+        return 'Чат • ' + name;
+    }
+
     // ========== CHAT LIST ==========
 
     function loadChats(reset) {
@@ -415,11 +420,8 @@
                 if (peerId) {
                     getUser(peerId).then(function (peer) {
                         if (chatId !== currentChatId || !peer) return;
-                        var label = peer.username
-                            ? 'Чат с @' + peer.username
-                            : 'Чат с ' + (((peer.firstName || '') + ' ' + (peer.lastName || '')).trim() || 'пользователем');
                         var fav = peer.profilePicturePreview || peer.profilePicture || info.picture || null;
-                        setChatTabContext(label, fav);
+                        setChatTabContext(chatTabTitle(peer), fav);
 
                         currentChatPeerIsBot = !!peer.isBot;
                         setChatCallButtonsVisible(!currentChatPeerIsBot);
@@ -1200,6 +1202,14 @@
         setChatCallButtonsVisible(false);
         resetChatTabContext();
 
+        var privatePeer = (chat.members || []).find(function (member) { return member.userId !== myUserId; });
+        if (privatePeer) {
+            getUser(privatePeer.userId).then(function (peer) {
+                if (currentChatId !== chat.id || !peer) return;
+                setChatTabContext(chatTabTitle(peer), peer.profilePicturePreview || peer.profilePicture || chat.picture || null);
+            }).catch(function () {});
+        }
+
         chatHeaderName.textContent = '\u{1F512} ' + (chat.title || 'Приватный чат');
         if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
         else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
@@ -1288,6 +1298,7 @@
         messagesArea.parentElement.classList.remove('visible');
         inputBar.classList.remove('visible');
         chatEmpty.style.display = '';
+        resetChatTabContext();
     }
 
     function loadPrivateMessages(chat) {
@@ -1420,18 +1431,61 @@
 
     // ========== TITLE UNREAD BADGE ==========
 
-    var defaultBaseTitle = 'BarkFluff — Мессенджер';
+    var defaultBaseTitle = 'Мессенджер';
     var baseTitle = defaultBaseTitle;
 
     var faviconEl = document.getElementById('favicon');
     var defaultFaviconHref = faviconEl ? faviconEl.getAttribute('href') : '/favicon.ico';
+    var faviconRequestId = 0;
 
-    function setFavicon(href) {
+    function applyFavicon(href) {
         if (!faviconEl) return;
         faviconEl.setAttribute('href', href || defaultFaviconHref);
-        // Snapshot type — для произвольных URL не указываем MIME, иначе SVG/PNG не отрендерится
         if (href) faviconEl.removeAttribute('type');
         else faviconEl.setAttribute('type', 'image/x-icon');
+    }
+
+    function setFavicon(href) {
+        var requestId = ++faviconRequestId;
+        if (!href) {
+            applyFavicon(null);
+            return;
+        }
+
+        var image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = function () {
+            if (requestId !== faviconRequestId) return;
+            try {
+                var sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+                var canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                var context = canvas.getContext('2d');
+                if (!sourceSize || !context) throw new Error('invalid_avatar');
+                context.beginPath();
+                context.arc(32, 32, 32, 0, Math.PI * 2);
+                context.clip();
+                context.drawImage(
+                    image,
+                    (image.naturalWidth - sourceSize) / 2,
+                    (image.naturalHeight - sourceSize) / 2,
+                    sourceSize,
+                    sourceSize,
+                    0,
+                    0,
+                    64,
+                    64
+                );
+                applyFavicon(canvas.toDataURL('image/png'));
+            } catch (e) {
+                applyFavicon(href);
+            }
+        };
+        image.onerror = function () {
+            if (requestId === faviconRequestId) applyFavicon(href);
+        };
+        image.src = href;
     }
 
     function resetChatTabContext() {
