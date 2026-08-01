@@ -158,18 +158,12 @@ class ChatAdapter(
                     text.isNotBlank() -> MarkdownRenderer.strip(text)
                     else -> "Вложение"
                 }
-                binding.lastMessage.setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(binding.lastMessage, com.google.android.material.R.attr.colorOnSurfaceVariant)
-                )
                 binding.lastMessage.visibility = View.VISIBLE
                 binding.messageTime.text = formatTime(lastMessage.sentAt)
                 binding.messageTime.visibility = View.VISIBLE
             } else {
                 binding.privatePreviewSkeleton.visibility = View.GONE
                 binding.lastMessage.text = "Нет сообщений"
-                binding.lastMessage.setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(binding.lastMessage, com.google.android.material.R.attr.colorOnSurfaceVariant)
-                )
                 binding.lastMessage.visibility = View.VISIBLE
                 binding.messageTime.visibility = View.GONE
             }

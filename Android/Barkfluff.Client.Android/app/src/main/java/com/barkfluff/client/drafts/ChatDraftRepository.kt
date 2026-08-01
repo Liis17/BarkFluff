@@ -22,37 +22,48 @@ class ChatDraftRepository(
     private val globalParam = GlobalParam(context)
     private val remote = ChatRepository(context.applicationContext, grpcManager)
     private val mutex = Mutex()
+    private val networkMutex = Mutex()
     private var loadedScope: CacheScope? = null
     private val entries = linkedMapOf<String, LocalChatDraft>()
     private val _drafts = MutableStateFlow<Map<String, LocalChatDraft>>(emptyMap())
     val drafts: StateFlow<Map<String, LocalChatDraft>> = _drafts.asStateFlow()
 
-    suspend fun restore(chatId: String): LocalChatDraft? = mutex.withLock {
-        val scope = ensureLoaded() ?: return@withLock null
-        entries[chatId]?.takeIf { it.syncState != ChatDraftSyncState.SYNCED }?.let {
-            return@withLock it.takeIf(LocalChatDraft::isActive)
+    suspend fun restore(chatId: String): LocalChatDraft? {
+        val known = mutex.withLock {
+            ensureLoaded() ?: return null
+            entries[chatId]?.takeIf { it.syncState != ChatDraftSyncState.SYNCED }?.let {
+                return it.takeIf(LocalChatDraft::isActive)
+            }
+            entries[chatId]
         }
 
-        val remoteResult = remote.getChatDraft(chatId)
-        if (remoteResult.isFailure) return@withLock null
-        val remoteDraft = remoteResult.getOrNull()
-        if (remoteDraft == null) {
-            entries.remove(chatId)
-            cache.deleteChatDraft(scope, chatId)
+        val remoteResult = networkMutex.withLock { remote.getChatDraft(chatId) }
+        return mutex.withLock {
+            val scope = ensureLoaded() ?: return@withLock null
+            val current = entries[chatId]
+            if (current != known) {
+                return@withLock current?.takeIf(LocalChatDraft::isActive)
+            }
+            if (remoteResult.isFailure) return@withLock entries[chatId]?.takeIf(LocalChatDraft::isActive)
+            val remoteDraft = remoteResult.getOrNull()
+            if (remoteDraft == null) {
+                entries.remove(chatId)
+                cache.deleteChatDraft(scope, chatId)
+                publish()
+                return@withLock null
+            }
+            val restored = LocalChatDraft(
+                text = remoteDraft.text,
+                replyToMessageId = remoteDraft.replyToMessageId,
+                revision = remoteDraft.revision,
+                generation = 1L,
+                syncState = ChatDraftSyncState.SYNCED
+            )
+            entries[chatId] = restored
+            persist(scope, chatId, restored)
             publish()
-            return@withLock null
+            restored
         }
-        val restored = LocalChatDraft(
-            text = remoteDraft.text,
-            replyToMessageId = remoteDraft.replyToMessageId,
-            revision = remoteDraft.revision,
-            generation = 1L,
-            syncState = ChatDraftSyncState.SYNCED
-        )
-        entries[chatId] = restored
-        persist(scope, chatId, restored)
-        publish()
-        restored
     }
 
     suspend fun edit(chatId: String, text: String, replyToMessageId: Long): LocalChatDraft? = mutex.withLock {
@@ -64,32 +75,45 @@ class ChatDraftRepository(
         next
     }
 
-    suspend fun flush(chatId: String) = mutex.withLock {
-        val scope = ensureLoaded() ?: return@withLock
-        val snapshot = entries[chatId] ?: return@withLock
+    suspend fun flush(chatId: String) {
+        val pending = mutex.withLock {
+            val scope = ensureLoaded() ?: return@withLock null
+            entries[chatId]?.let { scope to it }
+        } ?: return
+        val (scope, snapshot) = pending
         when (snapshot.syncState) {
             ChatDraftSyncState.SYNCED -> Unit
             ChatDraftSyncState.DIRTY -> {
-                val saved = remote.upsertChatDraft(chatId, snapshot.text, snapshot.replyToMessageId).getOrNull()
-                    ?: return@withLock
-                val current = entries[chatId] ?: return@withLock
-                val synced = ChatDraftJournal.markSynced(current, snapshot.generation, saved.revision)
-                entries[chatId] = synced
-                persist(scope, chatId, synced)
-                publish()
+                val saved = networkMutex.withLock {
+                    remote.upsertChatDraft(chatId, snapshot.text, snapshot.replyToMessageId)
+                }.getOrNull()
+                    ?: return
+                mutex.withLock {
+                    val current = entries[chatId] ?: return@withLock
+                    val synced = ChatDraftJournal.markSynced(current, snapshot.generation, saved.revision)
+                    entries[chatId] = synced
+                    persist(scope, chatId, synced)
+                    publish()
+                }
             }
             ChatDraftSyncState.DELETE_PENDING -> {
                 if (snapshot.revision.isBlank()) {
-                    entries.remove(chatId)
-                    cache.deleteChatDraft(scope, chatId)
-                    publish()
-                    return@withLock
+                    mutex.withLock {
+                        if (entries[chatId]?.generation == snapshot.generation) {
+                            entries.remove(chatId)
+                            cache.deleteChatDraft(scope, chatId)
+                            publish()
+                        }
+                    }
+                    return
                 }
-                val deleted = remote.deleteChatDraft(chatId, snapshot.revision).getOrNull() ?: return@withLock
-                if (deleted && entries[chatId]?.generation == snapshot.generation) {
-                    entries.remove(chatId)
-                    cache.deleteChatDraft(scope, chatId)
-                    publish()
+                val deleted = networkMutex.withLock { remote.deleteChatDraft(chatId, snapshot.revision) }
+                if (deleted.isSuccess) mutex.withLock {
+                    if (entries[chatId]?.generation == snapshot.generation) {
+                        entries.remove(chatId)
+                        cache.deleteChatDraft(scope, chatId)
+                        publish()
+                    }
                 }
             }
         }
@@ -106,11 +130,22 @@ class ChatDraftRepository(
     suspend fun loadLocal() = mutex.withLock { ensureLoaded() }
 
     suspend fun clearAfterSent(chatId: String, sentGeneration: Long) {
+        val pending = mutex.withLock {
+            val scope = ensureLoaded() ?: return@withLock null
+            val current = entries[chatId] ?: return@withLock null
+            if (current.generation != sentGeneration) return@withLock null
+            scope to current
+        } ?: return
+        val (scope, sent) = pending
+        val synced = if (sent.syncState == ChatDraftSyncState.DIRTY) {
+            val saved = networkMutex.withLock {
+                remote.upsertChatDraft(chatId, sent.text, sent.replyToMessageId)
+            }.getOrNull() ?: return
+            ChatDraftJournal.markSynced(sent, sent.generation, saved.revision)
+        } else sent
         mutex.withLock {
-            val scope = ensureLoaded() ?: return@withLock
-            val current = entries[chatId] ?: return@withLock
-            if (current.generation != sentGeneration) return@withLock
-            val tombstone = ChatDraftJournal.edit(current, "", 0L)
+            if (entries[chatId]?.generation != sentGeneration) return@withLock
+            val tombstone = ChatDraftJournal.edit(synced, "", 0L)
             entries[chatId] = tombstone
             persist(scope, chatId, tombstone)
             publish()
