@@ -4,9 +4,9 @@ var BarkFluffBundle = (() => {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
 
-  // node_modules/google-protobuf/google-protobuf.js
+  // scripts/node_modules/google-protobuf/google-protobuf.js
   var require_google_protobuf = __commonJS({
-    "node_modules/google-protobuf/google-protobuf.js"(exports, module) {
+    "scripts/node_modules/google-protobuf/google-protobuf.js"(exports, module) {
       var $jscomp = $jscomp || {};
       $jscomp.scope = {};
       $jscomp.findInternal = function(a2, b2, c2) {
@@ -6391,9 +6391,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // node_modules/grpc-web/index.js
+  // scripts/node_modules/grpc-web/index.js
   var require_grpc_web = __commonJS({
-    "node_modules/grpc-web/index.js"(exports2, module2) {
+    "scripts/node_modules/grpc-web/index.js"(exports2, module2) {
       var n;
       function aa(a2) {
         var b2 = 0;
@@ -8284,9 +8284,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // node_modules/google-protobuf/google/protobuf/timestamp_pb.js
+  // scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js
   var require_timestamp_pb = __commonJS({
-    "node_modules/google-protobuf/google/protobuf/timestamp_pb.js"(exports2) {
+    "scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -8406,9 +8406,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/shared_pb.js
+  // scripts/.proto-tmp/shared_pb.js
   var require_shared_pb = __commonJS({
-    ".proto-tmp/shared_pb.js"(exports2) {
+    "scripts/.proto-tmp/shared_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -10178,9 +10178,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/identity_api_pb.js
+  // scripts/.proto-tmp/identity_api_pb.js
   var require_identity_api_pb = __commonJS({
-    ".proto-tmp/identity_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/identity_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -14122,9 +14122,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/identity_api_grpc_web_pb.js
+  // scripts/.proto-tmp/identity_api_grpc_web_pb.js
   var require_identity_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/identity_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/identity_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -14841,9 +14841,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/users_api_pb.js
+  // scripts/.proto-tmp/users_api_pb.js
   var require_users_api_pb = __commonJS({
-    ".proto-tmp/users_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/users_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -14876,6 +14876,8 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.CheckExistUsernameRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.CheckRemoteAvatarRefRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.CheckRemoteAvatarRefResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ClearFirebaseTokenRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.ClearFirebaseTokenResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ConfirmUserRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ConfirmUserResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.CreateBadgeRequest", null, global2);
@@ -14959,6 +14961,7 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.PrekeyBundle", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.PrivacySettings", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ProfileFieldVisibility", null, global2);
+      goog2.exportSymbol("proto.barkfluff.users.PushPlatform", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RegisterDeviceRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RegisterDeviceResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.RegisterPrekeyBundleRequest", null, global2);
@@ -15634,6 +15637,20 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.users.SetFirebaseTokenResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.SetFirebaseTokenResponse.displayName = "proto.barkfluff.users.SetFirebaseTokenResponse";
+      }
+      proto.barkfluff.users.ClearFirebaseTokenRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ClearFirebaseTokenRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ClearFirebaseTokenRequest.displayName = "proto.barkfluff.users.ClearFirebaseTokenRequest";
+      }
+      proto.barkfluff.users.ClearFirebaseTokenResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.users.ClearFirebaseTokenResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.users.ClearFirebaseTokenResponse.displayName = "proto.barkfluff.users.ClearFirebaseTokenResponse";
       }
       proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest.repeatedFields_, null);
@@ -23654,7 +23671,8 @@ var BarkFluffBundle = (() => {
         };
         proto.barkfluff.users.SetFirebaseTokenRequest.toObject = function(includeInstance, msg) {
           var f2, obj = {
-            firebaseToken: jspb2.Message.getFieldWithDefault(msg, 1, "")
+            firebaseToken: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            pushPlatform: jspb2.Message.getFieldWithDefault(msg, 2, 0)
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -23681,6 +23699,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setFirebaseToken(value);
               break;
+            case 2:
+              var value = (
+                /** @type {!proto.barkfluff.users.PushPlatform} */
+                reader.readEnum()
+              );
+              msg.setPushPlatform(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -23702,6 +23727,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getPushPlatform();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            2,
+            f2
+          );
+        }
       };
       proto.barkfluff.users.SetFirebaseTokenRequest.prototype.getFirebaseToken = function() {
         return (
@@ -23711,6 +23743,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.users.SetFirebaseTokenRequest.prototype.setFirebaseToken = function(value) {
         return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.users.SetFirebaseTokenRequest.prototype.getPushPlatform = function() {
+        return (
+          /** @type {!proto.barkfluff.users.PushPlatform} */
+          jspb2.Message.getFieldWithDefault(this, 2, 0)
+        );
+      };
+      proto.barkfluff.users.SetFirebaseTokenRequest.prototype.setPushPlatform = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 2, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.SetFirebaseTokenResponse.prototype.toObject = function(opt_includeInstance) {
@@ -23749,6 +23790,84 @@ var BarkFluffBundle = (() => {
         return writer.getResultBuffer();
       };
       proto.barkfluff.users.SetFirebaseTokenResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ClearFirebaseTokenRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ClearFirebaseTokenRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ClearFirebaseTokenRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ClearFirebaseTokenRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ClearFirebaseTokenRequest();
+        return proto.barkfluff.users.ClearFirebaseTokenRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ClearFirebaseTokenRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ClearFirebaseTokenRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ClearFirebaseTokenRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ClearFirebaseTokenRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.users.ClearFirebaseTokenResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.users.ClearFirebaseTokenResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.users.ClearFirebaseTokenResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.users.ClearFirebaseTokenResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.users.ClearFirebaseTokenResponse();
+        return proto.barkfluff.users.ClearFirebaseTokenResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.users.ClearFirebaseTokenResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.users.ClearFirebaseTokenResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.users.ClearFirebaseTokenResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.users.ClearFirebaseTokenResponse.serializeBinaryToWriter = function(message, writer) {
         var f2 = void 0;
       };
       proto.barkfluff.users.GetDevicesWithFirebaseTokensRequest.repeatedFields_ = [1];
@@ -24040,7 +24159,8 @@ var BarkFluffBundle = (() => {
           var f2, obj = {
             userId: jspb2.Message.getFieldWithDefault(msg, 1, 0),
             deviceId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
-            firebaseToken: jspb2.Message.getFieldWithDefault(msg, 3, "")
+            firebaseToken: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            pushPlatform: jspb2.Message.getFieldWithDefault(msg, 4, 0)
           };
           if (includeInstance) {
             obj.$jspbMessageInstance = msg;
@@ -24081,6 +24201,13 @@ var BarkFluffBundle = (() => {
               );
               msg.setFirebaseToken(value);
               break;
+            case 4:
+              var value = (
+                /** @type {!proto.barkfluff.users.PushPlatform} */
+                reader.readEnum()
+              );
+              msg.setPushPlatform(value);
+              break;
             default:
               reader.skipField();
               break;
@@ -24116,6 +24243,13 @@ var BarkFluffBundle = (() => {
             f2
           );
         }
+        f2 = message.getPushPlatform();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            4,
+            f2
+          );
+        }
       };
       proto.barkfluff.users.DeviceFirebaseToken.prototype.getUserId = function() {
         return (
@@ -24143,6 +24277,15 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.users.DeviceFirebaseToken.prototype.setFirebaseToken = function(value) {
         return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.users.DeviceFirebaseToken.prototype.getPushPlatform = function() {
+        return (
+          /** @type {!proto.barkfluff.users.PushPlatform} */
+          jspb2.Message.getFieldWithDefault(this, 4, 0)
+        );
+      };
+      proto.barkfluff.users.DeviceFirebaseToken.prototype.setPushPlatform = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 4, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.SetNotificationsEnabledRequest.prototype.toObject = function(opt_includeInstance) {
@@ -30718,6 +30861,11 @@ var BarkFluffBundle = (() => {
       proto.barkfluff.users.CheckRemoteAvatarRefResponse.prototype.setExists = function(value) {
         return jspb2.Message.setProto3BooleanField(this, 1, value);
       };
+      proto.barkfluff.users.PushPlatform = {
+        PUSH_PLATFORM_UNSPECIFIED: 0,
+        PUSH_PLATFORM_ANDROID: 1,
+        PUSH_PLATFORM_WEB: 2
+      };
       proto.barkfluff.users.ProfileFieldVisibility = {
         ALL: 0,
         FRIENDS: 1,
@@ -30727,9 +30875,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/users_api_grpc_web_pb.js
+  // scripts/.proto-tmp/users_api_grpc_web_pb.js
   var require_users_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/users_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/users_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -31181,6 +31329,37 @@ var BarkFluffBundle = (() => {
           request,
           metadata || {},
           methodDescriptor_UsersApi_SetFirebaseToken
+        );
+      };
+      var methodDescriptor_UsersApi_ClearFirebaseToken = new grpc.web.MethodDescriptor(
+        "/barkfluff.users.UsersApi/ClearFirebaseToken",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.users.ClearFirebaseTokenRequest,
+        proto2.barkfluff.users.ClearFirebaseTokenResponse,
+        /**
+         * @param {!proto.barkfluff.users.ClearFirebaseTokenRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.users.ClearFirebaseTokenResponse.deserializeBinary
+      );
+      proto2.barkfluff.users.UsersApiClient.prototype.clearFirebaseToken = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ClearFirebaseToken",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ClearFirebaseToken,
+          callback
+        );
+      };
+      proto2.barkfluff.users.UsersApiPromiseClient.prototype.clearFirebaseToken = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.users.UsersApi/ClearFirebaseToken",
+          request,
+          metadata || {},
+          methodDescriptor_UsersApi_ClearFirebaseToken
         );
       };
       var methodDescriptor_UsersApi_SetNotificationsEnabled = new grpc.web.MethodDescriptor(
@@ -33214,9 +33393,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/messages_api_pb.js
+  // scripts/.proto-tmp/messages_api_pb.js
   var require_messages_api_pb = __commonJS({
-    ".proto-tmp/messages_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/messages_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -46046,9 +46225,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/messages_api_grpc_web_pb.js
+  // scripts/.proto-tmp/messages_api_grpc_web_pb.js
   var require_messages_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/messages_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/messages_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var shared_pb = require_shared_pb();
@@ -47634,9 +47813,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/files_api_pb.js
+  // scripts/.proto-tmp/files_api_pb.js
   var require_files_api_pb = __commonJS({
-    ".proto-tmp/files_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/files_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -53047,9 +53226,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/files_api_grpc_web_pb.js
+  // scripts/.proto-tmp/files_api_grpc_web_pb.js
   var require_files_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/files_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/files_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -53890,9 +54069,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/updates_api_pb.js
+  // scripts/.proto-tmp/updates_api_pb.js
   var require_updates_api_pb = __commonJS({
-    ".proto-tmp/updates_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/updates_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -56624,9 +56803,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/updates_api_grpc_web_pb.js
+  // scripts/.proto-tmp/updates_api_grpc_web_pb.js
   var require_updates_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/updates_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/updates_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -57130,9 +57309,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/onliner_api_pb.js
+  // scripts/.proto-tmp/onliner_api_pb.js
   var require_onliner_api_pb = __commonJS({
-    ".proto-tmp/onliner_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/onliner_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -58855,9 +59034,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/onliner_api_grpc_web_pb.js
+  // scripts/.proto-tmp/onliner_api_grpc_web_pb.js
   var require_onliner_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/onliner_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/onliner_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -59200,9 +59379,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/fast_auth_api_pb.js
+  // scripts/.proto-tmp/fast_auth_api_pb.js
   var require_fast_auth_api_pb = __commonJS({
-    ".proto-tmp/fast_auth_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/fast_auth_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -60553,9 +60732,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/fast_auth_api_grpc_web_pb.js
+  // scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js
   var require_fast_auth_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/fast_auth_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -60776,9 +60955,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/calls_api_pb.js
+  // scripts/.proto-tmp/calls_api_pb.js
   var require_calls_api_pb = __commonJS({
-    ".proto-tmp/calls_api_pb.js"(exports2) {
+    "scripts/.proto-tmp/calls_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -63797,9 +63976,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/calls_api_grpc_web_pb.js
+  // scripts/.proto-tmp/calls_api_grpc_web_pb.js
   var require_calls_api_grpc_web_pb = __commonJS({
-    ".proto-tmp/calls_api_grpc_web_pb.js"(exports2, module2) {
+    "scripts/.proto-tmp/calls_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -64100,9 +64279,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // .proto-tmp/index.js
+  // scripts/.proto-tmp/index.js
   var require_index = __commonJS({
-    ".proto-tmp/index.js"(exports2, module2) {
+    "scripts/.proto-tmp/index.js"(exports2, module2) {
       var jspb2 = require_google_protobuf();
       var grpcWeb = require_grpc_web();
       var sharedPb = require_shared_pb();

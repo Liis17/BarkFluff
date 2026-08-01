@@ -45,13 +45,20 @@ public class DismissPushConsumer : IConsumer<DismissPushEvent>
                 },
                 cancellationToken: context.CancellationToken);
 
-            var fcmTokens = tokensResponse.Tokens
+            var androidTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform != PushPlatform.Web)
+                .Select(t => t.FirebaseToken)
+                .Where(t => !string.IsNullOrEmpty(t))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var webTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform == PushPlatform.Web)
                 .Select(t => t.FirebaseToken)
                 .Where(t => !string.IsNullOrEmpty(t))
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
 
-            if (fcmTokens.Count == 0)
+            if (androidTokens.Count == 0 && webTokens.Count == 0)
             {
                 _logger.LogDebug(
                     "Нет устройств с Firebase токенами для UserId={UserId}, dismiss пропущен",
@@ -59,10 +66,21 @@ public class DismissPushConsumer : IConsumer<DismissPushEvent>
                 return;
             }
 
-            await _firebaseService.SendDismissBatchAsync(
-                fcmTokens,
-                message.ChatId.ToString(),
-                context.CancellationToken);
+            if (androidTokens.Count > 0)
+            {
+                await _firebaseService.SendDismissBatchAsync(
+                    androidTokens,
+                    message.ChatId.ToString(),
+                    context.CancellationToken);
+            }
+
+            if (webTokens.Count > 0)
+            {
+                await _firebaseService.SendWebDismissBatchAsync(
+                    webTokens,
+                    message.ChatId.ToString(),
+                    context.CancellationToken);
+            }
         }
         catch (Exception ex)
         {

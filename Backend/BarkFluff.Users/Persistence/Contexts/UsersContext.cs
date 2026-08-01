@@ -80,6 +80,10 @@ public class UsersContext : DbContext
             .HasForeignKey(ud => ud.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<UserDevice>()
+            .Property(ud => ud.PushPlatform)
+            .HasDefaultValue(DevicePushPlatform.Android);
+
         // Настройка связей для Privacy (1:1 с User, уникальный индекс UserId)
         modelBuilder.Entity<Privacy>()
             .HasOne(p => p.User)

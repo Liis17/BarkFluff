@@ -203,6 +203,32 @@ public class AdminBroadcastConsumerTests
     }
 
     [Fact]
+    public async Task Consume_WebToken_SendsNeutralWebBroadcast()
+    {
+        var consumer = CreateConsumer();
+        var context = CreateContext(new AdminBroadcastNotificationEvent { Title = "Title", Body = "Private body" });
+        SetupGetAllDevices(new DeviceFirebaseToken
+        {
+            UserId = 1,
+            FirebaseToken = "web-token",
+            PushPlatform = PushPlatform.Web
+        });
+
+        await consumer.Consume(context.Object);
+
+        _firebaseService.Verify(
+            f => f.SendWebAdminBroadcastBatchAsync(
+                It.Is<IReadOnlyList<string>>(tokens => tokens.SequenceEqual(new[] { "web-token" })),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _firebaseService.Verify(
+            f => f.SendAdminBroadcastBatchAsync(
+                It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task Consume_WithTargetDeviceIds_FetchesDevicesByIds()
     {
         var consumer = CreateConsumer();

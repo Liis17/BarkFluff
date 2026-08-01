@@ -19,6 +19,7 @@ using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.Devices.GetCurrentDevice;
 using BarkFluff.Users.Features.Devices.GetDevices;
 using BarkFluff.Users.Features.Devices.RenameDevice;
+using BarkFluff.Users.Features.Devices.ClearFirebaseToken;
 using BarkFluff.Users.Features.Devices.SetFirebaseToken;
 using BarkFluff.Users.Features.Devices.SetNotificationsEnabled;
 using BarkFluff.Users.Features.GetUser;
@@ -251,12 +252,22 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         _metrics.Increment("firebase_token_updates");
         var command = new SetFirebaseTokenCommand
         {
-            FirebaseToken = request.FirebaseToken
+            FirebaseToken = request.FirebaseToken,
+            PushPlatform = request.PushPlatform == PushPlatform.Web
+                ? BarkFluff.Users.Domain.DevicePushPlatform.Web
+                : BarkFluff.Users.Domain.DevicePushPlatform.Android
         };
 
         await _mediator.Send(command);
 
         return new SetFirebaseTokenResponse();
+    }
+
+    public override async Task<ClearFirebaseTokenResponse> ClearFirebaseToken(ClearFirebaseTokenRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("firebase_token_clears");
+        await _mediator.Send(new ClearFirebaseTokenCommand());
+        return new ClearFirebaseTokenResponse();
     }
 
     public override async Task<SetNotificationsEnabledResponse> SetNotificationsEnabled(SetNotificationsEnabledRequest request, ServerCallContext context)

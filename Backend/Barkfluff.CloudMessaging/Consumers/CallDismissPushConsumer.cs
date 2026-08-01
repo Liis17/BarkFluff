@@ -48,21 +48,38 @@ public class CallDismissPushConsumer : IConsumer<CallDismissPushEvent>
                 new GetDevicesWithFirebaseTokensRequest { UserIds = { message.RecipientUserIds } },
                 cancellationToken: context.CancellationToken);
 
-            var fcmTokens = tokensResponse.Tokens
+            var androidTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform != PushPlatform.Web)
+                .Select(t => t.FirebaseToken)
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToList();
+            var webTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform == PushPlatform.Web)
                 .Select(t => t.FirebaseToken)
                 .Where(t => !string.IsNullOrEmpty(t))
                 .ToList();
 
-            if (fcmTokens.Count == 0)
+            if (androidTokens.Count == 0 && webTokens.Count == 0)
             {
                 return;
             }
 
-            await _firebaseService.SendCallDismissBatchAsync(
-                fcmTokens,
-                message.CallId.ToString(),
-                message.Reason,
-                context.CancellationToken);
+            if (androidTokens.Count > 0)
+            {
+                await _firebaseService.SendCallDismissBatchAsync(
+                    androidTokens,
+                    message.CallId.ToString(),
+                    message.Reason,
+                    context.CancellationToken);
+            }
+
+            if (webTokens.Count > 0)
+            {
+                await _firebaseService.SendWebCallDismissBatchAsync(
+                    webTokens,
+                    message.CallId.ToString(),
+                    context.CancellationToken);
+            }
         }
         catch (Exception ex)
         {

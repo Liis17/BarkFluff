@@ -17,7 +17,7 @@ namespace BarkFluff.Users.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gin");
@@ -425,6 +425,11 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     b.Property<bool>("NotificationsEnabled")
                         .HasColumnType("boolean");
+
+                    b.Property<BarkFluff.Users.Domain.DevicePushPlatform>("PushPlatform")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(BarkFluff.Users.Domain.DevicePushPlatform.Android);
 
                     b.Property<string>("OperationSystem")
                         .HasColumnType("text");

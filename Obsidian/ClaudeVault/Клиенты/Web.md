@@ -142,3 +142,11 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - [[Backend/Calls]] — бэкенд звонков (LiveKit SFU), первый клиент которого — этот веб.
 - [[Backend/Updates]], [[Backend/Onliner]] — источники real-time стримов.
 - [[Архитектура]] — общий tech stack, XAuth.
+
+## PWA и web-push
+
+`Backend/BarkFluff.Web` устанавливается как PWA: `manifest.webmanifest`, иконки 192/512, `service-worker.js` и `offline.html` составляют только offline-оболочку. Service worker precache'ит HTML/локальные JS, CSS и иконки, для навигации использует network-first с fallback на offline-страницу. gRPC-Web, API, presigned URL, чаты, сообщения и вложения не кэшируются.
+
+`BF.push` регистрирует worker после авторизации, но не запрашивает разрешение сам: пользователь включает уведомления отдельным переключателем в настройках. После явного согласия модуль получает FCM Web token с VAPID key и передаёт его в `UsersApi.SetFirebaseToken(..., WEB)`; при выключении или logout вызывает `ClearFirebaseToken` и удаляет локальный Firebase token. Если браузер запрещает уведомления либо не поддерживает API, UI показывает соответствующее состояние. Install CTA показывается только после `beforeinstallprompt` (Safari/iOS не обещает background-push в этой версии).
+
+Видимая вкладка оставляет уведомление текущему realtime-клиенту; скрытая или закрытая — service worker через FCM. Click фокусирует существующий клиент либо открывает `/messenger?chat=...`; `main.js` открывает чат после загрузки списка. Worker группирует уведомления tag'ом чата/звонка и закрывает их по dismiss-событию. Секретные сообщения, E2E-инвайты, звонки и админ-рассылки не раскрывают содержимое: Web получает только технические ID, имя/аватар отправителя там, где они нужны.

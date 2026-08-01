@@ -79,6 +79,8 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Устройства**: `RegisterDevice` — upsert по DeviceId (Guid), обновляет все поля + `AuthorizedAt` (вызывается при логине). Хранит AppName, OS, Location, FirebaseDeviceToken. `UpdateDeviceAppInfo` — лёгкое обновление только `OriginalName` + `AppName` при refresh access-токена; пишет в БД только если значения изменились, `AuthorizedAt`/OS/Location не трогает (`DevicesStorage.UpdateDeviceAppInfoIfChanged`).
 
+FCM-привязка также хранит `UserDevice.PushPlatform` (`Android` или `Web`). Миграция задаёт existing token-ам `Android`, а web-клиент обязан передавать `WEB` в `SetFirebaseToken`. `ClearFirebaseToken` очищает токен **текущего** устройства по `UserContext.DeviceId`; применяется при выключении browser-push и logout. Server-запросы токенов возвращают платформу, чтобы [[Backend/CloudMessaging]] выбирал безопасный Web payload.
+
 **Prekey-bundle (X3DH)**: один bundle на устройство (1:1 с `UserDevice`, PK = DeviceId). Содержит `IdentityPubkey` (Ed25519, постоянный), `SignedPrekey*` (X25519 + signature, ротируется), `RegistrationId` (libsignal), `SignedPrekeyRotatedAt`. Пул `OneTimePrekey` (Many:1, уникальный (DeviceId, PrekeyId)) — расходные ключи. `FetchPrekeyBundle` атомарно claim'ит одну prekey через PostgreSQL `DELETE ... RETURNING ... FOR UPDATE SKIP LOCKED` — параллельные запросы не получают одну и ту же. Сервер не валидирует подпись signed prekey — это делает клиент-получатель через identity_pubkey.
 
 ## UsersApi — клиентский (TokenType.User)
@@ -98,6 +100,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `GetCurrentDevice()`                     | Текущее устройство                            | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
 | `RenameDevice(deviceId, customName)`     | Переименовать устройство                      |                                                                      |
 | `SetFirebaseToken(firebaseToken)`        | Установить FCM-токен текущего устройства      | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
+| `ClearFirebaseToken()`                   | Очистить FCM-токен текущего устройства        | Выключение Web push/logout; DeviceId — из JWT-claim                  |
 | `SetNotificationsEnabled(enabled)`       | Включить/выключить push на текущем устройстве | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
 | `GetPrivacySettings()`                   | Настройки приватности текущего пользователя   |                                                                      |
 | `UpdatePrivacySettings(settings)`        | Обновить настройки приватности                |                                                                      |

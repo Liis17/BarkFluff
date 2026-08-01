@@ -568,6 +568,18 @@
         return c().authCall(users().setNotificationsEnabled.bind(users()), req);
     }
 
+    function setFirebaseToken(token, pushPlatform) {
+        var req = new (usrPb().SetFirebaseTokenRequest)();
+        req.setFirebaseToken(token);
+        req.setPushPlatform(pushPlatform || 2);
+        return c().authCall(users().setFirebaseToken.bind(users()), req);
+    }
+
+    function clearFirebaseToken() {
+        var req = new (usrPb().ClearFirebaseTokenRequest)();
+        return c().authCall(users().clearFirebaseToken.bind(users()), req);
+    }
+
     // --- Privacy (UsersApi) ---
 
     function mapPrivacySettings(s) {
@@ -944,6 +956,8 @@
         // User devices / notifications / privacy / personalization
         renameDevice: renameDevice,
         setNotificationsEnabled: setNotificationsEnabled,
+        setFirebaseToken: setFirebaseToken,
+        clearFirebaseToken: clearFirebaseToken,
         getPrivacySettings: getPrivacySettings,
         updatePrivacySettings: updatePrivacySettings,
         getPersonalization: getPersonalization,

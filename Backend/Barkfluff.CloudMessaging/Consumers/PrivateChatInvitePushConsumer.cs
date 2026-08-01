@@ -57,24 +57,37 @@ public class PrivateChatInvitePushConsumer : IConsumer<PrivateChatInviteEvent>
                 new GetDevicesWithFirebaseTokensRequest { UserIds = { message.InviteeUserId } },
                 cancellationToken: context.CancellationToken);
 
-            var fcmTokens = tokensResponse.Tokens
+            var androidTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform != PushPlatform.Web)
                 .Select(t => t.FirebaseToken)
                 .Where(t => !string.IsNullOrEmpty(t))
                 .ToList();
 
-            if (fcmTokens.Count == 0)
+            var webTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform == PushPlatform.Web)
+                .Select(t => t.FirebaseToken)
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToList();
+
+            if (androidTokens.Count == 0 && webTokens.Count == 0)
             {
                 _logger.LogDebug("Нет устройств с Firebase токенами у приглашённого {InviteeId}", message.InviteeUserId);
                 return;
             }
 
-            await _firebaseService.SendPrivateChatInviteBatchAsync(
-                fcmTokens,
-                message.ChatId.ToString(),
-                message.InviterUserId,
-                inviterName,
-                avatarUrl,
-                context.CancellationToken);
+            if (androidTokens.Count > 0)
+            {
+                await _firebaseService.SendPrivateChatInviteBatchAsync(
+                    androidTokens, message.ChatId.ToString(), message.InviterUserId, inviterName, avatarUrl,
+                    context.CancellationToken);
+            }
+
+            if (webTokens.Count > 0)
+            {
+                await _firebaseService.SendWebPrivateChatInviteBatchAsync(
+                    webTokens, message.ChatId.ToString(), message.InviterUserId, inviterName, avatarUrl,
+                    context.CancellationToken);
+            }
         }
         catch (Exception ex)
         {

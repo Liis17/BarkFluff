@@ -62,23 +62,34 @@ public class AdminBroadcastConsumer : IConsumer<AdminBroadcastNotificationEvent>
                     cancellationToken: context.CancellationToken);
             }
 
-            var fcmTokens = tokensResponse.Tokens
+            var androidTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform != PushPlatform.Web)
                 .Select(t => t.FirebaseToken)
                 .Where(t => !string.IsNullOrEmpty(t))
                 .ToList();
 
-            if (fcmTokens.Count == 0)
+            var webTokens = tokensResponse.Tokens
+                .Where(t => t.PushPlatform == PushPlatform.Web)
+                .Select(t => t.FirebaseToken)
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToList();
+
+            if (androidTokens.Count == 0 && webTokens.Count == 0)
             {
                 _logger.LogInformation("Admin broadcast: нет устройств с FCM-токенами для рассылки");
                 return;
             }
 
-            await _firebaseService.SendAdminBroadcastBatchAsync(
-                fcmTokens,
-                message.Title,
-                message.Body,
-                message.ImageUrl,
-                context.CancellationToken);
+            if (androidTokens.Count > 0)
+            {
+                await _firebaseService.SendAdminBroadcastBatchAsync(
+                    androidTokens, message.Title, message.Body, message.ImageUrl, context.CancellationToken);
+            }
+
+            if (webTokens.Count > 0)
+            {
+                await _firebaseService.SendWebAdminBroadcastBatchAsync(webTokens, context.CancellationToken);
+            }
         }
         catch (Exception ex)
         {

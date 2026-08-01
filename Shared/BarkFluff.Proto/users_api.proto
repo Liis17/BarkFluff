@@ -52,6 +52,9 @@ service UsersApi {
   // Установить Firebase токен устройства
   rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
 
+  // Удалить Firebase токен текущего устройства
+  rpc ClearFirebaseToken(ClearFirebaseTokenRequest) returns(ClearFirebaseTokenResponse);
+
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
 
@@ -725,9 +728,20 @@ message GetUserByUsernameResponse {
 
 message SetFirebaseTokenRequest {
   string firebase_token = 1; // Firebase токен устройства
+  PushPlatform push_platform = 2; // Платформа, которой принадлежит токен
 }
 
 message SetFirebaseTokenResponse { }
+
+message ClearFirebaseTokenRequest { }
+
+message ClearFirebaseTokenResponse { }
+
+enum PushPlatform {
+  PUSH_PLATFORM_UNSPECIFIED = 0;
+  PUSH_PLATFORM_ANDROID = 1;
+  PUSH_PLATFORM_WEB = 2;
+}
 
 // Запросы и ответы для получения устройств с Firebase токенами
 
@@ -751,6 +765,7 @@ message DeviceFirebaseToken {
   int64 user_id = 1; // идентификатор пользователя
   string device_id = 2; // идентификатор устройства
   string firebase_token = 3; // Firebase токен
+  PushPlatform push_platform = 4; // платформа токена
 }
 
 // Запросы и ответы для включения/выключения уведомлений на текущем устройстве

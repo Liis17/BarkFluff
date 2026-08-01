@@ -67,6 +67,32 @@ public class DismissPushConsumerTests
     }
 
     [Fact]
+    public async Task Consume_WebToken_SendsWebDismissOnly()
+    {
+        var consumer = CreateConsumer();
+        var chatId = Guid.NewGuid();
+        var context = CreateContext(new DismissPushEvent { ChatId = chatId, UserId = 42 });
+        SetupGetDevicesWithTokens(new DeviceFirebaseToken
+        {
+            UserId = 42,
+            FirebaseToken = "web-token",
+            PushPlatform = PushPlatform.Web
+        });
+        _firebaseService
+            .Setup(f => f.SendWebDismissBatchAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await consumer.Consume(context.Object);
+
+        _firebaseService.Verify(f => f.SendWebDismissBatchAsync(
+            It.Is<IReadOnlyList<string>>(tokens => tokens.SequenceEqual(new[] { "web-token" })),
+            chatId.ToString(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _firebaseService.Verify(f => f.SendDismissBatchAsync(
+            It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Consume_DuplicateTokens_SendsEachTokenOnce()
     {
         var consumer = CreateConsumer();

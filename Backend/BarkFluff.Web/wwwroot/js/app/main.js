@@ -1573,20 +1573,9 @@
 
     // ========== BROWSER NOTIFICATIONS ==========
 
-    var notificationsAllowed = false;
-
-    function requestNotificationPermission() {
-        if (!('Notification' in window)) return;
-        if (Notification.permission === 'granted') { notificationsAllowed = true; return; }
-        if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then(function (perm) {
-                notificationsAllowed = (perm === 'granted');
-            });
-        }
-    }
-
     function showNewMessageNotification(chatTitle, msg) {
-        if (!notificationsAllowed) return;
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        if (document.visibilityState !== 'visible') return;
         if (document.visibilityState === 'visible' && msg.chatId === currentChatId) return;
 
         var body = '';
@@ -3930,9 +3919,51 @@
         });
     }
 
+    var pendingPushChatId = null;
+    var refreshedPushChatId = null;
+
+    function openChatFromPush(chatId) {
+        if (!chatId) return;
+        if (!chats.some(function (chat) { return String(chat.id) === String(chatId); })) {
+            pendingPushChatId = chatId;
+            // A push may point to a chat outside the initial page of the list.
+            // Refresh it once before leaving the link pending.
+            if (refreshedPushChatId !== String(chatId)) {
+                refreshedPushChatId = String(chatId);
+                loadChats(true).then(function () {
+                    if (pendingPushChatId) openChatFromPush(pendingPushChatId);
+                }).catch(function (err) {
+                    console.error('Could not load push target chat:', err);
+                });
+            }
+            return;
+        }
+        pendingPushChatId = null;
+        refreshedPushChatId = null;
+        openChat(chatId);
+    }
+
+    function maybeOpenChatFromPushUrl() {
+        var url = new URL(window.location.href);
+        var chatId = url.searchParams.get('chat');
+        if (!chatId) return;
+        url.searchParams.delete('chat');
+        url.searchParams.delete('call');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+        openChatFromPush(chatId);
+    }
+
+    function maybeOpenPendingPushChat() {
+        if (pendingPushChatId) openChatFromPush(pendingPushChatId);
+    }
+
     // ========== INIT ==========
 
-    requestNotificationPermission();
+    if (BF.push && BF.push.init) BF.push.init();
+
+    window.addEventListener('bf-pwa-update', function () {
+        if (window.confirm('Доступна новая версия BarkFluff. Перезагрузить сейчас?')) BF.push.applyUpdate();
+    });
 
     if (BF.pinned && BF.pinned.init) {
         BF.pinned.init({
@@ -3948,9 +3979,16 @@
         BF.folders.setOnChange(function () { renderChatList(); });
         BF.folders.init().then(function () {
             return loadChats(true);
-        }).then(updateTitleBadge).then(maybeOpenChatFromCookie);
+        }).then(updateTitleBadge).then(maybeOpenChatFromCookie).then(maybeOpenChatFromPushUrl).then(maybeOpenPendingPushChat);
     } else {
-        loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie);
+        loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie).then(maybeOpenChatFromPushUrl).then(maybeOpenPendingPushChat);
+    }
+
+    if (navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            var data = event.data || {};
+            if (data.type === 'bf-push-open') openChatFromPush(data.chatId);
+        });
     }
 
     if (BF.newchat && BF.newchat.init) {

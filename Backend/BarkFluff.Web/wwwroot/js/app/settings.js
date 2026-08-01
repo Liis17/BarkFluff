@@ -69,11 +69,19 @@
             confirmOverlay.classList.remove('visible');
         });
         document.querySelector('#confirmOk').addEventListener('click', function () {
-            BF.realtime.stopAll();
-            BF.tokens.clear();
-            BF.privateChat.clearAll();
-            BF.personalization.clearAll();
-            window.location.href = '/';
+            var finishLogout = function () {
+                BF.realtime.stopAll();
+                BF.tokens.clear();
+                BF.privateChat.clearAll();
+                BF.personalization.clearAll();
+                window.location.href = '/';
+            };
+            if (BF.push && BF.push.clearOnLogout) BF.push.clearOnLogout().finally(finishLogout);
+            else finishLogout();
+        });
+
+        window.addEventListener('bf-pwa-install-available', function () {
+            if (overlay.classList.contains('visible') && viewStack.length === 0) renderMain();
         });
     }
 
@@ -312,6 +320,47 @@
             { icon: ICONS.smartphone, label: 'Активные сессии', view: 'sessions' }
         ]);
         body.appendChild(secDevices);
+
+        var secNotifications = document.createElement('div');
+        secNotifications.className = 'sd-section';
+        var notificationsTitle = document.createElement('div');
+        notificationsTitle.className = 'sd-section-title';
+        notificationsTitle.textContent = 'Уведомления';
+        secNotifications.appendChild(notificationsTitle);
+        var pushSupported = !!(BF.push && BF.push.isSupported && BF.push.isSupported());
+        var pushStatus = BF.push && BF.push.status ? BF.push.status() : 'unsupported';
+        var pushDescription = pushStatus === 'denied'
+            ? 'Браузер заблокировал уведомления. Разрешите их в настройках сайта.'
+            : pushSupported
+                ? 'Показывать новые события, когда приложение скрыто или закрыто'
+                : 'Недоступно: нужен HTTPS и настроенный Firebase Web Push';
+        var pushToggle = makeToggle(
+            'Браузерные уведомления',
+            pushDescription,
+            pushStatus === 'enabled',
+            function (next, control) {
+                if (!pushSupported || pushStatus === 'denied') { control.setValue(false); return; }
+                control.setDisabled(true);
+                (next ? BF.push.enable() : BF.push.disable()).then(function (success) {
+                    control.setValue(next && !!success);
+                    if (next && !success && BF.push.status && BF.push.status() === 'denied') renderMain();
+                }).finally(function () { control.setDisabled(false); });
+            });
+        if (!pushSupported || pushStatus === 'denied') pushToggle.setDisabled(true);
+        secNotifications.appendChild(pushToggle.row);
+        body.appendChild(secNotifications);
+
+        if (BF.push && BF.push.canInstall && BF.push.canInstall()) {
+            var secInstall = document.createElement('div');
+            secInstall.className = 'sd-section';
+            var installBtn = document.createElement('button');
+            installBtn.type = 'button';
+            installBtn.className = 'sd-item';
+            installBtn.textContent = 'Установить приложение BarkFluff';
+            installBtn.addEventListener('click', function () { BF.push.install().then(function () { renderMain(); }); });
+            secInstall.appendChild(installBtn);
+            body.appendChild(secInstall);
+        }
 
         // Section: About
         var secAbout = makeSection('О приложении', [
