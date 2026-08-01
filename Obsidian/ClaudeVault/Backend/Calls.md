@@ -34,6 +34,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 - **Webhooks** — отдельный HTTP/1.1-листенер (`RunSettings:Http1Port=7026`), `WebhookReceiver` верифицирует подпись. `room_finished` → финализация CDR; `participant_joined/left` → `ParticipantEvent` в стрим.
 - **CDR** — таблица `CallSessions` (Postgres/EF Core): caller/callee/chat, room, media, status (Ringing→Active→Ended), reason, тайминги, длительность.
 - **Таймаут** — `CallRingTimeoutSweeper` (`BackgroundService`, опрос БД раз в 5с): звонок в статусе `Ringing` старше 45с → `CallEndReason.Missed` через `CallLifecycleHandler.TimeoutAsync`. Захват атомарный (`ExecuteUpdate WHERE Status=Ringing`) — ровно-однократная обработка при нескольких инстансах; durable (переживает рестарт), не требует плагина delayed-exchange.
+- **Один групповой звонок на чат** — `InitiateCall` отклоняет запуск, если в чате уже есть `Ringing`/`Active`, и в течение 10 секунд после предыдущего старта. Частичный уникальный индекс PostgreSQL (`ChatId`, статусы `Ringing`/`Active`) закрывает гонку между устройствами и инстансами. При миграции старые дубли завершаются как `Failed`, сохраняя наиболее приоритетный активный звонок.
 - **Системное сообщение** — при завершении звонок пишет в чат системное сообщение («Звонок · 5:23» / «Пропущенный звонок» / «Звонок отклонён») через `MessagesServerApi.PostCallSystemMessage` (best-effort). Для личного звонка — в существующий личный чат; если чата ещё нет, сообщение не пишется (чат не создаётся).
 
 ## gRPC API (`calls_api.proto`, `CallsApi`)
