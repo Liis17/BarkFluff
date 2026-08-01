@@ -43,6 +43,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.OpenChatManager
+import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
@@ -104,6 +105,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var chatRepository: ChatRepository
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var chatCacheRepository: ChatCacheRepository
+    private lateinit var chatDraftRepository: ChatDraftRepository
     private var cacheScope: CacheScope? = null
 
     private var chatId: String = ""
@@ -113,6 +115,7 @@ class ChatActivity : AppCompatActivity() {
     private var isGroupChat: Boolean = false
     private var otherUserId: Long = 0L
     private var currentUserId: Long = 0L
+    private var supportsDrafts: Boolean = false
 
     // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, URL/fileId аватара)
     private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
@@ -155,6 +158,8 @@ class ChatActivity : AppCompatActivity() {
     // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
     // 0 = нет активного ответа.
     private var pendingReplyMessageId: Long = 0L
+    private var isRestoringDraft = false
+    private var draftSaveJob: Job? = null
 
     // Активное редактирование: ID редактируемого сообщения (0 = режим обычной отправки).
     // pendingEditFileIds — file_id существующих вложений (передаются в EditMessage без изменений).
@@ -268,6 +273,7 @@ class ChatActivity : AppCompatActivity() {
         realtimeService = app.realtimeService
         chatRepository = ChatRepository(this, grpcManager)
         chatCacheRepository = app.chatCacheRepository
+        chatDraftRepository = app.chatDraftRepository
 
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
@@ -287,6 +293,7 @@ class ChatActivity : AppCompatActivity() {
             setupE2eShell(chatKind)
             return
         }
+        supportsDrafts = true
 
         Log.d(TAG, "ChatActivity created: chatId=$chatId, title=$chatTitle, isGroupChat=$isGroupChat, otherUserId=$otherUserId")
 
@@ -299,6 +306,7 @@ class ChatActivity : AppCompatActivity() {
         setupChatBackground()
         setupPinnedBar()
         loadChatInfoAndMessages()
+        restoreChatDraft()
         loadPinnedMessages()
 
         // Устанавливаем этот чат как открытый
@@ -1018,6 +1026,7 @@ class ChatActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 updateSendButtonMode()
                 onTypingInput(s)
+                scheduleDraftSave()
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
@@ -1787,7 +1796,9 @@ class ChatActivity : AppCompatActivity() {
         pendingStickerUris.clear()
         pendingDocumentUris.clear()
         updateAttachmentPreview()
+        isRestoringDraft = true
         binding.messageEditText.text?.clear()
+        isRestoringDraft = false
 
         lifecycleScope.launch {
             val fileIds = mutableListOf<String>()
@@ -1892,11 +1903,16 @@ class ChatActivity : AppCompatActivity() {
             localId = localId
         )
         addOptimisticMessage(optimisticItem)
+        isRestoringDraft = true
         binding.messageEditText.text?.clear()
-        clearPendingReply()
+        clearPendingReply(saveDraft = false)
+        isRestoringDraft = false
 
         lifecycleScope.launch {
             try {
+                // Фиксируем именно отправленную версию до вызова SendMessage: более новая
+                // правка пользователя получит следующее generation и не будет удалена.
+                val sentDraft = chatDraftRepository.edit(chatId, messageText, replyId)
                 val result = chatRepository.sendMessage(
                     chatId = chatId,
                     text = messageText,
@@ -1911,6 +1927,7 @@ class ChatActivity : AppCompatActivity() {
                     } else {
                         updateOptimisticStatus(localId, ReadStatus.SENT)
                     }
+                    sentDraft?.let { chatDraftRepository.clearAfterSent(chatId, it.generation) }
                 } else {
                     updateOptimisticStatus(localId, ReadStatus.FAILED)
                     Toast.makeText(
@@ -2037,12 +2054,57 @@ class ChatActivity : AppCompatActivity() {
         binding.replyPreviewBar.visibility = View.VISIBLE
         binding.messageEditText.requestFocus()
         updateSendButtonMode()
+        scheduleDraftSave()
     }
 
-    private fun clearPendingReply() {
+    private fun clearPendingReply(saveDraft: Boolean = true) {
         pendingReplyMessageId = 0L
         binding.replyPreviewBar.visibility = View.GONE
         updateSendButtonMode()
+        if (saveDraft) scheduleDraftSave()
+    }
+
+    private fun scheduleDraftSave(immediate: Boolean = false) {
+        if (!supportsDrafts || isRestoringDraft || pendingEditMessageId != 0L) return
+        draftSaveJob?.cancel()
+        draftSaveJob = lifecycleScope.launch {
+            val text = binding.messageEditText.text?.toString().orEmpty()
+            val replyId = pendingReplyMessageId
+            chatDraftRepository.edit(chatId, text, replyId)
+            if (immediate) chatDraftRepository.flush(chatId) else {
+                delay(2_000)
+                chatDraftRepository.flush(chatId)
+            }
+        }
+    }
+
+    private fun restoreChatDraft() {
+        if (!supportsDrafts) return
+        lifecycleScope.launch {
+            val draft = chatDraftRepository.restore(chatId) ?: return@launch
+            isRestoringDraft = true
+            suppressTypingInput = true
+            binding.messageEditText.setText(draft.text)
+            suppressTypingInput = false
+            isRestoringDraft = false
+            if (draft.replyToMessageId == 0L) return@launch
+
+            val item = messageAdapter.currentList.firstOrNull { it.messageId == draft.replyToMessageId }
+                ?: chatRepository.loadMessages(
+                    chatId = chatId,
+                    fromMessageId = draft.replyToMessageId,
+                    offsetBefore = 1,
+                    offsetAfter = 1
+                ).getOrNull()?.firstOrNull { it.id == draft.replyToMessageId }?.let(::toMessageItem)
+            if (item != null) {
+                isRestoringDraft = true
+                setPendingReply(item)
+                isRestoringDraft = false
+            } else {
+                chatDraftRepository.edit(chatId, draft.text, 0L)
+                chatDraftRepository.flush(chatId)
+            }
+        }
     }
 
     // ─── Edit / Delete UX ─────────────────────────────────────────────────────
@@ -2050,7 +2112,7 @@ class ChatActivity : AppCompatActivity() {
     private fun setPendingEdit(item: MessageItem) {
         // Edit и reply — взаимоисключающие режимы
         if (pendingReplyMessageId != 0L) {
-            clearPendingReply()
+            clearPendingReply(saveDraft = false)
         }
 
         pendingEditMessageId = item.messageId
@@ -3453,6 +3515,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        scheduleDraftSave(immediate = true)
         finishVoiceRecording(shouldSend = false)
         stopTypingHeartbeat(sendCancel = true)
         super.onStop()

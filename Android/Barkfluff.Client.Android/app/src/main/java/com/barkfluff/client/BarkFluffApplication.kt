@@ -3,6 +3,8 @@ package com.barkfluff.client
 import android.app.Application
 import android.app.DownloadManager
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -16,6 +18,7 @@ import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.cache.ChatCacheRepository
+import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
@@ -53,6 +56,9 @@ class BarkFluffApplication : Application() {
     lateinit var chatCacheRepository: ChatCacheRepository
         private set
 
+    lateinit var chatDraftRepository: ChatDraftRepository
+        private set
+
     lateinit var realtimeService: RealtimeService
         private set
 
@@ -76,6 +82,12 @@ class BarkFluffApplication : Application() {
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var callEventsUiJob: Job? = null
+    private lateinit var connectivityManager: ConnectivityManager
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            applicationScope.launch(Dispatchers.IO) { chatDraftRepository.flushAll() }
+        }
+    }
 
     @Volatile
     private var presentedIncomingCallId: String? = null
@@ -113,6 +125,9 @@ class BarkFluffApplication : Application() {
         chatCacheRepository = ChatCacheRepository(applicationContext)
         CallTelecomManager.registerPhoneAccount(this)
         grpcManager = GrpcManager()
+        chatDraftRepository = ChatDraftRepository(applicationContext, grpcManager, chatCacheRepository)
+        connectivityManager = getSystemService(ConnectivityManager::class.java)
+        connectivityManager.registerDefaultNetworkCallback(networkCallback)
         realtimeService = RealtimeService(
             applicationContext,
             grpcManager,
@@ -145,6 +160,7 @@ class BarkFluffApplication : Application() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 realtimeService.resume()
+                applicationScope.launch(Dispatchers.IO) { chatDraftRepository.flushAll() }
                 startCallEventsUiBridge()
                 callEventsService.resume()
             }
@@ -161,6 +177,7 @@ class BarkFluffApplication : Application() {
     }
 
     override fun onTerminate() {
+        connectivityManager.unregisterNetworkCallback(networkCallback)
         realtimeService.shutdown()
         stopCallEventsUiBridge()
         callEventsService.shutdown()

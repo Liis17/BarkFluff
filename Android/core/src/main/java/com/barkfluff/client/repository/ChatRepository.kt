@@ -216,6 +216,58 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         }
     }
 
+    suspend fun getChatDraft(chatId: String): Result<ChatDraft?> = withContext(Dispatchers.IO) {
+        try {
+            val client = grpcManager.messagesClient
+                ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
+            val response = client.getChatDraft(
+                MessagesApiOuterClass.GetChatDraftRequest.newBuilder().setChatId(chatId).build()
+            )
+            val draft = if (response.hasDraft()) response.draft.toChatDraft() else null
+            Result.success(draft)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting chat draft for $chatId", e)
+            Result.failure(Exception("Ошибка получения черновика: ${e.message}"))
+        }
+    }
+
+    suspend fun upsertChatDraft(chatId: String, text: String, replyToMessageId: Long): Result<ChatDraft> =
+        withContext(Dispatchers.IO) {
+            try {
+                val client = grpcManager.messagesClient
+                    ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
+                val response = client.upsertChatDraft(
+                    MessagesApiOuterClass.UpsertChatDraftRequest.newBuilder()
+                        .setChatId(chatId)
+                        .setText(text)
+                        .setReplyToMessageId(replyToMessageId)
+                        .build()
+                )
+                Result.success(response.draft.toChatDraft())
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving chat draft for $chatId", e)
+                Result.failure(Exception("Ошибка сохранения черновика: ${e.message}"))
+            }
+        }
+
+    suspend fun deleteChatDraft(chatId: String, expectedRevision: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val client = grpcManager.messagesClient
+                    ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
+                val response = client.deleteChatDraft(
+                    MessagesApiOuterClass.DeleteChatDraftRequest.newBuilder()
+                        .setChatId(chatId)
+                        .setExpectedRevision(expectedRevision)
+                        .build()
+                )
+                Result.success(response.deleted)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting chat draft for $chatId", e)
+                Result.failure(Exception("Ошибка удаления черновика: ${e.message}"))
+            }
+        }
+
     /**
      * Получает данные пользователя по ID.
      */
@@ -502,6 +554,20 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         val countUnread: Long,
         val memberIds: List<Long>,
         val muted: Boolean = false
+    )
+
+    data class ChatDraft(
+        val text: String,
+        val replyToMessageId: Long,
+        val revision: String,
+        val updatedAtMillis: Long
+    )
+
+    private fun MessagesApiOuterClass.ChatDraftInfo.toChatDraft() = ChatDraft(
+        text = text,
+        replyToMessageId = replyToMessageId,
+        revision = revision,
+        updatedAtMillis = if (hasUpdatedAt()) updatedAt.seconds * 1000 else 0L
     )
 
     data class UploadUrlResult(

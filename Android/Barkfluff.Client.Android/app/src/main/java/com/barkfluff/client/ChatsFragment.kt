@@ -20,6 +20,7 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.adapter.FolderTabsAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
+import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
@@ -44,6 +45,7 @@ class ChatsFragment : Fragment() {
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var realtimeService: RealtimeService
     private lateinit var chatCacheRepository: ChatCacheRepository
+    private lateinit var chatDraftRepository: ChatDraftRepository
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
     private var cacheScope: CacheScope? = null
     private var cachedDisplays: Map<String, CachedChatDisplay> = emptyMap()
@@ -52,6 +54,7 @@ class ChatsFragment : Fragment() {
     private var syncStatus: SyncStatus? = null
     private var isRealtimeReconnecting = false
     private var titleAnimationGeneration = 0
+    private var localDraftStates: Map<String, Boolean> = emptyMap()
 
     // Папки чатов
     private var folders: List<GrpcManager.ChatFolder> = emptyList()
@@ -94,6 +97,7 @@ class ChatsFragment : Fragment() {
         grpcManager = app.grpcManager
         realtimeService = app.realtimeService
         chatCacheRepository = app.chatCacheRepository
+        chatDraftRepository = app.chatDraftRepository
         cacheScope = CacheScope.from(globalParam)
 
         setupToolbar()
@@ -103,6 +107,16 @@ class ChatsFragment : Fragment() {
         showSkeleton()
 
         subscribeToRealtimeEvents()
+        viewLifecycleOwner.lifecycleScope.launch {
+            chatDraftRepository.drafts.collect { drafts ->
+                localDraftStates = drafts.mapNotNull { (chatId, draft) ->
+                    if (draft.syncState == com.barkfluff.client.drafts.ChatDraftSyncState.SYNCED) null
+                    else chatId to draft.isActive
+                }.toMap()
+                if (::chatAdapter.isInitialized) applyFolderFilter()
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch { chatDraftRepository.loadLocal() }
         hydrateChatsFromCache()
         checkTokenAndLoadChats()
     }
@@ -551,6 +565,8 @@ class ChatsFragment : Fragment() {
                 val ids = folder.chatIds.toSet()
                 allChats.filter { it.id in ids }
             }
+        }.map { chat ->
+            localDraftStates[chat.id]?.let { chat.copy(hasDraft = it) } ?: chat
         }
         val sorted = filtered.sortedByDescending { it.lastActivityAt }
         viewLifecycleOwner.lifecycleScope.launch {

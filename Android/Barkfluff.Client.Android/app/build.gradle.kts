@@ -223,5 +223,7 @@ dependencies {
     // androidx.dynamicanimation — spring physics (SpringAnimation) для M3 Expressive motion (SpringPress).
     implementation(libs.androidx.dynamic.animation)
 
+    testImplementation(libs.junit)
+
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
