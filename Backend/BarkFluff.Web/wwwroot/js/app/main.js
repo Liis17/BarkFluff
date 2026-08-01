@@ -53,6 +53,7 @@
     var chatListOffset = 0;
     var chatListTotal = 0;
     var chatListLoading = false;
+    var chatListRequest = null;
     var pendingUploads = new Map(); // local message id -> optimistic upload state
     var pendingUploadCounter = 0;
     var GENERIC_MESSAGE_TYPE = 1;
@@ -179,14 +180,14 @@
     // ========== CHAT LIST ==========
 
     function loadChats(reset) {
-        if (chatListLoading) return Promise.resolve();
+        if (chatListLoading) return chatListRequest || Promise.resolve(false);
         if (!reset && chats.length >= chatListTotal && chatListTotal > 0) return Promise.resolve();
 
         chatListLoading = true;
         if (reset) { chatListOffset = 0; chats = []; }
 
-        return BF.api.listChats(chatListOffset, 50).then(function (data) {
-            if (!data || !data.chats) { chatListLoading = false; return; }
+        var request = BF.api.listChats(chatListOffset, 50).then(function (data) {
+            if (!data || !data.chats) return false;
             chatListTotal = data.totalCount;
             chats = reset ? data.chats : chats.concat(data.chats);
             chats.sort(function (a, b) {
@@ -195,11 +196,21 @@
                 return bt - at;
             });
             chatListOffset = chats.length;
-            chatListLoading = false;
             renderChatList();
             collectOnlineUserIds();
             loadChatListUsers();
-        }).catch(function () { chatListLoading = false; });
+            return true;
+        }).catch(function () {
+            return false;
+        }).then(function (result) {
+            if (chatListRequest === request) {
+                chatListLoading = false;
+                chatListRequest = null;
+            }
+            return result;
+        });
+        chatListRequest = request;
+        return request;
     }
 
     function loadChatListUsers() {
@@ -311,12 +322,11 @@
     }
 
     function refreshChatListQuiet() {
-        if (chatListLoading) return Promise.resolve();
+        if (chatListLoading) return chatListRequest || Promise.resolve(false);
         chatListLoading = true;
 
-        return BF.api.listChats(0, 50).then(function (data) {
-            chatListLoading = false;
-            if (!data || !data.chats) return;
+        var request = BF.api.listChats(0, 50).then(function (data) {
+            if (!data || !data.chats) return false;
             var fetched = data.chats.slice();
             fetched.sort(function (a, b) {
                 var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
@@ -330,7 +340,7 @@
                     if (chatSignature(fetched[i]) !== chatSignature(chats[i])) { same = false; break; }
                 }
             }
-            if (same) return; // ничего не изменилось — DOM не трогаем
+            if (same) return true; // ничего не изменилось — DOM не трогаем
 
             chats = fetched;
             chatListTotal = data.totalCount;
@@ -339,7 +349,18 @@
             collectOnlineUserIds();
             loadChatListUsers();
             updateTitleBadge();
-        }).catch(function () { chatListLoading = false; });
+            return true;
+        }).catch(function () {
+            return false;
+        }).then(function (result) {
+            if (chatListRequest === request) {
+                chatListLoading = false;
+                chatListRequest = null;
+            }
+            return result;
+        });
+        chatListRequest = request;
+        return request;
     }
 
     chatListEl.addEventListener('scroll', function () {
@@ -1305,7 +1326,7 @@
         var chatId = chat.id;
         messagesInner.innerHTML = '';
         loadingMessages.classList.add('visible');
-        BF.api.listPrivateMessages(chatId, 0, 50, 0).then(function (data) {
+        return BF.api.listPrivateMessages(chatId, 0, 50, 0).then(function (data) {
             if (chatId !== currentChatId) return;
             return decryptPrivateBatch(chatId, data && data.messages).then(function (mapped) {
                 if (chatId !== currentChatId) return;
@@ -1318,6 +1339,7 @@
             });
         }).catch(function (e) {
             console.error('[privateChat] listPrivateMessages failed', e);
+            return false;
         }).finally(function () {
             loadingMessages.classList.remove('visible');
         });
@@ -1325,11 +1347,12 @@
 
     // Catch-up открытого приватного чата (реконнект стрима / возврат на вкладку)
     function reloadCurrentPrivateChat() {
-        if (currentChatType !== 1 || !currentChatId) return;
+        if (currentChatType !== 1 || !currentChatId) return Promise.resolve(true);
         var chat = chats.find(function (c) { return c.id === currentChatId; });
         if (chat && chat.privateInviteState === 1 && BF.privateChat.hasKey(chat.id)) {
-            loadPrivateMessages(chat);
+            return loadPrivateMessages(chat).then(function (result) { return result !== false; });
         }
+        return Promise.resolve(true);
     }
 
     function sendPrivateMessageFlow(text) {
@@ -1544,21 +1567,87 @@
     // ========== CONNECTION STATUS ==========
 
     var connectionBanner = $('#connectionBanner');
+    var connectionBannerText = $('#connectionBannerText');
+    var connectionRetryButton = $('#connectionRetryButton');
+    var connectionSynced = $('#connectionSynced');
+    var _connectionHadProblem = false;
+    var _connectionCatchUpRunning = false;
+    var _connectionSyncedTimer = null;
+    var _connectionStatusInitialized = false;
+    var _connectionStatusEpoch = 0;
+    var _connectionState = 'reconnecting';
 
-    var _wasConnected = true;
+    function hideConnectionSynced() {
+        if (_connectionSyncedTimer) {
+            clearTimeout(_connectionSyncedTimer);
+            _connectionSyncedTimer = null;
+        }
+        if (connectionSynced) connectionSynced.classList.remove('visible');
+    }
+
+    function showConnectionSynced() {
+        if (!currentChatId || !connectionSynced) return;
+        hideConnectionSynced();
+        connectionSynced.classList.add('visible');
+        _connectionSyncedTimer = setTimeout(hideConnectionSynced, 3000);
+    }
+
+    function showConnectionProblem(state) {
+        if (!connectionBanner) return;
+        var offline = state === 'offline';
+        connectionBanner.classList.toggle('visible', state !== 'connected');
+        connectionBanner.classList.toggle('offline', offline);
+        if (connectionBannerText) {
+            connectionBannerText.textContent = offline ? 'Нет сети' : 'Переподключаемся…';
+        }
+        if (connectionRetryButton) connectionRetryButton.disabled = false;
+    }
+
+    function runConnectionCatchUp() {
+        if (_connectionCatchUpRunning) return;
+        _connectionCatchUpRunning = true;
+        var retryAfterCatchUp = false;
+        var statusEpoch = _connectionStatusEpoch;
+        Promise.all([refreshChatListQuiet(), resyncCurrentChatTail()]).then(function (results) {
+            if (statusEpoch !== _connectionStatusEpoch || _connectionState !== 'connected') return;
+            if (!results[0] || !results[1]) {
+                retryAfterCatchUp = true;
+                return;
+            }
+            _connectionHadProblem = false;
+            showConnectionSynced();
+        }).finally(function () {
+            _connectionCatchUpRunning = false;
+            if (retryAfterCatchUp && statusEpoch === _connectionStatusEpoch && _connectionState === 'connected') {
+                BF.realtime.reconnect();
+                return;
+            }
+            if (statusEpoch !== _connectionStatusEpoch && _connectionState === 'connected' && _connectionHadProblem) {
+                runConnectionCatchUp();
+            }
+        });
+    }
+
     BF.realtime.on('connection_status', function (data) {
-        if (connectionBanner) {
-            connectionBanner.classList.toggle('visible', !data.connected);
+        var state = data && data.state ? data.state : (data && data.connected ? 'connected' : 'reconnecting');
+        var initialStatus = !_connectionStatusInitialized;
+        _connectionStatusInitialized = true;
+        _connectionStatusEpoch++;
+        _connectionState = state;
+        showConnectionProblem(state);
+        if (state !== 'connected') {
+            if (!initialStatus) _connectionHadProblem = true;
+            hideConnectionSynced();
+            return;
         }
-        if (data.connected && _wasConnected === false) {
-            // Соединение восстановлено — пропустили события (delete/edit/new),
-            // тихо сверяем состояние с сервером и применяем только диффы.
-            console.log('[main] connection restored — running catch-up');
-            refreshChatListQuiet();
-            resyncCurrentChatTail();
-        }
-        _wasConnected = !!data.connected;
+        if (_connectionHadProblem) runConnectionCatchUp();
     });
+
+    if (connectionRetryButton) {
+        connectionRetryButton.addEventListener('click', function () {
+            if (BF.realtime.reconnect()) connectionRetryButton.disabled = true;
+        });
+    }
 
     // ── RESYNC: реконнект отдельного стрима ──────────────────────────────────
     // realtime.js шлёт 'resync' при ЛЮБОМ переоткрытии стрима (backoff/watchdog/
@@ -1632,21 +1721,24 @@
     }
 
     function resyncCurrentChatTail() {
-        if (!currentChatId) return;
-        if (isLoadingOlder || loadingMessages.classList.contains('visible')) return; // чат открывается/пагинируется
-        if (currentChatType === 1) { reloadCurrentPrivateChat(); return; }
+        if (!currentChatId) return Promise.resolve(true);
+        if (isLoadingOlder || loadingMessages.classList.contains('visible')) return Promise.resolve(false);
+        if (currentChatType === 1) return reloadCurrentPrivateChat();
         var chatId = currentChatId;
-        BF.api.getChatInfo(chatId).then(function (info) {
-            if (chatId !== currentChatId || !info || info.error) return null;
+        return BF.api.getChatInfo(chatId).then(function (info) {
+            if (chatId !== currentChatId) return { skipped: true };
+            if (!info || info.error) return null;
             var fromId = info.firstUnreadMessageId || info.lastMessageId || 0;
             return BF.api.listMessages(chatId, fromId, 30, 10).then(function (data) {
                 return { info: info, data: data };
             });
         }).then(function (res) {
-            if (!res || !res.data || !res.data.messages || chatId !== currentChatId) return;
+            if (res && res.skipped) return true;
+            if (!res || !res.data || !res.data.messages) return false;
+            if (chatId !== currentChatId) return true;
             var fetched = res.data.messages;
             var diff = diffFetchedTail(fetched);
-            if (!diff) return; // за окно реконнекта ничего не пропало — DOM не трогаем
+            if (!diff) return true; // за окно реконнекта ничего не пропало — DOM не трогаем
             currentChatInfo = res.info;
             var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
 
@@ -1662,11 +1754,10 @@
             if (!tailOnly) {
                 messages = fetched;
                 mergePendingUploadsIntoMessages(chatId);
-                renderMessages().then(function () {
+                return renderMessages().then(function () {
                     if (wasAtBottom) scrollToBottom();
+                    return refreshChatListQuiet();
                 });
-                refreshChatListQuiet();
-                return;
             }
 
             // Точечное применение диффа — как live-события, но без звуков/нотификаций.
@@ -1683,7 +1774,7 @@
                     return appendMessageToView(m);
                 });
             });
-            chain.then(function () {
+            return chain.then(function () {
                 if (chatId !== currentChatId || diff.news.length === 0) return;
                 if (wasAtBottom) {
                     scrollToBottom();
@@ -1699,12 +1790,16 @@
                 } else {
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
                 }
+            }).then(function () {
+                // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
+                // чатах: тихо освежаем превью/счётчики непрочитанного в сайдбаре.
+                return refreshChatListQuiet();
             });
-
-            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
-            // чатах: тихо освежаем превью/счётчики непрочитанного в сайдбаре.
-            refreshChatListQuiet();
-        }).catch(function () {});
+        }).then(function (result) {
+            return result !== false;
+        }).catch(function () {
+            return false;
+        });
     }
 
     // ========== SCROLL-BASED MARK AS READ ==========
