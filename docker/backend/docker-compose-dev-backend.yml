@@ -277,7 +277,7 @@ services:
       ACCEPT_EULA: "Y"
       SEQ_FIRSTRUN_ADMINPASSWORD: "${SEQ_ADMIN_PASSWORD}"
     volumes:
-      - seq_data:/data
+      - ./data/seq:/data
     networks:
       - barkfluff-network
 
@@ -293,7 +293,7 @@ services:
   #    MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
   #    MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
   #  volumes:
-  #    - minio_data:/data
+  #    - ./data/minio:/data
   #  command: server /data --console-address ":${MINIO_WEBPORT}"
   #  networks:
   #    - barkfluff-network
@@ -304,7 +304,7 @@ services:
     restart: always
     # Порты не проброшены наружу — доступен только внутри Docker-сети
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - ./data/rabbitmq:/var/lib/rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"
@@ -317,7 +317,7 @@ services:
     restart: always
     # Порты не проброшены наружу — доступен только внутри Docker-сети
     volumes:
-      - redis_data:/data
+      - ./data/redis:/data
     command: redis-server --appendonly yes
     networks:
       - barkfluff-network
@@ -379,8 +379,8 @@ services:
       POSTGRES_DB: "${POSTGRES_DB}"
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - pgdata:/var/lib/postgresql
-      - backup_volume:/backup
+      - ./data/postgres:/var/lib/postgresql
+      - ./backups:/backup
     ports:
       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     networks:
@@ -403,11 +403,3 @@ services:
 networks:
   barkfluff-network:
     driver: bridge
-
-volumes:
-  pgdata:
-  rabbitmq_data:
-  redis_data:
-  minio_data:
-  backup_volume:
-  seq_data:
