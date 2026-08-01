@@ -2573,8 +2573,11 @@
             target = { userId: peerId };
         }
         isInitiatingCall = true;
-        BF.calls.initiate(target, media)
-            .catch(function (e) { console.error('Не удалось начать звонок:', e); })
+        BF.callsUI.ensureMediaPermissions(media)
+            .then(function () { return BF.calls.initiate(target, media); })
+            .catch(function (e) {
+                if (!e || e.code !== 'media-permission-dismissed') console.error('Не удалось начать звонок:', e);
+            })
             .finally(function () { isInitiatingCall = false; });
     }
     var _btnCallAudio = $('#btnCallAudio');
