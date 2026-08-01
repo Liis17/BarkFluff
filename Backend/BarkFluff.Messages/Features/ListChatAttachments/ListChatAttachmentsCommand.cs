@@ -16,4 +16,6 @@ public class ListChatAttachmentsCommand : IRequest<ListChatAttachmentsResponse>
     public MessageAttachmentType? AttachmentType { get; set; }
 
     public bool SortDescending { get; set; } = true;
+
+    public string? FileNameQuery { get; set; }
 }

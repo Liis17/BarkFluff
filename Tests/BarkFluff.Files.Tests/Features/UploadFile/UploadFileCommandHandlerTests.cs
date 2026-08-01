@@ -1026,7 +1026,7 @@ public class UploadFileCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_GifUpload_SetsDimensionsNoPreview()
+    public async Task Handle_GifUpload_SetsDimensionsAndStaticPreview()
     {
         var file = await _helper.SeedFile(type: UploadFileType.MessageAttachmentGif);
 
@@ -1048,7 +1048,7 @@ public class UploadFileCommandHandlerTests
         var updated = await _helper.UploadedFilesStorage.GetFile(file.Id);
         updated!.ImageWidth.Should().Be(200);
         updated.ImageHeight.Should().Be(100);
-        updated.PreviewId.Should().BeNull();
+        updated.PreviewId.Should().HaveValue();
     }
 
     #endregion

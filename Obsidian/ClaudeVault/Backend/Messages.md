@@ -38,7 +38,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `GetPersonChatId` | Получить или создать обычный личный чат (поддерживает self-chat); при дублях выбирает чат с самым свежим неудалённым сообщением |
 | `GetChatInfo` | Счётчик непрочитанных, последнее сообщение |
 | `ListChatMembers` | Пагинированный список с данными из Users API |
-| `ListChatAttachments` | Вложения по типу, фильтрация + сортировка |
+| `ListChatAttachments` | Вложения по типу, фильтрация + сортировка; `file_name_query` ищет подстроку имени только среди документов |
 | `GetUserAllMessages` | Service-only: экспорт данных пользователя (GDPR) |
 | `CheckChatMembership` | Service-only: батч-проверка членства (`user_id` **либо** `user_uuid` + `chat_ids[]` → подмножество, где состоит) + федеративный контекст чатов и `requester_uuid` (этап 4.1). Невалидные Guid отбрасываются. Использует `ChatsStorage.GetMembershipContext`. Потребители — [[Backend/Onliner]] (typing) и [[Backend/Federation]] (валидация входящего typing) |
 | `CheckFederatedPresenceAccess` | Service-only: подмножество наших `user_uuids`, чей presence разрешено отдавать ноде `requesting_server` (этап 4.1). Зовёт только [[Backend/Federation]] своей ноды |
@@ -158,6 +158,7 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 - **Пересланные сообщения**: `MessageAttachmentType.ForwardedMessage` (8) — снапшот оригинала. `ForwardedAuthorName`, `ForwardedOriginalMessageId`, `ForwardedText` хранятся в `MessageAttachments`; вложения оригинала — в `ForwardedMessageAttachments`
 - **Reply ≡ Forward на бэке**: отдельного поля `reply_to_message_id` нет. Клиенты (Android, WPF) различают reply/forward только на UI-уровне по эвристике "оригинал есть в текущей загруженной истории чата" (см. [[Клиенты/Android]] и [[Клиенты/Windows-WPF]]). Для бэкенда — это всегда `OutgoingMessage.forwarded_message_id`
 - **ListChatAttachments без фильтра**: тип 8 (ForwardedMessage) исключён из медиа-галереи автоматически
+- **Поиск документов**: `ListChatAttachments.file_name_query` принудительно выбирает `Document`, проверяет участие в чате как обычная выдача и возвращает точный `total_count`. Имена локальных вложений сохраняются при send/edit; для legacy-документов без имени поиск лениво заполняет его батчами через [[Backend/Files|FilesServerApi]].
 - **Системные сообщения**: `MessageContentType.System` — для событий чата (создание группы, кик)
 - **Маппинг файлов**: `MessageMapping.ToGrpc(filesInfoMap?)` — словарь `fileId → FileData` для вложений. Если не передан — поля preview/filename пустые
 - **Пагинация**: `GetChatMessagesWithOffset` — двунаправленная загрузка вокруг `fromMessageId` (по 50 в каждую сторону)

@@ -13,6 +13,7 @@ namespace BarkFluff.Messages.Features.ListChatAttachments;
 
 public class ListChatAttachmentsCommandHandler : IRequestHandler<ListChatAttachmentsCommand, ListChatAttachmentsResponse>
 {
+    private const int FileNameHydrationBatchSize = 50;
     private readonly UserContext _userContext;
     private readonly ChatsStorage _chatsStorage;
     private readonly MessagesStorage _messagesStorage;
@@ -55,13 +56,30 @@ public class ListChatAttachmentsCommandHandler : IRequestHandler<ListChatAttachm
             throw new NoAccessToChatException();
         }
 
+        var fileNameQuery = request.FileNameQuery?.Trim();
+        if (!string.IsNullOrEmpty(fileNameQuery))
+        {
+            // Поиск имён определён только для документов. Явный фильтр другого
+            // типа не подменяем документами: такая комбинация не имеет совпадений.
+            if (request.AttachmentType.HasValue
+                && request.AttachmentType.Value != Domain.MessageAttachmentType.Unknown
+                && request.AttachmentType.Value != Domain.MessageAttachmentType.Document)
+            {
+                return new ListChatAttachmentsResponse();
+            }
+
+            request.AttachmentType = Domain.MessageAttachmentType.Document;
+            await HydrateLegacyDocumentFileNames(request.ChatId, cancellationToken);
+        }
+
         // Get attachments from storage
         var (attachments, totalCount) = await _messagesStorage.GetChatAttachmentsAsync(
             request.ChatId,
             request.AttachmentType,
             request.Skip,
             request.Size,
-            request.SortDescending);
+            request.SortDescending,
+            fileNameQuery);
 
         // Collect FileIds for batch request to Files service
         var fileIds = attachments
@@ -124,5 +142,32 @@ public class ListChatAttachmentsCommandHandler : IRequestHandler<ListChatAttachm
         }
 
         return response;
+    }
+
+    private async Task HydrateLegacyDocumentFileNames(Guid chatId, CancellationToken cancellationToken)
+    {
+        var fileIds = await _messagesStorage.GetDocumentFileIdsMissingNamesAsync(chatId);
+        if (fileIds.Count == 0)
+            return;
+
+        var names = new Dictionary<string, string>(fileIds.Count);
+        foreach (var batch in fileIds.Chunk(FileNameHydrationBatchSize))
+        {
+            var validIds = batch.Where(id => Guid.TryParse(id, out _)).ToList();
+            foreach (var fileId in batch)
+                names[fileId] = string.Empty;
+
+            if (validIds.Count == 0)
+                continue;
+
+            var files = await _filesServerApiClient.GetFilesDataAsync(
+                new GetFilesDataRequest { FileIds = { validIds } },
+                cancellationToken: cancellationToken);
+
+            foreach (var file in files.FilesInfos)
+                names[file.Id] = file.FileName;
+        }
+
+        await _messagesStorage.SetDocumentFileNamesAsync(names);
     }
 }

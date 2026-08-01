@@ -467,7 +467,8 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Skip = request.Pagination.Offset,
             Size = request.Pagination.Size,
             AttachmentType = request.AttachmentType == 0 ? null : (Domain.MessageAttachmentType?)(int)request.AttachmentType,
-            SortDescending = request.SortDescending
+            SortDescending = request.SortDescending,
+            FileNameQuery = request.FileNameQuery
         };
 
         return await _mediator.Send(command);

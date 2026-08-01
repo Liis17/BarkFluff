@@ -367,6 +367,7 @@ message ListChatAttachmentsRequest {
   barkfluff.shared.PageRequest pagination = 2; // Пагинация
   barkfluff.shared.MessageAttachmentType attachment_type = 3; // Фильтр по типу (0 = все)
   bool sort_descending = 4; // true = новые первыми (по умолчанию)
+  string file_name_query = 5; // Подстрока имени; применяется только к Document (пусто = без поиска)
 }
 
 message ListChatAttachmentsResponse {

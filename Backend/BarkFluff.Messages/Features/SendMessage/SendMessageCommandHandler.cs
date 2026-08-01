@@ -322,6 +322,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             {
                 FileId = x.Id,
                 FileSize = x.FileSize,
+                FileName = x.FileName,
                 PreviewUrl = x.PreviewUrl,
                 Type = _attachmentMap[x.Type]
             }).ToList();

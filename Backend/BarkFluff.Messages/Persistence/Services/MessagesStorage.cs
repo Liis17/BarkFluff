@@ -207,67 +207,101 @@ public class MessagesStorage
         MessageAttachmentType? attachmentType,
         int skip,
         int take,
-        bool sortDescending)
+        bool sortDescending,
+        string? fileNameQuery = null)
     {
-        // Build filter and sort strings
-        string attachmentTypeFilter;
-        if (attachmentType.HasValue && attachmentType.Value != Domain.MessageAttachmentType.Unknown)
-        {
-            var typeValue = (int)attachmentType.Value;
-            attachmentTypeFilter = "AND a.\"Type\" = " + typeValue;
-        }
+        var normalizedFileNameQuery = fileNameQuery?.Trim();
+        var query = _context.Messages
+            .Where(m => m.ChatId == chatId && !m.IsDeleted && m.Content != null)
+            .SelectMany(m => m.Content!.Attachments!, (message, attachment) => new { message, attachment });
+
+        if (attachmentType.HasValue && attachmentType.Value != MessageAttachmentType.Unknown)
+            query = query.Where(x => x.attachment.Type == attachmentType.Value);
         else
+            query = query.Where(x => x.attachment.Type != MessageAttachmentType.ForwardedMessage);
+
+        if (!string.IsNullOrEmpty(normalizedFileNameQuery))
         {
-            attachmentTypeFilter = "AND a.\"Type\" != 8";
+            var normalizedForComparison = normalizedFileNameQuery.ToUpper();
+            query = query.Where(x => x.attachment.FileName != null
+                && x.attachment.FileName.ToUpper().Contains(normalizedForComparison));
         }
 
-        var sortOrder = sortDescending ? "DESC" : "ASC";
-
-        // Get total count with filter (database-side)
-        var countSql = $@"
-            SELECT COUNT(*)
-            FROM ""Messages"" m
-            INNER JOIN ""MessageAttachments"" a ON m.""Id"" = a.""MessageId""
-            WHERE m.""ChatId"" = @chatId
-            AND m.""IsDeleted"" = false
-            {attachmentTypeFilter}";
-
-        var totalCount = (await _context.Database.SqlQueryRaw<int>(
-            countSql,
-            new NpgsqlParameter("@chatId", chatId))
-            .ToListAsync()).FirstOrDefault();
-
-        // Get attachments with pagination (database-side)
-        var sql = $@"
-            SELECT
-                m.""Id"" AS ""MessageId"",
-                m.""SenderId"" AS ""SenderId"",
-                m.""SentAt"" AS ""SentAt"",
-                a.""Id"" AS ""AttachmentId"",
-                a.""Type"" AS ""AttachmentType"",
-                a.""FileId"" AS ""FileId"",
-                a.""PreviewUrl"" AS ""PreviewUrl"",
-                a.""FileSize"" AS ""FileSize"",
-                a.""OriginServer"" AS ""OriginServer"",
-                a.""FileName"" AS ""FileName"",
-                a.""PreviewFileId"" AS ""PreviewFileId"",
-                a.""ImageWidth"" AS ""ImageWidth"",
-                a.""ImageHeight"" AS ""ImageHeight""
-            FROM ""Messages"" m
-            INNER JOIN ""MessageAttachments"" a ON m.""Id"" = a.""MessageId""
-            WHERE m.""ChatId"" = @chatId
-            AND m.""IsDeleted"" = false
-            {attachmentTypeFilter}
-            ORDER BY m.""SentAt"" {sortOrder}, a.""Id"" ASC
-            LIMIT @take OFFSET @skip";
-
-        var attachments = await _context.Database
-            .SqlQueryRaw<ChatAttachmentDto>(sql,
-                new NpgsqlParameter("@chatId", chatId),
-                new NpgsqlParameter("@take", take),
-                new NpgsqlParameter("@skip", skip))
+        var totalCount = await query.CountAsync();
+        var ordered = sortDescending
+            ? query.OrderByDescending(x => x.message.SentAt).ThenBy(x => x.attachment.Id)
+            : query.OrderBy(x => x.message.SentAt).ThenBy(x => x.attachment.Id);
+        var attachments = await ordered
+            .Skip(skip)
+            .Take(take)
+            .Select(x => new ChatAttachmentDto
+            {
+                MessageId = x.message.Id,
+                SenderId = x.message.SenderId ?? 0,
+                SentAt = x.message.SentAt,
+                AttachmentId = x.attachment.Id,
+                AttachmentType = x.attachment.Type,
+                FileId = x.attachment.FileId ?? string.Empty,
+                PreviewUrl = x.attachment.PreviewUrl,
+                FileSize = x.attachment.FileSize,
+                OriginServer = x.attachment.OriginServer,
+                FileName = x.attachment.FileName,
+                PreviewFileId = x.attachment.PreviewFileId,
+                ImageWidth = x.attachment.ImageWidth,
+                ImageHeight = x.attachment.ImageHeight
+            })
             .ToListAsync();
 
         return (attachments, totalCount);
+    }
+
+    /// <summary>
+    /// Возвращает локальные документы без сохранённого имени. Имена старых вложений
+    /// лениво заполняются перед серверным поиском через Files.
+    /// </summary>
+    public async Task<List<string>> GetDocumentFileIdsMissingNamesAsync(Guid chatId)
+    {
+        return await _context.Messages
+            .Where(m => m.ChatId == chatId && !m.IsDeleted && m.Content != null)
+            .SelectMany(m => m.Content!.Attachments!)
+            .Where(a => a.Type == MessageAttachmentType.Document
+                && a.OriginServer == null
+                && a.FileName == null
+                && a.FileId != null)
+            .Select(a => a.FileId!)
+            .Distinct()
+            .ToListAsync();
+    }
+
+    /// <summary>Сохраняет имена локальных документов, полученные из Files для legacy-вложений.</summary>
+    public async Task SetDocumentFileNamesAsync(IReadOnlyDictionary<string, string> fileNames)
+    {
+        if (fileNames.Count == 0)
+            return;
+
+        var fileIds = fileNames.Keys.ToList();
+        var messages = await _context.Messages
+            .Include(m => m.Content!.Attachments)
+            .Where(m => !m.IsDeleted && m.Content != null
+                && m.Content.Attachments!.Any(a => a.Type == MessageAttachmentType.Document
+                    && a.OriginServer == null
+                    && a.FileName == null
+                    && a.FileId != null
+                    && fileIds.Contains(a.FileId)))
+            .ToListAsync();
+
+        foreach (var attachment in messages.SelectMany(m => m.Content!.Attachments!))
+        {
+            if (attachment.Type == MessageAttachmentType.Document
+                && attachment.OriginServer == null
+                && attachment.FileName == null
+                && attachment.FileId != null
+                && fileNames.TryGetValue(attachment.FileId, out var fileName))
+            {
+                attachment.FileName = fileName;
+            }
+        }
+
+        await _context.SaveChangesAsync();
     }
 }

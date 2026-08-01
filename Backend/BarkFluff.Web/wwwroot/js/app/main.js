@@ -2427,59 +2427,197 @@
         });
     }
 
-    function loadProfileMedia(type) {
-        renderChatMedia(type, profileMediaContent);
+    var MEDIA_TAB_TYPES = ['media', 'files', 'audio', 'voice'];
+
+    function createMediaPanels(container) {
+        var state = { chatId: null, requestIds: {}, panes: {}, contents: {}, fileSearch: null, searchTimer: null };
+        container.replaceChildren();
+        MEDIA_TAB_TYPES.forEach(function (type) {
+            var pane = document.createElement('div');
+            pane.className = 'profile-media-pane';
+            pane.dataset.type = type;
+            var content = document.createElement('div');
+            if (type === 'files') {
+                var input = document.createElement('input');
+                input.className = 'profile-file-search';
+                input.type = 'search';
+                input.placeholder = 'Поиск файлов…';
+                input.maxLength = 255;
+                input.autocomplete = 'off';
+                state.fileSearch = input;
+                pane.appendChild(input);
+            }
+            pane.appendChild(content);
+            container.appendChild(pane);
+            state.panes[type] = pane;
+            state.contents[type] = content;
+            state.requestIds[type] = 0;
+        });
+        state.panes.media.classList.add('active');
+        state.fileSearch.addEventListener('input', function () {
+            clearTimeout(state.searchTimer);
+            state.searchTimer = setTimeout(function () { renderChatMedia('files', state); }, 300);
+        });
+        return state;
     }
 
-    function renderChatMedia(type, profileMediaContent) {
-        profileMediaContent.innerHTML = '';
+    var profileMediaPanels = createMediaPanels(profileMediaContent);
+    var groupMediaPanels = createMediaPanels(groupMediaContent);
+
+    function setMediaTabActive(selector, panels, type) {
+        document.querySelectorAll(selector).forEach(function (tab) { tab.classList.toggle('active', tab.dataset.type === type); });
+        MEDIA_TAB_TYPES.forEach(function (tabType) { panels.panes[tabType].classList.toggle('active', tabType === type); });
+    }
+
+    function loadProfileMedia(type) {
+        setMediaTabActive('#profileOverlay .profile-media-tab', profileMediaPanels, type);
+        renderChatMedia(type, profileMediaPanels);
+    }
+
+    function isCurrentMediaRequest(panels, type, chatId, requestId) {
+        return panels.chatId === chatId && currentChatId === chatId && panels.requestIds[type] === requestId;
+    }
+
+    function makeStaticGifPreview(fileUrl) {
+        if (!fileUrl) return Promise.reject(new Error('GIF URL is missing'));
+        return fetch(fileUrl).then(function (response) {
+            if (!response.ok) throw new Error('GIF could not be loaded');
+            return response.blob();
+        }).then(function (blob) {
+            return new Promise(function (resolve, reject) {
+                var objectUrl = URL.createObjectURL(blob);
+                var image = new Image();
+                image.onload = function () {
+                    URL.revokeObjectURL(objectUrl);
+                    var maxSide = 1024;
+                    var scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+                    var canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.82));
+                };
+                image.onerror = function () { URL.revokeObjectURL(objectUrl); reject(new Error('GIF could not be decoded')); };
+                image.src = objectUrl;
+            });
+        });
+    }
+
+    function getProfileMediaUrls(att) {
+        return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+            var file = urls[0] || {};
+            return {
+                full: file.url || att.previewUrl || '',
+                preview: file.previewUrl || att.previewUrl || ''
+            };
+        });
+    }
+
+    function renderChatMedia(type, panels) {
         if (!currentChatId) return;
+        var chatId = currentChatId;
+        if (panels.chatId !== chatId) {
+            panels.chatId = chatId;
+            MEDIA_TAB_TYPES.forEach(function (tabType) {
+                panels.requestIds[tabType]++;
+                panels.contents[tabType].replaceChildren();
+            });
+            panels.fileSearch.value = '';
+        }
+
+        var content = panels.contents[type];
+        var requestId = ++panels.requestIds[type];
+        content.replaceChildren();
+        function current() { return isCurrentMediaRequest(panels, type, chatId, requestId); }
+        function showEmpty(text) {
+            if (current()) content.innerHTML = '<div class="profile-media-empty">' + text + '</div>';
+        }
 
         if (type === 'media') {
             Promise.all([
-                BF.api.listChatAttachments(currentChatId, 1, 0, 30),
-                BF.api.listChatAttachments(currentChatId, 2, 0, 30),
-                BF.api.listChatAttachments(currentChatId, 3, 0, 30)
+                BF.api.listChatAttachments(chatId, 1, 0, 30),
+                BF.api.listChatAttachments(chatId, 2, 0, 30),
+                BF.api.listChatAttachments(chatId, 3, 0, 30)
             ]).then(function (results) {
+                if (!current()) return;
                 var all = (results[0].attachments || []).concat(results[1].attachments || [], results[2].attachments || []);
                 all.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
-                if (all.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет медиафайлов</div>'; return; }
+                if (all.length === 0) { showEmpty('Нет медиафайлов'); return; }
 
                 var grid = document.createElement('div');
                 grid.className = 'profile-media-grid';
-
+                content.appendChild(grid);
                 var chain = Promise.resolve();
                 all.forEach(function (item) {
                     chain = chain.then(function () {
                         var att = item.attachment;
                         if (!att || !att.fileId) return;
-                        var urlP = att.previewUrl ? Promise.resolve(att.previewUrl)
-                            : BF.files.getFileUrls([att.fileId]).then(function (urls) { return urls[0] ? (urls[0].previewUrl || urls[0].url) : ''; });
-                        return urlP.then(function (url) {
-                            if (!url) return;
-                            var img = document.createElement('img');
-                            img.src = url; img.loading = 'lazy';
-                            BF.files.bindResilientMedia(img, att.fileId, true);
-                            img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url, att.fileId); });
-                            grid.appendChild(img);
+                        return getProfileMediaUrls(att).then(function (urls) {
+                            var previewPromise = att.type === 'GIF' && !urls.preview
+                                ? makeStaticGifPreview(urls.full)
+                                : Promise.resolve(urls.preview || urls.full);
+                            return previewPromise.then(function (preview) {
+                                if (!current()) return;
+                                var tile = document.createElement('button');
+                                tile.type = 'button';
+                                tile.className = 'profile-media-tile';
+                                tile.setAttribute('aria-label', att.type === 'VIDEO' ? 'Открыть видео' : 'Открыть изображение');
+                                if (preview) {
+                                    var img = document.createElement('img');
+                                    img.src = preview;
+                                    img.loading = 'lazy';
+                                    img.alt = '';
+                                    BF.files.bindResilientMedia(img, att.fileId, true);
+                                    tile.appendChild(img);
+                                } else {
+                                    var placeholder = document.createElement('span');
+                                    placeholder.className = 'profile-media-placeholder';
+                                    placeholder.textContent = 'Нет превью';
+                                    tile.appendChild(placeholder);
+                                }
+                                if (att.type === 'VIDEO') {
+                                    var play = document.createElement('span');
+                                    play.className = 'profile-video-play';
+                                    play.textContent = '▶';
+                                    tile.appendChild(play);
+                                }
+                                tile.addEventListener('click', function () {
+                                    // В profile/group панели GIF должен остаться неподвижным
+                                    // и в просмотрщике; чат и его общий просмотрщик не меняем.
+                                    if (att.type === 'GIF') {
+                                        if (preview) showMediaOverlay('image', preview, null);
+                                        return;
+                                    }
+                                    showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', urls.full || preview, att.fileId);
+                                });
+                                grid.appendChild(tile);
+                            });
+                        }).catch(function () {
+                            if (!current()) return;
+                            var tile = document.createElement('div');
+                            tile.className = 'profile-media-placeholder';
+                            tile.textContent = 'Нет превью';
+                            grid.appendChild(tile);
                         });
                     });
                 });
-                chain.then(function () { profileMediaContent.appendChild(grid); });
-            });
+            }).catch(function () { showEmpty('Не удалось загрузить медиафайлы'); });
         } else if (type === 'files') {
-            BF.api.listChatAttachments(currentChatId, 4, 0, 30).then(function (data) {
+            var query = panels.fileSearch.value.trim();
+            BF.api.listChatAttachments(chatId, 4, 0, 30, query).then(function (data) {
+                if (!current()) return;
                 var files = data.attachments || [];
-                if (files.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет файлов</div>'; return; }
+                if (files.length === 0) { showEmpty(query ? 'Файлы не найдены' : 'Нет файлов'); return; }
                 var list = document.createElement('div');
                 list.className = 'profile-file-list';
-
+                content.appendChild(list);
                 var chain = Promise.resolve();
                 files.forEach(function (item) {
                     chain = chain.then(function () {
                         var att = item.attachment;
                         if (!att || !att.fileId) return;
                         return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+                            if (!current()) return;
                             var fileUrl = urls[0] ? urls[0].url : '#';
                             var el = document.createElement('a');
                             el.className = 'profile-file-item';
@@ -2494,23 +2632,24 @@
                         });
                     });
                 });
-                chain.then(function () { profileMediaContent.appendChild(list); });
-            });
+            }).catch(function () { showEmpty('Не удалось загрузить файлы'); });
         } else if (type === 'audio' || type === 'voice') {
             var attType = type === 'audio' ? 5 : 6;
             var emptyText = type === 'audio' ? 'Нет аудио' : 'Нет голосовых';
-            BF.api.listChatAttachments(currentChatId, attType, 0, 30).then(function (data) {
+            BF.api.listChatAttachments(chatId, attType, 0, 30).then(function (data) {
+                if (!current()) return;
                 var items = data.attachments || [];
-                if (items.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">' + emptyText + '</div>'; return; }
+                if (items.length === 0) { showEmpty(emptyText); return; }
                 var list = document.createElement('div');
                 list.className = 'profile-file-list';
-
+                content.appendChild(list);
                 var chain = Promise.resolve();
                 items.forEach(function (item) {
                     chain = chain.then(function () {
                         var att = item.attachment;
                         if (!att || !att.fileId) return;
                         return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+                            if (!current()) return;
                             var fileUrl = urls[0] ? urls[0].url : '';
                             if (!fileUrl) return;
                             var el = document.createElement('div');
@@ -2530,17 +2669,12 @@
                         });
                     });
                 });
-                chain.then(function () { profileMediaContent.appendChild(list); });
-            });
+            }).catch(function () { showEmpty('Не удалось загрузить вложения'); });
         }
     }
 
-    document.querySelectorAll('.profile-media-tab').forEach(function (tab) {
-        tab.addEventListener('click', function () {
-            document.querySelectorAll('.profile-media-tab').forEach(function (t) { t.classList.remove('active'); });
-            tab.classList.add('active');
-            loadProfileMedia(tab.dataset.type);
-        });
+    document.querySelectorAll('#profileOverlay .profile-media-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () { loadProfileMedia(tab.dataset.type); });
     });
 
     function onChatHeaderClick() {
@@ -2690,8 +2824,8 @@
         groupAddInput.value = '';
         groupAddResults.innerHTML = '';
         loadGroupMembers();
-        document.querySelectorAll('.group-media-tab').forEach(function (t, i) { t.classList.toggle('active', i === 0); });
-        renderChatMedia('media', groupMediaContent);
+        setMediaTabActive('#groupOverlay .group-media-tab', groupMediaPanels, 'media');
+        renderChatMedia('media', groupMediaPanels);
         groupOverlay.classList.add('visible');
     }
 
@@ -2848,9 +2982,8 @@
 
     document.querySelectorAll('.group-media-tab').forEach(function (tab) {
         tab.addEventListener('click', function () {
-            document.querySelectorAll('.group-media-tab').forEach(function (t) { t.classList.remove('active'); });
-            tab.classList.add('active');
-            renderChatMedia(tab.dataset.type, groupMediaContent);
+            setMediaTabActive('#groupOverlay .group-media-tab', groupMediaPanels, tab.dataset.type);
+            renderChatMedia(tab.dataset.type, groupMediaPanels);
         });
     });
 
