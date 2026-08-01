@@ -171,11 +171,21 @@ internal sealed class FakeMessengerService : IMessengerService
 
     public bool UserDataFails { get; set; }
 
+    public bool ChatsFail { get; set; }
+
+    public bool MessagesFail { get; set; }
+
+    public bool SendFails { get; set; }
+
     public Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, List<Chat>?)>((new ErrorReturner(true), [.. Chats]));
+        Task.FromResult<(ErrorReturner, List<Chat>?)>(ChatsFail
+            ? (new ErrorReturner(false, "чаты недоступны"), null)
+            : (new ErrorReturner(true), [.. Chats]));
 
     public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long forwardedMessageId = 0, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, MessageModel?)>((new ErrorReturner(true), null));
+        Task.FromResult<(ErrorReturner, MessageModel?)>(SendFails
+            ? (new ErrorReturner(false, "сообщение не отправлено"), null)
+            : (new ErrorReturner(true), null));
 
     public Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessageAsync(string chatId, string text, byte[] key, CancellationToken cancellationToken = default) =>
         Task.FromResult<(ErrorReturner, PrivateMessageModel?)>((new ErrorReturner(true), null));
@@ -196,7 +206,9 @@ internal sealed class FakeMessengerService : IMessengerService
         Task.FromResult<(ErrorReturner, List<PinnedMessageInfo>?)>((new ErrorReturner(true), []));
 
     public Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesAsync(string chatId, long fromMessageId, int offsetBefore, int offsetAfter, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, List<MessageModel>?)>((new ErrorReturner(true), [.. Messages.Where(message => message.ChatId == chatId)]));
+        Task.FromResult<(ErrorReturner, List<MessageModel>?)>(MessagesFail
+            ? (new ErrorReturner(false, "история недоступна"), null)
+            : (new ErrorReturner(true), [.. Messages.Where(message => message.ChatId == chatId)]));
 
     public Task<(ErrorReturner error, List<PrivateMessageModel>? messages)> GetPrivateMessagesAsync(string chatId, byte[] key, long fromMessageId, int offsetBefore, int offsetAfter, CancellationToken cancellationToken = default) =>
         Task.FromResult<(ErrorReturner, List<PrivateMessageModel>?)>((new ErrorReturner(true), []));

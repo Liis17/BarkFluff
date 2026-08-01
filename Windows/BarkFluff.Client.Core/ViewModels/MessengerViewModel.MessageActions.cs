@@ -231,8 +231,14 @@ public sealed partial class MessengerViewModel
     private async Task ResolvePinnedAuthorAsync(PinnedPreviewViewModel preview, long senderId)
     {
         var (error, data) = await _messenger.GetUserDataAsync(senderId);
-        if (!error.IsSuccess || data is null || PinnedPreview != preview)
+        if (PinnedPreview != preview)
         {
+            return;
+        }
+
+        if (!error.IsSuccess || data is null)
+        {
+            ReportBackgroundError(error);
             return;
         }
 
@@ -456,8 +462,14 @@ public sealed partial class MessengerViewModel
     private async Task LoadPinnedMessagesAsync(ChatItemViewModel chat, int loadVersion)
     {
         var (error, pinned) = await _messenger.GetPinnedMessagesAsync(chat.Id);
-        if (!error.IsSuccess || pinned is null || SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
+        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
         {
+            return;
+        }
+
+        if (!error.IsSuccess || pinned is null)
+        {
+            ReportBackgroundError(error);
             return;
         }
 
@@ -497,6 +509,13 @@ public sealed partial class MessengerViewModel
         string.IsNullOrWhiteSpace(error.ErrorMessage)
             ? _localization.GetString("Messenger_ActionFailed")
             : error.ErrorMessage;
+
+    /// <summary>
+    /// Фоновая операция сообщает об ошибке, только если баннер пуст: она не перетирает
+    /// сообщение о только что сделанном действии, а серия сетевых сбоев подряд ставит
+    /// текст один раз вместо того, чтобы мигать им.
+    /// </summary>
+    private void ReportBackgroundError(ErrorReturner error) => ActionError ??= DescribeError(error);
 
     private void TryUseClipboard(Action operation)
     {
