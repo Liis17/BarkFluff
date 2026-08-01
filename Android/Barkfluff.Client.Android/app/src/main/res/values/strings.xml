@@ -1,4 +1,5 @@
 <resources>
+    <string name="chat_draft_preview">Черновик</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
 
