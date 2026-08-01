@@ -47,11 +47,29 @@ public class LoginNotificationConsumerTests
         {
             OwnerId = 2,
             Type = NotificationType.SuccessfulLogin,
-            Payload = new Dictionary<string, string>()
+            Payload = new Dictionary<string, string>
+            {
+                ["devicename"] = "Samsung SM-S948B",
+                ["os"] = "Android 16",
+                ["appname"] = "Barkfluff Kotlin v0.0.104 beta",
+                ["ip"] = "213.77.184.142",
+                ["location"] = "Россия, Санкт-Петербург",
+                ["datetime"] = "31.07.2026 10:42:12"
+            }
         }).Object);
 
         _messagesClient.Verify(c => c.SendMessageServerAsync(
-            It.Is<MessagesProto.SendMessageServerRequest>(r => r.SenderUserId == 1 && r.UserId == 2),
+            It.Is<MessagesProto.SendMessageServerRequest>(r =>
+                r.SenderUserId == 1 &&
+                r.UserId == 2 &&
+                r.Message.Text == "## Выполнен вход в твой аккаунт\n\n" +
+                                  "- **Устройство:** Samsung SM-S948B\n" +
+                                  "- **ОС:** Android 16\n" +
+                                  "- **Приложение:** Barkfluff Kotlin v0.0.104 beta\n" +
+                                  "- **IP:** 213.77.184.142\n" +
+                                  "- **Местоположение:** Россия, Санкт-Петербург\n" +
+                                  "- **Время (UTC):** 31.07.2026 10:42:12\n\n" +
+                                  "> **Если это не ты,** смени пароль и заверши другие сессии."),
             null, null, CancellationToken.None), Times.Once);
     }
 
