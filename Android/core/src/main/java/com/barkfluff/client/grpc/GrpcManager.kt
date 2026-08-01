@@ -2584,6 +2584,68 @@ class GrpcManager {
         }
     }
 
+    data class SyncedChatBackgroundSettings(
+        val globalChatBackgroundFileId: String,
+        val chatBackgroundFileIds: Map<String, String>
+    )
+
+    suspend fun getUserSettings(): Result<SyncedChatBackgroundSettings> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            val response = usersClient!!.getUserSettings(
+                UsersApiOuterClass.GetUserSettingsRequest.newBuilder().build()
+            )
+            Result.success(
+                SyncedChatBackgroundSettings(
+                    globalChatBackgroundFileId = response.settings.globalChatBackgroundFileId,
+                    chatBackgroundFileIds = response.settings.chatBackgroundsList
+                        .filter { it.chatId.isNotBlank() && it.chatBackgroundFileId.isNotBlank() }
+                        .associate { it.chatId to it.chatBackgroundFileId }
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения настроек фонов", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setGlobalChatBackground(fileId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            usersClient!!.setGlobalChatBackground(
+                UsersApiOuterClass.SetGlobalChatBackgroundRequest.newBuilder()
+                    .setChatBackgroundFileId(fileId)
+                    .build()
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки глобального фона", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setChatBackground(chatId: String, fileId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            usersClient!!.setChatBackground(
+                UsersApiOuterClass.SetChatBackgroundRequest.newBuilder()
+                    .setChatId(chatId)
+                    .setChatBackgroundFileId(fileId)
+                    .build()
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки фона чата", e)
+            Result.failure(e)
+        }
+    }
+
     /**
      * Получает FileId постера профиля текущего пользователя
      */

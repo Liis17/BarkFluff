@@ -399,6 +399,7 @@
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
+        if (BF.personalization) BF.personalization.applyForChat(chatId);
         BF.realtime.subscribeTyping(chatId);
         currentChatInfo = null;
         currentChatType = chatMeta ? chatMeta.chatType : 0;
@@ -1241,6 +1242,7 @@
         if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
 
         currentChatId = chat.id;
+        if (BF.personalization) BF.personalization.applyForChat(chat.id);
         currentChatInfo = null;
         currentChatType = 1;
         currentChatPeerIsBot = false;
@@ -2592,6 +2594,61 @@
     var _profileCallAudioBtn = $('#profileCallAudioBtn');
     var _profileCallVideoBtn = $('#profileCallVideoBtn');
     if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
+
+    function openChatBackgroundSelector(chatId, title) {
+        if (!chatId) return;
+        var overlay = $('#chatBackgroundSelector');
+        var selectorTitle = $('#chatBackgroundSelectorTitle');
+        var grid = $('#chatBackgroundSelectorGrid');
+        selectorTitle.textContent = 'Фон: ' + (title || 'чат');
+        grid.innerHTML = '<div class="sd-hint">Загрузка…</div>';
+        overlay.classList.add('visible');
+
+        BF.api.getPersonalization().then(function (data) {
+            var ids = ((data && data.personalization) || {}).chatBackgroundFileIds || [];
+            var current = BF.personalization.getChatBackgroundFileId(chatId);
+            grid.innerHTML = '';
+            function addCard(fileId, label) {
+                var card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'sd-bg-card' + (current === fileId ? ' active' : '') + (!fileId ? ' none-card' : '');
+                if (fileId) {
+                    var image = document.createElement('img');
+                    image.alt = '';
+                    card.appendChild(image);
+                    BF.files.getFileUrls([fileId]).then(function (urls) {
+                        var item = urls && urls[0];
+                        if (item) image.src = item.previewUrl || item.url;
+                    });
+                } else {
+                    card.textContent = label;
+                }
+                card.addEventListener('click', function () {
+                    card.disabled = true;
+                    BF.personalization.setChatBackgroundFileId(chatId, fileId).then(function () {
+                        overlay.classList.remove('visible');
+                    }).catch(function () { card.disabled = false; });
+                });
+                grid.appendChild(card);
+            }
+            addCard('', 'Использовать глобальный');
+            ids.forEach(function (fileId) { addCard(fileId, ''); });
+        }).catch(function () { grid.innerHTML = '<div class="sd-hint error">Не удалось загрузить фоны</div>'; });
+    }
+
+    var _chatBackgroundSelector = $('#chatBackgroundSelector');
+    var _chatBackgroundSelectorClose = $('#chatBackgroundSelectorClose');
+    if (_chatBackgroundSelectorClose) _chatBackgroundSelectorClose.addEventListener('click', function () {
+        _chatBackgroundSelector.classList.remove('visible');
+    });
+    if (_chatBackgroundSelector) _chatBackgroundSelector.addEventListener('click', function (e) {
+        if (e.target === _chatBackgroundSelector) _chatBackgroundSelector.classList.remove('visible');
+    });
+
+    var _profileBackgroundBtn = $('#profileBackgroundButton');
+    if (_profileBackgroundBtn) _profileBackgroundBtn.addEventListener('click', function () {
+        openChatBackgroundSelector(currentChatId, currentChatInfo && currentChatInfo.title);
+    });
     if (_profileCallAudioBtn) _profileCallAudioBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
     if (_profileCallVideoBtn) _profileCallVideoBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
 
@@ -2731,6 +2788,11 @@
     groupClose.addEventListener('click', function () { groupOverlay.classList.remove('visible'); });
     groupOverlay.addEventListener('click', function (e) { if (e.target === groupOverlay) groupOverlay.classList.remove('visible'); });
     groupNameEdit.addEventListener('click', renameGroup);
+
+    var _groupBackgroundBtn = $('#groupBackgroundButton');
+    if (_groupBackgroundBtn) _groupBackgroundBtn.addEventListener('click', function () {
+        openChatBackgroundSelector(currentChatId, currentChatInfo && currentChatInfo.title);
+    });
 
     groupAvatarEdit.addEventListener('click', function () { groupAvatarInput.click(); });
     groupAvatarInput.addEventListener('change', function () {

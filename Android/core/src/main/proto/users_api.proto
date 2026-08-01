@@ -70,6 +70,15 @@ service UsersApi {
   // Обновить персонализацию текущего пользователя
   rpc UpdatePersonalization(UpdatePersonalizationRequest) returns(UpdatePersonalizationResponse);
 
+  // Получить синхронизируемые настройки фонов текущего пользователя
+  rpc GetUserSettings(GetUserSettingsRequest) returns(GetUserSettingsResponse);
+
+  // Установить глобальный фон чатов текущего пользователя
+  rpc SetGlobalChatBackground(SetGlobalChatBackgroundRequest) returns(SetGlobalChatBackgroundResponse);
+
+  // Установить или сбросить фон конкретного чата текущего пользователя
+  rpc SetChatBackground(SetChatBackgroundRequest) returns(SetChatBackgroundResponse);
+
   // Получить постер профиля текущего пользователя
   rpc GetProfilePoster(GetProfilePosterRequest) returns(GetProfilePosterResponse);
 
@@ -742,6 +751,37 @@ message UpdatePersonalizationRequest {
 }
 
 message UpdatePersonalizationResponse { }
+
+// Синхронизируемые настройки фонов
+
+message ChatBackgroundOverride {
+  string chat_id = 1;
+  string chat_background_file_id = 2;
+}
+
+message UserSettingsData {
+  string global_chat_background_file_id = 1;
+  repeated ChatBackgroundOverride chat_backgrounds = 2;
+}
+
+message GetUserSettingsRequest { }
+
+message GetUserSettingsResponse {
+  UserSettingsData settings = 1;
+}
+
+message SetGlobalChatBackgroundRequest {
+  string chat_background_file_id = 1;
+}
+
+message SetGlobalChatBackgroundResponse { }
+
+message SetChatBackgroundRequest {
+  string chat_id = 1;
+  string chat_background_file_id = 2;
+}
+
+message SetChatBackgroundResponse { }
 
 // Постер профиля
 

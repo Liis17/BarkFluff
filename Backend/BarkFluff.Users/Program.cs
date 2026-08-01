@@ -51,6 +51,7 @@ public class Program
         builder.Services.AddTransient<DevicesStorage>();
         builder.Services.AddTransient<PrivacyStorage>();
         builder.Services.AddTransient<PersonalizationStorage>();
+        builder.Services.AddTransient<UserSettingsStorage>();
         builder.Services.AddTransient<ChatFolderStorage>();
         builder.Services.AddTransient<ChatMuteStorage>();
         builder.Services.AddTransient<PrekeyStorage>();

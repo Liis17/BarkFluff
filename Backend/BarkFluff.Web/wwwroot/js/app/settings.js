@@ -1255,7 +1255,7 @@
         // ===== Backgrounds section =====
         var bgHead = document.createElement('div');
         bgHead.className = 'sd-section-heading';
-        bgHead.textContent = 'Фон чата';
+        bgHead.textContent = 'Глобальный фон чатов';
         body.appendChild(bgHead);
 
         var bgWrap = document.createElement('div');
@@ -1286,8 +1286,10 @@
             none.className = 'sd-bg-card none-card' + (!activeId ? ' active' : '');
             none.textContent = 'Без фона';
             none.addEventListener('click', function () {
-                BF.personalization.setBackgroundFileId('').then(applyPreview);
-                rerenderGrid();
+                BF.personalization.setBackgroundFileId('').then(function () {
+                    applyPreview();
+                    rerenderGrid();
+                });
             });
             grid.appendChild(none);
 
@@ -1303,8 +1305,10 @@
                 });
                 card.addEventListener('click', function (e) {
                     if (e.target.classList.contains('sd-bg-card-remove')) return;
-                    BF.personalization.setBackgroundFileId(fid).then(applyPreview);
-                    rerenderGrid();
+                    BF.personalization.setBackgroundFileId(fid).then(function () {
+                        applyPreview();
+                        rerenderGrid();
+                    });
                 });
 
                 var rm = document.createElement('button');
@@ -1321,9 +1325,9 @@
                         chatBackgroundFileIds: nextIds
                     }).then(function () {
                         pers.chatBackgroundFileIds = nextIds;
-                        if (BF.personalization.getBackgroundFileId() === fid) {
-                            BF.personalization.setBackgroundFileId('').then(applyPreview);
-                        }
+                        return BF.personalization.reloadSettings();
+                    }).then(function () {
+                        applyPreview();
                         rerenderGrid();
                     }).catch(function () { rm.disabled = false; });
                 });
@@ -1351,7 +1355,7 @@
                     chatBackgroundFileIds: nextIds
                 }).then(function () {
                     pers.chatBackgroundFileIds = nextIds;
-                    // Auto-select newly added bg
+                    // Auto-select newly added global background
                     BF.personalization.setBackgroundFileId(fileId).then(applyPreview);
                     rerenderGrid();
                     bgStatus.textContent = 'Фон добавлен';

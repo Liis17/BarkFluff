@@ -9,15 +9,18 @@ public class UpdatePersonalizationCommandHandler : IRequestHandler<UpdatePersona
 {
     private readonly UserContext _userContext;
     private readonly PersonalizationStorage _personalizationStorage;
+    private readonly UserSettingsStorage _userSettingsStorage;
     private readonly ILogger<UpdatePersonalizationCommandHandler> _logger;
 
     public UpdatePersonalizationCommandHandler(
         UserContext userContext,
         PersonalizationStorage personalizationStorage,
+        UserSettingsStorage userSettingsStorage,
         ILogger<UpdatePersonalizationCommandHandler> logger)
     {
         _userContext = userContext;
         _personalizationStorage = personalizationStorage;
+        _userSettingsStorage = userSettingsStorage;
         _logger = logger;
     }
 
@@ -31,7 +34,11 @@ public class UpdatePersonalizationCommandHandler : IRequestHandler<UpdatePersona
 
         var chatBackgroundFileIds = data.ChatBackgroundFileIds.ToArray();
 
+        var previous = await _personalizationStorage.GetOrCreate(_userContext.UserId);
+        var removedFileIds = previous.ChatBackgroundFileIds.Except(chatBackgroundFileIds).ToArray();
+
         await _personalizationStorage.Update(_userContext.UserId, profilePosterFileId, chatBackgroundFileIds);
+        await _userSettingsStorage.ClearBackgroundReferences(_userContext.UserId, removedFileIds);
 
         _logger.LogInformation(
             "Персонализация обновлена для пользователя {UserId}: ProfilePoster={ProfilePoster}, ChatBackgrounds={Count}",
