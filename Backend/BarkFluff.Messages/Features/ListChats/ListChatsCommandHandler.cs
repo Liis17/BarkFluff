@@ -20,17 +20,19 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
     private readonly UserContext _userContext;
     private readonly ChatsStorage _chatsStorage;
     private readonly ChatCache _chatCache;
+    private readonly ChatDraftsStorage _chatDraftsStorage;
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
     private readonly ILogger<ListChatsCommandHandler> _logger;
 
     public ListChatsCommandHandler(UserContext userContext, ChatsStorage chatsStorage, IDistributedCache cache,
-        ChatCache chatCache, UsersServerApi.UsersServerApiClient usersServerApiClient, FilesServerApi.FilesServerApiClient filesServerApiClient,
+        ChatCache chatCache, ChatDraftsStorage chatDraftsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient, FilesServerApi.FilesServerApiClient filesServerApiClient,
         ILogger<ListChatsCommandHandler> logger)
     {
         _userContext = userContext;
         _chatsStorage = chatsStorage;
         _chatCache = chatCache;
+        _chatDraftsStorage = chatDraftsStorage;
         _usersServerApiClient = usersServerApiClient;
         _filesServerApiClient = filesServerApiClient;
         _logger = logger;
@@ -52,6 +54,15 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
         }
 
         var chats = await _chatsStorage.GetUserChats(_userContext.UserId, request.Skip, request.Size);
+
+        var draftChatIds = await _chatDraftsStorage.GetDraftChatIdsAsync(
+            _userContext.UserId,
+            chats.Where(x => x.Type == Domain.ChatType.Regular).Select(x => x.Id).ToList());
+        var draftChatIdSet = draftChatIds.ToHashSet();
+        foreach (var chat in chats)
+        {
+            chat.HasDraft = draftChatIdSet.Contains(chat.Id);
+        }
 
         // Имена/аватары личных чатов берём из Redis-кэша; недостающие добираем
         // ОДНИМ батч-запросом в Users (ListByIds) вместо GetById на каждый чат (N+1).

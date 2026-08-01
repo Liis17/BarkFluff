@@ -44,6 +44,9 @@ public class Chat
     // member — инициатор. Вычисляется в выборке, не хранится в БД.
     public long? PrivateInviterUserId { get; set; }
 
+    // Вычисляется при выдаче списка чатов для текущего пользователя.
+    public bool HasDraft { get; set; }
+
     // Федеративный DM (этап 2.3, docs/rearch/05-chat-replication.md). IsFederated=false — обычный
     // локальный чат, остальные поля не используются.
     public bool IsFederated { get; set; }

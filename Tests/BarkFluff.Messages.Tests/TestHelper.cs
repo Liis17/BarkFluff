@@ -21,6 +21,7 @@ public class TestHelper
     public PinnedMessagesStorage PinnedMessagesStorage { get; }
     public EncryptedMessagesStorage EncryptedMessagesStorage { get; }
     public FederatedReadStatesStorage FederatedReadStatesStorage { get; }
+    public ChatDraftsStorage ChatDraftsStorage { get; }
     public Mock<IPublishEndpoint> PublishEndpointMock { get; }
     public MetricsCollector Metrics { get; }
 
@@ -36,6 +37,7 @@ public class TestHelper
         PinnedMessagesStorage = new PinnedMessagesStorage(DbContext);
         EncryptedMessagesStorage = new EncryptedMessagesStorage(DbContext);
         FederatedReadStatesStorage = new FederatedReadStatesStorage(DbContext);
+        ChatDraftsStorage = new ChatDraftsStorage(DbContext);
         PublishEndpointMock = new Mock<IPublishEndpoint>();
         Metrics = new MetricsCollector();
     }
