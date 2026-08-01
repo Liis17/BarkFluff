@@ -116,6 +116,7 @@ class ChatActivity : AppCompatActivity() {
     private var otherUserId: Long = 0L
     private var currentUserId: Long = 0L
     private var supportsDrafts: Boolean = false
+    private var chatBackgroundLoadVersion = 0
 
     // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, URL/fileId аватара)
     private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
@@ -589,6 +590,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupChatBackground() {
+        val loadVersion = ++chatBackgroundLoadVersion
         val fileId = globalParam.chatBackgroundFileIdFor(chatId)
         applyDimOverlay()
         if (fileId.isBlank()) {
@@ -603,7 +605,9 @@ class ChatActivity : AppCompatActivity() {
             // Сначала пробуем из дискового кэша
             val cachedFile = withContext(Dispatchers.IO) { FileCache.getFile(fileId) }
             if (cachedFile != null && cachedFile.exists()) {
-                applyBackgroundFromFile(cachedFile, applyBlur)
+                if (loadVersion == chatBackgroundLoadVersion) {
+                    applyBackgroundFromFile(cachedFile, applyBlur, loadVersion)
+                }
                 return@launch
             }
             // Иначе скачиваем через Files API
@@ -611,12 +615,16 @@ class ChatActivity : AppCompatActivity() {
                 chatRepository.getFileDownloadUrl(fileId).getOrNull()
             } ?: return@launch
 
+            if (loadVersion != chatBackgroundLoadVersion) return@launch
+
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 // API 31+: загружаем через Coil, blur через RenderEffect
                 binding.chatBackgroundImage.load(url, AvatarLoader.getImageLoader(this@ChatActivity)) {
                     crossfade(true)
                     listener(onSuccess = { _, _ ->
-                        applyRenderEffectBlur(applyBlur)
+                        if (loadVersion == chatBackgroundLoadVersion) {
+                            applyRenderEffectBlur(applyBlur)
+                        }
                     })
                 }
             } else {
@@ -624,7 +632,7 @@ class ChatActivity : AppCompatActivity() {
                 val bitmap = withContext(Dispatchers.IO) {
                     loadBitmapFromUrl(url)
                 }
-                if (bitmap != null) {
+                if (bitmap != null && loadVersion == chatBackgroundLoadVersion) {
                     val finalBitmap = if (applyBlur) blurBitmapLegacy(bitmap) else bitmap
                     binding.chatBackgroundImage.setImageBitmap(finalBitmap)
                 }
@@ -644,12 +652,14 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun applyBackgroundFromFile(file: java.io.File, applyBlur: Boolean) {
+    private fun applyBackgroundFromFile(file: java.io.File, applyBlur: Boolean, loadVersion: Int) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             binding.chatBackgroundImage.load(file, AvatarLoader.getImageLoader(this)) {
                 crossfade(false)
                 listener(onSuccess = { _, _ ->
-                    applyRenderEffectBlur(applyBlur)
+                    if (loadVersion == chatBackgroundLoadVersion) {
+                        applyRenderEffectBlur(applyBlur)
+                    }
                 })
             }
         } else {
@@ -657,6 +667,7 @@ class ChatActivity : AppCompatActivity() {
                 val bitmap = withContext(Dispatchers.IO) {
                     android.graphics.BitmapFactory.decodeFile(file.absolutePath)
                 } ?: return@launch
+                if (loadVersion != chatBackgroundLoadVersion) return@launch
                 val finalBitmap = if (applyBlur) blurBitmapLegacy(bitmap) else bitmap
                 binding.chatBackgroundImage.setImageBitmap(finalBitmap)
             }
@@ -3507,11 +3518,24 @@ class ChatActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         setupChatBackground()
+        refreshChatBackgroundSettings()
         // Обновляем список, чтобы отразить изменения кэша (например, после удаления видео из кэша)
         if (::messageAdapter.isInitialized) {
             messageAdapter.messageCornerRadiusDp = globalParam.chatMessageCornerRadius
             messageAdapter.stickerSizeDp = globalParam.chatStickerSizeDp
             messageAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun refreshChatBackgroundSettings() {
+        lifecycleScope.launch {
+            grpcManager.getUserSettings().onSuccess { settings ->
+                globalParam.applyChatBackgroundSettings(
+                    settings.globalChatBackgroundFileId,
+                    settings.chatBackgroundFileIds
+                )
+                setupChatBackground()
+            }
         }
     }
 
