@@ -20,6 +20,12 @@ public interface IRealtimeMessengerService : IAsyncDisposable
 
     event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
 
+    /// <summary>
+    /// Состояние связи: <c>false</c> — стрим оборван, идёт переподключение.
+    /// Приходит из фонового потока, маршалить в UI обязан подписчик.
+    /// </summary>
+    event EventHandler<bool>? ConnectionChanged;
+
     Task StartAsync(CancellationToken cancellationToken = default);
 
     Task StopAsync();
