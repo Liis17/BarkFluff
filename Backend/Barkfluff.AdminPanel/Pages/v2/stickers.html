@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Стикеры</title>
     <link rel="stylesheet" href="assets/md3.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
     <style>
         .packs-grid {
             display: grid;
@@ -75,6 +76,39 @@
             transition: background .2s, border-color .2s;
         }
         .add-sticker:hover { background: var(--md-surface-container-high); border-color: var(--md-primary); color: var(--md-primary); }
+
+        /* Sticker editor */
+        .editor-layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+        .editor-stage {
+            flex: 1 1 380px;
+            max-width: 480px;
+            aspect-ratio: 1;
+            background: var(--md-surface-container);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            overflow: hidden;
+        }
+        .editor-stage img { display: block; max-width: 100%; opacity: 0; }
+        .editor-controls { flex: 1 1 240px; min-width: 240px; max-width: 320px; display: flex; flex-direction: column; gap: 18px; }
+        .editor-ctrl-group { display: flex; flex-direction: column; gap: 6px; }
+        .editor-ctrl-group .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .editor-ctrl-group .label { font-size: 13px; font-weight: 500; color: var(--md-on-surface-variant); }
+        .editor-ctrl-group .value { font-size: 12px; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+        .editor-ctrl-group input[type=range] { width: 100%; accent-color: var(--md-primary); cursor: pointer; }
+        .editor-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .editor-preview-group { display: flex; align-items: center; gap: 12px; padding-top: 8px; border-top: 1px solid var(--md-outline-variant); }
+        .editor-preview {
+            width: 72px; height: 72px;
+            border-radius: var(--md-shape-md);
+            background:
+                conic-gradient(var(--md-surface-container-high) 25%, var(--md-surface-container) 0 50%, var(--md-surface-container-high) 0 75%, var(--md-surface-container) 0) 0/12px 12px;
+            border: 1px solid var(--md-outline-variant);
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .editor-preview canvas { width: 100%; height: 100%; display: block; }
+        .editor-preview-none { font-size: 11px; color: var(--md-on-surface-variant); }
+        .editor-hint { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 12px; }
     </style>
 </head>
 <body>
@@ -227,12 +261,252 @@
     </div>
 </div>
 
+<!-- Sticker editor modal -->
+<div id="stickerEditorScrim" class="md-scrim" onclick="if(event.target===this)requestCloseEditor()">
+    <div class="md-dialog md-dialog-lg">
+        <div class="md-dialog-header">
+            <h3 id="editorTitle">Редактор стикера</h3>
+            <button class="md-icon-btn" onclick="requestCloseEditor()" title="Закрыть"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body">
+            <div class="editor-layout">
+                <div class="editor-stage">
+                    <img id="editorImage" src="" alt="editor">
+                </div>
+                <div class="editor-controls">
+                    <div class="editor-ctrl-group">
+                        <div class="row"><span class="label">Масштаб</span><span class="value" id="editorZoomValue">100%</span></div>
+                        <input type="range" id="editorZoom" min="0.1" max="3" step="0.01" value="1">
+                    </div>
+                    <div class="editor-ctrl-group">
+                        <div class="row"><span class="label">Поворот</span><span class="value" id="editorRotateValue">0°</span></div>
+                        <input type="range" id="editorRotate" min="-180" max="180" step="1" value="0">
+                        <div class="editor-btn-row">
+                            <button type="button" class="md-btn md-btn-tonal md-btn-square-press" onclick="editorRotateBy(-15)"><span class="msr size-18">rotate_left</span>−15°</button>
+                            <button type="button" class="md-btn md-btn-tonal md-btn-square-press" onclick="editorRotateBy(15)"><span class="msr size-18">rotate_right</span>+15°</button>
+                            <button type="button" class="md-btn md-btn-text" onclick="editorResetTransform()"><span class="msr size-18">restart_alt</span>Сброс</button>
+                        </div>
+                    </div>
+                    <div class="editor-ctrl-group">
+                        <div class="row"><span class="label">Закругление углов</span><span class="value" id="editorRadiusValue">0%</span></div>
+                        <input type="range" id="editorRadius" min="0" max="50" step="1" value="0">
+                    </div>
+                    <div class="editor-preview-group">
+                        <div class="editor-preview"><canvas id="editorPreviewCanvas" width="72" height="72"></canvas></div>
+                        <div>
+                            <div class="label" style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);">Превью 512×512</div>
+                            <div class="editor-hint" style="margin-top:4px;">Прозрачность по углам при скруглении</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="editor-hint">Колесо мыши над макетом — масштаб. Перетаскивайте рамку, чтобы выбрать область. Результат — 512×512, сервер кодирует в WebP.</p>
+        </div>
+        <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" onclick="closeStickerEditor()">Отмена</button>
+            <button type="button" id="editorApplyBtn" class="md-btn md-btn-filled md-btn-square-press" onclick="applyEditor()">
+                <span class="msr size-18">check</span>Применить
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script src="assets/sidebar.js"></script>
 <script>
     let packs = [];
     let currentPackId = null;
     let currentPackData = null;
     let originalPackName = '';
+
+    // ===== Sticker editor state =====
+    let editorCropper = null;
+    let editorTarget = null;                       // { kind, input, previewEl, iconEl, onApply? }
+    let editorState = { zoom: 1, rotate: 0, radius: 0 };
+    let editorPreviewRaf = 0;
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function roundedRectPath(ctx, x, y, w, h, r) {
+        r = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function applyRadiusToCanvas(src, radiusPercent) {
+        if (!radiusPercent || radiusPercent <= 0) return src;
+        const size = src.width;
+        const r = (radiusPercent / 100) * size;
+        const out = document.createElement('canvas');
+        out.width = size; out.height = size;
+        const ctx = out.getContext('2d');
+        ctx.clearRect(0, 0, size, size);
+        ctx.save();
+        roundedRectPath(ctx, 0, 0, size, size, r);
+        ctx.clip();
+        ctx.drawImage(src, 0, 0);
+        ctx.restore();
+        return out;
+    }
+
+    function updateEditorLabels() {
+        document.getElementById('editorZoomValue').textContent = Math.round(editorState.zoom * 100) + '%';
+        document.getElementById('editorRotateValue').textContent = editorState.rotate + '°';
+        document.getElementById('editorRadiusValue').textContent = editorState.radius + '%';
+    }
+
+    function drawEditorPreview() {
+        if (!editorCropper) return;
+        const c = editorCropper.getCroppedCanvas({ width: 72, height: 72, imageSmoothingQuality: 'high' });
+        const out = document.getElementById('editorPreviewCanvas');
+        const ctx = out.getContext('2d');
+        ctx.clearRect(0, 0, 72, 72);
+        if (!c) return;
+        if (editorState.radius > 0) {
+            ctx.save();
+            roundedRectPath(ctx, 0, 0, 72, 72, (editorState.radius / 100) * 72);
+            ctx.clip();
+            ctx.drawImage(c, 0, 0);
+            ctx.restore();
+        } else {
+            ctx.drawImage(c, 0, 0);
+        }
+    }
+
+    function updateEditorPreview() {
+        if (editorPreviewRaf) return;
+        editorPreviewRaf = requestAnimationFrame(() => { editorPreviewRaf = 0; drawEditorPreview(); });
+    }
+
+    window.openStickerEditor = function (file, target) {
+        editorTarget = target;
+        document.getElementById('editorTitle').textContent = target.kind === 'cover' ? 'Редактор обложки' : 'Редактор стикера';
+        if (editorCropper) { editorCropper.destroy(); editorCropper = null; }
+        const img = document.getElementById('editorImage');
+        img.onload = () => {
+            img.onload = null;
+            editorCropper = new Cropper(img, {
+                aspectRatio: 1,
+                viewMode: 1,
+                autoCropArea: 1,
+                background: false,
+                responsive: true,
+                movable: true,
+                scalable: true,
+                rotatable: true,
+                zoomable: true,
+                minContainerWidth: 200,
+                minContainerHeight: 200,
+                ready: () => {
+                    editorState = { zoom: 1, rotate: 0, radius: 0 };
+                    document.getElementById('editorZoom').value = 1;
+                    document.getElementById('editorRotate').value = 0;
+                    document.getElementById('editorRadius').value = 0;
+                    updateEditorLabels();
+                    updateEditorPreview();
+                },
+                crop: () => updateEditorPreview(),
+                zoom: (e) => {
+                    const nz = clamp(editorState.zoom * e.detail.ratio, 0.1, 3);
+                    if (Math.abs(nz - editorState.zoom) > 0.001) {
+                        editorState.zoom = nz;
+                        document.getElementById('editorZoom').value = nz;
+                        document.getElementById('editorZoomValue').textContent = Math.round(nz * 100) + '%';
+                    }
+                }
+            });
+        };
+        img.src = URL.createObjectURL(file);
+        document.getElementById('stickerEditorScrim').classList.add('open');
+    };
+
+    window.closeStickerEditor = function () {
+        document.getElementById('stickerEditorScrim').classList.remove('open');
+        if (editorCropper) { editorCropper.destroy(); editorCropper = null; }
+        editorTarget = null;
+    };
+
+    window.requestCloseEditor = function () {
+        if (confirm('Закрыть редактор? Несохранённые изменения будут потеряны.')) closeStickerEditor();
+    };
+
+    window.editorRotateBy = function (delta) {
+        if (!editorCropper) return;
+        const v = editorState.rotate + delta;
+        editorState.rotate = v;
+        editorCropper.rotateTo(v);
+        document.getElementById('editorRotate').value = v;
+        document.getElementById('editorRotateValue').textContent = v + '°';
+        updateEditorPreview();
+    };
+
+    window.editorResetTransform = function () {
+        if (!editorCropper) return;
+        editorCropper.reset();
+        editorState = { zoom: 1, rotate: 0, radius: 0 };
+        document.getElementById('editorZoom').value = 1;
+        document.getElementById('editorRotate').value = 0;
+        document.getElementById('editorRadius').value = 0;
+        updateEditorLabels();
+        updateEditorPreview();
+    };
+
+    window.applyEditor = async function () {
+        if (!editorCropper || !editorTarget) return;
+        const btn = document.getElementById('editorApplyBtn');
+        btn.disabled = true;
+        const target = editorTarget;
+        try {
+            const cropped = editorCropper.getCroppedCanvas({
+                width: 512, height: 512, imageSmoothingEnabled: true, imageSmoothingQuality: 'high'
+            });
+            if (!cropped) { alert('Не удалось построить изображение. Попробуйте выбрать другую область.'); return; }
+            const finalCanvas = applyRadiusToCanvas(cropped, editorState.radius);
+            const blob = await new Promise(res => finalCanvas.toBlob(res, 'image/png'));
+            const file = new File([blob], (target.kind === 'cover' ? 'cover.png' : 'sticker.png'), { type: 'image/png' });
+            // Подмена файла в исходном input — форма отправит уже обработанное изображение
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            try { target.input.files = dt.files; } catch {}
+            // Превью в вызывающей модалке
+            target.previewEl.src = finalCanvas.toDataURL('image/png');
+            target.previewEl.style.display = '';
+            target.iconEl.style.display = 'none';
+            const onApply = target.onApply;
+            closeStickerEditor();
+            if (onApply) await onApply(file);
+        } finally { btn.disabled = false; }
+    };
+
+    document.getElementById('editorZoom').addEventListener('input', e => {
+        if (!editorCropper) return;
+        const target = parseFloat(e.target.value);
+        const ratio = target / editorState.zoom;
+        if (ratio > 0) editorCropper.zoomTo(ratio); // zoom-event обновит editorState.zoom и подпись
+    });
+    document.getElementById('editorRotate').addEventListener('input', e => {
+        if (!editorCropper) return;
+        const v = parseInt(e.target.value, 10);
+        editorState.rotate = v;
+        editorCropper.rotateTo(v);
+        document.getElementById('editorRotateValue').textContent = v + '°';
+        updateEditorPreview();
+    });
+    document.getElementById('editorRadius').addEventListener('input', e => {
+        editorState.radius = parseInt(e.target.value, 10);
+        document.getElementById('editorRadiusValue').textContent = editorState.radius + '%';
+        updateEditorPreview();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('stickerEditorScrim').classList.contains('open')) {
+            requestCloseEditor();
+        }
+    });
 
     async function checkAuth() {
         try {
@@ -287,13 +561,12 @@
     window.closeCreatePackModal = () => document.getElementById('createPackScrim').classList.remove('open');
     window.previewCreateCover = function (input) {
         const f = input.files[0]; if (!f) return;
-        const reader = new FileReader();
-        reader.onload = e => {
-            document.getElementById('createCoverPreview').src = e.target.result;
-            document.getElementById('createCoverPreview').style.display = '';
-            document.getElementById('createCoverIcon').style.display = 'none';
-        };
-        reader.readAsDataURL(f);
+        openStickerEditor(f, {
+            kind: 'cover',
+            input: input,
+            previewEl: document.getElementById('createCoverPreview'),
+            iconEl: document.getElementById('createCoverIcon')
+        });
     };
     window.submitCreatePack = async function (e) {
         e.preventDefault();
@@ -356,11 +629,19 @@
         try { await fetch(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, description: currentPackData.description || '', coverStickerId: currentPackData.coverStickerId || '' }) }); originalPackName = name; document.getElementById('saveNameBtn').style.display = 'none'; await loadPacks(); } catch {}
     };
 
-    window.handleCoverChange = async function (input) {
+    window.handleCoverChange = function (input) {
         const f = input.files[0]; if (!f) return;
-        const fd = new FormData(); fd.append('image', f);
-        try { await fetch(`/api/stickers/packs/${currentPackId}/cover`, { method:'PUT', body: fd }); await openPackDetail(currentPackId); await loadPacks(); } catch {}
-        input.value = '';
+        input.value = ''; // позволить повторный выбор того же файла
+        openStickerEditor(f, {
+            kind: 'cover',
+            input: input,
+            previewEl: document.getElementById('detailCoverImg'),
+            iconEl: document.getElementById('detailCoverIcon'),
+            onApply: async (file) => {
+                const fd = new FormData(); fd.append('image', file);
+                try { await fetch(`/api/stickers/packs/${currentPackId}/cover`, { method:'PUT', body: fd }); await openPackDetail(currentPackId); await loadPacks(); } catch {}
+            }
+        });
     };
 
     window.deleteCurrentPack = async function () {
@@ -387,13 +668,12 @@
     window.closeAddStickerModal = () => document.getElementById('addStickerScrim').classList.remove('open');
     window.previewStickerImage = function (input) {
         const f = input.files[0]; if (!f) return;
-        const reader = new FileReader();
-        reader.onload = e => {
-            document.getElementById('stickerPreview').src = e.target.result;
-            document.getElementById('stickerPreview').style.display = '';
-            document.getElementById('stickerPreviewIcon').style.display = 'none';
-        };
-        reader.readAsDataURL(f);
+        openStickerEditor(f, {
+            kind: 'sticker',
+            input: input,
+            previewEl: document.getElementById('stickerPreview'),
+            iconEl: document.getElementById('stickerPreviewIcon')
+        });
     };
     window.submitAddSticker = async function (e) {
         e.preventDefault();
