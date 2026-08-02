@@ -1,0 +1,6 @@
+{
+  "settings.language.section": "语言",
+  "settings.language.item": "界面语言",
+  "settings.language.title": "界面语言",
+  "settings.language.hint": "界面会立即切换，无需重新加载页面。"
+}

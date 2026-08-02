@@ -45,7 +45,8 @@
         lock: iconSvg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
         palette: iconSvg('<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.2 2 11.5 2 16.4 5.8 20 10.5 20h1.1c.9 0 1.4-.8 1.1-1.6-.3-.9.3-1.9 1.3-1.9h1.5c4 0 6.5-2.8 6.5-6.2C22 5.7 17.5 2 12 2Z"/>'),
         smartphone: iconSvg('<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>'),
-        info: iconSvg('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>')
+        info: iconSvg('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'),
+        globe: iconSvg('<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10"/>')
     };
 
     function iconSvg(content) {
@@ -82,6 +83,12 @@
 
         window.addEventListener('bf-pwa-install-available', function () {
             if (overlay.classList.contains('visible') && viewStack.length === 0) renderMain();
+        });
+
+        // Смена языка — перерисовать открытый экран настроек
+        BF.i18n.onChange(function () {
+            if (!overlay.classList.contains('visible')) return;
+            showView(viewStack.length ? viewStack[viewStack.length - 1] : 'main');
         });
     }
 
@@ -123,6 +130,7 @@
             case 'sessions':        renderSessions(); break;
             case 'privacy':         renderPrivacy(); break;
             case 'personalization': renderPersonalization(); break;
+            case 'language':        renderLanguage(); break;
             case 'about':           renderAbout(); break;
         }
     }
@@ -314,6 +322,12 @@
             { icon: ICONS.palette, label: 'Фон чата и постер', view: 'personalization' }
         ]);
         body.appendChild(secPers);
+
+        // Section: Language
+        var secLanguage = makeSection(BF.i18n.t('settings.language.section'), [
+            { icon: ICONS.globe, label: BF.i18n.t('settings.language.item'), view: 'language' }
+        ]);
+        body.appendChild(secLanguage);
 
         // Section: Devices
         var secDevices = makeSection('Устройства', [
@@ -1626,6 +1640,43 @@
             stage.removeEventListener('mousedown', onDown);
             stage.removeEventListener('touchstart', onDown);
         };
+    }
+
+    // --- Language ---
+    function renderLanguage() {
+        titleEl.textContent = BF.i18n.t('settings.language.title');
+        body.innerHTML = '';
+
+        var sec = document.createElement('div');
+        sec.className = 'sd-section';
+        var current = BF.i18n.current();
+
+        BF.i18n.langs().forEach(function (lang) {
+            var row = document.createElement('div');
+            row.className = 'sd-item';
+
+            var label = document.createElement('span');
+            label.className = 'sd-item-label';
+            label.textContent = lang.name;
+
+            var check = document.createElement('span');
+            check.className = 'sd-item-icon';
+            if (lang.code === current) {
+                check.innerHTML = iconSvg('<polyline points="20 6 9 17 4 12"/>');
+            }
+
+            row.appendChild(label);
+            row.appendChild(check);
+            row.addEventListener('click', function () { BF.i18n.setLang(lang.code); });
+            sec.appendChild(row);
+        });
+        body.appendChild(sec);
+
+        var hint = document.createElement('div');
+        hint.className = 'sd-hint';
+        hint.style.cssText = 'padding: 4px 20px 18px;';
+        hint.textContent = BF.i18n.t('settings.language.hint');
+        body.appendChild(hint);
     }
 
     // --- About ---
