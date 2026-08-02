@@ -92,6 +92,9 @@ Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) fo
 > ### 🛠️ Run and operate
 > [Backend setup](.readme/backend.md) · [Ports & environment](Backend/PORTS_CONFIGURATION.md) · [Docker reference](Backend/DOCKER_SETUP.md) · [Metrics catalogue](Backend/METRICS.md)
 
+> ### 🤖 Integrate a bot
+> [Bot API guide](.readme/bots.md) — capabilities, authentication, and REST endpoints for external bots.
+
 > ### 📚 Learn the system
 > [Documentation hub](.readme/README.md) · [Architecture](Obsidian/ClaudeVault/Архитектура.md) · [Project knowledge base](Obsidian/ClaudeVault/Index.md)
 
