@@ -88,6 +88,8 @@
   "call.reject": "拒绝",
   "call.screenShare": "屏幕共享",
   "call.screenShare.stop": "停止共享",
+  "call.status.micOff": "麦克风已关闭",
+  "call.status.speaking": "正在说话",
   "call.tile.screen": "{name} · 屏幕共享",
   "call.title": "通话",
   "call.video": "视频通话",

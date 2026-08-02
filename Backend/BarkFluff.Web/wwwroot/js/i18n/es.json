@@ -88,6 +88,8 @@
   "call.reject": "Rechazar",
   "call.screenShare": "Compartir pantalla",
   "call.screenShare.stop": "Dejar de compartir",
+  "call.status.micOff": "Micrófono apagado",
+  "call.status.speaking": "Hablando",
   "call.tile.screen": "{name} · compartiendo pantalla",
   "call.title": "Llamada",
   "call.video": "Videollamada",
