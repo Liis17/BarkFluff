@@ -58,10 +58,6 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 ## Клиенты
 
-<p align="center">
-  <img src="../../../docs/images/readme/clients-placeholder.svg" alt="Заглушка для скриншотов клиентов BarkFluff" width="920">
-</p>
-
 - **Android** — Kotlin и gRPC-OkHttp · [инструкция по сборке](../../clients/android.md)
 - **Windows** — WPF и .NET · [инструкция по сборке](../../clients/windows.md)
 - **macOS** — SwiftUI и gRPC-Swift · [инструкция по сборке](../../clients/macos.md)
@@ -85,9 +81,6 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 ## Статус проекта
 
-<p align="center">
-  <img src="../../../docs/images/readme/project-status.svg" alt="BarkFluff активно развивается" width="920">
-</p>
 
 > ### 🚧 Активная разработка
 > BarkFluff активно развивается. Android V1 — поддерживаемый Android-клиент; проект V2 на Jetpack Compose экспериментальный и должен меняться только в рамках отдельной задачи.
