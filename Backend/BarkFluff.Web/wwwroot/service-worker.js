@@ -67,6 +67,13 @@ function isDismiss(data) {
     return null;
 }
 
+function isVisibleChatOpen(client, chatId) {
+    if (client.visibilityState !== 'visible') return false;
+    const url = new URL(client.url);
+    return (url.pathname === '/messenger' || url.pathname === '/messenger.html') &&
+        url.searchParams.get('chat') === String(chatId);
+}
+
 function handlePushData(data) {
     data = data || {};
     const dismissTag = isDismiss(data);
@@ -77,7 +84,9 @@ function handlePushData(data) {
     }
 
     return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
-        if (clients.some(function (client) { return client.visibilityState === 'visible'; })) return;
+        if (data.type === 'new_message' && clients.some(function (client) {
+            return isVisibleChatOpen(client, data.chat_id);
+        })) return;
         const details = notificationDetails(data);
         if (!details) return;
         if (data.avatar_url && /^https:\/\//i.test(data.avatar_url)) details.icon = data.avatar_url;
