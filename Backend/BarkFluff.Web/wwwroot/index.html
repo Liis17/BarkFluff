@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#8c351c">
-    <title>BarkFluff — Войти</title>
+    <title data-i18n="auth.pageTitle">BarkFluff — Войти</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1325,10 +1325,10 @@
     </div>
 
     <!-- Theme Switcher -->
-    <div class="theme-switcher" role="group" aria-label="Цветовая схема">
-        <button class="theme-btn" data-theme-val="light"  title="Светлая тема"   aria-label="Светлая">☀️</button>
-        <button class="theme-btn" data-theme-val="dark"   title="Тёмная тема"    aria-label="Тёмная">🌙</button>
-        <button class="theme-btn" data-theme-val="midnight" title="Полночь"      aria-label="Полночь">✨</button>
+    <div class="theme-switcher" role="group" data-i18n-aria-label="theme.title" aria-label="Цветовая схема">
+        <button class="theme-btn" data-theme-val="light"  data-i18n-title="theme.light.full" data-i18n-aria-label="theme.light" title="Светлая тема"   aria-label="Светлая">☀️</button>
+        <button class="theme-btn" data-theme-val="dark"   data-i18n-title="theme.dark.full" data-i18n-aria-label="theme.dark" title="Тёмная тема"    aria-label="Тёмная">🌙</button>
+        <button class="theme-btn" data-theme-val="midnight" data-i18n-title="theme.midnight" data-i18n-aria-label="theme.midnight" title="Полночь"      aria-label="Полночь">✨</button>
     </div>
 
     <!-- Main Page -->
@@ -1339,8 +1339,8 @@
         </div>
 
         <header class="login-header">
-            <h1 class="card-title">Добро пожаловать</h1>
-            <p class="card-subtitle">Войдите в свой аккаунт</p>
+            <h1 class="card-title" data-i18n="auth.welcome">Добро пожаловать</h1>
+            <p class="card-subtitle" data-i18n="auth.welcome.subtitle">Войдите в свой аккаунт</p>
         </header>
 
         <div class="login-row">
@@ -1348,10 +1348,10 @@
         <div class="card">
 
             <!-- LOGIN SECTION -->
-            <div id="loginSection" class="section" role="region" aria-label="Вход">
+            <div id="loginSection" class="section" role="region" data-i18n-aria-label="auth.section.login" aria-label="Вход">
                 <form id="loginForm" novalidate>
                     <div class="form-group">
-                        <label class="form-label" for="loginInput">Почта или имя пользователя</label>
+                        <label class="form-label" for="loginInput" data-i18n="auth.loginField">Почта или имя пользователя</label>
                         <div class="input-wrap">
                             <input type="text" class="form-input" id="loginInput"
                                    placeholder="user@example.com"
@@ -1361,33 +1361,33 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="passwordInput">Пароль</label>
+                        <label class="form-label" for="passwordInput" data-i18n="common.password">Пароль</label>
                         <div class="input-wrap">
                             <input type="password" class="form-input" id="passwordInput"
-                                   placeholder="Введите пароль"
+                                   data-i18n-placeholder="auth.password.placeholder" placeholder="Введите пароль"
                                    autocomplete="current-password">
-                            <button type="button" class="pw-toggle" id="pwToggle" aria-label="Показать пароль" tabindex="-1">👁</button>
+                            <button type="button" class="pw-toggle" id="pwToggle" data-i18n-aria-label="auth.showPassword" aria-label="Показать пароль" tabindex="-1">👁</button>
                         </div>
                         <div class="form-error" id="passwordError" role="alert"></div>
                     </div>
 
                     <div class="checkbox-group">
                         <input type="checkbox" id="tempLoginCheck">
-                        <label for="tempLoginCheck">Временный вход (выход при закрытии вкладки)</label>
+                        <label for="tempLoginCheck" data-i18n="auth.tempLogin">Временный вход (выход при закрытии вкладки)</label>
                     </div>
 
                     <div class="checkbox-group legal-consent" id="legalConsentRow">
                         <input type="checkbox" id="legalAcceptCheck">
                         <p class="legal-consent-text">
-                            <label for="legalAcceptCheck">Я принимаю</label>
-                            <button type="button" class="legal-link" data-doc="terms">Пользовательское соглашение</button>
-                            и
-                            <button type="button" class="legal-link" data-doc="privacy">Политику конфиденциальности</button>
+                            <label for="legalAcceptCheck" data-i18n="legal.accept">Я принимаю</label>
+                            <button type="button" class="legal-link" data-doc="terms" data-i18n="legal.terms.accusative">Пользовательское соглашение</button>
+                            <span data-i18n="legal.and">и</span>
+                            <button type="button" class="legal-link" data-doc="privacy" data-i18n="legal.privacy.accusative">Политику конфиденциальности</button>
                         </p>
                     </div>
 
                     <button type="submit" class="btn-primary" id="signInBtn">
-                        <span class="btn-label">Войти</span>
+                        <span class="btn-label" data-i18n="auth.signIn">Войти</span>
                         <span class="btn-arrow">→</span>
                         <div class="btn-spinner"></div>
                     </button>
@@ -1395,65 +1395,65 @@
 
                 <div class="divider"></div>
                 <div class="card-footer">
-                    <p>Нет аккаунта?</p>
+                    <p data-i18n="auth.noAccount">Нет аккаунта?</p>
                     <button class="btn-secondary" id="toRegisterBtn">
-                        Зарегистрироваться
+                        <span data-i18n="auth.register">Зарегистрироваться</span>
                         <span class="btn-arrow">→</span>
                     </button>
                 </div>
             </div>
 
             <!-- OTP SECTION -->
-            <div id="otpSection" class="section hidden" role="region" aria-label="Подтверждение OTP">
-                <button class="otp-back" id="otpBack" aria-label="Назад">← Назад</button>
-                <h2 class="otp-title">Код подтверждения</h2>
-                <p class="otp-subtitle">Введите 6-значный код из<br>приложения-аутентификатора или письма</p>
+            <div id="otpSection" class="section hidden" role="region" data-i18n-aria-label="auth.otp.section" aria-label="Подтверждение OTP">
+                <button class="otp-back" id="otpBack" data-i18n-aria-label="common.back" aria-label="Назад">← <span data-i18n="common.back">Назад</span></button>
+                <h2 class="otp-title" data-i18n="twofa.confirmationCode">Код подтверждения</h2>
+                <p class="otp-subtitle" data-i18n-html="auth.otp.subtitle">Введите 6-значный код из<br>приложения-аутентификатора или письма</p>
 
-                <div class="otp-inputs" id="otpInputs" role="group" aria-label="Поля кода">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                <div class="otp-inputs" id="otpInputs" role="group" data-i18n-aria-label="auth.otp.fields" aria-label="Поля кода">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.1" aria-label="Цифра 1">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.2" aria-label="Цифра 2">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.3" aria-label="Цифра 3">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.4" aria-label="Цифра 4">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.5" aria-label="Цифра 5">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.6" aria-label="Цифра 6">
                 </div>
                 <div class="form-error" id="otpError" style="text-align:center;margin-bottom:14px" role="alert"></div>
 
                 <button type="button" class="btn-primary" id="otpSubmitBtn">
-                    <span class="btn-label">Подтвердить</span>
+                    <span class="btn-label" data-i18n="common.confirm">Подтвердить</span>
                     <span class="btn-arrow">→</span>
                     <div class="btn-spinner"></div>
                 </button>
             </div>
 
             <!-- WELCOME SECTION -->
-            <div id="welcomeSection" class="section hidden" role="region" aria-label="Успешный вход">
+            <div id="welcomeSection" class="section hidden" role="region" data-i18n-aria-label="auth.success" aria-label="Успешный вход">
                 <div class="welcome-icon" aria-hidden="true">✓</div>
-                <h2 class="welcome-title">Вы вошли в аккаунт</h2>
-                <p class="welcome-subtitle">Веб-версия мессенджера скоро будет доступна</p>
+                <h2 class="welcome-title" data-i18n="auth.signedIn">Вы вошли в аккаунт</h2>
+                <p class="welcome-subtitle" data-i18n="auth.signedIn.subtitle">Веб-версия мессенджера скоро будет доступна</p>
             </div>
 
         </div>
 
         <!-- QR FAST-AUTH CARD -->
-        <aside class="qr-card" id="fastAuthCard" aria-label="Вход через QR">
-            <h2 class="qr-title">Войти через QR</h2>
-            <p class="qr-subtitle">Отсканируйте код в&nbsp;мобильном BarkFluff</p>
+        <aside class="qr-card" id="fastAuthCard" data-i18n-aria-label="qr.section" aria-label="Вход через QR">
+            <h2 class="qr-title" data-i18n="qr.title">Войти через QR</h2>
+            <p class="qr-subtitle" data-i18n-html="qr.subtitle">Отсканируйте код в&nbsp;мобильном BarkFluff</p>
             <div class="qr-box">
                 <div class="qr-spinner" id="fastAuthSpinner" aria-hidden="true"></div>
-                <img class="qr-img" id="fastAuthImg" alt="QR-код для входа" aria-hidden="true">
+                <img class="qr-img" id="fastAuthImg" data-i18n-alt="qr.alt" alt="QR-код для входа" aria-hidden="true">
             </div>
-            <div class="qr-status" id="fastAuthStatus" data-phase="loading">Загрузка кода…</div>
+            <div class="qr-status" id="fastAuthStatus" data-phase="loading" data-i18n="qr.loading">Загрузка кода…</div>
         </aside>
 
         </div><!-- /.login-row -->
 
         <p class="cookie-notice" id="cookieNotice" hidden>
-            <span>Мы используем cookie только для работы клиента: выбранная тема и отметка о принятых документах. Аналитики и рекламы нет.</span>
-            <button type="button" id="cookieNoticeOk">Понятно</button>
+            <span data-i18n="cookie.notice">Мы используем cookie только для работы клиента: выбранная тема и отметка о принятых документах. Аналитики и рекламы нет.</span>
+            <button type="button" id="cookieNoticeOk" data-i18n="cookie.ok">Понятно</button>
         </p>
 
-        <p class="copyright">2026 BarkFluff. Никакие права не защищены.</p>
+        <p class="copyright" data-i18n="footer.copyright">2026 BarkFluff. Никакие права не защищены.</p>
     </main>
 
     <!-- ═══════════════ LEGAL READER ═══════════════ -->
@@ -1461,28 +1461,28 @@
         <div class="reg-dialog legal-dialog">
             <div class="reg-header">
                 <div class="reg-head-text">
-                    <div class="reg-title" id="legalTitle">Пользовательское соглашение</div>
+                    <div class="reg-title" id="legalTitle" data-i18n="legal.terms">Пользовательское соглашение</div>
                 </div>
-                <button type="button" class="reg-close" id="legalClose" aria-label="Закрыть">×</button>
+                <button type="button" class="reg-close" id="legalClose" data-i18n-aria-label="common.close" aria-label="Закрыть">×</button>
             </div>
             <div class="legal-tabs" role="tablist">
-                <button type="button" class="legal-tab active" data-doc="terms">Соглашение</button>
-                <button type="button" class="legal-tab" data-doc="privacy">Политика</button>
+                <button type="button" class="legal-tab active" data-doc="terms" data-i18n="legal.tab.terms">Соглашение</button>
+                <button type="button" class="legal-tab" data-doc="privacy" data-i18n="legal.tab.privacy">Политика</button>
             </div>
             <div class="legal-body" id="legalBody"></div>
         </div>
     </div>
 
     <!-- ═══════════════ REGISTRATION MODAL ═══════════════ -->
-    <div class="reg-overlay" id="registerOverlay" role="dialog" aria-modal="true" aria-label="Регистрация">
+    <div class="reg-overlay" id="registerOverlay" role="dialog" aria-modal="true" data-i18n-aria-label="register.title" aria-label="Регистрация">
         <div class="reg-dialog">
             <div class="reg-header">
-                <button type="button" class="reg-back" id="regBack" aria-label="Назад" hidden>←</button>
+                <button type="button" class="reg-back" id="regBack" data-i18n-aria-label="common.back" aria-label="Назад" hidden>←</button>
                 <div class="reg-head-text">
-                    <div class="reg-title" id="regTitle">Создать аккаунт</div>
+                    <div class="reg-title" id="regTitle" data-i18n="register.createAccount">Создать аккаунт</div>
                     <div class="reg-step-label" id="regStepLabel">Шаг 1 из 9</div>
                 </div>
-                <button type="button" class="reg-close" id="regClose" aria-label="Закрыть">×</button>
+                <button type="button" class="reg-close" id="regClose" data-i18n-aria-label="common.close" aria-label="Закрыть">×</button>
             </div>
             <div class="reg-progress"><div class="reg-progress-bar" id="regProgressBar"></div></div>
 
@@ -1490,14 +1490,14 @@
 
                 <!-- Step 1: Name -->
                 <div class="reg-step" data-step="1">
-                    <p class="reg-step-desc">Как вас зовут?</p>
+                    <p class="reg-step-desc" data-i18n="register.step.name">Как вас зовут?</p>
                     <div class="form-group">
-                        <label class="form-label" for="regFirstName">Имя</label>
+                        <label class="form-label" for="regFirstName" data-i18n="profile.firstName">Имя</label>
                         <input type="text" class="form-input" id="regFirstName" maxlength="40" placeholder="Иван" autocomplete="given-name">
                         <div class="form-error" id="regFirstNameErr" role="alert"></div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="regLastName">Фамилия (необязательно)</label>
+                        <label class="form-label" for="regLastName" data-i18n="register.lastNameOptional">Фамилия (необязательно)</label>
                         <input type="text" class="form-input" id="regLastName" maxlength="40" placeholder="Иванов" autocomplete="family-name">
                         <div class="form-error" id="regLastNameErr" role="alert"></div>
                     </div>
@@ -1505,21 +1505,21 @@
 
                 <!-- Step 2: Username -->
                 <div class="reg-step" data-step="2" hidden>
-                    <p class="reg-step-desc">Придумайте имя пользователя</p>
+                    <p class="reg-step-desc" data-i18n="register.step.username">Придумайте имя пользователя</p>
                     <div class="form-group">
-                        <label class="form-label" for="regUsername">Имя пользователя</label>
+                        <label class="form-label" for="regUsername" data-i18n="register.username">Имя пользователя</label>
                         <div class="input-wrap">
                             <input type="text" class="form-input" id="regUsername" maxlength="30" placeholder="ivan_petrov" autocapitalize="off" autocomplete="off" spellcheck="false">
                             <span class="reg-field-status" id="regUsernameStatus"></span>
                         </div>
                         <div class="form-error" id="regUsernameErr" role="alert"></div>
-                        <div class="reg-hint">Латиница, цифры, символ _. От 3 до 30 символов.</div>
+                        <div class="reg-hint" data-i18n="register.username.rules">Латиница, цифры, символ _. От 3 до 30 символов.</div>
                     </div>
                 </div>
 
                 <!-- Step 3: Email -->
                 <div class="reg-step" data-step="3" hidden>
-                    <p class="reg-step-desc">Укажите электронную почту</p>
+                    <p class="reg-step-desc" data-i18n="register.step.email">Укажите электронную почту</p>
                     <div class="form-group">
                         <label class="form-label" for="regEmail">Email</label>
                         <div class="input-wrap">
@@ -1527,53 +1527,53 @@
                             <span class="reg-field-status" id="regEmailStatus"></span>
                         </div>
                         <div class="form-error" id="regEmailErr" role="alert"></div>
-                        <div class="reg-hint">На неё придёт код подтверждения.</div>
+                        <div class="reg-hint" data-i18n="register.email.hint">На неё придёт код подтверждения.</div>
                     </div>
                 </div>
 
                 <!-- Step 4: OTP -->
                 <div class="reg-step" data-step="4" hidden>
-                    <p class="reg-step-desc" id="regOtpDesc">Введите код из письма</p>
-                    <div class="otp-inputs reg-otp" id="regOtp4" role="group" aria-label="Код подтверждения">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                    <p class="reg-step-desc" id="regOtpDesc" data-i18n="register.step.emailCode">Введите код из письма</p>
+                    <div class="otp-inputs reg-otp" id="regOtp4" role="group" data-i18n-aria-label="twofa.confirmationCode" aria-label="Код подтверждения">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.1" aria-label="Цифра 1">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.2" aria-label="Цифра 2">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.3" aria-label="Цифра 3">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.4" aria-label="Цифра 4">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.5" aria-label="Цифра 5">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.6" aria-label="Цифра 6">
                     </div>
                     <div class="form-error reg-otp-err" id="regOtpErr" role="alert"></div>
-                    <button type="button" class="reg-link-btn" id="regOtpResend">Отправить код повторно</button>
+                    <button type="button" class="reg-link-btn" id="regOtpResend" data-i18n="register.resendCode">Отправить код повторно</button>
                 </div>
 
                 <!-- Step 5: Password -->
                 <div class="reg-step" data-step="5" hidden>
-                    <p class="reg-step-desc">Придумайте пароль</p>
+                    <p class="reg-step-desc" data-i18n="register.step.password">Придумайте пароль</p>
                     <div class="form-group">
-                        <label class="form-label" for="regPassword">Пароль</label>
+                        <label class="form-label" for="regPassword" data-i18n="common.password">Пароль</label>
                         <div class="input-wrap">
-                            <input type="password" class="form-input" id="regPassword" placeholder="Минимум 8 символов" autocomplete="new-password">
-                            <button type="button" class="pw-toggle" id="regPwToggle" aria-label="Показать пароль" tabindex="-1">👁</button>
+                            <input type="password" class="form-input" id="regPassword" data-i18n-placeholder="register.password.placeholder" placeholder="Минимум 8 символов" autocomplete="new-password">
+                            <button type="button" class="pw-toggle" id="regPwToggle" data-i18n-aria-label="auth.showPassword" aria-label="Показать пароль" tabindex="-1">👁</button>
                         </div>
                         <div class="reg-strength"><div class="reg-strength-bar" id="regStrengthBar"></div></div>
                         <div class="reg-strength-label" id="regStrengthLabel"></div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="regPassword2">Повторите пароль</label>
-                        <input type="password" class="form-input" id="regPassword2" placeholder="Повторите пароль" autocomplete="new-password">
+                        <label class="form-label" for="regPassword2" data-i18n="register.repeatPassword">Повторите пароль</label>
+                        <input type="password" class="form-input" id="regPassword2" data-i18n-placeholder="register.repeatPassword" placeholder="Повторите пароль" autocomplete="new-password">
                         <div class="form-error" id="regPasswordErr" role="alert"></div>
                     </div>
                 </div>
 
                 <!-- Step 6: Avatar -->
                 <div class="reg-step" data-step="6" hidden>
-                    <p class="reg-step-desc">Добавьте фото профиля</p>
+                    <p class="reg-step-desc" data-i18n="register.step.avatar">Добавьте фото профиля</p>
                     <div class="reg-avatar-empty" id="regAvatarEmpty">
                         <div class="reg-avatar-circle" id="regAvatarCircle">
                             <span class="reg-avatar-plus" id="regAvatarPlus">+</span>
-                            <img class="reg-avatar-preview" id="regAvatarPreview" alt="Превью аватара" hidden>
+                            <img class="reg-avatar-preview" id="regAvatarPreview" data-i18n-alt="register.avatarPreview" alt="Превью аватара" hidden>
                         </div>
-                        <button type="button" class="btn-secondary" id="regAvatarPick">Выбрать фото</button>
+                        <button type="button" class="btn-secondary" id="regAvatarPick" data-i18n="register.pickPhoto">Выбрать фото</button>
                     </div>
                     <input type="file" id="regAvatarFile" accept="image/*" hidden>
 
@@ -1582,49 +1582,49 @@
                             <canvas id="regCropCanvas"></canvas>
                             <div class="reg-crop-frame" aria-hidden="true"></div>
                         </div>
-                        <input type="range" class="reg-crop-zoom" id="regCropZoom" min="1" max="3" step="0.01" value="1" aria-label="Масштаб">
+                        <input type="range" class="reg-crop-zoom" id="regCropZoom" min="1" max="3" step="0.01" value="1" data-i18n-aria-label="register.zoom" aria-label="Масштаб">
                         <div class="reg-crop-actions">
-                            <button type="button" class="btn-secondary" id="regCropCancel">Отмена</button>
-                            <button type="button" class="btn-primary reg-crop-apply" id="regCropApply"><span class="btn-label">Применить</span></button>
+                            <button type="button" class="btn-secondary" id="regCropCancel" data-i18n="common.cancel">Отмена</button>
+                            <button type="button" class="btn-primary reg-crop-apply" id="regCropApply"><span class="btn-label" data-i18n="common.apply">Применить</span></button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Step 7: Bio -->
                 <div class="reg-step" data-step="7" hidden>
-                    <p class="reg-step-desc">Расскажите о себе</p>
+                    <p class="reg-step-desc" data-i18n="register.step.bio">Расскажите о себе</p>
                     <div class="form-group">
-                        <label class="form-label" for="regBio">О себе (необязательно)</label>
-                        <textarea class="form-input reg-textarea" id="regBio" maxlength="200" rows="4" placeholder="Несколько слов о себе"></textarea>
+                        <label class="form-label" for="regBio" data-i18n="register.bioOptional">О себе (необязательно)</label>
+                        <textarea class="form-input reg-textarea" id="regBio" maxlength="200" rows="4" data-i18n-placeholder="register.bio.placeholder" placeholder="Несколько слов о себе"></textarea>
                         <div class="reg-char-count"><span id="regBioCount">0</span>/200</div>
                     </div>
                 </div>
 
                 <!-- Step 8: 2FA -->
                 <div class="reg-step" data-step="8" hidden>
-                    <p class="reg-step-desc">Двухфакторная аутентификация</p>
+                    <p class="reg-step-desc" data-i18n="settings.twofa">Двухфакторная аутентификация</p>
                     <div id="reg2faIntro">
-                        <p class="reg-2fa-text">Защитите аккаунт одноразовыми кодами из приложения-аутентификатора (Google Authenticator, Authy и др.). Этот шаг можно пропустить и включить позже в настройках.</p>
+                        <p class="reg-2fa-text" data-i18n="register.twofa.description">Защитите аккаунт одноразовыми кодами из приложения-аутентификатора (Google Authenticator, Authy и др.). Этот шаг можно пропустить и включить позже в настройках.</p>
                         <button type="button" class="btn-primary" id="reg2faEnable">
-                            <span class="btn-label">Включить 2FA</span>
+                            <span class="btn-label" data-i18n="register.twofa.enable">Включить 2FA</span>
                             <div class="btn-spinner"></div>
                         </button>
                     </div>
                     <div id="reg2faSetup" hidden>
-                        <img class="reg-2fa-qr" id="reg2faQr" alt="QR-код для 2FA" aria-hidden="true" hidden>
-                        <p class="reg-2fa-text">Отсканируйте QR или введите ключ вручную:</p>
+                        <img class="reg-2fa-qr" id="reg2faQr" data-i18n-alt="register.twofa.qrAlt" alt="QR-код для 2FA" aria-hidden="true" hidden>
+                        <p class="reg-2fa-text" data-i18n="register.twofa.scanOrKey">Отсканируйте QR или введите ключ вручную:</p>
                         <div class="reg-2fa-secret-wrap">
                             <code class="reg-2fa-secret" id="reg2faSecret"></code>
-                            <button type="button" class="reg-link-btn" id="reg2faCopy">Копировать</button>
+                            <button type="button" class="reg-link-btn" id="reg2faCopy" data-i18n="common.copy">Копировать</button>
                         </div>
-                        <p class="reg-step-desc">Введите код из приложения</p>
-                        <div class="otp-inputs reg-otp" id="regOtp8" role="group" aria-label="Код 2FA">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 1">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 2">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 3">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 4">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 5">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" aria-label="Цифра 6">
+                        <p class="reg-step-desc" data-i18n="register.step.appCode">Введите код из приложения</p>
+                        <div class="otp-inputs reg-otp" id="regOtp8" role="group" data-i18n-aria-label="register.twofa.code" aria-label="Код 2FA">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.1" aria-label="Цифра 1">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.2" aria-label="Цифра 2">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.3" aria-label="Цифра 3">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.4" aria-label="Цифра 4">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.5" aria-label="Цифра 5">
+                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.6" aria-label="Цифра 6">
                         </div>
                         <div class="form-error reg-otp-err" id="reg2faErr" role="alert"></div>
                     </div>
@@ -1633,16 +1633,16 @@
                 <!-- Step 9: Complete -->
                 <div class="reg-step reg-step-complete" data-step="9" hidden>
                     <div class="welcome-icon" aria-hidden="true">✓</div>
-                    <h2 class="welcome-title">Аккаунт создан!</h2>
+                    <h2 class="welcome-title" data-i18n="register.accountCreated">Аккаунт создан!</h2>
                     <p class="welcome-subtitle" id="regCompleteName"></p>
                 </div>
 
             </div><!-- /.reg-body -->
 
             <div class="reg-footer" id="regFooter">
-                <button type="button" class="btn-secondary reg-skip" id="regSkip" hidden>Пропустить</button>
+                <button type="button" class="btn-secondary reg-skip" id="regSkip" data-i18n="common.skip" hidden>Пропустить</button>
                 <button type="button" class="btn-primary reg-next" id="regNext">
-                    <span class="btn-label" id="regNextLabel">Далее</span>
+                    <span class="btn-label" id="regNextLabel" data-i18n="common.next.step">Далее</span>
                     <span class="btn-arrow">→</span>
                     <div class="btn-spinner"></div>
                 </button>

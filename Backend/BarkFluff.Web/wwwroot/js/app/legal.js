@@ -14,8 +14,8 @@
 
     var COOKIE = 'bf_legal_accepted';
     var DOCS = {
-        terms: { file: '/legal/TERMS_OF_SERVICE.ru.md', title: 'Пользовательское соглашение' },
-        privacy: { file: '/legal/PRIVACY_POLICY.ru.md', title: 'Политика конфиденциальности' }
+        terms: { file: '/legal/TERMS_OF_SERVICE.ru.md', titleKey: 'legal.terms' },
+        privacy: { file: '/legal/PRIVACY_POLICY.ru.md', titleKey: 'legal.privacy' }
     };
 
     /* Редакция читается из русского оригинала соглашения: остальные локали — переводы,
@@ -116,18 +116,18 @@
 
     function open(doc) {
         cacheNodes();
-        title.textContent = DOCS[doc].title;
+        title.textContent = BF.i18n.t(DOCS[doc].titleKey);
         tabs.forEach(function (t) {
             t.classList.toggle('active', t.getAttribute('data-doc') === doc);
         });
-        body.textContent = 'Загрузка…';
+        body.textContent = BF.i18n.t('common.loadingShort');
         overlay.classList.add('visible');
 
         load(doc).then(function (text) {
             body.innerHTML = BF.utils.renderMarkdown(text);
             body.scrollTop = 0;
         }).catch(function () {
-            body.textContent = 'Не удалось загрузить документ. Он доступен на barkfluff.com/legal.';
+            body.textContent = BF.i18n.t('legal.loadError');
         });
     }
 

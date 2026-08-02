@@ -111,8 +111,8 @@
             var e = bindEls();
             if (e.status && e.status.dataset.phase === 'pending') {
                 e.status.textContent = remaining > 0
-                    ? 'Действителен ещё ' + remaining + ' с'
-                    : 'Срок истёк, обновляем…';
+                    ? BF.i18n.t('qr.validFor', { seconds: remaining })
+                    : BF.i18n.t('qr.expired');
             }
             if (remaining <= 0) {
                 clearInterval(countdownTimer);
@@ -200,7 +200,7 @@
             case FS.FAST_AUTH_STATUS_SCANNED:
                 setPhase('scanned');
                 if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
-                setStatus('Отсканировано — подтвердите вход в мобильном клиенте', 'ok');
+                setStatus(BF.i18n.t('qr.scanned'), 'ok');
                 break;
 
             case FS.FAST_AUTH_STATUS_ACCEPTED:
@@ -208,7 +208,7 @@
                 clearTimers();
                 cancelStream();
                 started = false;
-                setStatus('Вход подтверждён', 'ok');
+                setStatus(BF.i18n.t('qr.confirmed'), 'ok');
                 var data = {
                     accessToken: evt.getAccessToken(),
                     accessTokenExpiration: evt.getAccessTokenExpiresAt()
@@ -218,7 +218,7 @@
                         ? evt.getRefreshTokenExpiresAt().toDate().getTime() : 0
                 };
                 if (!data.accessToken || !data.refreshToken) {
-                    setStatus('Сервер вернул пустые токены', 'err');
+                    setStatus(BF.i18n.t('qr.emptyTokens'), 'err');
                     return;
                 }
                 // Tempmode-чекбокс не используется для QR-входа (по аналогии с WPF/macOS).
@@ -231,7 +231,7 @@
                 setPhase('rejected');
                 clearTimers();
                 cancelStream();
-                setStatus('Вход отклонён — обновляем код…', 'err');
+                setStatus(BF.i18n.t('qr.rejected'), 'err');
                 scheduleRestart(1000);
                 break;
 
@@ -239,7 +239,7 @@
                 setPhase('expired');
                 clearTimers();
                 cancelStream();
-                setStatus('Срок истёк, обновляем…');
+                setStatus(BF.i18n.t('qr.expired'));
                 scheduleRestart(500);
                 break;
 
@@ -259,13 +259,13 @@
         currentFastAuthId = null;
         showLoading();
         setPhase('loading');
-        setStatus('Загрузка кода…');
+        setStatus(BF.i18n.t('qr.loading'));
 
         generateToken().then(function (res) {
             generating = false;
             if (!started) return;
             if (!res.ok) {
-                setStatus('Не удалось получить QR-код', 'err');
+                setStatus(BF.i18n.t('qr.error'), 'err');
                 scheduleRestart(backoff);
                 backoff = Math.min(backoff * 2, MAX_BACKOFF);
                 return;
@@ -274,7 +274,7 @@
             currentFastAuthId = res.fastAuthId;
             showQr(res.pngBase64);
             setPhase('pending');
-            setStatus('Ожидание сканирования…');
+            setStatus(BF.i18n.t('qr.waiting'));
             startCountdown(res.expiresAtMs);
             subscribeResult(res.fastAuthId);
         });

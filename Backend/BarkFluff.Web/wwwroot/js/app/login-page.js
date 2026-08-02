@@ -65,7 +65,7 @@
         if (ok) {
             legalRow.classList.remove('nudge');
         } else {
-            $('#fastAuthStatus').textContent = 'Примите документы, чтобы войти по QR';
+            $('#fastAuthStatus').textContent = BF.i18n.t('qr.legalRequired');
         }
     }
 
@@ -110,8 +110,8 @@
         var login = loginInput.value.trim();
         var password = passwordInput.value;
 
-        if (!login) { showError(loginError, loginInput, 'Введите логин или email'); return; }
-        if (!password) { showError(passwordError, passwordInput, 'Введите пароль'); return; }
+        if (!login) { showError(loginError, loginInput, BF.i18n.t('auth.error.noLogin')); return; }
+        if (!password) { showError(passwordError, passwordInput, BF.i18n.t('auth.error.noPassword')); return; }
 
         pendingLogin = login;
         pendingPassword = password;
@@ -125,15 +125,15 @@
                 return;
             }
             if (result.error === 'invalid_credentials') {
-                showError(passwordError, passwordInput, 'Неверный логин или пароль');
+                showError(passwordError, passwordInput, BF.i18n.t('auth.error.badCredentials'));
                 return;
             }
             if (result.error === 'invalid_otp') {
-                showError(passwordError, null, 'Неверный код подтверждения');
+                showError(passwordError, null, BF.i18n.t('auth.error.badCode'));
                 return;
             }
             if (result.error) {
-                showError(passwordError, null, 'Ошибка сервера');
+                showError(passwordError, null, BF.i18n.t('auth.error.server'));
                 return;
             }
 
@@ -143,7 +143,7 @@
                 window.location.href = '/messenger';
             });
         }).catch(function () {
-            showError(passwordError, null, 'Не удалось подключиться к серверу');
+            showError(passwordError, null, BF.i18n.t('auth.error.network'));
         }).then(function () {
             setLoading(signInBtn, false);
         });
@@ -180,7 +180,7 @@
         var code = Array.from(otpInputs).map(function (i) { return i.value; }).join('');
 
         if (code.length !== 6) {
-            otpError.textContent = 'Введите все 6 цифр';
+            otpError.textContent = BF.i18n.t('auth.error.incompleteCode');
             otpError.classList.add('visible');
             BF.sound.play('droplet');
             return;
@@ -190,7 +190,7 @@
 
         BF.auth.login({ login: pendingLogin, password: pendingPassword, otpCode: code }).then(function (result) {
             if (result.error === 'invalid_otp') {
-                otpError.textContent = 'Неверный код подтверждения';
+                otpError.textContent = BF.i18n.t('auth.error.badCode');
                 otpError.classList.add('visible');
                 BF.sound.play('droplet');
                 otpInputs.forEach(function (i) { i.value = ''; });
@@ -198,7 +198,7 @@
                 return;
             }
             if (result.error) {
-                otpError.textContent = 'Ошибка сервера';
+                otpError.textContent = BF.i18n.t('auth.error.server');
                 otpError.classList.add('visible');
                 BF.sound.play('droplet');
                 return;
@@ -210,7 +210,7 @@
                 window.location.href = '/messenger';
             });
         }).catch(function () {
-            otpError.textContent = 'Не удалось подключиться к серверу';
+            otpError.textContent = BF.i18n.t('auth.error.network');
             otpError.classList.add('visible');
             BF.sound.play('droplet');
         }).then(function () {
@@ -230,7 +230,10 @@
     legalCheck.checked = BF.legal.isAccepted();
     applyGate();
 
-    BF.legal.init().then(function () {
+    // Словарь нужен до первых статусов QR и текстов ошибок
+    BF.i18n.ready.then(function () {
+        return BF.legal.init();
+    }).then(function () {
         legalCheck.checked = BF.legal.isAccepted();
         applyGate();
 
