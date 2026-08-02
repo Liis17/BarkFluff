@@ -1493,12 +1493,12 @@
                     <p class="reg-step-desc" data-i18n="register.step.name">Как вас зовут?</p>
                     <div class="form-group">
                         <label class="form-label" for="regFirstName" data-i18n="profile.firstName">Имя</label>
-                        <input type="text" class="form-input" id="regFirstName" maxlength="40" placeholder="Иван" autocomplete="given-name">
+                        <input type="text" class="form-input" id="regFirstName" maxlength="40" data-i18n-placeholder="register.firstName.example" placeholder="Иван" autocomplete="given-name">
                         <div class="form-error" id="regFirstNameErr" role="alert"></div>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="regLastName" data-i18n="register.lastNameOptional">Фамилия (необязательно)</label>
-                        <input type="text" class="form-input" id="regLastName" maxlength="40" placeholder="Иванов" autocomplete="family-name">
+                        <input type="text" class="form-input" id="regLastName" maxlength="40" data-i18n-placeholder="register.lastName.example" placeholder="Иванов" autocomplete="family-name">
                         <div class="form-error" id="regLastNameErr" role="alert"></div>
                     </div>
                 </div>
@@ -1652,7 +1652,7 @@
 
     <!-- Game canvas (desktop only) -->
     <canvas id="game-canvas" aria-hidden="true"></canvas>
-    <div id="game-hint" aria-hidden="true">↑ нажми, чтобы начать</div>
+    <div id="game-hint" aria-hidden="true" data-i18n="game.hint">↑ нажми, чтобы начать</div>
 
     <!-- Scripts -->
     <script src="/js/proto/barkfluff.bundle.js" onerror="void 0"></script>
@@ -1900,7 +1900,7 @@
                 ctx.fillStyle = lineColor;
                 ctx.font = 'bold 13px ' + (getComputedStyle(document.documentElement).getPropertyValue('--font').trim() || 'sans-serif');
                 ctx.textAlign = 'center';
-                ctx.fillText('GAME OVER  •  Счёт: ' + score + '  •  ↑ снова', W/2, H/2 + 5);
+                ctx.fillText(BF.i18n.t('game.over', { score: score }), W/2, H/2 + 5);
             }
         }
 
