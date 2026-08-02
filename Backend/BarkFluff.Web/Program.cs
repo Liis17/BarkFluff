@@ -17,6 +17,10 @@ using Yarp.ReverseProxy.Configuration;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.LoadConfiguration(ServiceId.Web);
+
+// Env-переменные контейнера должны иметь приоритет над Configuration service
+builder.Configuration.AddEnvironmentVariables();
+
 builder.AddBarkFluffSerilog("BarkFluff.Web");
 
 var port = int.TryParse(builder.Configuration["RunSettings:Port"], out var p) ? p : 7016;
