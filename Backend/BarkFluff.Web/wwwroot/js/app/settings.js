@@ -120,6 +120,7 @@
 
     function showView(name) {
         backBtn.classList.toggle('visible', viewStack.length > 0);
+        body.dataset.view = name;
         switch (name) {
             case 'main':            renderMain(); break;
             case 'profile':         renderProfile(); break;
