@@ -1,4 +1,4 @@
-using BarkFluff.Federation.Host;
+using BarkFluff.Federation.Features.FederationS2SApi;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
@@ -19,11 +19,11 @@ namespace BarkFluff.Federation.Tests.Host;
 
 public class GetUserProfileS2STests
 {
-    private static (Mock<UsersServerApi.UsersServerApiClient> UsersClient, FederationS2SApiService Service) Create()
+    private static (Mock<UsersServerApi.UsersServerApiClient> UsersClient, FederationS2SApiHandler Service) Create()
     {
         var context = TestHelpers.CreateContext();
         var usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
-        var service = new FederationS2SApiService(
+        var service = new FederationS2SApiHandler(
             TestHelpers.CreateConfiguration(),
             TestHelpers.CreateSigningKeyService(context),
             usersClient.Object,
@@ -39,7 +39,7 @@ public class GetUserProfileS2STests
             new TypingValidationCache(TestHelpers.CreatePresenceOptions()),
             new MetricsCollector(),
             new FakeChatCreatedQuotaLimiter(),
-            NullLogger<FederationS2SApiService>.Instance);
+            NullLogger<FederationS2SApiHandler>.Instance);
         return (usersClient, service);
     }
 

@@ -170,3 +170,9 @@ Messages (CreatePrivateChat) → PrivateChatInviteEvent → RabbitMQ (fanout: Up
 # Метрики
 
 Через [[Backend/GrpcServer]] экспортируются `push_jobs_received`, число целевых устройств и FCM success/failure. Значение success означает принятие FCM, а не доставку на устройство.
+
+## Web-получатели (PWA)
+
+`DeviceFirebaseToken.push_platform` разделяет Android и Web. Android сохраняет прежний подробный payload. Для Web `FirebaseService` посылает отдельные **data-only** сообщения: новое/секретное сообщение содержит только `chat_id`, `message_id`, `sender_id`, `sender_name`, `avatar_url`; E2E-инвайт — ID чата и пригласившего; входящий звонок — ID звонка, опциональный ID чата и данные звонящего. `dismiss`/`dismiss_call` закрывают уведомления по tag, а click открывает мессенджер, не принимает звонок в фоне.
+
+Web payload никогда не содержит `message_text`, вложения, изображения либо текст/картинку админ-рассылки. Для broadcast передаётся лишь `type=admin_broadcast`. Метрики отдельных web-отправок: `web_pushes_sent` и `web_pushes_failed`.

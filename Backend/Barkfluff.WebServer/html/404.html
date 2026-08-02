@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>404 — Barkfluff</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+
+  <style>
+    :root {
+      --bg-0: #14070a;
+      --bg-1: #1c0d0a;
+      --line: rgba(255, 240, 220, 0.08);
+      --line-strong: rgba(255, 240, 220, 0.14);
+      --ink: #fef6ea;
+      --ink-dim: #c9a893;
+      --ink-mute: #8a6a5b;
+      --brand: #ff7a29;
+      --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg-1);
+      color: var(--ink);
+      /* Manrope не подгружаем: если он уже в кеше с главной — применится, иначе системный шрифт. */
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
+        radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
+        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+    }
+
+    .page {
+      position: relative; z-index: 1; min-height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 28px; padding: 48px 24px;
+      padding-bottom: max(48px, env(safe-area-inset-bottom));
+      text-align: center;
+    }
+
+    .brand-mark {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
+      color: var(--ink); text-decoration: none;
+    }
+    .brand-mark .glyph {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #ff8a3c, #c23f07);
+      display: grid; place-items: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(255,122,41,0.5);
+    }
+    .brand-mark .glyph svg { width: 16px; height: 16px; fill: #fff; }
+
+    .code {
+      font-size: clamp(72px, 18vw, 132px); font-weight: 800;
+      line-height: 1; letter-spacing: -0.05em;
+      background: linear-gradient(120deg, #ffc997 10%, #ff7a29 50%, #b93d0a 95%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .title { font-size: clamp(20px, 4.5vw, 26px); font-weight: 700; letter-spacing: -0.02em; }
+    .sub { font-size: 15px; line-height: 1.55; color: var(--ink-dim); max-width: 420px; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 14px 22px; border: 1px solid transparent; border-radius: 14px;
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      text-decoration: none; color: #fff;
+      background: linear-gradient(180deg, #ff8a3c 0%, #e65c12 100%);
+      box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255,255,255,0.25);
+      transition: transform 0.15s ease, box-shadow 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 16px 40px -8px rgba(255,122,41,0.6); }
+    .btn:active { transform: translateY(1px); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn { transition: none; }
+      .btn:hover, .btn:active { transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-mesh"></div>
+
+  <div class="page">
+    <a href="/" class="brand-mark">
+      <span class="glyph">
+        <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+      </span>
+      <span>barkfluff</span>
+    </a>
+
+    <div class="code">404</div>
+
+    <div class="title" id="t">Такой страницы нет</div>
+    <div class="sub" id="s">Возможно, ссылка устарела или в адресе опечатка.</div>
+
+    <a href="/" class="btn" id="b">На главную</a>
+  </div>
+
+  <script>
+    /* Язык — по той же схеме, что на главной: сохранённый выбор, иначе локаль браузера. */
+    (function () {
+      var S = {
+        ru: { t: 'Такой страницы нет', s: 'Возможно, ссылка устарела или в адресе опечатка.', b: 'На главную' },
+        en: { t: 'Page not found',     s: 'The link may be outdated or the address has a typo.', b: 'Go home' }
+      };
+      var lang;
+      try { lang = localStorage.getItem('bf_lang'); } catch (_) { /* хранилище заблокировано */ }
+      if (!S[lang]) lang = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
+
+      document.documentElement.lang = lang;
+      document.getElementById('t').textContent = S[lang].t;
+      document.getElementById('s').textContent = S[lang].s;
+      document.getElementById('b').textContent = S[lang].b;
+    })();
+  </script>
+
+  <script src="/assets/cookie-notice.js" defer></script>
+
+</body>
+</html>

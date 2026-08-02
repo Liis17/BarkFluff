@@ -1,0 +1,50 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsDevicesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls"
+    xmlns:models="using:BarkFluff.Client.Core.ViewModels.Settings">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Devices_Title}" />
+
+            <Border Style="{StaticResource SettingsHeroCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Devices_Hint}" />
+                    <Button Margin="0,16,0,0"
+                            Content="{StaticResource Settings_Devices_Connect}"
+                            IsEnabled="False"
+                            Style="{StaticResource SecondaryButton}" />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Devices_ThisDevice}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <controls:SettingsRow Glyph="&#xE770;"
+                                      Description="{x:Bind ViewModel.CurrentDeviceDetails, Mode=OneWay}"
+                                      Header="{x:Bind ViewModel.CurrentDeviceName, Mode=OneWay}" />
+            </Border>
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Devices_OtherDevices}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <ListView ItemsSource="{x:Bind ViewModel.OtherDevices, Mode=OneWay}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:DeviceSessionItem">
+                            <controls:SettingsRow Glyph="&#xE770;" Header="{x:Bind Name}" Description="{x:Bind Details}">
+                                <Button Click="OnRemoveClick" CommandParameter="{x:Bind}" Content="{StaticResource Settings_Devices_Terminate}" Style="{StaticResource SecondaryButton}" />
+                            </controls:SettingsRow>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
+
+            <Button Content="{StaticResource Settings_Devices_TerminateOthers}"
+                    Visibility="Collapsed"
+                    Style="{StaticResource DangerButton}" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

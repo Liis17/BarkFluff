@@ -18,7 +18,7 @@ docker-compose -f docker-compose-dev.yml up web
 Три функции:
 1. **Статика** — раздаёт `wwwroot/` (index.html, messenger.html, JS-модули)
 2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP. **Base64-фрейминг:** каждый Write кодируется независимым padded base64-чанком и сразу флашится (`=` в середине потока — законный разделитель по спеке gRPC-Web, декодер клиента обрабатывает 4-символьные группы независимо). Раньше остаток 1-2 байта буферизовался до следующего Write — из-за этого server-streaming сообщения приходили с отставанием на одно.
-3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**)
+3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**). До чтения тела Web поднимает Kestrel-лимит только для этого маршрута до **512 МБ**; иначе дефолт Kestrel (~28,6 МБ) вернёт `413` до передачи в [[Backend/Files]].
 
 ## gRPC-Web трейлеры (grpc-status) — критично
 
@@ -55,10 +55,11 @@ docker-compose -f docker-compose-dev.yml up web
 - `login-page.js` — форма логина, OTP, проверка сессии, запуск/остановка QR-сессии при смене секции
 - `fast-auth.js` — `BF.fastAuth`: QR fast-auth логин (анонимный `GenerateFastAuthToken` + server-streaming `SubscribeFastAuthResult`), автоперезапуск при EXPIRED/REJECTED, отсчёт TTL 5 минут
 - `register.js` — `BF.register`: модальный мастер регистрации из 9 шагов (кнопка `#toRegisterBtn`). См. раздел [[#Регистрация по шагам (register.js)]].
+- `legal.js` — `BF.legal`: согласие с документами и cookie-уведомление. См. раздел [[#Согласие с документами (legal.js)]].
 
 **Мессенджер** (messenger.html):
 - `clients.js` — gRPC-Web клиенты, authCall с auto-refresh
-- `utils.js` — форматирование, escapeHtml, parseJwt
+- `utils.js` — форматирование, escapeHtml, parseJwt и безопасный Markdown-рендер (`renderMarkdown`) для текста сообщений и forward-блоков: заголовки, цитаты, списки, code blocks, ссылки, акцентирование и GFM-таблицы. Таблица определяется строкой заголовков и валидной строкой-разделителем (`-` / `:---:` / `---:`); в ячейках сохраняется inline Markdown. На узком экране контейнер `.md-table-wrap` прокручивается по горизонтали.
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`. **Компоновка вложений** (`buildMessageElement`): флаги `hasImages`/`imageOnly`/`docsOnly` (по типам вложений, независимо от направления) → классы пузыря `has-images`/`image-only`/`docs-only`. `image-only` (только картинки без текста/forward) — медиа на всю площадь пузыря (`padding:0`), время+галочки полупрозрачным бейджем поверх картинки (`.msg-meta.msg-img-overlay-meta`); с текстом — сетка сверху без полей, время снизу. `docs-only` — компактный padding без двойной рамки. CSS — в `messenger.html` рядом с `.msg-bubble`.
@@ -75,11 +76,12 @@ docker-compose -f docker-compose-dev.yml up web
 - `settings.js` — многоэкранная панель настроек. Разделы: профиль (имя, юзернейм, био, аватар), пароль, 2FA (TOTP + Email), активные сессии (с переименованием устройства через `RenameDevice` и кнопкой «Завершить все остальные»), **приватность** (`GetPrivacySettings`/`UpdatePrivacySettings` — toggles `profileVisibleOnSite`/`searchVisible` + сегментированные radio для `avatarVisibility`/`bioVisibility`/`emailVisibility`/`onlineVisibility` через `ProfileFieldVisibility` enum), **персонализация** (по образцу Android/Mac: сверху превью профиля «постер 3:1 + аватар overlay + имя/@username», кнопка смены постера → модальный кроп `#posterCropOverlay` с draggable рамкой 3:1 и canvas-экспортом JPEG 90% max 2400×800, далее `BF.files.uploadFile(blob, USER_PROFILE_POSTER=10)` + `SetProfilePoster`; ниже превью чата с 5 моковыми сообщениями для демонстрации настроек; локальные слайдеры закругления пузырей/радиуса размытия/затенения + toggle размытия — все хранятся в `localStorage` и применяются к реальному чату через CSS-переменные на `:root`; сетка фонов с карточкой «Без фона», выбранной обводкой и кнопкой «+» добавления через `UpdatePersonalization` + `MESSAGE_ATTACHMENT_IMAGE=2`), **о приложении** (версия, deviceId, браузер/ОС, origin). Сохранение имени/username выполняется последовательно (`ChangeName` → `ChangeUsername`), после чего `GetUser` перечитывает серверный профиль; сообщение «Сохранено» показывается только если сервер вернул новый username. Цветовая схема (light/dark/midnight) инжектится отдельным inline-скриптом в `messenger.html` через `MutationObserver` за `#sdBody`. UI-хелперы: `makeField`/`makeInput`/`makeHint`/`makeSaveBtn`/`makeToggleRow`/`makeSegmented` + локальные `buildSlider`/`openPosterCrop`/`bindCropDrag`.
 - `personalization.js` — `BF.personalization`: локальные косметические настройки чата (по образцу Android `GlobalParam` / macOS `@AppStorage`). Хранит в `localStorage` ключи `bf_pers_bubble_radius`, `bf_pers_bg_blur_enabled`, `bf_pers_bg_blur_radius`, `bf_pers_bg_dim`, `bf_pers_bg_file_id`. Применяет к `:root` CSS-переменные `--msg-bubble-radius`, `--chat-bg-image`, `--chat-bg-blur`, `--chat-bg-dim-alpha`, которые читаются `.msg-bubble.incoming/.outgoing` и слоями `.messages-bg-layer`/`.messages-bg-dim` внутри `.messages-area`. `init()` вызывается из `main.js` сразу после `BF.realtime.startAll()`, сверяет выбранный bg-fileId с серверной коллекцией (`GetPersonalization`) и сбрасывает, если файл удалён.
 - `main.js` — bootstrap мессенджера. `openProfile(userId)` рендерит постер собеседника через `user.profilePosterFileId` → `BF.files.getFileUrls()` в `#profilePoster` поверх `.profile-header` (аватар получает `margin-top: -56px` через CSS). Поле `profilePosterFileId` маппится в `api.js:mapUser`. **Deep-link из cookie**: `maybeOpenChatFromCookie()` (вызывается в INIT после `loadChats`) читает cookie `bf_open_chat` (ставится кнопкой «Написать в браузере» на странице пользователя [[Backend/WebServer]]), сразу удаляет её (одноразово), затем `SearchUsers(username)` → точное совпадение по username (case-insensitive) → `GetPersonChatId(userId)` → `openChat(chatId)`. Auth-gate в начале `main.js` гарантирует выполнение только на странице мессенджера (иначе редирект на логин, cookie переживает вход). Логика повторяет Android `DeepLinkActivity.resolveAndOpenChat`.
+- В модалках профиля и информации о группе вкладки вложений имеют независимые DOM-панели и токены запросов: запоздавшая загрузка другой вкладки или другого чата не может подменить активный список. «Файлы» ищет документы по имени через `ListChatAttachments.file_name_query` с debounce 300 мс. Видео в «Медиа» помечено `▶`; GIF здесь показываются статичным server-preview, а у старых GIF без preview браузер фиксирует первый кадр. В ленте чата GIF остаются анимированными.
 
 **Proto bundle** (`wwwroot/js/proto/barkfluff.bundle.js`):
 Генерируется через `scripts/generate-proto.ps1` (или `.sh`). Требует: protoc, protoc-gen-grpc-web, Node.js (esbuild).
 
-> `wwwroot/` содержит только `index.html`, `messenger.html`, `favicon.ico` и каталог `js/`. Отдельной мобильной страницы (`mobile.html`) нет — мобильный режим реализуется адаптивной вёрсткой основных страниц.
+> `wwwroot/` содержит только `index.html`, `messenger.html`, `favicon.ico`, каталог `js/` и генерируемый при сборке `legal/` (см. [[#Согласие с документами (legal.js)]]). Отдельной мобильной страницы (`mobile.html`) нет — мобильный режим реализуется адаптивной вёрсткой основных страниц.
 
 ## Аутентификация (gRPC-Web)
 
@@ -221,6 +223,36 @@ RPC — `MessagesApi.PinMessage/UnpinMessage/ListPinnedMessages/UnpinAll`, ст�
 - **Graceful-фолбэк**: ошибки сети при `CheckExist*` и опциональных шагах (аватар/био) не блокируют регистрацию — сервер валидирует повторно при `CreateAccount`.
 - **Resend OTP**: кулдаун 60с, повторно вызывает `CreateAccount`.
 
+## Согласие с документами (`legal.js`)
+
+Блок на странице входа: чекбокс «Я принимаю Пользовательское соглашение и Политику конфиденциальности» + информационная плашка про cookie. Повторяет схему Android (`LegalConsentBottomSheet` + `GlobalParam.acceptedLegalRevision`, см. [[Клиенты/Android]]): один чекбокс на **оба** документа, и хранится **редакция**, а не флаг.
+
+**Редакция** — строка `**Последнее обновление:** …` из шапки `TERMS_OF_SERVICE.ru.md` (сейчас `29 июля 2026 г.`). Парсер повторяет `LegalDocsRepository.revision`: последняя строка вида `**Метка:** значение` в первых 8 строках, всегда из русского оригинала. Обновилась дата в документе — cookie перестаёт совпадать, согласие спрашивается заново. Хардкодить дату нельзя.
+
+**Что блокируется до согласия** (`login-page.js`):
+
+| Путь входа | Как заблокирован |
+|---|---|
+| Форма входа | `#signInBtn.disabled`, submit-хендлер выходит раньше и подсвечивает строку (`.legal-consent.nudge`) |
+| Регистрация | `#toRegisterBtn.disabled` — мастер не открывается |
+| QR fast-auth | `BF.fastAuth.start()` не вызывается, `.qr-card` получает класс `gated`, статус — «Примите документы, чтобы войти по QR» |
+
+QR блокируется **обязательно**: это полноценный вход, и без этого согласие обходится в один клик. `startFastAuth()` — единственная точка запуска, `showSection('login')` и bootstrap идут через неё.
+
+**Хранение — два уровня:**
+- cookie `bf_legal_accepted=<редакция>` (`path=/`, 1 год, `SameSite=Lax`) — это и есть гейт до входа;
+- `UsersApi.AcceptLegalConsent(revision)` — запись в профиль (`User.AcceptedLegalRevision` / `AcceptedLegalAt`, см. [[Backend/Users]]). Вызывается **после** появления токена: до входа RPC вызвать нечем. Точки вызова — `login-page.js` перед редиректом на `/messenger` и `register.js` сразу после `BF.tokens.save` на шаге 4. `flushConsent()` возвращает промис, который резолвится не дольше `FLUSH_TIMEOUT` (1500 мс), чтобы медленная сеть не задерживала вход.
+
+**Модалка чтения** `#legalOverlay` — переиспользует `.reg-overlay` / `.reg-dialog` / `.reg-header`, свои классы только `.legal-tabs` / `.legal-tab` / `.legal-body` (`.legal-dialog` расширяет ширину до 640px). Вкладки «Соглашение» / «Политика», открывается кликом по названию документа в строке согласия. Рендер — существующий `BF.utils.renderMarkdown`, из-за чего `utils.js` подключён и в `index.html` (раньше только в `messenger.html`).
+
+**Откуда берётся текст.** `web.barkfluff.com` и `barkfluff.com` — разные origin, `fetch` за документом упёрся бы в CORS. Поэтому MSBuild-таргет `CopyLegalDocs` (`BarkFluff.Web.csproj`, `BeforeTargets="AssignTargetPaths"`) копирует `..\Barkfluff.WebServer\html\legal\{TERMS_OF_SERVICE,PRIVACY_POLICY}.*.md` в `wwwroot/legal/`. Зеркало gradle-таска `copyLegalDocs` у Android; источник по-прежнему один — [[Backend/WebServer]]. Копии сгенерированные, поэтому `wwwroot/legal/` в `.gitignore`, а каталог исключён из дефолтных Content-глобов SDK (`<Content Remove="wwwroot\legal\**" />`), иначе на второй сборке файлы попали бы в Content дважды.
+
+**Устойчивость.** Если документ не загрузился, `revision` остаётся пустой и `isAccepted()` считает достаточным сам факт cookie — недоступный файл не должен запирать вход. Гейт применяется дважды: сразу по cookie (вернувшийся пользователь не видит мигания заблокированной формы) и повторно после `init()`, когда редакция прочитана.
+
+**Cookie-уведомление** — плашка `#cookieNotice` с одной кнопкой «Понятно». Имя и значение cookie (`bf_cookie_notice=1`) совпадают с баннером сайта, который ставит её на `.barkfluff.com`, — принявшему на `barkfluff.com` здесь ничего не покажется.
+
+**Не сделано намеренно:** Android / WinUI / macOS / iOS `AcceptLegalConsent` не отправляют — у них согласие остаётся локальным. Серверного гейта (отказ в `Auth` без принятой редакции) нет: это поменяло бы поведение сразу всех клиентов.
+
 ## QR Fast-Auth (`fast-auth.js`)
 
 QR-вход на странице логина — анонимный поток (без токена), повторяет шаблон [[Клиенты/Windows]] / [[Клиенты/MacOS]].
@@ -235,6 +267,14 @@ QR-вход на странице логина — анонимный поток
 Финальные статусы: `ACCEPTED` (получаем `access_token` + `refresh_token` → `BF.tokens.save` → редирект на `/messenger`), `REJECTED` (toast и автоперезапуск через 1с), `EXPIRED` (молчаливый перезапуск). На сетевой разрыв — exponential backoff (2с → 30с).
 
 YARP-маршрут `fast-auth` входит в `streamingServices` set — `ActivityTimeout: 24h`.
+
+## PWA и публичная Firebase-конфигурация
+
+Хост отдаёт `/pwa-config.js` с `Cache-Control: no-store`: только публичные параметры зарегистрированного Firebase Web App (`apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`) и VAPID public key из `Web:Push:*`. Если конфигурация неполна, в browser выставляется `BF_PWA_CONFIG = null`, а push-переключатель сообщает, что функция недоступна. Закрытые Firebase credentials здесь не хранятся — они остаются в [[Backend/CloudMessaging]].
+
+`scripts/firebase-compat-entry.js` собирается esbuild в `wwwroot/js/vendor/firebase-messaging-compat.bundle.js`; Docker повторяет эту сборку. `service-worker.js` подключает bundle и `/pwa-config.js`, принимает FCM data-only события и показывает безопасные уведомления. Новая версия worker ждёт явного подтверждения пользователя и получает `SKIP_WAITING` только после выбора «Обновить», поэтому не меняет оболочку посреди сессии.
+
+В `docker/backend/docker-compose-dev-backend.yml` переменные из `.env` пробрасываются в контейнер `web` как `Web__Push__*`. Шаблон значений и источники в Firebase Console — `docker/backend/sample-backend.env`; это только публичные Firebase Web/VAPID данные, не service-account ключи.
 
 ## Зависимости
 

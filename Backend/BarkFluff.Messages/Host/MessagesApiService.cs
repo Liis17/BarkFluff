@@ -4,11 +4,13 @@ using BarkFluff.Messages.Features.AckSecretMessage;
 using BarkFluff.Messages.Features.AddUser;
 using BarkFluff.Messages.Features.CreateGroupChat;
 using BarkFluff.Messages.Features.CreatePrivateChat;
+using BarkFluff.Messages.Features.DeleteChatDraft;
 using BarkFluff.Messages.Features.DeleteMessage;
 using BarkFluff.Messages.Features.DeletePrivateMessage;
 using BarkFluff.Messages.Features.EditMessage;
 using BarkFluff.Messages.Features.EditPrivateMessage;
 using BarkFluff.Messages.Features.GetChatInfo;
+using BarkFluff.Messages.Features.GetChatDraft;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
 using BarkFluff.Messages.Features.ListChatAttachments;
@@ -29,6 +31,7 @@ using BarkFluff.Messages.Features.SendSecretMessage;
 using BarkFluff.Messages.Features.UnpinAll;
 using BarkFluff.Messages.Features.UnpinMessage;
 using BarkFluff.Messages.Features.UpdateGroupChat;
+using BarkFluff.Messages.Features.UpsertChatDraft;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Exceptions.Files;
@@ -290,6 +293,51 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         return await _mediator.Send(command);
     }
 
+    public override async Task<GetChatDraftResponse> GetChatDraft(GetChatDraftRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        return await _mediator.Send(new GetChatDraftQuery { ChatId = chatId });
+    }
+
+    public override async Task<UpsertChatDraftResponse> UpsertChatDraft(UpsertChatDraftRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        return await _mediator.Send(new UpsertChatDraftCommand
+        {
+            ChatId = chatId,
+            Text = request.Text,
+            ReplyToMessageId = request.ReplyToMessageId == 0 ? null : request.ReplyToMessageId
+        });
+    }
+
+    public override async Task<DeleteChatDraftResponse> DeleteChatDraft(DeleteChatDraftRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+        if (!Guid.TryParse(request.ExpectedRevision, out var revision))
+        {
+            return new DeleteChatDraftResponse();
+        }
+
+        var deleted = await _mediator.Send(new DeleteChatDraftCommand
+        {
+            ChatId = chatId,
+            Revision = revision
+        });
+
+        return new DeleteChatDraftResponse { Deleted = deleted };
+    }
+
     public override async Task<EditMessageResponse> EditMessage(EditMessageRequest request, ServerCallContext context)
     {
         List<Guid>? fileIds = null;
@@ -419,7 +467,8 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Skip = request.Pagination.Offset,
             Size = request.Pagination.Size,
             AttachmentType = request.AttachmentType == 0 ? null : (Domain.MessageAttachmentType?)(int)request.AttachmentType,
-            SortDescending = request.SortDescending
+            SortDescending = request.SortDescending,
+            FileNameQuery = request.FileNameQuery
         };
 
         return await _mediator.Send(command);

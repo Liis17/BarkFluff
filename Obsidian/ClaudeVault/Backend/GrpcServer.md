@@ -43,8 +43,8 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Метрики (`Metrics/`)
 
-- `MetricsCollector` — thread-safe counters/gauges (`ConcurrentDictionary`). Counters сбрасываются при snapshot, gauges сохраняются.
-- `MetricsReporterService` — BackgroundService, тикает каждые 5 секунд. Экспортирует `ServiceMetrics` **schema v2**: отдельные словари `Counters` (дельты) и `Gauges` (состояние), поэтому [[Backend/AdminPanel]] суммирует первые за час и берёт последнее значение вторых. В простое (только static gauges) шлёт gauge-heartbeat не чаще раза в 5 минут (`IdleHeartbeatEveryTicks = 60`).
+- `MetricsCollector` — thread-safe counters/gauges (`ConcurrentDictionary`) с профилем экспорта. Низкочастотные бизнес-события уходят отдельной дельтой сразу; counters высоконагруженных сервисов и все байтовые показатели копятся атомарно. `SetMany()` обновляет связанную группу gauges под одной блокировкой, а exporter забирает её тем же критическим участком — снимок не смешивает стадии разных операций (используется [[Backend/Files|Files]] для длительностей upload).
+- `MetricsReporterService` — экспортирует `ServiceMetrics` **schema v2**: `Counters` — дельты, `Gauges` — состояние. Буфер flush-ится раз в 10 секунд только при ненулевых counters или изменившихся gauges; в простое событий Seq нет. Профили high-throughput заданы для сообщений, файлов, realtime/fan-out, трафика, HTTP/gRPC и S2S.
 
 ## Логирование
 

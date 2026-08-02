@@ -1,0 +1,650 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.MessengerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:behaviors="using:BarkFluff.Client.WinUI.Infrastructure.Behaviors"
+    xmlns:vm="using:BarkFluff.Client.Core.ViewModels"
+    NavigationCacheMode="Required">
+
+    <Page.Resources>
+        <!--  Строка списка чатов.  -->
+        <DataTemplate x:Key="ChatListItemTemplate" x:DataType="vm:ChatItemViewModel">
+            <Grid Margin="0,4" MinHeight="56">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="52" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Grid Width="44" Height="44" VerticalAlignment="Top">
+                    <PersonPicture Width="44"
+                                   Height="44"
+                                   DisplayName="{x:Bind Title}"
+                                   ProfilePicture="{x:Bind AvatarUrl, Converter={StaticResource StringToImageSourceConverter}}" />
+                    <Ellipse Width="12"
+                             Height="12"
+                             HorizontalAlignment="Right"
+                             VerticalAlignment="Bottom"
+                             Fill="{StaticResource PresenceOnlineBrush}"
+                             Stroke="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+                             StrokeThickness="2"
+                             Visibility="{x:Bind IsOnline, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </Grid>
+
+                <StackPanel Grid.Column="1" Margin="0,1,8,0">
+                    <TextBlock FontWeight="SemiBold"
+                               Text="{x:Bind Title}"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap" />
+                    <TextBlock Margin="0,3,0,0"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="{x:Bind Preview, Mode=OneWay}"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap"
+                               Visibility="{x:Bind HasPreview, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <TextBlock HorizontalAlignment="Right"
+                               FontSize="12"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="{x:Bind LastMessageAtLabel, Mode=OneWay}" />
+                    <Border Margin="0,8,0,0"
+                            Padding="6,1"
+                            HorizontalAlignment="Right"
+                            Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            CornerRadius="10"
+                            Visibility="{x:Bind HasUnreadMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock FontSize="11"
+                                   Foreground="{StaticResource ChatUnreadBadgeTextBrush}"
+                                   Text="{x:Bind UnreadCount, Mode=OneWay}" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <!--  Плитка медиа внутри пузыря: превью всегда, плеер раскрывается кнопкой.  -->
+        <DataTemplate x:Key="MediaAttachmentTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
+            <Grid Margin="2">
+                <Image Source="{x:Bind PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                <MediaPlayerElement AreTransportControlsEnabled="True"
+                                    Source="{x:Bind FileUrl}"
+                                    Stretch="UniformToFill"
+                                    Visibility="Collapsed" />
+                <Button Width="44"
+                        Height="44"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        behaviors:PlayVideoBehavior.Enable="True"
+                        Content="&#x25B6;"
+                        Visibility="{x:Bind IsVideo, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FileAttachmentTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
+            <Border Margin="0,0,0,4"
+                    Padding="8"
+                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Margin="0,0,8,0" FontSize="18" Glyph="&#xE8A5;" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="{x:Bind SizeLabel}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!--
+            Пузырь лежит прямо в шаблоне, а не в UserControl: x:Bind внутри UserControl смотрит
+            на сам контрол, и связь с элементом ленты пришлось бы тянуть через DependencyProperty.
+        -->
+        <DataTemplate x:Key="MessageBubbleTemplate" x:DataType="vm:MessageItemViewModel">
+            <Grid Margin="12,4" HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource MessageAlignmentConverter}}">
+                <Border MaxWidth="520"
+                        Padding="{x:Bind HasOnlyMedia, Converter={StaticResource MessageBubblePaddingConverter}}"
+                        Background="{x:Bind IsMine, Converter={StaticResource MessageBubbleBrushConverter}}"
+                        ContextRequested="OnBubbleContextRequested"
+                        CornerRadius="12">
+                    <!--  Flyout наследует DataContext шаблона, поэтому хак WPF с PlacementTarget не нужен.  -->
+                    <Border.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Command="{x:Bind Owner.StartReplyMessageCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            Text="{StaticResource Messenger_ReplyToMessage}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE97A;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind Owner.StartForwardMessageCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            Text="{StaticResource Messenger_Forward}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE72A;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind Owner.CopyMessageTextCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            Text="{StaticResource Messenger_CopyText}"
+                                            Visibility="{x:Bind CanCopyText, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8C8;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind Owner.CopyMessageImageCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            Text="{StaticResource Messenger_CopyImage}"
+                                            Visibility="{x:Bind CanCopyImage, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xEB9F;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind Owner.TogglePinMessageCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            Text="{x:Bind PinMenuHeader, Mode=OneWay}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE718;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind Owner.StartEditMessageCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            Text="{StaticResource Messenger_Edit}"
+                                            Visibility="{x:Bind CanModify, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE70F;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind Owner.RequestDeleteMessageCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                            Text="{StaticResource Messenger_Delete}"
+                                            Visibility="{x:Bind CanModify, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Foreground="{ThemeResource SystemFillColorCriticalBrush}" Glyph="&#xE74D;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </Border.ContextFlyout>
+                    <Grid>
+                        <StackPanel>
+                            <!--  Цитата ответа уводит к оригиналу, блок пересылки — просто превью.  -->
+                            <Button Margin="0,0,0,6"
+                                    Padding="8,5"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                    BorderThickness="0"
+                                    Command="{x:Bind Owner.ScrollToOriginalCommand}"
+                                    CommandParameter="{x:Bind}"
+                                    CornerRadius="6"
+                                    IsHitTestVisible="{x:Bind IsReplyQuote, Mode=OneWay}"
+                                    Visibility="{x:Bind HasForwarded, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="2"
+                                            Margin="0,0,8,0"
+                                            Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                            CornerRadius="1" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Text="{x:Bind Forwarded.AuthorName}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock FontSize="12"
+                                                   Opacity=".8"
+                                                   Text="{x:Bind Forwarded.Preview}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   TextWrapping="NoWrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                            <TextBlock Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                       IsTextSelectionEnabled="True"
+                                       Text="{x:Bind Text, Mode=OneWay}"
+                                       TextWrapping="Wrap"
+                                       Visibility="{x:Bind HasText, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                            <ItemsRepeater Width="{x:Bind MediaPanelWidth}"
+                                           Margin="0,8,0,0"
+                                           ItemTemplate="{StaticResource MediaAttachmentTemplate}"
+                                           ItemsSource="{x:Bind MediaAttachments}"
+                                           Visibility="{x:Bind HasMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ItemsRepeater.Layout>
+                                    <UniformGridLayout ItemsStretch="Fill"
+                                                       MaximumRowsOrColumns="{x:Bind MediaColumns}"
+                                                       MinItemHeight="{x:Bind MediaTileHeight}"
+                                                       Orientation="Horizontal" />
+                                </ItemsRepeater.Layout>
+                            </ItemsRepeater>
+
+                            <ItemsRepeater Margin="0,8,0,0"
+                                           ItemTemplate="{StaticResource FileAttachmentTemplate}"
+                                           ItemsSource="{x:Bind FileAttachments}"
+                                           Visibility="{x:Bind HasFiles, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                            <StackPanel HorizontalAlignment="Right"
+                                        Orientation="Horizontal"
+                                        Visibility="{x:Bind HasMetadataBelowMedia, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Margin="0,5,6,0"
+                                           FontSize="11"
+                                           Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                           Opacity=".7"
+                                           Text="{StaticResource Messenger_Edited}"
+                                           Visibility="{x:Bind IsEdited, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <TextBlock Margin="0,5,0,0"
+                                           FontSize="11"
+                                           Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                           Opacity=".7"
+                                           Text="{x:Bind SentAtLabel}" />
+                                <!--  Одна галочка — доставлено, вторая появляется при прочтении.  -->
+                                <StackPanel Margin="6,4,0,0"
+                                            Orientation="Horizontal"
+                                            Visibility="{x:Bind IsMine, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <FontIcon FontSize="12"
+                                              Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                              Glyph="&#xE73E;"
+                                              ToolTipService.ToolTip="{StaticResource Messenger_Delivered}" />
+                                    <FontIcon Margin="-6,0,0,0"
+                                              FontSize="12"
+                                              Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                              Glyph="&#xE73E;"
+                                              ToolTipService.ToolTip="{StaticResource Messenger_Read}"
+                                              Visibility="{x:Bind IsReadBySomeoneElse, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!--  У пузыря из одного медиа метки лежат поверх картинки.  -->
+                        <Border Margin="0,0,8,8"
+                                Padding="5,2"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom"
+                                Background="{StaticResource MessageMediaTimestampBrush}"
+                                CornerRadius="6"
+                                Visibility="{x:Bind HasOnlyMedia, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock FontSize="11"
+                                       Foreground="{StaticResource MessageMediaTimestampTextBrush}"
+                                       Text="{x:Bind SentAtLabel}" />
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!--  Пока чат не выбран, шапка с индикатором связи скрыта, и обрыв был бы невидим.  -->
+            <TextBlock Margin="0,0,0,8"
+                       Opacity=".7"
+                       Style="{StaticResource MutedText}"
+                       Text="{StaticResource Messenger_Reconnecting}"
+                       Visibility="{x:Bind ViewModel.IsChatListReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <TextBox Grid.Row="1" PlaceholderText="{StaticResource Messenger_Search}" Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+            <Grid Grid.Row="2" Margin="0,12,0,0">
+                <!--  Свойства списка заданы прямо на контроле: WinUI не публикует базовый стиль ListView.  -->
+                <ListView Padding="0"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          ItemTemplate="{StaticResource ChatListItemTemplate}"
+                          ItemsSource="{x:Bind ViewModel.VisibleChats}"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          SelectedItem="{x:Bind ViewModel.SelectedChat, Mode=TwoWay}" />
+
+                <ProgressRing HorizontalAlignment="Center"
+                              VerticalAlignment="Top"
+                              IsActive="True"
+                              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Column="1" Margin="0,0,16,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!--  Заголовок ведёт на профиль собеседника; borderless Button даёт фокус и клавиатуру даром.  -->
+            <Button Margin="12,12,12,8"
+                    Padding="8"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="OnChatHeaderClick"
+                    Visibility="{x:Bind ViewModel.HasSelectedChat, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{x:Bind ViewModel.SelectedChat.Title, Mode=OneWay}" />
+                    <TextBlock Opacity=".7"
+                               Style="{StaticResource MutedText}"
+                               Text="{x:Bind ViewModel.SelectedChat.PresenceLabel, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.IsPresenceLabelVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <!--  Пока связь восстанавливается, статус собеседника устарел и показывать его нельзя.  -->
+                    <TextBlock Opacity=".7"
+                               Style="{StaticResource MutedText}"
+                               Text="{StaticResource Messenger_Reconnecting}"
+                               Visibility="{x:Bind ViewModel.IsChatHeaderReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </StackPanel>
+            </Button>
+
+            <!--  Плашка закрепа: клик уводит к закрепу и перелистывает на следующий, крестик открепляет.  -->
+            <Border Grid.Row="1"
+                    Margin="12,0,12,8"
+                    Padding="10,6"
+                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8"
+                    Visibility="{x:Bind ViewModel.HasPinnedMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="2"
+                            Margin="0,0,8,0"
+                            Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            CornerRadius="1" />
+                    <TextBlock Grid.Column="1"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="{x:Bind ViewModel.PinnedPreview.Counter, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.PinnedPreview.HasCounter, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Grid.Column="2"
+                            Padding="0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{x:Bind ViewModel.CyclePinnedMessageCommand}">
+                        <StackPanel>
+                            <TextBlock FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Text="{x:Bind ViewModel.PinnedPreview.Author, Mode=OneWay}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock FontSize="12"
+                                       Opacity=".8"
+                                       Text="{x:Bind ViewModel.PinnedPreview.Preview, Mode=OneWay}"
+                                       TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="3"
+                            Margin="8,0,0,0"
+                            Command="{x:Bind ViewModel.UnpinFromBarCommand}"
+                            ToolTipService.ToolTip="{StaticResource Messenger_Unpin}">
+                        <FontIcon FontSize="12" Glyph="&#xE711;" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <ScrollViewer x:Name="FeedScroller"
+                          Grid.Row="2"
+                          HorizontalScrollBarVisibility="Disabled"
+                          SizeChanged="OnFeedScrollerSizeChanged"
+                          VerticalScrollBarVisibility="Auto">
+                <!--
+                    Контент не ниже вьюпорта: только тогда у VerticalAlignment появляется запас
+                    и короткая переписка прижимается к нижней кромке, как в WPF-версии.
+                    ScrollViewer меряет ребёнка бесконечной высотой, поэтому MinHeight
+                    выставляется из code-behind по фактическому размеру вьюпорта.
+                -->
+                <Grid x:Name="FeedHost">
+                    <ItemsRepeater x:Name="MessageFeed"
+                                   VerticalAlignment="Bottom"
+                                   ItemTemplate="{StaticResource MessageBubbleTemplate}"
+                                   ItemsSource="{x:Bind ViewModel.Messages}"
+                                   behaviors:MessageFeedBehavior.FeedPositionCommand="{x:Bind ViewModel.FeedPositionChangedCommand}"
+                                   behaviors:MessageFeedBehavior.ScrollRequest="{x:Bind ViewModel.ScrollRequest, Mode=OneWay}"
+                                   behaviors:MessageFeedBehavior.Scroller="{x:Bind FeedScroller}"
+                                   behaviors:MessageFeedBehavior.VisibleMessageCommand="{x:Bind ViewModel.MessageBecameVisibleCommand}" />
+                </Grid>
+            </ScrollViewer>
+
+            <!--  Заглушка лежит в строке ленты, чтобы центрироваться по всей свободной области.  -->
+            <TextBlock Grid.Row="2"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="18"
+                       Opacity=".6"
+                       Text="{StaticResource Messenger_Empty}"
+                       Visibility="{x:Bind ViewModel.IsChatPlaceholderVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <!--  Одна панель на два режима: в правке кнопка отправки применяет правку,
+                  в ответе — отправляет сообщение со ссылкой на оригинал.  -->
+            <Border Grid.Row="3"
+                    Margin="12,0,12,0"
+                    Padding="10,8"
+                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8"
+                    Visibility="{x:Bind ViewModel.IsComposerHintVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Text="{x:Bind ViewModel.ComposerHintTitle, Mode=OneWay}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="12"
+                                   Opacity=".75"
+                                   Text="{x:Bind ViewModel.ComposerHintPreview, Mode=OneWay}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Margin="8,0,0,0"
+                            Command="{x:Bind ViewModel.CancelComposerHintCommand}"
+                            ToolTipService.ToolTip="{StaticResource Messenger_Cancel}">
+                        <FontIcon FontSize="12" Glyph="&#xE711;" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <TextBlock Grid.Row="4"
+                       Margin="12,6,12,0"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Text="{x:Bind ViewModel.ActionError, Mode=OneWay}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.ActionError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
+            <Grid Grid.Row="5"
+                  Margin="12,8,12,0"
+                  Visibility="{x:Bind ViewModel.HasSelectedChat, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox MinHeight="42"
+                         MaxHeight="120"
+                         AcceptsReturn="True"
+                         Text="{x:Bind ViewModel.DraftText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         TextWrapping="Wrap"
+                         behaviors:SendOnEnterBehavior.Command="{x:Bind ViewModel.SendCommand}" />
+                <Button Grid.Column="1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Bottom"
+                        Command="{x:Bind ViewModel.SendCommand}"
+                        Content="{StaticResource Messenger_Send}"
+                        Style="{StaticResource AccentButtonStyle}" />
+            </Grid>
+        </Grid>
+
+        <!--
+            Пересылка, подтверждение удаления и разблокировка приватного чата остаются оверлеями,
+            а не ContentDialog: вьюмодель уже управляет ими флагами и командами отмены, и перевод
+            на диалоги потребовал бы абстракции диалогов в Core ради того же поведения.
+        -->
+        <Grid Grid.ColumnSpan="2"
+              Background="{StaticResource MessengerModalScrimBrush}"
+              Canvas.ZIndex="12"
+              Visibility="{x:Bind ViewModel.IsForwardVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Width="400"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="20"
+                    Style="{StaticResource OnboardingCard}">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{StaticResource Messenger_ForwardTitle}" />
+                    <ScrollViewer Margin="0,12,0,0" MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.ForwardTargets}">
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ForwardTargetViewModel">
+                                    <Button Margin="0,0,0,4"
+                                            Padding="8"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="0"
+                                            Command="{x:Bind Owner.ToggleForwardTargetCommand}"
+                                            CommandParameter="{x:Bind}"
+                                            CornerRadius="6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <PersonPicture Width="32"
+                                                           Height="32"
+                                                           Margin="0,0,10,0"
+                                                           DisplayName="{x:Bind Title}" />
+                                            <TextBlock Grid.Column="1"
+                                                       VerticalAlignment="Center"
+                                                       Text="{x:Bind Title}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <FontIcon Grid.Column="2"
+                                                      FontSize="14"
+                                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                      Glyph="&#xE73E;"
+                                                      Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                    </ScrollViewer>
+                    <TextBox Margin="0,12,0,0"
+                             PlaceholderText="{StaticResource Messenger_ForwardComment}"
+                             Text="{x:Bind ViewModel.ForwardComment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Margin="0,10,0,0"
+                               FontSize="12"
+                               Opacity=".75"
+                               Text="{x:Bind ViewModel.ForwardSelectionSummary, Mode=OneWay}" />
+                    <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
+                        <Button Command="{x:Bind ViewModel.SubmitForwardCommand}"
+                                Content="{StaticResource Messenger_ForwardSend}"
+                                IsEnabled="{x:Bind ViewModel.CanSubmitForward, Mode=OneWay}"
+                                Style="{StaticResource AccentButtonStyle}" />
+                        <Button Margin="8,0,0,0"
+                                Command="{x:Bind ViewModel.CancelForwardCommand}"
+                                Content="{StaticResource Messenger_Cancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.ColumnSpan="2"
+              Background="{StaticResource MessengerModalScrimBrush}"
+              Canvas.ZIndex="11"
+              Visibility="{x:Bind ViewModel.IsDeleteConfirmVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Width="360"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="20"
+                    Style="{StaticResource OnboardingCard}">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{StaticResource Messenger_DeleteConfirmTitle}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Opacity=".75"
+                               Text="{StaticResource Messenger_DeleteConfirmText}"
+                               TextWrapping="Wrap" />
+                    <StackPanel Margin="0,20,0,0" Orientation="Horizontal">
+                        <Button Command="{x:Bind ViewModel.ConfirmDeleteMessageCommand}"
+                                Content="{StaticResource Messenger_Delete}"
+                                Style="{StaticResource DangerButton}" />
+                        <Button Margin="8,0,0,0"
+                                Command="{x:Bind ViewModel.CancelDeleteMessageCommand}"
+                                Content="{StaticResource Messenger_Cancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.ColumnSpan="2"
+              Background="{StaticResource MessengerModalScrimBrush}"
+              Canvas.ZIndex="10"
+              Visibility="{x:Bind ViewModel.IsPrivateUnlockVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Width="360"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="20"
+                    Style="{StaticResource OnboardingCard}">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{StaticResource Messenger_PrivateUnlockTitle}" />
+                    <TextBlock Margin="0,8,0,16"
+                               Opacity=".75"
+                               Text="{StaticResource Messenger_PrivateUnlockHint}"
+                               TextWrapping="Wrap" />
+                    <PasswordBox Password="{x:Bind ViewModel.PrivatePassphrase, Mode=TwoWay}"
+                                 PasswordRevealMode="Peek"
+                                 PlaceholderText="{StaticResource Messenger_PrivatePassphrase}" />
+                    <TextBlock Margin="0,10,0,0"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Text="{x:Bind ViewModel.PrivateUnlockError, Mode=OneWay}"
+                               TextWrapping="Wrap"
+                               Visibility="{x:Bind ViewModel.PrivateUnlockError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <StackPanel Margin="0,20,0,0" Orientation="Horizontal">
+                        <Button Command="{x:Bind ViewModel.UnlockPrivateChatCommand}"
+                                Content="{StaticResource Messenger_PrivateUnlock}"
+                                Style="{StaticResource AccentButtonStyle}" />
+                        <Button Margin="8,0,0,0"
+                                Command="{x:Bind ViewModel.CancelPrivateUnlockCommand}"
+                                Content="{StaticResource Messenger_PrivateCancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

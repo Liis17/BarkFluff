@@ -65,7 +65,7 @@ public static class SerilogExtensions
     /// </summary>
     public static IServiceCollection AddBarkFluffMetrics(this IServiceCollection services, string serviceName)
     {
-        services.AddSingleton<MetricsCollector>();
+        services.AddSingleton(new MetricsCollector(MetricsExportProfiles.ForService(serviceName)));
         services.AddHostedService(sp =>
             new MetricsReporterService(
                 sp.GetRequiredService<MetricsCollector>(),
@@ -74,4 +74,19 @@ public static class SerilogExtensions
 
         return services;
     }
+}
+
+internal static class MetricsExportProfiles
+{
+    public static MetricsExportProfile ForService(string serviceName) => serviceName switch
+    {
+        "BarkFluff.Messages" or "BarkFluff.Files" or "BarkFluff.Updates" or "BarkFluff.Onliner" or
+        "BarkFluff.CloudMessaging" or "BarkFluff.Federation" or "BarkFluff.ClientStorage" or
+        "BarkFluff.Web" or "BarkFluff.Developers" => MetricsExportProfile.BufferAll(),
+        "BarkFluff.Bots" => MetricsExportProfile.ImmediateByDefault(
+            "bot_api_messages_sent", "bot_updates_stored"),
+        "BarkFluff.WebServer" => MetricsExportProfile.ImmediateByDefault(
+            "http_requests_total", "http_requests_errors"),
+        _ => MetricsExportProfile.ImmediateByDefault()
+    };
 }

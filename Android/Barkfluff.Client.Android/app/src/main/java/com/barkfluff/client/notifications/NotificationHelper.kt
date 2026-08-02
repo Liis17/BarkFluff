@@ -30,6 +30,7 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.calls.IncomingCallActivity
+import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.utils.MarkdownRenderer
 
 object NotificationHelper {
@@ -392,10 +393,14 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Аватар, загруженный при обработке push до показа звонка; иначе — инициалы
+        val avatarBitmap = IncomingCallPrefetch.avatarBitmap(callId)
+            ?: createPlaceholderBitmap(displayName, callerUserId.takeIf { it > 0 } ?: callId.hashCode().toLong())
+
         val person = Person.Builder()
             .setName(displayName)
             .setKey(if (callerUserId > 0) callerUserId.toString() else callId)
-            .setIcon(IconCompat.createWithBitmap(createPlaceholderBitmap(displayName, callerUserId.takeIf { it > 0 } ?: callId.hashCode().toLong())))
+            .setIcon(IconCompat.createWithBitmap(toSoftwareBitmap(avatarBitmap)))
             .build()
 
         val title = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
@@ -497,6 +502,7 @@ object NotificationHelper {
     fun clearIncomingCallAlert(context: Context, callId: String) {
         if (callId.isBlank()) return
         stopIncomingCallRingtone(callId)
+        IncomingCallPrefetch.clear(callId)
         context.getSystemService(NotificationManager::class.java).cancel(callId.hashCode())
     }
 

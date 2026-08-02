@@ -89,6 +89,7 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
         }
 
         message.IsDeleted = true;
+        message.ClearContent();
         message.LastChangeAt = DateTime.UtcNow;
 
         await _messagesStorage.SaveChangesAsync();

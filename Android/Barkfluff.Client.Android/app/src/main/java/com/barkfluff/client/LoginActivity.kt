@@ -3,6 +3,7 @@ package com.barkfluff.client
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
+import android.text.InputFilter
 import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
@@ -17,11 +18,11 @@ import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityLoginBinding
 import com.barkfluff.client.grpc.GrpcManager
-import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import java.util.regex.Pattern
 
 /**
@@ -135,6 +136,18 @@ class LoginActivity : AppCompatActivity() {
         for (i in otpBoxes.indices) {
             val box = otpBoxes[i]
 
+            if (i == 0) {
+                box.filters = arrayOf(InputFilter { source, start, end, _, _, _ ->
+                    val code = source.subSequence(start, end).toString()
+                    if (code.length == otpBoxes.size && code.all(Char::isDigit)) {
+                        box.post { fillOtpBoxes(code) }
+                        ""
+                    } else {
+                        null
+                    }
+                }) + box.filters
+            }
+
             box.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -165,6 +178,13 @@ class LoginActivity : AppCompatActivity() {
                 false
             }
         }
+    }
+
+    private fun fillOtpBoxes(code: String) {
+        otpBoxes.forEachIndexed { index, box ->
+            box.setText(code[index].toString())
+        }
+        otpBoxes.last().requestFocus()
     }
 
     private fun getOtpCode(): String {
@@ -247,12 +267,13 @@ class LoginActivity : AppCompatActivity() {
                     if (usersAddress.isNotBlank()) {
                         val usersResult = grpcManager.createUsersClient(usersAddress, this@LoginActivity)
                         if (usersResult.isSuccess) {
-                            // Загружаем данные пользователя
+                            // Загружаем профиль и синхронизируемые настройки параллельно.
+                            val userSettingsDeferred = async { grpcManager.getUserSettings() }
                             val userDataResult = grpcManager.getCurrentUserData()
                             if (userDataResult.isSuccess) {
                                 val userData = userDataResult.getOrNull()
                                 if (userData != null) {
-                                    Log.d(TAG, "Login: userData.userId=${userData.userId}, profilePictureUrl='${userData.profilePictureUrl}', profilePicturePreviewUrl='${userData.profilePicturePreviewUrl}', profilePictureFileId='${userData.profilePictureFileId}', profilePicturePreviewFileId='${userData.profilePicturePreviewFileId}'")
+                                    Log.d(TAG, "Login: userData.userId=${userData.userId}, profilePictureFileId='${userData.profilePictureFileId}', profilePicturePreviewFileId='${userData.profilePicturePreviewFileId}'")
 
                                     globalParam.userId = userData.userId
                                     globalParam.userName = userData.username
@@ -267,8 +288,14 @@ class LoginActivity : AppCompatActivity() {
                                     globalParam.profilePictureUrl = userData.profilePictureUrl
                                     globalParam.registrationDate = userData.registrationDate
 
-                                    Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}', picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
+                                    Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
                                 }
+                            }
+                            userSettingsDeferred.await().onSuccess { settings ->
+                                globalParam.applyChatBackgroundSettings(
+                                    settings.globalChatBackgroundFileId,
+                                    settings.chatBackgroundFileIds
+                                )
                             }
                         }
                     }
@@ -278,9 +305,6 @@ class LoginActivity : AppCompatActivity() {
                     // чтобы гарантировать свежие соединения с актуальными токенами
                     val app = applicationContext as BarkFluffApplication
                     app.grpcManager.recreateAllClients(this@LoginActivity, globalParam)
-                    // Пересоздаём FCM-токен (свежий логин — гарантируем новый токен для этого аккаунта)
-                    // Используем app.grpcManager у которого уже есть usersClient
-                    FirebaseTokenHelper.deleteAndRefreshTokenThenSend(this@LoginActivity, app.grpcManager)
                     navigateToChats()
                 }
             }

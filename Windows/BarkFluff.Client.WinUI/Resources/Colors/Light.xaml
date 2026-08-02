@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="OnboardingWindowBackgroundColor">#FFF6F7FB</Color>
+    <Color x:Key="OnboardingAccentSurfaceColor">#E6F1FF</Color>
+    <Color x:Key="OnboardingSubtleSurfaceColor">#F5F7FB</Color>
+    <Color x:Key="MessengerModalScrimColor">#99000000</Color>
+    <Color x:Key="MessageMediaTimestampColor">#99000000</Color>
+    <Color x:Key="MessageMediaTimestampTextColor">#FFFFFFFF</Color>
+    <Color x:Key="ChatUnreadBadgeTextColor">#FFFFFFFF</Color>
+    <Color x:Key="MessageOwnBubbleColor">#FF0F6CBD</Color>
+    <Color x:Key="MessageOwnBubbleTextColor">#FFFFFFFF</Color>
+    <Color x:Key="MessageOtherBubbleColor">#FFFFFFFF</Color>
+    <Color x:Key="MessageOtherBubbleTextColor">#FF1A1A1A</Color>
+    <Color x:Key="PresenceOnlineColor">#FF3FBF5F</Color>
+</ResourceDictionary>

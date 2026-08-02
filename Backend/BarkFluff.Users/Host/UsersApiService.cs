@@ -19,13 +19,18 @@ using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.Devices.GetCurrentDevice;
 using BarkFluff.Users.Features.Devices.GetDevices;
 using BarkFluff.Users.Features.Devices.RenameDevice;
+using BarkFluff.Users.Features.Devices.ClearFirebaseToken;
 using BarkFluff.Users.Features.Devices.SetFirebaseToken;
 using BarkFluff.Users.Features.Devices.SetNotificationsEnabled;
 using BarkFluff.Users.Features.GetUser;
+using BarkFluff.Users.Features.Legal.AcceptLegalConsent;
 using BarkFluff.Users.Features.Personalization.GetPersonalization;
 using BarkFluff.Users.Features.Personalization.GetProfilePoster;
 using BarkFluff.Users.Features.Personalization.SetProfilePoster;
 using BarkFluff.Users.Features.Personalization.UpdatePersonalization;
+using BarkFluff.Users.Features.UserSettings.GetUserSettings;
+using BarkFluff.Users.Features.UserSettings.SetChatBackground;
+using BarkFluff.Users.Features.UserSettings.SetGlobalChatBackground;
 using BarkFluff.Users.Features.Prekeys.FetchPrekeyBundle;
 using BarkFluff.Users.Features.Prekeys.ListPeerDevices;
 using BarkFluff.Users.Features.Prekeys.RegisterPrekeyBundle;
@@ -247,12 +252,22 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         _metrics.Increment("firebase_token_updates");
         var command = new SetFirebaseTokenCommand
         {
-            FirebaseToken = request.FirebaseToken
+            FirebaseToken = request.FirebaseToken,
+            PushPlatform = request.PushPlatform == PushPlatform.Web
+                ? BarkFluff.Users.Domain.DevicePushPlatform.Web
+                : BarkFluff.Users.Domain.DevicePushPlatform.Android
         };
 
         await _mediator.Send(command);
 
         return new SetFirebaseTokenResponse();
+    }
+
+    public override async Task<ClearFirebaseTokenResponse> ClearFirebaseToken(ClearFirebaseTokenRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("firebase_token_clears");
+        await _mediator.Send(new ClearFirebaseTokenCommand());
+        return new ClearFirebaseTokenResponse();
     }
 
     public override async Task<SetNotificationsEnabledResponse> SetNotificationsEnabled(SetNotificationsEnabledRequest request, ServerCallContext context)
@@ -301,6 +316,13 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         return new UpdatePrivacySettingsResponse();
     }
 
+    public override async Task<AcceptLegalConsentResponse> AcceptLegalConsent(AcceptLegalConsentRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("legal_consents_accepted");
+        await _mediator.Send(new AcceptLegalConsentCommand { Revision = request.Revision });
+        return new AcceptLegalConsentResponse();
+    }
+
     public override Task<GetPersonalizationResponse> GetPersonalization(GetPersonalizationRequest request, ServerCallContext context)
     {
         return _mediator.Send(new GetPersonalizationQuery());
@@ -311,6 +333,30 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         _metrics.Increment("personalization_updates");
         await _mediator.Send(new UpdatePersonalizationCommand { Personalization = request.Personalization });
         return new UpdatePersonalizationResponse();
+    }
+
+    public override Task<GetUserSettingsResponse> GetUserSettings(GetUserSettingsRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetUserSettingsQuery());
+    }
+
+    public override async Task<SetGlobalChatBackgroundResponse> SetGlobalChatBackground(SetGlobalChatBackgroundRequest request, ServerCallContext context)
+    {
+        await _mediator.Send(new SetGlobalChatBackgroundCommand
+        {
+            FileId = string.IsNullOrEmpty(request.ChatBackgroundFileId) ? null : request.ChatBackgroundFileId,
+        });
+        return new SetGlobalChatBackgroundResponse();
+    }
+
+    public override async Task<SetChatBackgroundResponse> SetChatBackground(SetChatBackgroundRequest request, ServerCallContext context)
+    {
+        await _mediator.Send(new SetChatBackgroundCommand
+        {
+            ChatId = ParseChatGuid(request.ChatId),
+            FileId = string.IsNullOrEmpty(request.ChatBackgroundFileId) ? null : request.ChatBackgroundFileId,
+        });
+        return new SetChatBackgroundResponse();
     }
 
     public override Task<GetProfilePosterResponse> GetProfilePoster(GetProfilePosterRequest request, ServerCallContext context)

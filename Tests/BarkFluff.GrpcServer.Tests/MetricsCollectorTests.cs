@@ -25,4 +25,60 @@ public class MetricsCollectorTests
         next.Gauges.Should().ContainSingle();
         next.Gauges["online_users_count"].Should().Be(17);
     }
+
+    [Fact]
+    public void ImmediateMetric_IsPublishedWithoutWaitingForBufferedFlush()
+    {
+        var collector = new MetricsCollector(MetricsExportProfile.ImmediateByDefault());
+
+        collector.Increment("auth_login_success");
+
+        collector.ImmediateSnapshots.TryRead(out var snapshot).Should().BeTrue();
+        snapshot.Counters.Should().ContainSingle().Which.Value.Should().Be(1);
+        collector.TakeBufferedSnapshot().Counters.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BufferedMetric_IsSummedAndIdleSnapshotIsEmpty()
+    {
+        var collector = new MetricsCollector(MetricsExportProfile.ImmediateByDefault("messages_sent"));
+
+        collector.Add("messages_sent", 2);
+        collector.Add("messages_sent", 3);
+
+        var snapshot = collector.TakeBufferedSnapshot();
+        snapshot.Counters["messages_sent"].Should().Be(5);
+        collector.TakeBufferedSnapshot().Counters.Should().BeEmpty();
+        collector.TakeBufferedSnapshot().Gauges.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Gauge_IsExportedOnlyWhenItChanges()
+    {
+        var collector = new MetricsCollector(MetricsExportProfile.ImmediateByDefault());
+
+        collector.Set("online_users_count", 10);
+        collector.TakeBufferedSnapshot().Gauges["online_users_count"].Should().Be(10);
+        collector.Set("online_users_count", 10);
+
+        collector.TakeBufferedSnapshot().Gauges.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SetMany_PublishesRelatedGaugesInOneSnapshot()
+    {
+        var collector = new MetricsCollector();
+
+        collector.SetMany(
+            new("upload_buffering_ms", 5),
+            new("upload_hashing_ms", 7),
+            new("upload_s3_ms", 11));
+
+        collector.TakeBufferedSnapshot().Gauges.Should().BeEquivalentTo(new Dictionary<string, long>
+        {
+            ["upload_buffering_ms"] = 5,
+            ["upload_hashing_ms"] = 7,
+            ["upload_s3_ms"] = 11
+        });
+    }
 }

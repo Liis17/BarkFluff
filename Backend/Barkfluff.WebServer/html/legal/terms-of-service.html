@@ -24,6 +24,8 @@
     footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
     .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
     .lang-btn:hover { color:var(--text); }
+    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
+    .callout p { margin:0; }
   </style>
   <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
@@ -41,172 +43,242 @@
       <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
     <article data-lang="ru">
-      <h1>Пользовательское соглашение</h1>
-      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
+      <h1>Условия использования</h1>
+      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</p>
 
-      <h2>1. Принятие условий</h2>
-      <p>Добро пожаловать в <strong>Barkfluff</strong> — платформу обмена сообщениями.</p>
-      <p>Используя Barkfluff, вы соглашаетесь с настоящим Пользовательским соглашением и связанными документами: <a href="/legal/privacy-policy">Политикой конфиденциальности</a>, <a href="/legal/account-deletion">Удалением аккаунта</a> и <a href="/legal/encryption">Шифрованием</a>.</p>
+      <h2>1. С кем вы заключаете это соглашение</h2>
+      <p>Barkfluff — федеративная сеть независимых серверов («нод»). Каждую ноду разворачивает и обслуживает её администратор; ноды общаются между собой, чтобы соединять пользователей разных нод.</p>
+      <div class="callout">
+        <p>Услугу вам оказывает <strong>администратор ноды, на которой создан ваш аккаунт</strong>. Настоящее соглашение заключается между вами и им. Разработчики Barkfluff стороной этого соглашения не являются: они публикуют программное обеспечение, но не оказывают вам услугу связи и не управляют чужими нодами.</p>
+      </div>
+      <p>Этот текст относится к ноде <strong>barkfluff.com</strong>. Администратор любой другой ноды публикует собственную редакцию условий и вправе установить свои правила. Если ваш аккаунт создан не на barkfluff.com, действуют условия вашей ноды.</p>
+      <p>Используя Barkfluff, вы соглашаетесь с настоящими Условиями и связанными документами: <a href="/legal/privacy-policy">Политикой конфиденциальности</a>, <a href="/legal/account-deletion">Удалением аккаунта</a> и <a href="/legal/encryption">Шифрованием</a>.</p>
 
-      <h2>2. Сервис</h2>
-      <p>Barkfluff включает backend-микросервисы, клиенты Windows, Android, macOS и web-клиент, публичный сайт WebServer, gRPC-Web прокси, портал разработчиков, систему файлов, realtime-обновления, push-уведомления, email-уведомления и чат поддержки.</p>
+      <h2>2. Роли и зона ответственности</h2>
       <ul>
-        <li><strong>Учетная запись</strong> — аккаунт пользователя с email, username, паролем, профилем и устройствами.</li>
-        <li><strong>Контент</strong> — сообщения, файлы, изображения, аватары, постеры, реакции, настройки и другие данные, которые вы создаете или загружаете.</li>
+        <li><strong>Разработчик Barkfluff</strong> — пишет код, публикует релизы клиентов и спецификацию протокола, принимает сообщения об уязвимостях. Не хостит чужие ноды, не имеет доступа к их данным и не отвечает за их работу, доступность, модерацию и действия администраторов.</li>
+        <li><strong>Администратор ноды</strong> — разворачивает и обновляет ноду, настраивает её, отвечает за сохранность и законность обработки данных своих пользователей, за резервные копии, за модерацию и за ответы на обращения. Он же решает, включать ли федерацию и с какими нодами общаться.</li>
+        <li><strong>Вы</strong> — отвечаете за свои устройства, пароль, 2FA-коды и за содержание того, что отправляете и публикуете.</li>
+      </ul>
+
+      <h2>3. Сервис</h2>
+      <p>Нода Barkfluff состоит из backend-микросервисов, к которым подключаются клиенты Windows, Android, macOS и web-клиент. Нода может предоставлять публичный сайт, gRPC-Web прокси, портал разработчиков, файловое хранилище, realtime-обновления, push-уведомления, email-уведомления и чат поддержки — конкретный набор определяет её администратор.</p>
+      <ul>
+        <li><strong>Учётная запись</strong> — аккаунт пользователя с email, username, паролем, профилем и устройствами. Аккаунт принадлежит конкретной ноде и на другой ноде не действует.</li>
+        <li><strong>Контент</strong> — сообщения, файлы, изображения, аватары, постеры, реакции, настройки и другие данные, которые вы создаёте или загружаете.</li>
         <li><strong>Клиент</strong> — приложение или web-интерфейс Barkfluff, использующий gRPC/gRPC-Web API.</li>
       </ul>
 
-      <h2>3. Требования к использованию</h2>
+      <h2>4. Требования к использованию</h2>
       <ul>
-        <li>Вы должны быть не младше 13 лет.</li>
+        <li>Вы должны быть не младше 13 лет. Администратор ноды вправе установить более высокий возрастной порог.</li>
         <li>При регистрации нужно указывать актуальные email и username.</li>
         <li>Вы отвечаете за сохранность пароля, 2FA-кодов и устройств, на которых активна сессия.</li>
         <li>При потере устройства вы можете завершить активную сессию через функции управления устройствами.</li>
       </ul>
 
-      <h2>4. Разрешенное использование</h2>
+      <h2>5. Разрешённое использование</h2>
       <ul>
         <li>личное и рабочее общение;</li>
         <li>личные и групповые чаты;</li>
         <li>обмен файлами и медиа;</li>
         <li>приватные encrypted-чаты и секретные чаты;</li>
+        <li>переписка с пользователями других нод, если администратор вашей ноды включил федерацию;</li>
         <li>использование публичных страниц профилей и web-клиента;</li>
-        <li>использование открытых proto/API материалов через портал разработчиков.</li>
+        <li>использование открытых proto/API материалов через портал разработчиков;</li>
+        <li>развёртывание собственной ноды на условиях лицензии программного обеспечения.</li>
       </ul>
 
-      <h2>5. Запрещенное использование</h2>
+      <h2>6. Запрещённое использование</h2>
       <ul>
         <li>нарушение закона, мошенничество, фишинг, вредоносное ПО и попытки несанкционированного доступа;</li>
         <li>угрозы, преследование, доксинг, выдача себя за другого человека;</li>
-        <li>массовая нежелательная рассылка, автоматизация спама и перегрузка сервисов;</li>
+        <li>массовая нежелательная рассылка, автоматизация спама и перегрузка сервисов — как своей ноды, так и чужих;</li>
         <li>публикация или передача незаконного контента;</li>
-        <li>обход ограничений безопасности, эксплуатация уязвимостей и вмешательство в работу инфраструктуры.</li>
+        <li>обход ограничений безопасности, эксплуатация уязвимостей и вмешательство в работу инфраструктуры;</li>
+        <li>злоупотребление федеративным каналом: подделка идентичности чужой ноды, обход её ограничений и лимитов.</li>
       </ul>
-      <p>При нарушениях мы можем ограничить доступ, удалить нарушающий контент, завершить сессии, заблокировать или удалить аккаунт, а также обратиться к компетентным органам, если это требуется законом.</p>
+      <p>Администратор ноды вправе дополнить этот список собственными правилами.</p>
 
-      <h2>6. Контент и права</h2>
+      <h2>7. Модерация и блокировки</h2>
+      <ul>
+        <li>При нарушениях администратор ноды может ограничить доступ, удалить нарушающий контент, завершить сессии, заблокировать или удалить аккаунт, а также обратиться к компетентным органам, если это требуется законом.</li>
+        <li>Модерация действует в пределах ноды. Администратор вашей ноды не может удалить контент на чужой ноде и не отвечает за модерацию у соседей.</li>
+        <li>Администратор вправе заблокировать любую ноду целиком. В этом случае переписка с её пользователями прекращается, а уже полученные сообщения остаются на вашей ноде.</li>
+        <li>Ваша нода отвечает только за своих пользователей и подтверждает их идентичность соседям. За контент, приходящий с других нод, отвечают те ноды и их пользователи.</li>
+      </ul>
+
+      <h2>8. Что означает федерация для вас</h2>
+      <ul>
+        <li>Федерация выключена по умолчанию; включает её администратор ноды.</li>
+        <li>Федеративные чаты — только личные 1-к-1. Групповые чаты между нодами не поддерживаются.</li>
+        <li><strong>Федеративные сообщения не защищены сквозным шифрованием.</strong> Их содержимое доступно и вашей ноде, и ноде собеседника. Private- и secret-чаты работают только внутри одной ноды.</li>
+        <li>Переписываясь с пользователем другой ноды, вы фактически передаёте свои сообщения и файлы под контроль администратора той ноды. Удаление у себя не удаляет копию у него.</li>
+        <li>Входящие федеративные личные чаты можно запретить в настройках приватности.</li>
+        <li>Подробности — в <a href="/legal/privacy-policy">Политике конфиденциальности</a>, раздел «Федеративный обмен данными».</li>
+      </ul>
+
+      <h2>9. Контент и права</h2>
       <ul>
         <li>Вы сохраняете права на свой контент.</li>
-        <li>Вы предоставляете Barkfluff право хранить, передавать, синхронизировать, отображать и обрабатывать ваш контент в объеме, необходимом для работы функций сервиса.</li>
-        <li>Все права на код, дизайн, название, логотипы и инфраструктуру Barkfluff принадлежат владельцам проекта или соответствующим лицензиарам.</li>
+        <li>Вы предоставляете администратору ноды право хранить, передавать, синхронизировать, отображать и обрабатывать ваш контент в объёме, необходимом для работы функций сервиса, — включая передачу другой ноде, когда вы сами начинаете федеративную переписку.</li>
+        <li>Права на код, дизайн, название и логотипы Barkfluff принадлежат владельцам проекта или соответствующим лицензиарам. Название и логотипы не переходят к администратору ноды вместе с правом развернуть программное обеспечение.</li>
         <li>Открытые компоненты и proto-контракты используются на условиях соответствующих лицензий и документации.</li>
       </ul>
 
-      <h2>7. Конфиденциальность и безопасность</h2>
+      <h2>10. Программное обеспечение</h2>
+      <p>Программное обеспечение Barkfluff предоставляется разработчиком «как есть», без каких-либо гарантий, включая гарантии пригодности для конкретных целей, отсутствия ошибок и непрерывности работы. Ответственность за выбор, настройку, обновление и эксплуатацию ноды несёт её администратор.</p>
+      <p>Развернув собственную ноду, вы становитесь администратором и принимаете на себя обязанности оператора персональных данных своих пользователей, включая публикацию собственных условий и политики конфиденциальности.</p>
+
+      <h2>11. Доступность и изменения сервиса</h2>
+      <p>Нода предоставляется «как есть». Возможны сбои, техническое обслуживание, ошибки клиента или backend-сервисов. Администратор ноды может изменять набор функций, ограничивать их, а также приостановить или полностью прекратить работу ноды — в том числе без правопреемника. Заранее экспортируйте важные данные.</p>
+
+      <h2>12. Ограничение ответственности</h2>
       <ul>
-        <li>Обычные сообщения хранятся и синхронизируются Messages-сервисом.</li>
-        <li>Private-чаты хранят на сервере только шифротекст и технические метаданные.</li>
-        <li>Secret-чаты используют временную доставку opaque envelope между устройствами.</li>
-        <li>Файлы хранятся в Files / Minio, метаданные — в PostgreSQL.</li>
-        <li>Push-уведомления доставляются через Firebase Cloud Messaging.</li>
+        <li><strong>Разработчик</strong> не отвечает за работу и доступность каких-либо нод, за действия и бездействие их администраторов, за сохранность и обработку данных на них, за контент пользователей и за убытки, возникшие в результате использования программного обеспечения.</li>
+        <li><strong>Администратор ноды</strong> не отвечает за косвенные убытки, потерю данных из-за действий пользователя, компрометацию устройства или пароля, действия третьих лиц, содержимое, полученное с других нод, и недоступность внешних поставщиков, включая email, Firebase, Telegram, хостинг и сетевую инфраструктуру.</li>
       </ul>
 
-      <h2>8. Доступность и изменения сервиса</h2>
-      <p>Barkfluff предоставляется «как есть». Возможны сбои, техническое обслуживание, ошибки клиента или backend-сервисов. Мы можем изменять существующие функции сервиса, чтобы поддерживать работоспособность, безопасность и совместимость клиентов.</p>
+      <h2>13. Изменение соглашения</h2>
+      <p>При изменении соглашения обновляется дата «Обновлено». Продолжая использовать ноду после обновления, вы принимаете новую редакцию. Администратор ноды публикует изменения своей редакции самостоятельно.</p>
 
-      <h2>9. Ограничение ответственности</h2>
-      <p>Мы не отвечаем за косвенные убытки, потерю данных из-за действий пользователя, компрометацию устройства или пароля, действия третьих лиц и недоступность внешних поставщиков, включая email, Firebase, Telegram, хостинг и сетевую инфраструктуру.</p>
+      <h2>14. Применимое право и споры</h2>
+      <p>Применимое право и порядок разрешения споров определяются юрисдикцией администратора вашей ноды. По вопросам к ноде barkfluff.com направляйте обращение на <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a>; срок рассмотрения — до 30 дней.</p>
 
-      <h2>10. Изменение соглашения</h2>
-      <p>При изменении соглашения обновляется дата «Обновлено». Продолжая использовать Barkfluff после обновления, вы принимаете новую редакцию.</p>
-
-      <h2>11. Урегулирование споров</h2>
-      <p>По юридическим вопросам направляйте обращение на <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a>. Срок рассмотрения обращения — до 30 дней.</p>
-
-      <h2>12. Контакты</h2>
+      <h2>15. Контакты</h2>
+      <p><strong>Администратор ноды barkfluff.com</strong> — по услуге, аккаунту, модерации и жалобам:</p>
       <ul>
-        <li>Юридические вопросы: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
+        <li>Юридические вопросы и жалобы на контент: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
         <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
-        <li>Безопасность: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
-        <li>Сайт: <a href="https://barkfluff.com">https://barkfluff.com</a></li>
+        <li>Данные и приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
       </ul>
+      <p><strong>Разработчик программного обеспечения Barkfluff</strong> — по уязвимостям в коде и вопросам протокола:</p>
+      <ul>
+        <li>Безопасность и протокол: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+      </ul>
+      <p>Если ваш аккаунт создан на другой ноде, ищите контакты её администратора на сайте этой ноды — по её пользователям ни разработчик, ни администратор barkfluff.com решений не принимают.</p>
 
-      <h2>13. Согласие</h2>
-      <p>Используя Barkfluff, вы подтверждаете, что прочитали соглашение, согласны соблюдать правила и достигли возраста 13 лет.</p>
+      <h2>16. Согласие</h2>
+      <p>Используя Barkfluff, вы подтверждаете, что прочитали соглашение, понимаете, что услугу оказывает администратор ноды, согласны соблюдать правила и достигли возраста 13 лет.</p>
     </article>
     <article data-lang="en">
       <h1>Terms of Service</h1>
-      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> June 17, 2026.</p>
+      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</p>
 
-      <h2>1. Acceptance of terms</h2>
-      <p>Welcome to <strong>Barkfluff</strong> — a messaging platform.</p>
-      <p>By using Barkfluff, you agree to these Terms of Service and the related documents: the <a href="/legal/privacy-policy">Privacy Policy</a>, <a href="/legal/account-deletion">Account Deletion</a> and <a href="/legal/encryption">Encryption</a>.</p>
+      <h2>1. Who this agreement is with</h2>
+      <p>Barkfluff is a federated network of independent servers (“nodes”). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.</p>
+      <div class="callout">
+        <p>The service is provided to you by <strong>the administrator of the node where your account was created</strong>. This agreement is made between you and them. The Barkfluff developers are not a party to it: they publish the software, but they do not provide you with a communication service and do not operate other people's nodes.</p>
+      </div>
+      <p>This text applies to the <strong>barkfluff.com</strong> node. The administrator of any other node publishes their own version of the terms and may set their own rules. If your account was not created on barkfluff.com, your node's terms apply.</p>
+      <p>By using Barkfluff, you agree to these Terms and the related documents: the <a href="/legal/privacy-policy">Privacy Policy</a>, <a href="/legal/account-deletion">Account Deletion</a> and <a href="/legal/encryption">Encryption</a>.</p>
 
-      <h2>2. The service</h2>
-      <p>Barkfluff includes backend microservices, the Windows, Android, macOS and web clients, the public WebServer site, the gRPC-Web proxy, the developer portal, the file system, realtime updates, push notifications, email notifications and the support chat.</p>
+      <h2>2. Roles and areas of responsibility</h2>
       <ul>
-        <li><strong>Account</strong> — a user account with email, username, password, profile and devices.</li>
+        <li><strong>The Barkfluff developer</strong> writes the code, publishes client releases and the protocol specification, and receives vulnerability reports. They do not host other people's nodes, have no access to their data, and are not responsible for their operation, availability, moderation or the actions of their administrators.</li>
+        <li><strong>The node administrator</strong> deploys, updates and configures the node, is responsible for the safety and lawfulness of the processing of their users' data, for backups, for moderation and for answering requests. They also decide whether to enable federation and which nodes to talk to.</li>
+        <li><strong>You</strong> are responsible for your devices, password and 2FA codes, and for the content you send and publish.</li>
+      </ul>
+
+      <h2>3. The service</h2>
+      <p>A Barkfluff node consists of backend microservices that the Windows, Android, macOS and web clients connect to. A node may provide a public website, the gRPC-Web proxy, the developer portal, file storage, realtime updates, push notifications, email notifications and a support chat — the exact set is decided by its administrator.</p>
+      <ul>
+        <li><strong>Account</strong> — a user account with email, username, password, profile and devices. The account belongs to a specific node and is not valid on another node.</li>
         <li><strong>Content</strong> — messages, files, images, avatars, posters, reactions, settings and other data you create or upload.</li>
         <li><strong>Client</strong> — the Barkfluff application or web interface that uses the gRPC/gRPC-Web API.</li>
       </ul>
 
-      <h2>3. Usage requirements</h2>
+      <h2>4. Usage requirements</h2>
       <ul>
-        <li>You must be at least 13 years old.</li>
+        <li>You must be at least 13 years old. A node administrator may set a higher age limit.</li>
         <li>At registration you must provide a valid email and username.</li>
         <li>You are responsible for safeguarding your password, 2FA codes and the devices with an active session.</li>
         <li>If a device is lost, you can terminate the active session via device management features.</li>
       </ul>
 
-      <h2>4. Permitted use</h2>
+      <h2>5. Permitted use</h2>
       <ul>
         <li>personal and work communication;</li>
         <li>private and group chats;</li>
         <li>file and media sharing;</li>
         <li>private encrypted chats and secret chats;</li>
+        <li>messaging users of other nodes, if your node's administrator has enabled federation;</li>
         <li>use of public profile pages and the web client;</li>
-        <li>use of open proto/API materials via the developer portal.</li>
+        <li>use of open proto/API materials via the developer portal;</li>
+        <li>running your own node under the terms of the software licence.</li>
       </ul>
 
-      <h2>5. Prohibited use</h2>
+      <h2>6. Prohibited use</h2>
       <ul>
         <li>breaking the law, fraud, phishing, malware and attempts at unauthorized access;</li>
         <li>threats, harassment, doxxing, impersonation of another person;</li>
-        <li>mass unsolicited messaging, spam automation and overloading the services;</li>
+        <li>mass unsolicited messaging, spam automation and overloading the services — your own node's as well as other nodes';</li>
         <li>publishing or transmitting illegal content;</li>
-        <li>bypassing security restrictions, exploiting vulnerabilities and interfering with the infrastructure.</li>
+        <li>bypassing security restrictions, exploiting vulnerabilities and interfering with the infrastructure;</li>
+        <li>abusing the federation channel: forging another node's identity, circumventing its restrictions and limits.</li>
       </ul>
-      <p>In case of violations we may restrict access, remove the offending content, terminate sessions, block or delete the account, and contact the competent authorities where required by law.</p>
+      <p>A node administrator may extend this list with their own rules.</p>
 
-      <h2>6. Content and rights</h2>
+      <h2>7. Moderation and blocking</h2>
+      <ul>
+        <li>In case of violations the node administrator may restrict access, remove the offending content, terminate sessions, block or delete the account, and contact the competent authorities where required by law.</li>
+        <li>Moderation applies within the node. Your node's administrator cannot remove content on another node and is not responsible for moderation elsewhere.</li>
+        <li>The administrator may block an entire node. Conversations with its users then stop, while messages already received remain on your node.</li>
+        <li>Your node answers only for its own users and vouches for their identity to its peers. Content arriving from other nodes is the responsibility of those nodes and their users.</li>
+      </ul>
+
+      <h2>8. What federation means for you</h2>
+      <ul>
+        <li>Federation is disabled by default; the node administrator turns it on.</li>
+        <li>Federated chats are 1-to-1 only. Group chats between nodes are not supported.</li>
+        <li><strong>Federated messages are not end-to-end encrypted.</strong> Their content is available both to your node and to your correspondent's node. Private and secret chats work within a single node only.</li>
+        <li>By chatting with a user of another node you effectively hand your messages and files over to that node's administrator. Deleting them on your side does not delete their copy.</li>
+        <li>Incoming federated private chats can be refused in the privacy settings.</li>
+        <li>For details see the <a href="/legal/privacy-policy">Privacy Policy</a>, section “Federated data exchange”.</li>
+      </ul>
+
+      <h2>9. Content and rights</h2>
       <ul>
         <li>You retain the rights to your content.</li>
-        <li>You grant Barkfluff the right to store, transmit, synchronize, display and process your content to the extent necessary to operate the service features.</li>
-        <li>All rights to the Barkfluff code, design, name, logos and infrastructure belong to the project owners or the respective licensors.</li>
+        <li>You grant the node administrator the right to store, transmit, synchronize, display and process your content to the extent necessary to operate the service features — including transmission to another node when you yourself start a federated conversation.</li>
+        <li>Rights to the Barkfluff code, design, name and logos belong to the project owners or the respective licensors. The name and logos do not pass to a node administrator together with the right to deploy the software.</li>
         <li>Open components and proto contracts are used under the terms of the respective licenses and documentation.</li>
       </ul>
 
-      <h2>7. Privacy and security</h2>
+      <h2>10. The software</h2>
+      <p>The Barkfluff software is provided by the developer “as is”, without any warranties, including warranties of fitness for a particular purpose, absence of errors or uninterrupted operation. Responsibility for choosing, configuring, updating and operating a node lies with its administrator.</p>
+      <p>By deploying your own node you become an administrator and assume the duties of a controller of your users' personal data, including publishing your own terms and privacy policy.</p>
+
+      <h2>11. Availability and service changes</h2>
+      <p>A node is provided “as is”. Outages, maintenance, and client or backend service errors are possible. The node administrator may change the set of features, restrict them, and suspend or shut the node down entirely — possibly with no successor. Export important data in advance.</p>
+
+      <h2>12. Limitation of liability</h2>
       <ul>
-        <li>Regular messages are stored and synchronized by the Messages service.</li>
-        <li>Private chats store only ciphertext and technical metadata on the server.</li>
-        <li>Secret chats use temporary delivery of an opaque envelope between devices.</li>
-        <li>Files are stored in Files / Minio, metadata in PostgreSQL.</li>
-        <li>Push notifications are delivered via Firebase Cloud Messaging.</li>
+        <li><strong>The developer</strong> is not liable for the operation or availability of any node, for the acts or omissions of its administrators, for the safety and processing of data on it, for user content, or for damages arising from the use of the software.</li>
+        <li><strong>The node administrator</strong> is not liable for indirect damages, data loss caused by user actions, device or password compromise, third-party actions, content received from other nodes, and the unavailability of external providers, including email, Firebase, Telegram, hosting and network infrastructure.</li>
       </ul>
 
-      <h2>8. Availability and service changes</h2>
-      <p>Barkfluff is provided “as is”. Outages, maintenance, and client or backend service errors are possible. We may change existing service features to maintain reliability, security and client compatibility.</p>
+      <h2>13. Changes to the agreement</h2>
+      <p>When the agreement changes, the “Updated” date is updated. By continuing to use the node after an update, you accept the new revision. A node administrator publishes changes to their own version themselves.</p>
 
-      <h2>9. Limitation of liability</h2>
-      <p>We are not liable for indirect damages, data loss caused by user actions, device or password compromise, third-party actions, and the unavailability of external providers, including email, Firebase, Telegram, hosting and network infrastructure.</p>
+      <h2>14. Governing law and disputes</h2>
+      <p>The governing law and the dispute resolution procedure are determined by the jurisdiction of your node's administrator. For matters concerning the barkfluff.com node, send your request to <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a>; the response time is up to 30 days.</p>
 
-      <h2>10. Changes to the agreement</h2>
-      <p>When the agreement changes, the “Updated” date is updated. By continuing to use Barkfluff after an update, you accept the new revision.</p>
-
-      <h2>11. Dispute resolution</h2>
-      <p>For legal matters, send your request to <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a>. The response time for a request is up to 30 days.</p>
-
-      <h2>12. Contacts</h2>
+      <h2>15. Contacts</h2>
+      <p><strong>Administrator of the barkfluff.com node</strong> — for the service, your account, moderation and complaints:</p>
       <ul>
-        <li>Legal matters: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
+        <li>Legal matters and content complaints: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
         <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
-        <li>Security: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
-        <li>Website: <a href="https://barkfluff.com">https://barkfluff.com</a></li>
+        <li>Data and privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
       </ul>
+      <p><strong>Developer of the Barkfluff software</strong> — for code vulnerabilities and protocol questions:</p>
+      <ul>
+        <li>Security and protocol: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+      </ul>
+      <p>If your account was created on another node, look for its administrator's contacts on that node's website — neither the developer nor the barkfluff.com administrator makes decisions about its users.</p>
 
-      <h2>13. Consent</h2>
-      <p>By using Barkfluff, you confirm that you have read the agreement, agree to follow the rules and are at least 13 years old.</p>
+      <h2>16. Consent</h2>
+      <p>By using Barkfluff, you confirm that you have read the agreement, understand that the service is provided by a node administrator, agree to follow the rules and are at least 13 years old.</p>
     </article>
     <footer>2026 Barkfluff</footer>
   </main>
@@ -232,5 +304,6 @@
       requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
     })();
   </script>
+  <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>

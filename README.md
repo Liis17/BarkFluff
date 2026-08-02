@@ -1,69 +1,107 @@
 [English](README.md) · [Русский](.readme/lang/ru/README.md)
 
-# BarkFluff
+<p align="center">
+  <img src="Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="112" alt="BarkFluff logo">
+</p>
 
-**A self-hosted, real-time messaging platform built as a distributed system.**
+<h1 align="center">BarkFluff</h1>
 
-BarkFluff combines native clients with a gRPC-first .NET backend. It is designed around service discovery, streaming updates, and asynchronous messaging—so each part of the platform can evolve independently without losing the feel of one product.
+<p align="center">
+  <strong>A self-hosted messaging platform engineered for real-time, distributed systems.</strong>
+</p>
 
-## At a glance
+<p align="center">
+  <a href="#download">Download</a> ·
+  <a href="#what-is-inside">Platform</a> ·
+  <a href="#clients">Clients</a> ·
+  <a href=".readme/README.md">Documentation</a>
+</p>
 
-| | |
-|---|---|
-| **Backend** | .NET 10, gRPC, RabbitMQ, PostgreSQL, Redis, MinIO, Docker |
-| **Clients** | Android, Windows, macOS, iOS, Linux, and web |
-| **Real time** | gRPC streaming through the Updates service |
-| **Authentication** | XAuth: JWT plus device metadata |
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Liis17/BarkFluff?style=flat-square&color=8A2BE2" alt="MIT License"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=dev" alt="Android CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml/badge.svg?branch=dev" alt="Windows CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=dev" alt="macOS CI"></a>
+</p>
 
-## How it fits together
+---
 
-```mermaid
-flowchart LR
-    Clients["Native & web clients"] --> Beacon["Beacon\nentry point"]
-    Beacon --> Services["gRPC microservices"]
-    Services --> Configuration["Configuration\nservice registry"]
-    Services <--> Broker["RabbitMQ"]
-    Services --> Data["PostgreSQL · Redis · MinIO"]
-```
+BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover their service endpoints through Beacon, receive live changes through streaming updates, and communicate with independent services that can evolve and scale without turning the product into a distributed tangle.
 
-Clients ask **Beacon** for service endpoints, then communicate with individual services over gRPC. Services load their configuration from **Configuration**, publish asynchronous events through RabbitMQ, and use PostgreSQL, Redis, and MinIO where appropriate.
+<p align="center">
+  <img src="docs/images/readme/product-preview-placeholder.svg" alt="Placeholder for a BarkFluff product preview" width="920">
+</p>
 
-## Start here
+## Download
 
-| I want to… | Read |
-|---|---|
-| Run or build the backend | [.readme/backend.md](.readme/backend.md) |
-| Build the Android client | [.readme/clients/android.md](.readme/clients/android.md) |
-| Build the Windows client | [.readme/clients/windows.md](.readme/clients/windows.md) |
-| Build the macOS client | [.readme/clients/macos.md](.readme/clients/macos.md) |
-| Build the iOS client | [.readme/clients/ios.md](.readme/clients/ios.md) |
-| Build the Linux client | [.readme/clients/linux.md](.readme/clients/linux.md) |
-| Build the web client | [.readme/clients/web.md](.readme/clients/web.md) |
-| Browse all public guides | [.readme/README.md](.readme/README.md) |
+<p align="center">
+  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="docs/images/readme/download-windows.svg" alt="Download BarkFluff for Windows" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="docs/images/readme/download-android.svg" alt="Download BarkFluff for Android" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="docs/images/readme/download-macos.svg" alt="Download BarkFluff for macOS" height="88"></a>
+</p>
 
-## Repository map
+<p align="center">
+  <sub>Windows, Android, and macOS release builds. Other clients are available from source below.</sub>
+</p>
 
-```text
-BarkFluff/
-├── Backend/       # .NET microservices and the web client host
-├── Shared/        # protobuf contracts and shared .NET libraries
-├── Android/       # Android V1 and experimental V2 clients
-├── Windows/       # WPF client and supporting tools
-├── Mac/           # SwiftUI macOS client and local Swift packages
-├── iOS/           # SwiftUI iOS client
-├── Linux/         # Qt 6 / C++20 client
-├── Frontend/      # developer portal frontend
-└── .readme/       # contributor-facing setup and build guides
-```
+## What is inside
 
-## Further documentation
+**One entry point.** Beacon gives clients one trusted way to discover the platform; Configuration supplies the service registry and runtime settings.
 
-- [Backend ports and environment variables](Backend/PORTS_CONFIGURATION.md)
-- [Docker setup reference](Backend/DOCKER_SETUP.md)
-- [Metrics catalogue](Backend/METRICS.md)
-- [Project knowledge base](Obsidian/ClaudeVault/Index.md)
-- [MIT License](LICENSE)
+**Independent product services.** Identity, profiles, messaging, files, presence, calls, bots, federation, and more run as focused .NET services, with CQRS and MediatR where they fit.
 
-## Status
+**Real-time by default.** The Updates service uses persistent gRPC streams for live product events, while RabbitMQ carries asynchronous work between services.
 
-BarkFluff is under active development. The Android V1 client is the supported Android implementation; the Compose-based V2 project is experimental and should not be changed without an explicit task.
+**Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WPF, SwiftUI, Qt, and web technologies.
+
+Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) for ports, authentication, event delivery, and service conventions.
+
+## Clients
+
+<p align="center">
+  <img src="docs/images/readme/clients-placeholder.svg" alt="Placeholder for BarkFluff client screenshots" width="920">
+</p>
+
+- **Android** — Kotlin and gRPC-OkHttp · [build guide](.readme/clients/android.md)
+- **Windows** — WPF and .NET · [build guide](.readme/clients/windows.md)
+- **macOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/macos.md)
+- **iOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/ios.md)
+- **Linux** — Qt 6, C++20, and gRPC · [build guide](.readme/clients/linux.md)
+- **Web** — gRPC-Web and a vanilla-JS SPA · [build guide](.readme/clients/web.md)
+
+## Explore the repository
+
+> ### 🧩 Platform
+> [`Backend/`](Backend) contains the .NET microservices and web hosts. [`Shared/`](Shared) holds protobuf contracts and common .NET libraries.
+
+> ### 📱 Clients
+> [`Android/`](Android), [`Windows/`](Windows), [`Mac/`](Mac), [`iOS/`](iOS), and [`Linux/`](Linux) contain the native applications. [`Frontend/`](Frontend) contains the developer portal frontend.
+
+> ### ⚙️ Infrastructure
+> [`docker/`](docker) contains local platform and infrastructure stacks. [`Tests/`](Tests) contains automated and load tests.
+
+> ### 📖 Documentation
+> [`.readme/`](.readme) is the public setup hub; [`Obsidian/ClaudeVault/`](Obsidian/ClaudeVault) is the project knowledge base.
+
+## Project status
+
+<p align="center">
+  <img src="docs/images/readme/project-status.svg" alt="BarkFluff is under active development" width="920">
+</p>
+
+> ### 🚧 Actively developed
+> BarkFluff is under active development. Android V1 is the supported Android client; the Compose-based V2 project is experimental and should only change as part of an explicit task.
+
+> ### ✅ Build health
+> Client workflow status is shown above. Open [GitHub Actions](https://github.com/Liis17/BarkFluff/actions) for the complete matrix.
+
+## Reference & documentation
+
+> ### 🛠️ Run and operate
+> [Backend setup](.readme/backend.md) · [Ports & environment](Backend/PORTS_CONFIGURATION.md) · [Docker reference](Backend/DOCKER_SETUP.md) · [Metrics catalogue](Backend/METRICS.md)
+
+> ### 📚 Learn the system
+> [Documentation hub](.readme/README.md) · [Architecture](Obsidian/ClaudeVault/Архитектура.md) · [Project knowledge base](Obsidian/ClaudeVault/Index.md)
+
+> ### ⚖️ License
+> [MIT License](LICENSE)

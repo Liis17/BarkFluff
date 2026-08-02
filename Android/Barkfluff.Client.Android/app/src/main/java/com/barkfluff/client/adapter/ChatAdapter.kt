@@ -120,6 +120,9 @@ class ChatAdapter(
 
             // Последнее сообщение
             val lastMessage = chat.lastMessage
+            binding.lastMessage.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(binding.lastMessage, com.google.android.material.R.attr.colorOnSurfaceVariant)
+            )
             if (isPrivateChat) {
                 if (chat.privateInviteState != Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED) {
                     // Запрос на приватный чат: вместо скелетона — статус инвайта.
@@ -140,6 +143,14 @@ class ChatAdapter(
                 }
                 binding.messageTime.text = formatTime(chat.lastActivityAt)
                 binding.messageTime.visibility = if (chat.lastActivityAt > 0) View.VISIBLE else View.GONE
+            } else if (chat.hasDraft) {
+                binding.privatePreviewSkeleton.visibility = View.GONE
+                binding.lastMessage.setText(R.string.chat_draft_preview)
+                binding.lastMessage.setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(binding.lastMessage, androidx.appcompat.R.attr.colorPrimary)
+                )
+                binding.lastMessage.visibility = View.VISIBLE
+                binding.messageTime.visibility = View.GONE
             } else if (lastMessage != null) {
                 binding.privatePreviewSkeleton.visibility = View.GONE
                 val text = lastMessage.text
@@ -170,7 +181,7 @@ class ChatAdapter(
 
             // Статус прочтения (галочки)
             val lastMsg = chat.lastMessage
-            if (!isPrivateChat && lastMsg != null && lastMsg.senderId == currentUserId) {
+            if (!isPrivateChat && !chat.hasDraft && lastMsg != null && lastMsg.senderId == currentUserId) {
                 val readByOthers = lastMsg.readBy.any { it != currentUserId }
                 if (readByOthers) {
                     binding.readStatus.setImageResource(R.drawable.ic_status_read)

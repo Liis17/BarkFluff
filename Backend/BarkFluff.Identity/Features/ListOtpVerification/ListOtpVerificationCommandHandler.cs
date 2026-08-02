@@ -1,5 +1,4 @@
 using BarkFluff.GrpcServer.XAuth;
-using BarkFluff.Identity.Persistence.Exceptions;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Proto.Identity;
 
@@ -29,8 +28,11 @@ public class ListOtpVerificationCommandHandler : IRequestHandler<ListOtpVerifica
 
         if (otpAuth is null)
         {
-            _logger.LogWarning("Настройки 2FA не найдены для пользователя {UserId}", _userContext.UserId);
-            throw new OtpNotCreatedException();
+            return new ListOtpVerificationResponse
+            {
+                AuthenticatorEnabled = false,
+                EmailEnabled = false
+            };
         }
 
         _logger.LogInformation(

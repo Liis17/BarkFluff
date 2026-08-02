@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#8c351c">
+    <title data-i18n="offline.title">BarkFluff — нет соединения</title>
+    <style>
+        /* Скрывает страницу, пока i18n не применил словарь (словари лежат в precache) */
+        html.i18n-pending body { visibility: hidden; }
+    </style>
+    <script src="/js/app/i18n.js"></script>
+    <style>
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #efebe5; color: #1c1917; font: 500 16px system-ui, sans-serif; }
+        main { max-width: 340px; padding: 32px; text-align: center; }
+        h1 { color: #8c351c; font-size: 28px; margin: 0 0 12px; }
+        p { color: #78716c; line-height: 1.5; }
+        button { border: 0; border-radius: 12px; background: #8c351c; color: white; padding: 12px 18px; font: inherit; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>BarkFluff</h1>
+        <p data-i18n="offline.text">Нет подключения к сети. Сообщения и вложения не хранятся офлайн.</p>
+        <button type="button" onclick="location.reload()" data-i18n="connection.retry">Повторить</button>
+    </main>
+</body>
+</html>

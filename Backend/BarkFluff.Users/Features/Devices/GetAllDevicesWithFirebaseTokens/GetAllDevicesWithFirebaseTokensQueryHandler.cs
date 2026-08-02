@@ -17,13 +17,16 @@ public class GetAllDevicesWithFirebaseTokensQueryHandler(
         var tokens = await devicesStorage.GetAllDevicesWithFirebaseTokens();
 
         var response = new GetDevicesWithFirebaseTokensResponse();
-        foreach (var (userId, deviceId, firebaseToken) in tokens)
+        foreach (var (userId, deviceId, firebaseToken, pushPlatform) in tokens)
         {
             response.Tokens.Add(new DeviceFirebaseToken
             {
                 UserId = userId,
                 DeviceId = deviceId,
-                FirebaseToken = firebaseToken
+                FirebaseToken = firebaseToken,
+                PushPlatform = pushPlatform == BarkFluff.Users.Domain.DevicePushPlatform.Web
+                    ? PushPlatform.Web
+                    : PushPlatform.Android
             });
         }
 

@@ -136,7 +136,7 @@
             // TooManyPinnedMessagesException = F7E1A4B8-2C9D-4F3A-B6E7-8D5C1A0F9B23
             var code = err && err.errorCode ? String(err.errorCode).toUpperCase() : '';
             if (code === 'F7E1A4B8-2C9D-4F3A-B6E7-8D5C1A0F9B23') {
-                alert('Достигнут лимит закреплённых сообщений (100). Открепите старые, чтобы закрепить новое.');
+                alert(BF.i18n.t('pinned.limitReached'));
             } else {
                 console.error('[pinned] pinMessage failed', err);
             }
@@ -241,17 +241,17 @@
         var text = (msg.content && msg.content.text) || '';
         if (!text) {
             var atts = (msg.content && msg.content.attachments) || [];
-            if (atts.length > 0) text = u.attachmentEmoji(atts[0].type) + ' Вложение';
+            if (atts.length > 0) text = u.attachmentEmoji(atts[0].type) + ' ' + BF.i18n.t('attachment.generic');
         }
         if (pinnedBarText) pinnedBarText.textContent = u.truncate(text, 80);
 
         if (pinnedBarAuthor) {
-            pinnedBarAuthor.textContent = 'Закреплённое';
+            pinnedBarAuthor.textContent = BF.i18n.t('pinned.bar.author');
             if (msg.senderId) {
                 getUserFn(msg.senderId).then(function (sender) {
                     if (!sender) return;
                     var name = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username || '';
-                    if (pinnedBarAuthor) pinnedBarAuthor.textContent = name || 'Закреплённое';
+                    if (pinnedBarAuthor) pinnedBarAuthor.textContent = name || BF.i18n.t('pinned.bar.author');
                 }).catch(function () {});
             }
         }
@@ -308,13 +308,11 @@
         if (totalCount === 0) {
             var empty = document.createElement('div');
             empty.className = 'pinned-list-empty';
-            empty.textContent = 'Нет закреплённых сообщений';
+            empty.textContent = BF.i18n.t('pinned.empty');
             pinnedListInner.appendChild(empty);
             return;
         }
 
-        var info = getCurrentChatInfo() || {};
-        var isGroup = !!info.isGroupChat;
         var myId = getMyUserId();
 
         var chain = Promise.resolve();
@@ -324,7 +322,6 @@
                 return BF.messages.buildMessageElement(
                     pi.message,
                     myId,
-                    isGroup,
                     getUserFn,
                     showMediaOverlay,
                     { knownMessageIds: new Set(), onReplyClick: function (id) { closeListModal(); scrollToMessageFn(id); } }
@@ -335,16 +332,16 @@
                     var meta = document.createElement('div');
                     meta.className = 'pinned-list-meta';
                     var pinnedTime = pi.pinnedAt
-                        ? new Date(pi.pinnedAt).toLocaleString('ru-RU', {
+                        ? new Date(pi.pinnedAt).toLocaleString(BF.i18n.current(), {
                             day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                         })
                         : '';
-                    meta.textContent = 'Закреплено · ' + pinnedTime;
+                    meta.textContent = BF.i18n.t('pinned.item.meta', { time: pinnedTime });
                     if (pi.pinnerUserId) {
                         getUserFn(pi.pinnerUserId).then(function (sender) {
                             if (!sender || !meta.isConnected) return;
                             var name = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username || '';
-                            if (name) meta.textContent = 'Закрепил ' + name + ' · ' + pinnedTime;
+                            if (name) meta.textContent = BF.i18n.t('pinned.item.metaBy', { name: name, time: pinnedTime });
                         }).catch(function () {});
                     }
 
@@ -374,7 +371,7 @@
         if (pinnedListUnpinAllBtn) {
             pinnedListUnpinAllBtn.addEventListener('click', function () {
                 if (totalCount === 0) return;
-                if (!confirm('Открепить все сообщения в чате?')) return;
+                if (!confirm(BF.i18n.t('pinned.unpinAll.confirm'))) return;
                 pinnedListUnpinAllBtn.disabled = true;
                 unpinAll().then(function () {
                     pinnedListUnpinAllBtn.disabled = false;

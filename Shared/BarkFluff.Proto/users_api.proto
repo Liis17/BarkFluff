@@ -52,6 +52,9 @@ service UsersApi {
   // Установить Firebase токен устройства
   rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
 
+  // Удалить Firebase токен текущего устройства
+  rpc ClearFirebaseToken(ClearFirebaseTokenRequest) returns(ClearFirebaseTokenResponse);
+
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
 
@@ -67,11 +70,23 @@ service UsersApi {
   // Обновить настройки приватности текущего пользователя
   rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
 
+  // Зафиксировать принятие Пользовательского соглашения и Политики конфиденциальности
+  rpc AcceptLegalConsent(AcceptLegalConsentRequest) returns(AcceptLegalConsentResponse);
+
   // Получить персонализацию текущего пользователя
   rpc GetPersonalization(GetPersonalizationRequest) returns(GetPersonalizationResponse);
 
   // Обновить персонализацию текущего пользователя
   rpc UpdatePersonalization(UpdatePersonalizationRequest) returns(UpdatePersonalizationResponse);
+
+  // Получить синхронизируемые настройки фонов текущего пользователя
+  rpc GetUserSettings(GetUserSettingsRequest) returns(GetUserSettingsResponse);
+
+  // Установить глобальный фон чатов текущего пользователя
+  rpc SetGlobalChatBackground(SetGlobalChatBackgroundRequest) returns(SetGlobalChatBackgroundResponse);
+
+  // Установить или сбросить фон конкретного чата текущего пользователя
+  rpc SetChatBackground(SetChatBackgroundRequest) returns(SetChatBackgroundResponse);
 
   // Получить постер профиля текущего пользователя
   rpc GetProfilePoster(GetProfilePosterRequest) returns(GetProfilePosterResponse);
@@ -713,9 +728,20 @@ message GetUserByUsernameResponse {
 
 message SetFirebaseTokenRequest {
   string firebase_token = 1; // Firebase токен устройства
+  PushPlatform push_platform = 2; // Платформа, которой принадлежит токен
 }
 
 message SetFirebaseTokenResponse { }
+
+message ClearFirebaseTokenRequest { }
+
+message ClearFirebaseTokenResponse { }
+
+enum PushPlatform {
+  PUSH_PLATFORM_UNSPECIFIED = 0;
+  PUSH_PLATFORM_ANDROID = 1;
+  PUSH_PLATFORM_WEB = 2;
+}
 
 // Запросы и ответы для получения устройств с Firebase токенами
 
@@ -739,6 +765,7 @@ message DeviceFirebaseToken {
   int64 user_id = 1; // идентификатор пользователя
   string device_id = 2; // идентификатор устройства
   string firebase_token = 3; // Firebase токен
+  PushPlatform push_platform = 4; // платформа токена
 }
 
 // Запросы и ответы для включения/выключения уведомлений на текущем устройстве
@@ -816,6 +843,12 @@ message UpdatePrivacySettingsRequest {
 
 message UpdatePrivacySettingsResponse { }
 
+message AcceptLegalConsentRequest {
+  string revision = 1; // Редакция документов — дата «Последнее обновление» из шапки соглашения
+}
+
+message AcceptLegalConsentResponse { }
+
 message GetUserPrivacyRequest {
   int64 user_id = 1;
 }
@@ -842,6 +875,37 @@ message UpdatePersonalizationRequest {
 }
 
 message UpdatePersonalizationResponse { }
+
+// Синхронизируемые настройки фонов
+
+message ChatBackgroundOverride {
+  string chat_id = 1;
+  string chat_background_file_id = 2;
+}
+
+message UserSettingsData {
+  string global_chat_background_file_id = 1;
+  repeated ChatBackgroundOverride chat_backgrounds = 2;
+}
+
+message GetUserSettingsRequest { }
+
+message GetUserSettingsResponse {
+  UserSettingsData settings = 1;
+}
+
+message SetGlobalChatBackgroundRequest {
+  string chat_background_file_id = 1; // пусто = без глобального фона
+}
+
+message SetGlobalChatBackgroundResponse { }
+
+message SetChatBackgroundRequest {
+  string chat_id = 1;
+  string chat_background_file_id = 2; // пусто = использовать глобальный фон
+}
+
+message SetChatBackgroundResponse { }
 
 // Постер профиля
 

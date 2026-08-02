@@ -53,6 +53,12 @@
     var chatListOffset = 0;
     var chatListTotal = 0;
     var chatListLoading = false;
+    var chatListRequest = null;
+    var pendingUploads = new Map(); // local message id -> optimistic upload state
+    var pendingUploadCounter = 0;
+    var GENERIC_MESSAGE_TYPE = 1;
+    var IMAGE_UPLOAD_TYPE = 2;
+    var GIF_UPLOAD_TYPE = 4;
 
     // Reply / Forward / Context menu state
     var pendingReply = null;
@@ -149,7 +155,8 @@
     var groupMediaContent = $('#groupMediaContent');
 
     function botBadgeMarkup() {
-        return '<span class="bot-badge" role="img" aria-label="Бот" title="Бот"><svg aria-hidden="true"><use href="#bf-icon-bot"></use></svg></span>';
+        var label = u.escapeHtml(BF.i18n.t('common.bot'));
+        return '<span class="bot-badge" role="img" aria-label="' + label + '" title="' + label + '"><svg aria-hidden="true"><use href="#bf-icon-bot"></use></svg></span>';
     }
 
     function setChatCallButtonsVisible(visible) {
@@ -166,17 +173,22 @@
         });
     }
 
+    function chatTabTitle(user) {
+        var name = ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || BF.i18n.t('common.user');
+        return BF.i18n.t('tab.chatWith', { name: name });
+    }
+
     // ========== CHAT LIST ==========
 
     function loadChats(reset) {
-        if (chatListLoading) return Promise.resolve();
+        if (chatListLoading) return chatListRequest || Promise.resolve(false);
         if (!reset && chats.length >= chatListTotal && chatListTotal > 0) return Promise.resolve();
 
         chatListLoading = true;
         if (reset) { chatListOffset = 0; chats = []; }
 
-        return BF.api.listChats(chatListOffset, 50).then(function (data) {
-            if (!data || !data.chats) { chatListLoading = false; return; }
+        var request = BF.api.listChats(chatListOffset, 50).then(function (data) {
+            if (!data || !data.chats) return false;
             chatListTotal = data.totalCount;
             chats = reset ? data.chats : chats.concat(data.chats);
             chats.sort(function (a, b) {
@@ -185,11 +197,21 @@
                 return bt - at;
             });
             chatListOffset = chats.length;
-            chatListLoading = false;
             renderChatList();
             collectOnlineUserIds();
             loadChatListUsers();
-        }).catch(function () { chatListLoading = false; });
+            return true;
+        }).catch(function () {
+            return false;
+        }).then(function (result) {
+            if (chatListRequest === request) {
+                chatListLoading = false;
+                chatListRequest = null;
+            }
+            return result;
+        });
+        chatListRequest = request;
+        return request;
     }
 
     function loadChatListUsers() {
@@ -234,17 +256,20 @@
 
             var isPrivate = chat.chatType === 1;
             var lm = chat.lastMessage;
+            var hasDraft = chat.chatType === 0 && ((chat.hasDraft === true) || (BF.drafts && BF.drafts.has(chat.id)));
             var previewHtml = '';
-            if (isPrivate) {
+            if (hasDraft) {
+                previewHtml = '<span class="preview-draft">' + u.escapeHtml(BF.i18n.t('chatlist.draft')) + '</span>';
+            } else if (isPrivate) {
                 // Содержимое зашифровано — сервер (и превью) его не знает.
                 if (chat.privateInviteState === 0) {
                     previewHtml = chat.privateInviterUserId === myUserId
-                        ? 'Ожидание собеседника'
-                        : '<span class="preview-private-invite">Приглашение в приватный чат</span>';
+                        ? u.escapeHtml(BF.i18n.t('privatechat.waitingPeer'))
+                        : '<span class="preview-private-invite">' + u.escapeHtml(BF.i18n.t('privatechat.invite')) + '</span>';
                 } else if (chat.privateInviteState === 2) {
-                    previewHtml = 'Приглашение отклонено';
+                    previewHtml = u.escapeHtml(BF.i18n.t('privatechat.inviteRejected'));
                 } else {
-                    previewHtml = 'Сообщения зашифрованы';
+                    previewHtml = u.escapeHtml(BF.i18n.t('privatechat.encrypted'));
                 }
             } else if (lm) {
                 var text = (lm.content && lm.content.text) || '';
@@ -278,7 +303,7 @@
                 '<div class="chat-avatar">' + avatarHtml +
                 onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="Приватный чат">\u{1F512}</span>' : '') + u.escapeHtml(chat.title || 'Чат') + (isBot ? botBadgeMarkup() : '') + '</span>' +
+                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">\u{1F512}</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -301,12 +326,11 @@
     }
 
     function refreshChatListQuiet() {
-        if (chatListLoading) return Promise.resolve();
+        if (chatListLoading) return chatListRequest || Promise.resolve(false);
         chatListLoading = true;
 
-        return BF.api.listChats(0, 50).then(function (data) {
-            chatListLoading = false;
-            if (!data || !data.chats) return;
+        var request = BF.api.listChats(0, 50).then(function (data) {
+            if (!data || !data.chats) return false;
             var fetched = data.chats.slice();
             fetched.sort(function (a, b) {
                 var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
@@ -320,7 +344,7 @@
                     if (chatSignature(fetched[i]) !== chatSignature(chats[i])) { same = false; break; }
                 }
             }
-            if (same) return; // ничего не изменилось — DOM не трогаем
+            if (same) return true; // ничего не изменилось — DOM не трогаем
 
             chats = fetched;
             chatListTotal = data.totalCount;
@@ -329,7 +353,18 @@
             collectOnlineUserIds();
             loadChatListUsers();
             updateTitleBadge();
-        }).catch(function () { chatListLoading = false; });
+            return true;
+        }).catch(function () {
+            return false;
+        }).then(function (result) {
+            if (chatListRequest === request) {
+                chatListLoading = false;
+                chatListRequest = null;
+            }
+            return result;
+        });
+        chatListRequest = request;
+        return request;
     }
 
     chatListEl.addEventListener('scroll', function () {
@@ -353,8 +388,16 @@
 
     // ========== OPEN CHAT ==========
 
+    function updateOpenChatUrl(chatId) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('chat', chatId);
+        url.searchParams.delete('call');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    }
+
     function openChat(chatId) {
         if (chatId === currentChatId) return;
+        if (currentChatId && currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
         stopTypingSend(true);
         clearTypingReceiveState();
 
@@ -364,14 +407,16 @@
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
+        updateOpenChatUrl(chatId);
+        if (BF.personalization) BF.personalization.applyForChat(chatId);
         BF.realtime.subscribeTyping(chatId);
         currentChatInfo = null;
-        currentChatType = 0;
+        currentChatType = chatMeta ? chatMeta.chatType : 0;
         currentChatPeerIsBot = false;
         messages = [];
         noMoreOlder = false;
         knownMessageIds = new Set();
-        clearPendingReply();
+        clearPendingReply(false);
         clearPendingEdit();
         closeContextMenu();
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
@@ -401,7 +446,7 @@
             if (!info || info.error) { loadingMessages.classList.remove('visible'); return; }
             currentChatInfo = info;
 
-            chatHeaderName.textContent = info.title || 'Чат';
+            chatHeaderName.textContent = info.title || BF.i18n.t('common.chat');
             if (info.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(info.picture) + '" alt="">';
             else chatHeaderAvatar.textContent = (info.title || '?')[0].toUpperCase();
 
@@ -410,11 +455,8 @@
                 if (peerId) {
                     getUser(peerId).then(function (peer) {
                         if (chatId !== currentChatId || !peer) return;
-                        var label = peer.username
-                            ? 'Чат с @' + peer.username
-                            : 'Чат с ' + (((peer.firstName || '') + ' ' + (peer.lastName || '')).trim() || 'пользователем');
                         var fav = peer.profilePicturePreview || peer.profilePicture || info.picture || null;
-                        setChatTabContext(label, fav);
+                        setChatTabContext(chatTabTitle(peer), fav);
 
                         currentChatPeerIsBot = !!peer.isBot;
                         setChatCallButtonsVisible(!currentChatPeerIsBot);
@@ -434,7 +476,7 @@
                     }).catch(function () {});
                 }
             } else {
-                chatHeaderStatus.textContent = (info.membersId ? info.membersId.length : 0) + ' участников';
+                chatHeaderStatus.textContent = BF.i18n.tp('group.memberCount', info.membersId ? info.membersId.length : 0);
                 chatHeaderStatus.classList.remove('online');
                 chatHeaderStatus.hidden = false;
                 setChatCallButtonsVisible(true);
@@ -448,11 +490,43 @@
             loadingMessages.classList.remove('visible');
             if (data && data.messages) {
                 messages = data.messages;
+                mergePendingUploadsIntoMessages(chatId);
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
                 renderMessages().then(function () { settleScroll(unreadId); });
                 scheduleMarkRead();
+                restoreChatDraft(chatId);
             }
         }).catch(function () { loadingMessages.classList.remove('visible'); });
+    }
+
+    function restoreChatDraft(chatId) {
+        if (!BF.drafts || chatId !== currentChatId) return;
+        BF.drafts.load(chatId).then(function (draft) {
+            if (!draft || chatId !== currentChatId) return;
+            messageInput.value = draft.text || '';
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+            if (draft.replyToMessageId) {
+                var reply = messages.find(function (m) { return Number(m.id) === Number(draft.replyToMessageId); });
+                if (reply) {
+                    setPendingReply(reply, false);
+                } else {
+                    BF.api.listMessages(chatId, draft.replyToMessageId, 1, 1).then(function (data) {
+                        if (chatId !== currentChatId || !data || !data.messages) return;
+                        var loadedReply = data.messages.find(function (m) { return Number(m.id) === Number(draft.replyToMessageId); });
+                        if (loadedReply) setPendingReply(loadedReply, false);
+                        else BF.drafts.set(chatId, draft.text || '', 0);
+                    }).catch(function () {});
+                }
+            }
+            renderChatList();
+        });
+    }
+
+    function saveCurrentDraft() {
+        if (!currentChatId || currentChatType !== 0 || pendingEdit || !BF.drafts) return;
+        BF.drafts.set(currentChatId, messageInput.value, pendingReply ? pendingReply.messageId : 0);
+        renderChatList();
     }
 
     // Скроллит к первому непрочитанному (если есть) либо в самый низ чата,
@@ -516,8 +590,7 @@
         return p.then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
-            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
-            messages.forEach(function (msg) {
+            messages.forEach(function (msg, index) {
                 chain = chain.then(function () {
                     var msgDate = u.formatDate(msg.sentAt);
                     if (msgDate !== lastDate) {
@@ -528,7 +601,7 @@
                         sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                         messagesInner.appendChild(sep);
                     }
-                    return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts).then(function (el) {
+                    return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
                         el.dataset.date = msgDate;
                         messagesInner.appendChild(el);
                     });
@@ -540,8 +613,7 @@
 
     function scrollToBottom() { messagesArea.scrollTop = messagesArea.scrollHeight; }
 
-    function appendMessageToView(msg) {
-        if (msg && msg.id) knownMessageIds.add(msg.id);
+    function buildMessageViewElement(msg) {
         var atts = (msg.content && msg.content.attachments) || [];
         var fileIds = atts.map(function (a) { return a.fileId; }).filter(function (id) { return id && !BF.files.getCachedFileUrl(id); });
         collectFwdAttachments(msg).forEach(function (a) {
@@ -550,24 +622,185 @@
         var p = fileIds.length > 0 ? BF.files.getFileUrls(fileIds) : Promise.resolve();
 
         return p.then(function () {
-            var msgDate = u.formatDate(msg.sentAt);
-            var lastMsgDate = null;
-            for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
-                if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
-            }
-            if (msgDate !== lastMsgDate) {
-                var sep = document.createElement('div');
-                sep.className = 'msg-date-separator';
-                sep.dataset.date = msgDate;
-                sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
-                messagesInner.appendChild(sep);
-            }
-            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
-            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts);
-        }).then(function (el) {
-            el.dataset.date = u.formatDate(msg.sentAt);
-            messagesInner.appendChild(el);
+            return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg));
         });
+    }
+
+    function canGroupMessages(previous, current) {
+        if (!previous || !current || previous.type === 2 || previous.type === 'SYSTEM' || current.type === 2 || current.type === 'SYSTEM') return false;
+        if (previous.senderId !== current.senderId || !previous.sentAt || !current.sentAt) return false;
+        return current.sentAt >= previous.sentAt &&
+            current.sentAt - previous.sentAt <= 5 * 60 * 1000 &&
+            u.formatDate(previous.sentAt) === u.formatDate(current.sentAt);
+    }
+
+    function buildMessageOptions(msg, index) {
+        if (index == null) index = messages.indexOf(msg);
+        if (index < 0) index = messages.findIndex(function (item) { return item.id === msg.id; });
+
+        var previous = index > 0 ? messages[index - 1] : null;
+        var next = index >= 0 && index < messages.length - 1 ? messages[index + 1] : null;
+        var groupedWithPrevious = canGroupMessages(previous, msg);
+        var showSenderGutter = !!(currentChatInfo && currentChatInfo.isGroupChat) && msg.senderId !== myUserId;
+        return {
+            knownMessageIds: knownMessageIds,
+            onReplyClick: scrollToMessage,
+            groupedWithPrevious: groupedWithPrevious,
+            showSenderGutter: showSenderGutter,
+            showSenderAvatar: showSenderGutter && !canGroupMessages(msg, next)
+        };
+    }
+
+    function appendMessageToView(msg) {
+        if (msg && msg.id) knownMessageIds.add(msg.id);
+        var previous = messages.length > 1 ? messages[messages.length - 2] : null;
+        var refreshPrevious = previous && currentChatInfo && currentChatInfo.isGroupChat &&
+            previous.senderId !== myUserId && canGroupMessages(previous, msg)
+            ? buildMessageViewElement(previous).then(function (replacement) {
+                var previousEl = findMessageGroup(previous.id);
+                if (!previousEl || !previousEl.isConnected) return;
+                replacement.dataset.date = previousEl.dataset.date;
+                previousEl.replaceWith(replacement);
+            })
+            : Promise.resolve();
+
+        return refreshPrevious.then(function () {
+            return buildMessageViewElement(msg).then(function (el) {
+                var msgDate = u.formatDate(msg.sentAt);
+                var lastMsgDate = null;
+                for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
+                    if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
+                }
+                if (msgDate !== lastMsgDate) {
+                    var sep = document.createElement('div');
+                    sep.className = 'msg-date-separator';
+                    sep.dataset.date = msgDate;
+                    sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
+                    messagesInner.appendChild(sep);
+                }
+                el.dataset.date = msgDate;
+                messagesInner.appendChild(el);
+            });
+        });
+    }
+
+    function releasePendingPreviews(entry) {
+        if (!entry || !entry.previewUrls) return;
+        entry.previewUrls.forEach(function (url) { URL.revokeObjectURL(url); });
+        entry.previewUrls = [];
+    }
+
+    function findMessageGroup(messageId) {
+        return Array.prototype.find.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
+            return String(node.dataset.msgId) === String(messageId);
+        });
+    }
+
+    function removePendingUpload(entry) {
+        if (!entry || entry.settled) return;
+        entry.settled = true;
+        pendingUploads.delete(entry.localId);
+        releasePendingPreviews(entry);
+
+        var idx = messages.findIndex(function (m) { return String(m.id) === String(entry.localId); });
+        if (idx >= 0) messages.splice(idx, 1);
+        knownMessageIds.delete(entry.localId);
+
+        var el = findMessageGroup(entry.localId);
+        if (el) el.remove();
+    }
+
+    function messageFileIds(msg) {
+        return ((msg && msg.content && msg.content.attachments) || [])
+            .map(function (a) { return a.fileId; })
+            .filter(Boolean)
+            .map(function (id) { return String(id).toLowerCase(); })
+            .sort();
+    }
+
+    function pendingUploadMatches(entry, msg) {
+        var serverIds = messageFileIds(msg);
+        var pendingIds = entry.fileIds.map(function (id) { return String(id).toLowerCase(); }).sort();
+        return pendingIds.length > 0 &&
+            pendingIds.length === serverIds.length &&
+            pendingIds.every(function (id, index) { return id === serverIds[index]; });
+    }
+
+    function mergePendingUploadsIntoMessages(chatId) {
+        pendingUploads.forEach(function (entry) {
+            if (entry.settled || String(entry.chatId) !== String(chatId)) return;
+            var serverMessage = messages.find(function (msg) { return pendingUploadMatches(entry, msg); });
+            if (serverMessage) {
+                entry.settled = true;
+                pendingUploads.delete(entry.localId);
+                releasePendingPreviews(entry);
+            } else {
+                messages.push(entry.localMessage);
+            }
+        });
+    }
+
+    function findPendingUpload(chatId, msg) {
+        if (!msg || msg.senderId !== myUserId) return null;
+
+        var found = null;
+        pendingUploads.forEach(function (entry) {
+            if (found || entry.settled || String(entry.chatId) !== String(chatId)) return;
+            if (pendingUploadMatches(entry, msg)) found = entry;
+        });
+        return found;
+    }
+
+    function replacePendingElement(entry, msg) {
+        var oldEl = findMessageGroup(entry.localId);
+        if (!oldEl) { releasePendingPreviews(entry); return; }
+
+        buildMessageViewElement(msg).then(function (newEl) {
+            newEl.dataset.date = u.formatDate(msg.sentAt);
+            if (oldEl.isConnected) oldEl.replaceWith(newEl);
+            releasePendingPreviews(entry);
+        }).catch(function () {
+            renderMessages().then(function () { releasePendingPreviews(entry); });
+        });
+    }
+
+    function reconcilePendingUpload(chatId, msg, hintedEntry) {
+        var entry = hintedEntry && !hintedEntry.settled ? hintedEntry : findPendingUpload(chatId, msg);
+        if (!entry) return false;
+
+        entry.settled = true;
+        pendingUploads.delete(entry.localId);
+
+        if (String(chatId) !== String(currentChatId)) {
+            releasePendingPreviews(entry);
+            return true;
+        }
+
+        var localIdx = messages.findIndex(function (m) { return String(m.id) === String(entry.localId); });
+        var serverIdx = messages.findIndex(function (m) { return m.id === msg.id; });
+        if (serverIdx >= 0) {
+            if (localIdx >= 0 && localIdx !== serverIdx) messages.splice(localIdx, 1);
+        } else if (localIdx >= 0) {
+            messages[localIdx] = msg;
+        } else {
+            messages.push(msg);
+        }
+
+        knownMessageIds.delete(entry.localId);
+        if (msg.id) knownMessageIds.add(msg.id);
+        var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+        if (localIdx >= 0 && serverIdx < 0) {
+            replacePendingElement(entry, msg);
+        } else {
+            var oldEl = findMessageGroup(entry.localId);
+            if (oldEl) oldEl.remove();
+            releasePendingPreviews(entry);
+            if (serverIdx < 0) appendMessageToView(msg).then(function () {
+                if (wasAtBottom) scrollToBottom();
+            });
+        }
+        if (wasAtBottom && localIdx >= 0 && serverIdx < 0) setTimeout(scrollToBottom, 0);
+        return true;
     }
 
     // Lazy-load older messages
@@ -644,6 +877,7 @@
         sendBtn.disabled = true;
         var sentChatId = currentChatId;
         var replyId = pendingReply ? pendingReply.messageId : 0;
+        var draftSnapshot = BF.drafts ? BF.drafts.snapshot(sentChatId) : null;
 
         BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null, forwardedMessageId: replyId }).then(function (resp) {
             messageInput.value = '';
@@ -651,6 +885,7 @@
             sendBtn.disabled = false;
             messageInput.focus();
             clearPendingReply();
+            if (BF.drafts) BF.drafts.clearSent(sentChatId, draftSnapshot);
 
             if (resp && resp.message) {
                 var msg = resp.message;
@@ -680,20 +915,76 @@
         stopTypingSend(true);
         var text = (caption != null ? caption : messageInput.value).trim();
         var sentChatId = currentChatId;
+        var draftSnapshot = BF.drafts ? BF.drafts.snapshot(sentChatId) : null;
         sendBtn.disabled = true;
 
-        var uploadChain = files.reduce(function (chain, file) {
+        var localId = 'pending-upload-' + Date.now() + '-' + (++pendingUploadCounter);
+        var previewUrls = [];
+        var localAttachments = files.map(function (file, index) {
+            var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
+            var isImage = !asDocuments && (uploadType === IMAGE_UPLOAD_TYPE || uploadType === GIF_UPLOAD_TYPE);
+            var previewUrl = isImage ? URL.createObjectURL(file) : '';
+            if (previewUrl) previewUrls.push(previewUrl);
+            return {
+                type: isImage ? (uploadType === GIF_UPLOAD_TYPE ? 'GIF' : 'IMAGE') : 'DOCUMENT',
+                fileId: '',
+                fileName: file.name,
+                attachmentSize: file.size,
+                localPreviewUrl: previewUrl,
+                uploadProgress: 0,
+                uploadIndex: index,
+                isPending: true
+            };
+        });
+        var pendingMessage = {
+            id: localId,
+            senderId: myUserId,
+            readBy: [],
+            sentAt: Date.now(),
+            type: GENERIC_MESSAGE_TYPE,
+            isPending: true,
+            content: { text: text || '', attachments: localAttachments }
+        };
+        var pendingEntry = {
+            localId: localId,
+            chatId: sentChatId,
+            localMessage: pendingMessage,
+            fileIds: [],
+            previewUrls: previewUrls,
+            settled: false
+        };
+        pendingUploads.set(localId, pendingEntry);
+
+        if (String(sentChatId) === String(currentChatId)) {
+            messages.push(pendingMessage);
+            appendMessageToView(pendingMessage).then(scrollToBottom);
+        }
+
+        var uploadChain = files.reduce(function (chain, file, index) {
             return chain.then(function (ids) {
-                var t = BF.files.getUploadFileType(file.type, asDocuments, file.name);
-                return BF.files.uploadFile(file, t)
-                    .then(function (fid) { ids.push(fid); return ids; })
-                    .catch(function () { return ids; });
+                var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
+                return BF.files.uploadFile(file, uploadType, function (progress) {
+                    localAttachments[index].uploadProgress = progress;
+                    BF.messages.updateAttachmentProgress(localId, index, progress);
+                })
+                    .then(function (fileId) {
+                        localAttachments[index].fileId = fileId;
+                        pendingEntry.fileIds.push(fileId);
+                        ids.push(fileId);
+                        return ids;
+                    });
             });
         }, Promise.resolve([]));
 
         var replyId = pendingReply ? pendingReply.messageId : 0;
+        var uploadsComplete = false;
         uploadChain.then(function (fileIds) {
-            if (fileIds.length === 0) { sendBtn.disabled = false; return; }
+            if (fileIds.length === 0) {
+                removePendingUpload(pendingEntry);
+                sendBtn.disabled = false;
+                return;
+            }
+            uploadsComplete = true;
             return BF.api.sendMessage({
                 chatId: sentChatId,
                 text: text || null,
@@ -705,12 +996,10 @@
                 sendBtn.disabled = false;
                 messageInput.focus();
                 clearPendingReply();
+                if (BF.drafts) BF.drafts.clearSent(sentChatId, draftSnapshot);
                 if (resp && resp.message) {
                     var msg = resp.message;
-                    if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
-                        messages.push(msg);
-                        appendMessageToView(msg).then(scrollToBottom);
-                    }
+                    reconcilePendingUpload(sentChatId, msg, pendingEntry);
                     var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
                     if (chatIdx >= 0) {
                         var chat = chats[chatIdx];
@@ -719,9 +1008,16 @@
                         chats.unshift(chat);
                         renderChatList();
                     }
+                } else {
+                    removePendingUpload(pendingEntry);
+                    groupToast(BF.i18n.t('error.sendMessage'));
                 }
             });
-        }).catch(function () { sendBtn.disabled = false; });
+        }).catch(function () {
+            removePendingUpload(pendingEntry);
+            sendBtn.disabled = false;
+            groupToast(BF.i18n.t(uploadsComplete ? 'error.sendMessage' : 'error.uploadAttachment'));
+        });
     }
 
     function openAttachModal(files) {
@@ -743,6 +1039,7 @@
     messageInput.addEventListener('input', function () {
         messageInput.style.height = 'auto';
         messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+        saveCurrentDraft();
 
         if (!currentChatId || currentChatType !== 0) return;
         var value = messageInput.value;
@@ -800,7 +1097,7 @@
     if (chatArea) {
         var dropOverlay = document.createElement('div');
         dropOverlay.className = 'drop-overlay';
-        dropOverlay.textContent = 'Отпустите для отправки';
+        dropOverlay.textContent = BF.i18n.t('attach.dropHint');
         dropOverlay.setAttribute('aria-hidden', 'true');
         chatArea.appendChild(dropOverlay);
 
@@ -864,15 +1161,15 @@
         if (!privatePassActive) return;
         var ctx = privatePassActive;
         var pass = privatePassInput.value;
-        if (!pass) { privatePassError.textContent = 'Введите пароль'; return; }
+        if (!pass) { privatePassError.textContent = BF.i18n.t('privatechat.error.emptyPassword'); return; }
         privatePassOk.disabled = true;
-        privatePassError.textContent = 'Проверка…';
+        privatePassError.textContent = BF.i18n.t('privatechat.checking');
         BF.privateChat.deriveKey(pass, ctx.chat.kdfSalt).then(function (key) {
             return BF.privateChat.validateVerifier(key, ctx.chat.passphraseVerifier).then(function (ok) {
                 if (privatePassActive !== ctx) return;
                 if (!ok) {
                     privatePassOk.disabled = false;
-                    privatePassError.textContent = 'Неверный пароль';
+                    privatePassError.textContent = BF.i18n.t('privatechat.error.wrongPassword');
                     return;
                 }
                 var remember = privatePassRemember.checked;
@@ -883,7 +1180,7 @@
             console.error('[privateChat] deriveKey failed', e);
             if (privatePassActive !== ctx) return;
             privatePassOk.disabled = false;
-            privatePassError.textContent = 'Ошибка проверки пароля';
+            privatePassError.textContent = BF.i18n.t('privatechat.error.checkFailed');
         });
     }
 
@@ -934,7 +1231,7 @@
             isEdited: enc.isEdited,
             editedAt: enc.editedAt,
             content: {
-                text: (text !== null && text !== undefined) ? text : '\u{1F512} Не удалось расшифровать',
+                text: (text !== null && text !== undefined) ? text : '\u{1F512} ' + BF.i18n.t('privatechat.decryptFailed'),
                 attachments: []
             }
         };
@@ -954,6 +1251,8 @@
         if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
 
         currentChatId = chat.id;
+        updateOpenChatUrl(chat.id);
+        if (BF.personalization) BF.personalization.applyForChat(chat.id);
         currentChatInfo = null;
         currentChatType = 1;
         currentChatPeerIsBot = false;
@@ -976,23 +1275,31 @@
         setChatCallButtonsVisible(false);
         resetChatTabContext();
 
-        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || 'Приватный чат');
+        var privatePeer = (chat.members || []).find(function (member) { return member.userId !== myUserId; });
+        if (privatePeer) {
+            getUser(privatePeer.userId).then(function (peer) {
+                if (currentChatId !== chat.id || !peer) return;
+                setChatTabContext(chatTabTitle(peer), peer.profilePicturePreview || peer.profilePicture || chat.picture || null);
+            }).catch(function () {});
+        }
+
+        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || BF.i18n.t('newchat.mode.private'));
         if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
         else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
         chatHeaderStatus.hidden = false;
         chatHeaderStatus.classList.remove('online');
-        chatHeaderStatus.textContent = 'Приватный чат';
+        chatHeaderStatus.textContent = BF.i18n.t('newchat.mode.private');
 
         if (chat.countUnread > 0) { chat.countUnread = 0; updateTitleBadge(); }
         renderChatList();
 
         if (chat.privateInviteState === 2) { // REJECTED
-            showPrivateCard('Приглашение отклонено', 'Этот приватный чат недоступен.');
+            showPrivateCard(BF.i18n.t('privatechat.inviteRejected'), BF.i18n.t('privatechat.inviteRejected.text'));
             return;
         }
         if (chat.privateInviteState === 0) { // PENDING
             if (chat.privateInviterUserId === myUserId || !chat.privateInviterUserId) {
-                showPrivateCard('Ожидание собеседника', 'Собеседник ещё не принял приглашение в приватный чат.');
+                showPrivateCard(BF.i18n.t('privatechat.waitingPeer'), BF.i18n.t('privatechat.waitingPeer.text'));
             } else {
                 showPrivateInviteCard(chat);
             }
@@ -1007,18 +1314,18 @@
     }
 
     function showPrivateInviteCard(chat) {
-        showPrivateCard('Приглашение в приватный чат',
-            'Для входа нужен пароль, о котором вы договорились с собеседником.', [
-            { label: 'Отклонить', onClick: function () { rejectPrivateInvite(chat); } },
-            { label: 'Принять', primary: true, onClick: function () { acceptPrivateInvite(chat); } }
+        showPrivateCard(BF.i18n.t('privatechat.invite'),
+            BF.i18n.t('privatechat.invite.text'), [
+            { label: BF.i18n.t('call.reject'), onClick: function () { rejectPrivateInvite(chat); } },
+            { label: BF.i18n.t('call.accept'), primary: true, onClick: function () { acceptPrivateInvite(chat); } }
         ]);
     }
 
     function showPrivateUnlockCard(chat) {
-        showPrivateCard('Чат заблокирован',
-            'Введите пароль чата, чтобы расшифровать сообщения на этом устройстве.', [
-            { label: 'Ввести пароль', primary: true, onClick: function () {
-                promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+        showPrivateCard(BF.i18n.t('privatechat.locked'),
+            BF.i18n.t('privatechat.locked.text'), [
+            { label: BF.i18n.t('privatechat.enterPassword'), primary: true, onClick: function () {
+                promptPassphrase(chat, BF.i18n.t('privatechat.password.title'), function (key, remember) {
                     BF.privateChat.saveKey(chat.id, key, remember);
                     if (currentChatId === chat.id) loadPrivateMessages(chat);
                 });
@@ -1027,7 +1334,7 @@
     }
 
     function acceptPrivateInvite(chat) {
-        promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+        promptPassphrase(chat, BF.i18n.t('privatechat.password.title'), function (key, remember) {
             BF.api.acceptPrivateChat(chat.id).then(function (resp) {
                 BF.privateChat.saveKey(chat.id, key, remember);
                 var idx = chats.findIndex(function (c) { return c.id === chat.id; });
@@ -1064,13 +1371,14 @@
         messagesArea.parentElement.classList.remove('visible');
         inputBar.classList.remove('visible');
         chatEmpty.style.display = '';
+        resetChatTabContext();
     }
 
     function loadPrivateMessages(chat) {
         var chatId = chat.id;
         messagesInner.innerHTML = '';
         loadingMessages.classList.add('visible');
-        BF.api.listPrivateMessages(chatId, 0, 50, 0).then(function (data) {
+        return BF.api.listPrivateMessages(chatId, 0, 50, 0).then(function (data) {
             if (chatId !== currentChatId) return;
             return decryptPrivateBatch(chatId, data && data.messages).then(function (mapped) {
                 if (chatId !== currentChatId) return;
@@ -1083,6 +1391,7 @@
             });
         }).catch(function (e) {
             console.error('[privateChat] listPrivateMessages failed', e);
+            return false;
         }).finally(function () {
             loadingMessages.classList.remove('visible');
         });
@@ -1090,11 +1399,12 @@
 
     // Catch-up открытого приватного чата (реконнект стрима / возврат на вкладку)
     function reloadCurrentPrivateChat() {
-        if (currentChatType !== 1 || !currentChatId) return;
+        if (currentChatType !== 1 || !currentChatId) return Promise.resolve(true);
         var chat = chats.find(function (c) { return c.id === currentChatId; });
         if (chat && chat.privateInviteState === 1 && BF.privateChat.hasKey(chat.id)) {
-            loadPrivateMessages(chat);
+            return loadPrivateMessages(chat).then(function (result) { return result !== false; });
         }
+        return Promise.resolve(true);
     }
 
     function sendPrivateMessageFlow(text) {
@@ -1152,8 +1462,8 @@
 
         if (enc.senderId !== myUserId) {
             BF.sound.play('chime');
-            showNewMessageNotification(chat ? chat.title : 'Приватный чат',
-                { id: enc.id, chatId: chatId, content: { text: '\u{1F512} Новое сообщение' } });
+            showNewMessageNotification(chat ? chat.title : BF.i18n.t('newchat.mode.private'),
+                { id: enc.id, chatId: chatId, content: { text: '\u{1F512} ' + BF.i18n.t('notification.newMessage') } });
         }
 
         if (chatId !== currentChatId) return;
@@ -1196,28 +1506,75 @@
 
     // ========== TITLE UNREAD BADGE ==========
 
-    var defaultBaseTitle = 'BarkFluff — Мессенджер';
-    var baseTitle = defaultBaseTitle;
+    // null → название приложения из словаря (пересчитывается, т.к. зависит от языка)
+    var baseTitle = null;
+
+    function defaultBaseTitle() {
+        return BF.i18n.t('app.title');
+    }
 
     var faviconEl = document.getElementById('favicon');
     var defaultFaviconHref = faviconEl ? faviconEl.getAttribute('href') : '/favicon.ico';
+    var faviconRequestId = 0;
 
-    function setFavicon(href) {
+    function applyFavicon(href) {
         if (!faviconEl) return;
         faviconEl.setAttribute('href', href || defaultFaviconHref);
-        // Snapshot type — для произвольных URL не указываем MIME, иначе SVG/PNG не отрендерится
         if (href) faviconEl.removeAttribute('type');
         else faviconEl.setAttribute('type', 'image/x-icon');
     }
 
+    function setFavicon(href) {
+        var requestId = ++faviconRequestId;
+        if (!href) {
+            applyFavicon(null);
+            return;
+        }
+
+        var image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = function () {
+            if (requestId !== faviconRequestId) return;
+            try {
+                var sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+                var canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                var context = canvas.getContext('2d');
+                if (!sourceSize || !context) throw new Error('invalid_avatar');
+                context.beginPath();
+                context.arc(32, 32, 32, 0, Math.PI * 2);
+                context.clip();
+                context.drawImage(
+                    image,
+                    (image.naturalWidth - sourceSize) / 2,
+                    (image.naturalHeight - sourceSize) / 2,
+                    sourceSize,
+                    sourceSize,
+                    0,
+                    0,
+                    64,
+                    64
+                );
+                applyFavicon(canvas.toDataURL('image/png'));
+            } catch (e) {
+                applyFavicon(href);
+            }
+        };
+        image.onerror = function () {
+            if (requestId === faviconRequestId) applyFavicon(href);
+        };
+        image.src = href;
+    }
+
     function resetChatTabContext() {
-        baseTitle = defaultBaseTitle;
+        baseTitle = null;
         setFavicon(null);
         updateTitleBadge();
     }
 
     function setChatTabContext(title, faviconHref) {
-        baseTitle = title || defaultBaseTitle;
+        baseTitle = title || null;
         setFavicon(faviconHref || null);
         updateTitleBadge();
     }
@@ -1225,25 +1582,15 @@
     function updateTitleBadge() {
         var total = 0;
         chats.forEach(function (c) { total += (c.countUnread || 0); });
-        document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + baseTitle : baseTitle;
+        var base = baseTitle || defaultBaseTitle();
+        document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + base : base;
     }
 
     // ========== BROWSER NOTIFICATIONS ==========
 
-    var notificationsAllowed = false;
-
-    function requestNotificationPermission() {
-        if (!('Notification' in window)) return;
-        if (Notification.permission === 'granted') { notificationsAllowed = true; return; }
-        if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then(function (perm) {
-                notificationsAllowed = (perm === 'granted');
-            });
-        }
-    }
-
     function showNewMessageNotification(chatTitle, msg) {
-        if (!notificationsAllowed) return;
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        if (document.visibilityState !== 'visible') return;
         if (document.visibilityState === 'visible' && msg.chatId === currentChatId) return;
 
         var body = '';
@@ -1253,7 +1600,7 @@
         }
 
         try {
-            var n = new Notification(chatTitle || 'Новое сообщение', {
+            var n = new Notification(chatTitle || BF.i18n.t('notification.newMessage'), {
                 body: body,
                 tag: 'bf-msg-' + (msg.id || Date.now()),
                 renotify: true
@@ -1266,21 +1613,87 @@
     // ========== CONNECTION STATUS ==========
 
     var connectionBanner = $('#connectionBanner');
+    var connectionBannerText = $('#connectionBannerText');
+    var connectionRetryButton = $('#connectionRetryButton');
+    var connectionSynced = $('#connectionSynced');
+    var _connectionHadProblem = false;
+    var _connectionCatchUpRunning = false;
+    var _connectionSyncedTimer = null;
+    var _connectionStatusInitialized = false;
+    var _connectionStatusEpoch = 0;
+    var _connectionState = 'reconnecting';
 
-    var _wasConnected = true;
+    function hideConnectionSynced() {
+        if (_connectionSyncedTimer) {
+            clearTimeout(_connectionSyncedTimer);
+            _connectionSyncedTimer = null;
+        }
+        if (connectionSynced) connectionSynced.classList.remove('visible');
+    }
+
+    function showConnectionSynced() {
+        if (!currentChatId || !connectionSynced) return;
+        hideConnectionSynced();
+        connectionSynced.classList.add('visible');
+        _connectionSyncedTimer = setTimeout(hideConnectionSynced, 3000);
+    }
+
+    function showConnectionProblem(state) {
+        if (!connectionBanner) return;
+        var offline = state === 'offline';
+        connectionBanner.classList.toggle('visible', state !== 'connected');
+        connectionBanner.classList.toggle('offline', offline);
+        if (connectionBannerText) {
+            connectionBannerText.textContent = BF.i18n.t(offline ? 'connection.offline' : 'connection.reconnecting');
+        }
+        if (connectionRetryButton) connectionRetryButton.disabled = false;
+    }
+
+    function runConnectionCatchUp() {
+        if (_connectionCatchUpRunning) return;
+        _connectionCatchUpRunning = true;
+        var retryAfterCatchUp = false;
+        var statusEpoch = _connectionStatusEpoch;
+        Promise.all([refreshChatListQuiet(), resyncCurrentChatTail()]).then(function (results) {
+            if (statusEpoch !== _connectionStatusEpoch || _connectionState !== 'connected') return;
+            if (!results[0] || !results[1]) {
+                retryAfterCatchUp = true;
+                return;
+            }
+            _connectionHadProblem = false;
+            showConnectionSynced();
+        }).finally(function () {
+            _connectionCatchUpRunning = false;
+            if (retryAfterCatchUp && statusEpoch === _connectionStatusEpoch && _connectionState === 'connected') {
+                BF.realtime.reconnect();
+                return;
+            }
+            if (statusEpoch !== _connectionStatusEpoch && _connectionState === 'connected' && _connectionHadProblem) {
+                runConnectionCatchUp();
+            }
+        });
+    }
+
     BF.realtime.on('connection_status', function (data) {
-        if (connectionBanner) {
-            connectionBanner.classList.toggle('visible', !data.connected);
+        var state = data && data.state ? data.state : (data && data.connected ? 'connected' : 'reconnecting');
+        var initialStatus = !_connectionStatusInitialized;
+        _connectionStatusInitialized = true;
+        _connectionStatusEpoch++;
+        _connectionState = state;
+        showConnectionProblem(state);
+        if (state !== 'connected') {
+            if (!initialStatus) _connectionHadProblem = true;
+            hideConnectionSynced();
+            return;
         }
-        if (data.connected && _wasConnected === false) {
-            // Соединение восстановлено — пропустили события (delete/edit/new),
-            // тихо сверяем состояние с сервером и применяем только диффы.
-            console.log('[main] connection restored — running catch-up');
-            refreshChatListQuiet();
-            resyncCurrentChatTail();
-        }
-        _wasConnected = !!data.connected;
+        if (_connectionHadProblem) runConnectionCatchUp();
     });
+
+    if (connectionRetryButton) {
+        connectionRetryButton.addEventListener('click', function () {
+            if (BF.realtime.reconnect()) connectionRetryButton.disabled = true;
+        });
+    }
 
     // ── RESYNC: реконнект отдельного стрима ──────────────────────────────────
     // realtime.js шлёт 'resync' при ЛЮБОМ переоткрытии стрима (backoff/watchdog/
@@ -1354,37 +1767,43 @@
     }
 
     function resyncCurrentChatTail() {
-        if (!currentChatId) return;
-        if (isLoadingOlder || loadingMessages.classList.contains('visible')) return; // чат открывается/пагинируется
-        if (currentChatType === 1) { reloadCurrentPrivateChat(); return; }
+        if (!currentChatId) return Promise.resolve(true);
+        if (isLoadingOlder || loadingMessages.classList.contains('visible')) return Promise.resolve(false);
+        if (currentChatType === 1) return reloadCurrentPrivateChat();
         var chatId = currentChatId;
-        BF.api.getChatInfo(chatId).then(function (info) {
-            if (chatId !== currentChatId || !info || info.error) return null;
+        return BF.api.getChatInfo(chatId).then(function (info) {
+            if (chatId !== currentChatId) return { skipped: true };
+            if (!info || info.error) return null;
             var fromId = info.firstUnreadMessageId || info.lastMessageId || 0;
             return BF.api.listMessages(chatId, fromId, 30, 10).then(function (data) {
                 return { info: info, data: data };
             });
         }).then(function (res) {
-            if (!res || !res.data || !res.data.messages || chatId !== currentChatId) return;
+            if (res && res.skipped) return true;
+            if (!res || !res.data || !res.data.messages) return false;
+            if (chatId !== currentChatId) return true;
             var fetched = res.data.messages;
             var diff = diffFetchedTail(fetched);
-            if (!diff) return; // за окно реконнекта ничего не пропало — DOM не трогаем
+            if (!diff) return true; // за окно реконнекта ничего не пропало — DOM не трогаем
             currentChatInfo = res.info;
             var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
 
             // Новые сообщения не в хвосте (окно прыгало через scrollToMessage, или своё
             // сообщение ушло раньше resync-дебаунса) — точечно не вставить, полный render.
-            var maxCurId = messages.length > 0
-                ? Math.max.apply(null, messages.map(function (m) { return Number(m.id); }))
+            var numericMessageIds = messages
+                .map(function (m) { return Number(m.id); })
+                .filter(Number.isFinite);
+            var maxCurId = numericMessageIds.length > 0
+                ? Math.max.apply(null, numericMessageIds)
                 : -Infinity;
-            var tailOnly = messages.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
+            var tailOnly = numericMessageIds.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
             if (!tailOnly) {
                 messages = fetched;
-                renderMessages().then(function () {
+                mergePendingUploadsIntoMessages(chatId);
+                return renderMessages().then(function () {
                     if (wasAtBottom) scrollToBottom();
+                    return refreshChatListQuiet();
                 });
-                refreshChatListQuiet();
-                return;
             }
 
             // Точечное применение диффа — как live-события, но без звуков/нотификаций.
@@ -1396,11 +1815,12 @@
             diff.news.forEach(function (m) {
                 chain = chain.then(function () {
                     if (chatId !== currentChatId) return;
+                    if (reconcilePendingUpload(chatId, m)) return;
                     messages.push(m);
                     return appendMessageToView(m);
                 });
             });
-            chain.then(function () {
+            return chain.then(function () {
                 if (chatId !== currentChatId || diff.news.length === 0) return;
                 if (wasAtBottom) {
                     scrollToBottom();
@@ -1416,12 +1836,16 @@
                 } else {
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
                 }
+            }).then(function () {
+                // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
+                // чатах: тихо освежаем превью/счётчики непрочитанного в сайдбаре.
+                return refreshChatListQuiet();
             });
-
-            // В открытом чате что-то пропустили → вероятно, пропуски есть и в других
-            // чатах: тихо освежаем превью/счётчики непрочитанного в сайдбаре.
-            refreshChatListQuiet();
-        }).catch(function () {});
+        }).then(function (result) {
+            return result !== false;
+        }).catch(function () {
+            return false;
+        });
     }
 
     // ========== SCROLL-BASED MARK AS READ ==========
@@ -1528,7 +1952,8 @@
     });
 
     function handleNewMessage(chatId, msg) {
-        if (chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
+        var reconciledPending = reconcilePendingUpload(chatId, msg);
+        if (!reconciledPending && chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
 
         var chatIdx = chats.findIndex(function (c) { return c.id === chatId; });
         var chatTitle = '';
@@ -1555,7 +1980,7 @@
 
         updateTitleBadge();
 
-        if (chatId === currentChatId) {
+        if (chatId === currentChatId && !reconciledPending) {
             var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
             messages.push(msg);
             appendMessageToView(msg).then(function () {
@@ -1628,7 +2053,7 @@
         var entry = onlineStatuses.get(userId);
         var online = entry ? BF.utils.isStatusOnline(entry.status) : false;
         if (online) {
-            chatHeaderStatus.textContent = 'в сети';
+            chatHeaderStatus.textContent = BF.i18n.t('status.online');
         } else {
             chatHeaderStatus.textContent = BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
         }
@@ -1640,7 +2065,7 @@
 
         if (typingUsers.size === 0) {
             if (currentChatInfo.isGroupChat) {
-                chatHeaderStatus.textContent = (currentChatInfo.membersId ? currentChatInfo.membersId.length : 0) + ' участников';
+                chatHeaderStatus.textContent = BF.i18n.tp('group.memberCount', currentChatInfo.membersId ? currentChatInfo.membersId.length : 0);
                 chatHeaderStatus.classList.remove('online');
             } else {
                 var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
@@ -1652,12 +2077,14 @@
         if (currentChatInfo.isGroupChat) {
             var names = Array.from(typingUsers.keys()).slice(0, 3).map(function (id) {
                 var user = userCache.get(id);
-                if (!user) return 'Кто-то';
-                return (user.firstName || '').split(' ')[0] || user.username || 'Кто-то';
+                if (!user) return BF.i18n.t('common.someone');
+                return (user.firstName || '').split(' ')[0] || user.username || BF.i18n.t('common.someone');
             });
-            chatHeaderStatus.textContent = names.join(', ') + (typingUsers.size > 1 ? ' печатают…' : ' печатает…');
+            chatHeaderStatus.textContent = BF.i18n.t(
+                typingUsers.size > 1 ? 'status.typing.many' : 'status.typing.named',
+                { names: names.join(', ') });
         } else {
-            chatHeaderStatus.textContent = 'печатает…';
+            chatHeaderStatus.textContent = BF.i18n.t('status.typing');
         }
     }
 
@@ -1729,7 +2156,7 @@
                     searchResults.appendChild(el);
                 });
                 if (data.users.length === 0) {
-                    searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">Ничего не найдено</div>';
+                    searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">' + u.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
                 }
             });
         }, 300);
@@ -1943,24 +2370,15 @@
     function openProfile(userId) {
         if (!userId) return;
         currentProfileUserId = userId;
+        if (profilePoster) BF.files.loadResilientBackground(profilePoster, null, false);
 
         BF.api.getUser(userId).then(function (d) {
+            if (currentProfileUserId !== userId) return;
             if (!d || !d.user) return;
             var user = d.user;
 
             if (profilePoster) {
-                profilePoster.classList.remove('visible');
-                profilePoster.style.backgroundImage = '';
-                if (user.profilePosterFileId) {
-                    BF.files.getFileUrls([user.profilePosterFileId]).then(function (urls) {
-                        var u = urls && urls[0];
-                        var url = u && (u.url || u.previewUrl);
-                        if (url) {
-                            profilePoster.style.backgroundImage = 'url("' + url + '")';
-                            profilePoster.classList.add('visible');
-                        }
-                    });
-                }
+                BF.files.loadResilientBackground(profilePoster, user.profilePosterFileId, false);
             }
 
             var initial = (user.firstName || user.username || '?')[0].toUpperCase();
@@ -1980,7 +2398,7 @@
 
             var online = isUserOnline(userId);
             var entry = onlineStatuses.get(userId);
-            profileStatus.textContent = online ? 'в сети' : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
+            profileStatus.textContent = online ? BF.i18n.t('status.online') : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
             profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
             profileStatus.hidden = !!user.isBot;
             setProfileCallButtonsVisible(!user.isBot);
@@ -2015,59 +2433,197 @@
         });
     }
 
-    function loadProfileMedia(type) {
-        renderChatMedia(type, profileMediaContent);
+    var MEDIA_TAB_TYPES = ['media', 'files', 'audio', 'voice'];
+
+    function createMediaPanels(container) {
+        var state = { chatId: null, requestIds: {}, panes: {}, contents: {}, fileSearch: null, searchTimer: null };
+        container.replaceChildren();
+        MEDIA_TAB_TYPES.forEach(function (type) {
+            var pane = document.createElement('div');
+            pane.className = 'profile-media-pane';
+            pane.dataset.type = type;
+            var content = document.createElement('div');
+            if (type === 'files') {
+                var input = document.createElement('input');
+                input.className = 'profile-file-search';
+                input.type = 'search';
+                input.placeholder = BF.i18n.t('media.searchFiles.placeholder');
+                input.maxLength = 255;
+                input.autocomplete = 'off';
+                state.fileSearch = input;
+                pane.appendChild(input);
+            }
+            pane.appendChild(content);
+            container.appendChild(pane);
+            state.panes[type] = pane;
+            state.contents[type] = content;
+            state.requestIds[type] = 0;
+        });
+        state.panes.media.classList.add('active');
+        state.fileSearch.addEventListener('input', function () {
+            clearTimeout(state.searchTimer);
+            state.searchTimer = setTimeout(function () { renderChatMedia('files', state); }, 300);
+        });
+        return state;
     }
 
-    function renderChatMedia(type, profileMediaContent) {
-        profileMediaContent.innerHTML = '';
+    var profileMediaPanels = createMediaPanels(profileMediaContent);
+    var groupMediaPanels = createMediaPanels(groupMediaContent);
+
+    function setMediaTabActive(selector, panels, type) {
+        document.querySelectorAll(selector).forEach(function (tab) { tab.classList.toggle('active', tab.dataset.type === type); });
+        MEDIA_TAB_TYPES.forEach(function (tabType) { panels.panes[tabType].classList.toggle('active', tabType === type); });
+    }
+
+    function loadProfileMedia(type) {
+        setMediaTabActive('#profileOverlay .profile-media-tab', profileMediaPanels, type);
+        renderChatMedia(type, profileMediaPanels);
+    }
+
+    function isCurrentMediaRequest(panels, type, chatId, requestId) {
+        return panels.chatId === chatId && currentChatId === chatId && panels.requestIds[type] === requestId;
+    }
+
+    function makeStaticGifPreview(fileUrl) {
+        if (!fileUrl) return Promise.reject(new Error('GIF URL is missing'));
+        return fetch(fileUrl).then(function (response) {
+            if (!response.ok) throw new Error('GIF could not be loaded');
+            return response.blob();
+        }).then(function (blob) {
+            return new Promise(function (resolve, reject) {
+                var objectUrl = URL.createObjectURL(blob);
+                var image = new Image();
+                image.onload = function () {
+                    URL.revokeObjectURL(objectUrl);
+                    var maxSide = 1024;
+                    var scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+                    var canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.82));
+                };
+                image.onerror = function () { URL.revokeObjectURL(objectUrl); reject(new Error('GIF could not be decoded')); };
+                image.src = objectUrl;
+            });
+        });
+    }
+
+    function getProfileMediaUrls(att) {
+        return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+            var file = urls[0] || {};
+            return {
+                full: file.url || att.previewUrl || '',
+                preview: file.previewUrl || att.previewUrl || ''
+            };
+        });
+    }
+
+    function renderChatMedia(type, panels) {
         if (!currentChatId) return;
+        var chatId = currentChatId;
+        if (panels.chatId !== chatId) {
+            panels.chatId = chatId;
+            MEDIA_TAB_TYPES.forEach(function (tabType) {
+                panels.requestIds[tabType]++;
+                panels.contents[tabType].replaceChildren();
+            });
+            panels.fileSearch.value = '';
+        }
+
+        var content = panels.contents[type];
+        var requestId = ++panels.requestIds[type];
+        content.replaceChildren();
+        function current() { return isCurrentMediaRequest(panels, type, chatId, requestId); }
+        function showEmpty(text) {
+            if (current()) content.innerHTML = '<div class="profile-media-empty">' + text + '</div>';
+        }
 
         if (type === 'media') {
             Promise.all([
-                BF.api.listChatAttachments(currentChatId, 1, 0, 30),
-                BF.api.listChatAttachments(currentChatId, 2, 0, 30),
-                BF.api.listChatAttachments(currentChatId, 3, 0, 30)
+                BF.api.listChatAttachments(chatId, 1, 0, 30),
+                BF.api.listChatAttachments(chatId, 2, 0, 30),
+                BF.api.listChatAttachments(chatId, 3, 0, 30)
             ]).then(function (results) {
+                if (!current()) return;
                 var all = (results[0].attachments || []).concat(results[1].attachments || [], results[2].attachments || []);
                 all.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
-                if (all.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет медиафайлов</div>'; return; }
+                if (all.length === 0) { showEmpty(BF.i18n.t('media.empty.media')); return; }
 
                 var grid = document.createElement('div');
                 grid.className = 'profile-media-grid';
-
+                content.appendChild(grid);
                 var chain = Promise.resolve();
                 all.forEach(function (item) {
                     chain = chain.then(function () {
                         var att = item.attachment;
                         if (!att || !att.fileId) return;
-                        var urlP = att.previewUrl ? Promise.resolve(att.previewUrl)
-                            : BF.files.getFileUrls([att.fileId]).then(function (urls) { return urls[0] ? (urls[0].previewUrl || urls[0].url) : ''; });
-                        return urlP.then(function (url) {
-                            if (!url) return;
-                            var img = document.createElement('img');
-                            img.src = url; img.loading = 'lazy';
-                            BF.files.bindResilientMedia(img, att.fileId, true);
-                            img.addEventListener('click', function () { showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', url, att.fileId); });
-                            grid.appendChild(img);
+                        return getProfileMediaUrls(att).then(function (urls) {
+                            var previewPromise = att.type === 'GIF' && !urls.preview
+                                ? makeStaticGifPreview(urls.full)
+                                : Promise.resolve(urls.preview || urls.full);
+                            return previewPromise.then(function (preview) {
+                                if (!current()) return;
+                                var tile = document.createElement('button');
+                                tile.type = 'button';
+                                tile.className = 'profile-media-tile';
+                                tile.setAttribute('aria-label', BF.i18n.t(att.type === 'VIDEO' ? 'media.openVideo' : 'media.openImage'));
+                                if (preview) {
+                                    var img = document.createElement('img');
+                                    img.src = preview;
+                                    img.loading = 'lazy';
+                                    img.alt = '';
+                                    BF.files.bindResilientMedia(img, att.fileId, true);
+                                    tile.appendChild(img);
+                                } else {
+                                    var placeholder = document.createElement('span');
+                                    placeholder.className = 'profile-media-placeholder';
+                                    placeholder.textContent = BF.i18n.t('media.noPreview');
+                                    tile.appendChild(placeholder);
+                                }
+                                if (att.type === 'VIDEO') {
+                                    var play = document.createElement('span');
+                                    play.className = 'profile-video-play';
+                                    play.textContent = '▶';
+                                    tile.appendChild(play);
+                                }
+                                tile.addEventListener('click', function () {
+                                    // В profile/group панели GIF должен остаться неподвижным
+                                    // и в просмотрщике; чат и его общий просмотрщик не меняем.
+                                    if (att.type === 'GIF') {
+                                        if (preview) showMediaOverlay('image', preview, null);
+                                        return;
+                                    }
+                                    showMediaOverlay(att.type === 'VIDEO' ? 'video' : 'image', urls.full || preview, att.fileId);
+                                });
+                                grid.appendChild(tile);
+                            });
+                        }).catch(function () {
+                            if (!current()) return;
+                            var tile = document.createElement('div');
+                            tile.className = 'profile-media-placeholder';
+                            tile.textContent = BF.i18n.t('media.noPreview');
+                            grid.appendChild(tile);
                         });
                     });
                 });
-                chain.then(function () { profileMediaContent.appendChild(grid); });
-            });
+            }).catch(function () { showEmpty(BF.i18n.t('media.error.media')); });
         } else if (type === 'files') {
-            BF.api.listChatAttachments(currentChatId, 4, 0, 30).then(function (data) {
+            var query = panels.fileSearch.value.trim();
+            BF.api.listChatAttachments(chatId, 4, 0, 30, query).then(function (data) {
+                if (!current()) return;
                 var files = data.attachments || [];
-                if (files.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет файлов</div>'; return; }
+                if (files.length === 0) { showEmpty(BF.i18n.t(query ? 'media.notFound.files' : 'media.empty.files')); return; }
                 var list = document.createElement('div');
                 list.className = 'profile-file-list';
-
+                content.appendChild(list);
                 var chain = Promise.resolve();
                 files.forEach(function (item) {
                     chain = chain.then(function () {
                         var att = item.attachment;
                         if (!att || !att.fileId) return;
                         return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+                            if (!current()) return;
                             var fileUrl = urls[0] ? urls[0].url : '#';
                             var el = document.createElement('a');
                             el.className = 'profile-file-item';
@@ -2077,28 +2633,29 @@
                             var icon = document.createElement('span');
                             icon.textContent = '\u{1F4C4}';
                             el.appendChild(icon);
-                            el.appendChild(document.createTextNode(' ' + (att.fileName || 'Файл')));
+                            el.appendChild(document.createTextNode(' ' + (att.fileName || BF.i18n.t('attachment.file'))));
                             list.appendChild(el);
                         });
                     });
                 });
-                chain.then(function () { profileMediaContent.appendChild(list); });
-            });
+            }).catch(function () { showEmpty(BF.i18n.t('media.error.files')); });
         } else if (type === 'audio' || type === 'voice') {
             var attType = type === 'audio' ? 5 : 6;
-            var emptyText = type === 'audio' ? 'Нет аудио' : 'Нет голосовых';
-            BF.api.listChatAttachments(currentChatId, attType, 0, 30).then(function (data) {
+            var emptyText = BF.i18n.t(type === 'audio' ? 'media.empty.audio' : 'media.empty.voice');
+            BF.api.listChatAttachments(chatId, attType, 0, 30).then(function (data) {
+                if (!current()) return;
                 var items = data.attachments || [];
-                if (items.length === 0) { profileMediaContent.innerHTML = '<div class="profile-media-empty">' + emptyText + '</div>'; return; }
+                if (items.length === 0) { showEmpty(emptyText); return; }
                 var list = document.createElement('div');
                 list.className = 'profile-file-list';
-
+                content.appendChild(list);
                 var chain = Promise.resolve();
                 items.forEach(function (item) {
                     chain = chain.then(function () {
                         var att = item.attachment;
                         if (!att || !att.fileId) return;
                         return BF.files.getFileUrls([att.fileId]).then(function (urls) {
+                            if (!current()) return;
                             var fileUrl = urls[0] ? urls[0].url : '';
                             if (!fileUrl) return;
                             var el = document.createElement('div');
@@ -2106,7 +2663,7 @@
                             if (type === 'audio') {
                                 var nm = document.createElement('div');
                                 nm.className = 'profile-audio-name';
-                                nm.textContent = att.fileName || 'Аудио';
+                                nm.textContent = att.fileName || BF.i18n.t('attachment.audio');
                                 el.appendChild(nm);
                             }
                             var audio = document.createElement('audio');
@@ -2118,17 +2675,12 @@
                         });
                     });
                 });
-                chain.then(function () { profileMediaContent.appendChild(list); });
-            });
+            }).catch(function () { showEmpty(BF.i18n.t('media.error.attachments')); });
         }
     }
 
-    document.querySelectorAll('.profile-media-tab').forEach(function (tab) {
-        tab.addEventListener('click', function () {
-            document.querySelectorAll('.profile-media-tab').forEach(function (t) { t.classList.remove('active'); });
-            tab.classList.add('active');
-            loadProfileMedia(tab.dataset.type);
-        });
+    document.querySelectorAll('#profileOverlay .profile-media-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () { loadProfileMedia(tab.dataset.type); });
     });
 
     function onChatHeaderClick() {
@@ -2141,26 +2693,9 @@
     chatHeaderName.addEventListener('click', onChatHeaderClick);
 
     // --- Call buttons (шапка чата) ---
+    var isInitiatingCall = false;
     function startCall(media) {
-        if (!currentChatId || !currentChatInfo) return;
-        var target;
-        if (currentChatInfo.isGroupChat) {
-            target = { chatId: currentChatId };
-        } else {
-            var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
-            if (!peerId) return;
-            target = { userId: peerId };
-        }
-        BF.calls.initiate(target, media).catch(function (e) { console.error('Не удалось начать звонок:', e); });
-    }
-    var _btnCallAudio = $('#btnCallAudio');
-    var _btnCallVideo = $('#btnCallVideo');
-    if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
-    if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
-
-    // --- Call buttons (шапка чата) ---
-    function startCall(media) {
-        if (!currentChatId || !currentChatInfo) return;
+        if (isInitiatingCall || !currentChatId || !currentChatInfo) return;
         if (!currentChatInfo.isGroupChat && currentChatPeerIsBot) return;
         var target;
         if (currentChatInfo.isGroupChat) {
@@ -2170,7 +2705,13 @@
             if (!peerId) return;
             target = { userId: peerId };
         }
-        BF.calls.initiate(target, media).catch(function (e) { console.error('Не удалось начать звонок:', e); });
+        isInitiatingCall = true;
+        BF.callsUI.ensureMediaPermissions(media)
+            .then(function () { return BF.calls.initiate(target, media); })
+            .catch(function (e) {
+                if (!e || e.code !== 'media-permission-dismissed') console.error('call start failed:', e);
+            })
+            .finally(function () { isInitiatingCall = false; });
     }
     var _btnCallAudio = $('#btnCallAudio');
     var _btnCallVideo = $('#btnCallVideo');
@@ -2184,6 +2725,61 @@
     var _profileCallAudioBtn = $('#profileCallAudioBtn');
     var _profileCallVideoBtn = $('#profileCallVideoBtn');
     if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
+
+    function openChatBackgroundSelector(chatId, title) {
+        if (!chatId) return;
+        var overlay = $('#chatBackgroundSelector');
+        var selectorTitle = $('#chatBackgroundSelectorTitle');
+        var grid = $('#chatBackgroundSelectorGrid');
+        selectorTitle.textContent = BF.i18n.t('chat.background.for', { title: title || BF.i18n.t('common.chat').toLowerCase() });
+        grid.innerHTML = '<div class="sd-hint">' + u.escapeHtml(BF.i18n.t('common.loadingShort')) + '</div>';
+        overlay.classList.add('visible');
+
+        BF.api.getPersonalization().then(function (data) {
+            var ids = ((data && data.personalization) || {}).chatBackgroundFileIds || [];
+            var current = BF.personalization.getChatBackgroundFileId(chatId);
+            grid.innerHTML = '';
+            function addCard(fileId, label) {
+                var card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'sd-bg-card' + (current === fileId ? ' active' : '') + (!fileId ? ' none-card' : '');
+                if (fileId) {
+                    var image = document.createElement('img');
+                    image.alt = '';
+                    card.appendChild(image);
+                    BF.files.getFileUrls([fileId]).then(function (urls) {
+                        var item = urls && urls[0];
+                        if (item) image.src = item.previewUrl || item.url;
+                    });
+                } else {
+                    card.textContent = label;
+                }
+                card.addEventListener('click', function () {
+                    card.disabled = true;
+                    BF.personalization.setChatBackgroundFileId(chatId, fileId).then(function () {
+                        overlay.classList.remove('visible');
+                    }).catch(function () { card.disabled = false; });
+                });
+                grid.appendChild(card);
+            }
+            addCard('', BF.i18n.t('chat.background.useGlobal'));
+            ids.forEach(function (fileId) { addCard(fileId, ''); });
+        }).catch(function () { grid.innerHTML = '<div class="sd-hint error">' + u.escapeHtml(BF.i18n.t('chat.background.error')) + '</div>'; });
+    }
+
+    var _chatBackgroundSelector = $('#chatBackgroundSelector');
+    var _chatBackgroundSelectorClose = $('#chatBackgroundSelectorClose');
+    if (_chatBackgroundSelectorClose) _chatBackgroundSelectorClose.addEventListener('click', function () {
+        _chatBackgroundSelector.classList.remove('visible');
+    });
+    if (_chatBackgroundSelector) _chatBackgroundSelector.addEventListener('click', function (e) {
+        if (e.target === _chatBackgroundSelector) _chatBackgroundSelector.classList.remove('visible');
+    });
+
+    var _profileBackgroundBtn = $('#profileBackgroundButton');
+    if (_profileBackgroundBtn) _profileBackgroundBtn.addEventListener('click', function () {
+        openChatBackgroundSelector(currentChatId, currentChatInfo && currentChatInfo.title);
+    });
     if (_profileCallAudioBtn) _profileCallAudioBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
     if (_profileCallVideoBtn) _profileCallVideoBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
 
@@ -2191,7 +2787,7 @@
         if (!text || !navigator.clipboard) return;
         navigator.clipboard.writeText(String(text)).then(function () {
             BF.sound.play('success');
-            groupToast('Скопировано');
+            groupToast(BF.i18n.t('common.copied'));
         }).catch(function () {});
     }
     document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
@@ -2210,7 +2806,7 @@
         if (groupToast._t) clearTimeout(groupToast._t);
         groupToast._t = setTimeout(function () {
             soonToastEl.classList.remove('visible');
-            soonToastEl.textContent = 'Скоро будет';
+            soonToastEl.textContent = BF.i18n.t('common.comingSoon');
         }, 1800);
     }
 
@@ -2226,7 +2822,7 @@
 
     function openGroupInfo() {
         if (!currentChatInfo || !currentChatId) return;
-        groupName.textContent = currentChatInfo.title || 'Группа';
+        groupName.textContent = currentChatInfo.title || BF.i18n.t('group.default');
         var _groupChatId = $('#groupChatId');
         if (_groupChatId) _groupChatId.textContent = currentChatId || '—';
         renderGroupAvatar(currentChatInfo.picture, currentChatInfo.title);
@@ -2234,8 +2830,8 @@
         groupAddInput.value = '';
         groupAddResults.innerHTML = '';
         loadGroupMembers();
-        document.querySelectorAll('.group-media-tab').forEach(function (t, i) { t.classList.toggle('active', i === 0); });
-        renderChatMedia('media', groupMediaContent);
+        setMediaTabActive('#groupOverlay .group-media-tab', groupMediaPanels, 'media');
+        renderChatMedia('media', groupMediaPanels);
         groupOverlay.classList.add('visible');
     }
 
@@ -2245,7 +2841,7 @@
         BF.api.listChatMembers(chatId).then(function (data) {
             if (chatId !== currentChatId) return;
             var members = (data && data.members) || [];
-            groupCount.textContent = members.length + ' участников';
+            groupCount.textContent = BF.i18n.tp('group.memberCount', members.length);
             members.forEach(function (m) {
                 var fullName = ((m.firstName || '') + ' ' + (m.lastName || '')).trim() || ('ID ' + m.userId);
 
@@ -2259,14 +2855,14 @@
 
                 var nm = document.createElement('div');
                 nm.className = 'group-member-name';
-                nm.textContent = m.userId === myUserId ? (fullName + ' (вы)') : fullName;
+                nm.textContent = m.userId === myUserId ? BF.i18n.t('group.member.you', { name: fullName }) : fullName;
                 row.appendChild(nm);
 
                 if (m.userId !== myUserId) {
                     var rm = document.createElement('button');
                     rm.className = 'group-member-remove';
                     rm.innerHTML = '&times;';
-                    rm.title = 'Удалить';
+                    rm.title = BF.i18n.t('common.delete');
                     rm.addEventListener('click', function () { confirmRemoveMember(m, fullName); });
                     row.appendChild(rm);
                 }
@@ -2283,22 +2879,22 @@
                     }
                 }).catch(function () {});
             });
-        }).catch(function () { groupToast('Ошибка загрузки участников'); });
+        }).catch(function () { groupToast(BF.i18n.t('group.error.loadMembers')); });
     }
 
     function confirmRemoveMember(member, name) {
-        if (!window.confirm('Удалить ' + name + ' из группы?')) return;
+        if (!window.confirm(BF.i18n.t('group.removeMember.confirm', { name: name }))) return;
         BF.api.kickUser(currentChatId, member.userId)
             .then(function () { loadGroupMembers(); })
-            .catch(function () { groupToast('Не удалось удалить участника'); });
+            .catch(function () { groupToast(BF.i18n.t('group.error.removeMember')); });
     }
 
     function renameGroup() {
         var current = currentChatInfo ? currentChatInfo.title : '';
-        var next = window.prompt('Название группы', current || '');
+        var next = window.prompt(BF.i18n.t('newchat.groupTitle.placeholder'), current || '');
         if (next == null) return;
         next = next.trim();
-        if (!next) { groupToast('Название не может быть пустым'); return; }
+        if (!next) { groupToast(BF.i18n.t('group.error.emptyTitle')); return; }
         BF.api.updateGroupChat(currentChatId, next, null).then(function (res) {
             var title = (res && res.chat && res.chat.title) || next;
             if (currentChatInfo) currentChatInfo.title = title;
@@ -2306,8 +2902,8 @@
             chatHeaderName.textContent = title;
             var c = chats.find(function (x) { return x.id === currentChatId; });
             if (c) { c.title = title; renderChatList(); }
-            groupToast('Название обновлено');
-        }).catch(function () { groupToast('Не удалось изменить название'); });
+            groupToast(BF.i18n.t('group.titleUpdated'));
+        }).catch(function () { groupToast(BF.i18n.t('group.error.renameFailed')); });
     }
 
     function addGroupMember(userId, name) {
@@ -2316,20 +2912,25 @@
             groupAddInput.value = '';
             groupAddResults.innerHTML = '';
             loadGroupMembers();
-            groupToast(name + ' добавлен(а)');
-        }).catch(function () { groupToast('Не удалось добавить участника'); });
+            groupToast(BF.i18n.t('group.memberAdded', { name: name }));
+        }).catch(function () { groupToast(BF.i18n.t('group.error.addMember')); });
     }
 
     groupClose.addEventListener('click', function () { groupOverlay.classList.remove('visible'); });
     groupOverlay.addEventListener('click', function (e) { if (e.target === groupOverlay) groupOverlay.classList.remove('visible'); });
     groupNameEdit.addEventListener('click', renameGroup);
 
+    var _groupBackgroundBtn = $('#groupBackgroundButton');
+    if (_groupBackgroundBtn) _groupBackgroundBtn.addEventListener('click', function () {
+        openChatBackgroundSelector(currentChatId, currentChatInfo && currentChatInfo.title);
+    });
+
     groupAvatarEdit.addEventListener('click', function () { groupAvatarInput.click(); });
     groupAvatarInput.addEventListener('change', function () {
         var file = groupAvatarInput.files[0];
         groupAvatarInput.value = '';
         if (!file) return;
-        groupToast('Загрузка…');
+        groupToast(BF.i18n.t('common.loadingShort'));
         BF.files.uploadFile(file, 6 /* CHAT_PICTURE */).then(function (fileId) {
             return BF.api.updateGroupChat(currentChatId, null, fileId);
         }).then(function (res) {
@@ -2341,8 +2942,8 @@
                 var c = chats.find(function (x) { return x.id === currentChatId; });
                 if (c) { c.picture = pic; renderChatList(); }
             }
-            groupToast('Аватар обновлён');
-        }).catch(function () { groupToast('Не удалось обновить аватар'); });
+            groupToast(BF.i18n.t('group.avatarUpdated'));
+        }).catch(function () { groupToast(BF.i18n.t('group.error.avatarFailed')); });
     });
 
     groupAddBtn.addEventListener('click', function () {
@@ -2387,9 +2988,8 @@
 
     document.querySelectorAll('.group-media-tab').forEach(function (tab) {
         tab.addEventListener('click', function () {
-            document.querySelectorAll('.group-media-tab').forEach(function (t) { t.classList.remove('active'); });
-            tab.classList.add('active');
-            renderChatMedia(tab.dataset.type, groupMediaContent);
+            setMediaTabActive('#groupOverlay .group-media-tab', groupMediaPanels, tab.dataset.type);
+            renderChatMedia(tab.dataset.type, groupMediaPanels);
         });
     });
 
@@ -2406,6 +3006,7 @@
 
     BF.settings.init({ myUserId: myUserId });
     BF.attach.init();
+    if (BF.drafts) BF.drafts.init(myUserId);
     if (BF.imageEditor) BF.imageEditor.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
@@ -2439,7 +3040,7 @@
         BF.api.listStickerPacks(0, 50).then(function (data) {
             stickerPacksCache = data.packs || [];
             if (stickerPacksCache.length === 0) {
-                if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">Стикерпаки не найдены</div>';
+                if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('sticker.noPacks')) + '</div>';
                 return;
             }
             // Prefetch всех паков для обложек и кэша контента
@@ -2465,7 +3066,7 @@
                 if (stickerPacksCache.length > 0) loadStickerPackContent(stickerPacksCache[0].id);
             });
         }).catch(function () {
-            if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">Ошибка загрузки</div>';
+            if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('common.loadError')) + '</div>';
         });
     }
 
@@ -2508,7 +3109,7 @@
         var cached = stickerPacksContentCache[packId];
         var stickers = cached ? cached.stickers : [];
         if (stickers.length === 0) {
-            stickerGrid.innerHTML = '<div class="sticker-pack-empty">В этом паке нет стикеров</div>';
+            stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('sticker.packEmpty')) + '</div>';
             return;
         }
         // Показываем full-версии стикеров (fileId, не preview)
@@ -2575,7 +3176,7 @@
         return '';
     }
 
-    function setPendingReply(msg) {
+    function setPendingReply(msg, persist) {
         if (!msg) return;
         pendingReply = {
             messageId: msg.id,
@@ -2583,7 +3184,7 @@
             previewText: buildReplyPreviewText(msg)
         };
         if (msg.senderId === myUserId) {
-            pendingReply.authorName = 'Вы';
+            pendingReply.authorName = BF.i18n.t('call.you');
             renderReplyPreview();
         } else {
             getUser(msg.senderId).then(function (sender) {
@@ -2598,6 +3199,7 @@
         if (messageInput) {
             try { messageInput.focus(); } catch (e) { }
         }
+        if (persist !== false) saveCurrentDraft();
     }
 
     function renderReplyPreview() {
@@ -2611,9 +3213,10 @@
         replyPreviewBar.classList.add('visible');
     }
 
-    function clearPendingReply() {
+    function clearPendingReply(persist) {
         pendingReply = null;
         if (replyPreviewBar) replyPreviewBar.classList.remove('visible');
+        if (persist !== false) saveCurrentDraft();
     }
 
     function setPendingEdit(msg) {
@@ -2624,7 +3227,7 @@
         messageInput.value = origText;
         messageInput.style.height = 'auto';
         messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-        if (epbText) epbText.textContent = origText || '(вложения)';
+        if (epbText) epbText.textContent = origText || BF.i18n.t('composer.edit.attachmentsOnly');
         if (editPreviewBar) editPreviewBar.classList.add('visible');
         try { messageInput.focus(); } catch (e) {}
     }
@@ -2665,11 +3268,8 @@
         messages[idx] = updatedMsg;
         var oldEl = messagesInner.querySelector('.msg-group[data-msg-id="' + updatedMsg.id + '"]');
         if (!oldEl) return;
-        var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
         BF.messages.buildMessageElement(
-            updatedMsg, myUserId,
-            !!(currentChatInfo && currentChatInfo.isGroupChat),
-            getUser, showMediaOverlay, bldOpts
+            updatedMsg, myUserId, getUser, showMediaOverlay, buildMessageOptions(updatedMsg, idx)
         ).then(function (newEl) {
             newEl.dataset.date = oldEl.dataset.date;
             oldEl.replaceWith(newEl);
@@ -2690,9 +3290,7 @@
             knownMessageIds.delete(msgIdNum);
             knownMessageIds.delete(msgIdStr);
         }
-        var el = messagesInner.querySelector('.msg-group[data-msg-id="' + msgIdStr + '"]');
-        console.log('[main] applyMessageDelete: idx=', idx, 'domEl=', !!el);
-        if (el) el.remove();
+        if (idx >= 0) renderMessages();
 
         // Обновляем lastMessage чат-листа для всех чатов, где это сообщение последнее.
         var anyChatTouched = false;
@@ -2731,7 +3329,7 @@
                 pinBtn.style.display = '';
                 var alreadyPinned = BF.pinned && BF.pinned.isPinned && BF.pinned.isPinned(msgId);
                 var pinLabel = pinBtn.querySelector('.cm-label');
-                if (pinLabel) pinLabel.textContent = alreadyPinned ? 'Открепить' : 'Закрепить';
+                if (pinLabel) pinLabel.textContent = BF.i18n.t(alreadyPinned ? 'menu.unpin' : 'menu.pin');
                 pinBtn.dataset.state = alreadyPinned ? 'pinned' : 'unpinned';
             }
         }
@@ -2824,8 +3422,8 @@
     function updateForwardCounter() {
         if (!forwardCounterEl) return;
         var n = forwardSelection.size;
-        if (n === 0) forwardCounterEl.textContent = 'Не выбрано чатов';
-        else forwardCounterEl.textContent = 'Выбрано: ' + n;
+        if (n === 0) forwardCounterEl.textContent = BF.i18n.t('forward.noChatsSelected');
+        else forwardCounterEl.textContent = BF.i18n.t('forward.selected', { count: n });
         if (forwardSendBtn) forwardSendBtn.disabled = n === 0;
     }
 
@@ -2853,7 +3451,7 @@
             item.dataset.chatId = chat.id;
             item.innerHTML =
                 '<div class="fwd-avatar">' + chatAvatarMarkup(chat) + '</div>' +
-                '<div class="fwd-name">' + u.escapeHtml(chat.title || 'Чат') + '</div>' +
+                '<div class="fwd-name">' + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + '</div>' +
                 '<div class="fwd-check">&#10003;</div>';
             item.addEventListener('click', function () {
                 var id = chat.id;
@@ -2887,7 +3485,7 @@
         var ids = Array.from(forwardSelection);
         forwardSendBtn.disabled = true;
         var originalLabel = forwardSendBtn.textContent;
-        forwardSendBtn.textContent = 'Отправка...';
+        forwardSendBtn.textContent = BF.i18n.t('forward.sending');
 
         var chain = ids.reduce(function (p, chatId) {
             return p.then(function () {
@@ -2904,11 +3502,11 @@
             forwardSendBtn.textContent = originalLabel;
             closeForwardModal();
             if (soonToastEl) {
-                soonToastEl.textContent = 'Переслано в ' + ids.length + ' ' + (ids.length === 1 ? 'чат' : 'чатов');
+                soonToastEl.textContent = BF.i18n.tp('forward.done', ids.length);
                 soonToastEl.classList.add('visible');
                 setTimeout(function () {
                     soonToastEl.classList.remove('visible');
-                    soonToastEl.textContent = 'Скоро будет';
+                    soonToastEl.textContent = BF.i18n.t('common.comingSoon');
                 }, 1800);
             }
         });
@@ -3187,7 +3785,7 @@
             if (without.length > 0) {
                 var hdr1 = document.createElement('div');
                 hdr1.className = 'cm-section-title';
-                hdr1.textContent = 'Добавить в папку';
+                hdr1.textContent = BF.i18n.t('folder.addToFolder');
                 chatContextMenu.appendChild(hdr1);
                 without.forEach(function (f) {
                     var btn = document.createElement('button');
@@ -3195,7 +3793,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'add-folder';
                     btn.dataset.folderId = f.folderId;
-                    btn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -3203,7 +3801,7 @@
             if (inFolders.length > 0) {
                 var hdr2 = document.createElement('div');
                 hdr2.className = 'cm-section-title';
-                hdr2.textContent = 'Удалить из папки';
+                hdr2.textContent = BF.i18n.t('folder.removeFromFolder');
                 chatContextMenu.appendChild(hdr2);
                 inFolders.forEach(function (f) {
                     var btn = document.createElement('button');
@@ -3211,7 +3809,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'remove-folder';
                     btn.dataset.folderId = f.folderId;
-                    btn.innerHTML = contextMenuIcon('folder-minus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-minus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -3227,7 +3825,7 @@
         createBtn.type = 'button';
         createBtn.className = 'cm-item';
         createBtn.dataset.act = 'create-folder';
-        createBtn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">Создать папку</span>';
+        createBtn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(BF.i18n.t('folder.create')) + '</span>';
         chatContextMenu.appendChild(createBtn);
     }
 
@@ -3338,9 +3936,51 @@
         });
     }
 
+    var pendingPushChatId = null;
+    var refreshedPushChatId = null;
+
+    function openChatFromPush(chatId) {
+        if (!chatId) return;
+        if (!chats.some(function (chat) { return String(chat.id) === String(chatId); })) {
+            pendingPushChatId = chatId;
+            // A push may point to a chat outside the initial page of the list.
+            // Refresh it once before leaving the link pending.
+            if (refreshedPushChatId !== String(chatId)) {
+                refreshedPushChatId = String(chatId);
+                loadChats(true).then(function () {
+                    if (pendingPushChatId) openChatFromPush(pendingPushChatId);
+                }).catch(function (err) {
+                    console.error('Could not load push target chat:', err);
+                });
+            }
+            return;
+        }
+        pendingPushChatId = null;
+        refreshedPushChatId = null;
+        openChat(chatId);
+    }
+
+    function maybeOpenChatFromPushUrl() {
+        var url = new URL(window.location.href);
+        var chatId = url.searchParams.get('chat');
+        if (!chatId) return;
+        url.searchParams.delete('chat');
+        url.searchParams.delete('call');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+        openChatFromPush(chatId);
+    }
+
+    function maybeOpenPendingPushChat() {
+        if (pendingPushChatId) openChatFromPush(pendingPushChatId);
+    }
+
     // ========== INIT ==========
 
-    requestNotificationPermission();
+    if (BF.push && BF.push.init) BF.push.init();
+
+    window.addEventListener('bf-pwa-update', function () {
+        if (window.confirm(BF.i18n.t('pwa.updateAvailable'))) BF.push.applyUpdate();
+    });
 
     if (BF.pinned && BF.pinned.init) {
         BF.pinned.init({
@@ -3352,13 +3992,37 @@
         });
     }
 
-    if (BF.folders && BF.folders.init) {
-        BF.folders.setOnChange(function () { renderChatList(); });
-        BF.folders.init().then(function () {
-            return loadChats(true);
-        }).then(updateTitleBadge).then(maybeOpenChatFromCookie);
-    } else {
-        loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie);
+    // Первый рендер — только после загрузки словаря, иначе список успеет отрисоваться на ключах.
+    BF.i18n.ready.then(function () {
+        if (BF.folders && BF.folders.init) {
+            BF.folders.setOnChange(function () { renderChatList(); });
+            return BF.folders.init().then(function () {
+                return loadChats(true);
+            });
+        }
+        return loadChats(true);
+    }).then(updateTitleBadge).then(maybeOpenChatFromCookie).then(maybeOpenChatFromPushUrl).then(maybeOpenPendingPushChat);
+
+    // Смена языка в настройках — перерисовать динамические части интерфейса.
+    BF.i18n.onChange(function () {
+        renderChatList();
+        updateTitleBadge();
+        if (BF.folders && BF.folders.renderTabs) BF.folders.renderTabs();
+        if (currentChatId) {
+            if (currentChatType === 1) {
+                var chat = chats.find(function (c) { return c.id === currentChatId; });
+                if (chat) openPrivateChat(chat);
+            } else {
+                openChat(currentChatId);
+            }
+        }
+    });
+
+    if (navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            var data = event.data || {};
+            if (data.type === 'bf-push-open') openChatFromPush(data.chatId);
+        });
     }
 
     if (BF.newchat && BF.newchat.init) {

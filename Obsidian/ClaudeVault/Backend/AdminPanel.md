@@ -41,8 +41,15 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
 - `MetricsCacheDbContext` — кеш метрик из Seq: `HourlyStats`, `HourlyTraffic`, `HourlyServiceMetrics`, `CompressionRuns` (история ежедневного сжатия логов-метрик) (`db/metrics_cache.db`)
+- `RemoteDockerDbContext` — удалённые SSH-серверы и отслеживаемые Docker-контейнеры (`db/remote_docker.db`)
 
-Оба — Singleton.
+Все — Singleton. В `docker/backend/docker-compose-dev-backend.yml` каталог `/app/db` проброшен на хост как `./admindata`; файлы базы не должны добавляться в Git.
+
+### Удалённые Docker-серверы
+
+SSH-параметры больше не передаются через `.env` или Docker Compose. На странице `/services` администратор создаёт сервер (имя, host, порт, пользователь, пароль); соединение проверяется до сохранения. Пароль хранится в LiteDB и API наружу не возвращает — только признак его наличия.
+
+Для каждого сервера страница через SSH находит все `docker ps -a` контейнеры и добавляет выбранные в постоянный список. Список и Compose-метки читаются пакетно за один SSH-сеанс; статусы отслеживаемых контейнеров также получаются одним сеансом. У контейнеров Docker Compose сохраняются метки service/config_files/working_dir: для них доступны start/stop/restart и pull + recreate. У обычных Docker-контейнеров доступно только start/stop/restart. Сервер можно изменить или удалить, а отслеживаемый контейнер — добавить или убрать из списка; удаление записи не удаляет Docker-контейнер.
 
 ### gRPC-клиенты (подключается как клиент, не сервер)
 
@@ -66,8 +73,8 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 - `DockerRegistryService` — без авторизации читает semver-теги из публичного `docker.barkfluff.com:5000/v2/{repository}/tags/list` и сравнивает их с образом запущенного BarkFluff-контейнера. Для `:latest` `DockerService` получает локальный `RepoDigest`, а сервис сопоставляет его с `Docker-Content-Digest` semver-manifest’ов registry. `barkfluff-*-dev` проверяется только в одноимённом dev-репозитории; hash и прочие не-semver-теги не участвуют в сравнении.
 - `SeqService` — проксирование логов из Seq (HttpClient), удаление по фильтру (`Seq.Api`), запись событий в CLEF-формате
 - `S3BrowserService` — браузер S3/Minio (AWSSDK.S3)
-- `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. История витрины — 30 дней.
-- `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет, что все исходные service-hour уже сохранены в витрине; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
+- `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из структурированных `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. Текущий и предыдущий час пересчитываются всегда; отсутствующие часы последних 72 часов догоняются по шесть за цикл. `MetricRollupHours` отмечает только полностью прочитанные часы, поэтому ошибка или лимит Seq не заменяют витрину частичным результатом. История — 30 дней. Для [[Backend/Files]] также показывает одну карточку последней загрузки: полный pipeline и этапы буферизации, SHA-256, обработки и S3 (ms); это не почасовые графики.
+- `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет `MetricRollupHours` для каждого исходного часа; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
 - `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
 
 ### MassTransit (RabbitMQ publisher)
@@ -109,7 +116,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 `Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`, иконки `msr`/Material Symbols). `assets/` (md3.css, sidebar.js) статикой на `/assets`.
 
-На `/services` в таблице **BarkFluff Server** показываются текущий и последний semver-тег образа. Если последний тег выше текущего, рядом с сервисом показывается warning-бейдж «Обновление» с иконкой. Для `:latest` версия определяется по `RepoDigest`; инфраструктурные, hash-образы без сопоставимого digest и недоступный registry показываются как `—`, не блокируя статус сервисов.
+На `/services` в таблице **BarkFluff Server** показываются текущий и последний semver-тег образа. Если последний тег выше текущего, рядом с сервисом показывается warning-бейдж «Обновление» с иконкой. Такой же бейдж появляется в шапке перед кнопками управления админ-панелью, если для её собственного образа доступна новая версия. Для `:latest` версия определяется по `RepoDigest`; инфраструктурные, hash-образы без сопоставимого digest и недоступный registry показываются как `—`, не блокируя статус сервисов.
 
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
 
@@ -140,7 +147,7 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 | Token expiration | 3 дня |
 | Pending timeout | 10 минут |
 | Max gRPC file size | 20 МБ |
-| Metrics interval | 5 минут (пересчёт текущего и предыдущего часа) |
+| Metrics interval | 5 минут (пересчёт текущего/предыдущего часа + догон 72 часов) |
 | HourlyStats retention | 24 часа |
 | HourlyServiceMetrics retention | 30 дней |
 | Metrics compression schedule | ежедневно в 03:00 UTC (вчерашний UTC-день) |

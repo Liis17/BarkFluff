@@ -1,24 +1,49 @@
-﻿using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using BarkFluff.ClientV2.WPF.Models;
+using BarkFluff.ClientV2.WPF.ViewModels;
 
-namespace BarkFluff.ClientV2.WPF
+using System.ComponentModel;
+using System.Windows;
+
+using Wpf.Ui.Controls;
+
+namespace BarkFluff.ClientV2.WPF;
+
+public partial class MainWindow : FluentWindow
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window
+    private readonly MainWindowViewModel _viewModel;
+    private bool _isExitRequested;
+
+    public MainWindow(MainWindowViewModel viewModel)
     {
-        public MainWindow()
+        _viewModel = viewModel;
+        DataContext = viewModel;
+        InitializeComponent();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        // Скрытое окно остаётся в Application.Windows, поэтому приложение продолжает работать.
+        // Выход из трея выставляет флаг и закрывает окно уже по-настоящему.
+        if (!_isExitRequested && _viewModel.Settings.ClosingBehavior == WindowClosingBehavior.MinimizeToTray)
         {
-            InitializeComponent();
+            e.Cancel = true;
+            Hide();
+            return;
         }
+
+        base.OnClosing(e);
+    }
+
+    private void OnTrayShowRequested(object sender, RoutedEventArgs e)
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void OnTrayExitRequested(object sender, RoutedEventArgs e)
+    {
+        _isExitRequested = true;
+        Close();
     }
 }

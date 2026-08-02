@@ -208,10 +208,46 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getInt(KEY_CHAT_CORNER_RADIUS, 20)
         set(value) = sharedPreferences.edit().putInt(KEY_CHAT_CORNER_RADIUS, value).apply()
 
-    /** FileId выбранного фона чата (пусто = нет фона). */
+    /** Кэш синхронизируемого глобального фона чатов (пусто = нет фона). */
     var chatBackgroundFileId: String
         get() = sharedPreferences.getString(KEY_CHAT_BACKGROUND_FILE_ID, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_CHAT_BACKGROUND_FILE_ID, value).apply()
+
+    /** Персональные переопределения фонов вида chatId|fileId, загруженные с сервера. */
+    var chatBackgroundOverrides: Map<String, String>
+        get() = sharedPreferences.getStringSet(KEY_CHAT_BACKGROUND_OVERRIDES, emptySet())
+            ?.mapNotNull { item ->
+                val delimiter = item.indexOf('|')
+                if (delimiter > 0 && delimiter < item.lastIndex) {
+                    canonicalChatId(item.substring(0, delimiter)) to item.substring(delimiter + 1)
+                } else null
+            }
+            ?.toMap()
+            ?: emptyMap()
+        set(value) = sharedPreferences.edit()
+            .putStringSet(
+                KEY_CHAT_BACKGROUND_OVERRIDES,
+                value.map { (chatId, fileId) -> "${canonicalChatId(chatId)}|$fileId" }.toSet()
+            )
+            .apply()
+
+    fun chatBackgroundFileIdFor(chatId: String): String =
+        chatBackgroundOverrides[canonicalChatId(chatId)] ?: chatBackgroundFileId
+
+    fun setChatBackgroundOverride(chatId: String, fileId: String) {
+        val updated = chatBackgroundOverrides.toMutableMap()
+        val key = canonicalChatId(chatId)
+        if (fileId.isBlank()) updated.remove(key) else updated[key] = fileId
+        chatBackgroundOverrides = updated
+    }
+
+    fun applyChatBackgroundSettings(globalFileId: String, overrides: Map<String, String>) {
+        chatBackgroundFileId = globalFileId
+        chatBackgroundOverrides = overrides
+    }
+
+    private fun canonicalChatId(chatId: String): String =
+        runCatching { UUID.fromString(chatId).toString() }.getOrDefault(chatId)
 
     /** Применять ли блюр к фону чата. */
     var chatBackgroundBlur: Boolean
@@ -290,6 +326,11 @@ class GlobalParam(private val context: Context) {
     var showIdsInProfile: Boolean
         get() = sharedPreferences.getBoolean(KEY_TESTING_SHOW_IDS, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SHOW_IDS, value).apply()
+
+    /** Показывать диагностические адреса микросервисов на экране «О приложении». */
+    var showServerAddressesInAbout: Boolean
+        get() = sharedPreferences.getBoolean(KEY_TESTING_SHOW_SERVER_ADDRESSES, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_TESTING_SHOW_SERVER_ADDRESSES, value).apply()
 
     /** Флаг для отложенного secret-chat flow. Пункт UI пока намеренно не показывается. */
     var secretChatsEnabled: Boolean
@@ -410,6 +451,7 @@ class GlobalParam(private val context: Context) {
         // Персонализация
         private const val KEY_CHAT_CORNER_RADIUS = "chat_corner_radius"
         private const val KEY_CHAT_BACKGROUND_FILE_ID = "chat_background_file_id"
+        private const val KEY_CHAT_BACKGROUND_OVERRIDES = "chat_background_overrides"
         private const val KEY_CHAT_BACKGROUND_BLUR = "chat_background_blur"
         private const val KEY_CHAT_BACKGROUND_BLUR_RADIUS = "chat_background_blur_radius"
         private const val KEY_CHAT_BACKGROUND_DIM = "chat_background_dim"
@@ -428,6 +470,7 @@ class GlobalParam(private val context: Context) {
 
         // Тестирование
         private const val KEY_TESTING_SHOW_IDS = "testing_show_ids_in_profile"
+        private const val KEY_TESTING_SHOW_SERVER_ADDRESSES = "testing_show_server_addresses_in_about"
         private const val KEY_TESTING_SECRET_CHATS = "testing_secret_chats_enabled"
         private const val KEY_TESTING_PRIVATE_CHATS = "testing_private_chats_enabled"
 

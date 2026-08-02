@@ -516,7 +516,7 @@ class GrpcManager {
             val response = usersClient!!.getUser(request)
             val user = response.user
 
-            Log.d(TAG, "getCurrentUserData: userId=${user.id}, username=${user.username}, profilePicture='$user.profilePicture', profilePicturePreview='$user.profilePicturePreview'")
+            Log.d(TAG, "getCurrentUserData: userId=${user.id}")
 
             val profilePictureFileId = extractGuidFromUrl(user.profilePicture)
             val profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview)
@@ -1314,7 +1314,8 @@ class GrpcManager {
             chatType = chat.chatType,
             lastActivityAt = if (chat.hasLastActivityAt()) chat.lastActivityAt.seconds * 1000 else lastMsg?.sentAt ?: 0L,
             privateInviteState = chat.privateInviteState,
-            privateInviterUserId = chat.privateInviterUserId
+            privateInviterUserId = chat.privateInviterUserId,
+            hasDraft = chat.hasDraft
         )
     }
 
@@ -1511,7 +1512,7 @@ class GrpcManager {
                 )
             }
 
-            Log.d(TAG, "Поиск '$query': найдено ${users.size} пользователей")
+            Log.d(TAG, "Поиск: найдено ${users.size} пользователей")
             Result.success(users)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка поиска пользователей", e)
@@ -1587,7 +1588,7 @@ class GrpcManager {
 
             val fileUrl = response.fileUrlsList.firstOrNull()
             if (fileUrl == null) {
-                Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId, response=$response")
+                Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId")
                 return@withContext Result.failure(Exception("URL не получен: пустой ответ"))
             }
 
@@ -1755,7 +1756,7 @@ class GrpcManager {
             val fileId = uploadData.fileId
 
             // Выполняем HTTP POST multipart/form-data для загрузки файла
-            Log.d(TAG, "Avatar upload URL получен, fileId: $fileId, url: ${uploadData.url}")
+            Log.d(TAG, "Avatar upload URL получен, fileId: $fileId")
 
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
             val url = URL(uploadData.url)
@@ -2296,7 +2297,8 @@ class GrpcManager {
         val chatType: Shared.ChatType = Shared.ChatType.CHAT_TYPE_REGULAR,
         val lastActivityAt: Long = lastMessage?.sentAt ?: 0L,
         val privateInviteState: Shared.PrivateChatInviteState = Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED,
-        val privateInviterUserId: Long = 0L
+        val privateInviterUserId: Long = 0L,
+        val hasDraft: Boolean = false
     )
 
     data class ChatPage(val chats: List<ChatData>, val totalCount: Int)
@@ -2578,6 +2580,68 @@ class GrpcManager {
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка обновления персонализации", e)
+            Result.failure(e)
+        }
+    }
+
+    data class SyncedChatBackgroundSettings(
+        val globalChatBackgroundFileId: String,
+        val chatBackgroundFileIds: Map<String, String>
+    )
+
+    suspend fun getUserSettings(): Result<SyncedChatBackgroundSettings> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            val response = usersClient!!.getUserSettings(
+                UsersApiOuterClass.GetUserSettingsRequest.newBuilder().build()
+            )
+            Result.success(
+                SyncedChatBackgroundSettings(
+                    globalChatBackgroundFileId = response.settings.globalChatBackgroundFileId,
+                    chatBackgroundFileIds = response.settings.chatBackgroundsList
+                        .filter { it.chatId.isNotBlank() && it.chatBackgroundFileId.isNotBlank() }
+                        .associate { it.chatId to it.chatBackgroundFileId }
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения настроек фонов", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setGlobalChatBackground(fileId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            usersClient!!.setGlobalChatBackground(
+                UsersApiOuterClass.SetGlobalChatBackgroundRequest.newBuilder()
+                    .setChatBackgroundFileId(fileId)
+                    .build()
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки глобального фона", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setChatBackground(chatId: String, fileId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            usersClient!!.setChatBackground(
+                UsersApiOuterClass.SetChatBackgroundRequest.newBuilder()
+                    .setChatId(chatId)
+                    .setChatBackgroundFileId(fileId)
+                    .build()
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки фона чата", e)
             Result.failure(e)
         }
     }

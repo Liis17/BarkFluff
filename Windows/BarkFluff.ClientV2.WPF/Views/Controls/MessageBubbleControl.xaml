@@ -1,0 +1,229 @@
+<UserControl x:Class="BarkFluff.ClientV2.WPF.Views.Controls.MessageBubbleControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:converters="clr-namespace:BarkFluff.ClientV2.WPF.Infrastructure.Converters"
+             xmlns:behaviors="clr-namespace:BarkFluff.ClientV2.WPF.Infrastructure.Behaviors"
+             xmlns:controls="clr-namespace:BarkFluff.ClientV2.WPF.Views.Controls"
+             xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+             x:Name="Root">
+    <UserControl.Resources>
+        <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
+    </UserControl.Resources>
+    <Grid Margin="12,4" HorizontalAlignment="Left">
+        <Grid.Style>
+            <Style TargetType="Grid">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsMine}" Value="True">
+                        <Setter Property="HorizontalAlignment" Value="Right" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Grid.Style>
+        <Border x:Name="Bubble"
+                MaxWidth="520"
+                CornerRadius="12"
+                ClipToBounds="True"
+                ContextMenuService.IsEnabled="{Binding CanUseActions}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Padding" Value="12,8" />
+                    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsMine}" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding HasOnlyMedia}" Value="True">
+                            <Setter Property="Padding" Value="0" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border.ContextMenu>
+                <!--  ContextMenu живёт вне визуального дерева, поэтому контекст берём с PlacementTarget.  -->
+                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                    <MenuItem Command="{Binding Owner.StartReplyMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_ReplyToMessage}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="ArrowReply16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.StartForwardMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_Forward}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="ArrowForward16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.CopyMessageTextCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_CopyText}"
+                              Visibility="{Binding CanCopyText, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Copy16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.CopyMessageImageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_CopyImage}"
+                              Visibility="{Binding CanCopyImage, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Image16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.TogglePinMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{Binding PinMenuHeader}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Pin16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.StartEditMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Header="{DynamicResource Messenger_Edit}"
+                              Visibility="{Binding CanModify, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14" Symbol="Edit16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding Owner.RequestDeleteMessageCommand}"
+                              CommandParameter="{Binding}"
+                              Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                              Header="{DynamicResource Messenger_Delete}"
+                              Visibility="{Binding CanModify, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon FontSize="14"
+                                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                           Symbol="Delete16" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </Border.ContextMenu>
+            <Grid>
+                <StackPanel>
+                    <controls:MessageQuoteControl />
+                    <ui:TextBox IsReadOnly="True"
+                                IsTabStop="False"
+                                FocusVisualStyle="{x:Null}"
+                                Padding="0"
+                                BorderThickness="0"
+                                BorderBrush="Transparent"
+                                Background="Transparent"
+                                CaretBrush="Transparent"
+                                Text="{Binding Text, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Visibility="{Binding HasText, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <ItemsControl Width="{Binding MediaPanelWidth}"
+                                  Visibility="{Binding HasMedia, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  ItemsSource="{Binding MediaAttachments}">
+                        <ItemsControl.Style>
+                            <Style TargetType="ItemsControl">
+                                <Setter Property="Margin" Value="0,8,0,0" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.HasOnlyMedia, ElementName=Root}" Value="True">
+                                        <Setter Property="Margin" Value="0" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.Style>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <primitives:UniformGrid Columns="{Binding DataContext.MediaColumns, ElementName=Root}" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Height="{Binding DataContext.MediaTileHeight, ElementName=Root}" ClipToBounds="True">
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Margin" Value="2" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.IsSingleMedia, ElementName=Root}" Value="True">
+                                                    <Setter Property="Margin" Value="0" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
+                                    <Image Source="{Binding PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}"
+                                           Stretch="UniformToFill" />
+                                    <MediaElement x:Name="VideoPlayer"
+                                                  Source="{Binding FileUrl}"
+                                                  LoadedBehavior="Manual"
+                                                  UnloadedBehavior="Stop"
+                                                  Stretch="UniformToFill"
+                                                  Visibility="Collapsed" />
+                                    <ui:Button Width="44"
+                                               Height="44"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Appearance="Secondary"
+                                               behaviors:PlayVideoBehavior.Enable="True"
+                                               Content="▶"
+                                               Visibility="{Binding IsVideo, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl Margin="0,8,0,0"
+                                  ItemsSource="{Binding FileAttachments}"
+                                  Visibility="{Binding HasFiles, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,4"
+                                        Padding="8"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                        CornerRadius="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Margin="0,0,8,0" FontSize="16" Text="📄" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="11"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="{Binding FileTypeLabel}" />
+                                            <TextBlock FontSize="11"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="{Binding SizeLabel}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel HorizontalAlignment="Right"
+                                Orientation="Horizontal"
+                                Visibility="{Binding HasMetadataBelowMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Margin="0,5,6,0"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Text="{DynamicResource Messenger_Edited}"
+                                   Visibility="{Binding IsEdited, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Text="{Binding SentAt, StringFormat={}{0:HH:mm}}" />
+                        <controls:MessageReadStatusControl Margin="6,4,0,0"
+                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+                <Border HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,8,8"
+                        Padding="5,2"
+                        Background="{DynamicResource MessageMediaTimestampBrush}"
+                        CornerRadius="6"
+                        Visibility="{Binding HasOnlyMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontSize="11" Foreground="{DynamicResource MessageMediaTimestampTextBrush}" Text="{Binding SentAt, StringFormat={}{0:HH:mm}}" />
+                        <controls:MessageReadStatusControl Margin="6,0,0,0"
+                                                          Foreground="{DynamicResource MessageMediaTimestampTextBrush}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

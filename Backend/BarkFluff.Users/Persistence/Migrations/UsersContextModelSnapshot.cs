@@ -17,7 +17,7 @@ namespace BarkFluff.Users.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gin");
@@ -117,6 +117,32 @@ namespace BarkFluff.Users.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("ChatMutes");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserChatSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChatBackgroundFileId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ChatId")
+                        .IsUnique();
+
+                    b.ToTable("UserChatSettings");
                 });
 
             modelBuilder.Entity("BarkFluff.Users.Domain.DevicePrekeyBundle", b =>
@@ -271,6 +297,12 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<DateTime?>("AcceptedLegalAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AcceptedLegalRevision")
+                        .HasColumnType("text");
+
                     b.Property<string>("Bio")
                         .HasColumnType("text");
 
@@ -394,6 +426,11 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<bool>("NotificationsEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<BarkFluff.Users.Domain.DevicePushPlatform>("PushPlatform")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(BarkFluff.Users.Domain.DevicePushPlatform.Android);
+
                     b.Property<string>("OperationSystem")
                         .HasColumnType("text");
 
@@ -437,6 +474,28 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("UserPersonalizations");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("GlobalChatBackgroundFileId")
+                        .HasColumnType("text");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserSettings");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.ChatFolder", b =>
                 {
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
@@ -449,6 +508,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                 });
 
             modelBuilder.Entity("BarkFluff.Users.Domain.ChatMute", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserChatSettings", b =>
                 {
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
                         .WithMany()
@@ -538,6 +608,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
                         .WithOne()
                         .HasForeignKey("BarkFluff.Users.Domain.UserPersonalization", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserSettings", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithOne()
+                        .HasForeignKey("BarkFluff.Users.Domain.UserSettings", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

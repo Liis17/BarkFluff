@@ -1,4 +1,5 @@
 using Barkfluff.WebServer.Services;
+using BarkFluff.GrpcServer.Metrics;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,11 +11,13 @@ namespace Barkfluff.WebServer.Controllers
     {
         private readonly SupportChatService _chatService;
         private readonly TelegramService _telegramService;
+        private readonly MetricsCollector _metrics;
 
-        public SupportChatController(SupportChatService chatService, TelegramService telegramService)
+        public SupportChatController(SupportChatService chatService, TelegramService telegramService, MetricsCollector metrics)
         {
             _chatService = chatService;
             _telegramService = telegramService;
+            _metrics = metrics;
         }
 
         [HttpPost("send")]
@@ -30,6 +33,7 @@ namespace Barkfluff.WebServer.Controllers
                 return BadRequest(new { error = "Message too long" });
 
             _chatService.AddMessage(request.ChatId, request.Message, isAdmin: false);
+            _metrics.Increment("support_requests");
 
             try
             {

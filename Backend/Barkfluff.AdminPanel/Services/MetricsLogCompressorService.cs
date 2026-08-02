@@ -87,7 +87,7 @@ public class MetricsLogCompressorService : BackgroundService
             dayStart, settings.DryRun);
 
         // 1. Fetch all ServiceMetrics events for the day
-        var filterRead = "@Message like 'ServiceMetrics %'";
+        var filterRead = "Metrics.SchemaVersion = 2";
         var events = await seq.GetAllEventsListAsync(
             filter: filterRead,
             fromDateUtc: dayStart,
@@ -174,7 +174,7 @@ public class MetricsLogCompressorService : BackgroundService
         int deletedCount = 0;
         if (!settings.DryRun)
         {
-            var filterDelete = $"@MessageTemplate = '{EscapeSeqString(settings.SourceMessageTemplate)}'";
+            var filterDelete = $"Metrics.SchemaVersion = 2 and @MessageTemplate = '{EscapeSeqString(settings.SourceMessageTemplate)}'";
             try
             {
                 await seq.DeleteEventsAsync(
@@ -284,8 +284,7 @@ public class MetricsLogCompressorService : BackgroundService
             .Distinct()
             .ToList();
 
-        return required.All(x => cache.HourlyServiceMetrics.FindOne(row =>
-            row.ServiceName == x.Item1 && row.HourUtc == x.Hour && row.SchemaVersion == 2) is not null);
+        return required.All(x => cache.MetricRollupHours.FindById(x.Hour) is not null);
     }
 
     private static DateTime TruncateToHour(DateTime value) =>

@@ -1,707 +1,768 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Self-Hosted - BarkFluff</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Своя нода — Barkfluff</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <style>
+    :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff7a29; --brand-soft:#ff9a4c; --code:#0d0507; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; }
+    main { width:min(960px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
+    header, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+    a { color:var(--brand-soft); text-decoration:none; }
+    a:hover { text-decoration:underline; }
 
-    <style>
-        :root {
-            --bg-dark: #0f172a;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-            --primary: #3b82f6;
-            --card-bg: rgba(30, 41, 59, 0.6);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --code-bg: rgba(15, 23, 42, 0.6);
-            --heading-color: #e2e8f0;
-            --link-color: #60a5fa;
-            --table-border: rgba(255, 255, 255, 0.1);
-            --table-bg: rgba(30, 41, 59, 0.3);
-            --success: #10b981;
-            --warning: #f59e0b;
-        }
+    .hero { margin:28px 0 8px; padding:32px 28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
+    .hero h1 { margin:0 0 10px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
+    .hero p { margin:0; color:var(--muted); max-width:66ch; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
+    nav.toc { margin:20px 0 8px; padding:8px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); display:flex; flex-wrap:wrap; gap:4px; }
+    nav.toc a { padding:7px 11px; color:var(--muted); border-radius:8px; font-size:14px; }
+    nav.toc a:hover { color:var(--text); background:rgba(255,122,41,.14); text-decoration:none; }
 
-        body {
-            background-color: var(--bg-dark);
-            min-height: 100vh;
-            overflow-x: hidden;
-            color: var(--text-main);
-            position: relative;
-            padding: 40px 20px;
-            line-height: 1.7;
-        }
+    section { margin-top:40px; scroll-margin-top:16px; }
+    h2 { margin:0 0 14px; font-size:24px; display:flex; align-items:baseline; gap:12px; }
+    h2 .num { font-size:14px; font-weight:600; color:var(--brand); border:1px solid rgba(255,122,41,.4); border-radius:999px; padding:2px 10px; flex:none; }
+    h3 { margin:26px 0 10px; font-size:17px; }
+    p, li, td { color:var(--muted); }
+    ul, ol { padding-left:22px; }
+    li { margin:5px 0; }
+    strong { color:var(--text); }
 
-        .blobs {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            overflow: hidden;
-            pointer-events: none;
-        }
+    code { color:#ffd0a0; background:rgba(0,0,0,.35); border:1px solid var(--line); border-radius:6px; padding:1px 5px; font-size:13px; }
 
-        .blob {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(90px);
-            opacity: 0.5;
-            animation: float 20s infinite alternate;
-        }
+    table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; }
+    th, td { border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top; }
+    th { color:var(--text); background:rgba(255,122,41,.08); font-weight:600; }
+    td code { white-space:nowrap; }
+    .scroll-x { overflow-x:auto; }
 
-        .b1 {
-            top: -10%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: #4f46e5;
-            animation-duration: 25s;
-        }
+    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
+    .callout p { margin:0; }
+    .callout p + p { margin-top:8px; }
+    .callout.warn { border-left-color:#e0533b; background:rgba(224,83,59,.07); }
+    .callout .tag { display:block; margin-bottom:6px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--brand); font-weight:700; }
+    .callout.warn .tag { color:#ff8a72; }
 
-        .b2 {
-            bottom: -10%;
-            right: -10%;
-            width: 40vw;
-            height: 40vw;
-            background: #0ea5e9;
-            animation-duration: 30s;
-            animation-delay: -5s;
-        }
+    figure.code { margin:16px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--code); }
+    figure.code figcaption { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; background:rgba(255,240,220,.05); border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); }
+    figure.code figcaption b { color:var(--text); font-weight:600; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; }
+    figure.code pre { margin:0; padding:14px 16px; overflow:auto; font-size:12.5px; line-height:1.55; }
+    figure.code pre code { background:none; border:none; padding:0; color:#e8d6c4; white-space:pre; }
+    figure.code.tall pre { max-height:520px; }
+    .copy { background:none; border:1px solid var(--line); color:var(--muted); padding:4px 10px; border-radius:7px; cursor:pointer; font:inherit; font-size:12px; flex:none; }
+    .copy:hover { color:var(--text); border-color:var(--brand); }
 
-        @keyframes float {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(40px, -40px); }
-        }
+    footer { margin-top:48px; padding-top:20px; border-top:1px solid var(--line); color:#8a6a5b; font-size:13px; }
+    footer a { color:#8a6a5b; }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--card-border);
-            padding: 40px;
-            border-radius: 32px;
-            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
-            animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 30px;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .header h1 {
-            font-size: 32px;
-            font-weight: 800;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-        }
-
-        .header .subtitle {
-            color: var(--text-sub);
-            font-size: 16px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            transition: all 0.2s;
-            margin-bottom: 20px;
-        }
-
-        .back-link:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .back-link svg {
-            width: 16px;
-            height: 16px;
-        }
-
-        .content {
-            color: var(--text-main);
-        }
-
-        .content h2 {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--heading-color);
-            margin: 32px 0 16px 0;
-            letter-spacing: -0.5px;
-        }
-
-        .content h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--heading-color);
-            margin: 24px 0 12px 0;
-        }
-
-        .content p {
-            margin: 12px 0;
-            color: var(--text-sub);
-        }
-
-        .content ul, .content ol {
-            margin: 12px 0;
-            padding-left: 24px;
-            color: var(--text-sub);
-        }
-
-        .content li {
-            margin: 8px 0;
-        }
-
-        .content a {
-            color: var(--link-color);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .content a:hover {
-            color: var(--primary);
-            text-decoration: underline;
-        }
-
-        .content strong {
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        .content code {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            background: var(--code-bg);
-            padding: 2px 8px;
-            border-radius: 6px;
-            color: #a5b4fc;
-            border: 1px solid var(--card-border);
-        }
-
-        .content pre {
-            background: var(--code-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px;
-            overflow-x: auto;
-            margin: 16px 0;
-        }
-
-        .content pre code {
-            background: transparent;
-            padding: 0;
-            border: none;
-            color: var(--text-sub);
-        }
-
-        .content blockquote {
-            border-left: 3px solid var(--primary);
-            padding-left: 16px;
-            margin: 16px 0;
-            color: var(--text-sub);
-            font-style: italic;
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
-            margin: 24px 0;
-        }
-
-        .feature-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 20px;
-            transition: all 0.2s;
-        }
-
-        .feature-card:hover {
-            background: rgba(255,255,255,0.05);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .feature-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, var(--primary), #2563eb);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 12px;
-        }
-
-        .feature-icon svg {
-            width: 20px;
-            height: 20px;
-            fill: white;
-        }
-
-        .feature-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 8px;
-        }
-
-        .feature-desc {
-            font-size: 13px;
-            color: var(--text-sub);
-            line-height: 1.5;
-        }
-
-        .step-list {
-            counter-reset: step;
-            list-style: none;
-            padding: 0;
-        }
-
-        .step-list li {
-            position: relative;
-            padding-left: 50px;
-            margin: 20px 0;
-        }
-
-        .step-list li::before {
-            counter-increment: step;
-            content: counter(step);
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), #2563eb);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 14px;
-        }
-
-        .step-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 6px;
-        }
-
-        .step-desc {
-            font-size: 14px;
-            color: var(--text-sub);
-        }
-
-        .info-box {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 12px;
-            padding: 16px;
-            margin: 20px 0;
-        }
-
-        .info-box.warning {
-            background: rgba(245, 158, 11, 0.1);
-            border-color: rgba(245, 158, 11, 0.3);
-        }
-
-        .info-box.success {
-            background: rgba(16, 185, 129, 0.1);
-            border-color: rgba(16, 185, 129, 0.3);
-        }
-
-        .info-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 8px;
-        }
-
-        .info-title svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        .info-text {
-            font-size: 13px;
-            color: var(--text-sub);
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 1px solid var(--card-border);
-            color: var(--text-sub);
-            font-size: 13px;
-        }
-
-        .footer a {
-            color: var(--link-color);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            color: var(--primary);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 24px 20px;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-            .content h2 {
-                font-size: 18px;
-            }
-
-            .feature-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    @media (max-width:640px) {
+      .hero { padding:22px 18px; }
+      h2 { font-size:20px; }
+      figure.code pre { font-size:11.5px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="blobs">
-        <div class="blob b1"></div>
-        <div class="blob b2"></div>
+  <main>
+    <header>
+      <a href="/"><strong>barkfluff</strong></a>
+      <a href="/">На главную</a>
+    </header>
+
+    <div class="hero">
+      <h1>Своя нода Barkfluff</h1>
+      <p>Barkfluff — федеративная сеть независимых серверов. Каждый может поднять свою ноду: аккаунты, сообщения и файлы остаются на вашем железе, а с пользователями других нод ваши пользователи общаются через межсерверный протокол.</p>
     </div>
 
-    <div class="container">
-        <a href="/" class="back-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            На главную
-        </a>
+    <nav class="toc">
+      <a href="#otvetstvennost">Ответственность</a>
+      <a href="#trebovaniya">Требования</a>
+      <a href="#dns">DNS и TLS</a>
+      <a href="#compose">docker-compose.yml</a>
+      <a href="#env">.env</a>
+      <a href="#zapusk">Первый запуск</a>
+      <a href="#configuration">Заполнить в Configuration</a>
+      <a href="#federaciya">Федерация</a>
+      <a href="#obsluzhivanie">Обслуживание</a>
+    </nav>
 
-        <div class="header">
-            <h1>🏠 Self-Hosted BarkFluff</h1>
-            <p class="subtitle">Разверните BarkFluff на своём сервере и получите полный контроль над вашими данными</p>
-        </div>
+    <section id="otvetstvennost">
+      <h2><span class="num">0</span>Что вы на себя берёте</h2>
+      <div class="callout warn">
+        <span class="tag">Прочитайте до установки</span>
+        <p>Развернув ноду, вы становитесь её <strong>администратором и оператором персональных данных</strong> ваших пользователей. У вас будет технический доступ к базе данных, файловому хранилищу, резервным копиям и логам — то есть к содержимому обычных переписок. Вы отвечаете за хранение, выдачу и удаление этих данных, за модерацию и за соблюдение применимого к вам законодательства.</p>
+        <p>Разработчики Barkfluff публикуют программное обеспечение и протокол. Они не размещают вашу ноду, не имеют доступа к её данным и не отвечают за то, как вы их обрабатываете.</p>
+      </div>
+      <p>Опубликуйте на своей ноде собственные <a href="/legal/privacy-policy">политику конфиденциальности</a>, <a href="/legal/terms-of-service">условия использования</a> и <a href="/legal/account-deletion">порядок удаления аккаунта</a> — документы barkfluff.com можно взять за основу, но контакты и юрисдикция в них должны быть ваши. Что именно уходит на чужие ноды при федеративной переписке, описано на странице <a href="/legal/encryption">о шифровании</a>.</p>
+    </section>
 
-        <div class="content">
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6 0 1.2.6 1.2 1.2v3.5c0 .7-.6 1.3-1.2 1.3H9.2c-.6 0-1.2-.6-1.2-1.2v-3.5c0-.7.6-1.3 1.2-1.3V9.5C9.2 8.1 10.6 7 12 7zm0 1c-.8 0-1.5.7-1.5 1.5V11h3V9.5c0-.8-.7-1.5-1.5-1.5z"/></svg>
-                    </div>
-                    <div class="feature-title">Полный контроль</h3>
-                    <p class="feature-desc">Все данные хранятся на вашем сервере. Никаких третьих лиц.</p>
-                </div>
+    <section id="trebovaniya">
+      <h2><span class="num">1</span>Требования</h2>
+      <ul>
+        <li><strong>Linux-хост</strong> с Docker и Docker Compose v2.</li>
+        <li><strong>4 ГБ ОЗУ минимум</strong>, 8 ГБ комфортно: стек — это ~16 контейнеров, PostgreSQL, RabbitMQ, Redis и Seq.</li>
+        <li><strong>2 ядра CPU</strong> (параметры PostgreSQL в примере ниже подогнаны под 2 ядра / 8 ГБ).</li>
+        <li><strong>Диск</strong> — от 20 ГБ; дальше растёт вместе с файлами пользователей.</li>
+        <li><strong>Домен</strong> и wildcard-запись на субдомены сервисов.</li>
+        <li><strong>TLS-сертификат</strong> на apex и субдомены — Let's Encrypt подходит.</li>
+        <li><strong>nginx</strong> перед стеком: сервисы слушают только внутри Docker-сети, TLS терминируется на nginx. Готовые конфиги лежат в репозитории в <code>docker/nginx/</code>.</li>
+        <li><strong>Доступ к реестру образов</strong> <code>docker.barkfluff.com:5000</code>.</li>
+      </ul>
+      <div class="callout">
+        <p>Barkfluff в активной разработке. Ломающие изменения схемы БД случаются между релизами — держите бэкапы и не обновляйте продовую ноду без проверки на тестовой.</p>
+      </div>
+    </section>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-                    </div>
-                    <div class="feature-title">Глобальная доступность</h3>
-                    <p class="feature-desc">Доступ к мессенджеру из любой точки мира.</p>
-                </div>
+    <section id="dns">
+      <h2><span class="num">2</span>DNS и TLS</h2>
+      <p>Каждый сервис публикуется отдельным субдоменом — так устроены конфиги nginx в репозитории. Заведите A-записи (или один wildcard <code>*.example.com</code>) на IP вашей ноды:</p>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Субдомен</th><th>Куда проксируется</th><th>Зачем</th></tr></thead>
+        <tbody>
+          <tr><td><code>example.com</code></td><td>web-сервер + <code>federation:7031</code></td><td>Сайт и <code>/.well-known/barkfluff</code> — точка знакомства других нод</td></tr>
+          <tr><td><code>identity.</code></td><td><code>identity:7000</code></td><td>Регистрация, вход, 2FA, сессии</td></tr>
+          <tr><td><code>users.</code></td><td><code>users:7001</code></td><td>Профили, устройства, приватность</td></tr>
+          <tr><td><code>beacon.</code></td><td><code>beacon:7002</code></td><td>Публикация ноды и её адресов клиентам</td></tr>
+          <tr><td><code>files.</code></td><td><code>files:7005</code></td><td>Загрузка и раздача файлов</td></tr>
+          <tr><td><code>messages.</code></td><td><code>messages:7007</code></td><td>Чаты и сообщения</td></tr>
+          <tr><td><code>fast-auth.</code></td><td><code>fast-auth:7008</code></td><td>Вход по QR-коду</td></tr>
+          <tr><td><code>onliner.</code></td><td><code>onliner:7009</code></td><td>Онлайн-статусы</td></tr>
+          <tr><td><code>updates.</code></td><td><code>updates:7015</code></td><td>Realtime-поток обновлений</td></tr>
+          <tr><td><code>calls.</code>, <code>livekit.</code></td><td><code>calls:7025</code>, <code>livekit:7880</code></td><td>Звонки и SFU</td></tr>
+          <tr><td><code>bots.</code></td><td><code>bots:7027</code></td><td>Bot API</td></tr>
+          <tr><td><code>federation.</code></td><td><code>federation:7030</code></td><td>Межсерверный канал (нужен, только если включаете федерацию)</td></tr>
+          <tr><td><code>web.</code>, <code>panel.</code></td><td><code>web:7016</code>, admin-panel</td><td>Веб-клиент и панель администратора</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Для <code>federation.</code> допустим самоподписанный сертификат: чужие ноды сверяют отпечаток открытого ключа (SPKI), а не цепочку удостоверяющего центра. А вот на apex-домене сертификат обязан быть валидным для обычных браузеров — по <code>https://example.com/.well-known/barkfluff</code> с вами знакомятся ноды, которые вас ещё не знают.</p>
+    </section>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                    </div>
-                    <div class="feature-title">Настройка под себя</h3>
-                    <p class="feature-desc">Гибкая конфигурация под ваши потребности.</p>
-                </div>
+    <section id="compose">
+      <h2><span class="num">3</span>docker-compose.yml</h2>
+      <p>Релизный стек. Отличия от dev-варианта из репозитория: образы без суффикса <code>-dev</code> и порты инфраструктуры не выставлены на хост — наружу смотрит только nginx.</p>
+      <figure class="code tall">
+        <figcaption><b>docker-compose.yml</b><button class="copy" type="button">Копировать</button></figcaption>
+        <pre><code>x-common-variables: &amp;common-variables
+  CONFIGURATION_SERVICE_URL: "${CONFIGURATION_SERVICE_URL}"
+  ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-                    </div>
-                    <div class="feature-title">Open Source</h3>
-                    <p class="feature-desc">Открытый исходный код. Проверяйте и модифицируйте.</p>
-                </div>
-            </div>
+services:
+  # === Основные микросервисы ===
 
-            <h2>📋 Требования</h2>
-            <p>Для развертывания BarkFluff вам потребуется:</p>
-            <ul>
-                <li><strong>Docker</strong> и <strong>Docker Compose</strong> (рекомендуется версия 2.0+)</li>
-                <li><strong>Минимум 4 ГБ ОЗУ</strong> (рекомендуется 8 ГБ для комфортной работы)</li>
-                <li><strong>2 ядра CPU</strong> (рекомендуется 4 ядра)</li>
-                <li><strong>10 ГБ дискового пространства</strong> (зависит от количества пользователей и хранимых файлов)</li>
-                <li><strong>Доменное имя</strong> (для HTTPS и доступа извне)</li>
-                <li><strong>SSL-сертификат</strong> (можно получить бесплатно через Let's Encrypt)</li>
-            </ul>
+  configuration:
+    image: docker.barkfluff.com:5000/barkfluff-configuration:latest
+    container_name: configuration
+    restart: always
+    env_file:
+      - .env
+    environment:
+      &lt;&lt;: *common-variables
+      CONFIGURATION_HOST: ${CONFIGURATION_HOST}
+      CONFIGURATION_DATABASE: ${CONFIGURATION_DATABASE}
+      CONFIGURATION_USERNAME: ${CONFIGURATION_USERNAME}
+      CONFIGURATION_PASSWORD: ${CONFIGURATION_PASSWORD}
+      CONFIGURATION_PORT: ${CONFIGURATION_PORT}
+    networks:
+      - barkfluff-network
 
-            <div class="info-box warning">
-                <div class="info-title">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    Важно
-                </div>
-                <p class="info-text">BarkFluff находится в активной разработке. Некоторые функции могут быть нестабильны. Не рекомендуется использовать для production-нагрузок без предварительного тестирования.</p>
-            </div>
+  beacon:
+    image: docker.barkfluff.com:5000/barkfluff-beacon:latest
+    container_name: beacon
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+      BEACON_PORT: ${BEACON_PORT}
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-            <h2>🚀 Быстрый старт</h2>
-            <ol class="step-list">
-                <li>
-                    <div class="step-title">Склонируйте репозиторий</div>
-                    <div class="step-desc">
-                        <pre><code>git clone https://github.com/Liis17/BarkFluff.git
-cd BarkFluff</code></pre>
-                    </div>
-                </li>
+  identity:
+    image: docker.barkfluff.com:5000/barkfluff-identity:latest
+    container_name: identity
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-                <li>
-                    <div class="step-title">Настройте переменные окружения</div>
-                    <div class="step-desc">
-                        <p>Скопируйте файл .env.example в .env и настройте параметры:</p>
-                        <pre><code>cp .env.example .env</code></pre>
-                        <p>Отредактируйте .env файл, указав ваши параметры:</p>
-                        <pre><code># Доменное имя
-DOMAIN=barkfluff.example.com
+  users:
+    image: docker.barkfluff.com:5000/barkfluff-users:latest
+    container_name: users
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-# Секретные ключи
-JWT_SECRET=your-super-secret-jwt-key-min-32-chars
-DB_PASSWORD=secure-database-password
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=secure-minio-password
+  messages:
+    image: docker.barkfluff.com:5000/barkfluff-messages:latest
+    container_name: messages
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-# Email для SSL уведомлений
-SSL_EMAIL=admin@example.com</code></pre>
-                    </div>
-                </li>
+  files:
+    image: docker.barkfluff.com:5000/barkfluff-files:latest
+    container_name: files
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-                <li>
-                    <div class="step-title">Запустите Docker Compose</div>
-                    <div class="step-desc">
-                        <pre><code>docker-compose up -d</code></pre>
-                        <p>Первый запуск может занять несколько минут для инициализации баз данных и загрузки образов.</p>
-                    </div>
-                </li>
+  notification:
+    image: docker.barkfluff.com:5000/barkfluff-notification:latest
+    container_name: notification
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-                <li>
-                    <div class="step-title">Проверьте статус сервисов</div>
-                    <div class="step-desc">
-                        <pre><code>docker-compose ps</code></pre>
-                        <p>Все сервисы должны быть в статусе <code>healthy</code> или <code>running</code>.</p>
-                    </div>
-                </li>
+  fast-auth:
+    image: docker.barkfluff.com:5000/barkfluff-fast-auth:latest
+    container_name: fast-auth
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+      FASTAUTH_PORT: ${FASTAUTH_PORT}
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-                <li>
-                    <div class="step-title">Создайте первого пользователя</div>
-                    <div class="step-desc">
-                        <p>Откройте браузер и перейдите по адресу <code>https://your-domain.com</code></p>
-                        <p>Нажмите "Регистрация" и создайте первую учетную запись.</p>
-                    </div>
-                </li>
-            </ol>
+  updates:
+    image: docker.barkfluff.com:5000/barkfluff-updates:latest
+    container_name: updates
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-            <div class="info-box success">
-                <div class="info-title">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    Готово!
-                </div>
-                <p class="info-text">BarkFluff успешно развернут. Теперь вы можете скачать клиентское приложение и подключиться к вашему серверу.</p>
-            </div>
+  onliner:
+    image: docker.barkfluff.com:5000/barkfluff-onliner:latest
+    container_name: onliner
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-            <h2>📁 Структура сервисов</h2>
-            <p>BarkFluff использует микросервисную архитектуру. Вот основные компоненты:</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Сервис</th>
-                        <th>Порт</th>
-                        <th>Описание</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>API Gateway</strong></td>
-                        <td>443 (HTTPS)</td>
-                        <td>Единая точка входа, маршрутизация запросов</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Identity Service</strong></td>
-                        <td>внутренний</td>
-                        <td>Аутентификация, авторизация, управление пользователями</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Users Service</strong></td>
-                        <td>внутренний</td>
-                        <td>Профили пользователей, контакты</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Messages Service</strong></td>
-                        <td>внутренний</td>
-                        <td>Обработка и хранение сообщений</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Files Service</strong></td>
-                        <td>внутренний</td>
-                        <td>Загрузка и хранение файлов (Minio)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Updates Service</strong></td>
-                        <td>внутренний</td>
-                        <td>Push-уведомления в реальном времени</td>
-                    </tr>
-                    <tr>
-                        <td><strong>PostgreSQL</strong></td>
-                        <td>5432</td>
-                        <td>Основная база данных</td>
-                    </tr>
-                    <tr>
-                        <td><strong>RabbitMQ</strong></td>
-                        <td>5672</td>
-                        <td>Брокер сообщений для межсервисной коммуникации</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Redis</strong></td>
-                        <td>6379</td>
-                        <td>Кеширование, онлайн-статусы</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Minio</strong></td>
-                        <td>9000</td>
-                        <td>S3-совместимое объектное хранилище</td>
-                    </tr>
-                </tbody>
-            </table>
+  federation:
+    image: docker.barkfluff.com:5000/barkfluff-federation:latest
+    container_name: federation
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-            <h2>⚙️ Конфигурация</h2>
-            
-            <h3>Основные параметры</h3>
-            <p>Основные настройки находятся в файле <code>.env</code>:</p>
-            <pre><code># === Сеть ===
-DOMAIN=barkfluff.example.com
-HTTPS_ENABLED=true
+  cloud-messaging:
+    image: docker.barkfluff.com:5000/barkfluff-cloud-messaging:latest
+    container_name: cloud-messaging
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+      Firebase__ProjectId: "${FIREBASE_PROJECT_ID}"
+      Firebase__PrivateKeyId: "${FIREBASE_PRIVATE_KEY_ID}"
+      Firebase__PrivateKey: "${FIREBASE_PRIVATE_KEY}"
+      Firebase__ClientEmail: "${FIREBASE_CLIENT_EMAIL}"
+      Firebase__ClientId: "${FIREBASE_CLIENT_ID}"
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
 
-# === База данных ===
+  calls:
+    image: docker.barkfluff.com:5000/barkfluff-calls:latest
+    container_name: calls
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  bots:
+    image: docker.barkfluff.com:5000/barkfluff-bots:latest
+    container_name: bots
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - users
+      - messages
+      - files
+
+  web:
+    image: docker.barkfluff.com:5000/barkfluff-web:latest
+    container_name: web
+    restart: always
+    environment:
+      &lt;&lt;: *common-variables
+      MessagesService__Host: "http://messages:7007"
+      UsersService__Host: "http://users:7001"
+      FilesService__Host: "http://files:7005"
+      UpdatesService__Host: "http://updates:7015"
+      OnlinerService__Host: "http://onliner:7009"
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - identity
+      - users
+      - messages
+      - files
+      - updates
+      - onliner
+
+  # === Панель администрирования ===
+
+  admin-panel:
+    image: docker.barkfluff.com:5000/barkfluff-admin-panel:latest
+    container_name: admin-panel
+    restart: always
+    user: root
+    environment:
+      &lt;&lt;: *common-variables
+      ConfigurationService__Host: "${CONFIGURATION_SERVICE_HOST}"
+      ConfigurationService__Token: "${CONFIGURATION_SERVICE_TOKEN}"
+      Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
+      Telegram__Admins: "${TELEGRAM_ADMINS}"
+      Seq__ServerUrl: "http://seq:80"
+      Seq__ApiKey: "${SEQ_API_KEY:-}"
+      UsersService__Host: "${USERS_SERVICE_HOST}"
+      UsersService__Token: "${USERS_SERVICE_TOKEN}"
+      FilesService__Host: "${FILES_SERVICE_HOST}"
+      FilesService__Token: "${FILES_SERVICE_TOKEN}"
+      IdentityService__Host: "${IDENTITY_SERVICE_HOST}"
+      IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
+      BotsService__Host: "${BOTS_SERVICE_HOST:-http://bots:7027}"
+      BotsService__Token: "${BOTS_SERVICE_TOKEN:-}"
+    volumes:
+      # Панель показывает состояние контейнеров и умеет их перезапускать.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - admin_panel_data:/app/db
+      - ./docker-compose.yml:/docker-compose.yml:ro
+      - ./.env:/.env:ro
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - seq
+
+  # === Инфраструктура ===
+
+  postgres:
+    image: postgres:18
+    container_name: postgres_barkfluff
+    restart: always
+    # Тюнинг под 2 ядра / 8 ГБ: БД делит машину с остальными сервисами.
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=150"
+      - "-c"
+      - "shared_buffers=768MB"
+      - "-c"
+      - "effective_cache_size=2GB"
+      - "-c"
+      - "maintenance_work_mem=192MB"
+      - "-c"
+      - "work_mem=12MB"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "max_wal_size=2GB"
+      - "-c"
+      - "min_wal_size=512MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_compression=on"
+      - "-c"
+      - "jit=off"
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - backup_volume:/backup
+    # Порт наружу не публикуется: доступ к БД — только изнутри Docker-сети.
+    # Для ручных подключений используйте SSH-туннель.
+    networks:
+      - barkfluff-network
+
+  rabbitmq:
+    image: rabbitmq:latest
+    container_name: rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - barkfluff-network
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - barkfluff-network
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+    container_name: minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - barkfluff-network
+
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    restart: always
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "${SEQ_ADMIN_PASSWORD}"
+    volumes:
+      - seq_data:/data
+    networks:
+      - barkfluff-network
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: livekit
+    restart: always
+    command: --config /etc/livekit/livekit.yaml
+    volumes:
+      # Монтируется папка целиком, а не один файл: bind-mount одиночного файла,
+      # которого ещё нет на хосте, Docker молча подменяет каталогом.
+      - ./livekit:/etc/livekit:ro
+    ports:
+      # 7880 (сигнализация) фронтит nginx по WSS и наружу не публикуется.
+      # WebRTC-медиа nginx проксировать не может — эти порты всегда прямые:
+      - "7881:7881"                     # ICE/TCP fallback
+      - "50000-50200:50000-50200/udp"   # RTC media (UDP)
+    networks:
+      - barkfluff-network
+
+networks:
+  barkfluff-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  rabbitmq_data:
+  redis_data:
+  minio_data:
+  backup_volume:
+  seq_data:
+  admin_panel_data:</code></pre>
+      </figure>
+      <div class="callout">
+        <p><code>seq</code> (логи) и <code>minio</code> (консоль) веб-интерфейсы наружу не публикуются. Нужен доступ — заводите отдельный субдомен в nginx с авторизацией или ходите через SSH-туннель.</p>
+      </div>
+    </section>
+
+    <section id="env">
+      <h2><span class="num">4</span>.env</h2>
+      <p>Файл лежит рядом с <code>docker-compose.yml</code>. Здесь только то, без чего стек не поднимется: остальная конфигурация живёт в базе Configuration (шаг 6).</p>
+      <figure class="code tall">
+        <figcaption><b>.env</b><button class="copy" type="button">Копировать</button></figcaption>
+        <pre><code># Имя инстанса в служебных заголовках и логах. Обычно — имя хоста.
+HOSTNAME=node-1
+
+# Адрес Configuration для остальных сервисов. Они идут к нему при старте
+# за своей конфигурацией, поэтому адрес внутренний и порт совпадает
+# с CONFIGURATION_PORT ниже.
+CONFIGURATION_SERVICE_URL=http://configuration:7003
+
+# Production включает боевые уровни логирования и отключает dev-заглушки.
+ASPNETCORE_ENVIRONMENT=Production
+
+# --- PostgreSQL ---
+# Учётка суперпользователя. Базы сервисов (identity, users, messages, files,
+# onliner, calls, bots, federation) создаются автоматически при первом старте.
 POSTGRES_USER=barkfluff
-POSTGRES_PASSWORD=your-secure-password
-POSTGRES_DB=barkfluff
+POSTGRES_PASSWORD=смените-меня
+POSTGRES_DB=postgres
+POSTGRES_PORT=5432
 
-# === JWT ===
-JWT_SECRET=your-super-secret-key-min-32-characters
-JWT_EXPIRY_MINUTES=15
-REFRESH_TOKEN_EXPIRY_DAYS=30
+# --- База самого Configuration ---
+# Единственный сервис, которому строку подключения нельзя взять из Configuration.
+CONFIGURATION_HOST=postgres_barkfluff:5432
+CONFIGURATION_DATABASE=configuration
+CONFIGURATION_USERNAME=barkfluff
+CONFIGURATION_PASSWORD=смените-меня
 
-# === Minio (файловое хранилище) ===
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=your-minio-password
+# --- RabbitMQ (шина событий между сервисами) ---
+RABBITMQ_DEFAULT_USER=barkfluff
+RABBITMQ_DEFAULT_PASS=смените-меня
 
-# === Redis ===
-REDIS_PASSWORD=your-redis-password
+# --- MinIO (S3-совместимое хранилище файлов) ---
+# Эти же значения пойдут в S3Buckets:*:AccessKey / SecretKey в Configuration.
+MINIO_ROOT_USER=смените-меня
+MINIO_ROOT_PASSWORD=смените-меня
 
-# === RabbitMQ ===
-RABBITMQ_DEFAULT_USER=rabbitmq
-RABBITMQ_DEFAULT_PASS=your-rabbitmq-password</code></pre>
+# --- Порты сервисов ---
+# Читаются только теми сервисами, что берут порт из окружения;
+# остальные получают его из Configuration.
+CONFIGURATION_PORT=7003
+BEACON_PORT=7002
+FASTAUTH_PORT=7008
 
-            <h3>Резервное копирование</h3>
-            <p>Рекомендуется настроить регулярное резервное копирование:</p>
-            <pre><code># Создать резервную копию БД
-docker-compose exec postgres pg_dump -U barkfluff barkfluff > backup-$(date +%Y%m%d).sql
+# --- Seq (агрегатор логов) ---
+SEQ_ADMIN_PASSWORD=смените-меня
+SEQ_API_KEY=
 
-# Восстановить из резервной копии
-docker-compose exec -T postgres psql -U barkfluff barkfluff < backup-20260124.sql</code></pre>
+# --- Admin Panel ---
+# Вход в панель — через Telegram-бота: создайте бота у @BotFather и укажите
+# свой Telegram ID. Кто не в списке — в панель не попадёт.
+TELEGRAM_BOT_TOKEN=токен-вашего-бота
+TELEGRAM_ADMINS=123456789:вашusername
 
-            <h2>🔧 Управление</h2>
-            
-            <h3>Просмотр логов</h3>
-            <pre><code># Все логи
-docker-compose logs -f
+# Хосты сервисов для панели (внутренние адреса Docker-сети).
+CONFIGURATION_SERVICE_HOST=http://configuration:7003
+USERS_SERVICE_HOST=http://users:7001
+FILES_SERVICE_HOST=http://files:7005
+IDENTITY_SERVICE_HOST=http://identity:7000
+BOTS_SERVICE_HOST=http://bots:7027
 
-# Лог конкретного сервиса
-docker-compose logs -f identity-service</code></pre>
+# Сервисные токены для панели. Configuration генерирует их сам при первом
+# старте — после шага 5 скопируйте значения из панели или из БД сюда
+# и перезапустите admin-panel. Configuration XAuth не проверяет,
+# поэтому CONFIGURATION_SERVICE_TOKEN может остаться пустым.
+CONFIGURATION_SERVICE_TOKEN=
+USERS_SERVICE_TOKEN=
+FILES_SERVICE_TOKEN=
+IDENTITY_SERVICE_TOKEN=
+BOTS_SERVICE_TOKEN=
 
-            <h3>Перезапуск сервисов</h3>
-            <pre><code># Перезапустить все
-docker-compose restart
+# --- Firebase (push-уведомления на Android) ---
+# Из JSON сервисного аккаунта firebase-adminsdk. Не нужны — оставьте пустыми,
+# push просто не будет отправляться.
+FIREBASE_PROJECT_ID=
+FIREBASE_PRIVATE_KEY_ID=
+FIREBASE_PRIVATE_KEY=""
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_CLIENT_ID=</code></pre>
+      </figure>
+      <div class="callout warn">
+        <span class="tag">Пароли</span>
+        <p>Все значения <code>смените-меня</code> — обязательны к замене до первого запуска. Пароль PostgreSQL после старта менять больно: он уже записан в строки подключения внутри базы Configuration.</p>
+      </div>
+    </section>
 
-# Перезапустить конкретный сервис
-docker-compose restart messages-service</code></pre>
+    <section id="zapusk">
+      <h2><span class="num">5</span>Первый запуск</h2>
+      <p>Порядок важен: Configuration должен подняться первым — он накатывает свои миграции и заполняет конфигурацию остальных сервисов значениями по умолчанию. Без этого другие сервисы не стартуют.</p>
+      <figure class="code">
+        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <pre><code>docker login docker.barkfluff.com:5000
+docker compose pull
 
-            <h3>Остановка</h3>
-            <pre><code># Остановить все сервисы
-docker-compose down
+# 1. Сначала база и Configuration
+docker compose up -d postgres
+docker compose up -d configuration
+docker compose logs -f configuration     # ждём "Авто-заполнение завершено"
 
-# Остановить и удалить данные (осторожно!)
-docker-compose down -v</code></pre>
+# 2. Затем всё остальное
+docker compose up -d
+docker compose ps</code></pre>
+      </figure>
+      <p>При старте Configuration заполняет пустые записи: генерирует JWT-ключ (64 символа), сервисные токены со сроком 10 лет, строки подключения к базам, внутренние адреса RabbitMQ, Redis и Seq. Всё это трогать не нужно. А вот то, что он заполнить не может, — в следующем шаге.</p>
+    </section>
 
-            <h2>🔐 Безопасность</h2>
-            <ul>
-                <li><strong>Всегда используйте HTTPS</strong> в production</li>
-                <li><strong>Регулярно обновляйте</strong> образы Docker</li>
-                <li><strong>Используйте сложные пароли</strong> для всех сервисов</li>
-                <li><strong>Настройте firewall</strong> и откройте только необходимые порты</li>
-                <li><strong>Регулярно делайте бэкапы</strong> базы данных</li>
-                <li><strong>Мониторьте логи</strong> на предмет подозрительной активности</li>
-            </ul>
+    <section id="configuration">
+      <h2><span class="num">6</span>Что заполнить в Configuration</h2>
+      <p>Конфигурация хранится в базе <code>configuration</code>, таблица <code>Configurations</code> (поля <code>Section</code>, <code>Key</code>, <code>Value</code>, <code>ServiceId</code>). Править удобнее всего через вкладку «Конфигурация» в панели администратора — она пишет туда же. Изменения читаются сервисами при старте, поэтому после правок нужен перезапуск затронутого контейнера.</p>
 
-            <div class="info-box">
-                <div class="info-title">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    Рекомендация
-                </div>
-                <p class="info-text">Для production-развертывания рекомендуется использовать reverse proxy (nginx, Traefik) и настроить автоматическое обновление SSL-сертификатов через Let's Encrypt.</p>
-            </div>
+      <h3>Обязательно: остаются пустыми после установки</h3>
+      <p>Автозаполнение эти ключи не трогает — без них сервисы работать не будут.</p>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Section</th><th>Key</th><th>Сервис</th><th>Что вписать</th></tr></thead>
+        <tbody>
+          <tr><td><code>Email</code></td><td><code>Host</code>, <code>Port</code>, <code>SenderEmail</code>, <code>SenderPassword</code></td><td>Notification</td><td>SMTP-сервер и учётка отправителя. Без этого не уйдут коды подтверждения регистрации, восстановления пароля и 2FA — новые пользователи не зарегистрируются</td></tr>
+          <tr><td><code>ServerProps</code></td><td><code>Name</code>, <code>PublicName</code>, <code>Description</code>, <code>Location</code></td><td>Beacon</td><td>Как нода называется и подписана в списке серверов у клиентов</td></tr>
+          <tr><td><code>ServerColor</code></td><td><code>Lite</code>, <code>Main</code>, <code>Hard</code></td><td>Beacon</td><td>Три hex-цвета оформления ноды в клиентах</td></tr>
+        </tbody>
+      </table>
+      </div>
 
-            <h2>📞 Поддержка</h2>
-            <p>Если у вас возникли проблемы при развертывании:</p>
-            <ul>
-                <li><strong>Документация:</strong> <a href="https://github.com/Liis17/BarkFluff/wiki">GitHub Wiki</a></li>
-                <li><strong>Issues:</strong> <a href="https://github.com/Liis17/BarkFluff/issues">Сообщить о проблеме</a></li>
-                <li><strong>Telegram:</strong> <a href="https://t.me/barkfluff">Канал поддержки</a></li>
-                <li><strong>Email:</strong> support@barkfluff.com</li>
-            </ul>
+      <h3>Обязательно: автозаполнение поставило заглушку</h3>
+      <p>Значения есть, но они из примера — с ними нода будет ссылаться на несуществующий домен и пускать кого угодно в хранилище.</p>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Section</th><th>Key</th><th>Стоит по умолчанию</th><th>Что вписать</th></tr></thead>
+        <tbody>
+          <tr><td><code>ExternalEndpoint</code></td><td><code>Host</code></td><td><code>https://identity.example.com</code> и т.д.</td><td>Ваши субдомены — по записи на каждый сервис из таблицы в шаге 2. Отсюда клиенты узнают, куда ходить</td></tr>
+          <tr><td><code>S3Buckets:*</code></td><td><code>AccessKey</code>, <code>SecretKey</code></td><td><code>minioadmin</code></td><td><code>MINIO_ROOT_USER</code> и <code>MINIO_ROOT_PASSWORD</code> из <code>.env</code>. Ключи прописываются отдельно для каждого из шести бакетов</td></tr>
+          <tr><td><code>S3Buckets:*</code></td><td><code>ServiceUrl</code></td><td><code>http://minio:9000</code></td><td>Оставить, если MinIO из этого же compose; заменить на адрес внешнего S3, если хранилище своё</td></tr>
+          <tr><td><code>LiveKit</code></td><td><code>ApiKey</code>, <code>ApiSecret</code></td><td><code>devkey</code> / <code>devsecret_change_me…</code></td><td>Свою пару — она же прописывается в <code>keys</code> в <code>livekit/livekit.yaml</code>. Иначе звонки сможет инициировать посторонний</td></tr>
+          <tr><td><code>LiveKit</code></td><td><code>PublicUrl</code></td><td><code>wss://calls.example.com</code></td><td>Ваш субдомен LiveKit — по нему клиенты подключаются к медиасерверу</td></tr>
+          <tr><td><code>NavigatorUrl</code></td><td>—</td><td><code>http://navigator:7010</code></td><td>Адрес каталога нод. Свой Navigator в compose не входит: укажите <code>https://navigator.barkfluff.com</code>, чтобы попасть в общий список, или свой каталог</td></tr>
+        </tbody>
+      </table>
+      </div>
 
-            <blockquote>
-                <p><strong>Спасибо за выбор BarkFluff!</strong></p>
-                <p>Мы ценим ваше доверие и стремимся сделать мессенджер максимально безопасным и удобным.</p>
-            </blockquote>
-        </div>
+      <h3>Заполняется само — не трогать</h3>
+      <ul>
+        <li><code>JwtSettings:SecretKey</code>, <code>Issuer</code>, <code>Audience</code>, <code>ExpiryMinutes</code> — ключ генерируется при первом старте. Смена ключа разлогинит всех.</li>
+        <li><code>UsersService</code>, <code>FilesService</code>, <code>MessagesService</code>, <code>IdentityService</code>, <code>OnlinerService</code>, <code>BotsService</code>, <code>FederationService</code> — внутренние адреса и токены межсервисного доступа.</li>
+        <li><code>IdentityDb</code>, <code>UsersDb</code>, <code>MessagesDb</code>, <code>FilesDb</code>, <code>OnlinerDb</code>, <code>CallsDb</code>, <code>BotsDb</code>, <code>FederationDb</code> — строки подключения, собранные из <code>POSTGRES_*</code>.</li>
+        <li><code>RabbitMQ</code>, <code>Redis</code>, <code>Seq</code>, <code>RunSettings:Port</code>, <code>TempFiles:ExpiresAt</code> — внутренние адреса и порты.</li>
+      </ul>
+      <div class="callout">
+        <p>Токены из <code>*Service:Token</code> нужно скопировать в <code>.env</code> (<code>USERS_SERVICE_TOKEN</code>, <code>FILES_SERVICE_TOKEN</code>, <code>IDENTITY_SERVICE_TOKEN</code>, <code>BOTS_SERVICE_TOKEN</code>) и перезапустить <code>admin-panel</code> — панель ходит в сервисы с ними и без совпадения получит отказ.</p>
+      </div>
+    </section>
 
-        <div class="footer">
-            <p>2026 BarkFluff. Все права защищены.</p>
-            <p style="margin-top: 8px;">
-                <a href="/">Главная</a> • 
-                <a href="/legal/privacy-policy">Конфиденциальность</a> • 
-                <a href="/legal/terms-of-service">Условия</a>
-            </p>
-        </div>
-    </div>
+    <section id="federaciya">
+      <h2><span class="num">7</span>Федерация (по желанию)</h2>
+      <p>По умолчанию федерация выключена: нода работает сама по себе, пользователи общаются только внутри неё. Чтобы связать её с остальной сетью, заполните ключи сервиса Federation:</p>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Section</th><th>Key</th><th>Что вписать</th></tr></thead>
+        <tbody>
+          <tr><td><code>Federation</code></td><td><code>ServerName</code></td><td>DNS-имя ноды — то, что будет после <code>@</code> в адресе пользователя. Менять потом нельзя: имя вшито в подписи событий</td></tr>
+          <tr><td><code>Federation</code></td><td><code>ExternalEndpoint</code></td><td>Публичный адрес межсерверного канала, например <code>https://federation.example.com</code></td></tr>
+          <tr><td><code>Federation</code></td><td><code>TlsSpkiSha256</code></td><td>SHA-256 отпечатки открытого ключа TLS-сертификата (через запятую). По ним чужие ноды пинят ваше соединение. Пусто — и они откажутся с вами соединяться</td></tr>
+          <tr><td><code>Federation</code></td><td><code>Enabled</code></td><td><code>true</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Отпечаток снимается с вашего сертификата:</p>
+      <figure class="code">
+        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <pre><code>openssl x509 -in fullchain.pem -pubkey -noout \
+  | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -hex</code></pre>
+      </figure>
+      <p>Проверить, что нода видна снаружи: <code>curl https://example.com/.well-known/barkfluff</code> должен вернуть подписанный документ с именем ноды, её адресом и ключами. Если вместо него <code>503</code> — не заполнены <code>ServerName</code> или <code>ExternalEndpoint</code>.</p>
+      <div class="callout warn">
+        <span class="tag">Что федерация означает для ваших пользователей</span>
+        <p>Федеративная переписка <strong>не</strong> сквозная: содержимое сообщений и файлы видит и ваша нода, и нода собеседника. Удаление аккаунта у вас не удаляет копии на чужих нодах. Федеративными пока бывают только личные чаты — групповых нет. Предупредите об этом своих пользователей в собственной политике конфиденциальности; отказаться от входящих федеративных чатов пользователь может в настройках приватности.</p>
+      </div>
+    </section>
+
+    <section id="obsluzhivanie">
+      <h2><span class="num">8</span>Обслуживание</h2>
+
+      <h3>Логи</h3>
+      <figure class="code">
+        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <pre><code>docker compose logs -f messages          # один сервис
+docker compose logs -f --tail=200        # всё сразу</code></pre>
+      </figure>
+      <p>Структурированные логи со всех сервисов собирает Seq — искать в нём удобнее, чем в выводе Docker.</p>
+
+      <h3>Резервные копии</h3>
+      <figure class="code">
+        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <pre><code># Все базы разом
+docker compose exec postgres pg_dumpall -U barkfluff &gt; backup-$(date +%F).sql
+
+# Файлы пользователей
+docker run --rm -v barkfluff_minio_data:/data -v "$PWD":/out alpine \
+  tar czf /out/minio-$(date +%F).tar.gz -C /data .</code></pre>
+      </figure>
+      <p>Бэкапить надо и базы, и хранилище: без файлов дамп базы восстановит переписку с битыми вложениями. Проверьте, что копия разворачивается, — непроверенного бэкапа не существует.</p>
+
+      <h3>Обновление</h3>
+      <figure class="code">
+        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <pre><code>docker compose pull
+docker compose up -d</code></pre>
+      </figure>
+      <p>Миграции базы сервисы накатывают сами при старте. Сначала снимите бэкап: откатить миграцию назад штатно нельзя.</p>
+
+      <h3>Безопасность</h3>
+      <ul>
+        <li>Наружу открыты только 80, 443 и медиапорты LiveKit — остальное закройте фаерволом.</li>
+        <li>Пароли из <code>.env</code> и токены из Configuration — это доступ ко всем перепискам ноды. Файл <code>.env</code> держите с правами <code>600</code> и вне репозитория.</li>
+        <li>Смена <code>JwtSettings:SecretKey</code> инвалидирует все сессии и межсервисные токены разом — годится как аварийная мера при утечке.</li>
+        <li>Доступ к сокету Docker есть у панели администратора: кто получил панель, тот получил хост.</li>
+      </ul>
+    </section>
+
+    <section id="podderzhka">
+      <h2><span class="num">9</span>Если что-то не поднялось</h2>
+      <ul>
+        <li>Сервис перезапускается в цикле — смотрите его логи первым делом: чаще всего он не смог достучаться до Configuration либо не нашёл свою запись в конфигурации.</li>
+        <li>Клиенты не видят ноду — проверьте <code>ExternalEndpoint:Host</code> и то, что nginx проксирует gRPC, а не обычный HTTP.</li>
+        <li>Исходники и сборочные конфиги: <a href="https://github.com/Liis17/BarkFluff">github.com/Liis17/BarkFluff</a>, вопросы по коду — <a href="https://github.com/Liis17/BarkFluff/issues">issues</a>.</li>
+        <li>Уязвимости в коде и протоколе — security@barkfluff.com. Данные пользователей вашей ноды разработчики не видят и запросы по ним не обрабатывают.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <span>2026 Barkfluff</span>
+      <span>
+        <a href="/">Главная</a> ·
+        <a href="/legal/privacy-policy">Конфиденциальность</a> ·
+        <a href="/legal/terms-of-service">Условия</a> ·
+        <a href="/legal/encryption">Шифрование</a>
+      </span>
+    </footer>
+  </main>
+
+  <script>
+    document.querySelectorAll('.copy').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var code = btn.closest('figure').querySelector('code');
+        navigator.clipboard.writeText(code.textContent).then(function () {
+          var old = btn.textContent;
+          btn.textContent = 'Скопировано';
+          setTimeout(function () { btn.textContent = old; }, 1500);
+        });
+      });
+    });
+  </script>
+  <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>

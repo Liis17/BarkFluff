@@ -20,6 +20,7 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.adapter.FolderTabsAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
+import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
@@ -44,6 +45,7 @@ class ChatsFragment : Fragment() {
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var realtimeService: RealtimeService
     private lateinit var chatCacheRepository: ChatCacheRepository
+    private lateinit var chatDraftRepository: ChatDraftRepository
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
     private var cacheScope: CacheScope? = null
     private var cachedDisplays: Map<String, CachedChatDisplay> = emptyMap()
@@ -52,6 +54,7 @@ class ChatsFragment : Fragment() {
     private var syncStatus: SyncStatus? = null
     private var isRealtimeReconnecting = false
     private var titleAnimationGeneration = 0
+    private var localDraftStates: Map<String, Boolean> = emptyMap()
 
     // Папки чатов
     private var folders: List<GrpcManager.ChatFolder> = emptyList()
@@ -94,6 +97,7 @@ class ChatsFragment : Fragment() {
         grpcManager = app.grpcManager
         realtimeService = app.realtimeService
         chatCacheRepository = app.chatCacheRepository
+        chatDraftRepository = app.chatDraftRepository
         cacheScope = CacheScope.from(globalParam)
 
         setupToolbar()
@@ -103,6 +107,13 @@ class ChatsFragment : Fragment() {
         showSkeleton()
 
         subscribeToRealtimeEvents()
+        viewLifecycleOwner.lifecycleScope.launch {
+            chatDraftRepository.drafts.collect { drafts ->
+                localDraftStates = drafts.mapValues { it.value.isActive }
+                if (::chatAdapter.isInitialized) applyFolderFilter()
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch { chatDraftRepository.loadLocal() }
         hydrateChatsFromCache()
         checkTokenAndLoadChats()
     }
@@ -216,7 +227,7 @@ class ChatsFragment : Fragment() {
         val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
 
         if (urlToUse.isNotBlank()) {
-            Log.d(TAG, "loadUserAvatar: Loading from URL=$urlToUse")
+            Log.d(TAG, "loadUserAvatar: Loading from URL")
             // Сначала показываем placeholder пока изображение загружается
             AvatarLoader.showPlaceholder(binding.userAvatarPlaceholder, fullName.ifBlank { globalParam.userName }, globalParam.userId)
             binding.userAvatar.visibility = View.GONE
@@ -265,7 +276,7 @@ class ChatsFragment : Fragment() {
             val result = grpcManager.getFileDownloadUrl(fileId)
             if (result.isSuccess) {
                 val url = result.getOrNull()
-                Log.d(TAG, "setupChatList: Got URL for fileId=$fileId, url=$url")
+                Log.d(TAG, "setupChatList: Got URL for fileId=$fileId")
                 url
             } else {
                 Log.e(TAG, "setupChatList: Failed to get URL for fileId=$fileId, error=${result.exceptionOrNull()?.message}")
@@ -347,7 +358,7 @@ class ChatsFragment : Fragment() {
                         globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
                         globalParam.picturePreviewUrl = userData.profilePicturePreviewUrl
                         globalParam.profilePictureUrl = userData.profilePictureUrl
-                        Log.d(TAG, "checkTokenAndLoadChats: Загружены pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}', picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
+                        Log.d(TAG, "checkTokenAndLoadChats: Загружены pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
                     }
                 }
             }
@@ -551,6 +562,8 @@ class ChatsFragment : Fragment() {
                 val ids = folder.chatIds.toSet()
                 allChats.filter { it.id in ids }
             }
+        }.map { chat ->
+            localDraftStates[chat.id]?.let { chat.copy(hasDraft = it) } ?: chat
         }
         val sorted = filtered.sortedByDescending { it.lastActivityAt }
         viewLifecycleOwner.lifecycleScope.launch {

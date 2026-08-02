@@ -162,6 +162,13 @@ services:
       FilesService__Host: "http://files:7005"
       UpdatesService__Host: "http://updates:7015"
       OnlinerService__Host: "http://onliner:7009"
+      Web__Push__VapidKey: "${WEB_PUSH_VAPID_KEY}"
+      Web__Push__Firebase__ApiKey: "${WEB_PUSH_FIREBASE_API_KEY}"
+      Web__Push__Firebase__AuthDomain: "${WEB_PUSH_FIREBASE_AUTH_DOMAIN}"
+      Web__Push__Firebase__ProjectId: "${WEB_PUSH_FIREBASE_PROJECT_ID}"
+      Web__Push__Firebase__StorageBucket: "${WEB_PUSH_FIREBASE_STORAGE_BUCKET}"
+      Web__Push__Firebase__MessagingSenderId: "${WEB_PUSH_FIREBASE_MESSAGING_SENDER_ID}"
+      Web__Push__Firebase__AppId: "${WEB_PUSH_FIREBASE_APP_ID}"
     networks:
       - barkfluff-network
     depends_on:
@@ -237,14 +244,6 @@ services:
       IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
       BotsService__Host: "${BOTS_SERVICE_HOST:-http://bots:7027}"
       BotsService__Token: "${BOTS_SERVICE_TOKEN:-}"
-      RemoteServers__Navigator__Host: "${NAVIGATOR_SSH_HOST:-}"
-      RemoteServers__Navigator__Port: "${NAVIGATOR_SSH_PORT:-22}"
-      RemoteServers__Navigator__Username: "${NAVIGATOR_SSH_USER:-root}"
-      RemoteServers__Navigator__Password: "${NAVIGATOR_SSH_PASSWORD:-}"
-      RemoteServers__Msk__Host: "${MSK_SSH_HOST:-}"
-      RemoteServers__Msk__Port: "${MSK_SSH_PORT:-22}"
-      RemoteServers__Msk__Username: "${MSK_SSH_USER:-root}"
-      RemoteServers__Msk__Password: "${MSK_SSH_PASSWORD:-}"
       Mail__SmtpHost: "${MAIL_SMTP_HOST:-}"
       Mail__SmtpPort: "${MAIL_SMTP_PORT:-587}"
       Mail__ImapHost: "${MAIL_IMAP_HOST:-}"
@@ -264,7 +263,7 @@ services:
       Mail__Accounts__4__Password: "${MAIL_SECURITY_PASSWORD:-}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - admin_panel_data:/app/db
+      - ./admindata:/app/db
       - ./docker-compose.yml:/docker-compose.yml:ro
       - ./.env:/.env:ro
     networks:
@@ -285,7 +284,7 @@ services:
       ACCEPT_EULA: "Y"
       SEQ_FIRSTRUN_ADMINPASSWORD: "${SEQ_ADMIN_PASSWORD}"
     volumes:
-      - seq_data:/data
+      - ./data/seq:/data
     networks:
       - barkfluff-network
 
@@ -301,7 +300,7 @@ services:
   #    MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
   #    MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
   #  volumes:
-  #    - minio_data:/data
+  #    - ./data/minio:/data
   #  command: server /data --console-address ":${MINIO_WEBPORT}"
   #  networks:
   #    - barkfluff-network
@@ -312,7 +311,7 @@ services:
     restart: always
     # Порты не проброшены наружу — доступен только внутри Docker-сети
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - ./data/rabbitmq:/var/lib/rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"
@@ -325,7 +324,7 @@ services:
     restart: always
     # Порты не проброшены наружу — доступен только внутри Docker-сети
     volumes:
-      - redis_data:/data
+      - ./data/redis:/data
     command: redis-server --appendonly yes
     networks:
       - barkfluff-network
@@ -387,8 +386,8 @@ services:
       POSTGRES_DB: "${POSTGRES_DB}"
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - pgdata:/var/lib/postgresql
-      - backup_volume:/backup
+      - ./data/postgres:/var/lib/postgresql
+      - ./backups:/backup
     ports:
       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     networks:
@@ -411,12 +410,3 @@ services:
 networks:
   barkfluff-network:
     driver: bridge
-
-volumes:
-  pgdata:
-  rabbitmq_data:
-  redis_data:
-  minio_data:
-  backup_volume:
-  seq_data:
-  admin_panel_data:

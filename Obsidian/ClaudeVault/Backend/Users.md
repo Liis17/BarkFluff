@@ -17,7 +17,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 Миграции применяются автоматически при старте.
 
-> ⚠️ **Известный баг тулинга (актуально минимум на `dotnet ef`/EFCore 10.0.8):** `dotnet ef migrations add` в этом окружении падает `System.MissingMethodException: Method not found: 'System.String Microsoft.EntityFrameworkCore.Diagnostics.AbstractionsStrings.ArgumentIsEmpty(System.Object)'`. Затрагивает любой сервис, не только Users. Обход — писать миграцию вручную: 3 файла в `Persistence/Migrations/` (`{timestamp}_{Name}.cs` Up/Down, `{timestamp}_{Name}.Designer.cs` с `[Migration]`+`[DbContext]`+полным `BuildTargetModel`, и обновить `*ContextModelSnapshot.cs`). Образец в Users — `20260417120000_AddUserPrivacy.*`. Проверка drift без БД (эта команда РАБОТАЕТ, в отличие от `migrations add`): `dotnet ef migrations has-pending-model-changes --project ... --no-build`. **Важно:** если в snapshot руками прописан `.HasDefaultValueSql(...)`/`.ValueGeneratedOnAdd()` (как у `User.Uuid` выше), это же нужно продублировать Fluent-конфигом в `OnModelCreating` — иначе snapshot разойдётся с рантайм-моделью и `ctx.Database.Migrate()` при старте упадёт `PendingModelChangesWarning` (крэш-луп контейнера).
+> ⚠️ **Известный баг тулинга (актуально минимум на `dotnet ef`/EFCore 10.0.8):** `dotnet ef migrations add` в этом окружении падает `System.MissingMethodException: Method not found: 'System.String Microsoft.EntityFrameworkCore.Diagnostics.AbstractionsStrings.ArgumentIsEmpty(System.Object)'`. Затрагивает любой сервис, не только Users. Обход — писать миграцию вручную: 3 файла в `Persistence/Migrations/` (`{timestamp}_{Name}.cs` Up/Down, `{timestamp}_{Name}.Designer.cs` с `[Migration]`+`[DbContext]` и маркером, ссылающимся на snapshot, и обновить `*ContextModelSnapshot.cs`). Образец в Users — `20260417120000_AddUserPrivacy.*`. Проверка drift без БД (эта команда РАБОТАЕТ, в отличие от `migrations add`): `dotnet ef migrations has-pending-model-changes --project ... --no-build`. **Важно:** если в snapshot руками прописан `.HasDefaultValueSql(...)`/`.ValueGeneratedOnAdd()` (как у `User.Uuid` выше), это же нужно продублировать Fluent-конфигом в `OnModelCreating` — иначе snapshot разойдётся с рантайм-моделью и `ctx.Database.Migrate()` при старте упадёт `PendingModelChangesWarning` (крэш-луп контейнера).
 
 ## Архитектура
 
@@ -28,7 +28,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ### Слои
 
-- `Domain/` — `User` (включая `Uuid` — глобальный идентификатор для федерации, см. ниже), `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `ChatFolder`, `DevicePrekeyBundle`, `OneTimePrekey`
+- `Domain/` — `User` (включая `Uuid` — глобальный идентификатор для федерации, см. ниже), `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`, `UserSettings`, `UserChatSettings`, `ChatFolder`, `DevicePrekeyBundle`, `OneTimePrekey`
 - `Features/` — MediatR команды/запросы (CQRS)
 - `Host/` — gRPC-сервисы
 - `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage`, `ChatFolderStorage`, `PrekeyStorage` (Transient)
@@ -79,6 +79,8 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Устройства**: `RegisterDevice` — upsert по DeviceId (Guid), обновляет все поля + `AuthorizedAt` (вызывается при логине). Хранит AppName, OS, Location, FirebaseDeviceToken. `UpdateDeviceAppInfo` — лёгкое обновление только `OriginalName` + `AppName` при refresh access-токена; пишет в БД только если значения изменились, `AuthorizedAt`/OS/Location не трогает (`DevicesStorage.UpdateDeviceAppInfoIfChanged`).
 
+FCM-привязка также хранит `UserDevice.PushPlatform` (`Android` или `Web`). Миграция задаёт existing token-ам `Android`, а web-клиент обязан передавать `WEB` в `SetFirebaseToken`. `ClearFirebaseToken` очищает токен **текущего** устройства по `UserContext.DeviceId`; применяется при выключении browser-push и logout. Server-запросы токенов возвращают платформу, чтобы [[Backend/CloudMessaging]] выбирал безопасный Web payload.
+
 **Prekey-bundle (X3DH)**: один bundle на устройство (1:1 с `UserDevice`, PK = DeviceId). Содержит `IdentityPubkey` (Ed25519, постоянный), `SignedPrekey*` (X25519 + signature, ротируется), `RegistrationId` (libsignal), `SignedPrekeyRotatedAt`. Пул `OneTimePrekey` (Many:1, уникальный (DeviceId, PrekeyId)) — расходные ключи. `FetchPrekeyBundle` атомарно claim'ит одну prekey через PostgreSQL `DELETE ... RETURNING ... FOR UPDATE SKIP LOCKED` — параллельные запросы не получают одну и ту же. Сервер не валидирует подпись signed prekey — это делает клиент-получатель через identity_pubkey.
 
 ## UsersApi — клиентский (TokenType.User)
@@ -98,11 +100,16 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `GetCurrentDevice()`                     | Текущее устройство                            | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
 | `RenameDevice(deviceId, customName)`     | Переименовать устройство                      |                                                                      |
 | `SetFirebaseToken(firebaseToken)`        | Установить FCM-токен текущего устройства      | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
+| `ClearFirebaseToken()`                   | Очистить FCM-токен текущего устройства        | Выключение Web push/logout; DeviceId — из JWT-claim                  |
 | `SetNotificationsEnabled(enabled)`       | Включить/выключить push на текущем устройстве | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
 | `GetPrivacySettings()`                   | Настройки приватности текущего пользователя   |                                                                      |
 | `UpdatePrivacySettings(settings)`        | Обновить настройки приватности                |                                                                      |
+| `AcceptLegalConsent(revision)`           | Зафиксировать принятие соглашения и политики  | Пишет `User.AcceptedLegalRevision` + `AcceptedLegalAt`. Пустая `revision` не записывается (warning в лог). См. [[#Согласие с документами]] |
 | `GetPersonalization()`                   | Персонализация текущего пользователя          |                                                                      |
 | `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                                |
+| `GetUserSettings()`                     | Синхронизируемые настройки фонов              | Глобальный фон и все per-chat override текущего пользователя         |
+| `SetGlobalChatBackground(file_id)`      | Установить глобальный фон                     | Пустой `file_id` удаляет глобальный фон                              |
+| `SetChatBackground(chat_id, file_id)`   | Установить фон конкретного чата               | Пустой `file_id` удаляет override и возвращает глобальный фон        |
 | `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера                 |
 | `SetProfilePoster(fileId)`               | Установить (или удалить) постер профиля       | Пустой `fileId` → удаление; не трогает `ChatBackgroundFileIds`       |
 | `RegisterPrekeyBundle(...)`              | Зарегистрировать X3DH bundle текущего устройства | Идемпотентно (повторный вызов перезаписывает identity/signed prekey, дополняет one-time pool без дубликатов). DeviceId — из JWT |
@@ -191,6 +198,23 @@ FRIENDS трактуется как NONE до появления сервиса 
 - Proto `deny_federated_dm` в `PrivacySettings` (7) появился ещё в 0.4; маппинг `PrivacyMapping`
   (`ToGrpc`/`ToDomain`) и `PrivacyStorage.Update` дополнены этапом 2.5.
 
+## Согласие с документами
+
+Поля прямо в `User` (миграция `20260731090000_AddLegalConsent`, обе колонки nullable — у существующих пользователей согласие не фиксировалось):
+
+| Поле | Тип | Смысл |
+|---|---|---|
+| `AcceptedLegalRevision` | `string?` | Редакция принятых Пользовательского соглашения и Политики конфиденциальности — дата «Последнее обновление» из шапки документа (`29 июля 2026 г.`). `null` = согласия не было |
+| `AcceptedLegalAt` | `DateTime?` | Момент фиксации (UTC) |
+
+Хранится **редакция, а не флаг** — как `GlobalParam.acceptedLegalRevision` в Android: обновился документ, старая редакция перестала совпадать, согласие запрашивается заново.
+
+`AcceptLegalConsent` вызывается клиентом **после** аутентификации: до входа токена нет, поэтому RPC — не гейт, а фиксация факта. Сам гейт клиентский (cookie `bf_legal_accepted`, см. [[Backend/Web]]). Сервер вход без согласия **не** отклоняет — это поменяло бы поведение всех клиентов сразу.
+
+Сейчас RPC зовёт только веб-клиент. Android / WinUI / macOS / iOS хранят согласие локально и на сервер его не шлют.
+
+Feature: `Features/Legal/AcceptLegalConsent/` (по образцу `Features/Privacy/UpdatePrivacySettings/`), запись — `UsersStorage.AcceptLegalConsent`.
+
 ## Персонализация
 
 `UserPersonalization` (1:1 с `User`). Поля:
@@ -201,6 +225,12 @@ FRIENDS трактуется как NONE до появления сервиса 
 | `ChatBackgroundFileIds` | `string[]` | Массив FileId фоновых изображений чатов, загруженных пользователем |
 
 Запись создаётся по требованию при первом обращении (`GetOrCreate`). Хранится в таблице `UserPersonalizations` (PostgreSQL `text[]` для массива).
+
+### Синхронизируемые фоны чатов
+
+`UserSettings` — 1:1 с `User`, содержит nullable `GlobalChatBackgroundFileId`. `UserChatSettings` хранит персональные override с уникальным индексом `(UserId, ChatId)`; фон всегда виден и меняется только владельцем настройки, не другими участниками чата. При отсутствии записи чата клиент применяет глобальный фон.
+
+`GetUserSettings` отдаёт глобальное значение и весь список override при старте клиента. `SetChatBackground` с пустым FileId удаляет запись. При удалении FileId из `UserPersonalization.ChatBackgroundFileIds` `UpdatePersonalization` очищает все ссылки на этот файл — и глобальную, и chat-specific.
 
 ## Папки чатов
 
@@ -266,6 +296,7 @@ FRIENDS трактуется как NONE до появления сервиса 
 | `bot_users_create_requests` | CreateBotUser (service-to-service) |
 | `bot_users_delete_requests` | DeleteBotUser (service-to-service) |
 | `profile_updates_server` | UpdateProfileServer (service-to-service) |
+| `legal_consents_accepted` | AcceptLegalConsent |
 
 ## Конфигурация
 

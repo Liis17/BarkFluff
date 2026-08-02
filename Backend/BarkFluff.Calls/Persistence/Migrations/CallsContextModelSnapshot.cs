@@ -66,7 +66,10 @@ namespace BarkFluff.Calls.Persistence.Migrations
 
                     b.HasIndex("CalleeUserId");
 
-                    b.HasIndex("ChatId");
+                    b.HasIndex("ChatId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CallSessions_OneActiveGroupCall")
+                        .HasFilter("\"ChatId\" IS NOT NULL AND \"Status\" IN (0, 1)");
 
                     b.HasIndex("Status");
 

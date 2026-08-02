@@ -79,7 +79,10 @@
 ## Frontend — страницы
 
 ### `wwwroot/index.html`
-Страница входа. Подключает: `device.js`, `tokens.js`, `metadata.js`, `auth.js`, `fast-auth.js`, `login-page.js`, `register.js`, proto-bundle. Содержит разметку модалки регистрации `#registerOverlay` и стили `.reg-*`.
+Страница входа. Подключает: `device.js`, `tokens.js`, `metadata.js`, `utils.js`, `auth.js`, `legal.js`, `fast-auth.js`, `login-page.js`, `register.js`, proto-bundle. Содержит разметку модалки регистрации `#registerOverlay` со стилями `.reg-*`, читалку документов `#legalOverlay` (`.legal-*`, переиспользует `.reg-dialog`), строку согласия `#legalConsentRow` и плашку `#cookieNotice`.
+
+### `wwwroot/legal/`
+Генерируется при сборке MSBuild-таргетом `CopyLegalDocs` из `Backend/Barkfluff.WebServer/html/legal/*.md`. В git не хранится (`.gitignore`).
 
 ### `wwwroot/messenger.html`
 Главный мессенджер. Подключает все JS-модули из `js/app/`.
@@ -112,10 +115,14 @@ TokenStore: хранит access/refresh токены в localStorage или sess
 - Форма входа (username/password)
 - OTP-форма (если 2FA включён)
 - Проверка существующей сессии при загрузке страницы
-- Редирект в `/messenger` после успешного входа
+- Гейт согласия: `applyGate()` блокирует `#signInBtn` / `#toRegisterBtn`, `startFastAuth()` — единственная точка запуска QR-сессии
+- Редирект в `/messenger` после успешного входа (после `BF.legal.flushConsent()`)
 
 ### `register.js` → `BF.register`
 Модальный мастер регистрации из 9 шагов на `index.html` (открывается по `#toRegisterBtn`). Самодостаточный (собственные gRPC-клиенты + ручная metadata). Шаги: имя → username → email → OTP → пароль → аватар (интерактивный кроп) → био → 2FA → готово. Подробности — [[Backend/Web#Регистрация по шагам (register.js)]].
+
+### `legal.js` → `BF.legal`
+Согласие с Пользовательским соглашением и Политикой конфиденциальности + cookie-уведомление на `index.html`. `init()` / `isAccepted()` / `accept()` / `flushConsent()` / `open(doc)`. Редакция парсится из шапки `TERMS_OF_SERVICE.ru.md`, хранится в cookie `bf_legal_accepted` и уходит в профиль через `UsersApi.AcceptLegalConsent`. Подробности — [[Backend/Web#Согласие с документами (legal.js)]].
 
 ### `clients.js` → `BF.clients`
 gRPC-Web клиенты для всех сервисов (IdentityApi, UsersApi, MessagesApi, FilesApi, UpdatesApi, OnlinerApi).

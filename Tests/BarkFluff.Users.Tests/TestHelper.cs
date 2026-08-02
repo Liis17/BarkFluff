@@ -23,6 +23,7 @@ public class TestHelper
     public DevicesStorage DevicesStorage { get; }
     public PrivacyStorage PrivacyStorage { get; }
     public PersonalizationStorage PersonalizationStorage { get; }
+    public UserSettingsStorage UserSettingsStorage { get; }
     public ChatFolderStorage ChatFolderStorage { get; }
     public PrekeyStorage PrekeyStorage { get; }
     public RemoteUsersStorage RemoteUsersStorage { get; }
@@ -41,6 +42,7 @@ public class TestHelper
         DevicesStorage = new DevicesStorage(DbContext);
         PrivacyStorage = new PrivacyStorage(DbContext);
         PersonalizationStorage = new PersonalizationStorage(DbContext);
+        UserSettingsStorage = new UserSettingsStorage(DbContext);
         ChatFolderStorage = new ChatFolderStorage(DbContext);
         PrekeyStorage = new PrekeyStorage(DbContext);
         RemoteUsersStorage = new RemoteUsersStorage(DbContext, CreateLogger<RemoteUsersStorage>());

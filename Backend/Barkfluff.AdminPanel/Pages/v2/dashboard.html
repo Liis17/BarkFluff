@@ -121,12 +121,36 @@
         }
         .service-card-body { padding: 16px; }
         .canvas-wrap { position: relative; height: 220px; }
+        .metric-empty { display:flex; height:100%; align-items:center; justify-content:center; color:var(--md-on-surface-variant); font-size:13px; }
         .metric-value { color: var(--md-primary); font-variant-numeric: tabular-nums; font-weight: 650; }
         .metric-unit { color: var(--md-on-surface-variant); font-size: 11px; margin-left: 4px; }
         .svc-loading-indicator { color: var(--md-primary); }
 
+        .upload-timing-card {
+            grid-column: 1 / -1;
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-md);
+            background: var(--md-surface-container-low);
+            padding: 20px;
+        }
+        .upload-timing-head {
+            display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+            margin-bottom: 18px;
+        }
+        .upload-timing-title { font-size: 16px; font-weight: 600; color: var(--md-on-surface); }
+        .upload-timing-total { color: var(--md-primary); font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+        .upload-timing-total small { color: var(--md-on-surface-variant); font-size: 12px; font-weight: 400; margin-left: 4px; }
+        .upload-timing-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .upload-timing-stage { min-width: 0; }
+        .upload-timing-stage-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: var(--md-on-surface-variant); font-size: 12px; }
+        .upload-timing-stage-head strong { color: var(--md-on-surface); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .upload-timing-bar { height: 6px; border-radius: 999px; overflow: hidden; background: var(--md-surface-container-highest); }
+        .upload-timing-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--md-primary); }
+
         @media (max-width: 600px) {
             .service-grid { grid-template-columns: 1fr; }
+            .upload-timing-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+            .upload-timing-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
 </head>
@@ -375,6 +399,37 @@
         while (sized >= 1024 && index < units.length - 1) { sized /= 1024; index++; }
         return `${sized.toLocaleString('ru-RU', {maximumFractionDigits:index ? 1 : 0})} ${units[index]}`;
     }
+    const lastUploadMetricIds = new Set([
+        'files_last_upload_total_ms',
+        'files_last_upload_buffering_ms',
+        'files_last_upload_hashing_ms',
+        'files_last_upload_processing_ms',
+        'files_last_upload_s3_ms'
+    ]);
+    function getLastMetricValue(metric) {
+        return [...(metric.points || [])].reverse().find(point => point.value != null)?.value;
+    }
+    function renderLastUploadCard(metrics) {
+        const values = Object.fromEntries(metrics.map(metric => [metric.id, getLastMetricValue(metric)]));
+        const total = values.files_last_upload_total_ms;
+        if (total == null) return null;
+
+        const stages = [
+            ['Буферизация', values.files_last_upload_buffering_ms],
+            ['SHA-256', values.files_last_upload_hashing_ms],
+            ['Обработка', values.files_last_upload_processing_ms],
+            ['S3', values.files_last_upload_s3_ms]
+        ];
+        const card = document.createElement('article');
+        card.className = 'upload-timing-card';
+        const stageMarkup = stages.map(([title, value]) => {
+            const duration = value ?? 0;
+            const width = total > 0 ? Math.min(duration / total * 100, 100) : 0;
+            return `<div class="upload-timing-stage"><div class="upload-timing-stage-head"><span>${title}</span><strong>${formatMetricValue(value, 'ms')} мс</strong></div><div class="upload-timing-bar"><span style="width:${width}%"></span></div></div>`;
+        }).join('');
+        card.innerHTML = `<div class="upload-timing-head"><span class="upload-timing-title">Последняя загрузка файла</span><span class="upload-timing-total">${formatMetricValue(total, 'ms')}<small>мс</small></span></div><div class="upload-timing-stages">${stageMarkup}</div>`;
+        return card;
+    }
     function renderMetricGroup(group) {
         const section = document.createElement('section');
         section.className = 'metric-service' + (group.expandedByDefault ? ' open' : '');
@@ -392,17 +447,23 @@
         const grid = section.querySelector('.service-grid');
         grid.innerHTML = '<div style="color:var(--md-on-surface-variant);padding:16px">Загрузка...</div>';
         try {
-            const response = await fetch(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=720`);
+            const response = await fetch(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`);
             if (!response.ok) throw new Error(response.status);
             const data = await response.json();
             grid.innerHTML = '';
-            data.metrics.forEach((metric, index) => {
+            const uploadMetrics = data.metrics.filter(metric => lastUploadMetricIds.has(metric.id));
+            const lastUploadCard = group.serviceName === 'BarkFluff.Files' ? renderLastUploadCard(uploadMetrics) : null;
+            if (lastUploadCard) grid.appendChild(lastUploadCard);
+
+            data.metrics.filter(metric => !lastUploadMetricIds.has(metric.id)).forEach((metric, index) => {
                 const card = document.createElement('article');
                 const points = metric.points || [];
-                const last = [...points].reverse().find(point => point.value != null)?.value;
+                const last = getLastMetricValue(metric);
                 card.className = 'service-card';
-                card.innerHTML = `<div class="service-card-head"><span class="name">${metric.title}</span><span><span class="metric-value">${formatMetricValue(last, metric.unit)}</span><span class="metric-unit">${metric.kind === 'counter' ? 'за час' : 'сейчас'}</span></span></div><div class="service-card-body"><div class="canvas-wrap"><canvas></canvas></div></div>`;
+                const hasData = points.some(point => point.value != null);
+                card.innerHTML = `<div class="service-card-head"><span class="name">${metric.title}</span><span><span class="metric-value">${formatMetricValue(last, metric.unit)}</span><span class="metric-unit">${metric.kind === 'counter' ? 'за час' : 'сейчас'}</span></span></div><div class="service-card-body"><div class="canvas-wrap">${hasData ? '<canvas></canvas>' : '<div class="metric-empty">Нет данных за 3 дня</div>'}</div></div>`;
                 grid.appendChild(card);
+                if (!hasData) return;
                 const color = metricColors[index % metricColors.length];
                 new Chart(card.querySelector('canvas').getContext('2d'), {
                     type: 'line',

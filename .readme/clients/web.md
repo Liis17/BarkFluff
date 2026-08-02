@@ -1,6 +1,23 @@
 [← Documentation hub](../README.md)
 
-# Web
+<p align="center">
+  <img src="../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="88" alt="BarkFluff logo">
+</p>
+
+<h1 align="center">Web</h1>
+
+<p align="center">
+  <strong>Generate browser bundles and build the gRPC-Web messenger host.</strong>
+</p>
+
+<p align="center">
+  <a href="../../README.md">Overview</a> ·
+  <a href="#requirements">Requirements</a> ·
+  <a href="#generate-browser-bundles">Generate</a> ·
+  <a href="#build-the-host">Build</a>
+</p>
+
+---
 
 The active web client is a vanilla-JavaScript SPA hosted by `Backend/BarkFluff.Web`. The separate `Frontend/Developers` project is the developer portal, not the messenger client.
 

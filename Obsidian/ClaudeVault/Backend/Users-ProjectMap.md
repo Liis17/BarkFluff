@@ -111,6 +111,12 @@
 | `Features/Privacy/UpdatePrivacySettings/` | Обновление настроек приватности |
 | `Features/Privacy/GetUserPrivacyServer/` | Получение настроек приватности для других сервисов (Onliner) |
 
+### Согласие с документами
+
+| Файл | Назначение |
+|------|-----------|
+| `Features/Legal/AcceptLegalConsent/` | Фиксация принятой редакции соглашения и политики в `User.AcceptedLegalRevision` / `AcceptedLegalAt` |
+
 ### Персонализация
 
 | Файл | Назначение |
@@ -236,4 +242,4 @@ BarkFluff.Users
 - ✅ Документация в [[Backend/Users]] соответствует коду
 - ✅ `SessionRevokedConsumer` в Obsidian **не упомянут** — добавлен в этот файл
 - ✅ `UserInfoQueueSender` зарегистрирован как `Scoped` (не `Transient` как написано в Users.md) — в Program.cs: `AddScoped<UserInfoQueueSender>()`
-- ✅ Структура миграций разделена на два каталога: `Persistence/Migrations/` (старые) и `Migrations/` (новые — AddPreviewAvatar, Badges, StorageLimit, UserDevices, Firebase, NotificationsEnabled, UserPrivacy, UserPersonalization)
+- ✅ Все EF Core миграции находятся в `Persistence/Migrations/`.

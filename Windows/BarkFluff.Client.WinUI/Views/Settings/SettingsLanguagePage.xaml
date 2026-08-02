@@ -1,0 +1,49 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsLanguagePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Language_Title}" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Language_Section}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Header="{StaticResource Settings_Language_System}">
+                        <RadioButton x:Name="SystemLanguageRadio" Click="OnLanguageClick" GroupName="ApplicationLanguage" Tag="system" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Header="{StaticResource Settings_Language_Russian}">
+                        <RadioButton x:Name="RussianLanguageRadio" Click="OnLanguageClick" GroupName="ApplicationLanguage" Tag="ru" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow Header="{StaticResource Settings_Language_English}">
+                        <RadioButton x:Name="EnglishLanguageRadio" Click="OnLanguageClick" GroupName="ApplicationLanguage" Tag="en" />
+                    </controls:SettingsRow>
+                    <!--  Немецкий, испанский и китайский требуют по отдельному словарю строк целиком.  -->
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}" Header="{StaticResource Settings_Language_German}">
+                        <RadioButton GroupName="ApplicationLanguage" IsEnabled="False" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}" Header="{StaticResource Settings_Language_Spanish}">
+                        <RadioButton GroupName="ApplicationLanguage" IsEnabled="False" />
+                    </controls:SettingsRow>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}" Header="{StaticResource Settings_Language_Chinese}">
+                        <RadioButton GroupName="ApplicationLanguage" IsEnabled="False" />
+                    </controls:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Margin="4,0,0,16"
+                       Style="{StaticResource MutedText}"
+                       Text="{StaticResource Settings_Language_Hint}" />
+
+            <InfoBar IsClosable="False"
+                     IsOpen="True"
+                     Message="{StaticResource Settings_Language_RestartRequired}"
+                     Severity="Informational" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

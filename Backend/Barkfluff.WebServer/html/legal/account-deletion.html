@@ -28,6 +28,8 @@
     footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
     .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
     .lang-btn:hover { color:var(--text); }
+    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
+    .callout p { margin:0; }
   </style>
   <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
@@ -46,20 +48,25 @@
     </nav>
     <article data-lang="ru">
       <h1>Политика удаления аккаунта</h1>
-      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 17 июня 2026 г.</p>
+      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</p>
 
-      <h2>1. Введение</h2>
-      <p>Эта страница описывает, как запросить удаление аккаунта Barkfluff и какие категории данных обрабатываются при таком запросе.</p>
+      <h2>1. Кому направлять запрос</h2>
+      <p>Barkfluff — федеративная сеть независимых нод. Ваш аккаунт принадлежит конкретной ноде, и удалить его может только администратор этой ноды. Разработчики Barkfluff не имеют доступа к данным на чужих нодах и не могут исполнить такой запрос.</p>
+      <div class="callout">
+        <p>Если ваш аккаунт создан на ноде <strong>barkfluff.com</strong> — отправьте запрос на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>. Если на другой ноде — ищите контакты её администратора на сайте этой ноды.</p>
+      </div>
+      <p>Эта страница описывает порядок для ноды barkfluff.com и то, как устроено удаление в программном обеспечении. Администратор другой ноды может установить иной порядок и сроки.</p>
 
       <h2>2. Как запросить удаление аккаунта</h2>
-      <p>Отправьте запрос на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a> с адреса, связанного с аккаунтом, или укажите данные, которые помогут подтвердить владение аккаунтом.</p>
+      <p>Отправьте запрос с адреса, связанного с аккаунтом, или укажите данные, которые помогут подтвердить владение аккаунтом.</p>
+      <p>В запросе укажите:</p>
       <ul>
         <li>username;</li>
         <li>email, использованный при регистрации;</li>
         <li>краткое описание запроса;</li>
         <li>дополнительные сведения для подтверждения владения аккаунтом, если доступа к email нет.</li>
       </ul>
-      <p>Ответ по запросам удаления: до 7 рабочих дней.</p>
+      <p>Срок ответа на ноде barkfluff.com — до 7 рабочих дней.</p>
 
       <h2>3. Какие данные относятся к аккаунту</h2>
       <table>
@@ -73,54 +80,75 @@
           <tr><td>Онлайн-статус</td><td>статус «в сети», last seen</td><td>Onliner</td></tr>
         </tbody>
       </table>
+      <p>Всё перечисленное хранится на вашей ноде. Резервные копии, срок их хранения и порядок удаления из них определяет администратор ноды.</p>
 
       <h2>4. Что происходит с сообщениями</h2>
       <ul>
         <li>Обычные сообщения поддерживают удаление через Messages API.</li>
-        <li>Приватные encrypted-сообщения при удалении помечаются как удаленные, а шифротекст очищается.</li>
-        <li>Секретные сообщения не сохраняются как обычная история на сервере: сервер ретранслирует envelope и временно буферизует его до доставки или истечения TTL.</li>
+        <li>Приватные encrypted-сообщения при удалении помечаются как удалённые, а шифротекст очищается.</li>
+        <li>Секретные сообщения не сохраняются как обычная история: нода ретранслирует envelope и временно буферизует его до доставки или истечения TTL.</li>
         <li>Если сообщение уже доставлено другому пользователю или включено в историю чата, обработка запроса учитывает целостность истории для других участников и применимые юридические обязанности.</li>
       </ul>
 
-      <h2>5. Экспорт данных перед удалением</h2>
+      <h2>5. Границы удаления в федерации</h2>
+      <div class="callout">
+        <p><strong>Удаление действует только в пределах вашей ноды.</strong> Если вы переписывались с пользователями других нод, копии ваших сообщений, вложений и профильных данных уже находятся на тех нодах. Автоматического распространения удаления по федерации сейчас нет.</p>
+      </div>
+      <ul>
+        <li>Копии на чужих нодах удаляет только их администратор — обращайтесь к нему напрямую.</li>
+        <li>Ни администратор вашей ноды, ни разработчики Barkfluff не могут удалить данные на чужой ноде и не отвечают за то, как долго она их хранит.</li>
+        <li>Файлы на чужих нодах заранее не копируются: они запрашиваются у вашей ноды в момент открытия. Но собеседник мог сохранить их себе — как и сделать скриншот переписки.</li>
+        <li>Модель та же, что у электронной почты: отправленное письмо нельзя отозвать с чужого сервера.</li>
+      </ul>
+      <p>Если вы хотите ограничить будущее распространение данных — запретите входящие федеративные личные чаты в настройках приватности до отправки запроса на удаление.</p>
+
+      <h2>6. Экспорт данных перед удалением</h2>
       <p>В Barkfluff есть gRPC-метод <code>Users.ExportData</code>. Он формирует JSON-данные:</p>
       <ul>
         <li><code>profile.json</code> — профиль пользователя;</li>
         <li><code>messages.json</code> — сообщения и чаты, где пользователь является участником;</li>
         <li><code>files.json</code> — метаданные файлов, связанных с профилем и сообщениями.</li>
       </ul>
-      <p>Если вам нужен экспорт перед удалением, укажите это в обращении на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
+      <p>Если вам нужен экспорт перед удалением, укажите это в обращении к администратору ноды. Удаление необратимо — экспортируйте важное заранее.</p>
 
-      <h2>6. Частичное удаление и отзыв доступа</h2>
+      <h2>7. Частичное удаление и отзыв доступа</h2>
       <ul>
         <li>Сообщения можно удалять через функции клиента, использующие Messages API.</li>
         <li>Активные сессии можно завершать через управление устройствами.</li>
-        <li>Firebase token хранится на устройстве в Users.UserDevices и используется для push-уведомлений.</li>
+        <li>Firebase token хранится в Users.UserDevices и используется для push-уведомлений.</li>
         <li>Аватар и постер профиля меняются или очищаются через функции профиля и персонализации.</li>
+        <li>Входящие федеративные личные чаты можно запретить в настройках приватности, не удаляя аккаунт.</li>
       </ul>
 
-      <h2>7. Контакты</h2>
+      <h2>8. Контакты</h2>
+      <p><strong>Администратор ноды barkfluff.com</strong>:</p>
       <ul>
         <li>Удаление и приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
         <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
       </ul>
+      <p>Аккаунт на другой ноде — только её администратор. Разработчик программного обеспечения запросы на удаление данных не обрабатывает.</p>
     </article>
     <article data-lang="en">
       <h1>Account Deletion Policy</h1>
-      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> June 17, 2026.</p>
+      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</p>
 
-      <h2>1. Introduction</h2>
-      <p>This page describes how to request deletion of a Barkfluff account and which categories of data are processed for such a request.</p>
+      <h2>1. Where to send the request</h2>
+      <p>Barkfluff is a federated network of independent nodes. Your account belongs to a specific node, and only that node's administrator can delete it. The Barkfluff developers have no access to data on other people's nodes and cannot fulfil such a request.</p>
+      <div class="callout">
+        <p>If your account was created on the <strong>barkfluff.com</strong> node, send the request to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>. If it was created on another node, look for its administrator's contacts on that node's website.</p>
+      </div>
+      <p>This page describes the procedure for the barkfluff.com node and how deletion works in the software. Another node's administrator may set a different procedure and different deadlines.</p>
 
       <h2>2. How to request account deletion</h2>
-      <p>Send a request to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a> from the address associated with the account, or provide details that help confirm ownership of the account.</p>
+      <p>Send the request from the address associated with the account, or provide details that help confirm ownership of the account.</p>
+      <p>In the request, include:</p>
       <ul>
         <li>username;</li>
         <li>the email used at registration;</li>
         <li>a brief description of the request;</li>
         <li>additional details to confirm account ownership if you no longer have access to the email.</li>
       </ul>
-      <p>Response time for deletion requests: up to 7 business days.</p>
+      <p>Response time on the barkfluff.com node: up to 7 business days.</p>
 
       <h2>3. What data belongs to the account</h2>
       <table>
@@ -134,37 +162,53 @@
           <tr><td>Online status</td><td>“online” status, last seen</td><td>Onliner</td></tr>
         </tbody>
       </table>
+      <p>All of the above is stored on your node. Backups, their retention period and the procedure for removing data from them are determined by the node administrator.</p>
 
       <h2>4. What happens to messages</h2>
       <ul>
         <li>Regular messages support deletion via the Messages API.</li>
         <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
-        <li>Secret messages are not stored as regular history on the server: the server relays the envelope and buffers it temporarily until delivery or TTL expiry.</li>
-        <li>If a message has already been delivered to another user or included in chat history, processing the request takes into account history integrity for other participants and applicable legal obligations.</li>
+        <li>Secret messages are not stored as regular history: the node relays the envelope and buffers it temporarily until delivery or TTL expiry.</li>
+        <li>If a message has already been delivered to another user or is part of a chat history, processing of the request takes into account the integrity of the history for other participants and the applicable legal obligations.</li>
       </ul>
 
-      <h2>5. Data export before deletion</h2>
-      <p>Barkfluff provides the gRPC method <code>Users.ExportData</code>. It produces JSON data:</p>
+      <h2>5. Limits of deletion in a federation</h2>
+      <div class="callout">
+        <p><strong>Deletion applies within your node only.</strong> If you have exchanged messages with users of other nodes, copies of your messages, attachments and profile data are already on those nodes. There is currently no automatic propagation of deletion across the federation.</p>
+      </div>
+      <ul>
+        <li>Copies on other nodes can only be deleted by their administrators — contact them directly.</li>
+        <li>Neither your node's administrator nor the Barkfluff developers can delete data on someone else's node or are responsible for how long it keeps that data.</li>
+        <li>Files are not copied to other nodes in advance: they are requested from your node at the moment they are opened. But your correspondent may have saved them — just as they may have taken a screenshot of the conversation.</li>
+        <li>The model is the same as with email: a sent letter cannot be recalled from someone else's server.</li>
+      </ul>
+      <p>If you want to limit further spreading of your data, refuse incoming federated private chats in the privacy settings before sending a deletion request.</p>
+
+      <h2>6. Exporting data before deletion</h2>
+      <p>Barkfluff has a gRPC method <code>Users.ExportData</code>. It produces JSON data:</p>
       <ul>
         <li><code>profile.json</code> — the user profile;</li>
-        <li><code>messages.json</code> — messages and chats where the user is a participant;</li>
-        <li><code>files.json</code> — metadata of files associated with the profile and messages.</li>
+        <li><code>messages.json</code> — messages and chats the user participates in;</li>
+        <li><code>files.json</code> — metadata of files linked to the profile and messages.</li>
       </ul>
-      <p>If you need an export before deletion, mention it in your request to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
+      <p>If you need an export before deletion, state that in your request to the node administrator. Deletion is irreversible — export what matters in advance.</p>
 
-      <h2>6. Partial deletion and access revocation</h2>
+      <h2>7. Partial deletion and access revocation</h2>
       <ul>
         <li>Messages can be deleted through client features that use the Messages API.</li>
-        <li>Active sessions can be terminated via device management.</li>
-        <li>The Firebase token is stored on the device in Users.UserDevices and used for push notifications.</li>
-        <li>The profile avatar and poster are changed or cleared through profile and personalization features.</li>
+        <li>Active sessions can be terminated through device management.</li>
+        <li>The Firebase token is stored in Users.UserDevices and used for push notifications.</li>
+        <li>The profile avatar and poster can be changed or cleared through the profile and personalization features.</li>
+        <li>Incoming federated private chats can be refused in the privacy settings without deleting the account.</li>
       </ul>
 
-      <h2>7. Contacts</h2>
+      <h2>8. Contacts</h2>
+      <p><strong>Administrator of the barkfluff.com node</strong>:</p>
       <ul>
         <li>Deletion and privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
         <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
       </ul>
+      <p>An account on another node — only its administrator. The software developer does not process data deletion requests.</p>
     </article>
     <footer>2026 Barkfluff</footer>
   </main>
@@ -190,5 +234,6 @@
       requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
     })();
   </script>
+  <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>

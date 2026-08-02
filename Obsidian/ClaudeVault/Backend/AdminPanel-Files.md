@@ -25,6 +25,7 @@
 |------|-----------|
 | `TokenDbContext.cs` | LiteDB-контекст `db/tokens.db`. Коллекция `Tokens` с индексом по `LastActivity`. Singleton. Создаёт директорию при первом запуске. |
 | `MetricsCacheDbContext.cs` | LiteDB-контекст `db/metrics_cache.db`. Коллекции: `HourlyStats` (события Seq за час), `HourlyTraffic` (трафик для графиков), `HourlyServiceMetrics` (CPU/memory/запросы по сервисам), `CompressionRuns` (история ежедневного сжатия логов-метрик). Singleton. |
+| `RemoteDockerDbContext.cs` | LiteDB-контекст `db/remote_docker.db`: коллекции удалённых серверов и отслеживаемых контейнеров, индексы по имени сервера и серверу контейнера. |
 
 ---
 
@@ -35,7 +36,7 @@
 | Файл | Эндпоинт-группа | Что делает |
 |------|----------------|-----------|
 | `AuthEndpoints.cs` | `/api/auth` | Запрос входа через Telegram, polling статуса, me, logout, управление токенами (список, rename, delete). |
-| `DockerEndpoints.cs` | `/api/docker` | Список контейнеров, start/stop/restart/pull конкретного, рестарт и обновление всей платформы, self-restart/update AdminPanel. |
+| `DockerEndpoints.cs` | `/api/docker` | Список контейнеров, start/stop/restart/pull конкретного, проверка обновления и self-restart/update AdminPanel, рестарт и обновление всей платформы. |
 | `BadgesEndpoints.cs` | `/api/badges` | CRUD бейджей пользователей через gRPC Users + Files (загрузка изображения). |
 | `StickersEndpoints.cs` | `/api/stickers` | Управление стикерпаками: CRUD пака, CRUD стикеров, смена обложки, прокси S3. gRPC Files. |
 | `UsersEndpoints.cs` | `/api/users` | Поиск пользователей, полный профиль (параллельные gRPC-вызовы), назначение бейджей, лимит хранилища, отключение 2FA, аватар, удаление сессий. |
@@ -44,7 +45,7 @@
 | `LogsExportEndpoints.cs` | `/api/seq/export` | Запуск, статус и скачивание ZIP-архива экспорта логов. |
 | `LogsCompressionEndpoints.cs` | `/api/seq/compress-metrics` | Ручной запуск ежедневного сжатия логов-метрик за конкретную дату, история прогонов. |
 | `NotificationsEndpoints.cs` | `/api/notifications` | Публикация push-рассылок (всем устройствам / по списку deviceId) через MassTransit. |
-| `RemoteDockerEndpoints.cs` | `/api/remote` | Управление контейнерами на удалённом хосте (второй сервер платформы), аналог `/api/docker` по сети. |
+| `RemoteDockerEndpoints.cs` | `/api/remote/servers` | CRUD сохранённых SSH-серверов, discovery контейнеров, список и действия над отслеживаемыми контейнерами. |
 | `ConfigurationEndpoints.cs` | `/api/configuration` | Чтение и обновление S3-конфигурации бакетов через gRPC Configuration. |
 | `S3BrowserEndpoints.cs` | `/api/s3` | Список бакетов, листинг объектов, получение presigned URL. |
 | `ReservedNamesEndpoints.cs` | `/api/reserved-names` | CRUD зарезервированных имён пользователей через gRPC Configuration. |
@@ -96,7 +97,8 @@
 | `S3BrowserService.cs` | AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из gRPC Configuration. Методы: листинг бакетов/объектов, presigned URL (5 мин). |
 | `MetricsCollectorService.cs` | `IHostedService`. Запускается при старте + каждый час. Собирает события Seq за 24ч, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет устаревшие данные (Stats >24ч, ServiceMetrics >12ч). |
 | `MailService.cs` | `IAsyncDisposable`. IMAP/SMTP клиент (MailKit) для служебных ящиков: по одному `ImapClient`+`SemaphoreSlim` на аккаунт. Список писем, письмо, вложения (включая inline по Content-ID), пометка прочитанным, отправка через SMTP. |
-| `RemoteDockerService.cs` | Управление Docker на удалённом сервере (host/port/credentials из `RemoteServersSettings`): статус контейнеров, start/stop/restart/pull, inspect labels. |
+| `RemoteDockerService.cs` | Управление Docker на сохранённых в LiteDB SSH-серверах: проверка подключения, discovery, статусы, start/stop/restart и Compose-only pull + recreate. |
+| `IRemoteSshClient.cs`, `SshNetRemoteSshClient.cs` | Тестируемая граница SSH-команд и SSH.NET-реализация с password/keyboard-interactive auth. |
 
 ---
 

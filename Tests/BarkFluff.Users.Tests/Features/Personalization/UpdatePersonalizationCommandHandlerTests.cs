@@ -21,7 +21,7 @@ public class UpdatePersonalizationCommandHandlerTests : IAsyncDisposable
         var user = await _h.SeedUser();
         await _h.PersonalizationStorage.GetOrCreate(user.Id);
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new UpdatePersonalizationCommandHandler(ctx, _h.PersonalizationStorage, TestHelper.CreateLogger<UpdatePersonalizationCommandHandler>());
+        var handler = new UpdatePersonalizationCommandHandler(ctx, _h.PersonalizationStorage, _h.UserSettingsStorage, TestHelper.CreateLogger<UpdatePersonalizationCommandHandler>());
 
         await handler.Handle(new UpdatePersonalizationCommand
         {
@@ -43,7 +43,7 @@ public class UpdatePersonalizationCommandHandlerTests : IAsyncDisposable
         var user = await _h.SeedUser();
         await _h.PersonalizationStorage.Update(user.Id, "old-poster", []);
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new UpdatePersonalizationCommandHandler(ctx, _h.PersonalizationStorage, TestHelper.CreateLogger<UpdatePersonalizationCommandHandler>());
+        var handler = new UpdatePersonalizationCommandHandler(ctx, _h.PersonalizationStorage, _h.UserSettingsStorage, TestHelper.CreateLogger<UpdatePersonalizationCommandHandler>());
 
         await handler.Handle(new UpdatePersonalizationCommand
         {
@@ -62,7 +62,7 @@ public class UpdatePersonalizationCommandHandlerTests : IAsyncDisposable
     {
         var user = await _h.SeedUser();
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new UpdatePersonalizationCommandHandler(ctx, _h.PersonalizationStorage, TestHelper.CreateLogger<UpdatePersonalizationCommandHandler>());
+        var handler = new UpdatePersonalizationCommandHandler(ctx, _h.PersonalizationStorage, _h.UserSettingsStorage, TestHelper.CreateLogger<UpdatePersonalizationCommandHandler>());
 
         await handler.Handle(new UpdatePersonalizationCommand { Personalization = null }, CancellationToken.None);
 

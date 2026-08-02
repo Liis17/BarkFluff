@@ -3,6 +3,7 @@ package com.barkfluff.client.cache
 import android.content.Context
 import android.util.Base64
 import androidx.room.Dao
+import androidx.room.ColumnInfo
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
@@ -11,6 +12,8 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.withTransaction
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
@@ -56,6 +59,15 @@ data class ChatCacheStats(
     val sizeBytes: Long
 )
 
+data class CachedChatDraft(
+    val chatId: String,
+    val text: String,
+    val replyToMessageId: Long,
+    val revision: String,
+    val generation: Long,
+    val syncState: Int
+)
+
 @Entity(tableName = "chat_cache_meta")
 data class CachedChatMetaEntity(
     @PrimaryKey val scopeId: String,
@@ -83,7 +95,19 @@ data class CachedChatEntity(
     val chatTypeNumber: Int,
     val lastActivityAt: Long,
     val privateInviteStateNumber: Int,
-    val privateInviterUserId: Long
+    val privateInviterUserId: Long,
+    @ColumnInfo(defaultValue = "0") val hasDraft: Boolean
+)
+
+@Entity(tableName = "cached_chat_drafts", primaryKeys = ["scopeId", "chatId"])
+data class CachedChatDraftEntity(
+    val scopeId: String,
+    val chatId: String,
+    val text: String,
+    val replyToMessageId: Long,
+    val revision: String,
+    val generation: Long,
+    val syncState: Int
 )
 
 @Entity(tableName = "cached_chat_folders", primaryKeys = ["scopeId", "folderId"])
@@ -177,6 +201,15 @@ interface ChatCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDisplay(display: CachedChatDisplayEntity)
 
+    @Query("SELECT * FROM cached_chat_drafts WHERE scopeId = :scopeId")
+    suspend fun drafts(scopeId: String): List<CachedChatDraftEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDraft(draft: CachedChatDraftEntity)
+
+    @Query("DELETE FROM cached_chat_drafts WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteDraft(scopeId: String, chatId: String)
+
     @Query("SELECT * FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY sentAtMillis DESC LIMIT :limit")
     suspend fun latestMessages(scopeId: String, chatId: String, limit: Int): List<CachedMessageEntity>
 
@@ -228,11 +261,12 @@ interface ChatCacheDao {
         CachedChatEntity::class,
         CachedChatFolderEntity::class,
         CachedChatDisplayEntity::class,
+        CachedChatDraftEntity::class,
         CachedMessageEntity::class,
         CachedPrivateMessageEntity::class,
         CachedSecretMessageEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
@@ -240,6 +274,7 @@ abstract class ChatCacheDatabase : RoomDatabase() {
 }
 
 class ChatCacheRepository(context: Context) {
+
     private val appContext = context.applicationContext
     private val databaseMutex = Mutex()
 
@@ -298,6 +333,22 @@ class ChatCacheRepository(context: Context) {
                 CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
             )
         }
+
+    suspend fun readChatDrafts(scope: CacheScope): List<CachedChatDraft> = withContext(Dispatchers.IO) {
+        database().cacheDao().drafts(scope.id).map {
+            CachedChatDraft(it.chatId, it.text, it.replyToMessageId, it.revision, it.generation, it.syncState)
+        }
+    }
+
+    suspend fun saveChatDraft(scope: CacheScope, draft: CachedChatDraft) = withContext(Dispatchers.IO) {
+        database().cacheDao().upsertDraft(
+            CachedChatDraftEntity(scope.id, draft.chatId, draft.text, draft.replyToMessageId, draft.revision, draft.generation, draft.syncState)
+        )
+    }
+
+    suspend fun deleteChatDraft(scope: CacheScope, chatId: String) = withContext(Dispatchers.IO) {
+        database().cacheDao().deleteDraft(scope.id, chatId)
+    }
 
     suspend fun latestMessages(scope: CacheScope, chatId: String, limit: Int): List<Shared.Message> =
         withContext(Dispatchers.IO) {
@@ -444,6 +495,7 @@ class ChatCacheRepository(context: Context) {
         val passphrase = databasePassphrase()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
             .openHelperFactory(SupportOpenHelperFactory(passphrase))
+            .addMigrations(MIGRATION_1_2)
             .build()
     }
 
@@ -495,7 +547,8 @@ class ChatCacheRepository(context: Context) {
             chatTypeNumber = chatType.number,
             lastActivityAt = lastActivityAt,
             privateInviteStateNumber = privateInviteState.number,
-            privateInviterUserId = privateInviterUserId
+            privateInviterUserId = privateInviterUserId,
+            hasDraft = hasDraft
         )
 
     private fun CachedChatEntity.toChatData(): GrpcManager.ChatData {
@@ -527,7 +580,8 @@ class ChatCacheRepository(context: Context) {
             lastActivityAt = lastActivityAt,
             privateInviteState = Shared.PrivateChatInviteState.forNumber(privateInviteStateNumber)
                 ?: Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED,
-            privateInviterUserId = privateInviterUserId
+            privateInviterUserId = privateInviterUserId,
+            hasDraft = hasDraft
         )
     }
 
@@ -559,5 +613,17 @@ class ChatCacheRepository(context: Context) {
         const val KEY_PREFERENCES = "offline_chat_cache_secure"
         const val KEY_PASSPHRASE = "database_passphrase"
         const val SEPARATOR = ""
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cached_chats ADD COLUMN hasDraft INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS cached_chat_drafts (" +
+                        "scopeId TEXT NOT NULL, chatId TEXT NOT NULL, text TEXT NOT NULL, " +
+                        "replyToMessageId INTEGER NOT NULL, revision TEXT NOT NULL, " +
+                        "generation INTEGER NOT NULL, syncState INTEGER NOT NULL, " +
+                        "PRIMARY KEY(scopeId, chatId))"
+                )
+            }
+        }
     }
 }

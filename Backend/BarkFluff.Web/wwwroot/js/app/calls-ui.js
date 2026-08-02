@@ -30,6 +30,7 @@
 
     // --- DOM ---
     var ringOverlay, ringAvatar, ringName, ringSub, ringAccept, ringReject;
+    var permissionOverlay, permissionTitle, permissionText, permissionRequest, permissionCancel;
     var screenEl, gridEl, titleEl, timerEl, btnMic, btnCam, btnScreen, btnHangup;
     var waitingAvatar, waitingName, waitingSub;
     var btnQuality, qualityPanel, audioChips, videoChips, videoQualityGroup, audioQualityGroup;
@@ -67,6 +68,7 @@
     var activeCallId = null;
     var timerInterval = null;
     var callStartedAt = 0;
+    var permissionDialog = null;
 
     // --- Рингтон (WebAudio, без ассета) ---
     var audioCtx = null, ringInterval = null;
@@ -92,15 +94,15 @@
     }
 
     function userName(user, fallback) {
-        if (!user) return fallback || 'Пользователь';
+        if (!user) return fallback || BF.i18n.t('common.user');
         var n = [user.firstName, user.lastName].filter(Boolean).join(' ');
-        return n || user.username || fallback || 'Пользователь';
+        return n || user.username || fallback || BF.i18n.t('common.user');
     }
 
     function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 
     function fillAvatar(el, user, fallbackText) {
-        var src = user && (user.profilePicturePreview || user.profilePicture);
+        var src = user && (user.profilePicture || user.profilePicturePreview);
         if (src) el.innerHTML = '<img src="' + escapeAttr(src) + '" alt="">';
         else el.textContent = (fallbackText || '?').charAt(0).toUpperCase();
     }
@@ -133,15 +135,15 @@
     // --- Ринг-оверлей ---
     function showRing(d) {
         ringCallId = d.callId;
-        ringName.textContent = d.isGroup ? 'Групповой звонок' : 'Входящий звонок';
-        ringSub.textContent = (d.mediaType === BF.calls.MediaType.VIDEO ? 'Видео' : 'Аудио');
+        ringName.textContent = BF.i18n.t(d.isGroup ? 'call.group' : 'call.incoming');
+        ringSub.textContent = BF.i18n.t(d.mediaType === BF.calls.MediaType.VIDEO ? 'attachment.video' : 'attachment.audio');
         ringAvatar.innerHTML = '';
         ringAvatar.textContent = d.isGroup ? '#' : '?';
         ringAvatar.classList.add('pulsing');
         if (!d.isGroup && d.callerUserId) {
             resolveUser(d.callerUserId).then(function (user) {
                 if (ringCallId !== d.callId) return;
-                ringName.textContent = userName(user, 'Входящий звонок');
+                ringName.textContent = userName(user, BF.i18n.t('call.incoming'));
                 fillAvatar(ringAvatar, user, ringName.textContent);
             });
         }
@@ -152,6 +154,114 @@
         ringOverlay.classList.remove('visible');
         ringCallId = null;
         stopRingtone();
+    }
+
+    function dismissIncomingPermissionDialog(callId) {
+        if (ringCallId !== callId) return false;
+        hideRing();
+        if (permissionDialog && permissionDialog.callId === callId) {
+            var error = new Error('incoming call is no longer active');
+            error.code = 'incoming-call-dismissed';
+            closePermissionDialog(error);
+        }
+        return true;
+    }
+
+    // --- Разрешения на медиа ---
+    function requiredPermissionNames(mediaType) {
+        var names = ['microphone'];
+        if (mediaType === BF.calls.MediaType.VIDEO) names.push('camera');
+        return names;
+    }
+
+    function permissionLabel(name) {
+        return BF.i18n.t(name === 'camera' ? 'call.permission.camera' : 'call.permission.mic');
+    }
+
+    function permissionList(names) {
+        return names.map(permissionLabel).join(BF.i18n.t('common.and'));
+    }
+
+    function getPermissionState(name) {
+        if (!navigator.permissions || !navigator.permissions.query) return Promise.resolve('prompt');
+        return navigator.permissions.query({ name: name }).then(function (status) {
+            return status.state;
+        }).catch(function () {
+            // Safari и отдельные браузеры не поддерживают query для camera/microphone.
+            return 'prompt';
+        });
+    }
+
+    function closePermissionDialog(error) {
+        if (!permissionDialog) return;
+        var dialog = permissionDialog;
+        permissionDialog = null;
+        permissionOverlay.classList.remove('visible');
+        if (error) dialog.reject(error);
+        else dialog.resolve();
+    }
+
+    function requestMediaPermissions(mediaType) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return Promise.reject(new Error('media devices are not supported by this browser'));
+        }
+        return navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: mediaType === BF.calls.MediaType.VIDEO
+        }).then(function (stream) {
+            stream.getTracks().forEach(function (track) { track.stop(); });
+        });
+    }
+
+    function showPermissionDialog(mediaType, states, callId) {
+        var names = requiredPermissionNames(mediaType);
+        var hasDeniedPermission = states && states.indexOf('denied') !== -1;
+        permissionTitle.textContent = BF.i18n.t('call.permission.title', { targets: permissionList(names) });
+        permissionText.textContent = hasDeniedPermission
+            ? BF.i18n.t('call.permission.denied')
+            : BF.i18n.t('call.permission.text', { targets: permissionList(names) });
+        permissionRequest.textContent = BF.i18n.t(hasDeniedPermission ? 'call.permission.retry' : 'common.allow');
+        permissionRequest.disabled = false;
+        permissionOverlay.classList.add('visible');
+
+        if (permissionDialog) return permissionDialog.promise;
+
+        var resolveDialog, rejectDialog;
+        var promise = new Promise(function (resolve, reject) {
+            resolveDialog = resolve;
+            rejectDialog = reject;
+        });
+        permissionDialog = { promise: promise, resolve: resolveDialog, reject: rejectDialog, mediaType: mediaType, callId: callId || null };
+        return promise;
+    }
+
+    function ensureMediaPermissions(mediaType, callId) {
+        var names = requiredPermissionNames(mediaType);
+        return Promise.all(names.map(getPermissionState)).then(function (states) {
+            if (states.every(function (state) { return state === 'granted'; })) return;
+            return showPermissionDialog(mediaType, states, callId);
+        });
+    }
+
+    function bindPermissionDialog() {
+        permissionRequest.addEventListener('click', function () {
+            if (!permissionDialog) return;
+            var dialog = permissionDialog;
+            permissionRequest.disabled = true;
+            requestMediaPermissions(dialog.mediaType).then(function () {
+                closePermissionDialog();
+            }).catch(function (e) {
+                console.warn('[calls] media permission was not granted:', e);
+                var denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+                showPermissionDialog(dialog.mediaType, denied ? ['denied'] : [], dialog.callId);
+                permissionRequest.disabled = false;
+            });
+        });
+        permissionCancel.addEventListener('click', function () {
+            var error = new Error('permission request dismissed');
+            error.code = 'media-permission-dismissed';
+            closePermissionDialog(error);
+        });
     }
 
     // --- Таймер ---
@@ -198,7 +308,7 @@
         label.textContent = opts.label;
         var hint = document.createElement('div'); hint.className = 'call-tile-hint'; hint.innerHTML = ICONS.expand;
         var close = document.createElement('button'); close.className = 'call-tile-close';
-        close.title = 'Свернуть'; close.innerHTML = ICONS.close;
+        close.title = BF.i18n.t('call.collapse'); close.innerHTML = ICONS.close;
         close.addEventListener('click', function (e) { e.stopPropagation(); collapseExpand(); });
         if (opts.withAvatar) el.appendChild(avatar);
         el.appendChild(label); el.appendChild(hint); el.appendChild(close);
@@ -229,12 +339,12 @@
     function ensureScreenTile(participant) {
         var key = screenKey(participant.identity);
         if (tiles[key]) return tiles[key];
-        var base = participant.isLocal ? 'Вы' : ('#' + participant.identity);
+        var base = participant.isLocal ? BF.i18n.t('call.you') : ('#' + participant.identity);
         var tile = createTile(key, { identity: participant.identity, isLocal: participant.isLocal,
-            label: base + ' · демонстрация экрана', withAvatar: false, screen: true });
+            label: BF.i18n.t('call.tile.screen', { name: base }), withAvatar: false, screen: true });
         var uid = Number(participant.identity);
         if (uid && !participant.isLocal) resolveUser(uid).then(function (user) {
-            if (tiles[key]) tile.labelEl.textContent = userName(user, base) + ' · демонстрация экрана';
+            if (tiles[key]) tile.labelEl.textContent = BF.i18n.t('call.tile.screen', { name: userName(user, base) });
         });
         return tile;
     }
@@ -389,7 +499,7 @@
 
     function connectLiveKit(d) {
         var L = window.LivekitClient;
-        if (!L) { console.error('[calls] LiveKit SDK не загружен'); return; }
+        if (!L) { console.error('[calls] LiveKit SDK is not loaded'); return; }
         if (room) { try { room.disconnect(); } catch (e) {} room = null; }
         clearGrid();
 
@@ -437,15 +547,15 @@
         // Микрофон: выключенный = красный перечёркнутый (mute).
         setIcon(btnMic, micOn ? ICONS.mic : ICONS.micOff);
         btnMic.classList.toggle('off', !micOn);
-        btnMic.title = micOn ? 'Выключить микрофон' : 'Включить микрофон';
+        btnMic.title = BF.i18n.t(micOn ? 'call.mic.off' : 'call.mic.on');
         // Камера/экран: обычная иконка пока не транслируешь; красная перечёркнутая = кнопка остановки.
         setIcon(btnCam, camOn ? ICONS.videoOff : ICONS.video);
         btnCam.classList.toggle('off', camOn);
-        btnCam.title = camOn ? 'Выключить камеру' : 'Включить камеру';
+        btnCam.title = BF.i18n.t(camOn ? 'call.camera.off' : 'call.camera.on');
         setIcon(btnScreen, screenOn ? ICONS.monitorOff : ICONS.monitor);
         btnScreen.classList.toggle('off', screenOn);
         btnScreen.classList.remove('active');
-        btnScreen.title = screenOn ? 'Остановить демонстрацию' : 'Демонстрация экрана';
+        btnScreen.title = BF.i18n.t(screenOn ? 'call.screenShare.stop' : 'call.screenShare');
         updateQualityChips();
     }
 
@@ -512,7 +622,7 @@
             menu.innerHTML = '';
             if (!devs.length) {
                 var em = document.createElement('div');
-                em.className = 'call-ctl-menu-empty'; em.textContent = 'Устройства не найдены';
+                em.className = 'call-ctl-menu-empty'; em.textContent = BF.i18n.t('call.noDevices');
                 menu.appendChild(em); return;
             }
             devs.forEach(function (d, i) {
@@ -568,16 +678,16 @@
         waitingAvatar.innerHTML = '';
         if (d.isGroup) {
             waitingAvatar.textContent = '#';
-            waitingName.textContent = 'Групповой звонок';
-            waitingSub.textContent = 'Ожидание участников…';
+            waitingName.textContent = BF.i18n.t('call.group');
+            waitingSub.textContent = BF.i18n.t('call.waitingMembers');
         } else {
             waitingAvatar.textContent = '?';
-            waitingName.textContent = 'Соединение…';
-            waitingSub.textContent = d.role === 'caller' ? 'Вызов…' : 'Подключение…';
+            waitingName.textContent = BF.i18n.t('call.connecting');
+            waitingSub.textContent = BF.i18n.t(d.role === 'caller' ? 'call.calling' : 'call.joining');
             if (d.peerUserId) {
                 resolveUser(d.peerUserId).then(function (user) {
                     if (activeCallId !== d.callId) return;
-                    waitingName.textContent = userName(user, 'Соединение…');
+                    waitingName.textContent = userName(user, BF.i18n.t('call.connecting'));
                     fillAvatar(waitingAvatar, user, waitingName.textContent);
                 });
             }
@@ -587,8 +697,8 @@
     // --- Экран активного звонка ---
     function openScreen(d) {
         activeCallId = d.callId;
-        titleEl.textContent = d.isGroup ? 'Групповой звонок' : 'Звонок';
-        timerEl.textContent = d.role === 'caller' ? 'Вызов…' : '';
+        titleEl.textContent = BF.i18n.t(d.isGroup ? 'call.group' : 'call.title');
+        timerEl.textContent = d.role === 'caller' ? BF.i18n.t('call.calling') : '';
         micOn = false; camOn = false; screenOn = false;
         selectedMicId = null; selectedCamId = null;
         currentAudioQuality = d.audioQuality != null ? d.audioQuality : 0;
@@ -633,16 +743,20 @@
             openScreen(d);
         });
         BF.calls.on('peer_accepted', function (d) {
-            if (activeCallId === d.callId) { titleEl.textContent = titleEl.textContent.replace('Звонок', 'В разговоре'); startTimer(); }
+            if (activeCallId === d.callId) {
+                // Групповой заголовок не меняем — как и раньше, «В разговоре» только для 1-на-1
+                if (titleEl.textContent === BF.i18n.t('call.title')) titleEl.textContent = BF.i18n.t('call.inProgress');
+                startTimer();
+            }
         });
         BF.calls.on('peer_rejected', function (d) {
-            if (activeCallId === d.callId) timerEl.textContent = 'Отклонён';
+            if (activeCallId === d.callId) teardown();
         });
         BF.calls.on('ring_dismiss', function (d) {
-            if (ringCallId === d.callId) hideRing();
+            dismissIncomingPermissionDialog(d.callId);
         });
         BF.calls.on('ended', function (d) {
-            if (ringCallId === d.callId) { hideRing(); return; }
+            if (dismissIncomingPermissionDialog(d.callId)) return;
             if (activeCallId === d.callId || d.local) teardown();
         });
         BF.calls.on('member', function () { /* плитки ведёт LiveKit; событие справочное */ });
@@ -661,13 +775,24 @@
         ringAccept.addEventListener('click', function () {
             if (!ringCallId) return;
             var id = ringCallId;
-            stopRingtone();
-            BF.calls.accept(id).catch(function (e) { console.error('accept failed', e); hideRing(); });
+            var call = BF.calls.getCurrent();
+            ringAccept.disabled = true;
+            ensureMediaPermissions(call ? call.mediaType : BF.calls.MediaType.AUDIO, id).then(function () {
+                if (ringCallId !== id) return;
+                stopRingtone();
+                return BF.calls.accept(id);
+            }).catch(function (e) {
+                if (!e || (e.code !== 'media-permission-dismissed' && e.code !== 'incoming-call-dismissed')) {
+                    console.error('accept failed', e);
+                    if (ringCallId === id) hideRing();
+                }
+            }).finally(function () { ringAccept.disabled = false; });
         });
         ringReject.addEventListener('click', function () {
             if (!ringCallId) return;
-            BF.calls.reject(ringCallId);
-            hideRing();
+            var id = ringCallId;
+            BF.calls.reject(id);
+            dismissIncomingPermissionDialog(id);
         });
         btnHangup.addEventListener('click', function () {
             if (activeCallId) BF.calls.end(activeCallId);
@@ -695,11 +820,11 @@
         // Выбор устройства (карет на кнопке микрофона/камеры).
         if (micCaret) micCaret.addEventListener('click', function (e) {
             e.stopPropagation();
-            openDeviceMenu(micMenu, 'audioinput', selectedMicId, 'Микрофон', pickMic);
+            openDeviceMenu(micMenu, 'audioinput', selectedMicId, BF.i18n.t('call.mic'), pickMic);
         });
         if (camCaret) camCaret.addEventListener('click', function (e) {
             e.stopPropagation();
-            openDeviceMenu(camMenu, 'videoinput', selectedCamId, 'Камера', pickCam);
+            openDeviceMenu(camMenu, 'videoinput', selectedCamId, BF.i18n.t('call.camera'), pickCam);
         });
         if (micMenu) micMenu.addEventListener('click', function (e) { e.stopPropagation(); });
         if (camMenu) camMenu.addEventListener('click', function (e) { e.stopPropagation(); });
@@ -731,6 +856,8 @@
         ringOverlay = $('callRingOverlay'); ringAvatar = $('callRingAvatar');
         ringName = $('callRingName'); ringSub = $('callRingSub');
         ringAccept = $('callRingAccept'); ringReject = $('callRingReject');
+        permissionOverlay = $('callPermissionOverlay'); permissionTitle = $('callPermissionTitle');
+        permissionText = $('callPermissionText'); permissionRequest = $('callPermissionRequest'); permissionCancel = $('callPermissionCancel');
         screenEl = $('callScreen'); gridEl = $('callGrid');
         titleEl = $('callScreenTitle'); timerEl = $('callScreenTimer');
         btnMic = $('callToggleMic'); btnCam = $('callToggleCam');
@@ -742,12 +869,13 @@
         selfPip = $('callSelfPip');
         micCaret = $('callMicCaret'); micMenu = $('callMicMenu');
         camCaret = $('callCamCaret'); camMenu = $('callCamMenu');
-        if (!ringOverlay || !screenEl) return; // нет разметки — модуль неактивен
+        if (!ringOverlay || !screenEl || !permissionOverlay) return; // нет разметки — модуль неактивен
         setIcon(btnHangup, ICONS.phoneEnd);
         setIcon(btnQuality, ICONS.quality);
         setIcon(micCaret, ICONS.chevron);
         setIcon(camCaret, ICONS.chevron);
         renderControls();
+        bindPermissionDialog();
         bindControls();
         bindCallEvents();
     }
@@ -758,5 +886,5 @@
         init();
     }
 
-    window.BF.callsUI = { teardown: teardown };
+    window.BF.callsUI = { teardown: teardown, ensureMediaPermissions: ensureMediaPermissions };
 })();

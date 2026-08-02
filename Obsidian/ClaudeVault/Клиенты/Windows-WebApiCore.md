@@ -30,17 +30,25 @@ WebApi (IDisposable, фасад)
 ├── WebApiServerManager      — информация о серверах
 ├── WebApiUpdateManager      — real-time streaming (IAsyncEnumerable)
 ├── WebApiOnlinerManager     — онлайн-статусы
-└── WebApiFastAuthManager    — QR-вход (анонимный, отдельный канал; наследует WebApiBase)
+├── WebApiFastAuthManager    — QR-вход (анонимный и авторизованный каналы)
+├── WebApiChatFolderManager  — папки чатов
+├── WebApiCallsManager       — сигнализация звонков LiveKit
+├── WebApiPrivateChatManager — E2E-чаты через passphrase
+└── WebApiSecretChatManager  — транспорт секретных чатов (без libsignal)
 ```
 
 ## Ключевые классы
 
 | Класс | Описание |
 |-------|----------|
-| `WebApi` | Фасад, 9 gRPC каналов + 9 API клиентов (включая анонимный FastAuth) |
-| `WebApiBase` | Абстрактный базовый, доступ ко всем gRPC клиентам |
-| `GlobalParam` | Состояние (токены, URL, профиль), AES-256-GCM; KDF PBKDF2-SHA512 × 600k (формат BFV3); чтение legacy BFV2 (PBKDF2-SHA256 × 100k) для миграции; пин-код произвольной длины и состава (цифры, буквы, символы) |
+| `WebApi` | Фасад gRPC-клиентов; `CallsAC` создаётся только если сервер объявил endpoint звонков, `FastAuthUserAC` используется для авторизованного подтверждения QR-входа |
+| `WebApiBase` | Абстрактный базовый класс менеджеров; содержит общий `ReadStream<T>` для безопасного чтения и отмены server-streaming RPC |
+| `GlobalParam` | Состояние (токены, URL, профиль), включая `SocketCalls`, `LivekitUrl`, `ServerDnsName`, `FederationEnabled`; AES-256-GCM; KDF PBKDF2-SHA512 × 600k (формат BFV3); чтение legacy BFV2 (PBKDF2-SHA256 × 100k) для миграции |
 | `ErrorReturner` | `(bool IsSuccess, string? ErrorMessage, int ErrorCode)` |
+| `ForwardingLetter` | Исходящее сообщение: `Text`, `FilesId`, `ForwardedMessageId` (0 = обычная отправка). Одно и то же поле обслуживает и ответ, и пересылку — как в веб-клиенте |
+| `MessageModel` | Сообщение чата, включая `IsEdited` / `EditedAt` |
+| `AttachmentsModel` | Вложение; для типа `ForwardedMessage` заполнен `ForwardedMessage` |
+| `ForwardedMessageModel` | Содержимое пересланного сообщения: `AuthorName`, `OriginalMessageId`, `Text`, `Attachments` (без вложенной пересылки — сервер рекурсию не присылает) |
 | `ImageProcessor` | JPEG, WebP, resize через SixLabors.ImageSharp |
 
 **События `WebApi`:**
@@ -76,7 +84,7 @@ public async Task<ErrorReturner> MethodName(params..., GlobalParam globalParam)
 
 В `WebApiClientManager` подключаются interceptors из [[Shared/Auth]]: JWT, device ID, IP, OS, app version в metadata.
 
-Все каналы создаются через общую фабрику `BuildInvoker(channel, Interceptor[])` — она проходит по массиву интерсепторов в порядке объявления и собирает `CallInvoker`. Это избавляет от 6 идентичных цепочек `.Intercept(...).Intercept(...)...` на каждый канал. Для FastAuth используется свой более короткий массив (без JWT).
+Все каналы создаются через общую фабрику `BuildInvoker(channel, Interceptor[])` — она проходит по массиву интерсепторов в порядке объявления и собирает `CallInvoker`. Для анонимного FastAuth используется короткий набор без JWT; `FastAuthUserAC` и опциональный `CallsAC` используют полный авторизованный набор.
 
 ## Безопасность загрузки файлов
 
@@ -112,13 +120,13 @@ _webApi.TokenRefreshed += async (_, _) =>
 
 ## Real-time Streaming
 
-`WebApiUpdateManager` и `WebApiOnlinerManager` — `IAsyncEnumerable` для серверного стриминга.
+`WebApiUpdateManager`, `WebApiOnlinerManager` и `WebApiCallsManager` возвращают `IAsyncEnumerable` для серверного стриминга. Все они используют `WebApiBase.ReadStream<T>`: вызов освобождается при отмене или досрочном выходе из перечисления.
 
 > ⚠️ Все стримы **необходимо пересоздавать** после получения события `TokenRefreshed` — старый стрим открыт со старым токеном и будет отклонён сервером.
 
 ## FastAuth QR-вход
 
-`WebApiFastAuthManager` — наследует `WebApiBase` (`internal class WebApiFastAuthManager : WebApiBase`), работает с отдельным анонимным каналом.
+`WebApiFastAuthManager` — наследует `WebApiBase` (`internal class WebApiFastAuthManager : WebApiBase`). Генерация и ожидание QR используют отдельный анонимный канал, а `ScanFastAuth`/`AcceptFastAuth`/`RejectFastAuth` — авторизованный `FastAuthUserAC`.
 
 **Публичные методы `WebApi`:**
 - `CreateFastAuthClient(gParam, deviceName, os, appName, appVersion, ip)` — создаёт анонимный gRPC канал к FastAuth с device-info interceptors (без JWT)
@@ -134,17 +142,26 @@ _webApi.TokenRefreshed += async (_, _) =>
 5. `Rejected` / `Expired` → рестарт сессии (новый QR)
 6. `Login_Unloaded` → отмена CTS + `DisposeFastAuthClient()`
 
-**GlobalParam:** добавлено поле `SocketFastAuth` — заполняется из `serverInfo.FastAuth.Endpoint` в `SelectServer` и `UpdateApiClient`.
+**GlobalParam:** `SocketFastAuth`, `SocketCalls`, `LivekitUrl`, `ServerDnsName`, `FederationEnabled` заполняются из `GetServerInfoResponse`. `SocketCalls` может быть пуст: это нормальный сервер без сервиса звонков.
 
 **Важно:** enum-значения протобуф в C#: `TokenFormat.Qr` (не `TokenFormatQr`), `FastAuthStatus.Accepted` (не `FastAuthStatusAccepted`).
 
 ## Proto
 
-Из `Shared/BarkFluff.Proto/`, подключены как `GrpcServices="Client"` (или `"None"` для shared.proto). Включает `fast_auth_api.proto`.
+Из `Shared/BarkFluff.Proto/`, подключены как `GrpcServices="Client"` (или `"None"` для shared.proto). Включают `fast_auth_api.proto` и `calls_api.proto`.
+
+## Новые клиентские контракты
+
+- Сообщения: правка/удаление, закрепления, добавление участника, обновление группы; typing и соответствующие Updates-стримы.
+- Users: mute, Firebase token, федеративный поиск, папки чатов и подтверждение FastAuth.
+- Звонки: `WebApiCallsManager` предоставляет только сигнализацию (`livekit_url`, `access_token`, события и историю); медиа остаётся за LiveKit SDK приложения. `CallsAvailable` сообщает, доступен ли сервис.
+- Приватные чаты: `WebApiPrivateChatManager` реализует Argon2id + AES-256-GCM passphrase-совместимую крипту. Ключ `byte[]` библиотека не сохраняет между вызовами.
+- Секретные чаты: `WebApiSecretChatManager`, prekey-RPC `WebApiUserManager` и три Updates-стрима передают `byte[]` envelope/bundle без преобразования. Double Ratchet, X3DH и хранилище сессий **не реализованы**: это обязанность приложения с libsignal.
 
 ## Зависимости
 
 - `Grpc.Net.Client 2.71.0`
 - `Google.Protobuf 3.32.0`
+- `Konscious.Security.Cryptography.Argon2 1.3.1` — Argon2id для приватных чатов
 - `SixLabors.ImageSharp 3.1.12`
 - [[Shared/Auth]], [[Shared/Exceptions]], [[Shared/SecurityUtilities]]

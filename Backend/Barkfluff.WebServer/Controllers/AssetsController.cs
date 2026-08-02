@@ -11,6 +11,7 @@ namespace Barkfluff.WebServer.Controllers
             { "barkfluff.web.png", "image/png" },
             { "barkfluff.android.jpg", "image/jpeg" },
             { "linkpreview.png", "image/png" },
+            { "cookie-notice.js", "text/javascript" },
         };
 
         [HttpGet("/assets/{filename}")]

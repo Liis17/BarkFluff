@@ -41,6 +41,12 @@ namespace BarkFluff.WebApi.Core
         internal BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC;
         internal BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC;
         internal BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthAC;
+        /// <summary>
+        /// FastAuth поверх авторизованного канала: ScanFastAuth/AcceptFastAuth/RejectFastAuth
+        /// требуют User-токен, анонимный <see cref="FastAuthAC"/> для них не подходит.
+        /// </summary>
+        internal BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthUserAC;
+        internal BarkFluff.Proto.Calls.CallsApi.CallsApiClient? CallsAC;
         #endregion
 
         #region gRPC Channels (internal для доступа менеджеров)
@@ -53,6 +59,8 @@ namespace BarkFluff.WebApi.Core
         internal GrpcChannel? UpdatesChannel;
         internal GrpcChannel? OnlinerChannel;
         internal GrpcChannel? FastAuthChannel;
+        internal GrpcChannel? FastAuthUserChannel;
+        internal GrpcChannel? CallsChannel;
         #endregion
 
         #region Менеджеры
@@ -69,10 +77,21 @@ namespace BarkFluff.WebApi.Core
         internal readonly WebApiUpdateManager UpdateManager;
         internal readonly WebApiOnlinerManager OnlinerManager;
         internal readonly WebApiFastAuthManager FastAuthManager;
+        internal readonly WebApiChatFolderManager ChatFolderManager;
+        internal readonly WebApiCallsManager CallsManager;
+        internal readonly WebApiPrivateChatManager PrivateChatManager;
+        internal readonly WebApiSecretChatManager SecretChatManager;
         #endregion
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
         public bool BeaconIsnull => BeaconAC == null;
+
+        /// <summary>
+        /// Доступны ли звонки: сервис Calls есть в ответе Beacon и его канал создан.
+        /// Сервер может быть развёрнут без звонков — тогда все методы CallManager
+        /// вернут ошибку вместо исключения.
+        /// </summary>
+        public bool CallsAvailable => CallsAC != null;
 
         public WebApi()
         {
@@ -89,6 +108,10 @@ namespace BarkFluff.WebApi.Core
             UpdateManager = new WebApiUpdateManager(this);
             OnlinerManager = new WebApiOnlinerManager(this);
             FastAuthManager = new WebApiFastAuthManager(this);
+            ChatFolderManager = new WebApiChatFolderManager(this);
+            CallsManager = new WebApiCallsManager(this);
+            PrivateChatManager = new WebApiPrivateChatManager(this);
+            SecretChatManager = new WebApiSecretChatManager(this);
         }
 
         #region IDisposable
@@ -113,6 +136,8 @@ namespace BarkFluff.WebApi.Core
                 UpdatesChannel?.Dispose();
                 OnlinerChannel?.Dispose();
                 FastAuthChannel?.Dispose();
+                FastAuthUserChannel?.Dispose();
+                CallsChannel?.Dispose();
             }
             _disposed = true;
         }
@@ -209,6 +234,60 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, Proto.Users.PrivacySettings? settings)> GetPrivacySettings(GlobalParam globalParam) => await UserManager.GetPrivacySettings(globalParam);
         public async Task<ErrorReturner> UpdatePrivacySettings(Proto.Users.PrivacySettings settings, GlobalParam globalParam) => await UserManager.UpdatePrivacySettings(settings, globalParam);
         public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) => await UserManager.SetNotificationsEnabled(enabled, globalParam);
+        public async Task<ErrorReturner> Logout(GlobalParam globalParam) => await UserManager.Logout(globalParam);
+        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null) => await UserManager.SetChatMuted(chatId, muted, globalParam, mutedUntil);
+        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam) => await UserManager.GetMutedChats(globalParam);
+        public async Task<ErrorReturner> SetFirebaseToken(string firebaseToken, GlobalParam globalParam) => await UserManager.SetFirebaseToken(firebaseToken, globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ResolveFederatedUserResponse? user)> ResolveFederatedUser(string fid, GlobalParam globalParam) => await UserManager.ResolveFederatedUser(fid, globalParam);
+        #endregion
+
+        #region Prekey bundle секретных чатов (делегирование к UserManager)
+        /// <summary>
+        /// Зарегистрировать prekey-bundle текущего устройства. Крипта libsignal не реализована:
+        /// ключи должны быть сгенерированы приложением и передаются как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RegisterPrekeyBundle(uint registrationId, byte[] identityPubkey,
+            Proto.Users.SignedPreKey signedPrekey, List<Proto.Users.OneTimePreKey> oneTimePrekeys, GlobalParam globalParam)
+            => await UserManager.RegisterPrekeyBundle(registrationId, identityPubkey, signedPrekey, oneTimePrekeys, globalParam);
+
+        /// <summary>
+        /// Получить prekey-bundle устройства собеседника. Крипта libsignal не реализована:
+        /// полученный bundle передаётся приложению как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Users.FetchPrekeyBundleResponse? response)> FetchPrekeyBundle(
+            long userId, string deviceId, GlobalParam globalParam)
+            => await UserManager.FetchPrekeyBundle(userId, deviceId, globalParam);
+
+        /// <summary>
+        /// Получить устройства собеседника, готовые к секретному чату. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Users.PeerDeviceInfo>? devices)> ListPeerDevices(long userId, GlobalParam globalParam)
+            => await UserManager.ListPeerDevices(userId, globalParam);
+
+        /// <summary>
+        /// Пополнить пул разовых prekey текущего устройства. Крипта libsignal не реализована:
+        /// новые ключи передаются как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, int totalOneTimePrekeys)> ReplenishOneTimePrekeys(
+            List<Proto.Users.OneTimePreKey> prekeys, GlobalParam globalParam)
+            => await UserManager.ReplenishOneTimePrekeys(prekeys, globalParam);
+
+        /// <summary>
+        /// Ротировать signed prekey текущего устройства. Крипта libsignal не реализована:
+        /// ключ должен быть сгенерирован приложением и передаётся как есть.
+        /// </summary>
+        public async Task<ErrorReturner> RotateSignedPrekey(Proto.Users.SignedPreKey signedPrekey, GlobalParam globalParam)
+            => await UserManager.RotateSignedPrekey(signedPrekey, globalParam);
+        #endregion
+
+        #region Папки чатов (делегирование к ChatFolderManager)
+        public async Task<(ErrorReturner error, List<Proto.Users.ChatFolderData>? folders)> GetChatFolders(GlobalParam globalParam) => await ChatFolderManager.GetChatFolders(globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> CreateChatFolder(string folderName, GlobalParam globalParam, string folderIcon = "") => await ChatFolderManager.CreateChatFolder(folderName, globalParam, folderIcon);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> UpdateChatFolder(string folderId, GlobalParam globalParam, string? folderName = null, string? folderIcon = null, List<string>? chatList = null) => await ChatFolderManager.UpdateChatFolder(folderId, globalParam, folderName, folderIcon, chatList);
+        public async Task<ErrorReturner> DeleteChatFolder(string folderId, GlobalParam globalParam) => await ChatFolderManager.DeleteChatFolder(folderId, globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> AddChatToFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.AddChatToFolder(folderId, chatId, globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> RemoveChatFromFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.RemoveChatFromFolder(folderId, chatId, globalParam);
+        public async Task<ErrorReturner> ReorderChatFolders(Dictionary<string, int> orders, GlobalParam globalParam) => await ChatFolderManager.ReorderChatFolders(orders, globalParam);
         #endregion
 
         #region Персонализация (делегирование к UserManager)
@@ -223,9 +302,9 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Настройка двухфакторной аутентификации (делегирование к AuthManager)
-        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam) => await AuthManager.OtpReceipt(globalParam);
+        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam, Proto.Identity.OtpTypeId otpType = Proto.Identity.OtpTypeId.Authenticator) => await AuthManager.OtpReceipt(globalParam, otpType);
         public async Task<ErrorReturner> OtpAccept(GlobalParam globalParam, string code) => await AuthManager.OtpAccept(globalParam, code);
-        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam) => await AuthManager.OtpDisable(globalParam);
+        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam, Proto.Identity.OtpTypeId otpType = Proto.Identity.OtpTypeId.Authenticator, string otpCode = "") => await AuthManager.OtpDisable(globalParam, otpType, otpCode);
         public async Task<(ErrorReturner error, bool authenticatorEnabled, bool emailEnabled)> OtpStatus(GlobalParam globalParam) => await AuthManager.OtpStatus(globalParam);
         #endregion
 
@@ -235,7 +314,7 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Сброс пароля (делегирование к PasswordManager)
-        public async Task<ErrorReturner> SetPassword(string newPassword, GlobalParam globalParam) => await PasswordManager.SetPassword(newPassword, globalParam);
+        public async Task<ErrorReturner> SetPassword(string newPassword, GlobalParam globalParam, string oldPassword = "") => await PasswordManager.SetPassword(newPassword, globalParam, oldPassword);
         public async Task<(ErrorReturner error, string? resetId)> ResetPassword(string email, string username, GlobalParam globalParam) => await PasswordManager.ResetPassword(email, username, globalParam);
         public async Task<(ErrorReturner error, BarkFluff.Proto.Identity.Token? refreshToken)> ConfirmResetCode(string resetId, string otpCode, GlobalParam globalParam) => await PasswordManager.ConfirmResetCode(resetId, otpCode, globalParam);
         #endregion
@@ -253,6 +332,144 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, List<Proto.Messages.ListChatMembersResponse.Types.DetailedChatMemberInfo>? members, int totalCount)> ListChatMembers(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListChatMembers(globalParam, chatId, offset, size);
         public async Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachments(GlobalParam globalParam, string chatId, Proto.Shared.MessageAttachmentType attachmentType = Proto.Shared.MessageAttachmentType.Unknown, bool sortDescending = true, int offset = 0, int size = 50) => await MessageManager.ListChatAttachments(globalParam, chatId, attachmentType, sortDescending, offset, size);
         public async Task<ErrorReturner> KickUser(GlobalParam globalParam, string chatId, long userId) => await MessageManager.KickUser(globalParam, chatId, userId);
+        public async Task<ErrorReturner> AddUser(GlobalParam globalParam, string chatId, long userId) => await MessageManager.AddUser(globalParam, chatId, userId);
+        public async Task<(ErrorReturner error, Proto.Messages.Chat? chat)> UpdateGroupChat(GlobalParam globalParam, string chatId, string title = "", string pictureFileId = "") => await MessageManager.UpdateGroupChat(globalParam, chatId, title, pictureFileId);
+        public async Task<(ErrorReturner error, MessageModel? message)> EditMessage(GlobalParam globalParam, string chatId, long messageId, string text, List<string>? fileIds = null) => await MessageManager.EditMessage(globalParam, chatId, messageId, text, fileIds);
+        public async Task<ErrorReturner> DeleteMessage(GlobalParam globalParam, long messageId) => await MessageManager.DeleteMessage(globalParam, messageId);
+        #endregion
+
+        #region Закреплённые сообщения (делегирование к MessageManager)
+        public async Task<(ErrorReturner error, Proto.Shared.PinnedMessageInfo? pinned)> PinMessage(GlobalParam globalParam, string chatId, long messageId) => await MessageManager.PinMessage(globalParam, chatId, messageId);
+        public async Task<ErrorReturner> UnpinMessage(GlobalParam globalParam, string chatId, long messageId) => await MessageManager.UnpinMessage(globalParam, chatId, messageId);
+        public async Task<(ErrorReturner error, List<Proto.Shared.PinnedMessageInfo>? pinned, int totalCount)> ListPinnedMessages(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListPinnedMessages(globalParam, chatId, offset, size);
+        public async Task<(ErrorReturner error, int unpinnedCount)> UnpinAll(GlobalParam globalParam, string chatId) => await MessageManager.UnpinAll(globalParam, chatId);
+        #endregion
+
+        #region Приватные чаты E2E (делегирование к PrivateChatManager)
+        /// <summary>
+        /// Создать приватный чат: библиотека сама выводит ключ из кодовой фразы (Argon2id)
+        /// и считает verifier — сама фраза на сервер не уходит. Ключ нужно сохранить самостоятельно
+        /// (библиотека его не хранит между вызовами) для последующих Send/List/Edit.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.Chat? chat, bool created, byte[]? key)> CreatePrivateChat(long peerUserId, string passphrase, GlobalParam globalParam)
+            => await PrivateChatManager.CreatePrivateChat(peerUserId, passphrase, globalParam);
+
+        /// <summary>
+        /// Принять приглашение: kdfSalt/passphraseVerifier берутся из события PrivateChatInviteEvent
+        /// или из Chat (ListChats). Кодовая фраза проверяется локально до обращения к серверу.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.Chat? chat, byte[]? key)> AcceptPrivateChat(string chatId, string passphrase, byte[] kdfSalt, byte[] passphraseVerifier, GlobalParam globalParam)
+            => await PrivateChatManager.AcceptPrivateChat(chatId, passphrase, kdfSalt, passphraseVerifier, globalParam);
+
+        public async Task<ErrorReturner> RejectPrivateChat(string chatId, GlobalParam globalParam)
+            => await PrivateChatManager.RejectPrivateChat(chatId, globalParam);
+
+        /// <summary>
+        /// Восстановить ключ уже принятого чата по кодовой фразе (без сетевых вызовов),
+        /// например после перезапуска приложения. Null означает неверную фразу.
+        /// </summary>
+        public static byte[]? UnlockPrivateChat(Proto.Messages.Chat chat, string passphrase) => WebApiPrivateChatManager.UnlockChat(chat, passphrase);
+
+        public async Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessage(string chatId, string text, byte[] key, GlobalParam globalParam)
+            => await PrivateChatManager.SendPrivateMessage(chatId, text, key, globalParam);
+
+        public async Task<(ErrorReturner error, List<PrivateMessageModel>? messages)> ListPrivateMessages(string chatId, byte[] key, GlobalParam globalParam, long fromMessageId = 0, int offsetBefore = 50, int offsetAfter = 0)
+            => await PrivateChatManager.ListPrivateMessages(chatId, key, globalParam, fromMessageId, offsetBefore, offsetAfter);
+
+        public async Task<(ErrorReturner error, PrivateMessageModel? message)> EditPrivateMessage(string chatId, long messageId, string text, byte[] key, GlobalParam globalParam)
+            => await PrivateChatManager.EditPrivateMessage(chatId, messageId, text, key, globalParam);
+
+        public async Task<ErrorReturner> DeletePrivateMessage(long messageId, GlobalParam globalParam)
+            => await PrivateChatManager.DeletePrivateMessage(messageId, globalParam);
+
+        public async Task<ErrorReturner> MarkPrivateMessagesAsRead(string chatId, long lastReadMessageId, GlobalParam globalParam)
+            => await PrivateChatManager.MarkPrivateMessagesAsRead(chatId, lastReadMessageId, globalParam);
+
+        /// <summary>
+        /// Расшифровать одно сообщение приватного чата, например пришедшее из
+        /// <see cref="SubscribeToPrivateMessages"/>/<see cref="SubscribeToPrivateMessageEdits"/>.
+        /// </summary>
+        public static PrivateMessageModel DecryptPrivateMessage(Proto.Shared.EncryptedMessage message, byte[] key) => WebApiPrivateChatManager.DecryptMessage(message, key);
+        #endregion
+
+        #region Реалтайм обновления приватных чатов (делегирование к UpdateManager)
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.NewEncryptedMessageEvent>? stream)> SubscribeToPrivateMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessages(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.EncryptedMessageEditedEvent>? stream)> SubscribeToPrivateMessageEdits(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessageEdits(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.EncryptedMessageDeletedEvent>? stream)> SubscribeToPrivateMessageDeletes(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessageDeletes(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.PrivateMessagesReadEvent>? stream)> SubscribeToPrivateMessagesRead(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateMessagesRead(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.PrivateChatInviteEvent>? stream)> SubscribeToPrivateChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateChatInvites(globalParam, ct);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.PrivateChatInviteResolutionEvent>? stream)> SubscribeToPrivateChatInviteResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToPrivateChatInviteResolutions(globalParam, ct);
+        #endregion
+
+        #region Секретные чаты (транспорт без libsignal)
+        /// <summary>
+        /// Отправить инвайт секретного чата. Крипта libsignal не реализована,
+        /// initialEnvelope прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.SendSecretChatInviteResponse? response)> SendSecretChatInvite(
+            long recipientUserId, string recipientDeviceId, byte[] initialEnvelope, GlobalParam globalParam)
+            => await SecretChatManager.SendSecretChatInvite(recipientUserId, recipientDeviceId, initialEnvelope, globalParam);
+
+        /// <summary>
+        /// Принять инвайт секретного чата. Крипта libsignal не реализована,
+        /// responseEnvelope прокидывается как есть.
+        /// </summary>
+        public async Task<ErrorReturner> AcceptSecretChatInvite(string inviteId, byte[] responseEnvelope, GlobalParam globalParam)
+            => await SecretChatManager.AcceptSecretChatInvite(inviteId, responseEnvelope, globalParam);
+
+        /// <summary>
+        /// Отклонить инвайт секретного чата. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<ErrorReturner> RejectSecretChatInvite(string inviteId, GlobalParam globalParam)
+            => await SecretChatManager.RejectSecretChatInvite(inviteId, globalParam);
+
+        /// <summary>
+        /// Отправить секретное сообщение. Крипта libsignal не реализована,
+        /// envelope прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Messages.SendSecretMessageResponse? response)> SendSecretMessage(
+            long recipientUserId, string recipientDeviceId, byte[] envelope, GlobalParam globalParam)
+            => await SecretChatManager.SendSecretMessage(recipientUserId, recipientDeviceId, envelope, globalParam);
+
+        /// <summary>
+        /// Подтвердить доставку секретного сообщения. Крипта libsignal не реализована.
+        /// </summary>
+        public async Task<ErrorReturner> AckSecretMessage(string messageId, GlobalParam globalParam)
+            => await SecretChatManager.AckSecretMessage(messageId, globalParam);
+        #endregion
+
+        #region Реалтайм обновления секретных чатов (транспорт без libsignal)
+        /// <summary>
+        /// Приглашения секретных чатов. Крипта libsignal не реализована,
+        /// initialEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.SecretChatInviteEvent>? stream)> SubscribeToSecretChatInvites(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToSecretChatInvites(globalParam, ct);
+
+        /// <summary>
+        /// Ответы на приглашения секретных чатов. Крипта libsignal не реализована,
+        /// responseEnvelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.SecretChatInviteResolutionEvent>? stream)> SubscribeToSecretChatResolutions(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToSecretChatResolutions(globalParam, ct);
+
+        /// <summary>
+        /// Секретные сообщения текущего устройства. Крипта libsignal не реализована,
+        /// envelope в событии прокидывается как есть.
+        /// </summary>
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Updates.NewSecretMessageEvent>? stream)> SubscribeToSecretMessages(GlobalParam globalParam, CancellationToken ct = default)
+            => await UpdateManager.SubscribeToSecretMessages(globalParam, ct);
         #endregion
 
         #region Поиск (делегирование к SearchManager)
@@ -276,6 +493,18 @@ namespace BarkFluff.WebApi.Core
         #region Реалтайм обновления (делегирование к UpdateManager)
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.JustUpdate(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToReadReceipts(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageEditedEvent>? stream)> SubscribeToMessagesEdited(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesEdited(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageDeletedEvent>? stream)> SubscribeToMessagesDeleted(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesDeleted(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessagePinnedEvent>? stream)> SubscribeToMessagesPinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesPinned(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageUnpinnedEvent>? stream)> SubscribeToMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesUnpinned(globalParam, ct);
+        public async Task<(ErrorReturner error, IAsyncEnumerable<AllMessagesUnpinnedEvent>? stream)> SubscribeToAllMessagesUnpinned(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToAllMessagesUnpinned(globalParam, ct);
+
+        /// <summary>
+        /// События обновлений несут сырое proto-сообщение, а остальные методы отдают наружу
+        /// <see cref="MessageModel"/>. Маппер живёт во внутреннем менеджере, поэтому подписчикам
+        /// стримов он доступен только через этот проброс.
+        /// </summary>
+        public static MessageModel MapEventMessage(Proto.Shared.Message message, string chatId) => WebApiMessageManager.MapMessage(message, chatId);
         #endregion
 
         #region FastAuth (делегирование к FastAuthManager)
@@ -290,6 +519,19 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<(ErrorReturner, IAsyncEnumerable<Proto.FastAuth.FastAuthResult>?)> SubscribeFastAuthResult(string fastAuthId, CancellationToken ct)
             => await FastAuthManager.SubscribeFastAuthResult(fastAuthId, ct);
+
+        /// <summary>
+        /// Подтверждение входа нового устройства с этого (уже авторизованного) клиента:
+        /// Scan → показать пользователю данные устройства → Accept или Reject.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.FastAuth.ScanFastAuthResponse? info)> ScanFastAuth(string fastAuthId, GlobalParam globalParam)
+            => await FastAuthManager.ScanFastAuth(fastAuthId, globalParam);
+
+        public async Task<ErrorReturner> AcceptFastAuth(string fastAuthId, string confirmationCode, GlobalParam globalParam)
+            => await FastAuthManager.AcceptFastAuth(fastAuthId, confirmationCode, globalParam);
+
+        public async Task<ErrorReturner> RejectFastAuth(string fastAuthId, string confirmationCode, GlobalParam globalParam)
+            => await FastAuthManager.RejectFastAuth(fastAuthId, confirmationCode, globalParam);
         #endregion
 
         #region Работа с онлайн-статусами (делегирование к OnlinerManager)
@@ -304,6 +546,54 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<ErrorReturner> ChangeUsersInSubscription(List<long> userIds, GlobalParam globalParam)
             => await OnlinerManager.ChangeUsersInSubscription(userIds, globalParam);
+        #endregion
+
+        #region Звонки (делегирование к CallsManager)
+        /// <summary>
+        /// Сигнализация звонков. Медиа библиотека не ведёт: в ответах приходят
+        /// livekit_url и access_token, подключение к LiveKit SFU — на стороне приложения.
+        /// Проверять доступность звонков на сервере — через <see cref="CallsAvailable"/>.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Calls.InitiateCallResponse? call)> InitiateCallToUser(long calleeUserId, Proto.Calls.CallMediaType mediaType, GlobalParam globalParam)
+            => await CallsManager.InitiateCallToUser(calleeUserId, mediaType, globalParam);
+
+        public async Task<(ErrorReturner error, Proto.Calls.InitiateCallResponse? call)> InitiateCallInChat(string chatId, Proto.Calls.CallMediaType mediaType, GlobalParam globalParam)
+            => await CallsManager.InitiateCallInChat(chatId, mediaType, globalParam);
+
+        public async Task<(ErrorReturner error, Proto.Calls.JoinCallResponse? call)> JoinCall(string callId, GlobalParam globalParam)
+            => await CallsManager.JoinCall(callId, globalParam);
+
+        public async Task<(ErrorReturner error, Proto.Calls.AcceptCallResponse? call)> AcceptCall(string callId, GlobalParam globalParam)
+            => await CallsManager.AcceptCall(callId, globalParam);
+
+        public async Task<ErrorReturner> RejectCall(string callId, GlobalParam globalParam)
+            => await CallsManager.RejectCall(callId, globalParam);
+
+        public async Task<ErrorReturner> EndCall(string callId, GlobalParam globalParam)
+            => await CallsManager.EndCall(callId, globalParam);
+
+        public async Task<ErrorReturner> SetCallAudioQuality(string callId, Proto.Calls.CallAudioQuality quality, GlobalParam globalParam)
+            => await CallsManager.SetCallAudioQuality(callId, quality, globalParam);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Calls.CallEvent>? stream)> SubscribeCallEvents(GlobalParam globalParam, CancellationToken ct = default)
+            => await CallsManager.SubscribeCallEvents(globalParam, ct);
+
+        public async Task<(ErrorReturner error, List<Proto.Calls.CallHistoryItem>? items, bool hasMore)> ListCallHistory(GlobalParam globalParam, Proto.Calls.CallHistoryFilter filter = Proto.Calls.CallHistoryFilter.CallHistoryAll, int limit = 50, DateTime? beforeStartedAt = null)
+            => await CallsManager.ListCallHistory(globalParam, filter, limit, beforeStartedAt);
+
+        public async Task<(ErrorReturner error, List<Proto.Calls.ActiveCallItem>? calls)> GetActiveCalls(List<string> chatIds, GlobalParam globalParam)
+            => await CallsManager.GetActiveCalls(chatIds, globalParam);
+        #endregion
+
+        #region Индикаторы набора текста (делегирование к OnlinerManager)
+        public async Task<ErrorReturner> SetTypingStatus(string chatId, Proto.Onliner.TypingAction action, GlobalParam globalParam)
+            => await OnlinerManager.SetTypingStatus(chatId, action, globalParam);
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Onliner.TypingEvent>? stream)> SubscribeToTyping(List<string> chatIds, GlobalParam globalParam, CancellationToken ct = default)
+            => await OnlinerManager.SubscribeToTyping(chatIds, globalParam, ct);
+
+        public async Task<ErrorReturner> ChangeChatsInTypingSubscription(List<string> chatIds, GlobalParam globalParam)
+            => await OnlinerManager.ChangeChatsInTypingSubscription(chatIds, globalParam);
         #endregion
     }
 }

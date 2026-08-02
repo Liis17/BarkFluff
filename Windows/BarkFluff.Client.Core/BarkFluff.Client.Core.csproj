@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Слой без UI-фреймворка: модели, сервисы, хранилище и ViewModel'и. Отдельная сборка
+      нужна не только для чистоты границы — тип из WinUI-сборки запускает её module
+      initializer (Windows App SDK DeploymentManager), который вне пакетной идентичности
+      падает с REGDB_E_CLASSNOTREG, и тесты становятся незапускаемыми.
+    -->
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      MVVMTK0045: [ObservableProperty] на поле вместо partial-свойства несовместимо с AOT
+      в WinRT-сценариях. PublishAot и PublishTrimmed у WinUI-приложения выключены, поэтому
+      на нас это не влияет; переход на partial-свойства требует выноса всех инициализаторов
+      в конструкторы и делается отдельной задачей.
+    -->
+    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BarkFluff.WebApi.Core\BarkFluff.WebApi.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--  Тестам нужны internal-члены вьюмоделей: расширять публичный API ради проверок незачем.  -->
+    <InternalsVisibleTo Include="BarkFluff.Client.WinUI.Tests" />
+  </ItemGroup>
+
+</Project>

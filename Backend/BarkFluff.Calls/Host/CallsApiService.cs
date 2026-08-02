@@ -1,3 +1,4 @@
+using BarkFluff.Calls.Features.CallLifecycle;
 using BarkFluff.Calls.Services;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
@@ -13,13 +14,13 @@ namespace BarkFluff.Calls.Host;
 [Authorize(Policy = nameof(TokenType.User))]
 public class CallsApiService : CallsApi.CallsApiBase
 {
-    private readonly CallsService _calls;
+    private readonly CallLifecycleHandler _calls;
     private readonly CallEventSubscriptionsManager _subscriptions;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
 
     public CallsApiService(
-        CallsService calls,
+        CallLifecycleHandler calls,
         CallEventSubscriptionsManager subscriptions,
         UserContext userContext,
         MetricsCollector metrics)

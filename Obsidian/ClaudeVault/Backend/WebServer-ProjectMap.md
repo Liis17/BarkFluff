@@ -10,13 +10,13 @@
 | Файл | Маршрут(ы) | Описание |
 |------|-----------|----------|
 | `Controllers/HomeController.cs` | `GET /` | Главная страница — читает и отдаёт `html/barkfluff.html` |
-| `Controllers/FallbackController.cs` | `GET /{**catchAll}` | Перехватывает все необработанные пути: `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService |
+| `Controllers/FallbackController.cs` | `GET /{**catchAll}` | Перехватывает все необработанные пути: `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService; ничего не подошло → `html/404.html` с кодом 404 |
 | `Controllers/UserApiController.cs` | `GET /api/user/{username}` | REST API публичного профиля пользователя (делегирует в UserProfileService) |
 | `Controllers/SupportChatController.cs` | `POST /api/support/send`, `GET /api/support/messages/{chatId}` | Чат поддержки: отправка сообщений и получение истории |
 | `Controllers/VersionApiController.cs` | `GET /api/versions` | Возвращает актуальные версии клиентов (Android/Windows/macOS, release+beta) |
 | `Controllers/InstallController.cs` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Скрипты установки клиента (Windows PowerShell и Linux Bash, релиз и бета) |
 | `Controllers/DownloadController.cs` | `GET /download/installer` | Отдаёт `Barkfluff.Updater.CLI.exe` — инсталлятор Windows |
-| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт изображения-ассеты (png/jpg для магазинов и превью) |
+| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт ассеты по whitelist `_allowedFiles`: изображения (png/jpg для магазинов и превью) и `cookie-notice.js` |
 | `Controllers/FaviconController.cs` | `GET /favicon.ico` | Отдаёт `files/favicon.ico` |
 
 ---
@@ -26,7 +26,7 @@
 | Файл | Описание |
 |------|----------|
 | `Services/UserProfileService.cs` | Запрашивает публичный профиль через gRPC (UsersServerApi). Кеш: найденные — 30 мин, не найденные — 5 мин (`IMemoryCache`). Передаёт `x-auth-token` в Metadata. |
-| `Services/UserPageService.cs` | Читает `html/userpage.html`, заменяет `%%username%%`. Спецобработка: `li_is` → `html/UniqueUsers/paws.page.html` (анимированные лапки-следы). |
+| `Services/UserPageService.cs` | Читает `html/userpage.html`, заменяет `%%username%%` (валидация `^[a-zA-Z0-9_]{3,32}$` + `HtmlEncoder`, не подошло → пустая строка → 404). Спецобработка: `li_is` → `html/UniqueUsers/paws.page.html` (анимированные лапки-следы). |
 | `Services/LegalPageService.cs` | Читает HTML из `html/legal/` по имени страницы; обрабатывает `selfhosted.html`. |
 | `Services/SupportChatService.cs` | In-memory хранилище сессий чата (`ConcurrentDictionary`). Добавляет сообщения, возвращает историю с пагинацией. |
 | `Services/TelegramService.cs` | Telegram-бот поддержки. Отправляет сообщения пользователей администратору. Ответ администратора — reply, первая строка — GUID чата. |
@@ -51,6 +51,7 @@
 | Файл/Папка | Описание |
 |-----------|----------|
 | `html/barkfluff.html` | Главная страница сайта |
+| `html/404.html` | Страница «не найдено» (отдаётся `FallbackController` с кодом 404) |
 | `html/userpage.html` | Шаблон публичной страницы пользователя (`%%username%%`) |
 | `html/UniqueUsers/paws.page.html` | Специальная страница для пользователя `li_is` с анимированными лапками-следами (SVG + CSS keyframes) |
 | `html/selfhosted.html` | Страница для self-hosted режима |
@@ -72,6 +73,7 @@
 | `files/installbeta.sh` | Скрипт установки Linux (beta) |
 | `files/favicon.ico` | Иконка сайта |
 | `files/linkpreview.png` | OG-изображение для превью ссылок |
+| `files/cookie-notice.js` | Баннер об использовании cookie, подключается во все страницы `html/` |
 | `files/barkfluff.windows.png` | Скриншот Windows-клиента |
 | `files/barkfluff.web.png` | Скриншот Web-клиента |
 | `files/barkfluff.android.jpg` | Скриншот Android-клиента |

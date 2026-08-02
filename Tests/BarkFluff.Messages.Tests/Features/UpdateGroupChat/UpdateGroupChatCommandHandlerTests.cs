@@ -67,12 +67,13 @@ public class UpdateGroupChatCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ChangeTitle_UpdatesTitle()
+    public async Task Handle_RegularMemberChangesTitle_UpdatesTitle()
     {
         var adminId = 1L;
-        var chat = await _h.SeedChat(isGroupChat: true, title: "Old", memberUserIds: [adminId, 2]);
+        var memberId = 2L;
+        var chat = await _h.SeedChat(isGroupChat: true, title: "Old", memberUserIds: [adminId, memberId]);
         await _h.SeedGroupChatInfo(chat.Id, adminId, [adminId]);
-        var handler = CreateHandler(adminId);
+        var handler = CreateHandler(memberId);
 
         var result = await handler.Handle(new UpdateGroupChatCommand { ChatId = chat.Id, Title = "New" }, CancellationToken.None);
 
@@ -81,14 +82,15 @@ public class UpdateGroupChatCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ChangeAvatar_UpdatesPicture()
+    public async Task Handle_RegularMemberChangesAvatar_UpdatesPicture()
     {
         var adminId = 1L;
+        var memberId = 2L;
         var fileId = Guid.NewGuid();
         SetupFileClient(fileId, UploadFileType.ChatPicture, "http://pic.url");
-        var chat = await _h.SeedChat(isGroupChat: true, title: "Group", memberUserIds: [adminId, 2]);
+        var chat = await _h.SeedChat(isGroupChat: true, title: "Group", memberUserIds: [adminId, memberId]);
         await _h.SeedGroupChatInfo(chat.Id, adminId, [adminId]);
-        var handler = CreateHandler(adminId);
+        var handler = CreateHandler(memberId);
 
         var result = await handler.Handle(new UpdateGroupChatCommand { ChatId = chat.Id, PictureFileId = fileId }, CancellationToken.None);
 
@@ -133,18 +135,6 @@ public class UpdateGroupChatCommandHandlerTests
         var act = async () => await handler.Handle(new UpdateGroupChatCommand { ChatId = chat.Id, Title = "New" }, CancellationToken.None);
 
         await act.Should().ThrowAsync<IsNotGroupChatException>();
-    }
-
-    [Fact]
-    public async Task Handle_NoPermission_ThrowsNoPermissionException()
-    {
-        var chat = await _h.SeedChat(isGroupChat: true, title: "Group", memberUserIds: [1, 2]);
-        await _h.SeedGroupChatInfo(chat.Id, 1, [1]);
-        var handler = CreateHandler(2);
-
-        var act = async () => await handler.Handle(new UpdateGroupChatCommand { ChatId = chat.Id, Title = "New" }, CancellationToken.None);
-
-        await act.Should().ThrowAsync<NoPermissionException>();
     }
 
     [Fact]

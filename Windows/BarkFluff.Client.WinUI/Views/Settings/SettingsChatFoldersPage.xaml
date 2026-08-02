@@ -1,0 +1,83 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsChatFoldersPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls"
+    xmlns:models="using:BarkFluff.Client.Core.ViewModels.Settings">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_ChatFolders_Title}" />
+
+            <ProgressRing Margin="0,0,0,16"
+                          HorizontalAlignment="Left"
+                          IsActive="True"
+                          Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <TextBlock Margin="0,0,0,16"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_ChatFolders_Section}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <StackPanel Margin="16,20"
+                                Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{StaticResource Settings_ChatFolders_EmptyTitle}" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Style="{StaticResource MutedText}"
+                                   Text="{StaticResource Settings_ChatFolders_EmptySubtitle}" />
+                    </StackPanel>
+                    <ListView ItemsSource="{x:Bind ViewModel.Folders, Mode=OneWay}"
+                              Visibility="{x:Bind ViewModel.HasFolders, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:SettingsChatFolderItem">
+                                <controls:SettingsRow Description="{x:Bind Icon}" Glyph="&#xE8B7;" Header="{x:Bind Name}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <Button Click="OnMoveUpClick"
+                                                Style="{StaticResource SettingsRowButtonStyle}"
+                                                ToolTipService.ToolTip="{StaticResource Settings_ChatFolders_MoveUp}">
+                                            <FontIcon Glyph="&#xE70E;" />
+                                        </Button>
+                                        <Button Click="OnMoveDownClick"
+                                                Style="{StaticResource SettingsRowButtonStyle}"
+                                                ToolTipService.ToolTip="{StaticResource Settings_ChatFolders_MoveDown}">
+                                            <FontIcon Glyph="&#xE70D;" />
+                                        </Button>
+                                        <Button Click="OnEditClick"
+                                                Style="{StaticResource SettingsRowButtonStyle}">
+                                            <FontIcon Glyph="&#xE70F;" />
+                                        </Button>
+                                        <Button Click="OnDeleteClick"
+                                                Style="{StaticResource SettingsRowButtonStyle}">
+                                            <FontIcon Glyph="&#xE74D;" />
+                                        </Button>
+                                    </StackPanel>
+                                </controls:SettingsRow>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <Button Click="OnCreateClick" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow Glyph="&#xE710;" Header="{StaticResource Settings_ChatFolders_NewFolder}">
+                            <FontIcon FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      Glyph="&#xE76C;" />
+                        </controls:SettingsRow>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!--  Папки существуют на сервере, но списка чатов для выбора в настройках пока нет.  -->
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeComingSoon}"
+                                      Glyph="&#xE8B7;"
+                                      Header="{StaticResource Settings_ChatFolders_ManageChats}" />
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

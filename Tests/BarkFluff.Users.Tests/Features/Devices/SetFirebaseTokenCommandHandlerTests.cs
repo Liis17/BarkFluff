@@ -9,6 +9,7 @@ using BarkFluff.Users.Features.Devices.SetNotificationsEnabled;
 using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokens;
 using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokensByDeviceIds;
 using BarkFluff.Users.Features.Devices.GetAllDevicesWithFirebaseTokens;
+using BarkFluff.Users.Domain;
 using FluentAssertions;
 
 namespace BarkFluff.Users.Tests.Features.Devices;
@@ -18,7 +19,7 @@ public class SetFirebaseTokenCommandHandlerTests : IAsyncDisposable
     private readonly TestHelper _h = new();
 
     [Fact]
-    public async Task Handle_ValidToken_SetsToken()
+    public async Task Handle_WebToken_SetsTokenAndPlatform()
     {
         var user = await _h.SeedUser();
         var deviceId = Guid.NewGuid();
@@ -26,10 +27,15 @@ public class SetFirebaseTokenCommandHandlerTests : IAsyncDisposable
         var ctx = _h.CreateUserContext(user.Id, deviceId.ToString());
         var handler = new SetFirebaseTokenCommandHandler(_h.DevicesStorage, ctx, TestHelper.CreateLogger<SetFirebaseTokenCommandHandler>());
 
-        await handler.Handle(new SetFirebaseTokenCommand { FirebaseToken = "abc123" }, CancellationToken.None);
+        await handler.Handle(new SetFirebaseTokenCommand
+        {
+            FirebaseToken = "abc123",
+            PushPlatform = DevicePushPlatform.Web
+        }, CancellationToken.None);
 
         var device = await _h.DevicesStorage.GetDeviceById(deviceId, user.Id);
         device!.FirebaseDeviceToken.Should().Be("abc123");
+        device.PushPlatform.Should().Be(DevicePushPlatform.Web);
     }
 
     [Fact]

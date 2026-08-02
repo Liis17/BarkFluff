@@ -56,21 +56,42 @@
      * Returns the file ID assigned by the server.
      * @param {File} file — browser File object
      * @param {number} uploadFileType — UploadFileType enum value
+     * @param {Function} [onProgress] — function(percent) for bytes sent to the server
      * @returns {Promise<string>} — file ID
      */
-    function uploadFile(file, uploadFileType) {
+    function uploadFile(file, uploadFileType, onProgress) {
         return BF.api.getUploadUrl(uploadFileType).then(function (data) {
             if (!data || !data.fileId) return Promise.reject(new Error('no_upload_url'));
 
             var formData = new FormData();
             formData.append('file', file, file.name);
 
-            return fetch('/api/files/upload/' + data.fileId, {
-                method: 'POST',
-                body: formData
-            }).then(function (resp) {
-                if (!resp.ok) return Promise.reject(new Error('upload_failed_' + resp.status));
-                return resp.json().then(function (body) { return body.fileId; });
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/files/upload/' + data.fileId);
+
+                xhr.upload.addEventListener('progress', function (event) {
+                    if (!event.lengthComputable || typeof onProgress !== 'function') return;
+                    onProgress(Math.round(event.loaded / event.total * 100));
+                });
+                xhr.addEventListener('load', function () {
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        reject(new Error('upload_failed_' + xhr.status));
+                        return;
+                    }
+                    var body;
+                    try {
+                        body = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        reject(new Error('upload_invalid_response'));
+                        return;
+                    }
+                    if (typeof onProgress === 'function') onProgress(100);
+                    resolve(body.fileId);
+                });
+                xhr.addEventListener('error', function () { reject(new Error('upload_failed_network')); });
+                xhr.addEventListener('abort', function () { reject(new Error('upload_aborted')); });
+                xhr.send(formData);
             });
         });
     }
@@ -80,17 +101,20 @@
      * Если MIME пустой или нераспознан (напр. application/octet-stream при drag-drop на Windows),
      * используем расширение файла как fallback.
      * @param {string} mimeType
-     * @param {boolean} [asDocument] — force DOCUMENT type
+     * @param {boolean} [asDocument] — force DOCUMENT type (кроме видео)
      * @param {string} [fileName] — для fallback по расширению
      */
     function getUploadFileType(mimeType, asDocument, fileName) {
-        if (asDocument) return 5;
         var mime = mimeType || '';
+        var ext = (fileName || '').split('.').pop().toLowerCase();
+        // MP4 открывается модальным окном в режиме «Файлы», но должен остаться
+        // видео-вложением для встроенного превью и воспроизведения.
+        var isVideo = mime.startsWith('video/') || ['mp4','mov','avi','mkv','webm','m4v'].indexOf(ext) !== -1;
+        if (asDocument && !isVideo) return 5;
         if (mime.startsWith('image/gif')) return 4;
         if (mime.startsWith('image/')) return 2;
         if (mime.startsWith('video/')) return 3;
         if (mime.startsWith('audio/')) return 7;
-        var ext = (fileName || '').split('.').pop().toLowerCase();
         if (ext === 'gif') return 4;
         if (['jpg','jpeg','png','webp','bmp','avif','heic','heif','tiff','tif','svg','ico'].indexOf(ext) !== -1) return 2;
         if (['mp4','mov','avi','mkv','webm','m4v'].indexOf(ext) !== -1) return 3;
@@ -154,6 +178,75 @@
         } else if (tag === 'A') {
             el.removeAttribute('href');
         }
+    }
+
+    /**
+     * Загрузить background-image через Image, чтобы CSS-фон мог обработать ошибку
+     * загрузки так же, как обычные media-элементы. При первой ошибке URL
+     * обновляется по fileId; при повторной показывается заглушка.
+     */
+    function loadResilientBackground(el, fileId, preferPreview) {
+        if (!el) return;
+
+        var requestId = String(Number(el.getAttribute('data-bf-background-request') || '0') + 1);
+        el.setAttribute('data-bf-background-request', requestId);
+        el.setAttribute('data-bf-file-id', fileId || '');
+        el.classList.remove('visible', 'bf-load-failed');
+        el.style.backgroundImage = '';
+
+        if (!fileId) return;
+
+        function isCurrent() {
+            return el.getAttribute('data-bf-background-request') === requestId &&
+                el.getAttribute('data-bf-file-id') === fileId;
+        }
+
+        function preload(url) {
+            if (!url) return Promise.resolve(false);
+            return new Promise(function (resolve) {
+                var image = new Image();
+                image.onload = function () { resolve(true); };
+                image.onerror = function () { resolve(false); };
+                image.src = url;
+            });
+        }
+
+        function apply(url) {
+            if (!isCurrent()) return false;
+            el.style.backgroundImage = 'url("' + url + '")';
+            el.classList.add('visible');
+            return true;
+        }
+
+        function showPlaceholder() {
+            if (!isCurrent()) return;
+            el.style.backgroundImage = 'url("' + BROKEN_MEDIA_SVG + '")';
+            el.classList.add('visible', 'bf-load-failed');
+        }
+
+        function loadUrl(fileData, refreshed) {
+            var url = pickUrl(fileData, preferPreview);
+            return preload(url).then(function (loaded) {
+                if (loaded) return apply(url);
+                if (refreshed || !isCurrent()) return false;
+                return refreshFileUrl(fileId).then(function (fresh) {
+                    return loadUrl(fresh, true);
+                });
+            });
+        }
+
+        getFileUrls([fileId]).then(function (urls) {
+            return loadUrl(urls[0] || null, false);
+        }).then(function (loaded) {
+            if (!loaded) showPlaceholder();
+        }).catch(function () {
+            if (!isCurrent()) return;
+            refreshFileUrl(fileId).then(function (fresh) {
+                return loadUrl(fresh, true);
+            }).then(function (loaded) {
+                if (!loaded) showPlaceholder();
+            });
+        });
     }
 
     function handleMediaError(el) {
@@ -229,6 +322,7 @@
         applyPlaceholder: applyPlaceholder,
         bindResilientMedia: bindResilientMedia,
         bindResilientLink: bindResilientLink,
+        loadResilientBackground: loadResilientBackground,
         clearCache: function () { urlCache.clear(); }
     };
 })();

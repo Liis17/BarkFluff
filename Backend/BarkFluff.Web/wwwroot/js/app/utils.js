@@ -7,10 +7,17 @@
 
     window.BF = window.BF || {};
 
+    function locale() {
+        return BF.i18n.current();
+    }
+
+    function timeOf(d) {
+        return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+    }
+
     function formatTime(ts) {
         if (!ts) return '';
-        var d = new Date(ts);
-        return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        return timeOf(new Date(ts));
     }
 
     function formatChatListTime(ts) {
@@ -18,31 +25,31 @@
         var d = new Date(ts);
         var today = new Date();
         if (d.toDateString() === today.toDateString()) {
-            return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            return timeOf(d);
         }
         var yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         if (d.toDateString() === yesterday.toDateString()) {
-            return 'вчера в ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            return BF.i18n.t('date.yesterdayAt', { time: timeOf(d) });
         }
-        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
 
     function formatDate(ts) {
         if (!ts) return '';
         var d = new Date(ts);
         var today = new Date();
-        if (d.toDateString() === today.toDateString()) return 'Сегодня';
+        if (d.toDateString() === today.toDateString()) return BF.i18n.t('date.today');
         var yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        if (d.toDateString() === yesterday.toDateString()) return 'Вчера';
-        return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        if (d.toDateString() === yesterday.toDateString()) return BF.i18n.t('date.yesterday');
+        return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
     function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' Б';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+        if (bytes < 1024) return BF.i18n.t('unit.bytes', { value: bytes });
+        if (bytes < 1024 * 1024) return BF.i18n.t('unit.kb', { value: (bytes / 1024).toFixed(1) });
+        return BF.i18n.t('unit.mb', { value: (bytes / (1024 * 1024)).toFixed(1) });
     }
 
     function truncate(text, len) {
@@ -59,7 +66,7 @@
 
     // --- Markdown rendering (safe) ---
     // Модель безопасности: текст экранируется ПЕРВЫМ (escapeHtml), затем добавляются только
-    // наши теги — сырых < > & в строке не остаётся, поэтому innerHTML безопасен.
+    // наши теги. URL дополнительно экранируется в контексте HTML-атрибута.
     // Ссылки — allowlist схем; javascript:/data: и т.п. не становятся ссылками.
 
     var URL_SCHEME_ALLOW = /^(?:https?:|mailto:)/i;
@@ -70,6 +77,72 @@
         if (!url) return null;
         var s = url.trim();
         return URL_SCHEME_ALLOW.test(s) ? s : null;
+    }
+
+    // URL уже прошёл escapeHtml, поэтому &amp; должен остаться без повторного экранирования.
+    // Кавычки escapeHtml для текстового узла не гарантирует, а в href они закрывают атрибут.
+    function escapeHtmlAttribute(value) {
+        return value.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function escapeRawHtmlAttribute(value) {
+        return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function htmlAttributes(raw) {
+        var attributes = {};
+        var attrRe = /([a-z][a-z0-9-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi;
+        var match;
+        while ((match = attrRe.exec(raw)) !== null) {
+            attributes[match[1].toLowerCase()] = match[2] || match[3] || match[4] || '';
+        }
+        return attributes;
+    }
+
+    function sanitizeImageUrl(url) {
+        if (!url) return null;
+        var value = url.trim();
+        if (/^https?:/i.test(value)) return value;
+        return null;
+    }
+
+    function htmlAlignment(value) {
+        value = (value || '').toLowerCase();
+        return value === 'center' || value === 'right' || value === 'left' ? value : null;
+    }
+
+    // HTML в сообщениях не передаётся в innerHTML как есть. Разрешённые теги
+    // пересобираются из allowlist, все остальные далее экранируются как текст.
+    function renderSafeHtmlTag(tag) {
+        var parsed = tag.match(/^<\s*(\/?)\s*([a-z][a-z0-9]*)\b([^>]*)>$/i);
+        if (!parsed) return null;
+        var closing = parsed[1] === '/';
+        var name = parsed[2].toLowerCase();
+        var attrs = htmlAttributes(parsed[3]);
+
+        if ((name === 'strong' || name === 'sub') && /^\s*$/.test(parsed[3])) {
+            return closing ? '</' + name + '>' : '<' + name + '>';
+        }
+        if (name === 'a' && !closing) {
+            var href = sanitizeUrl(attrs.href);
+            return href
+                ? '<a href="' + escapeRawHtmlAttribute(href) + '" target="_blank" rel="noopener noreferrer">'
+                : null;
+        }
+        if (name === 'a' && closing) return '</a>';
+        if (name === 'img' && !closing) {
+            var src = sanitizeImageUrl(attrs.src);
+            if (!src) return '<span class="md-image-alt">' + escapeHtml(attrs.alt || '') + '</span>';
+            var width = parseInt(attrs.width, 10);
+            var height = parseInt(attrs.height, 10);
+            var size = '';
+            if (width > 0 && width <= 2048) size += ' width="' + width + '"';
+            if (height > 0 && height <= 2048) size += ' height="' + height + '"';
+            return '<img class="md-image" src="' + escapeRawHtmlAttribute(src) + '" alt="'
+                + escapeRawHtmlAttribute(attrs.alt || '') + '" loading="lazy"' + size + '>';
+        }
+        return null;
     }
 
     // Emphasis на «обычном» (уже экранированном) сегменте. bold до italic.
@@ -85,7 +158,32 @@
     // Инлайн-разбор одной строки. На входе — сырой текст, на выходе — безопасный HTML.
     // Сегментный подход: защищённые куски (код/ссылки) не проходят emphasis, обычные — проходят.
     function inlineMd(raw) {
-        var esc = escapeHtml(raw);
+        var htmlTokens = [];
+        var tokenPrefix = '\uE000bfhtml';
+        var suppressedAnchor = false;
+        var protectedHtml = raw.replace(/<\/?[a-z][^>]*>/gi, function (tag) {
+            var anchor = tag.match(/^<\s*(\/?)\s*a\b/i);
+            if (anchor && anchor[1] && suppressedAnchor) {
+                suppressedAnchor = false;
+                var closingToken = tokenPrefix + htmlTokens.length + '\uE001';
+                htmlTokens.push('');
+                return closingToken;
+            }
+            var safeTag = renderSafeHtmlTag(tag);
+            if (safeTag === null) {
+                if (anchor && !anchor[1]) {
+                    suppressedAnchor = true;
+                    var openingToken = tokenPrefix + htmlTokens.length + '\uE001';
+                    htmlTokens.push('');
+                    return openingToken;
+                }
+                return tag;
+            }
+            var token = tokenPrefix + htmlTokens.length + '\uE001';
+            htmlTokens.push(safeTag);
+            return token;
+        });
+        var esc = escapeHtml(protectedHtml);
         // Защищённые: `код`, [текст](url), голый http(s)://…
         var protectRe = /(`[^`]+`)|(\[[^\]]+\]\([^)\s]+\))|(https?:\/\/[^\s<]+)/g;
         var out = '';
@@ -99,18 +197,98 @@
                 var lm = m[2].match(/^\[([^\]]+)\]\(([^)\s]+)\)$/);
                 var lsafe = lm && sanitizeUrl(lm[2]);
                 out += lsafe
-                    ? '<a href="' + lsafe + '" target="_blank" rel="noopener noreferrer">' + lm[1] + '</a>'
+                    ? '<a href="' + escapeHtmlAttribute(lsafe) + '" target="_blank" rel="noopener noreferrer">' + lm[1] + '</a>'
                     : m[2];
             } else {
                 var asafe = sanitizeUrl(m[3]);
                 out += asafe
-                    ? '<a href="' + asafe + '" target="_blank" rel="noopener noreferrer">' + m[3] + '</a>'
+                    ? '<a href="' + escapeHtmlAttribute(asafe) + '" target="_blank" rel="noopener noreferrer">' + m[3] + '</a>'
                     : m[3];
             }
             last = protectRe.lastIndex;
         }
         out += emphasis(esc.slice(last));
-        return out;
+        return out.replace(new RegExp(tokenPrefix + '(\\d+)\\uE001', 'g'), function (_, index) {
+            return htmlTokens[Number(index)];
+        });
+    }
+
+    // Разделяет GFM-строку таблицы, не принимая \| внутри inline-кода и экранированные \|
+    // за границу ячейки. Внешние | у таблицы опциональны.
+    function splitTableRow(line) {
+        var cells = [];
+        var cell = '';
+        var inCode = false;
+        for (var j = 0; j < line.length; j++) {
+            var ch = line[j];
+            if (ch === '\\' && line[j + 1] === '|') {
+                cell += '|';
+                j++;
+            } else if (ch === '`') {
+                inCode = !inCode;
+                cell += ch;
+            } else if (ch === '|' && !inCode) {
+                cells.push(cell.trim());
+                cell = '';
+            } else {
+                cell += ch;
+            }
+        }
+        cells.push(cell.trim());
+        if (/^\s*\|/.test(line)) cells.shift();
+        if (/\|\s*$/.test(line)) cells.pop();
+        return cells;
+    }
+
+    function tableAlignClass(separator) {
+        var value = separator.trim();
+        var left = value[0] === ':';
+        var right = value[value.length - 1] === ':';
+        if (left && right) return ' md-align-center';
+        if (right) return ' md-align-right';
+        if (left) return ' md-align-left';
+        return '';
+    }
+
+    function normalizeTableRow(cells, count) {
+        var normalized = cells.slice(0, count);
+        while (normalized.length < count) normalized.push('');
+        return normalized;
+    }
+
+    function isTableStart(lines, index) {
+        if (index + 1 >= lines.length || lines[index].indexOf('|') < 0) return false;
+        var headers = splitTableRow(lines[index]);
+        var separators = splitTableRow(lines[index + 1]);
+        return headers.length > 0 && headers.length === separators.length
+            && separators.every(function (cell) { return /^:?-+:?$/.test(cell); });
+    }
+
+    function renderTable(lines, start) {
+        var headers = splitTableRow(lines[start]);
+        var separators = splitTableRow(lines[start + 1]);
+        var rows = [];
+        var i = start + 2;
+        while (i < lines.length && lines[i].indexOf('|') >= 0 && !/^\s*$/.test(lines[i])) {
+            var cells = splitTableRow(lines[i]);
+            rows.push(normalizeTableRow(cells, headers.length));
+            i++;
+        }
+
+        var headHtml = headers.map(function (cell, index) {
+            return '<th scope="col" class="md-table-cell' + tableAlignClass(separators[index]) + '">' + inlineMd(cell) + '</th>';
+        }).join('');
+        var bodyHtml = rows.map(function (row) {
+            return '<tr>' + row.map(function (cell, index) {
+                return '<td class="md-table-cell' + tableAlignClass(separators[index]) + '">' + inlineMd(cell) + '</td>';
+            }).join('') + '</tr>';
+        }).join('');
+
+        return {
+            html: '<div class="md-table-wrap"><table class="md-table"><thead><tr>' + headHtml
+                + '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>',
+            next: i
+        };
     }
 
     // Блочный + инлайн разбор. Возвращает безопасную HTML-строку для innerHTML.
@@ -134,6 +312,44 @@
 
             // Пустая строка
             if (/^\s*$/.test(line)) { i++; continue; }
+
+            // GFM-таблица: строка заголовков + строка-разделитель (-, :---:, ---:).
+            if (isTableStart(lines, i)) {
+                var table = renderTable(lines, i);
+                out.push(table.html);
+                i = table.next;
+                continue;
+            }
+
+            // HTML-абзац из README: поддерживается только безопасный align и
+            // только при явном закрывающем </p>, чтобы не менять правила markdown.
+            var htmlParagraph = line.match(/^\s*<p(?:\s+align\s*=\s*(?:"(left|center|right)"|'(left|center|right)'|(left|center|right)))?\s*>\s*$/i);
+            if (htmlParagraph) {
+                var paragraphLines = [];
+                var next = i + 1;
+                while (next < lines.length && !/^\s*<\/p>\s*$/i.test(lines[next])) {
+                    paragraphLines.push(lines[next]);
+                    next++;
+                }
+                if (next < lines.length) {
+                    var alignment = htmlAlignment(htmlParagraph[1] || htmlParagraph[2] || htmlParagraph[3]);
+                    out.push('<p class="md-p' + (alignment ? ' md-html-align-' + alignment : '') + '">'
+                        + paragraphLines.map(inlineMd).join('<br>') + '</p>');
+                    i = next + 1;
+                    continue;
+                }
+            }
+
+            // HTML-заголовки из README. Уровни h1…h6 соответствуют markdown-заголовкам.
+            var htmlHeading = line.match(/^\s*<h([1-6])(?:\s+align\s*=\s*(?:"(left|center|right)"|'(left|center|right)'|(left|center|right)))?\s*>([\s\S]*?)<\/h\1>\s*$/i);
+            if (htmlHeading) {
+                var htmlLevel = htmlHeading[1];
+                var headingAlignment = htmlAlignment(htmlHeading[2] || htmlHeading[3] || htmlHeading[4]);
+                out.push('<h' + htmlLevel + ' class="md-h' + (headingAlignment ? ' md-html-align-' + headingAlignment : '')
+                    + '">' + inlineMd(htmlHeading[5]) + '</h' + htmlLevel + '>');
+                i++;
+                continue;
+            }
 
             // Заголовок # … ######
             var h = line.match(/^(#{1,6})\s+(.*)$/);
@@ -184,7 +400,8 @@
                 && !/^#{1,6}\s+/.test(lines[i])
                 && !/^>\s?/.test(lines[i])
                 && !/^[-*+]\s+/.test(lines[i])
-                && !/^\d+\.\s+/.test(lines[i])) {
+                && !/^\d+\.\s+/.test(lines[i])
+                && !isTableStart(lines, i)) {
                 pbuf.push(inlineMd(lines[i]));
                 i++;
             }
@@ -202,13 +419,13 @@
 
     function attachmentEmoji(type) {
         switch (type) {
-            case 'IMAGE': case 'GIF': return '\u{1F4F7} Фото';
-            case 'VIDEO': return '\u{1F3AC} Видео';
-            case 'AUDIO': return '\u{1F3B5} Аудио';
-            case 'VOICE': return '\u{1F3A4} Голосовое';
-            case 'DOCUMENT': return '\u{1F4C4} Документ';
-            case 'STICKER': return '\u{1F92A} Стикер';
-            default: return '\u{1F4CE} Вложение';
+            case 'IMAGE': case 'GIF': return '\u{1F4F7} ' + BF.i18n.t('attachment.photo');
+            case 'VIDEO': return '\u{1F3AC} ' + BF.i18n.t('attachment.video');
+            case 'AUDIO': return '\u{1F3B5} ' + BF.i18n.t('attachment.audio');
+            case 'VOICE': return '\u{1F3A4} ' + BF.i18n.t('attachment.voice');
+            case 'DOCUMENT': return '\u{1F4C4} ' + BF.i18n.t('attachment.document');
+            case 'STICKER': return '\u{1F92A} ' + BF.i18n.t('attachment.sticker');
+            default: return '\u{1F4CE} ' + BF.i18n.t('attachment.generic');
         }
     }
 
@@ -230,13 +447,13 @@
     function attachmentPreviewHtml(type) {
         var icon, label;
         switch (type) {
-            case 'IMAGE': case 'GIF': icon = PREVIEW_ICONS.image; label = 'Фото'; break;
-            case 'VIDEO': icon = PREVIEW_ICONS.video; label = 'Видео'; break;
-            case 'AUDIO': icon = PREVIEW_ICONS.audio; label = 'Аудио'; break;
-            case 'VOICE': icon = PREVIEW_ICONS.voice; label = 'Голосовое'; break;
-            case 'DOCUMENT': icon = PREVIEW_ICONS.document; label = 'Документ'; break;
-            case 'STICKER': icon = PREVIEW_ICONS.sticker; label = 'Стикер'; break;
-            default: icon = PREVIEW_ICONS.attach; label = 'Вложение';
+            case 'IMAGE': case 'GIF': icon = PREVIEW_ICONS.image; label = BF.i18n.t('attachment.photo'); break;
+            case 'VIDEO': icon = PREVIEW_ICONS.video; label = BF.i18n.t('attachment.video'); break;
+            case 'AUDIO': icon = PREVIEW_ICONS.audio; label = BF.i18n.t('attachment.audio'); break;
+            case 'VOICE': icon = PREVIEW_ICONS.voice; label = BF.i18n.t('attachment.voice'); break;
+            case 'DOCUMENT': icon = PREVIEW_ICONS.document; label = BF.i18n.t('attachment.document'); break;
+            case 'STICKER': icon = PREVIEW_ICONS.sticker; label = BF.i18n.t('attachment.sticker'); break;
+            default: icon = PREVIEW_ICONS.attach; label = BF.i18n.t('attachment.generic');
         }
         return icon + '<span class="preview-text">' + escapeHtml(label) + '</span>';
     }
@@ -278,7 +495,7 @@
     }
 
     function formatLastSeen(lastSeenTs) {
-        if (!lastSeenTs) return 'не в сети';
+        if (!lastSeenTs) return BF.i18n.t('lastSeen.offline');
         var now = Date.now();
         var diff = now - lastSeenTs;
         if (diff < 0) diff = 0;
@@ -288,30 +505,16 @@
         var hours = Math.floor(minutes / 60);
         var days = Math.floor(hours / 24);
 
-        if (seconds < 60) return 'был(а) в сети только что';
-        if (minutes < 60) {
-            if (minutes === 1) return 'был(а) в сети 1 минуту назад';
-            if (minutes < 5) return 'был(а) в сети ' + minutes + ' минуты назад';
-            if (minutes < 21) return 'был(а) в сети ' + minutes + ' минут назад';
-            var m10 = minutes % 10;
-            if (m10 === 1) return 'был(а) в сети ' + minutes + ' минуту назад';
-            if (m10 >= 2 && m10 <= 4) return 'был(а) в сети ' + minutes + ' минуты назад';
-            return 'был(а) в сети ' + minutes + ' минут назад';
-        }
-        if (hours < 24) {
-            if (hours === 1) return 'был(а) в сети 1 час назад';
-            if (hours < 5) return 'был(а) в сети ' + hours + ' часа назад';
-            if (hours < 21) return 'был(а) в сети ' + hours + ' часов назад';
-            var h10 = hours % 10;
-            if (h10 === 1) return 'был(а) в сети ' + hours + ' час назад';
-            if (h10 >= 2 && h10 <= 4) return 'был(а) в сети ' + hours + ' часа назад';
-            return 'был(а) в сети ' + hours + ' часов назад';
-        }
-        if (days === 1) return 'был(а) в сети вчера';
-        if (days < 7) return 'был(а) в сети ' + days + ' дн. назад';
+        if (seconds < 60) return BF.i18n.t('lastSeen.justNow');
+        if (minutes < 60) return BF.i18n.tp('lastSeen.minutes', minutes);
+        if (hours < 24) return BF.i18n.tp('lastSeen.hours', hours);
+        if (days === 1) return BF.i18n.t('lastSeen.yesterday');
+        if (days < 7) return BF.i18n.tp('lastSeen.days', days);
 
         var d = new Date(lastSeenTs);
-        return 'был(а) в сети ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        return BF.i18n.t('lastSeen.date', {
+            date: d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
+        });
     }
 
     window.BF.utils = {

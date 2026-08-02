@@ -94,7 +94,8 @@
             lastActivityAt: ch.getLastActivityAt ? tsToMs(ch.getLastActivityAt()) : null,
             // PrivateChatInviteState: 0=PENDING, 1=ACCEPTED, 2=REJECTED
             privateInviteState: ch.getPrivateInviteState ? ch.getPrivateInviteState() : 0,
-            privateInviterUserId: ch.getPrivateInviterUserId ? ch.getPrivateInviterUserId() : 0
+            privateInviterUserId: ch.getPrivateInviterUserId ? ch.getPrivateInviterUserId() : 0,
+            hasDraft: ch.getHasDraft ? ch.getHasDraft() : false
         };
     }
 
@@ -188,6 +189,43 @@
         });
     }
 
+    function mapChatDraft(draft) {
+        if (!draft) return null;
+        return {
+            text: draft.getText(),
+            replyToMessageId: draft.getReplyToMessageId(),
+            revision: draft.getRevision(),
+            updatedAt: draft.getUpdatedAt ? tsToMs(draft.getUpdatedAt()) : null
+        };
+    }
+
+    function getChatDraft(chatId) {
+        var req = new (msgPb().GetChatDraftRequest)();
+        req.setChatId(chatId);
+        return c().authCall(messages().getChatDraft.bind(messages()), req).then(function (resp) {
+            return { draft: mapChatDraft(resp.getDraft()) };
+        });
+    }
+
+    function upsertChatDraft(chatId, text, replyToMessageId) {
+        var req = new (msgPb().UpsertChatDraftRequest)();
+        req.setChatId(chatId);
+        req.setText(text || '');
+        req.setReplyToMessageId(replyToMessageId || 0);
+        return c().authCall(messages().upsertChatDraft.bind(messages()), req).then(function (resp) {
+            return { draft: mapChatDraft(resp.getDraft()) };
+        });
+    }
+
+    function deleteChatDraft(chatId, revision) {
+        var req = new (msgPb().DeleteChatDraftRequest)();
+        req.setChatId(chatId);
+        req.setExpectedRevision(revision || '');
+        return c().authCall(messages().deleteChatDraft.bind(messages()), req).then(function (resp) {
+            return { deleted: resp.getDeleted() };
+        });
+    }
+
     function getPersonChatId(userId) {
         var req = new (msgPb().GetPersonChatIdRequest)();
         req.setUserId(userId);
@@ -251,11 +289,12 @@
         return c().authCall(messages().deleteMessage.bind(messages()), req);
     }
 
-    function listChatAttachments(chatId, type, offset, size) {
+    function listChatAttachments(chatId, type, offset, size, fileNameQuery) {
         var req = new (msgPb().ListChatAttachmentsRequest)();
         req.setChatId(chatId);
         req.setAttachmentType(type || 0);
         req.setSortDescending(true);
+        req.setFileNameQuery(fileNameQuery || '');
         var pg = new (sharedPb().PageRequest)();
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 30, 50));
@@ -529,6 +568,18 @@
         return c().authCall(users().setNotificationsEnabled.bind(users()), req);
     }
 
+    function setFirebaseToken(token, pushPlatform) {
+        var req = new (usrPb().SetFirebaseTokenRequest)();
+        req.setFirebaseToken(token);
+        req.setPushPlatform(pushPlatform || 2);
+        return c().authCall(users().setFirebaseToken.bind(users()), req);
+    }
+
+    function clearFirebaseToken() {
+        var req = new (usrPb().ClearFirebaseTokenRequest)();
+        return c().authCall(users().clearFirebaseToken.bind(users()), req);
+    }
+
     // --- Privacy (UsersApi) ---
 
     function mapPrivacySettings(s) {
@@ -593,6 +644,41 @@
         var req = new (usrPb().SetProfilePosterRequest)();
         req.setProfilePosterFileId(fileId || '');
         return c().authCall(users().setProfilePoster.bind(users()), req);
+    }
+
+    // --- Synced chat backgrounds (UsersApi) ---
+
+    function mapUserSettings(settings) {
+        if (!settings) return { globalChatBackgroundFileId: '', chatBackgrounds: [] };
+        return {
+            globalChatBackgroundFileId: settings.getGlobalChatBackgroundFileId(),
+            chatBackgrounds: settings.getChatBackgroundsList().map(function (item) {
+                return {
+                    chatId: item.getChatId(),
+                    chatBackgroundFileId: item.getChatBackgroundFileId()
+                };
+            })
+        };
+    }
+
+    function getUserSettings() {
+        var req = new (usrPb().GetUserSettingsRequest)();
+        return c().authCall(users().getUserSettings.bind(users()), req).then(function (resp) {
+            return { settings: mapUserSettings(resp.getSettings()) };
+        });
+    }
+
+    function setGlobalChatBackground(fileId) {
+        var req = new (usrPb().SetGlobalChatBackgroundRequest)();
+        req.setChatBackgroundFileId(fileId || '');
+        return c().authCall(users().setGlobalChatBackground.bind(users()), req);
+    }
+
+    function setChatBackground(chatId, fileId) {
+        var req = new (usrPb().SetChatBackgroundRequest)();
+        req.setChatId(chatId);
+        req.setChatBackgroundFileId(fileId || '');
+        return c().authCall(users().setChatBackground.bind(users()), req);
     }
 
     // --- Chat Folders (UsersApi) ---
@@ -829,6 +915,9 @@
     window.BF.api = {
         listChats: listChats,
         getChatInfo: getChatInfo,
+        getChatDraft: getChatDraft,
+        upsertChatDraft: upsertChatDraft,
+        deleteChatDraft: deleteChatDraft,
         getPersonChatId: getPersonChatId,
         listMessages: listMessages,
         sendMessage: sendMessage,
@@ -867,11 +956,16 @@
         // User devices / notifications / privacy / personalization
         renameDevice: renameDevice,
         setNotificationsEnabled: setNotificationsEnabled,
+        setFirebaseToken: setFirebaseToken,
+        clearFirebaseToken: clearFirebaseToken,
         getPrivacySettings: getPrivacySettings,
         updatePrivacySettings: updatePrivacySettings,
         getPersonalization: getPersonalization,
         updatePersonalization: updatePersonalization,
         setProfilePoster: setProfilePoster,
+        getUserSettings: getUserSettings,
+        setGlobalChatBackground: setGlobalChatBackground,
+        setChatBackground: setChatBackground,
         // Chat Folders
         getChatFolders: getChatFolders,
         createChatFolder: createChatFolder,

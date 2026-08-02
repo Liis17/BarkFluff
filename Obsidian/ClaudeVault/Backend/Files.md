@@ -23,6 +23,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 **FilesApiService** (`TokenType.User`) — клиентский API:
 - `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`
 - Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`
+- `GetTempDownloadUrl` валидирует `file_ids` через `Guid.TryParse` и на невалидном значении бросает `NotValidFileIdException` (логируя само значение). Раньше `Guid.Parse` ронял вызов `FormatException` — в логах это выглядело как «КРИТИЧЕСКАЯ ОШИБКА», хотя виноват клиент, приславший вместо идентификатора, например, готовый URL картинки
 
 **FilesServerApiService** (`TokenType.Service`) — серверный API (включает админ-операции для [[Backend/AdminPanel]]):
 - `GetFileData` / `GetFilesData` — метаданные файлов
@@ -69,7 +70,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 ### Сервисы
 
-- **ImageCompressor** — SixLabors.ImageSharp. Превью: ресайз до 1024px, JPEG 75%. Оригинал: макс. 2500px, макс. 2 МБ, JPEG 90%.
+- **ImageCompressor** — SixLabors.ImageSharp. Превью: ресайз до 1024px, JPEG 75%. Оригинал: макс. 2500px, макс. 2 МБ, JPEG 90%. Для `MessageAttachmentGif` также создаётся JPEG-preview первого кадра: веб-профиль показывает его статично, не запуская GIF-анимацию.
 - **FileTypeDetector** — тип по magic bytes (JPEG, PNG, WebP, GIF, MP4, WebM, AVI, MOV, MP3, WAV, FLAC, M4A, OGG). OGG → `Voice`, остальное аудио → `Audio`.
 - **VideoThumbnailExtractor** — FFMpegCore, статический бинарь `ffmpeg`/`ffprobe` (`mwader/static-ffmpeg`, копируется в образ в `Dockerfile.slim`, путь `/usr/local/bin` через `GlobalFFOptions`/`Ffmpeg:BinaryFolder`). Для `MessageAttachmentVideo`: кадр на 5-й секунде (или середина, если короче) → тот же `ImageCompressor`-пайплайн превью (1024px JPEG). Видео всегда буферизуется на диск при загрузке (FFmpeg читает файл по пути, не по стриму). Длительность видео не извлекается и не хранится (нет поля в proto).
 
@@ -88,7 +89,9 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 - `users_api.proto` — Client (валидация аватара)
 # Метрики
 
-[[Backend/AdminPanel]] показывает успешные и ошибочные upload/download, байты по направлениям и суммарный файловый трафик. Download считается при фактической HTTP-выдаче файла, а не при создании временной ссылки.
+[[Backend/AdminPanel]] показывает успешные и ошибочные upload/download, байты по направлениям и суммарный файловый трафик. Локальный download проходит через `CountingReadStream`: учитываются реально прочитанные HTTP-ответом байты, поэтому non-seekable S3-поток не даёт нулевой трафик. Завершённые federated downloads добавляются в те же общие Files-счётчики.
+
+Для диагностики долгих загрузок сервис публикует gauges последнего успешного upload (в миллисекундах): `files_last_upload_total_ms`, `files_last_upload_buffering_ms`, `files_last_upload_hashing_ms`, `files_last_upload_processing_ms`, `files_last_upload_s3_ms`. Это измерения копирования запроса в буфер, SHA-256, детекции/валидации/обработки превью, исходных S3-загрузок и полного пайплайна соответственно. Они сохраняются только в памяти и экспортируются обычным фоновым batched-репортёром, без отдельного лога на файл; все пять значений обновляются атомарно, поэтому относятся к одной загрузке.
 
 ## `FetchFileStream` — отдача файла ноде-партнёру (этап 3.2, docs/rearch/phase-3/step-3.2-fetchfile-access.md)
 

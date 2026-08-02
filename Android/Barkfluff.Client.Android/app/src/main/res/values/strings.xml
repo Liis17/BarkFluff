@@ -1,4 +1,5 @@
 <resources>
+    <string name="chat_draft_preview">Черновик</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
 
@@ -609,6 +610,10 @@
     <string name="about_device">Устройство</string>
     <string name="about_os">Операционная система</string>
     <string name="about_microservices">Микросервисы сервера</string>
+    <string name="about_ping_server">Проверить пинг</string>
+    <string name="about_ping_checking">Проверяем связь с Beacon…</string>
+    <string name="about_ping_result">Ответ Beacon: %1$d мс</string>
+    <string name="about_ping_failed">Beacon не ответил</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Тестирование</string>
@@ -616,6 +621,8 @@
     <string name="testing_experimental_hint">Экспериментальные функции. Могут работать нестабильно.</string>
     <string name="testing_show_ids">Показывать ID в профиле</string>
     <string name="testing_show_ids_subtitle">UserId и ChatId под статусом онлайна</string>
+    <string name="testing_show_server_addresses">Показывать адреса микросервисов</string>
+    <string name="testing_show_server_addresses_subtitle">В разделе «О приложении»</string>
     <string name="testing_secret_chats">Скрытые чаты</string>
     <string name="testing_secret_chats_subtitle">Отложенный экспериментальный сценарий секретных чатов</string>
     <string name="testing_private_chats">Приватные чаты</string>
@@ -647,6 +654,8 @@
     <string name="profile_tab_media">Медиа</string>
     <string name="profile_tab_voice">Голосовые</string>
     <string name="profile_no_voice">Нет голосовых</string>
+    <string name="profile_files_search_hint">Поиск файлов</string>
+    <string name="profile_files_not_found">Файлы не найдены</string>
     <string name="profile_copied">Скопировано</string>
     <string name="group_online_count">%1$d участников · %2$d в сети</string>
     <string name="group_members_count">%1$d участников</string>

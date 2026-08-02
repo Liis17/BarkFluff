@@ -14,7 +14,12 @@ public static class MetricsCatalog
             Counter("files_uploaded", "Загруженные файлы"), Counter("files_downloaded", "Скачанные файлы"),
             Counter("upload_bytes_total", "Входящий трафик", "bytes"), Counter("download_bytes_total", "Исходящий трафик", "bytes"),
             Counter("file_traffic_bytes_total", "Файловый трафик", "bytes"),
-            Counter("files_upload_errors", "Ошибки загрузки"), Counter("files_download_errors", "Ошибки скачивания")),
+            Counter("files_upload_errors", "Ошибки загрузки"), Counter("files_download_errors", "Ошибки скачивания"),
+            Gauge("files_last_upload_total_ms", "Последняя загрузка: всего", "ms"),
+            Gauge("files_last_upload_buffering_ms", "Последняя загрузка: буферизация", "ms"),
+            Gauge("files_last_upload_hashing_ms", "Последняя загрузка: SHA-256", "ms"),
+            Gauge("files_last_upload_processing_ms", "Последняя загрузка: обработка", "ms"),
+            Gauge("files_last_upload_s3_ms", "Последняя загрузка: S3", "ms")),
         Service("BarkFluff.Identity", "Identity", true,
             Counter("accounts_confirmed", "Подтверждённые аккаунты"), Counter("auth_login_success", "Успешные входы"),
             Counter("auth_login_failed", "Неуспешные входы"), Counter("password_resets_confirmed", "Успешные сбросы пароля"),
@@ -39,7 +44,7 @@ public static class MetricsCatalog
             Counter("sessions_rejected", "Отклонённые FastAuth-сессии"), Counter("sessions_expired", "Истёкшие FastAuth-сессии")),
         Service("BarkFluff.Bots", "Bots", false,
             Counter("bot_api_messages_sent", "Сообщения ботов"), Counter("bot_updates_stored", "Сохранённые bot updates"),
-            Counter("login_notifications_errors", "Ошибки bot-уведомлений"), Gauge("active_subscriptions", "Активные bot streams")),
+            Counter("login_notifications_errors", "Ошибки bot-уведомлений")),
         Service("BarkFluff.Notification", "Notification", false,
             Counter("emails_sent", "Отправленные email"), Counter("emails_failed", "Ошибки email")),
         Service("BarkFluff.CloudMessaging", "CloudMessaging", false,
@@ -62,7 +67,8 @@ public static class MetricsCatalog
         Service("BarkFluff.Web", "Web", false, Counter("http_requests_total", "HTTP-запросы"), Counter("http_requests_errors", "HTTP-ошибки")),
         Service("BarkFluff.Developers", "Developers", false, Counter("grpc_requests_total", "gRPC-запросы"), Counter("grpc_requests_errors", "Ошибки gRPC")),
         Service("BarkFluff.WebServer", "WebServer", false,
-            Counter("installer_downloads", "Скачивания инсталлятора"), Counter("support_requests", "Support-запросы"), Counter("http_requests_errors", "HTTP-ошибки"))
+            Counter("installer_downloads", "Скачивания инсталлятора"), Counter("support_requests", "Support-запросы"),
+            Counter("http_requests_total", "HTTP-запросы"), Counter("http_requests_errors", "HTTP-ошибки"))
     ];
 
     public static MetricServiceDefinition? Find(string serviceName) =>

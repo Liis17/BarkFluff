@@ -22,6 +22,10 @@ public class UsersContext : DbContext
 
     public DbSet<UserPersonalization> UserPersonalizations { get; set; }
 
+    public DbSet<UserSettings> UserSettings { get; set; }
+
+    public DbSet<UserChatSettings> UserChatSettings { get; set; }
+
     public DbSet<ChatFolder> ChatFolders { get; set; }
 
     public DbSet<ChatMute> ChatMutes { get; set; }
@@ -76,6 +80,10 @@ public class UsersContext : DbContext
             .HasForeignKey(ud => ud.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<UserDevice>()
+            .Property(ud => ud.PushPlatform)
+            .HasDefaultValue(DevicePushPlatform.Android);
+
         // Настройка связей для Privacy (1:1 с User, уникальный индекс UserId)
         modelBuilder.Entity<Privacy>()
             .HasOne(p => p.User)
@@ -96,6 +104,26 @@ public class UsersContext : DbContext
 
         modelBuilder.Entity<UserPersonalization>()
             .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<UserSettings>()
+            .HasOne(s => s.User)
+            .WithOne()
+            .HasForeignKey<UserSettings>(s => s.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserSettings>()
+            .HasIndex(s => s.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<UserChatSettings>()
+            .HasOne(s => s.User)
+            .WithMany()
+            .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserChatSettings>()
+            .HasIndex(s => new { s.UserId, s.ChatId })
             .IsUnique();
 
         // Настройка связей для ChatFolder (1:Many с User; уникальный индекс по публичному FolderId)

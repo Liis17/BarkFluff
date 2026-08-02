@@ -32,10 +32,10 @@
     };
 
     var TOTAL_STEPS = 9;
-    var STEP_TITLES = {
-        1: 'Создать аккаунт', 2: 'Имя пользователя', 3: 'Электронная почта',
-        4: 'Подтверждение', 5: 'Пароль', 6: 'Фото профиля', 7: 'О себе',
-        8: 'Безопасность', 9: 'Готово'
+    var STEP_TITLE_KEYS = {
+        1: 'register.createAccount', 2: 'register.username', 3: 'register.email',
+        4: 'register.confirmation', 5: 'common.password', 6: 'settings.profilePhoto', 7: 'register.aboutYou',
+        8: 'settings.section.security', 9: 'common.done'
     };
 
     var state = {
@@ -124,6 +124,9 @@
                         refreshToken: state.refreshToken,
                         refreshTokenExpiration: state.refreshTokenExpiration
                     });
+                    // Первый момент, когда согласие (данное на странице входа) можно
+                    // зафиксировать в профиле: до этого шага токена не было.
+                    BF.legal.flushConsent();
                     resolve();
                 });
             });
@@ -298,10 +301,10 @@
         var label = $('regStrengthLabel');
         bar.style.width = score + '%';
         var color, text;
-        if (score < 40) { color = 'var(--error)'; text = 'Слабый'; }
-        else if (score < 60) { color = '#e67e22'; text = 'Средний'; }
-        else if (score < 80) { color = '#f1c40f'; text = 'Хороший'; }
-        else { color = 'var(--success)'; text = 'Надёжный'; }
+        if (score < 40) { color = 'var(--error)'; text = BF.i18n.t('register.password.weak'); }
+        else if (score < 60) { color = '#e67e22'; text = BF.i18n.t('register.password.medium'); }
+        else if (score < 80) { color = '#f1c40f'; text = BF.i18n.t('register.password.good'); }
+        else { color = 'var(--success)'; text = BF.i18n.t('register.password.strong'); }
         bar.style.background = color;
         label.textContent = pw ? text : '';
         label.style.color = color;
@@ -373,7 +376,7 @@
             prev.src = out.toDataURL('image/jpeg', 0.9);
             prev.hidden = false;
             $('regAvatarPlus').hidden = true;
-            $('regAvatarPick').textContent = 'Изменить фото';
+            $('regAvatarPick').textContent = BF.i18n.t('register.changePhoto');
             showAvatarMode('empty');
         }, 'image/jpeg', 0.85);
     }
@@ -461,7 +464,7 @@
                 if (exist) {
                     usernameOk = false;
                     setFieldStatus('regUsernameStatus', 'err');
-                    showFieldError('regUsernameErr', 'Это имя уже занято');
+                    showFieldError('regUsernameErr', BF.i18n.t('register.error.usernameTaken'));
                 } else {
                     usernameOk = true;
                     setFieldStatus('regUsernameStatus', 'ok');
@@ -488,7 +491,7 @@
                 if (exist) {
                     emailOk = false;
                     setFieldStatus('regEmailStatus', 'err');
-                    showFieldError('regEmailErr', 'Этот email уже зарегистрирован');
+                    showFieldError('regEmailErr', BF.i18n.t('register.error.emailTaken'));
                 } else {
                     emailOk = true;
                     setFieldStatus('regEmailStatus', 'ok');
@@ -505,14 +508,14 @@
     function configFooter() {
         backBtn.hidden = !(step === 2 || step === 3);
         skipBtn.hidden = !(step === 6 || step === 7 || step === 8);
-        var label = 'Далее';
-        if (step === 4 || step === 8) label = 'Подтвердить';
-        if (step === 9) label = 'Перейти в чаты';
+        var label = BF.i18n.t('common.next.step');
+        if (step === 4 || step === 8) label = BF.i18n.t('common.confirm');
+        if (step === 9) label = BF.i18n.t('register.goToChats');
         nextLabel.textContent = label;
         nextBtn.hidden = (step === 8 && twoFaMode === 'intro');
         progressBar.style.width = (step / TOTAL_STEPS * 100) + '%';
-        stepLabel.textContent = 'Шаг ' + step + ' из ' + TOTAL_STEPS;
-        titleEl.textContent = STEP_TITLES[step];
+        stepLabel.textContent = BF.i18n.t('register.step', { step: step, total: TOTAL_STEPS });
+        titleEl.textContent = BF.i18n.t(STEP_TITLE_KEYS[step]);
         footer.style.display = '';
     }
 
@@ -529,7 +532,7 @@
     function onEnterStep(n) {
         var el = currentStepEl();
         if (n === 4) {
-            $('regOtpDesc').textContent = 'Мы отправили 6-значный код на ' + state.email;
+            $('regOtpDesc').textContent = BF.i18n.t('register.codeSentTo', { email: state.email });
             otp4.clear();
             setTimeout(function () { otp4.focus(); }, 50);
         } else if (n === 8) {
@@ -546,7 +549,7 @@
             configFooter();
         } else if (n === 9) {
             var name = state.firstName + (state.lastName ? ' ' + state.lastName : '');
-            $('regCompleteName').textContent = 'Добро пожаловать, ' + name + '! @' + state.username;
+            $('regCompleteName').textContent = BF.i18n.t('register.welcomeUser', { name: name, username: state.username });
         } else {
             // focus first text input
             var input = el && el.querySelector('input.form-input, textarea.form-input');
@@ -577,9 +580,9 @@
     function doStep1() {
         var first = $('regFirstName').value.trim();
         var last = $('regLastName').value.trim();
-        if (first.length < 3) return showFieldError('regFirstNameErr', 'Минимум 3 символа');
-        if (first.length > 40) return showFieldError('regFirstNameErr', 'Максимум 40 символов');
-        if (last.length > 40) return showFieldError('regLastNameErr', 'Максимум 40 символов');
+        if (first.length < 3) return showFieldError('regFirstNameErr', BF.i18n.t('register.error.min3'));
+        if (first.length > 40) return showFieldError('regFirstNameErr', BF.i18n.t('register.error.max40'));
+        if (last.length > 40) return showFieldError('regLastNameErr', BF.i18n.t('register.error.max40'));
         state.firstName = first;
         state.lastName = last;
         goToStep(2);
@@ -588,13 +591,13 @@
     function doStep2() {
         var v = $('regUsername').value.toLowerCase().trim();
         if (v.length < 3 || v.length > 30 || !USERNAME_RE.test(v) || /^[0-9]/.test(v)) {
-            return showFieldError('regUsernameErr', 'Латиница, цифры, _; от 3 до 30, не с цифры');
+            return showFieldError('regUsernameErr', BF.i18n.t('register.error.usernameFormat'));
         }
         state.username = v;
         setLoading(nextBtn, true);
         checkUsername(v).then(function (exist) {
             setLoading(nextBtn, false);
-            if (exist) return showFieldError('regUsernameErr', 'Это имя уже занято');
+            if (exist) return showFieldError('regUsernameErr', BF.i18n.t('register.error.usernameTaken'));
             goToStep(3);
         }).catch(function () {
             // allow proceeding; CreateAccount will re-validate
@@ -605,11 +608,11 @@
 
     function doStep3() {
         var v = $('regEmail').value.trim().toLowerCase();
-        if (!EMAIL_RE.test(v)) return showFieldError('regEmailErr', 'Введите корректный email');
+        if (!EMAIL_RE.test(v)) return showFieldError('regEmailErr', BF.i18n.t('register.error.badEmail'));
         state.email = v;
         setLoading(nextBtn, true);
         checkEmail(v).then(function (exist) {
-            if (exist) { setLoading(nextBtn, false); return showFieldError('regEmailErr', 'Этот email уже зарегистрирован'); }
+            if (exist) { setLoading(nextBtn, false); return showFieldError('regEmailErr', BF.i18n.t('register.error.emailTaken')); }
             return createAccount().then(function () {
                 setLoading(nextBtn, false);
                 startResendCooldown();
@@ -619,15 +622,15 @@
             setLoading(nextBtn, false);
             if (errorCodeOf(err) === ERROR_CODES.INVALID_USERNAME_FORMAT) {
                 goToStep(2);
-                showFieldError('regUsernameErr', 'Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа');
+                showFieldError('regUsernameErr', BF.i18n.t('profile.username.invalidFormat'));
             } else {
-                showFieldError('regEmailErr', 'Не удалось создать аккаунт. Попробуйте ещё раз');
+                showFieldError('regEmailErr', BF.i18n.t('register.error.createFailed'));
             }
         });
     }
 
     function doStep4(code) {
-        if (code.length !== 6) return showFieldError('regOtpErr', 'Введите все 6 цифр');
+        if (code.length !== 6) return showFieldError('regOtpErr', BF.i18n.t('auth.error.incompleteCode'));
         setLoading(nextBtn, true);
         confirmAccount(code).then(function () {
             setLoading(nextBtn, false);
@@ -635,9 +638,9 @@
         }).catch(function (err) {
             setLoading(nextBtn, false);
             if (errorCodeOf(err) === ERROR_CODES.INVALID_OTP) {
-                showFieldError('regOtpErr', 'Неверный код');
+                showFieldError('regOtpErr', BF.i18n.t('twofa.error.wrongCode'));
             } else {
-                showFieldError('regOtpErr', 'Неверный или просроченный код');
+                showFieldError('regOtpErr', BF.i18n.t('register.error.codeExpired'));
             }
             otp4.clear();
             otp4.focus();
@@ -647,15 +650,15 @@
     function doStep5() {
         var pw = $('regPassword').value;
         var pw2 = $('regPassword2').value;
-        if (pw.length < 8) return showFieldError('regPasswordErr', 'Минимум 8 символов');
-        if (pw !== pw2) return showFieldError('regPasswordErr', 'Пароли не совпадают');
+        if (pw.length < 8) return showFieldError('regPasswordErr', BF.i18n.t('register.error.min8'));
+        if (pw !== pw2) return showFieldError('regPasswordErr', BF.i18n.t('password.error.mismatch'));
         setLoading(nextBtn, true);
         setPassword(pw).then(function () {
             setLoading(nextBtn, false);
             goToStep(6);
         }).catch(function () {
             setLoading(nextBtn, false);
-            showFieldError('regPasswordErr', 'Не удалось установить пароль');
+            showFieldError('regPasswordErr', BF.i18n.t('register.error.passwordFailed'));
         });
     }
 
@@ -690,14 +693,14 @@
 
     function doStep8(code) {
         if (twoFaMode !== 'setup') { goToStep(9); return; }
-        if (code.length !== 6) return showFieldError('reg2faErr', 'Введите все 6 цифр');
+        if (code.length !== 6) return showFieldError('reg2faErr', BF.i18n.t('auth.error.incompleteCode'));
         setLoading(nextBtn, true);
         confirm2fa(code).then(function () {
             setLoading(nextBtn, false);
             goToStep(9);
         }).catch(function () {
             setLoading(nextBtn, false);
-            showFieldError('reg2faErr', 'Неверный код');
+            showFieldError('reg2faErr', BF.i18n.t('twofa.error.wrongCode'));
             otp8.clear();
             otp8.focus();
         });
@@ -716,9 +719,9 @@
             if (resendCooldown <= 0) {
                 clearInterval(resendTimer);
                 btn.disabled = false;
-                btn.textContent = 'Отправить код повторно';
+                btn.textContent = BF.i18n.t('register.resendCode');
             } else {
-                btn.textContent = 'Отправить повторно через ' + resendCooldown + 'с';
+                btn.textContent = BF.i18n.t('register.resendIn', { seconds: resendCooldown });
             }
         }, 1000);
     }
@@ -728,7 +731,7 @@
         createAccount().then(function () {
             startResendCooldown();
         }).catch(function () {
-            showFieldError('regOtpErr', 'Не удалось отправить код повторно');
+            showFieldError('regOtpErr', BF.i18n.t('register.error.resendFailed'));
         });
     }
 
@@ -751,7 +754,7 @@
         var prev = $('regAvatarPreview');
         if (prev) { prev.hidden = true; prev.removeAttribute('src'); }
         if ($('regAvatarPlus')) $('regAvatarPlus').hidden = false;
-        if ($('regAvatarPick')) $('regAvatarPick').textContent = 'Выбрать фото';
+        if ($('regAvatarPick')) $('regAvatarPick').textContent = BF.i18n.t('register.pickPhoto');
         if ($('regCropper')) $('regCropper').hidden = true;
         if ($('regAvatarEmpty')) $('regAvatarEmpty').hidden = false;
         if (crop.objUrl) { URL.revokeObjectURL(crop.objUrl); crop.objUrl = null; }
@@ -875,15 +878,15 @@
                 otp8.focus();
             }).catch(function () {
                 setLoading(btn, false);
-                showFieldError('reg2faErr', 'Не удалось включить 2FA');
+                showFieldError('reg2faErr', BF.i18n.t('register.error.twofaFailed'));
             });
         });
         $('reg2faCopy').addEventListener('click', function () {
             if (state.twoFaSecret && navigator.clipboard) {
                 navigator.clipboard.writeText(state.twoFaSecret);
-                this.textContent = 'Скопировано';
+                this.textContent = BF.i18n.t('common.copied');
                 var self = this;
-                setTimeout(function () { self.textContent = 'Копировать'; }, 1500);
+                setTimeout(function () { self.textContent = BF.i18n.t('common.copy'); }, 1500);
             }
         });
 

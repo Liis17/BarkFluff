@@ -1,0 +1,52 @@
+<Page
+    x:Class="BarkFluff.Client.WinUI.Views.Settings.SettingsStoragePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BarkFluff.Client.WinUI.Views.Controls">
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,40"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left">
+            <TextBlock Margin="0,0,0,20"
+                       Style="{StaticResource OnboardingTitle}"
+                       Text="{StaticResource Settings_Storage_Title}" />
+
+            <TextBlock Margin="0,0,0,16"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Storage_ServerStorage}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow Glyph="&#xE753;"
+                                          Description="{x:Bind ViewModel.UsedStorage, Mode=OneWay}"
+                                          Header="{StaticResource Settings_Storage_Used}" />
+                    <ProgressBar Height="4" Margin="16,0,16,12" Maximum="100" Value="{x:Bind ViewModel.UsedPercentage, Mode=OneWay}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.ImagesStorage, Mode=OneWay}" Header="{StaticResource Settings_Storage_CategoryImages}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.VideosStorage, Mode=OneWay}" Header="{StaticResource Settings_Storage_CategoryVideos}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.AudioStorage, Mode=OneWay}" Header="{StaticResource Settings_Storage_CategoryAudio}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.DocumentsStorage, Mode=OneWay}" Header="{StaticResource Settings_Storage_CategoryDocuments}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.StickersStorage, Mode=OneWay}" Header="{StaticResource Settings_Storage_CategoryStickers}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.AvatarsStorage, Mode=OneWay}" Header="{StaticResource Settings_Storage_CategoryAvatars}" />
+                </StackPanel>
+            </Border>
+
+            <!--  Дисковых кешей изображений и чатов в WinUI нет, поэтому мерить и чистить нечего.  -->
+            <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Storage_LocalStorage}" />
+            <Border Style="{StaticResource SettingsGroupCard}">
+                <StackPanel>
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Storage_AppCache}" IsEnabled="False" />
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Storage_ImageCache}" IsEnabled="False" />
+                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Storage_ChatCache}" IsEnabled="False" />
+                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
+                        <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}"
+                                              Glyph="&#xE74D;"
+                                              Header="{StaticResource Settings_Storage_ClearCache}" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

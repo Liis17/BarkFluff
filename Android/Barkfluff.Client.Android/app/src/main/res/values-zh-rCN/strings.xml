@@ -1,4 +1,5 @@
 <resources>
+    <string name="chat_draft_preview">草稿</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
 
@@ -521,12 +522,18 @@
     <string name="about_device">设备</string>
     <string name="about_os">操作系统</string>
     <string name="about_microservices">服务器微服务</string>
+    <string name="about_ping_server">检查延迟</string>
+    <string name="about_ping_checking">正在检查 Beacon 连接…</string>
+    <string name="about_ping_result">Beacon 响应：%1$d 毫秒</string>
+    <string name="about_ping_failed">Beacon 未响应</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">测试</string>
     <string name="testing_section_params">参数</string>
     <string name="testing_show_ids">在资料中显示 ID</string>
     <string name="testing_show_ids_subtitle">在线状态下显示 UserId 和 ChatId</string>
+    <string name="testing_show_server_addresses">显示微服务地址</string>
+    <string name="testing_show_server_addresses_subtitle">在“关于”页面中</string>
     <string name="testing_secret_chats">隐藏聊天</string>
     <string name="testing_secret_chats_subtitle">用于创建私密和秘密聊天的按钮</string>
 
@@ -556,6 +563,8 @@
     <string name="profile_tab_media">媒体</string>
     <string name="profile_tab_voice">语音</string>
     <string name="profile_no_voice">没有语音消息</string>
+    <string name="profile_files_search_hint">搜索文件</string>
+    <string name="profile_files_not_found">未找到文件</string>
     <string name="profile_copied">已复制</string>
     <string name="group_online_count">%1$d 名成员 · %2$d 在线</string>
     <string name="group_members_count">%1$d 名成员</string>

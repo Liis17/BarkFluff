@@ -13,6 +13,8 @@
         public int ImageWidth { get; set; } = 0;
         /// <summary>Высота изображения в пикселях (0 если не изображение)</summary>
         public int ImageHeight { get; set; } = 0;
+        /// <summary>Данные пересланного сообщения (только для Type = ForwardedMessage)</summary>
+        public ForwardedMessageModel? ForwardedMessage { get; set; } = null;
         public AttachmentsModel() { }
     }
 }

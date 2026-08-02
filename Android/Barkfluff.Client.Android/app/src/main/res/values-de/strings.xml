@@ -1,4 +1,5 @@
 <resources>
+    <string name="chat_draft_preview">Entwurf</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
 
@@ -525,12 +526,18 @@
     <string name="about_device">Gerät</string>
     <string name="about_os">Betriebssystem</string>
     <string name="about_microservices">Server-Microservices</string>
+    <string name="about_ping_server">Ping prüfen</string>
+    <string name="about_ping_checking">Beacon-Verbindung wird geprüft…</string>
+    <string name="about_ping_result">Beacon-Antwort: %1$d ms</string>
+    <string name="about_ping_failed">Beacon hat nicht geantwortet</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Test</string>
     <string name="testing_section_params">Parameter</string>
     <string name="testing_show_ids">IDs im Profil anzeigen</string>
     <string name="testing_show_ids_subtitle">UserId und ChatId unter dem Online-Status</string>
+    <string name="testing_show_server_addresses">Microservice-Adressen anzeigen</string>
+    <string name="testing_show_server_addresses_subtitle">Auf dem Über-Bildschirm</string>
     <string name="testing_secret_chats">Versteckte Chats</string>
     <string name="testing_secret_chats_subtitle">Schaltfläche zum Erstellen privater und geheimer Chats</string>
 
@@ -560,6 +567,8 @@
     <string name="profile_tab_media">Medien</string>
     <string name="profile_tab_voice">Sprachnachrichten</string>
     <string name="profile_no_voice">Keine Sprachnachrichten</string>
+    <string name="profile_files_search_hint">Dateien suchen</string>
+    <string name="profile_files_not_found">Keine Dateien gefunden</string>
     <string name="profile_copied">Kopiert</string>
     <string name="group_online_count">%1$d Mitglieder · %2$d online</string>
     <string name="group_members_count">%1$d Mitglieder</string>

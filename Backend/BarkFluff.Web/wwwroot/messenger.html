@@ -3,12 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BarkFluff — Мессенджер</title>
+    <meta name="theme-color" content="#8c351c">
+    <title data-i18n="app.title">Мессенджер</title>
     <!-- Mobile redirect removed: responsive layout handles all screen sizes -->
     <link id="favicon" rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Скрывает страницу, пока i18n не применил словарь — иначе мелькает исходный русский текст */
+        html.i18n-pending body { visibility: hidden; }
+    </style>
+    <script src="/js/app/i18n.js"></script>
     <style>
         /* ===== THEMES ===== */
         :root, [data-theme="light"] {
@@ -30,6 +37,8 @@
             --msg-in-bg: #e2dcd5;
             --msg-out-bg: #c49a80;
             --msg-out-text: #1c1917;
+            --msg-meta-color: rgba(0, 0, 0, 0.4);
+            --msg-out-meta-color: rgba(0, 0, 0, 0.5);
             --online-color: #10b981;
             --unread-badge-bg: #8c351c;
             --dialog-bg: #faf8f5;
@@ -71,6 +80,8 @@
             --msg-in-bg: #272320;
             --msg-out-bg: #4a2e1e;
             --msg-out-text: #eddfd3;
+            --msg-meta-color: rgba(229, 223, 215, 0.64);
+            --msg-out-meta-color: rgba(237, 223, 211, 0.72);
             --online-color: #34d399;
             --unread-badge-bg: #c07a52;
             --dialog-bg: #1c1916;
@@ -109,6 +120,8 @@
             --msg-in-bg: #191c30;
             --msg-out-bg: #2e295e;
             --msg-out-text: #d8ddf2;
+            --msg-meta-color: rgba(216, 221, 242, 0.62);
+            --msg-out-meta-color: rgba(216, 221, 242, 0.72);
             --online-color: #34d399;
             --unread-badge-bg: #7c6de0;
             --dialog-bg: #12152a;
@@ -482,7 +495,6 @@
         }
 
         /* Контент чата над фоновыми слоями (.messages-bg-layer / .messages-bg-dim) */
-        .chat-area > .connection-banner,
         .chat-area > .chat-header,
         .chat-area > .pinned-bar,
         .chat-area > .chat-empty,
@@ -497,37 +509,91 @@
             display: none;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 6px 16px;
-            background: rgba(220, 38, 38, 0.08);
+            gap: 8px;
+            position: fixed;
+            z-index: 11;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: calc(100vw - 32px);
+            padding: 8px 10px 8px 14px;
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--dialog-bg) 92%, #dc2626);
             color: var(--error);
             font-size: 13px;
             font-weight: 500;
-            border-bottom: 1px solid rgba(220, 38, 38, 0.15);
-            animation: connectionPulse 2s ease-in-out infinite;
+            border: 1px solid rgba(220, 38, 38, 0.22);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
         }
 
         .connection-banner.visible { display: flex; }
 
+        .connection-banner.offline { color: var(--text-main); }
+
         .connection-banner-icon { font-size: 15px; }
 
-        @keyframes connectionPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+        .connection-retry-btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 5px 9px;
+            background: var(--error);
+            color: #fff;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
         }
+
+        .connection-retry-btn:disabled {
+            cursor: default;
+            opacity: 0.6;
+        }
+
+        .connection-synced {
+            display: none;
+            position: absolute;
+            z-index: 2;
+            top: 74px;
+            left: 50%;
+            transform: translateX(-50%);
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--dialog-bg) 92%, #16a34a);
+            color: #15803d;
+            border: 1px solid rgba(22, 163, 74, 0.24);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .connection-synced.visible { display: flex; }
 
         .chat-empty {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-direction: column;
-            gap: 12px;
             color: var(--text-sub);
         }
 
+        .chat-empty-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            max-width: calc(100% - 48px);
+            padding: 22px 26px;
+            border: 1px solid color-mix(in srgb, var(--card-border) 76%, transparent);
+            border-radius: 22px;
+            background: color-mix(in srgb, var(--dialog-bg) 72%, transparent);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
         .chat-empty-icon {
-            opacity: 0.4;
+            opacity: 0.65;
         }
 
         .chat-empty-icon svg {
@@ -538,6 +604,7 @@
         .chat-empty-text {
             font-size: 16px;
             font-weight: 500;
+            text-align: center;
         }
 
         .chat-header {
@@ -639,6 +706,27 @@
         .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
         .call-btn-accept { background: #2e9e5b; }
         .call-btn-reject, .call-ctl-end { background: #d83a3a; }
+
+        /* Запрос доступа к микрофону/камере перед сигнализацией звонка. */
+        .call-permission-overlay {
+            display: none; position: fixed; inset: 0; z-index: 1210;
+            background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+        }
+        .call-permission-overlay.visible { display: flex; }
+        .call-permission-card {
+            background: var(--dialog-bg); border-radius: 20px; padding: 28px 32px;
+            width: 360px; max-width: 90%; text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .call-permission-title { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+        .call-permission-text { font-size: 14px; line-height: 1.45; color: var(--text-sub); margin-bottom: 24px; }
+        .call-permission-actions { display: flex; justify-content: center; gap: 10px; }
+        .call-permission-actions button {
+            border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font: inherit;
+        }
+        .call-permission-actions .primary { background: var(--primary); color: #fff; }
+        .call-permission-actions .secondary { background: var(--hover-bg); color: var(--text); }
+        .call-permission-actions button:disabled { opacity: .6; cursor: wait; }
 
         /* Active call screen */
         .call-screen {
@@ -909,25 +997,23 @@
             flex-direction: column;
             gap: 2px;
             max-width: 70%;
+            min-width: 0;
         }
 
         .msg-group.outgoing { align-self: flex-end; }
         .msg-group.incoming { align-self: flex-start; }
+        .msg-group.grouped-with-previous { margin-top: -2px; }
 
-        .msg-sender {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--link);
-            margin-bottom: 2px;
-            margin-left: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .msg-group.incoming.has-sender-gutter {
+            display: grid;
+            grid-template-columns: 32px minmax(0, 1fr);
+            column-gap: 8px;
         }
+        .msg-group.incoming.has-sender-gutter .msg-bubble { grid-column: 2; }
 
         .msg-sender-avatar {
-            width: 20px;
-            height: 20px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: linear-gradient(135deg, #c87e5b, #8c351c);
             color: #fff;
@@ -936,10 +1022,32 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow: visible;
             flex-shrink: 0;
+            position: relative;
+            align-self: end;
+            cursor: default;
         }
-        .msg-sender-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .msg-sender-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+        .msg-sender-avatar::after {
+            content: attr(data-sender-name);
+            position: absolute;
+            left: calc(100% + 8px);
+            bottom: 0;
+            z-index: 2;
+            padding: 5px 8px;
+            border-radius: 6px;
+            background: var(--dialog-bg);
+            color: var(--text-main);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.12s ease-out;
+        }
+        .msg-sender-avatar:hover::after { opacity: 1; }
 
         .msg-bubble {
             padding: 10px 14px;
@@ -1061,6 +1169,38 @@
         .md h2.md-h { font-size: 1.2em; }
         .md h3.md-h { font-size: 1.1em; }
         .md h4.md-h, .md h5.md-h, .md h6.md-h { font-size: 1em; }
+        .md sub { font-size: 0.8em; }
+        .md .md-html-align-center { text-align: center; }
+        .md .md-html-align-right { text-align: right; }
+        .md .md-image {
+            display: inline-block;
+            max-width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
+        .md .md-image-alt { font-style: italic; }
+        .md-table-wrap {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .md-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 0.93em;
+        }
+        .md-table-cell {
+            padding: 5px 8px;
+            vertical-align: top;
+            border: 1px solid rgba(127, 127, 127, 0.35);
+            text-align: left;
+        }
+        .md-table th { font-weight: 700; }
+        .md-table tr:nth-child(even) td { background: rgba(127, 127, 127, 0.08); }
+        .md-table .md-align-center { text-align: center; }
+        .md-table .md-align-right { text-align: right; }
 
         .msg-attachments {
             display: flex;
@@ -1080,30 +1220,30 @@
         .attach-image-grid.grid-1 { grid-template-columns: 1fr; }
         .attach-image-grid.grid-2 { grid-template-columns: 1fr 1fr; height: 200px; }
         .attach-image-grid.grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 280px; }
-        .attach-image-grid.grid-3 img:first-child { grid-column: 1 / -1; }
+        .attach-image-grid.grid-3 > :is(img, .attach-image-item):first-child { grid-column: 1 / -1; }
         .attach-image-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 280px; }
         /* 5 — 2 сверху (половины), 3 снизу (трети) через сетку из 6 колонок */
         .attach-image-grid.grid-5 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 130px; }
-        .attach-image-grid.grid-5 img:nth-child(1),
-        .attach-image-grid.grid-5 img:nth-child(2) { grid-column: span 3; }
-        .attach-image-grid.grid-5 img:nth-child(3),
-        .attach-image-grid.grid-5 img:nth-child(4),
-        .attach-image-grid.grid-5 img:nth-child(5) { grid-column: span 2; }
+        .attach-image-grid.grid-5 > :is(img, .attach-image-item):nth-child(1),
+        .attach-image-grid.grid-5 > :is(img, .attach-image-item):nth-child(2) { grid-column: span 3; }
+        .attach-image-grid.grid-5 > :is(img, .attach-image-item):nth-child(3),
+        .attach-image-grid.grid-5 > :is(img, .attach-image-item):nth-child(4),
+        .attach-image-grid.grid-5 > :is(img, .attach-image-item):nth-child(5) { grid-column: span 2; }
         .attach-image-grid.grid-6 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 130px; }
         /* 7 — 2 ряда по 3, последний ряд — 1 картинка на всю ширину */
         .attach-image-grid.grid-7 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
-        .attach-image-grid.grid-7 img:nth-child(-n+6) { grid-column: span 2; }
-        .attach-image-grid.grid-7 img:nth-child(7) { grid-column: span 6; }
+        .attach-image-grid.grid-7 > :is(img, .attach-image-item):nth-child(-n+6) { grid-column: span 2; }
+        .attach-image-grid.grid-7 > :is(img, .attach-image-item):nth-child(7) { grid-column: span 6; }
         /* 8 — 2 ряда по 3, последний ряд — 2 картинки пополам */
         .attach-image-grid.grid-8 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
-        .attach-image-grid.grid-8 img:nth-child(-n+6) { grid-column: span 2; }
-        .attach-image-grid.grid-8 img:nth-child(n+7) { grid-column: span 3; }
+        .attach-image-grid.grid-8 > :is(img, .attach-image-item):nth-child(-n+6) { grid-column: span 2; }
+        .attach-image-grid.grid-8 > :is(img, .attach-image-item):nth-child(n+7) { grid-column: span 3; }
         /* 9 — ровная сетка 3x3 */
         .attach-image-grid.grid-9 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 110px; }
         /* 10 — 3 ряда по 3, последний ряд — 1 картинка на всю ширину */
         .attach-image-grid.grid-10 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 110px; }
-        .attach-image-grid.grid-10 img:nth-child(-n+9) { grid-column: span 2; }
-        .attach-image-grid.grid-10 img:nth-child(10) { grid-column: span 6; }
+        .attach-image-grid.grid-10 > :is(img, .attach-image-item):nth-child(-n+9) { grid-column: span 2; }
+        .attach-image-grid.grid-10 > :is(img, .attach-image-item):nth-child(10) { grid-column: span 6; }
         .attach-image-grid img {
             width: 100%;
             height: 100%;
@@ -1123,6 +1263,58 @@
         .attach-image-grid.grid-8 img,
         .attach-image-grid.grid-9 img,
         .attach-image-grid.grid-10 img { min-height: unset; max-height: unset; }
+        .attach-image-item {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 80px;
+            max-height: 300px;
+            overflow: hidden;
+        }
+        .attach-image-grid.grid-1 .attach-image-item { height: auto; max-height: 350px; }
+        .attach-image-grid.grid-1 .attach-image-item img { height: auto; }
+        .attach-image-grid:not(.grid-1) .attach-image-item { min-height: unset; max-height: unset; }
+        .attach-image-item.is-uploading img {
+            filter: blur(7px);
+            transform: scale(1.04);
+            cursor: default;
+        }
+        .upload-progress-circle {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 50px;
+            height: 50px;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+        }
+        .upload-progress-circle svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        .upload-progress-circle circle {
+            fill: none;
+            stroke-width: 4;
+        }
+        .upload-progress-track { stroke: rgba(0, 0, 0, 0.35); }
+        .upload-progress-value {
+            stroke: currentColor;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.12s linear;
+        }
+        .upload-progress-circle span {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+        }
         /* Video */
         .attach-video-wrap {
             position: relative;
@@ -1218,6 +1410,21 @@
         .attach-doc-info { flex: 1; min-width: 0; }
         .attach-doc-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .attach-doc-size { font-size: 11px; color: var(--text-sub); }
+        .attach-doc.is-uploading { cursor: default; }
+        .attach-upload-progress {
+            height: 3px;
+            margin: 4px 0 2px;
+            overflow: hidden;
+            border-radius: 2px;
+            background: var(--card-border);
+        }
+        .attach-upload-progress-fill {
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--primary);
+            transition: width 0.12s linear;
+        }
 
         .msg-meta {
             display: flex;
@@ -1229,19 +1436,19 @@
 
         .msg-time {
             font-size: 11px;
-            color: rgba(0, 0, 0, 0.4);
+            color: var(--msg-meta-color);
         }
 
-        .msg-bubble.outgoing .msg-time { color: rgba(0, 0, 0, 0.5); }
+        .msg-bubble.outgoing .msg-time { color: var(--msg-out-meta-color); }
 
         .msg-status {
-            color: rgba(0, 0, 0, 0.4);
+            color: var(--msg-meta-color);
             display: inline-flex;
             align-items: center;
             line-height: 0;
         }
 
-        .msg-bubble.outgoing .msg-status { color: rgba(0, 0, 0, 0.5); }
+        .msg-bubble.outgoing .msg-status { color: var(--msg-out-meta-color); }
 
         .msg-status-icon {
             width: 14px;
@@ -1256,6 +1463,7 @@
         }
 
         .msg-status-icon--read { width: 20px; }
+        .msg-status-icon--pending { width: 14px; height: 14px; }
 
         .msg-date-separator {
             text-align: center;
@@ -1670,6 +1878,10 @@
             display: none;
         }
         .profile-poster.visible { display: block; }
+        .profile-poster.bf-load-failed {
+            background-size: 64px 64px;
+            background-repeat: no-repeat;
+        }
 
         .profile-header {
             padding: 32px 24px 20px;
@@ -2010,15 +2222,64 @@
             overflow: hidden;
         }
 
-        .profile-media-grid img {
-            width: 100%;
+        .profile-media-pane { display: none; }
+        .profile-media-pane.active { display: block; }
+
+        .profile-media-tile {
+            position: relative;
+            min-width: 0;
             aspect-ratio: 1;
-            object-fit: cover;
+            overflow: hidden;
             cursor: pointer;
+            padding: 0;
+            border: 0;
+            background: none;
+        }
+
+        .profile-media-tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             transition: opacity 0.15s;
         }
 
-        .profile-media-grid img:hover { opacity: 0.85; }
+        .profile-media-tile:hover img { opacity: 0.85; }
+
+        .profile-video-play {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 28px;
+            text-shadow: 0 1px 5px rgba(0, 0, 0, .7);
+            background: rgba(0, 0, 0, .18);
+            pointer-events: none;
+        }
+
+        .profile-file-search {
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--border, rgba(0, 0, 0, .12));
+            border-radius: 8px;
+            background: var(--dialog-bg);
+            color: var(--text-main);
+            font: inherit;
+            font-size: 13px;
+        }
+
+        .profile-media-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1;
+            color: var(--text-sub);
+            background: rgba(0, 0, 0, .04);
+            font-size: 12px;
+        }
 
         .profile-media-empty {
             text-align: center;
@@ -3265,6 +3526,19 @@
             align-items: center;
             justify-content: center;
         }
+        .chat-background-selector-grid { padding: 12px 20px 24px; }
+        .chat-background-selector-grid .sd-bg-card {
+            border: 0;
+            font: inherit;
+            color: var(--text-main);
+            background: var(--input-bg);
+        }
+        .chat-background-selector-grid .sd-bg-card.none-card {
+            aspect-ratio: auto;
+            min-height: 84px;
+            padding: 12px;
+            text-align: center;
+        }
 
         .confirm-overlay.visible { display: flex; }
 
@@ -3314,6 +3588,7 @@
         .chat-lock { margin-right: 4px; font-size: 12px; }
 
         .preview-private-invite { color: var(--primary); font-weight: 500; }
+        .preview-draft { color: var(--primary); font-weight: 500; }
 
         /* В приватных чатах вложения/стикеры не поддерживаются */
         .input-bar.private-chat .btn-attach,
@@ -4621,7 +4896,7 @@
             <div class="search-container">
                 <div class="search-wrapper">
                     <span class="search-icon">&#128269;</span>
-                    <input type="text" class="search-input" id="searchInput" placeholder="Поиск пользователей...">
+                    <input type="text" class="search-input" id="searchInput" data-i18n-placeholder="sidebar.search.placeholder" placeholder="Поиск пользователей...">
                 </div>
             </div>
 
@@ -4629,13 +4904,13 @@
             <div class="folder-tabs" id="folderTabs"></div>
             <div class="chat-list" id="chatList"></div>
 
-            <button class="newchat-fab" id="newChatFab" title="Новый чат" aria-label="Новый чат">
+            <button class="newchat-fab" id="newChatFab" data-i18n-title="newchat.fab" data-i18n-aria-label="newchat.fab" title="Новый чат" aria-label="Новый чат">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg>
             </button>
             <div class="newchat-menu" id="newChatMenu">
-                <button data-mode="message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Новое сообщение</button>
-                <button data-mode="group"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Новая группа</button>
-                <button data-mode="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Приватный чат</button>
+                <button data-mode="message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span data-i18n="newchat.mode.message">Новое сообщение</span></button>
+                <button data-mode="group"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n="newchat.mode.group">Новая группа</span></button>
+                <button data-mode="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span data-i18n="newchat.mode.private">Приватный чат</span></button>
             </div>
 
             <div class="sidebar-nav" id="sidebarNav">
@@ -4643,58 +4918,66 @@
                     <span class="nav-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                     </span>
-                    <span>Чаты</span>
+                    <span data-i18n="nav.chats">Чаты</span>
                 </button>
                 <button class="nav-btn" id="navSettings">
                     <span class="nav-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     </span>
-                    <span>Настройки</span>
+                    <span data-i18n="nav.settings">Настройки</span>
                 </button>
             </div>
+        </div>
+
+        <div class="connection-banner" id="connectionBanner" role="status" aria-live="polite">
+            <span class="connection-banner-icon" aria-hidden="true">&#9888;</span>
+            <span id="connectionBannerText" data-i18n="connection.reconnecting">Переподключаемся…</span>
+            <button class="connection-retry-btn" id="connectionRetryButton" type="button" data-i18n="connection.retry">Повторить</button>
         </div>
 
         <div class="chat-area">
             <div class="messages-bg-layer" id="messagesBgLayer"></div>
             <div class="messages-bg-dim" id="messagesBgDim"></div>
-            <div class="connection-banner" id="connectionBanner">
-                <span class="connection-banner-icon">&#9888;</span>
-                <span>Подключение к серверу...</span>
+            <div class="connection-synced" id="connectionSynced" role="status" aria-live="polite">
+                <span aria-hidden="true">&#10003;</span>
+                <span data-i18n="connection.synced">Синхронизировано</span>
             </div>
             <div class="chat-header" id="chatHeader">
-                <button class="btn-back-to-list" id="btnBackToList" title="Назад к чатам">&#8592;</button>
+                <button class="btn-back-to-list" id="btnBackToList" data-i18n-title="chat.backToList" title="Назад к чатам">&#8592;</button>
                 <div class="chat-header-avatar" id="chatHeaderAvatar"></div>
                 <div class="chat-header-info">
                     <div class="chat-header-name" id="chatHeaderName"></div>
                     <div class="chat-header-status" id="chatHeaderStatus"></div>
                 </div>
                 <div class="chat-header-actions">
-                    <button class="btn-call" id="btnCallAudio" title="Аудиозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
-                    <button class="btn-call" id="btnCallVideo" title="Видеозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
+                    <button class="btn-call" id="btnCallAudio" data-i18n-title="call.audio" title="Аудиозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
+                    <button class="btn-call" id="btnCallVideo" data-i18n-title="call.video" title="Видеозвонок"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
                 </div>
             </div>
 
             <div class="pinned-bar hidden" id="pinnedBar">
                 <div class="pinned-bar-counter" id="pinnedBarCounter"></div>
                 <div class="pinned-bar-preview" id="pinnedBarPreview">
-                    <div class="pinned-bar-author" id="pinnedBarAuthor">Закреплённое</div>
+                    <div class="pinned-bar-author" id="pinnedBarAuthor" data-i18n="pinned.bar.author">Закреплённое</div>
                     <div class="pinned-bar-text" id="pinnedBarText"></div>
                 </div>
-                <button class="pinned-bar-open" id="pinnedBarOpen" title="Все закреплённые сообщения">&#9776;</button>
+                <button class="pinned-bar-open" id="pinnedBarOpen" data-i18n-title="pinned.bar.openAll" title="Все закреплённые сообщения">&#9776;</button>
             </div>
 
             <div class="chat-empty" id="chatEmpty">
-                <div class="chat-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
-                <div class="chat-empty-text">Чтобы начать диалог выберите чат из списка слева</div>
+                <div class="chat-empty-card">
+                    <div class="chat-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+                    <div class="chat-empty-text" data-i18n="chat.empty.hint">Чтобы начать диалог выберите чат из списка слева</div>
+                </div>
             </div>
 
-            <div class="loading-messages" id="loadingMessages">Загрузка...</div>
+            <div class="loading-messages" id="loadingMessages" data-i18n="common.loading">Загрузка...</div>
             <div class="messages-area-wrap">
                 <div class="messages-area" id="messagesArea">
                     <div class="messages-inner" id="messagesInner"></div>
                 </div>
             </div>
-            <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" title="К последнему сообщению">&#8595;</button>
+            <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" data-i18n-title="chat.scrollToLatest" title="К последнему сообщению">&#8595;</button>
 
             <div class="input-bar" id="inputBar">
                 <div class="input-bar-stack">
@@ -4703,27 +4986,27 @@
                             <div class="rpb-author" id="rpbAuthor"></div>
                             <div class="rpb-text" id="rpbText"></div>
                         </div>
-                        <button class="rpb-close" id="rpbClose" title="Отменить ответ">&times;</button>
+                        <button class="rpb-close" id="rpbClose" data-i18n-title="composer.reply.cancel" title="Отменить ответ">&times;</button>
                     </div>
                     <div class="edit-preview-bar" id="editPreviewBar">
                         <div class="rpb-content">
-                            <div class="rpb-author">Редактирование</div>
+                            <div class="rpb-author" data-i18n="composer.edit.title">Редактирование</div>
                             <div class="rpb-text" id="epbText"></div>
                         </div>
-                        <button class="rpb-close" id="epbClose" title="Отменить редактирование">&times;</button>
+                        <button class="rpb-close" id="epbClose" data-i18n-title="composer.edit.cancel" title="Отменить редактирование">&times;</button>
                     </div>
                     <div class="input-bar-inner">
                         <div class="sticker-picker" id="stickerPicker">
                             <div class="sticker-packs-bar" id="stickerPacksBar"></div>
                             <div class="sticker-grid" id="stickerGrid"></div>
                         </div>
-                        <button class="btn-attach" id="attachBtn" title="Прикрепить файл" aria-label="Прикрепить файл">
+                        <button class="btn-attach" id="attachBtn" data-i18n-title="composer.attach" data-i18n-aria-label="composer.attach" title="Прикрепить файл" aria-label="Прикрепить файл">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M21.4 11.1 12 20.5a6 6 0 0 1-8.5-8.5l9.8-9.8a4.2 4.2 0 0 1 5.9 5.9l-9.8 9.8a2.4 2.4 0 1 1-3.4-3.4l8.9-8.9"/>
                             </svg>
                         </button>
                         <input type="file" id="fileInput" multiple style="display:none">
-                        <button class="btn-sticker" id="stickerBtn" title="Стикеры" aria-label="Стикеры">
+                        <button class="btn-sticker" id="stickerBtn" data-i18n-title="composer.stickers" data-i18n-aria-label="composer.stickers" title="Стикеры" aria-label="Стикеры">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <circle cx="12" cy="12" r="9"/>
                                 <path d="M8.5 10h.01"/>
@@ -4731,8 +5014,8 @@
                                 <path d="M8.5 14.5c1.6 1.4 5.4 1.4 7 0"/>
                             </svg>
                         </button>
-                        <textarea class="input-text" id="messageInput" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
-                        <button class="btn-send" id="sendBtn" title="Отправить" aria-label="Отправить">
+                        <textarea class="input-text" id="messageInput" data-i18n-placeholder="composer.placeholder" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
+                        <button class="btn-send" id="sendBtn" data-i18n-title="common.send" data-i18n-aria-label="common.send" title="Отправить" aria-label="Отправить">
                             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                 <path d="M3.8 4.3c-.7-.3-1.4.4-1.1 1.1l2.6 6.1c.1.3.1.6 0 .9l-2.6 6.1c-.3.8.4 1.5 1.1 1.1l17-7.3c.8-.3.8-1.5 0-1.8l-17-7.2Zm2 3.1 9.9 4.2-9.9 4.2 1.3-3.1c.2-.5.2-1.1 0-1.6L5.8 7.4Z"/>
                             </svg>
@@ -4748,7 +5031,7 @@
         <div class="settings-dialog" id="settingsDialog">
             <div class="sd-header">
                 <button class="sd-back" id="sdBack">&#8592;</button>
-                <div class="sd-title" id="sdTitle"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span>Настройки</span></div>
+                <div class="sd-title" id="sdTitle"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span data-i18n="settings.title">Настройки</span></div>
                 <button class="sd-close" id="sdClose">&times;</button>
             </div>
             <div class="sd-body" id="sdBody"></div>
@@ -4758,11 +5041,11 @@
     <!-- Delete message confirmation dialog -->
     <div class="confirm-overlay" id="deleteMsgConfirmOverlay">
         <div class="confirm-dialog">
-            <h3>Удалить сообщение?</h3>
-            <p>Сообщение будет удалено у всех участников чата.</p>
+            <h3 data-i18n="dialog.deleteMessage.title">Удалить сообщение?</h3>
+            <p data-i18n="dialog.deleteMessage.text">Сообщение будет удалено у всех участников чата.</p>
             <div class="confirm-actions">
-                <button class="btn-confirm-cancel" id="deleteMsgCancel">Отмена</button>
-                <button class="btn-confirm-ok" id="deleteMsgOk">Удалить</button>
+                <button class="btn-confirm-cancel" id="deleteMsgCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="btn-confirm-ok" id="deleteMsgOk" data-i18n="common.delete">Удалить</button>
             </div>
         </div>
     </div>
@@ -4771,21 +5054,21 @@
     <div class="confirm-overlay" id="newChatOverlay">
         <div class="confirm-dialog newchat-dialog">
             <div class="newchat-header">
-                <h3 id="newChatTitle">Новый чат</h3>
+                <h3 id="newChatTitle" data-i18n="newchat.title">Новый чат</h3>
                 <button class="newchat-close" id="newChatClose">&times;</button>
             </div>
-            <input type="text" class="private-pass-input" id="newChatGroupTitle" placeholder="Название группы" maxlength="128">
+            <input type="text" class="private-pass-input" id="newChatGroupTitle" data-i18n-placeholder="newchat.groupTitle.placeholder" placeholder="Название группы" maxlength="128">
             <div class="newchat-chips" id="newChatChips"></div>
-            <input type="text" class="private-pass-input" id="newChatSearch" placeholder="Поиск пользователей..." autocomplete="off">
+            <input type="text" class="private-pass-input" id="newChatSearch" data-i18n-placeholder="sidebar.search.placeholder" placeholder="Поиск пользователей..." autocomplete="off">
             <div class="newchat-results" id="newChatResults"></div>
             <div id="newChatPrivateFields">
-                <input type="password" class="private-pass-input" id="newChatPass" placeholder="Пароль чата (мин. 6 символов)" autocomplete="off">
-                <label class="private-pass-remember"><input type="checkbox" id="newChatRemember" checked> Запомнить пароль в этом браузере</label>
+                <input type="password" class="private-pass-input" id="newChatPass" data-i18n-placeholder="newchat.password.placeholder" placeholder="Пароль чата (мин. 6 символов)" autocomplete="off">
+                <label class="private-pass-remember"><input type="checkbox" id="newChatRemember" checked> <span data-i18n="privatechat.rememberPassword">Запомнить пароль в этом браузере</span></label>
             </div>
             <div class="private-pass-error" id="newChatError"></div>
             <div class="confirm-actions" id="newChatFooter">
-                <button class="btn-confirm-cancel" id="newChatCancel">Отмена</button>
-                <button class="btn-confirm-ok btn-confirm-primary" id="newChatCreate">Создать</button>
+                <button class="btn-confirm-cancel" id="newChatCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="btn-confirm-ok btn-confirm-primary" id="newChatCreate" data-i18n="common.create">Создать</button>
             </div>
         </div>
     </div>
@@ -4793,14 +5076,14 @@
     <!-- Пароль приватного чата -->
     <div class="confirm-overlay" id="privatePassOverlay">
         <div class="confirm-dialog">
-            <h3 id="privatePassTitle">Пароль приватного чата</h3>
-            <p>Пароль используется для расшифровки сообщений и не отправляется на сервер.</p>
-            <input type="password" class="private-pass-input" id="privatePassInput" placeholder="Пароль" autocomplete="off">
-            <label class="private-pass-remember"><input type="checkbox" id="privatePassRemember" checked> Запомнить пароль в этом браузере</label>
+            <h3 id="privatePassTitle" data-i18n="privatechat.password.title">Пароль приватного чата</h3>
+            <p data-i18n="privatechat.password.text">Пароль используется для расшифровки сообщений и не отправляется на сервер.</p>
+            <input type="password" class="private-pass-input" id="privatePassInput" data-i18n-placeholder="common.password" placeholder="Пароль" autocomplete="off">
+            <label class="private-pass-remember"><input type="checkbox" id="privatePassRemember" checked> <span data-i18n="privatechat.rememberPassword">Запомнить пароль в этом браузере</span></label>
             <div class="private-pass-error" id="privatePassError"></div>
             <div class="confirm-actions">
-                <button class="btn-confirm-cancel" id="privatePassCancel">Отмена</button>
-                <button class="btn-confirm-ok btn-confirm-primary" id="privatePassOk">ОК</button>
+                <button class="btn-confirm-cancel" id="privatePassCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="btn-confirm-ok btn-confirm-primary" id="privatePassOk" data-i18n="common.ok">ОК</button>
             </div>
         </div>
     </div>
@@ -4808,31 +5091,43 @@
     <!-- Logout confirmation dialog -->
     <div class="confirm-overlay" id="confirmOverlay">
         <div class="confirm-dialog">
-            <h3>Выйти из аккаунта?</h3>
-            <p>Вы будете перенаправлены на страницу входа.</p>
+            <h3 data-i18n="dialog.logout.title">Выйти из аккаунта?</h3>
+            <p data-i18n="dialog.logout.text">Вы будете перенаправлены на страницу входа.</p>
             <div class="confirm-actions">
-                <button class="btn-confirm-cancel" id="confirmCancel">Отмена</button>
-                <button class="btn-confirm-ok" id="confirmOk">Выйти</button>
+                <button class="btn-confirm-cancel" id="confirmCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="btn-confirm-ok" id="confirmOk" data-i18n="common.logout">Выйти</button>
             </div>
         </div>
     </div>
 
     <div class="image-overlay" id="imageOverlay">
-        <button class="overlay-nav prev" id="overlayPrev" aria-label="Предыдущее" hidden>&#8249;</button>
+        <button class="overlay-nav prev" id="overlayPrev" data-i18n-aria-label="common.previous" aria-label="Предыдущее" hidden>&#8249;</button>
         <img id="overlayImage" src="" alt="">
         <video id="overlayVideo" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
-        <button class="overlay-nav next" id="overlayNext" aria-label="Следующее" hidden>&#8250;</button>
+        <button class="overlay-nav next" id="overlayNext" data-i18n-aria-label="common.next" aria-label="Следующее" hidden>&#8250;</button>
+    </div>
+
+    <!-- Доступ к микрофону и камере до начала звонка -->
+    <div class="call-permission-overlay" id="callPermissionOverlay" role="dialog" aria-modal="true" aria-labelledby="callPermissionTitle">
+        <div class="call-permission-card">
+            <div class="call-permission-title" id="callPermissionTitle"></div>
+            <div class="call-permission-text" id="callPermissionText"></div>
+            <div class="call-permission-actions">
+                <button class="secondary" id="callPermissionCancel" type="button" data-i18n="common.cancel">Отмена</button>
+                <button class="primary" id="callPermissionRequest" type="button" data-i18n="common.allow">Разрешить</button>
+            </div>
+        </div>
     </div>
 
     <!-- Входящий звонок (ring) -->
     <div class="call-ring-overlay" id="callRingOverlay">
         <div class="call-ring-card">
             <div class="call-ring-avatar" id="callRingAvatar"></div>
-            <div class="call-ring-name" id="callRingName">Входящий звонок</div>
+            <div class="call-ring-name" id="callRingName" data-i18n="call.incoming">Входящий звонок</div>
             <div class="call-ring-sub" id="callRingSub"></div>
             <div class="call-ring-actions">
-                <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 8.63 19.24M5 5a2 2 0 0 0-1 .54 19.5 19.5 0 0 0-3 8.63 2 2 0 0 0 .54 1.84"/><line x1="23" y1="1" x2="1" y2="23"/></svg></button>
-                <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
+                <button class="call-round-btn call-btn-reject" id="callRingReject" data-i18n-title="call.reject" title="Отклонить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 8.63 19.24M5 5a2 2 0 0 0-1 .54 19.5 19.5 0 0 0-3 8.63 2 2 0 0 0 .54 1.84"/><line x1="23" y1="1" x2="1" y2="23"/></svg></button>
+                <button class="call-round-btn call-btn-accept" id="callRingAccept" data-i18n-title="call.accept" title="Принять"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
             </div>
         </div>
     </div>
@@ -4840,7 +5135,7 @@
     <!-- Активный звонок -->
     <div class="call-screen" id="callScreen">
         <div class="call-screen-top">
-            <div class="call-screen-title" id="callScreenTitle">Звонок</div>
+            <div class="call-screen-title" id="callScreenTitle" data-i18n="call.title">Звонок</div>
             <div class="call-screen-timer" id="callScreenTimer"></div>
         </div>
         <div class="call-waiting" id="callWaiting">
@@ -4849,41 +5144,41 @@
             <div class="call-waiting-sub" id="callWaitingSub"></div>
         </div>
         <div class="call-grid" id="callGrid"></div>
-        <div class="call-self-pip" id="callSelfPip"><div class="call-self-pip-label">Вы</div></div>
+        <div class="call-self-pip" id="callSelfPip"><div class="call-self-pip-label" data-i18n="call.you">Вы</div></div>
         <div class="call-quality-panel" id="callQualityPanel">
             <div class="call-quality-group" id="callAudioQualityGroup">
-                <div class="call-quality-title">Голос · для всех</div>
+                <div class="call-quality-title" data-i18n="call.quality.audio">Голос · для всех</div>
                 <div class="call-quality-chips" id="callAudioChips">
-                    <button class="call-chip" data-q="0">Авто</button>
-                    <button class="call-chip" data-q="1">Низкое</button>
-                    <button class="call-chip" data-q="2">Среднее</button>
-                    <button class="call-chip" data-q="3">Высокое</button>
+                    <button class="call-chip" data-q="0" data-i18n="call.quality.auto">Авто</button>
+                    <button class="call-chip" data-q="1" data-i18n="call.quality.low">Низкое</button>
+                    <button class="call-chip" data-q="2" data-i18n="call.quality.medium">Среднее</button>
+                    <button class="call-chip" data-q="3" data-i18n="call.quality.high">Высокое</button>
                 </div>
             </div>
             <div class="call-quality-group" id="callVideoQualityGroup">
-                <div class="call-quality-title">Видео · ваш стрим</div>
+                <div class="call-quality-title" data-i18n="call.quality.video">Видео · ваш стрим</div>
                 <div class="call-quality-chips" id="callVideoChips">
-                    <button class="call-chip" data-q="0">Авто</button>
-                    <button class="call-chip" data-q="1">Низкое</button>
-                    <button class="call-chip" data-q="2">Среднее</button>
-                    <button class="call-chip" data-q="3">Высокое</button>
+                    <button class="call-chip" data-q="0" data-i18n="call.quality.auto">Авто</button>
+                    <button class="call-chip" data-q="1" data-i18n="call.quality.low">Низкое</button>
+                    <button class="call-chip" data-q="2" data-i18n="call.quality.medium">Среднее</button>
+                    <button class="call-chip" data-q="3" data-i18n="call.quality.high">Высокое</button>
                 </div>
             </div>
         </div>
         <div class="call-controls">
             <div class="call-ctl-wrap">
-                <button class="call-ctl off" id="callToggleMic" title="Микрофон"></button>
-                <button class="call-ctl-caret" id="callMicCaret" title="Выбрать микрофон" aria-label="Выбрать микрофон"></button>
+                <button class="call-ctl off" id="callToggleMic" data-i18n-title="call.mic" title="Микрофон"></button>
+                <button class="call-ctl-caret" id="callMicCaret" data-i18n-title="call.mic.select" data-i18n-aria-label="call.mic.select" title="Выбрать микрофон" aria-label="Выбрать микрофон"></button>
                 <div class="call-ctl-menu" id="callMicMenu"></div>
             </div>
             <div class="call-ctl-wrap">
-                <button class="call-ctl" id="callToggleCam" title="Камера"></button>
-                <button class="call-ctl-caret" id="callCamCaret" title="Выбрать камеру" aria-label="Выбрать камеру"></button>
+                <button class="call-ctl" id="callToggleCam" data-i18n-title="call.camera" title="Камера"></button>
+                <button class="call-ctl-caret" id="callCamCaret" data-i18n-title="call.camera.select" data-i18n-aria-label="call.camera.select" title="Выбрать камеру" aria-label="Выбрать камеру"></button>
                 <div class="call-ctl-menu" id="callCamMenu"></div>
             </div>
-            <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана"></button>
-            <button class="call-ctl" id="callToggleQuality" title="Качество"></button>
-            <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить"></button>
+            <button class="call-ctl" id="callToggleScreen" data-i18n-title="call.screenShare" title="Демонстрация экрана"></button>
+            <button class="call-ctl" id="callToggleQuality" data-i18n-title="call.quality" title="Качество"></button>
+            <button class="call-ctl call-ctl-end" id="callHangup" data-i18n-title="call.hangup" title="Завершить"></button>
         </div>
     </div>
 
@@ -4900,21 +5195,28 @@
                 <div class="profile-badges" id="profileBadges"></div>
             </div>
             <div class="profile-actions">
-                <button class="profile-action-btn primary" id="profileMsgBtn" aria-label="Написать сообщение">
+                <button class="profile-action-btn primary" id="profileMsgBtn" data-i18n-aria-label="profile.writeMessage" aria-label="Написать сообщение">
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
-                    <span>Сообщение</span>
+                    <span data-i18n="profile.message">Сообщение</span>
                 </button>
-                <button class="profile-action-btn icon-only" id="profileCallAudioBtn" title="Аудиозвонок" aria-label="Аудиозвонок">
+                <button class="profile-action-btn icon-only" id="profileCallAudioBtn" data-i18n-title="call.audio" data-i18n-aria-label="call.audio" title="Аудиозвонок" aria-label="Аудиозвонок">
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.78.6 2.62a2 2 0 0 1-.45 2.11L9 10.71a16 16 0 0 0 4.29 4.29l1.26-1.26a2 2 0 0 1 2.11-.45c.84.28 1.72.48 2.62.6A2 2 0 0 1 22 16.92z"></path>
                     </svg>
                 </button>
-                <button class="profile-action-btn icon-only" id="profileCallVideoBtn" title="Видеозвонок" aria-label="Видеозвонок">
+                <button class="profile-action-btn icon-only" id="profileCallVideoBtn" data-i18n-title="call.video" data-i18n-aria-label="call.video" title="Видеозвонок" aria-label="Видеозвонок">
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="2" y="6" width="14" height="12" rx="2"></rect>
                         <path d="m22 8-6 4 6 4V8z"></path>
+                    </svg>
+                </button>
+                <button class="profile-action-btn icon-only" id="profileBackgroundButton" data-i18n-title="chat.background" data-i18n-aria-label="chat.background" title="Фон чата" aria-label="Фон чата">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                        <circle cx="8" cy="8" r="1.5"></circle>
+                        <path d="m21 15-5-5L5 21"></path>
                     </svg>
                 </button>
             </div>
@@ -4931,9 +5233,9 @@
                     </span>
                     <span class="profile-info-text">
                         <span class="profile-info-value" id="profileUserId"></span>
-                        <span class="profile-info-label">ID пользователя</span>
+                        <span class="profile-info-label" data-i18n="profile.userId">ID пользователя</span>
                     </span>
-                    <button class="profile-info-copy" data-copy="profileUserId" title="Копировать" aria-label="Копировать ID пользователя">
+                    <button class="profile-info-copy" data-copy="profileUserId" data-i18n-title="common.copy" data-i18n-aria-label="profile.userId.copy" title="Копировать" aria-label="Копировать ID пользователя">
                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="9" y="9" width="13" height="13" rx="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -4948,9 +5250,9 @@
                     </span>
                     <span class="profile-info-text">
                         <span class="profile-info-value" id="profileChatId"></span>
-                        <span class="profile-info-label">ID чата</span>
+                        <span class="profile-info-label" data-i18n="profile.chatId">ID чата</span>
                     </span>
-                    <button class="profile-info-copy" data-copy="profileChatId" title="Копировать" aria-label="Копировать ID чата">
+                    <button class="profile-info-copy" data-copy="profileChatId" data-i18n-title="common.copy" data-i18n-aria-label="profile.chatId.copy" title="Копировать" aria-label="Копировать ID чата">
                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="9" y="9" width="13" height="13" rx="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -4968,16 +5270,16 @@
                     </span>
                     <span class="profile-info-text">
                         <span class="profile-info-value" id="profileRegDate"></span>
-                        <span class="profile-info-label">Дата регистрации</span>
+                        <span class="profile-info-label" data-i18n="profile.registrationDate">Дата регистрации</span>
                     </span>
                 </div>
             </div>
             <div class="profile-media-section">
                 <div class="profile-media-tabs">
-                    <button class="profile-media-tab active" data-type="media">Медиа</button>
-                    <button class="profile-media-tab" data-type="files">Файлы</button>
-                    <button class="profile-media-tab" data-type="audio">Аудио</button>
-                    <button class="profile-media-tab" data-type="voice">Голосовые</button>
+                    <button class="profile-media-tab active" data-type="media" data-i18n="media.tab.media">Медиа</button>
+                    <button class="profile-media-tab" data-type="files" data-i18n="media.tab.files">Файлы</button>
+                    <button class="profile-media-tab" data-type="audio" data-i18n="media.tab.audio">Аудио</button>
+                    <button class="profile-media-tab" data-type="voice" data-i18n="media.tab.voice">Голосовые</button>
                 </div>
                 <div id="profileMediaContent">
                     <div class="profile-media-grid" id="profileMediaGrid"></div>
@@ -4993,40 +5295,46 @@
             <div class="profile-header">
                 <div class="group-avatar-wrap">
                     <div class="profile-avatar" id="groupAvatar"></div>
-                    <button class="group-avatar-edit" id="groupAvatarEdit" title="Сменить фото">&#128247;</button>
+                    <button class="group-avatar-edit" id="groupAvatarEdit" data-i18n-title="group.changePhoto" title="Сменить фото">&#128247;</button>
                 </div>
                 <div class="group-name-row">
                     <div class="profile-name" id="groupName"></div>
-                    <button class="group-name-edit" id="groupNameEdit" title="Переименовать">&#9998;</button>
+                    <button class="group-name-edit" id="groupNameEdit" data-i18n-title="group.rename" title="Переименовать">&#9998;</button>
                 </div>
                 <div class="profile-status-line" id="groupCount"></div>
             </div>
             <div class="profile-info-section">
                 <div class="profile-info-item">
-                    <span class="profile-info-label">ID чата</span>
+                    <span class="profile-info-label" data-i18n="profile.chatId">ID чата</span>
                     <span class="profile-info-value">
                         <span id="groupChatId"></span>
-                        <button class="profile-info-copy" data-copy="groupChatId" title="Копировать">&#128203;</button>
+                        <button class="profile-info-copy" data-copy="groupChatId" data-i18n-title="common.copy" title="Копировать">&#128203;</button>
                     </span>
                 </div>
             </div>
             <div class="group-section">
                 <div class="group-section-head">
-                    <span class="group-section-title">Участники</span>
-                    <button class="group-add-btn" id="groupAddBtn">+ Добавить</button>
+                    <span class="group-section-title" data-i18n="chat.background">Фон чата</span>
+                    <button class="group-add-btn" id="groupBackgroundButton" data-i18n="common.choose">Выбрать</button>
+                </div>
+            </div>
+            <div class="group-section">
+                <div class="group-section-head">
+                    <span class="group-section-title" data-i18n="group.members">Участники</span>
+                    <button class="group-add-btn" id="groupAddBtn" data-i18n="group.addMember">+ Добавить</button>
                 </div>
                 <div class="group-add-box hidden" id="groupAddBox">
-                    <input type="text" class="group-add-input" id="groupAddInput" placeholder="Поиск пользователя…" autocomplete="off">
+                    <input type="text" class="group-add-input" id="groupAddInput" data-i18n-placeholder="group.searchUser.placeholder" placeholder="Поиск пользователя…" autocomplete="off">
                     <div class="group-add-results" id="groupAddResults"></div>
                 </div>
                 <div id="groupMembers"></div>
             </div>
             <div class="profile-media-section">
                 <div class="profile-media-tabs">
-                    <button class="profile-media-tab group-media-tab active" data-type="media">Медиа</button>
-                    <button class="profile-media-tab group-media-tab" data-type="files">Файлы</button>
-                    <button class="profile-media-tab group-media-tab" data-type="audio">Аудио</button>
-                    <button class="profile-media-tab group-media-tab" data-type="voice">Голосовые</button>
+                    <button class="profile-media-tab group-media-tab active" data-type="media" data-i18n="media.tab.media">Медиа</button>
+                    <button class="profile-media-tab group-media-tab" data-type="files" data-i18n="media.tab.files">Файлы</button>
+                    <button class="profile-media-tab group-media-tab" data-type="audio" data-i18n="media.tab.audio">Аудио</button>
+                    <button class="profile-media-tab group-media-tab" data-type="voice" data-i18n="media.tab.voice">Голосовые</button>
                 </div>
                 <div id="groupMediaContent">
                     <div class="profile-media-grid"></div>
@@ -5036,15 +5344,26 @@
         <input type="file" id="groupAvatarInput" accept="image/*" style="display:none">
     </div>
 
+    <div class="profile-overlay" id="chatBackgroundSelector">
+        <div class="profile-panel">
+            <button class="profile-close" id="chatBackgroundSelectorClose">&times;</button>
+            <div class="profile-header">
+                <div class="profile-name" id="chatBackgroundSelectorTitle" data-i18n="chat.background">Фон чата</div>
+                <div class="profile-status-line" data-i18n="chat.background.hint">Выберите изображение или вернитесь к глобальному фону</div>
+            </div>
+            <div class="sd-bg-grid chat-background-selector-grid" id="chatBackgroundSelectorGrid"></div>
+        </div>
+    </div>
+
     <!-- Message context menu -->
     <div class="msg-context-menu" id="msgContextMenu">
-        <button data-act="reply"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-reply"></use></svg></span><span class="cm-label">Ответить</span></button>
-        <button data-act="forward"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-forward"></use></svg></span><span class="cm-label">Переслать</span></button>
-        <button data-act="copy-text"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-copy"></use></svg></span><span class="cm-label">Копировать текст</span></button>
-        <button data-act="copy-image"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-image"></use></svg></span><span class="cm-label">Копировать изображение</span></button>
-        <button data-act="pin"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-pin"></use></svg></span><span class="cm-label">Закрепить</span></button>
-        <button data-act="edit"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-edit"></use></svg></span><span class="cm-label">Изменить</span></button>
-        <button data-act="delete" class="cm-danger"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-delete"></use></svg></span><span class="cm-label">Удалить</span></button>
+        <button data-act="reply"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-reply"></use></svg></span><span class="cm-label" data-i18n="menu.reply">Ответить</span></button>
+        <button data-act="forward"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-forward"></use></svg></span><span class="cm-label" data-i18n="menu.forward">Переслать</span></button>
+        <button data-act="copy-text"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-copy"></use></svg></span><span class="cm-label" data-i18n="menu.copyText">Копировать текст</span></button>
+        <button data-act="copy-image"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-image"></use></svg></span><span class="cm-label" data-i18n="menu.copyImage">Копировать изображение</span></button>
+        <button data-act="pin"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-pin"></use></svg></span><span class="cm-label" data-i18n="menu.pin">Закрепить</span></button>
+        <button data-act="edit"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-edit"></use></svg></span><span class="cm-label" data-i18n="menu.edit">Изменить</span></button>
+        <button data-act="delete" class="cm-danger"><span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-delete"></use></svg></span><span class="cm-label" data-i18n="common.delete">Удалить</span></button>
     </div>
 
     <!-- Chat context menu (PCM на чате в сайдбаре) -->
@@ -5054,21 +5373,21 @@
     <div class="overlay folder-edit-overlay" id="folderEditOverlay">
         <div class="dialog folder-edit-dialog">
             <div class="folder-edit-header">
-                <div class="folder-edit-title" id="folderEditTitle">Новая папка</div>
-                <button class="folder-edit-close" id="folderEditClose" title="Закрыть">&times;</button>
+                <div class="folder-edit-title" id="folderEditTitle" data-i18n="folder.new">Новая папка</div>
+                <button class="folder-edit-close" id="folderEditClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
             </div>
             <div class="folder-edit-body">
-                <label class="folder-edit-label" for="folderNameInput">Название</label>
-                <input type="text" class="folder-edit-input" id="folderNameInput" maxlength="64" placeholder="Например: Работа" autocomplete="off">
+                <label class="folder-edit-label" for="folderNameInput" data-i18n="common.name">Название</label>
+                <input type="text" class="folder-edit-input" id="folderNameInput" maxlength="64" data-i18n-placeholder="folder.name.placeholder" placeholder="Например: Работа" autocomplete="off">
 
-                <label class="folder-edit-label">Иконка</label>
+                <label class="folder-edit-label" data-i18n="folder.icon">Иконка</label>
                 <div class="emoji-grid" id="folderEmojiGrid"></div>
             </div>
             <div class="folder-edit-actions">
-                <button class="btn-confirm-cancel" id="folderEditDelete">Удалить</button>
+                <button class="btn-confirm-cancel" id="folderEditDelete" data-i18n="common.delete">Удалить</button>
                 <div style="flex:1"></div>
-                <button class="btn-confirm-cancel" id="folderEditCancel">Отмена</button>
-                <button class="btn-confirm-ok" id="folderEditSave">Сохранить</button>
+                <button class="btn-confirm-cancel" id="folderEditCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="btn-confirm-ok" id="folderEditSave" data-i18n="common.save">Сохранить</button>
             </div>
         </div>
     </div>
@@ -5077,9 +5396,9 @@
     <div class="overlay pinned-list-overlay" id="pinnedListOverlay">
         <div class="dialog pinned-list-dialog">
             <div class="pinned-list-header">
-                <div class="pinned-list-title">Закреплённые сообщения <span class="pinned-list-counter" id="pinnedListCounter"></span></div>
-                <button class="btn-confirm-cancel" id="pinnedListUnpinAll">Открепить все</button>
-                <button class="folder-edit-close" id="pinnedListClose" title="Закрыть">&times;</button>
+                <div class="pinned-list-title"><span data-i18n="pinned.list.title">Закреплённые сообщения</span> <span class="pinned-list-counter" id="pinnedListCounter"></span></div>
+                <button class="btn-confirm-cancel" id="pinnedListUnpinAll" data-i18n="pinned.unpinAll">Открепить все</button>
+                <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
             </div>
             <div class="pinned-list-inner" id="pinnedListInner"></div>
         </div>
@@ -5089,45 +5408,45 @@
     <div class="forward-modal-overlay" id="forwardOverlay">
         <div class="forward-modal">
             <div class="forward-modal-header">
-                <div class="forward-modal-title">Переслать в...</div>
+                <div class="forward-modal-title" data-i18n="forward.title">Переслать в...</div>
                 <button class="forward-modal-close" id="forwardClose">&times;</button>
             </div>
             <div class="forward-chat-list" id="forwardChatList"></div>
             <div class="forward-modal-footer">
-                <textarea id="forwardComment" placeholder="Добавить комментарий..." rows="1"></textarea>
+                <textarea id="forwardComment" data-i18n-placeholder="forward.comment.placeholder" placeholder="Добавить комментарий..." rows="1"></textarea>
                 <div class="forward-actions">
-                    <span class="forward-counter" id="forwardCounter">Не выбрано чатов</span>
-                    <button class="forward-send-btn" id="forwardSendBtn" disabled>Отправить</button>
+                    <span class="forward-counter" id="forwardCounter" data-i18n="forward.noChatsSelected">Не выбрано чатов</span>
+                    <button class="forward-send-btn" id="forwardSendBtn" disabled data-i18n="common.send">Отправить</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Soon toast for edit/delete stub -->
-    <div class="soon-toast" id="soonToast">Скоро будет</div>
+    <div class="soon-toast" id="soonToast" data-i18n="common.comingSoon">Скоро будет</div>
 
     <!-- Attach dialog -->
     <div class="attach-overlay" id="attachOverlay">
         <div class="attach-dialog">
             <div class="attach-dialog-header">
                 <div style="flex:1;">
-                    <div class="attach-dialog-title">Отправить вложения</div>
+                    <div class="attach-dialog-title" data-i18n="attach.title">Отправить вложения</div>
                     <div class="attach-dialog-subtitle" id="attachDialogSubtitle"></div>
                 </div>
-                <button class="attach-dialog-close" id="attachDialogClose" title="Закрыть">&times;</button>
+                <button class="attach-dialog-close" id="attachDialogClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
             </div>
             <div class="attach-mode-toggle" id="attachModeToggle">
-                <button class="attach-mode-btn" id="attachAsImages">Как изображения</button>
-                <button class="attach-mode-btn" id="attachAsDocs">Как документы</button>
+                <button class="attach-mode-btn" id="attachAsImages" data-i18n="attach.asImages">Как изображения</button>
+                <button class="attach-mode-btn" id="attachAsDocs" data-i18n="attach.asDocuments">Как документы</button>
             </div>
             <div class="attach-dialog-body" id="attachDialogBody"></div>
             <div class="attach-caption-wrap">
                 <textarea class="attach-caption-input" id="attachCaption" rows="1"
-                          placeholder="Добавить подпись..." maxlength="4096"></textarea>
+                          data-i18n-placeholder="attach.caption.placeholder" placeholder="Добавить подпись..." maxlength="4096"></textarea>
             </div>
             <div class="attach-dialog-footer">
-                <button class="attach-btn-cancel" id="attachCancel">Отмена</button>
-                <button class="attach-btn-send" id="attachConfirm">Отправить</button>
+                <button class="attach-btn-cancel" id="attachCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="attach-btn-send" id="attachConfirm" data-i18n="common.send">Отправить</button>
             </div>
         </div>
     </div>
@@ -5135,7 +5454,7 @@
     <!-- Profile poster crop dialog -->
     <div class="sd-crop-overlay" id="posterCropOverlay">
         <div class="sd-crop-dialog">
-            <div class="sd-crop-header">Обрезка постера — соотношение 3:1</div>
+            <div class="sd-crop-header" data-i18n="poster.crop.title">Обрезка постера — соотношение 3:1</div>
             <div class="sd-crop-stage" id="posterCropStage">
                 <img class="sd-crop-image" id="posterCropImage" alt="">
                 <div class="sd-crop-frame" id="posterCropFrame">
@@ -5146,8 +5465,8 @@
                 </div>
             </div>
             <div class="sd-crop-actions">
-                <button class="sd-btn-secondary" id="posterCropCancel">Отмена</button>
-                <button class="sd-btn sd-btn-primary" id="posterCropSave">Сохранить</button>
+                <button class="sd-btn-secondary" id="posterCropCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="sd-btn sd-btn-primary" id="posterCropSave" data-i18n="common.save">Сохранить</button>
             </div>
         </div>
     </div>
@@ -5156,45 +5475,45 @@
     <div class="ie-overlay" id="imgEditorOverlay">
         <div class="ie-dialog">
             <div class="ie-header">
-                <div class="ie-header-title">Редактор изображения</div>
-                <button class="ie-header-close" id="ieEditorClose" title="Закрыть">&times;</button>
+                <div class="ie-header-title" data-i18n="editor.title">Редактор изображения</div>
+                <button class="ie-header-close" id="ieEditorClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
             </div>
             <div class="ie-toolbar">
                 <div class="ie-tool-group">
-                    <button class="ie-tool-btn" id="ieCrop" type="button" title="Обрезка">
+                    <button class="ie-tool-btn" id="ieCrop" type="button" data-i18n-title="editor.crop" title="Обрезка">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>
                     </button>
-                    <button class="ie-tool-btn" id="ieRotateLeft" type="button" title="Повернуть влево">
+                    <button class="ie-tool-btn" id="ieRotateLeft" type="button" data-i18n-title="editor.rotateLeft" title="Повернуть влево">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
                     </button>
-                    <button class="ie-tool-btn" id="ieRotateRight" type="button" title="Повернуть вправо">
+                    <button class="ie-tool-btn" id="ieRotateRight" type="button" data-i18n-title="editor.rotateRight" title="Повернуть вправо">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     </button>
-                    <button class="ie-tool-btn" id="ieFlipH" type="button" title="Отразить по горизонтали">
+                    <button class="ie-tool-btn" id="ieFlipH" type="button" data-i18n-title="editor.flipH" title="Отразить по горизонтали">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><polygon points="3 8 9 12 3 16" fill="currentColor" stroke="none"/><polygon points="21 8 15 12 21 16" fill="currentColor" stroke="none"/></svg>
                     </button>
-                    <button class="ie-tool-btn" id="ieFlipV" type="button" title="Отразить по вертикали">
+                    <button class="ie-tool-btn" id="ieFlipV" type="button" data-i18n-title="editor.flipV" title="Отразить по вертикали">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="12" x2="22" y2="12"/><polygon points="8 3 12 9 16 3" fill="currentColor" stroke="none"/><polygon points="8 21 12 15 16 21" fill="currentColor" stroke="none"/></svg>
                     </button>
                 </div>
                 <div class="ie-divider"></div>
                 <div class="ie-tool-group">
-                    <button class="ie-tool-btn" id="ieBrush" type="button" title="Кисть">
+                    <button class="ie-tool-btn" id="ieBrush" type="button" data-i18n-title="editor.brush" title="Кисть">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     </button>
-                    <button class="ie-tool-btn" id="iePixelate" type="button" title="Пикселизация (скрыть приватное)">
+                    <button class="ie-tool-btn" id="iePixelate" type="button" data-i18n-title="editor.pixelate" title="Пикселизация (скрыть приватное)">
                         <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="3" y="3" width="5" height="5"/><rect x="14" y="3" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/><rect x="3" y="14" width="5" height="5"/><rect x="16" y="16" width="5" height="5"/></svg>
                     </button>
-                    <button class="ie-tool-btn" id="ieEraser" type="button" title="Ластик">
+                    <button class="ie-tool-btn" id="ieEraser" type="button" data-i18n-title="editor.eraser" title="Ластик">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H8.5l-5-5a2 2 0 0 1 0-2.83l8.34-8.34a2 2 0 0 1 2.83 0l5.5 5.5a2 2 0 0 1 0 2.83L13.5 20"/><line x1="6.5" y1="11.5" x2="14" y2="19"/></svg>
                     </button>
                 </div>
                 <div class="ie-divider"></div>
                 <div class="ie-color-wrap" id="ieColorWrap">
-                    <input type="color" id="ieColor" value="#000000" title="Цвет кисти">
+                    <input type="color" id="ieColor" value="#000000" data-i18n-title="editor.brushColor" title="Цвет кисти">
                 </div>
                 <div class="ie-size-wrap" id="ieSizeWrap">
-                    <input type="range" id="ieSize" min="4" max="80" value="24" title="Размер кисти">
+                    <input type="range" id="ieSize" min="4" max="80" value="24" data-i18n-title="editor.brushSize" title="Размер кисти">
                     <span class="ie-size-val" id="ieSizeVal">24 px</span>
                 </div>
             </div>
@@ -5210,8 +5529,8 @@
                 </div>
             </div>
             <div class="ie-actions">
-                <button class="sd-btn-secondary" id="ieCancel" type="button">Отмена</button>
-                <button class="sd-btn sd-btn-primary" id="ieApply" type="button">Готово</button>
+                <button class="sd-btn-secondary" id="ieCancel" type="button" data-i18n="common.cancel">Отмена</button>
+                <button class="sd-btn sd-btn-primary" id="ieApply" type="button" data-i18n="common.done">Готово</button>
             </div>
         </div>
     </div>
@@ -5298,6 +5617,8 @@
     <!-- LiveKit JS SDK (window.LivekitClient) -->
     <script src="/js/vendor/livekit-client.bundle.js?v=calls-1"></script>
     <script src="/js/vendor/hash-wasm.umd.min.js?v=private-chats-1"></script>
+    <script src="/pwa-config.js"></script>
+    <script src="/js/vendor/firebase-messaging-compat.bundle.js"></script>
     <!-- App modules -->
     <script src="/js/app/device.js"></script>
     <script src="/js/app/tokens.js"></script>
@@ -5306,27 +5627,29 @@
     <script src="/js/app/utils.js"></script>
     <script src="/js/app/sound.js"></script>
     <script src="/js/app/api.js?v=private-chats-1"></script>
+    <script src="/js/app/drafts.js?v=chat-drafts-1"></script>
     <script src="/js/app/privatechat.js?v=private-chats-1"></script>
     <script src="/js/app/newchat.js?v=private-chats-1"></script>
     <script src="/js/app/files.js?v=resilient-media-1"></script>
     <script src="/js/app/messages.js?v=resilient-media-1"></script>
     <script src="/js/app/realtime.js?v=private-chats-1"></script>
-    <script src="/js/app/calls.js?v=calls-3"></script>
-    <script src="/js/app/calls-ui.js?v=calls-6"></script>
+    <script src="/js/app/calls.js?v=calls-4"></script>
+    <script src="/js/app/calls-ui.js?v=calls-8"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
     <script src="/js/app/settings.js?v=personalization-2"></script>
     <script src="/js/app/attach.js"></script>
     <script src="/js/app/imageeditor.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-1"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
+    <script src="/js/app/push.js"></script>
     <script src="/js/app/main.js?v=private-chats-1"></script>
     <script>
     /* Inject theme picker into settings dialog */
     (function () {
         var THEMES = [
-            { id: 'light',    label: 'Светлая',   swatch: '#efebe5' },
-            { id: 'dark',     label: 'Тёмная',    swatch: '#141210' },
-            { id: 'midnight', label: 'Полночь',   swatch: '#0d0f1a' }
+            { id: 'light',    key: 'theme.light',    swatch: '#efebe5' },
+            { id: 'dark',     key: 'theme.dark',     swatch: '#141210' },
+            { id: 'midnight', key: 'theme.midnight', swatch: '#0d0f1a' }
         ];
 
         function buildThemeSection() {
@@ -5336,7 +5659,7 @@
             sec.id = 'theme-picker-section';
             var title = document.createElement('div');
             title.className = 'sd-section-title';
-            title.textContent = 'Цветовая схема';
+            title.textContent = BF.i18n.t('theme.title');
             sec.appendChild(title);
             var row = document.createElement('div');
             row.style.cssText = 'display:flex;gap:10px;padding:12px 20px 14px;';
@@ -5347,7 +5670,7 @@
                 var swatch = document.createElement('span');
                 swatch.style.cssText = 'width:32px;height:32px;border-radius:50%;background:' + t.swatch + ';border:2px solid rgba(128,128,128,.2);display:block;';
                 var label = document.createElement('span');
-                label.textContent = t.label;
+                label.textContent = BF.i18n.t(t.key);
                 label.style.cssText = 'font-size:12px;font-weight:500;color:var(--text-main);font-family:Inter,sans-serif;';
                 btn.appendChild(swatch);
                 btn.appendChild(label);
@@ -5368,11 +5691,9 @@
         var sdBody = document.getElementById('sdBody');
         if (!sdBody) return;
         var obs = new MutationObserver(function () {
-            var sdBack = document.getElementById('sdBack');
-            var sdTitle = document.getElementById('sdTitle');
-            if (!sdBack || !sdTitle) return;
-            var isMain = !sdBack.classList.contains('visible') && sdTitle.textContent.trim() === 'Настройки';
-            if (isMain && !document.getElementById('theme-picker-section')) {
+            /* Главный экран определяем по data-view (заголовок локализуется и на текст полагаться нельзя) */
+            if (sdBody.dataset.view !== 'main') return;
+            if (!document.getElementById('theme-picker-section')) {
                 /* find privacy section or just append */
                 var firstSection = sdBody.querySelector('.sd-section');
                 var sec = buildThemeSection();

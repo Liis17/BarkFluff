@@ -27,18 +27,18 @@ docker-compose -f docker-compose-dev.yml up -d messages
 |---------|----------|
 | `SendMessage` | Отправка в чат или DM (авто-создаёт личный чат). Лимиты: текст ≤ 4096 символов, ≤ 10 вложений |
 | `EditMessage` | Правка своего сообщения: текст и/или список вложений. Forward-снапшот не редактируется. Системные нельзя. Выставляет `IsEdited`+`EditedAt`, публикует `MessageEditedEvent` |
-| `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`). Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
+| `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`) с очисткой `Content.Text` и записей `MessageAttachments`; файлы в [[Backend/Files]] остаются. Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
 | `ListChats` | Список непустых чатов с пагинацией по последнему неудалённому сообщению (`last_message.SentAt DESC`); имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат). Приватные Pending-чаты видны и приглашённому (по `PrivateUserLowId/HighId`, он ещё не member); Rejected — только инициатору. В proto `Chat.private_inviter_user_id=16` — инициатор инвайта (вычисляется: до Accept единственный реальный member = инициатор), клиент по нему определяет роль |
 | `ListMessages` | Двунаправленная пагинация (до 50 в каждую сторону) |
 | `CreateGroupChat` | Создание группы с системным сообщением |
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
 | `AddUser` | Добавление участника в группу (зеркало `KickUser`): проверка прав по `GroupChatInfo.UsersCanKick`, проверка что не состоит (`UserAlreadyMemberChatException`), системное сообщение, рассылка членам + новому |
-| `UpdateGroupChat` | Смена названия и/или аватара группы. Права по `GroupChatInfo.UsersCanKick`. Аватар валидируется через Files (`UploadFileType.ChatPicture`→URL). Системное сообщение, рассылка, возвращает обновлённый `Chat` |
+| `UpdateGroupChat` | Смена названия и/или аватара группы любым её участником. `GroupChatInfo.UsersCanKick` используется только для добавления и исключения участников. Аватар валидируется через Files (`UploadFileType.ChatPicture`→URL). Системное сообщение, рассылка, возвращает обновлённый `Chat` |
 | `MarkAsRead` | PostgreSQL array операции; публикует `MessageReadEvent` только при первом прочтении конкретным пользователем. `NewReadBy` сохраняет полный snapshot читателей для клиентов, `NewReaders` содержит только новых читателей для push-побочных эффектов. Повторный вызов идемпотентен и событие не создаёт |
 | `GetPersonChatId` | Получить или создать обычный личный чат (поддерживает self-chat); при дублях выбирает чат с самым свежим неудалённым сообщением |
 | `GetChatInfo` | Счётчик непрочитанных, последнее сообщение |
 | `ListChatMembers` | Пагинированный список с данными из Users API |
-| `ListChatAttachments` | Вложения по типу, фильтрация + сортировка |
+| `ListChatAttachments` | Вложения по типу, фильтрация + сортировка; `file_name_query` ищет подстроку имени только среди документов |
 | `GetUserAllMessages` | Service-only: экспорт данных пользователя (GDPR) |
 | `CheckChatMembership` | Service-only: батч-проверка членства (`user_id` **либо** `user_uuid` + `chat_ids[]` → подмножество, где состоит) + федеративный контекст чатов и `requester_uuid` (этап 4.1). Невалидные Guid отбрасываются. Использует `ChatsStorage.GetMembershipContext`. Потребители — [[Backend/Onliner]] (typing) и [[Backend/Federation]] (валидация входящего typing) |
 | `CheckFederatedPresenceAccess` | Service-only: подмножество наших `user_uuids`, чей presence разрешено отдавать ноде `requesting_server` (этап 4.1). Зовёт только [[Backend/Federation]] своей ноды |
@@ -63,6 +63,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `RejectSecretChatInvite` | Отклонить инвайт: `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
 | `SendSecretMessage` | Отправить opaque envelope конкретному устройству через `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч). Публикует `NewSecretMessageEvent` + silent push. Лимит envelope 16Б-16КиБ |
 | `AckSecretMessage` | Подтвердить доставку секретного сообщения — `SecretMessageBuffer.AckMessageAsync(deviceId, messageId)`. Idempotent |
+| `GetChatDraft` / `UpsertChatDraft` / `DeleteChatDraft` | Кросс-клиентский черновик обычного чата: текст ≤4096 и выбранный reply. Хранится по `(ChatId, UserId)`; Upsert создаёт новую revision, Delete удаляет только совпавшую версию после отправки. Private/Secret исключены |
 
 ### gRPC-сервисы
 
@@ -157,6 +158,7 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 - **Пересланные сообщения**: `MessageAttachmentType.ForwardedMessage` (8) — снапшот оригинала. `ForwardedAuthorName`, `ForwardedOriginalMessageId`, `ForwardedText` хранятся в `MessageAttachments`; вложения оригинала — в `ForwardedMessageAttachments`
 - **Reply ≡ Forward на бэке**: отдельного поля `reply_to_message_id` нет. Клиенты (Android, WPF) различают reply/forward только на UI-уровне по эвристике "оригинал есть в текущей загруженной истории чата" (см. [[Клиенты/Android]] и [[Клиенты/Windows-WPF]]). Для бэкенда — это всегда `OutgoingMessage.forwarded_message_id`
 - **ListChatAttachments без фильтра**: тип 8 (ForwardedMessage) исключён из медиа-галереи автоматически
+- **Поиск документов**: `ListChatAttachments.file_name_query` принудительно выбирает `Document`, проверяет участие в чате как обычная выдача и возвращает точный `total_count`. Имена локальных вложений сохраняются при send/edit; для legacy-документов без имени поиск лениво заполняет его батчами через [[Backend/Files|FilesServerApi]].
 - **Системные сообщения**: `MessageContentType.System` — для событий чата (создание группы, кик)
 - **Маппинг файлов**: `MessageMapping.ToGrpc(filesInfoMap?)` — словарь `fileId → FileData` для вложений. Если не передан — поля preview/filename пустые
 - **Пагинация**: `GetChatMessagesWithOffset` — двунаправленная загрузка вокруг `fromMessageId` (по 50 в каждую сторону)
@@ -164,7 +166,7 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 - **Self-chat**: `CreatePersonChat(userId, userId)` — личный чат с самим собой поддерживается
 - **Личные чаты**: `GetPersonChatId` и отправка по `user_id` ищут только `ChatType.Regular` DM с ровно двумя участниками. Если в БД есть дубли обычных DM между теми же пользователями, выбирается чат с самым свежим неудалённым сообщением.
 - **Приватные чаты**: уникальны по нормализованной паре пользователей на уровне БД. Повторный `CreatePrivateChat` возвращает тот же `Chat` с `created=false`. `ListChats` включает приватные чаты (в том числе пустые pending), сортирует их по последнему `EncryptedMessage` или времени создания и не возвращает plaintext-превью.
-- **Soft-delete**: удалённые сообщения остаются в БД, но скрыты везде в выдаче (`MessagesStorage`, `ChatsStorage` — фильтр `!IsDeleted`). `MarkAsRead` пропускает удалённые. Чат с единственным удалённым сообщением исчезает из `ListChats`. Пустые чаты отфильтровываются до пагинации, чтобы страницы списка чатов были стабильными для всех клиентов.
+- **Soft-delete**: удалённые сообщения остаются в БД, но скрыты везде в выдаче (`MessagesStorage`, `ChatsStorage` — фильтр `!IsDeleted`); при удалении очищается `Content.Text` и удаляются записи `MessageAttachments`, а файлы в [[Backend/Files]] не затрагиваются. `MarkAsRead` пропускает удалённые. Чат с единственным удалённым сообщением исчезает из `ListChats`. Пустые чаты отфильтровываются до пагинации, чтобы страницы списка чатов были стабильными для всех клиентов.
 - **Edit-семантика**: при правке forward-вложения сохраняются как есть (Telegram-style), не-forward attachments полностью пересоздаются по новому списку `FileIds`. Forward-снапшоты не обновляются автоматически
 - **Pin-права**: любой участник чата может закреплять/откреплять любые сообщения (общая для чата доска). Авторизация — `[Authorize(Policy = nameof(TokenType.User))]` + `CheckAccessToChat`. Лимит: 100 закрепов на чат → `TooManyPinnedMessagesException`
 - **Pin + Soft-delete**: при `DeleteMessage` запись из `PinnedMessages` удаляется автоматически и публикуется `MessageUnpinnedEvent`. `ListPinnedMessages` дополнительно фильтрует через `!IsDeleted` (защита от рассинхрона)
@@ -198,6 +200,7 @@ MessagesDb, Redis, RabbitMQ:*, UsersService:Host/Token, FilesService:Host/Token
 - `ChatMembers.UserId long NULL` (remote-участник fed-DM), `ChatMembers.ServerName text NULL` (домен remote-участника; NULL для локальных).
 - `FederatedMessageEvents(ChatId, FederatedId, EventBytes, ReceivedAt, OriginServer, EventId)` — wire-байты последнего применённого state-event (для catch-up 2.6: отдаётся с той же подписью origin). `OriginServer`/`EventId` (этап 2.4) — метка последнего применённого события для LWW tie-break последующих правок/удалений.
 - `FederatedReadStates(ChatId, UserUuid, LastReadFederatedMessageId, ReadAt)` — этап 2.4: прочтения remote-участников fed-DM («прочитано до X»); локальные читатели остаются в `Message.ReadBy`.
+- `ChatDrafts(ChatId, UserId, Text, ReplyToMessageId, UpdatedAt, Revision)` — серверные черновики обычных чатов с составным PK `(ChatId, UserId)` и каскадным удалением вместе с чатом. `ListChats` возвращает `Chat.has_draft` пакетно.
 
 ### Импорт (входящие fed-события)
 

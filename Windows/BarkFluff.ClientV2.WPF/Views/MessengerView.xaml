@@ -1,0 +1,268 @@
+<UserControl x:Class="BarkFluff.ClientV2.WPF.Views.MessengerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:behaviors="clr-namespace:BarkFluff.ClientV2.WPF.Infrastructure.Behaviors"
+             xmlns:controls="clr-namespace:BarkFluff.ClientV2.WPF.Views.Controls">
+    <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="320" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Grid Grid.Column="0" Margin="16">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <ui:TextBox PlaceholderText="{DynamicResource Messenger_Search}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            <Grid Grid.Row="1" Margin="0,12,0,0">
+                <ui:ListView ItemsSource="{Binding Chats}" SelectedItem="{Binding SelectedChat}" Style="{StaticResource NodeList}">
+                    <ui:ListView.ItemTemplate>
+                        <DataTemplate>
+                            <controls:ChatListItemControl />
+                        </DataTemplate>
+                    </ui:ListView.ItemTemplate>
+                </ui:ListView>
+                <Border Panel.ZIndex="1"
+                        Background="{DynamicResource ApplicationBackgroundBrush}"
+                        Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
+                        <controls:ChatListSkeletonControl />
+                        <controls:ChatListSkeletonControl />
+                        <controls:ChatListSkeletonControl />
+                        <controls:ChatListSkeletonControl />
+                        <controls:ChatListSkeletonControl />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+        <Grid Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" Margin="0,0,16,16">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+
+            <!--  Плашка закреплённого: клик уводит к закрепу и перелистывает на следующий, крестик открепляет.  -->
+            <Border Grid.Row="1"
+                    Margin="16,0,16,8"
+                    Padding="10,6"
+                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8"
+                    Visibility="{Binding HasPinnedMessages, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="2"
+                            Margin="0,0,8,0"
+                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                            CornerRadius="1" />
+                    <TextBlock Grid.Column="1"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding PinnedPreview.Counter}"
+                               Visibility="{Binding PinnedPreview.HasCounter, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <StackPanel Grid.Column="2" Cursor="Hand">
+                        <StackPanel.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding CyclePinnedMessageCommand}" />
+                        </StackPanel.InputBindings>
+                        <TextBlock FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding PinnedPreview.Author}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock FontSize="12"
+                                   Opacity=".8"
+                                   Text="{Binding PinnedPreview.Preview}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                    </StackPanel>
+                    <ui:Button Grid.Column="3"
+                               Margin="8,0,0,0"
+                               Appearance="Secondary"
+                               Command="{Binding UnpinFromBarCommand}"
+                               Content="✕"
+                               ToolTip="{DynamicResource Messenger_Unpin}" />
+                </Grid>
+            </Border>
+            <StackPanel Margin="20,16" Visibility="{Binding HasSelectedChat, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding SelectedChat.Title}" /><TextBlock Opacity=".7" Text="{DynamicResource Messenger_StatusOffline}" /></StackPanel>
+            <!--  VerticalAlignment="Bottom" на содержимом ScrollViewer прижимает короткую переписку к нижней кромке.  -->
+            <ScrollViewer Grid.Row="2"
+                          Margin="0,0,4,0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <ItemsControl VerticalAlignment="Bottom"
+                              ItemsSource="{Binding Messages}"
+                              behaviors:MessageListBehavior.ScrollRequest="{Binding ScrollRequest}"
+                              behaviors:MessageListBehavior.VisibleMessageCommand="{Binding MessageBecameVisibleCommand}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <controls:MessageBubbleControl />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            <!--  Одна панель на два режима: пока активна правка, кнопка отправки применяет правку,
+                  а в режиме ответа отправляет сообщение со ссылкой на оригинал.  -->
+            <Border Grid.Row="3"
+                    Margin="16,0"
+                    Padding="10,8"
+                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8"
+                    Visibility="{Binding IsComposerHintVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding ComposerHintTitle}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="12"
+                                   Opacity=".75"
+                                   Text="{Binding ComposerHintPreview}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                    </StackPanel>
+                    <ui:Button Grid.Column="1"
+                               Margin="8,0,0,0"
+                               Appearance="Secondary"
+                               Command="{Binding CancelComposerHintCommand}"
+                               Content="✕" />
+                </Grid>
+            </Border>
+            <TextBlock Grid.Row="4"
+                       Margin="16,6,16,0"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                       Text="{Binding ActionError}"
+                       TextWrapping="Wrap"
+                       Visibility="{Binding ActionError, Converter={StaticResource StringToVisibilityConverter}}" />
+            <Grid Grid.Row="5" Margin="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ui:TextBox AcceptsReturn="True" MinHeight="42" Text="{Binding DraftText, UpdateSourceTrigger=PropertyChanged}" behaviors:SendOnEnterBehavior.Command="{Binding SendCommand}" /><ui:Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding SendCommand}" Content="{DynamicResource Messenger_Send}" /></Grid>
+            <!--  Заглушка лежит в строке ленты, чтобы центрироваться по всей свободной области, а не по высоте заголовка.  -->
+            <TextBlock Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity=".6" Text="{DynamicResource Messenger_Empty}" Visibility="{Binding IsChatPlaceholderVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </Grid>
+        <Border Panel.ZIndex="12"
+                Background="{DynamicResource MessengerModalScrimBrush}"
+                Visibility="{Binding IsForwardVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Width="400"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{DynamicResource Messenger_ForwardTitle}" />
+                    <ScrollViewer Margin="0,12,0,0"
+                                  MaxHeight="260"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding ForwardTargets}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,4"
+                                            Padding="8"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            CornerRadius="6"
+                                            Cursor="Hand">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.ToggleForwardTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                          CommandParameter="{Binding}" />
+                                        </Border.InputBindings>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Width="32" Height="32" Margin="0,0,10,0">
+                                                <Ellipse Fill="{DynamicResource ControlFillColorDefaultBrush}" />
+                                                <TextBlock HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Initials}" />
+                                            </Grid>
+                                            <TextBlock Grid.Column="1"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Title}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <ui:SymbolIcon Grid.Column="2"
+                                                           FontSize="16"
+                                                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                           Symbol="Checkmark12"
+                                                           Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <ui:TextBox Margin="0,12,0,0"
+                                PlaceholderText="{DynamicResource Messenger_ForwardComment}"
+                                Text="{Binding ForwardComment, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Margin="0,10,0,0"
+                               FontSize="12"
+                               Opacity=".75"
+                               Text="{Binding ForwardSelectionSummary}" />
+                    <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
+                        <ui:Button Appearance="Primary"
+                                   Command="{Binding SubmitForwardCommand}"
+                                   Content="{DynamicResource Messenger_ForwardSend}"
+                                   IsEnabled="{Binding CanSubmitForward}" />
+                        <ui:Button Margin="8,0,0,0"
+                                   Command="{Binding CancelForwardCommand}"
+                                   Content="{DynamicResource Messenger_Cancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </ui:Card>
+        </Border>
+        <Border Panel.ZIndex="11"
+                Background="{DynamicResource MessengerModalScrimBrush}"
+                Visibility="{Binding IsDeleteConfirmVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Width="360"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{DynamicResource Messenger_DeleteConfirmTitle}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Opacity=".75"
+                               TextWrapping="Wrap"
+                               Text="{DynamicResource Messenger_DeleteConfirmText}" />
+                    <StackPanel Margin="0,20,0,0" Orientation="Horizontal">
+                        <ui:Button Appearance="Danger"
+                                   Command="{Binding ConfirmDeleteMessageCommand}"
+                                   Content="{DynamicResource Messenger_Delete}" />
+                        <ui:Button Margin="8,0,0,0"
+                                   Command="{Binding CancelDeleteMessageCommand}"
+                                   Content="{DynamicResource Messenger_Cancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </ui:Card>
+        </Border>
+        <Border Panel.ZIndex="10"
+                Background="{DynamicResource MessengerModalScrimBrush}"
+                Visibility="{Binding IsPrivateUnlockVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Width="360"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{DynamicResource Messenger_PrivateUnlockTitle}" />
+                    <TextBlock Margin="0,8,0,16"
+                               Opacity=".75"
+                               TextWrapping="Wrap"
+                               Text="{DynamicResource Messenger_PrivateUnlockHint}" />
+                    <ui:PasswordBox Password="{Binding PrivatePassphrase, UpdateSourceTrigger=PropertyChanged}"
+                                    PlaceholderText="{DynamicResource Messenger_PrivatePassphrase}"
+                                    RevealButtonEnabled="True" />
+                    <TextBlock Margin="0,10,0,0"
+                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                               Text="{Binding PrivateUnlockError}"
+                               Visibility="{Binding PrivateUnlockError, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <StackPanel Margin="0,20,0,0" Orientation="Horizontal">
+                        <ui:Button Appearance="Primary"
+                                   Command="{Binding UnlockPrivateChatCommand}"
+                                   Content="{DynamicResource Messenger_PrivateUnlock}" />
+                        <ui:Button Margin="8,0,0,0"
+                                   Command="{Binding CancelPrivateUnlockCommand}"
+                                   Content="{DynamicResource Messenger_PrivateCancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </ui:Card>
+        </Border>
+    </Grid>
+</UserControl>

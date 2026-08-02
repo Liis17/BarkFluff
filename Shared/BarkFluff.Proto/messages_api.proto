@@ -45,6 +45,15 @@ service MessagesApi {
   // Получить информацию о чате
   rpc GetChatInfo(GetChatInfoRequest) returns(GetChatInfoResponse);
 
+  // Получить сохранённый черновик обычного чата
+  rpc GetChatDraft(GetChatDraftRequest) returns(GetChatDraftResponse);
+
+  // Создать или заменить черновик обычного чата
+  rpc UpsertChatDraft(UpsertChatDraftRequest) returns(UpsertChatDraftResponse);
+
+  // Удалить черновик, только если его версия не изменилась
+  rpc DeleteChatDraft(DeleteChatDraftRequest) returns(DeleteChatDraftResponse);
+
   // Редактировать сообщение (текст и/или вложения)
   rpc EditMessage(EditMessageRequest) returns(EditMessageResponse);
 
@@ -318,6 +327,9 @@ message Chat {
   // Инициатор приватного инвайта (только PRIVATE и state != ACCEPTED; иначе 0).
   // Позволяет клиенту понять роль: получатель показывает «принять/отклонить».
   int64 private_inviter_user_id = 16;
+
+  // У текущего пользователя есть сохранённый черновик в этом обычном чате.
+  bool has_draft = 17;
 }
 
 message ChatMember {
@@ -355,6 +367,7 @@ message ListChatAttachmentsRequest {
   barkfluff.shared.PageRequest pagination = 2; // Пагинация
   barkfluff.shared.MessageAttachmentType attachment_type = 3; // Фильтр по типу (0 = все)
   bool sort_descending = 4; // true = новые первыми (по умолчанию)
+  string file_name_query = 5; // Подстрока имени; применяется только к Document (пусто = без поиска)
 }
 
 message ListChatAttachmentsResponse {
@@ -384,6 +397,40 @@ message GetChatInfoResponse {
   repeated int64 members_id = 7; // Идентификаторы участников чата
   bool muted = 8; // Уведомления этого чата отключены текущим пользователем
   google.protobuf.Timestamp muted_until = 9; // До какого времени mute (пусто => навсегда, если muted=true)
+}
+
+message ChatDraftInfo {
+  string text = 1;
+  int64 reply_to_message_id = 2; // 0 = reply не выбран
+  string revision = 3; // UUID, используется для условного удаления после отправки
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message GetChatDraftRequest {
+  string chat_id = 1;
+}
+
+message GetChatDraftResponse {
+  ChatDraftInfo draft = 1; // пусто, если черновика нет
+}
+
+message UpsertChatDraftRequest {
+  string chat_id = 1;
+  string text = 2;
+  int64 reply_to_message_id = 3; // 0 = reply не выбран
+}
+
+message UpsertChatDraftResponse {
+  ChatDraftInfo draft = 1;
+}
+
+message DeleteChatDraftRequest {
+  string chat_id = 1;
+  string expected_revision = 2;
+}
+
+message DeleteChatDraftResponse {
+  bool deleted = 1;
 }
 
 // -- Приватные чаты (E2E через passphrase) ------------------------------------

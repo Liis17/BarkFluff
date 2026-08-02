@@ -4,17 +4,15 @@ using Microsoft.Extensions.Logging;
 namespace BarkFluff.GrpcServer.Metrics;
 
 /// <summary>
-/// Фоновый сервис, который каждые 5 секунд публикует структурированные метрики в логи.
+/// Экспортирует мгновенные бизнес-события сразу, а high-throughput counters — раз в 10 секунд.
 /// </summary>
 public class MetricsReporterService : BackgroundService
 {
-    // 60 тиков по 5 секунд = 5 минут: максимальная частота heartbeat-а в простое.
-    private const int IdleHeartbeatEveryTicks = 60;
+    private static readonly TimeSpan BufferedFlushInterval = TimeSpan.FromSeconds(10);
 
     private readonly MetricsCollector _collector;
     private readonly ILogger<MetricsReporterService> _logger;
     private readonly string _serviceName;
-    private int _idleTicks;
 
     public MetricsReporterService(
         MetricsCollector collector,
@@ -28,40 +26,43 @@ public class MetricsReporterService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var immediateReader = _collector.ImmediateSnapshots;
+        Task<bool>? immediateAvailable = null;
+        var nextFlush = Task.Delay(BufferedFlushInterval, stoppingToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(5000, stoppingToken);
+            immediateAvailable ??= immediateReader.WaitToReadAsync(stoppingToken).AsTask();
+            var completed = await Task.WhenAny(immediateAvailable, nextFlush);
 
-            var snapshot = _collector.SnapshotAndResetDetailed(out var hadCounterActivity);
+            if (completed == immediateAvailable && await immediateAvailable)
+            {
+                while (immediateReader.TryRead(out var snapshot))
+                    Report(snapshot);
 
-            bool shouldReport;
-            if (hadCounterActivity)
-            {
-                // Есть реальная активность — публикуем полный снимок (counters + gauges).
-                _idleTicks = 0;
-                shouldReport = true;
-            }
-            else
-            {
-                // Простой: только статичные gauges. Шлём heartbeat не чаще раза в 5 минут,
-                // чтобы не спамить Seq, но сохранить uptime/db_healthy в AdminPanel.
-                _idleTicks++;
-                shouldReport = snapshot.Gauges.Count > 0 && _idleTicks >= IdleHeartbeatEveryTicks;
-                if (shouldReport)
-                    _idleTicks = 0;
+                immediateAvailable = null;
             }
 
-            if (shouldReport)
+            if (completed == nextFlush && !stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("ServiceMetrics {@Metrics}", new
-                {
-                    SchemaVersion = 2,
-                    ServiceName = _serviceName,
-                    Counters = snapshot.Counters,
-                    Gauges = snapshot.Gauges,
-                    Timestamp = DateTime.UtcNow
-                });
+                var snapshot = _collector.TakeBufferedSnapshot();
+                if (snapshot.Counters.Count != 0 || snapshot.Gauges.Count != 0)
+                    Report(snapshot);
+
+                nextFlush = Task.Delay(BufferedFlushInterval, stoppingToken);
             }
         }
+    }
+
+    private void Report(MetricsSnapshot snapshot)
+    {
+        _logger.LogInformation("ServiceMetrics {@Metrics}", new
+        {
+            SchemaVersion = 2,
+            ServiceName = _serviceName,
+            Counters = snapshot.Counters,
+            Gauges = snapshot.Gauges,
+            Timestamp = DateTime.UtcNow
+        });
     }
 }

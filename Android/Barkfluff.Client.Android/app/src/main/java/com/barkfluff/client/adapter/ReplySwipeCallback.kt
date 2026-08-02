@@ -6,7 +6,10 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.drawable.Drawable
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
+import android.widget.HorizontalScrollView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -34,8 +37,10 @@ class ReplySwipeCallback(
     }
 
     private val triggeredHolders = mutableSetOf<Int>()
+    internal var isReplySwipeBlocked = false
 
     override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
+        if (isReplySwipeBlocked) return 0
         if (viewHolder !is MessageAdapter.SentMessageViewHolder &&
             viewHolder !is MessageAdapter.ReceivedMessageViewHolder) {
             return 0
@@ -105,5 +110,78 @@ class ReplySwipeCallback(
         super.clearView(recyclerView, viewHolder)
         viewHolder.itemView.translationX = 0f
         triggeredHolders.remove(viewHolder.bindingAdapterPosition)
+    }
+
+    private fun isTouchOnScrollableTable(recyclerView: RecyclerView, event: MotionEvent): Boolean {
+        val itemView = recyclerView.findChildViewUnder(event.x, event.y) ?: return false
+        val recyclerLocation = IntArray(2)
+        recyclerView.getLocationOnScreen(recyclerLocation)
+        val touchX = (recyclerLocation[0] + event.x).toInt()
+        val touchY = (recyclerLocation[1] + event.y).toInt()
+        return findScrollableTableAt(itemView, touchX, touchY)
+    }
+
+    private fun findScrollableTableAt(view: View, touchX: Int, touchY: Int): Boolean {
+        if (view is HorizontalScrollView &&
+            (view.canScrollHorizontally(-1) || view.canScrollHorizontally(1))
+        ) {
+            val location = IntArray(2)
+            view.getLocationOnScreen(location)
+            if (touchX in location[0]..(location[0] + view.width) &&
+                touchY in location[1]..(location[1] + view.height)
+            ) {
+                return true
+            }
+        }
+        if (view !is ViewGroup) return false
+        for (index in 0 until view.childCount) {
+            if (findScrollableTableAt(view.getChildAt(index), touchX, touchY)) return true
+        }
+        return false
+    }
+}
+
+class ReplySwipeTableTouchGate(
+    private val swipeCallback: ReplySwipeCallback
+) : RecyclerView.SimpleOnItemTouchListener() {
+
+    override fun onInterceptTouchEvent(recyclerView: RecyclerView, event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                swipeCallback.isReplySwipeBlocked = isTouchOnScrollableTable(recyclerView, event)
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                swipeCallback.isReplySwipeBlocked = false
+            }
+        }
+        return false
+    }
+
+    private fun isTouchOnScrollableTable(recyclerView: RecyclerView, event: MotionEvent): Boolean {
+        val itemView = recyclerView.findChildViewUnder(event.x, event.y) ?: return false
+        val recyclerLocation = IntArray(2)
+        recyclerView.getLocationOnScreen(recyclerLocation)
+        val touchX = (recyclerLocation[0] + event.x).toInt()
+        val touchY = (recyclerLocation[1] + event.y).toInt()
+        return findScrollableTableAt(itemView, touchX, touchY)
+    }
+
+    private fun findScrollableTableAt(view: View, touchX: Int, touchY: Int): Boolean {
+        if (view is HorizontalScrollView &&
+            (view.canScrollHorizontally(-1) || view.canScrollHorizontally(1))
+        ) {
+            val location = IntArray(2)
+            view.getLocationOnScreen(location)
+            if (touchX in location[0]..(location[0] + view.width) &&
+                touchY in location[1]..(location[1] + view.height)
+            ) {
+                return true
+            }
+        }
+        if (view !is ViewGroup) return false
+        for (index in 0 until view.childCount) {
+            if (findScrollableTableAt(view.getChildAt(index), touchX, touchY)) return true
+        }
+        return false
     }
 }

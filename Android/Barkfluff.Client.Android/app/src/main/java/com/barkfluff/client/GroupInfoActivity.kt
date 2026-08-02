@@ -17,9 +17,11 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.AttachmentPreviewAdapter
 import com.barkfluff.client.adapter.GroupMemberAdapter
 import com.barkfluff.client.data.GlobalParam
@@ -33,8 +35,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -50,7 +54,19 @@ class GroupInfoActivity : AppCompatActivity() {
     private lateinit var chatRepository: ChatRepository
     private lateinit var globalParam: GlobalParam
     private lateinit var memberAdapter: GroupMemberAdapter
-    private var attachmentAdapter: AttachmentPreviewAdapter? = null
+    private data class AttachmentsPanel(
+        val container: View,
+        val loading: View,
+        val recyclerView: RecyclerView,
+        val empty: TextView,
+        val adapter: AttachmentPreviewAdapter
+    )
+
+    private lateinit var mediaAttachmentsPanel: AttachmentsPanel
+    private lateinit var filesAttachmentsPanel: AttachmentsPanel
+    private var selectedAttachmentTab: Tab = Tab.MEMBERS
+    private var fileSearchJob: Job? = null
+    private val attachmentLoadVersions = mutableMapOf<Tab, Int>()
 
     private var chatId: String = ""
     private var chatTitle: String = ""
@@ -119,6 +135,7 @@ class GroupInfoActivity : AppCompatActivity() {
             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
         binding.changeNameButton.setOnClickListener { showChangeNameDialog() }
+        binding.chooseBackgroundButton.setOnClickListener { showChatBackgroundDialog() }
         binding.addMemberButton.setOnClickListener {
             addMemberLauncher.launch(AddGroupMemberActivity.createIntent(this, chatId))
         }
@@ -130,6 +147,35 @@ class GroupInfoActivity : AppCompatActivity() {
         setupTabs()
         renderHeader()
         loadMembers()
+    }
+
+    private fun showChatBackgroundDialog() {
+        lifecycleScope.launch {
+            val fileIds = grpcManager.getPersonalization().getOrElse {
+                Toast.makeText(this@GroupInfoActivity, "Не удалось загрузить фоны", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val labels = listOf("Использовать глобальный фон") + fileIds.map { "Фон ${it.take(8)}" }
+            val current = globalParam.chatBackgroundOverrides[chatId]
+            var selected = fileIds.indexOf(current).takeIf { it >= 0 }?.plus(1) ?: 0
+            MaterialAlertDialogBuilder(this@GroupInfoActivity)
+                .setTitle("Фон чата")
+                .setSingleChoiceItems(labels.toTypedArray(), selected) { _, which -> selected = which }
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Применить") { _, _ ->
+                    lifecycleScope.launch {
+                        val fileId = if (selected == 0) "" else fileIds[selected - 1]
+                        val result = grpcManager.setChatBackground(chatId, fileId)
+                        if (result.isSuccess) {
+                            globalParam.setChatBackgroundOverride(chatId, fileId)
+                            Toast.makeText(this@GroupInfoActivity, "Фон чата обновлён", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@GroupInfoActivity, "Не удалось установить фон", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .show()
+        }
     }
 
     private fun setupInfoCard() {
@@ -152,6 +198,7 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     private fun selectTab(tab: Tab) {
+        selectedAttachmentTab = tab
         styleTab(binding.tabMembers, tab == Tab.MEMBERS)
         styleTab(binding.tabMedia, tab == Tab.MEDIA)
         styleTab(binding.tabFiles, tab == Tab.FILES)
@@ -160,17 +207,13 @@ class GroupInfoActivity : AppCompatActivity() {
         binding.membersRecyclerView.visibility = if (membersMode) View.VISIBLE else View.GONE
         binding.addMemberButton.visibility = if (membersMode) View.VISIBLE else View.GONE
         binding.attachmentsContainer.visibility = if (membersMode) View.GONE else View.VISIBLE
+        mediaAttachmentsPanel.container.visibility = if (tab == Tab.MEDIA) View.VISIBLE else View.GONE
+        filesAttachmentsPanel.container.visibility = if (tab == Tab.FILES) View.VISIBLE else View.GONE
 
         when (tab) {
             Tab.MEMBERS -> Unit
-            Tab.MEDIA -> {
-                binding.attachmentsRecyclerView.layoutManager = GridLayoutManager(this, 3)
-                loadMedia()
-            }
-            Tab.FILES -> {
-                binding.attachmentsRecyclerView.layoutManager = LinearLayoutManager(this)
-                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT)
-            }
+            Tab.MEDIA -> loadMedia()
+            Tab.FILES -> loadFiles(binding.fileSearchEditText.text?.toString().orEmpty())
         }
     }
 
@@ -191,21 +234,48 @@ class GroupInfoActivity : AppCompatActivity() {
     // ── Вложения ──────────────────────────────────────────────────────────────
 
     private fun setupAttachmentsRecycler() {
-        attachmentAdapter = AttachmentPreviewAdapter(
+        mediaAttachmentsPanel = createAttachmentsPanel(
+            binding.mediaAttachmentsPanel,
+            binding.mediaAttachmentsLoading,
+            binding.mediaAttachmentsRecyclerView,
+            binding.mediaAttachmentsEmpty
+        )
+        filesAttachmentsPanel = createAttachmentsPanel(
+            binding.filesAttachmentsPanel,
+            binding.filesAttachmentsLoading,
+            binding.filesAttachmentsRecyclerView,
+            binding.filesAttachmentsEmpty
+        )
+        binding.mediaAttachmentsRecyclerView.layoutManager = GridLayoutManager(this, 3)
+        binding.filesAttachmentsRecyclerView.layoutManager = LinearLayoutManager(this)
+        binding.fileSearchEditText.doAfterTextChanged { rawQuery -> scheduleFileSearch(rawQuery?.toString().orEmpty()) }
+    }
+
+    private fun createAttachmentsPanel(
+        container: View,
+        loading: View,
+        recyclerView: RecyclerView,
+        empty: TextView
+    ): AttachmentsPanel {
+        lateinit var adapter: AttachmentPreviewAdapter
+        adapter = AttachmentPreviewAdapter(
             getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
-            onAttachmentClick = { info -> openAttachment(info) },
+            onAttachmentClick = { info -> openAttachment(info, adapter) },
             downloadToCache = { fileId -> FileCache.getFile(fileId) ?: chatRepository.downloadFile(fileId) },
             scope = lifecycleScope
         )
-        binding.attachmentsRecyclerView.adapter = attachmentAdapter
+        recyclerView.adapter = adapter
+        return AttachmentsPanel(container, loading, recyclerView, empty, adapter)
     }
 
-    private fun openAttachment(info: barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo) {
+    private fun openAttachment(
+        info: barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo,
+        adapter: AttachmentPreviewAdapter
+    ) {
         val att = info.attachment
         when (att.type) {
             barkfluff.shared.Shared.MessageAttachmentType.IMAGE,
             barkfluff.shared.Shared.MessageAttachmentType.GIF -> {
-                val adapter = attachmentAdapter ?: return
                 val allFileIds = adapter.currentList.map { it.attachment.fileId }
                 val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
                 val position = adapter.currentList.indexOf(info).coerceAtLeast(0)
@@ -241,53 +311,106 @@ class GroupInfoActivity : AppCompatActivity() {
         }
     }
 
-    private fun showLoading() {
-        binding.attachmentsLoading.visibility = View.VISIBLE
-        binding.attachmentsRecyclerView.visibility = View.GONE
-        binding.attachmentsEmpty.visibility = View.GONE
+    private fun panelFor(tab: Tab): AttachmentsPanel = when (tab) {
+        Tab.MEDIA -> mediaAttachmentsPanel
+        Tab.FILES -> filesAttachmentsPanel
+        Tab.MEMBERS -> error("Members tab has no attachments panel")
     }
 
-    private fun showEmpty() {
-        binding.attachmentsLoading.visibility = View.GONE
-        binding.attachmentsRecyclerView.visibility = View.GONE
-        binding.attachmentsEmpty.visibility = View.VISIBLE
-        binding.attachmentsEmpty.text = getString(R.string.media_no_attachments)
+    private fun showLoading(tab: Tab) {
+        panelFor(tab).run {
+            loading.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+            empty.visibility = View.GONE
+        }
     }
 
-    private fun showList(items: List<barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo>) {
-        attachmentAdapter?.submitList(items)
-        binding.attachmentsLoading.visibility = View.GONE
-        binding.attachmentsEmpty.visibility = View.GONE
-        binding.attachmentsRecyclerView.visibility = View.VISIBLE
+    private fun showEmpty(tab: Tab, text: String) {
+        panelFor(tab).run {
+            loading.visibility = View.GONE
+            recyclerView.visibility = View.GONE
+            empty.visibility = View.VISIBLE
+            empty.text = text
+        }
+    }
+
+    private fun showList(tab: Tab, items: List<barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo>) {
+        panelFor(tab).run {
+            adapter.submitList(items)
+            loading.visibility = View.GONE
+            empty.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+        }
     }
 
     private fun loadMedia() {
-        showLoading()
+        val version = nextLoadVersion(Tab.MEDIA)
+        val requestedChatId = chatId
+        showLoading(Tab.MEDIA)
         lifecycleScope.launch {
             try {
                 val images = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.IMAGE).getOrNull().orEmpty()
+                val gifs = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.GIF).getOrNull().orEmpty()
                 val videos = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.VIDEO).getOrNull().orEmpty()
-                val merged = (images + videos).sortedByDescending { it.sentAt.seconds }
-                if (merged.isEmpty()) showEmpty() else showList(merged)
+                val merged = (images + gifs + videos).sortedByDescending { it.sentAt.seconds }
+                if (!isCurrentLoad(Tab.MEDIA, version, requestedChatId)) return@launch
+                if (merged.isEmpty()) showEmpty(Tab.MEDIA, getString(R.string.media_no_attachments)) else showList(Tab.MEDIA, merged)
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading media", e)
-                showEmpty()
+                if (isCurrentLoad(Tab.MEDIA, version, requestedChatId)) {
+                    showEmpty(Tab.MEDIA, getString(R.string.media_no_attachments))
+                }
             }
         }
     }
 
-    private fun loadAttachments(type: barkfluff.shared.Shared.MessageAttachmentType) {
-        showLoading()
+    private fun loadFiles(rawQuery: String) {
+        val query = rawQuery.trim()
+        val version = nextLoadVersion(Tab.FILES)
+        val requestedChatId = chatId
+        showLoading(Tab.FILES)
         lifecycleScope.launch {
             try {
-                val attachments = chatRepository.getChatAttachments(chatId, type).getOrNull()
-                if (attachments.isNullOrEmpty()) showEmpty() else showList(attachments)
+                val attachments = chatRepository.getChatAttachments(
+                    chatId,
+                    barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT,
+                    pageSize = if (query.isBlank()) 100 else 30,
+                    fileNameQuery = query
+                ).getOrNull()
+                if (!isCurrentLoad(Tab.FILES, version, requestedChatId)) return@launch
+                if (attachments.isNullOrEmpty()) {
+                    showEmpty(Tab.FILES, getString(if (query.isBlank()) R.string.media_no_attachments else R.string.profile_files_not_found))
+                } else showList(Tab.FILES, attachments)
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading attachments", e)
-                showEmpty()
+                if (isCurrentLoad(Tab.FILES, version, requestedChatId)) {
+                    showEmpty(Tab.FILES, getString(if (query.isBlank()) R.string.media_no_attachments else R.string.profile_files_not_found))
+                }
             }
         }
     }
+
+    private fun scheduleFileSearch(rawQuery: String) {
+        fileSearchJob?.cancel()
+        invalidateLoad(Tab.FILES)
+        fileSearchJob = lifecycleScope.launch {
+            delay(300)
+            if (selectedAttachmentTab == Tab.FILES) loadFiles(rawQuery)
+        }
+    }
+
+    private fun nextLoadVersion(tab: Tab): Int {
+        val next = (attachmentLoadVersions[tab] ?: 0) + 1
+        attachmentLoadVersions[tab] = next
+        return next
+    }
+
+    private fun invalidateLoad(tab: Tab) {
+        nextLoadVersion(tab)
+    }
+
+    private fun isCurrentLoad(tab: Tab, version: Int, requestedChatId: String): Boolean =
+        selectedAttachmentTab == tab && attachmentLoadVersions[tab] == version && chatId == requestedChatId
 
     // ── Участники ─────────────────────────────────────────────────────────────
 
@@ -513,6 +636,7 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        fileSearchJob?.cancel()
         super.onDestroy()
         chatRepository.close()
     }

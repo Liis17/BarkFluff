@@ -12,7 +12,7 @@ gRPC-клиентская библиотека для WPF-клиента. Еди
 
 ### `WebApi.cs`
 
-Публичный фасад. Создаёт и держит 9 gRPC-каналов, 9 gRPC-клиентов и 13 менеджеров (включая `FastAuthAC`/`FastAuthChannel`/`FastAuthManager`). Реализует `IDisposable` — при `Dispose()` закрываются все gRPC-каналы.
+Публичный фасад. Создаёт и держит gRPC-каналы и менеджеры, включая анонимный `FastAuthAC`, авторизованный `FastAuthUserAC` и опциональный `CallsAC`. Реализует `IDisposable` — при `Dispose()` закрываются все gRPC-каналы.
 
 **Свойства:**
 - `bool ACisnull` — `true`, если основные клиенты не инициализированы
@@ -30,7 +30,7 @@ gRPC-клиентская библиотека для WPF-клиента. Еди
 
 ### `WebApiBase.cs`
 
-Абстрактный базовый класс всех менеджеров. Предоставляет `protected`-доступ к 9 gRPC-клиентам и 9 каналам (включая `FastAuthAC`/`FastAuthChannel`) через ссылку на родительский `WebApi`.
+Абстрактный базовый класс всех менеджеров. Предоставляет `protected`-доступ к gRPC-клиентам и каналам (включая `FastAuthAC`, `FastAuthUserAC`, `CallsAC`) через ссылку на родительский `WebApi`. `ReadStream<T>` централизованно читает server-streaming RPC, обрабатывает отмену/ошибки и освобождает вызов.
 
 ### `ErrorReturner.cs`
 
@@ -69,7 +69,7 @@ ErrorReturner
 |-------|-----------|
 | `CreateOnlyBeaconAC(gParam)` | Только Beacon-канал (до авторизации) |
 | `CreateNavigatorAC(url)` | Navigator-канал (публичный реестр серверов) |
-| `CreateAC(gParam, deviceName, os, appName, appVersion, ip)` | Пересоздаёт 7 каналов с интерцептором (Messages/Files/Identity/Beacon/User/Updates/Onliner); `Navigator` и `FastAuth` создаются отдельными методами |
+| `CreateAC(gParam, deviceName, os, appName, appVersion, ip)` | Пересоздаёт основные авторизованные каналы, `FastAuthUserAC` и — при непустом `SocketCalls` — `CallsAC`; `Navigator` и анонимный FastAuth создаются отдельными методами |
 
 **Interceptors (порядок):** `XDeviceClientInterceptor`, `XDeviceIdInterceptor`, `JwtClientInterceptor`, `XOsClientInterceptor`, `XAppClientInterceptor`, `ExceptionClientInterceptor`, `XIpInterceptor`
 
@@ -143,6 +143,11 @@ PeriodicTimer(30s)
 | **`UpdatePersonalization`** | `(UserPersonalizationData, GlobalParam)` | `Task<ErrorReturner>` — полностью перезаписывает данные, постер передавать всегда |
 | **`GetProfilePoster`** | `(GlobalParam)` | `(ErrorReturner, string fileId)` — пустая строка если постер не задан |
 | **`SetProfilePoster`** | `(fileId, GlobalParam)` | `Task<ErrorReturner>` — атомарно; пустая строка = удалить постер |
+| **`RegisterPrekeyBundle`** | `(registrationId, identityPubkey, signedPrekey, oneTimePrekeys, GlobalParam)` | Регистрация готового prekey-bundle текущего устройства |
+| **`FetchPrekeyBundle`** | `(userId, deviceId, GlobalParam)` | `(ErrorReturner, FetchPrekeyBundleResponse?)` — bundle передаётся без обработки |
+| **`ListPeerDevices`** | `(userId, GlobalParam)` | `(ErrorReturner, List<PeerDeviceInfo>?)` |
+| **`ReplenishOneTimePrekeys`** | `(prekeys, GlobalParam)` | `(ErrorReturner, totalOneTimePrekeys)` |
+| **`RotateSignedPrekey`** | `(signedPrekey, GlobalParam)` | `Task<ErrorReturner>` |
 
 > **Жирным** — добавлено в последних обновлениях
 
@@ -206,6 +211,21 @@ PeriodicTimer(30s)
 | **`ListChatMembers`** | `(GlobalParam, chatId, offset=0, size=50)` | `(ErrorReturner, List<DetailedChatMemberInfo>?, int totalCount)` |
 | **`ListChatAttachments`** | `(GlobalParam, chatId, attachmentType=Unknown, sortDesc=true, offset=0, size=50)` | `(ErrorReturner, List<ChatAttachmentInfo>?, int totalCount)` |
 | **`KickUser`** | `(GlobalParam, chatId, userId)` | `Task<ErrorReturner>` |
+| **`EditMessage` / `DeleteMessage`** | | Правка и soft-delete сообщений |
+| **`PinMessage` / `UnpinMessage` / `ListPinnedMessages` / `UnpinAll`** | | Управление закреплёнными сообщениями |
+| **`AddUser` / `UpdateGroupChat`** | | Управление составом и данными группы |
+
+### `WebApiSecretChatManager.cs` — Секретные чаты
+
+Транспорт для `SendSecretChatInvite`, `AcceptSecretChatInvite`, `RejectSecretChatInvite`, `SendSecretMessage`, `AckSecretMessage`. `byte[]` envelope передаётся как есть; Double Ratchet/X3DH/libsignal и локальное хранилище сессий не входят в библиотеку.
+
+### `WebApiPrivateChatManager.cs` и `Crypto/PrivateChatCrypto.cs` — Приватные чаты
+
+Восемь RPC приватных чатов и AES-256-GCM шифрование. `PrivateChatCrypto` совместим с Android: Argon2id v1.3 (`t=3`, `m=65536 KiB`, `p=4`), 32-байтовые salt/ключ, nonce 12 байт, HMAC-SHA256 verifier и AAD `barkfluff:private:{chatId}`. Ключ остаётся у приложения.
+
+### `WebApiCallsManager.cs` — Звонки
+
+Сигнализация `InitiateCall`, `JoinCall`, `AcceptCall`, `RejectCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`, `ListCallHistory`, `GetActiveCalls`. При отсутствии `CallsAC` все методы возвращают ошибку «Звонки недоступны на этом сервере»; библиотека не содержит LiveKit media SDK.
 
 **`ChatInfo`** — `ChatId`, `Members: List<long>`, `Title`, `CountUnread`, `FirstUnreadId`, `IsGroup`, `LastMessageId`, `Picture`
 
@@ -263,6 +283,9 @@ PeriodicTimer(30s)
 |-------|-----------|-----------|
 | `JustUpdate` | `(GlobalParam, CancellationToken ct = default)` | `(ErrorReturner, IAsyncEnumerable<NewMessageEvent>?)` |
 | `SubscribeToReadReceipts` | `(GlobalParam, CancellationToken ct = default)` | `(ErrorReturner, IAsyncEnumerable<MessageReadEvent>?)` |
+| **`SubscribeToMessagesEdited/Deleted/Pinned/Unpinned/AllMessagesUnpinned`** | | Updates обычных сообщений |
+| **`SubscribeToPrivate*`** | | Шесть Updates-стримов приватных чатов |
+| **`SubscribeToSecretChatInvites/Resolutions/SecretMessages`** | | Три Updates-стрима секретных чатов; envelope opaque |
 
 **CancellationToken обязателен для отмены стрима.** `ct` прокидывается и в сам streaming-call (`cancellationToken: ct`), и в `MoveNext(ct)`. Без него стрим невозможно закрыть со стороны клиента — он висит на сокете до тайм-аута/обрыва сервером, что давало утечку соединений и race со свежими стримами после `TokenRefreshed`/`Dispose()`.
 
@@ -295,7 +318,7 @@ PeriodicTimer(30s)
 
 **Шифрование:** AES-256-GCM, ключ из PBKDF2-SHA512 (600 000 итераций), формат файла BFV3: `[magic 4][salt 16][nonce 12][tag 16][ciphertext]`. Читает легаси-формат BFV2 (PBKDF2-SHA256 × 100 000).
 
-**Поля:** 8 полей `Socket*` (Beacon, Users, Identity, Files, Messages, Updates, Onliner, FastAuth), `RefreshToken`, `AccessToken`, `UserId`, `UserName`, `FirstName`, `LastName`, `DeviceId`, `IpAddress`, `Colors (ClientColors)`, `NotificationMode`, `AppTheme`, `AppLanguage`, `NotificationSoundEnabled`, `MessageBubbleCornerRadius`, `BackgroundBlur*`, `BackgroundDimPercent`, `CurrentBackgroundFileId`, `AppPath`, `ServerName`, `ServerDescription`, `MachineName`
+**Поля:** `SocketBeacon`, `SocketUsers`, `SocketIdentity`, `SocketFiles`, `SocketMessages`, `SocketUpdates`, `SocketOnliner`, `SocketFastAuth`, `SocketCalls`, `LivekitUrl`, `ServerDnsName`, `FederationEnabled`, токены и UI-настройки.
 
 **`NotificationDisplayMode`:**
 - `0` Disabled — отключены
@@ -316,9 +339,10 @@ PeriodicTimer(30s)
 |-------|------|
 | `UserData` | `Username`, `FirstName`, `LastName`, `Email`, `Id`, `RegistrationDate`, `Badges`, `ProfilePictureUrl`, `ProfilePicturePreviewUrl`, `Description` |
 | `ChatInfo` | `ChatId`, `Members`, `Title`, `CountUnread`, `FirstUnreadId`, `IsGroup`, `LastMessageId`, `Picture` |
-| `MessageModel` | `MessageId`, `ChatId`, `Text`, `Attachments`, `SenderId`, `SentAt`, `Type`, `ReadBy`, `IsSystemMessage` |
-| `AttachmentsModel` | `Id`, `Type`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size`, `ImageWidth`, `ImageHeight` |
-| `ForwardingLetter` | `Text`, `FilesId: List<string>` |
+| `MessageModel` | `MessageId`, `ChatId`, `Text`, `Attachments`, `SenderId`, `SentAt`, `Type`, `ReadBy`, `IsSystemMessage`, `IsEdited`, `EditedAt` |
+| `AttachmentsModel` | `Id`, `Type`, `PreviewUrl`, `FileId`, `PreviewFileId`, `FileName`, `Size`, `ImageWidth`, `ImageHeight`, `ForwardedMessage?` |
+| `ForwardedMessageModel` | `AuthorName`, `OriginalMessageId`, `Text`, `Attachments` |
+| `ForwardingLetter` | `Text`, `FilesId: List<string>`, `ForwardedMessageId` |
 | `ServerDataElement` | `Title`, `Description`, `Ip`, `UserCount`, `PublicName`, `Location`, `HexColor` |
 | `ChatCacheClass` | `ChatId`, `ChatName`, `AvatarFileId`, `LastMessage?` |
 
@@ -336,3 +360,5 @@ PeriodicTimer(30s)
 | `OnlinerAC` | `OnlinerApi` | `BarkFluff.Proto.Onliner` | OnlinerManager |
 | `BeaconAC` | `BeaconApi` | `BarkFluff.Proto.Beacon` | ServerManager, ClientManager |
 | `NavigatorAC` | `NavigatorApi` | `BarkFluff.Proto.Navigator` | ServerManager |
+| `FastAuthAC` / `FastAuthUserAC` | `FastAuthApi` | `BarkFluff.Proto.FastAuth` | FastAuthManager |
+| `CallsAC` | `CallsApi` | `BarkFluff.Proto.Calls` | CallsManager |
