@@ -387,6 +387,13 @@
 
     // ========== OPEN CHAT ==========
 
+    function updateOpenChatUrl(chatId) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('chat', chatId);
+        url.searchParams.delete('call');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    }
+
     function openChat(chatId) {
         if (chatId === currentChatId) return;
         if (currentChatId && currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
@@ -399,6 +406,7 @@
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
 
         currentChatId = chatId;
+        updateOpenChatUrl(chatId);
         if (BF.personalization) BF.personalization.applyForChat(chatId);
         BF.realtime.subscribeTyping(chatId);
         currentChatInfo = null;
@@ -1242,6 +1250,7 @@
         if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
 
         currentChatId = chat.id;
+        updateOpenChatUrl(chat.id);
         if (BF.personalization) BF.personalization.applyForChat(chat.id);
         currentChatInfo = null;
         currentChatType = 1;
