@@ -88,6 +88,8 @@
   "call.reject": "Отклонить",
   "call.screenShare": "Демонстрация экрана",
   "call.screenShare.stop": "Остановить демонстрацию",
+  "call.status.micOff": "Микрофон выключен",
+  "call.status.speaking": "Говорит",
   "call.tile.screen": "{name} · демонстрация экрана",
   "call.title": "Звонок",
   "call.video": "Видеозвонок",

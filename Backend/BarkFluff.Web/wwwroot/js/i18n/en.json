@@ -88,6 +88,8 @@
   "call.reject": "Decline",
   "call.screenShare": "Screen sharing",
   "call.screenShare.stop": "Stop sharing",
+  "call.status.micOff": "Microphone off",
+  "call.status.speaking": "Speaking",
   "call.tile.screen": "{name} · screen sharing",
   "call.title": "Call",
   "call.video": "Video call",

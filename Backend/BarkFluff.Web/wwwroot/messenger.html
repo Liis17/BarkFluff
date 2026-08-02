@@ -676,25 +676,25 @@
         }
         .call-ring-overlay.visible { display: flex; }
         .call-ring-card {
-            background: var(--dialog-bg); border-radius: 20px; padding: 28px 32px;
-            width: 320px; max-width: 90%; text-align: center;
+            background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; padding: 28px 32px;
+            width: 320px; max-width: 90%; text-align: center; color: #f2f2f4;
             box-shadow: 0 12px 40px rgba(0,0,0,0.3);
         }
         .call-ring-avatar {
             width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 16px;
-            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            background: #2a2a2f;
             display: flex; align-items: center; justify-content: center;
-            font-size: 34px; font-weight: 700; color: #fff; overflow: hidden;
+            font-size: 34px; font-weight: 650; color: #fff; overflow: hidden;
             position: relative;
         }
         .call-ring-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .call-ring-avatar.pulsing::before, .call-ring-avatar.pulsing::after {
             content: ''; position: absolute; inset: 0; border-radius: 50%;
-            border: 2px solid rgba(200,126,91,0.7); animation: callPulse 1.8s ease-out infinite;
+            border: 2px solid rgba(240,240,242,0.5); animation: callPulse 1.8s ease-out infinite;
         }
         .call-ring-avatar.pulsing::after { animation-delay: 0.9s; }
         .call-ring-name { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
-        .call-ring-sub { font-size: 13px; color: var(--text-sub); margin-bottom: 24px; }
+        .call-ring-sub { font-size: 13px; color: #8a8a92; margin-bottom: 24px; }
         .call-ring-actions { display: flex; justify-content: center; gap: 40px; }
         .call-round-btn {
             width: 60px; height: 60px; border-radius: 50%; border: none;
@@ -705,7 +705,7 @@
         .call-round-btn svg { width: 26px; height: 26px; }
         .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
         .call-btn-accept { background: #2e9e5b; }
-        .call-btn-reject, .call-ctl-end { background: #d83a3a; }
+        .call-btn-reject, .call-ctl-end { background: #e8412a; }
 
         /* Запрос доступа к микрофону/камере перед сигнализацией звонка. */
         .call-permission-overlay {
@@ -714,147 +714,178 @@
         }
         .call-permission-overlay.visible { display: flex; }
         .call-permission-card {
-            background: var(--dialog-bg); border-radius: 20px; padding: 28px 32px;
-            width: 360px; max-width: 90%; text-align: center;
+            background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; padding: 28px 32px;
+            width: 360px; max-width: 90%; text-align: center; color: #f2f2f4;
             box-shadow: 0 12px 40px rgba(0,0,0,0.3);
         }
         .call-permission-title { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
-        .call-permission-text { font-size: 14px; line-height: 1.45; color: var(--text-sub); margin-bottom: 24px; }
+        .call-permission-text { font-size: 14px; line-height: 1.45; color: #8a8a92; margin-bottom: 24px; }
         .call-permission-actions { display: flex; justify-content: center; gap: 10px; }
         .call-permission-actions button {
-            border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font: inherit;
+            border: none; border-radius: 999px; padding: 10px 16px; cursor: pointer; font: inherit;
         }
-        .call-permission-actions .primary { background: var(--primary); color: #fff; }
-        .call-permission-actions .secondary { background: var(--hover-bg); color: var(--text); }
+        .call-permission-actions .primary { background: #f0f0f2; color: #141418; }
+        .call-permission-actions .secondary { background: #2a2a2f; color: #f2f2f4; }
         .call-permission-actions button:disabled { opacity: .6; cursor: wait; }
 
         /* Active call screen */
         .call-screen {
             display: none; position: fixed; inset: 0; z-index: 1150;
-            background: #11100f; flex-direction: column;
+            background: #121214; color: #f2f2f4; flex-direction: column;
+            font-variant-numeric: tabular-nums;
         }
         .call-screen.visible { display: flex; }
         .call-screen-top {
-            padding: 16px 24px; display: flex; align-items: center; gap: 12px; color: #fff;
+            padding: 12px 20px 6px; display: flex; align-items: baseline; gap: 12px;
         }
-        .call-screen-title { font-size: 16px; font-weight: 600; }
-        .call-screen-timer { font-size: 13px; color: rgba(255,255,255,0.7); }
+        .call-screen-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+        .call-screen-timer { font-size: 12px; color: #8a8a92; }
 
-        /* Компактные тайлы в линию по центру; не растягиваются на всю ширину,
-           помещаются в окно, с отступами (снизу больше — под контролами). */
-        .call-grid {
-            flex: 1; min-height: 0; overflow: hidden;
-            display: flex; flex-wrap: wrap; gap: 12px;
-            align-items: center; align-content: center; justify-content: center;
-            padding: 12px 16px 28px;
+        /* Основная область: spotlight (опционально) → сетка стримов → голосовой ряд. */
+        .call-main {
+            flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px;
+            padding: 6px 20px 14px;
         }
+
+        /* --- Spotlight: крупный блок выбранного стрима, остальные остаются в рельсе сетки --- */
+        .call-spotlight { display: none; flex: 1; min-height: 0; align-items: center; justify-content: center; }
+        .call-spotlight.visible { display: flex; }
+        .call-spotlight-box {
+            position: relative; max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9;
+            width: 100%; min-height: 180px; border-radius: 18px; overflow: hidden;
+            background: #0d0d10; border: 1px solid rgba(255,255,255,.09);
+        }
+        .call-spotlight-video-host { position: absolute; inset: 0; }
+        .call-spotlight-video-host video { width: 100%; height: 100%; object-fit: cover; background: #0d0d10; }
+        .call-spotlight-canvas {
+            position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 92px;
+            mix-blend-mode: screen; pointer-events: none; opacity: 0; transition: opacity 220ms ease;
+        }
+        .call-spotlight-ring {
+            position: absolute; inset: 0; border-radius: 18px; border: 2px solid #f0f0f2;
+            opacity: 0; pointer-events: none;
+        }
+        .call-spotlight-pill {
+            position: absolute; left: 14px; bottom: 14px; display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 999px; background: rgba(10,10,12,.6); backdrop-filter: blur(8px);
+            font-size: 13px; font-weight: 600;
+        }
+        .call-spotlight-exit {
+            position: absolute; top: 12px; right: 12px; height: 32px; padding: 0 14px; border: 0;
+            border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
+            background: rgba(10,10,12,.65); color: #f2f2f4; backdrop-filter: blur(8px); transition: background 160ms ease;
+        }
+        .call-spotlight-exit:hover { background: rgba(255,255,255,.18); }
+
+        /* --- Сетка стримов (камера/демонстрация — равноправные блоки, включая свои) --- */
+        .call-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+        .call-grid { display: grid; gap: 12px; justify-content: center; align-content: center; }
         .call-tile {
-            position: relative; flex: 0 0 auto; cursor: pointer;
-            width: clamp(200px, 30vw, 340px); aspect-ratio: 3 / 2; max-height: 100%;
-            background: #1c1b19; border-radius: 12px; overflow: hidden;
-            display: flex; align-items: center; justify-content: center;
+            position: relative; cursor: pointer; width: 100%; aspect-ratio: 16 / 9;
+            background: #0d0d10; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; overflow: hidden;
         }
-        /* Обводка говорящего — поверх видео (inset-тень прячется под видео в режиме демонстрации). */
-        .call-tile.speaking::after {
-            content: ''; position: absolute; inset: 0; border: 3px solid #3ddc84;
-            border-radius: 12px; pointer-events: none; z-index: 2;
-        }
-        .call-tile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+        .call-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0d0d10; }
         /* Демонстрация экрана — целиком (без обрезки). */
         .call-tile.screen video { object-fit: contain; }
-        /* Подсказка «развернуть» (по наведению) и кнопка свернуть (в развёрнутом). */
+        .call-tile-canvas {
+            position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 78px;
+            mix-blend-mode: screen; pointer-events: none; opacity: 0; transition: opacity 220ms ease;
+        }
+        .call-tile-ring {
+            position: absolute; inset: 0; border-radius: 16px; border: 2px solid #f0f0f2;
+            opacity: 0; pointer-events: none; z-index: 2;
+        }
+        .call-tile-pill {
+            position: absolute; left: 12px; bottom: 12px; z-index: 3; display: flex; align-items: center; gap: 7px;
+            padding: 5px 11px; border-radius: 999px; background: rgba(10,10,12,.62); backdrop-filter: blur(8px);
+            font-size: 12px; font-weight: 600; max-width: calc(100% - 24px);
+        }
+        .call-tile-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .call-tile-muted { display: none; flex: none; color: #e8503c; }
+        .call-tile-muted svg { width: 13px; height: 13px; display: block; }
+        /* Подсказка «развернуть» по наведению. */
         .call-tile-hint {
-            position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
-            border-radius: 8px; background: rgba(0,0,0,0.45); color: #fff; opacity: 0;
+            position: absolute; top: 10px; right: 10px; z-index: 3; width: 30px; height: 30px;
+            border-radius: 9px; background: rgba(10,10,12,.6); color: #f2f2f4; opacity: 0;
             display: flex; align-items: center; justify-content: center;
-            transition: opacity .15s; pointer-events: none; z-index: 3;
+            transition: opacity .15s, background .15s; pointer-events: none;
         }
         .call-tile:hover .call-tile-hint { opacity: 1; }
-        .call-tile-hint svg { width: 16px; height: 16px; }
-        .call-tile.expanded .call-tile-hint { display: none; }
-        .call-tile-close {
-            position: absolute; top: 14px; right: 16px; width: 42px; height: 42px;
-            border-radius: 50%; border: none; background: rgba(0,0,0,0.55); color: #fff;
-            cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 1160;
-        }
-        .call-tile.expanded .call-tile-close { display: flex; }
-        .call-tile-close svg { width: 20px; height: 20px; }
-        /* Развёрнутый на весь экран блок (контролы остаются слоем выше). */
-        .call-tile.expanded {
-            position: fixed; inset: 0; width: auto; height: auto; max-height: none;
-            aspect-ratio: auto; border-radius: 0; background: #000; z-index: 1158;
-            cursor: default; animation: tileExpand .2s ease;
-        }
-        .call-tile.expanded video { object-fit: contain; }
-        .call-tile.expanded .call-tile-label { left: 16px; bottom: 90px; font-size: 14px; max-width: 60%; }
-        @keyframes tileExpand { from { opacity: .4; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
-        .call-tile-avatar {
-            width: 72px; height: 72px; border-radius: 50%;
-            background: linear-gradient(135deg, #c87e5b, #8c351c);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 28px; font-weight: 700; color: #fff; overflow: hidden;
-        }
-        .call-tile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-        .call-tile-label {
-            position: absolute; left: 10px; bottom: 8px;
-            background: rgba(0,0,0,0.5); color: #fff; font-size: 12px;
-            padding: 3px 8px; border-radius: 6px; max-width: 80%;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
+        .call-tile-hint svg { width: 15px; height: 15px; }
 
-        /* Waiting for peer */
+        /* --- Голосовой ряд: участники без активного видео --- */
+        .call-voices { flex: none; display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 10px; }
+        .call-voice-tile {
+            position: relative; width: 196px; height: 132px; border-radius: 14px; background: #1a1a1e;
+            border: 1px solid rgba(255,255,255,.07); overflow: hidden; display: flex; flex-direction: column;
+        }
+        .call-voice-ring {
+            position: absolute; inset: 0; border-radius: 14px; border: 2px solid #f0f0f2;
+            opacity: 0; pointer-events: none; z-index: 2;
+        }
+        .call-voice-body {
+            flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 5px; padding: 10px 12px 0; overflow: hidden;
+        }
+        .call-voice-avatar {
+            width: 38px; height: 38px; flex: none; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 14px; font-weight: 650; color: #fff; overflow: hidden;
+        }
+        .call-voice-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-voice-name { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+        .call-voice-status { font-size: 11px; color: #8a8a92; }
+        .call-voice-canvas { flex: none; width: 100%; height: 46px; display: block; mix-blend-mode: screen; opacity: 0; transition: opacity 220ms ease; }
+        .call-voice-muted {
+            display: none; position: absolute; top: 9px; right: 9px; z-index: 3; width: 24px; height: 24px;
+            border-radius: 50%; background: rgba(0,0,0,.45); align-items: center; justify-content: center; color: #e8503c;
+        }
+        .call-voice-muted svg { width: 13px; height: 13px; display: block; }
+
+        /* Компактная плотность: активен spotlight или маленькая высота окна. */
+        .call-screen.tight .call-voice-tile { width: 152px; height: 88px; }
+        .call-screen.tight .call-voice-body { gap: 4px; padding: 6px 10px 0; }
+        .call-screen.tight .call-voice-avatar { width: 24px; height: 24px; font-size: 10px; }
+        .call-screen.tight .call-voice-status { display: none; }
+        .call-screen.tight .call-voice-canvas { height: 30px; }
+
+        /* Waiting for peer — оверлей над сеткой (себя может быть уже видно в сетке/голосовом ряду). */
         .call-waiting {
-            display: none; flex: 1; flex-direction: column;
-            align-items: center; justify-content: center; gap: 14px; color: #fff;
+            display: none; position: absolute; inset: 0; z-index: 3; flex-direction: column;
+            align-items: center; justify-content: center; gap: 14px; pointer-events: none;
+            background: #121214;
         }
         .call-screen.waiting .call-waiting { display: flex; }
+        .call-screen.waiting:not(.waiting-empty) .call-waiting { background: transparent; }
         .call-waiting-avatar {
             width: 120px; height: 120px; border-radius: 50%; position: relative;
-            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            background: #2a2a2f;
             display: flex; align-items: center; justify-content: center;
-            font-size: 46px; font-weight: 700; color: #fff; overflow: hidden;
+            font-size: 46px; font-weight: 650; color: #fff; overflow: hidden;
         }
         .call-waiting-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .call-waiting-avatar::before, .call-waiting-avatar::after {
             content: ''; position: absolute; inset: 0; border-radius: 50%;
-            border: 2px solid rgba(200,126,91,0.65); animation: callPulse 1.8s ease-out infinite;
+            border: 2px solid rgba(240,240,242,0.45); animation: callPulse 1.8s ease-out infinite;
         }
         .call-waiting-avatar::after { animation-delay: 0.9s; }
         .call-waiting-name { font-size: 20px; font-weight: 700; }
-        .call-waiting-sub { font-size: 14px; color: rgba(255,255,255,0.6); }
-        /* Локальное превью (PiP) — всегда в углу, только при включённой камере */
-        .call-self-pip {
-            display: none; position: absolute; right: 20px; bottom: 104px;
-            width: 160px; height: 120px; border-radius: 12px; overflow: hidden;
-            background: #1c1b19; box-shadow: 0 4px 16px rgba(0,0,0,0.45); z-index: 5;
-        }
-        .call-self-pip.on { display: block; }
-        .call-self-pip video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .call-self-pip-label {
-            position: absolute; left: 8px; bottom: 6px; background: rgba(0,0,0,0.5);
-            color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px;
-        }
-        /* Во время ожидания удалённых нет — пустую сетку прячем (себя видно в PiP). */
-        .call-screen.waiting .call-grid { display: none; }
-        /* При развороте блока на весь экран PiP не нужен. */
-        .call-screen.has-expanded .call-self-pip { display: none; }
+        .call-waiting-sub { font-size: 14px; color: #8a8a92; }
 
-        /* Контролы — слоем выше развёрнутого блока (z 1158). */
-        .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 16px; padding: 20px; position: relative; z-index: 1159; }
+        /* Контролы */
+        .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 12px; padding: 4px 20px 22px; position: relative; z-index: 5; }
         .call-ctl {
             position: relative;
-            width: 56px; height: 56px; border-radius: 50%; border: none;
+            width: 48px; height: 48px; border-radius: 50%; border: none;
             cursor: pointer;
-            background: rgba(255,255,255,0.12); color: #fff;
+            background: #2a2a2f; color: #f2f2f4;
             display: flex; align-items: center; justify-content: center;
-            transition: background .15s, color .15s;
+            transition: background .16s ease, color .16s ease;
         }
-        .call-ctl svg { width: 24px; height: 24px; }
-        .call-ctl:hover { background: rgba(255,255,255,0.22); }
-        .call-ctl.off { background: #d83a3a; color: #fff; }
-        .call-ctl.active { background: var(--primary); color: #fff; }
-        /* Кнопка завершения — всегда красная (включая hover). */
-        .call-ctl-end:hover { background: #e24b4b; }
+        .call-ctl svg { width: 20px; height: 20px; }
+        .call-ctl:hover { filter: brightness(1.18); }
+        .call-ctl.active { background: #f0f0f2; color: #141418; }
+        .call-ctl-end { background: #e8412a; color: #fff; margin-left: 6px; }
+        .call-ctl-end:hover { background: #f2543d; }
         /* Спиннер «применяю качество» поверх кнопки качества. */
         @keyframes spin { to { transform: rotate(360deg); } }
         .call-ctl.busy svg { opacity: .3; }
@@ -866,10 +897,10 @@
 
         /* Quality popover */
         .call-quality-panel {
-            display: block; position: absolute; left: 50%; bottom: 96px;
+            display: block; position: absolute; left: 50%; bottom: 88px;
             transform: translateX(-50%) translateY(6px) scale(0.98);
             transform-origin: bottom center;
-            background: #232220; border-radius: 14px; padding: 14px 16px; z-index: 4;
+            background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 14px 16px; z-index: 4;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 260px;
             opacity: 0; visibility: hidden; pointer-events: none;
             transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
@@ -881,7 +912,7 @@
         }
         .call-quality-group + .call-quality-group { margin-top: 12px; }
         .call-quality-title {
-            color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase;
+            color: #8a8a92; font-size: 11px; text-transform: uppercase;
             letter-spacing: .04em; margin-bottom: 7px;
         }
         .call-quality-chips { display: flex; gap: 6px; }
@@ -891,7 +922,7 @@
             font-size: 12px; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
         }
         .call-chip:hover { background: rgba(255,255,255,0.1); }
-        .call-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .call-chip.active { background: #f0f0f2; border-color: #f0f0f2; color: #141418; }
         /* Применение качества идёт с задержкой — гасим чипы и крутим спиннер у заголовка. */
         .call-quality-title { position: relative; }
         .call-quality-group.pending .call-chip { opacity: .5; pointer-events: none; }
@@ -905,16 +936,16 @@
         .call-ctl-wrap { position: relative; display: flex; }
         .call-ctl-caret {
             position: absolute; right: -3px; bottom: -3px; width: 22px; height: 22px;
-            border-radius: 50%; border: 2px solid #11100f; background: #3a3836; color: #fff;
+            border-radius: 50%; border: 2px solid #121214; background: #3a3a3f; color: #fff;
             padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
         .call-ctl-caret svg { width: 12px; height: 12px; }
-        .call-ctl-caret:hover { background: #4a4744; }
+        .call-ctl-caret:hover { background: #4a4a4f; }
         .call-ctl-menu {
-            display: block; position: absolute; left: 50%; bottom: 72px;
+            display: block; position: absolute; left: 50%; bottom: 64px;
             transform: translateX(-50%) translateY(6px) scale(0.98);
             transform-origin: bottom center;
-            background: #232220; border-radius: 12px; padding: 6px; min-width: 220px; max-width: 320px;
+            background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; padding: 6px; min-width: 220px; max-width: 320px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 6;
             opacity: 0; visibility: hidden; pointer-events: none;
             transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
@@ -930,7 +961,7 @@
             font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .call-ctl-menu-item:hover { background: rgba(255,255,255,0.1); }
-        .call-ctl-menu-item.active { background: var(--primary); color: #fff; }
+        .call-ctl-menu-item.active { background: #f0f0f2; color: #141418; }
         .call-ctl-menu-empty { color: rgba(255,255,255,0.5); padding: 8px 10px; font-size: 13px; }
 
         .messages-area-wrap {
@@ -5138,13 +5169,26 @@
             <div class="call-screen-title" id="callScreenTitle" data-i18n="call.title">Звонок</div>
             <div class="call-screen-timer" id="callScreenTimer"></div>
         </div>
-        <div class="call-waiting" id="callWaiting">
-            <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
-            <div class="call-waiting-name" id="callWaitingName"></div>
-            <div class="call-waiting-sub" id="callWaitingSub"></div>
+        <div class="call-main">
+            <div class="call-spotlight" id="callSpotlight">
+                <div class="call-spotlight-box">
+                    <div class="call-spotlight-video-host" id="callSpotlightVideoHost"></div>
+                    <canvas class="call-spotlight-canvas" id="callSpotlightCanvas"></canvas>
+                    <div class="call-spotlight-ring" id="callSpotlightRing"></div>
+                    <div class="call-spotlight-pill"><span id="callSpotlightName"></span></div>
+                    <button type="button" class="call-spotlight-exit" id="callSpotlightExit" data-i18n="call.collapse">Свернуть</button>
+                </div>
+            </div>
+            <div class="call-stage" id="callStage">
+                <div class="call-waiting" id="callWaiting">
+                    <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
+                    <div class="call-waiting-name" id="callWaitingName"></div>
+                    <div class="call-waiting-sub" id="callWaitingSub"></div>
+                </div>
+                <div class="call-grid" id="callGrid"></div>
+            </div>
+            <div class="call-voices" id="callVoices"></div>
         </div>
-        <div class="call-grid" id="callGrid"></div>
-        <div class="call-self-pip" id="callSelfPip"><div class="call-self-pip-label" data-i18n="call.you">Вы</div></div>
         <div class="call-quality-panel" id="callQualityPanel">
             <div class="call-quality-group" id="callAudioQualityGroup">
                 <div class="call-quality-title" data-i18n="call.quality.audio">Голос · для всех</div>
@@ -5167,7 +5211,7 @@
         </div>
         <div class="call-controls">
             <div class="call-ctl-wrap">
-                <button class="call-ctl off" id="callToggleMic" data-i18n-title="call.mic" title="Микрофон"></button>
+                <button class="call-ctl" id="callToggleMic" data-i18n-title="call.mic" title="Микрофон"></button>
                 <button class="call-ctl-caret" id="callMicCaret" data-i18n-title="call.mic.select" data-i18n-aria-label="call.mic.select" title="Выбрать микрофон" aria-label="Выбрать микрофон"></button>
                 <div class="call-ctl-menu" id="callMicMenu"></div>
             </div>
