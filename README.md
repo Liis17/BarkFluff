@@ -1,7 +1,7 @@
 [English](README.md) · [Русский](.readme/lang/ru/README.md)
 
 <p align="center">
-  <img src="Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="112" alt="BarkFluff logo">
+  <img src="Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff.icon.white-512.png" width="112" alt="BarkFluff logo">
 </p>
 
 <h1 align="center">BarkFluff</h1>
