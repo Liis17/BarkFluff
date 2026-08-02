@@ -35,7 +35,7 @@
             icon.appendChild(path);
         });
         statusEl.appendChild(icon);
-        statusEl.setAttribute('aria-label', isPending ? 'Отправляется' : (isRead ? 'Прочитано' : 'Доставлено'));
+        statusEl.setAttribute('aria-label', BF.i18n.t(isPending ? 'message.status.sending' : (isRead ? 'message.status.read' : 'message.status.delivered')));
     }
 
     // --- Audio Player Singleton ---
@@ -101,13 +101,13 @@
     function attachmentSummary(att) {
         var t = normType(att);
         switch (t) {
-            case 'IMAGE': case 'GIF': return '\u{1F4F7} Фото';
-            case 'VIDEO': return '\u{1F3AC} Видео';
-            case 'AUDIO': return '\u{1F3B5} Аудио';
-            case 'VOICE': return '\u{1F3A4} Голосовое';
-            case 'STICKER': return '\u{1F92A} Стикер';
-            case 'DOCUMENT': return '\u{1F4C4} ' + (att.fileName || 'Документ');
-            default: return '\u{1F4CE} Вложение';
+            case 'IMAGE': case 'GIF': return '\u{1F4F7} ' + BF.i18n.t('attachment.photo');
+            case 'VIDEO': return '\u{1F3AC} ' + BF.i18n.t('attachment.video');
+            case 'AUDIO': return '\u{1F3B5} ' + BF.i18n.t('attachment.audio');
+            case 'VOICE': return '\u{1F3A4} ' + BF.i18n.t('attachment.voice');
+            case 'STICKER': return '\u{1F92A} ' + BF.i18n.t('attachment.sticker');
+            case 'DOCUMENT': return '\u{1F4C4} ' + (att.fileName || BF.i18n.t('attachment.document'));
+            default: return '\u{1F4CE} ' + BF.i18n.t('attachment.generic');
         }
     }
 
@@ -229,7 +229,7 @@
         var wrap = document.createElement('div');
         wrap.className = 'upload-progress-circle';
         wrap.setAttribute('role', 'progressbar');
-        wrap.setAttribute('aria-label', 'Загрузка файла');
+        wrap.setAttribute('aria-label', BF.i18n.t('file.uploading'));
         wrap.setAttribute('aria-valuemin', '0');
         wrap.setAttribute('aria-valuemax', '100');
         wrap.setAttribute('aria-valuenow', progress);
@@ -292,7 +292,7 @@
             timeEl.textContent = '0:00';
             var nameEl = document.createElement('span');
             nameEl.className = 'audio-name';
-            nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое' : (a.fileName || 'Аудио');
+            nameEl.textContent = isVoice ? '\u{1F3A4} ' + BF.i18n.t('attachment.voice') : (a.fileName || BF.i18n.t('attachment.audio'));
             meta.appendChild(timeEl);
             meta.appendChild(nameEl);
             info.appendChild(progress);
@@ -307,7 +307,7 @@
                 if (refreshed) {
                     playBtn.disabled = true;
                     playBtn.classList.add('bf-load-failed');
-                    nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое недоступно' : 'Аудио недоступно';
+                    nameEl.textContent = isVoice ? '\u{1F3A4} ' + BF.i18n.t('attachment.voice.unavailable') : BF.i18n.t('attachment.audio.unavailable');
                     return;
                 }
                 refreshed = true;
@@ -317,7 +317,7 @@
                     else {
                         playBtn.disabled = true;
                         playBtn.classList.add('bf-load-failed');
-                        nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое недоступно' : 'Аудио недоступно';
+                        nameEl.textContent = isVoice ? '\u{1F3A4} ' + BF.i18n.t('attachment.voice.unavailable') : BF.i18n.t('attachment.audio.unavailable');
                     }
                 });
             });
@@ -366,9 +366,9 @@
             link.innerHTML =
                 '<span class="attach-doc-icon">' + u().docIcon(a.fileName) + '</span>' +
                 '<div class="attach-doc-info">' +
-                '<div class="attach-doc-name">' + u().escapeHtml(a.fileName || 'Файл') + '</div>' +
+                '<div class="attach-doc-name">' + u().escapeHtml(a.fileName || BF.i18n.t('attachment.file')) + '</div>' +
                 (a.isPending
-                    ? '<div class="attach-upload-progress" role="progressbar" aria-label="Загрузка файла" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '">' +
+                    ? '<div class="attach-upload-progress" role="progressbar" aria-label="' + u().escapeHtml(BF.i18n.t('file.uploading')) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '">' +
                       '<div class="attach-upload-progress-fill" style="width:' + progress + '%"></div></div>'
                     : '') +
                 '<div class="attach-doc-size">' + u().formatFileSize(a.attachmentSize || 0) + '</div>' +
@@ -457,8 +457,8 @@
                     var fullName = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username;
                     var avEl = document.createElement('span');
                     avEl.className = 'msg-sender-avatar';
-                    avEl.dataset.senderName = fullName || 'Пользователь';
-                    avEl.setAttribute('aria-label', fullName || 'Пользователь');
+                    avEl.dataset.senderName = fullName || BF.i18n.t('common.user');
+                    avEl.setAttribute('aria-label', fullName || BF.i18n.t('common.user'));
                     var pic = sender.profilePicturePreview || sender.profilePicture;
                     if (pic) {
                         var img = document.createElement('img');
@@ -523,7 +523,7 @@
                 if (msg.isEdited) {
                     var editedEl = document.createElement('span');
                     editedEl.className = 'msg-edited';
-                    editedEl.textContent = 'изм.';
+                    editedEl.textContent = BF.i18n.t('message.edited');
                     meta.appendChild(editedEl);
                 }
                 var timeEl = document.createElement('span');

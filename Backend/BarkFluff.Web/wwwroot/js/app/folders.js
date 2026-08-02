@@ -239,7 +239,7 @@
         allTab.type = 'button';
         allTab.className = 'folder-tab' + (activeFolderId === 'all' ? ' active' : '');
         allTab.dataset.folderId = 'all';
-        allTab.textContent = 'Все чаты';
+        allTab.textContent = BF.i18n.t('folder.allChats');
         allTab.addEventListener('click', function () { setActiveFolderId('all'); });
         folderTabsEl.appendChild(allTab);
 
@@ -254,7 +254,7 @@
 
             var label = '';
             if (f.folderIcon) label += f.folderIcon + ' ';
-            label += f.folderName || 'Папка';
+            label += f.folderName || BF.i18n.t('folder.default');
             tab.textContent = label;
 
             tab.title = f.folderName || '';
@@ -381,7 +381,7 @@
         none.type = 'button';
         none.className = 'emoji-cell emoji-none';
         none.textContent = '—';
-        none.title = 'Без иконки';
+        none.title = BF.i18n.t('folder.noIcon');
         none.dataset.icon = '';
         none.addEventListener('click', function () { selectIcon(''); });
         folderEmojiGrid.appendChild(none);
@@ -407,7 +407,7 @@
 
     function openCreateModal() {
         editingFolderId = null;
-        if (folderEditTitle) folderEditTitle.textContent = 'Новая папка';
+        if (folderEditTitle) folderEditTitle.textContent = BF.i18n.t('folder.new');
         if (folderNameInput) { folderNameInput.value = ''; folderNameInput.disabled = false; }
         selectIcon('');
         if (folderEditDeleteBtn) folderEditDeleteBtn.style.display = 'none';
@@ -419,7 +419,7 @@
         var f = foldersById.get(folderId);
         if (!f) return;
         editingFolderId = folderId;
-        if (folderEditTitle) folderEditTitle.textContent = 'Редактировать папку';
+        if (folderEditTitle) folderEditTitle.textContent = BF.i18n.t('folder.edit');
         if (folderNameInput) { folderNameInput.value = f.folderName || ''; folderNameInput.disabled = false; }
         selectIcon(f.folderIcon || '');
         if (folderEditDeleteBtn) folderEditDeleteBtn.style.display = '';
@@ -459,7 +459,7 @@
 
     function onDeleteClick() {
         if (editingFolderId == null) return;
-        if (!confirm('Удалить эту папку? Чаты в ней не будут удалены.')) return;
+        if (!confirm(BF.i18n.t('folder.delete.confirm'))) return;
         if (folderEditDeleteBtn) folderEditDeleteBtn.disabled = true;
         deleteFolder(editingFolderId).then(function () {
             closeEditModal();
@@ -472,6 +472,7 @@
 
     window.BF.folders = {
         init: init,
+        renderTabs: renderTabs,
         setOnChange: setOnChange,
         getActiveFolderId: getActiveFolderId,
         setActiveFolderId: setActiveFolderId,

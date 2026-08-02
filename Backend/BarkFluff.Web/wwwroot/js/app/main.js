@@ -155,7 +155,8 @@
     var groupMediaContent = $('#groupMediaContent');
 
     function botBadgeMarkup() {
-        return '<span class="bot-badge" role="img" aria-label="Бот" title="Бот"><svg aria-hidden="true"><use href="#bf-icon-bot"></use></svg></span>';
+        var label = u.escapeHtml(BF.i18n.t('common.bot'));
+        return '<span class="bot-badge" role="img" aria-label="' + label + '" title="' + label + '"><svg aria-hidden="true"><use href="#bf-icon-bot"></use></svg></span>';
     }
 
     function setChatCallButtonsVisible(visible) {
@@ -173,8 +174,8 @@
     }
 
     function chatTabTitle(user) {
-        var name = ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || 'Пользователь';
-        return 'Чат • ' + name;
+        var name = ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || BF.i18n.t('common.user');
+        return BF.i18n.t('tab.chatWith', { name: name });
     }
 
     // ========== CHAT LIST ==========
@@ -258,17 +259,17 @@
             var hasDraft = chat.chatType === 0 && ((chat.hasDraft === true) || (BF.drafts && BF.drafts.has(chat.id)));
             var previewHtml = '';
             if (hasDraft) {
-                previewHtml = '<span class="preview-draft">Черновик</span>';
+                previewHtml = '<span class="preview-draft">' + u.escapeHtml(BF.i18n.t('chatlist.draft')) + '</span>';
             } else if (isPrivate) {
                 // Содержимое зашифровано — сервер (и превью) его не знает.
                 if (chat.privateInviteState === 0) {
                     previewHtml = chat.privateInviterUserId === myUserId
-                        ? 'Ожидание собеседника'
-                        : '<span class="preview-private-invite">Приглашение в приватный чат</span>';
+                        ? u.escapeHtml(BF.i18n.t('privatechat.waitingPeer'))
+                        : '<span class="preview-private-invite">' + u.escapeHtml(BF.i18n.t('privatechat.invite')) + '</span>';
                 } else if (chat.privateInviteState === 2) {
-                    previewHtml = 'Приглашение отклонено';
+                    previewHtml = u.escapeHtml(BF.i18n.t('privatechat.inviteRejected'));
                 } else {
-                    previewHtml = 'Сообщения зашифрованы';
+                    previewHtml = u.escapeHtml(BF.i18n.t('privatechat.encrypted'));
                 }
             } else if (lm) {
                 var text = (lm.content && lm.content.text) || '';
@@ -302,7 +303,7 @@
                 '<div class="chat-avatar">' + avatarHtml +
                 onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="Приватный чат">\u{1F512}</span>' : '') + u.escapeHtml(chat.title || 'Чат') + (isBot ? botBadgeMarkup() : '') + '</span>' +
+                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">\u{1F512}</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -445,7 +446,7 @@
             if (!info || info.error) { loadingMessages.classList.remove('visible'); return; }
             currentChatInfo = info;
 
-            chatHeaderName.textContent = info.title || 'Чат';
+            chatHeaderName.textContent = info.title || BF.i18n.t('common.chat');
             if (info.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(info.picture) + '" alt="">';
             else chatHeaderAvatar.textContent = (info.title || '?')[0].toUpperCase();
 
@@ -475,7 +476,7 @@
                     }).catch(function () {});
                 }
             } else {
-                chatHeaderStatus.textContent = (info.membersId ? info.membersId.length : 0) + ' участников';
+                chatHeaderStatus.textContent = BF.i18n.tp('group.memberCount', info.membersId ? info.membersId.length : 0);
                 chatHeaderStatus.classList.remove('online');
                 chatHeaderStatus.hidden = false;
                 setChatCallButtonsVisible(true);
@@ -1009,13 +1010,13 @@
                     }
                 } else {
                     removePendingUpload(pendingEntry);
-                    groupToast('Не удалось отправить сообщение');
+                    groupToast(BF.i18n.t('error.sendMessage'));
                 }
             });
         }).catch(function () {
             removePendingUpload(pendingEntry);
             sendBtn.disabled = false;
-            groupToast(uploadsComplete ? 'Не удалось отправить сообщение' : 'Не удалось загрузить вложение');
+            groupToast(BF.i18n.t(uploadsComplete ? 'error.sendMessage' : 'error.uploadAttachment'));
         });
     }
 
@@ -1096,7 +1097,7 @@
     if (chatArea) {
         var dropOverlay = document.createElement('div');
         dropOverlay.className = 'drop-overlay';
-        dropOverlay.textContent = 'Отпустите для отправки';
+        dropOverlay.textContent = BF.i18n.t('attach.dropHint');
         dropOverlay.setAttribute('aria-hidden', 'true');
         chatArea.appendChild(dropOverlay);
 
@@ -1160,15 +1161,15 @@
         if (!privatePassActive) return;
         var ctx = privatePassActive;
         var pass = privatePassInput.value;
-        if (!pass) { privatePassError.textContent = 'Введите пароль'; return; }
+        if (!pass) { privatePassError.textContent = BF.i18n.t('privatechat.error.emptyPassword'); return; }
         privatePassOk.disabled = true;
-        privatePassError.textContent = 'Проверка…';
+        privatePassError.textContent = BF.i18n.t('privatechat.checking');
         BF.privateChat.deriveKey(pass, ctx.chat.kdfSalt).then(function (key) {
             return BF.privateChat.validateVerifier(key, ctx.chat.passphraseVerifier).then(function (ok) {
                 if (privatePassActive !== ctx) return;
                 if (!ok) {
                     privatePassOk.disabled = false;
-                    privatePassError.textContent = 'Неверный пароль';
+                    privatePassError.textContent = BF.i18n.t('privatechat.error.wrongPassword');
                     return;
                 }
                 var remember = privatePassRemember.checked;
@@ -1179,7 +1180,7 @@
             console.error('[privateChat] deriveKey failed', e);
             if (privatePassActive !== ctx) return;
             privatePassOk.disabled = false;
-            privatePassError.textContent = 'Ошибка проверки пароля';
+            privatePassError.textContent = BF.i18n.t('privatechat.error.checkFailed');
         });
     }
 
@@ -1230,7 +1231,7 @@
             isEdited: enc.isEdited,
             editedAt: enc.editedAt,
             content: {
-                text: (text !== null && text !== undefined) ? text : '\u{1F512} Не удалось расшифровать',
+                text: (text !== null && text !== undefined) ? text : '\u{1F512} ' + BF.i18n.t('privatechat.decryptFailed'),
                 attachments: []
             }
         };
@@ -1282,23 +1283,23 @@
             }).catch(function () {});
         }
 
-        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || 'Приватный чат');
+        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || BF.i18n.t('newchat.mode.private'));
         if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
         else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
         chatHeaderStatus.hidden = false;
         chatHeaderStatus.classList.remove('online');
-        chatHeaderStatus.textContent = 'Приватный чат';
+        chatHeaderStatus.textContent = BF.i18n.t('newchat.mode.private');
 
         if (chat.countUnread > 0) { chat.countUnread = 0; updateTitleBadge(); }
         renderChatList();
 
         if (chat.privateInviteState === 2) { // REJECTED
-            showPrivateCard('Приглашение отклонено', 'Этот приватный чат недоступен.');
+            showPrivateCard(BF.i18n.t('privatechat.inviteRejected'), BF.i18n.t('privatechat.inviteRejected.text'));
             return;
         }
         if (chat.privateInviteState === 0) { // PENDING
             if (chat.privateInviterUserId === myUserId || !chat.privateInviterUserId) {
-                showPrivateCard('Ожидание собеседника', 'Собеседник ещё не принял приглашение в приватный чат.');
+                showPrivateCard(BF.i18n.t('privatechat.waitingPeer'), BF.i18n.t('privatechat.waitingPeer.text'));
             } else {
                 showPrivateInviteCard(chat);
             }
@@ -1313,18 +1314,18 @@
     }
 
     function showPrivateInviteCard(chat) {
-        showPrivateCard('Приглашение в приватный чат',
-            'Для входа нужен пароль, о котором вы договорились с собеседником.', [
-            { label: 'Отклонить', onClick: function () { rejectPrivateInvite(chat); } },
-            { label: 'Принять', primary: true, onClick: function () { acceptPrivateInvite(chat); } }
+        showPrivateCard(BF.i18n.t('privatechat.invite'),
+            BF.i18n.t('privatechat.invite.text'), [
+            { label: BF.i18n.t('call.reject'), onClick: function () { rejectPrivateInvite(chat); } },
+            { label: BF.i18n.t('call.accept'), primary: true, onClick: function () { acceptPrivateInvite(chat); } }
         ]);
     }
 
     function showPrivateUnlockCard(chat) {
-        showPrivateCard('Чат заблокирован',
-            'Введите пароль чата, чтобы расшифровать сообщения на этом устройстве.', [
-            { label: 'Ввести пароль', primary: true, onClick: function () {
-                promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+        showPrivateCard(BF.i18n.t('privatechat.locked'),
+            BF.i18n.t('privatechat.locked.text'), [
+            { label: BF.i18n.t('privatechat.enterPassword'), primary: true, onClick: function () {
+                promptPassphrase(chat, BF.i18n.t('privatechat.password.title'), function (key, remember) {
                     BF.privateChat.saveKey(chat.id, key, remember);
                     if (currentChatId === chat.id) loadPrivateMessages(chat);
                 });
@@ -1333,7 +1334,7 @@
     }
 
     function acceptPrivateInvite(chat) {
-        promptPassphrase(chat, 'Пароль приватного чата', function (key, remember) {
+        promptPassphrase(chat, BF.i18n.t('privatechat.password.title'), function (key, remember) {
             BF.api.acceptPrivateChat(chat.id).then(function (resp) {
                 BF.privateChat.saveKey(chat.id, key, remember);
                 var idx = chats.findIndex(function (c) { return c.id === chat.id; });
@@ -1461,8 +1462,8 @@
 
         if (enc.senderId !== myUserId) {
             BF.sound.play('chime');
-            showNewMessageNotification(chat ? chat.title : 'Приватный чат',
-                { id: enc.id, chatId: chatId, content: { text: '\u{1F512} Новое сообщение' } });
+            showNewMessageNotification(chat ? chat.title : BF.i18n.t('newchat.mode.private'),
+                { id: enc.id, chatId: chatId, content: { text: '\u{1F512} ' + BF.i18n.t('notification.newMessage') } });
         }
 
         if (chatId !== currentChatId) return;
@@ -1505,8 +1506,12 @@
 
     // ========== TITLE UNREAD BADGE ==========
 
-    var defaultBaseTitle = 'Мессенджер';
-    var baseTitle = defaultBaseTitle;
+    // null → название приложения из словаря (пересчитывается, т.к. зависит от языка)
+    var baseTitle = null;
+
+    function defaultBaseTitle() {
+        return BF.i18n.t('app.title');
+    }
 
     var faviconEl = document.getElementById('favicon');
     var defaultFaviconHref = faviconEl ? faviconEl.getAttribute('href') : '/favicon.ico';
@@ -1563,13 +1568,13 @@
     }
 
     function resetChatTabContext() {
-        baseTitle = defaultBaseTitle;
+        baseTitle = null;
         setFavicon(null);
         updateTitleBadge();
     }
 
     function setChatTabContext(title, faviconHref) {
-        baseTitle = title || defaultBaseTitle;
+        baseTitle = title || null;
         setFavicon(faviconHref || null);
         updateTitleBadge();
     }
@@ -1577,7 +1582,8 @@
     function updateTitleBadge() {
         var total = 0;
         chats.forEach(function (c) { total += (c.countUnread || 0); });
-        document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + baseTitle : baseTitle;
+        var base = baseTitle || defaultBaseTitle();
+        document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + base : base;
     }
 
     // ========== BROWSER NOTIFICATIONS ==========
@@ -1594,7 +1600,7 @@
         }
 
         try {
-            var n = new Notification(chatTitle || 'Новое сообщение', {
+            var n = new Notification(chatTitle || BF.i18n.t('notification.newMessage'), {
                 body: body,
                 tag: 'bf-msg-' + (msg.id || Date.now()),
                 renotify: true
@@ -1638,7 +1644,7 @@
         connectionBanner.classList.toggle('visible', state !== 'connected');
         connectionBanner.classList.toggle('offline', offline);
         if (connectionBannerText) {
-            connectionBannerText.textContent = offline ? 'Нет сети' : 'Переподключаемся…';
+            connectionBannerText.textContent = BF.i18n.t(offline ? 'connection.offline' : 'connection.reconnecting');
         }
         if (connectionRetryButton) connectionRetryButton.disabled = false;
     }
@@ -2047,7 +2053,7 @@
         var entry = onlineStatuses.get(userId);
         var online = entry ? BF.utils.isStatusOnline(entry.status) : false;
         if (online) {
-            chatHeaderStatus.textContent = 'в сети';
+            chatHeaderStatus.textContent = BF.i18n.t('status.online');
         } else {
             chatHeaderStatus.textContent = BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
         }
@@ -2059,7 +2065,7 @@
 
         if (typingUsers.size === 0) {
             if (currentChatInfo.isGroupChat) {
-                chatHeaderStatus.textContent = (currentChatInfo.membersId ? currentChatInfo.membersId.length : 0) + ' участников';
+                chatHeaderStatus.textContent = BF.i18n.tp('group.memberCount', currentChatInfo.membersId ? currentChatInfo.membersId.length : 0);
                 chatHeaderStatus.classList.remove('online');
             } else {
                 var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
@@ -2071,12 +2077,14 @@
         if (currentChatInfo.isGroupChat) {
             var names = Array.from(typingUsers.keys()).slice(0, 3).map(function (id) {
                 var user = userCache.get(id);
-                if (!user) return 'Кто-то';
-                return (user.firstName || '').split(' ')[0] || user.username || 'Кто-то';
+                if (!user) return BF.i18n.t('common.someone');
+                return (user.firstName || '').split(' ')[0] || user.username || BF.i18n.t('common.someone');
             });
-            chatHeaderStatus.textContent = names.join(', ') + (typingUsers.size > 1 ? ' печатают…' : ' печатает…');
+            chatHeaderStatus.textContent = BF.i18n.t(
+                typingUsers.size > 1 ? 'status.typing.many' : 'status.typing.named',
+                { names: names.join(', ') });
         } else {
-            chatHeaderStatus.textContent = 'печатает…';
+            chatHeaderStatus.textContent = BF.i18n.t('status.typing');
         }
     }
 
@@ -2148,7 +2156,7 @@
                     searchResults.appendChild(el);
                 });
                 if (data.users.length === 0) {
-                    searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">Ничего не найдено</div>';
+                    searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">' + u.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
                 }
             });
         }, 300);
@@ -2390,7 +2398,7 @@
 
             var online = isUserOnline(userId);
             var entry = onlineStatuses.get(userId);
-            profileStatus.textContent = online ? 'в сети' : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
+            profileStatus.textContent = online ? BF.i18n.t('status.online') : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
             profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
             profileStatus.hidden = !!user.isBot;
             setProfileCallButtonsVisible(!user.isBot);
@@ -2439,7 +2447,7 @@
                 var input = document.createElement('input');
                 input.className = 'profile-file-search';
                 input.type = 'search';
-                input.placeholder = 'Поиск файлов…';
+                input.placeholder = BF.i18n.t('media.searchFiles.placeholder');
                 input.maxLength = 255;
                 input.autocomplete = 'off';
                 state.fileSearch = input;
@@ -2540,7 +2548,7 @@
                 if (!current()) return;
                 var all = (results[0].attachments || []).concat(results[1].attachments || [], results[2].attachments || []);
                 all.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
-                if (all.length === 0) { showEmpty('Нет медиафайлов'); return; }
+                if (all.length === 0) { showEmpty(BF.i18n.t('media.empty.media')); return; }
 
                 var grid = document.createElement('div');
                 grid.className = 'profile-media-grid';
@@ -2559,7 +2567,7 @@
                                 var tile = document.createElement('button');
                                 tile.type = 'button';
                                 tile.className = 'profile-media-tile';
-                                tile.setAttribute('aria-label', att.type === 'VIDEO' ? 'Открыть видео' : 'Открыть изображение');
+                                tile.setAttribute('aria-label', BF.i18n.t(att.type === 'VIDEO' ? 'media.openVideo' : 'media.openImage'));
                                 if (preview) {
                                     var img = document.createElement('img');
                                     img.src = preview;
@@ -2570,7 +2578,7 @@
                                 } else {
                                     var placeholder = document.createElement('span');
                                     placeholder.className = 'profile-media-placeholder';
-                                    placeholder.textContent = 'Нет превью';
+                                    placeholder.textContent = BF.i18n.t('media.noPreview');
                                     tile.appendChild(placeholder);
                                 }
                                 if (att.type === 'VIDEO') {
@@ -2594,18 +2602,18 @@
                             if (!current()) return;
                             var tile = document.createElement('div');
                             tile.className = 'profile-media-placeholder';
-                            tile.textContent = 'Нет превью';
+                            tile.textContent = BF.i18n.t('media.noPreview');
                             grid.appendChild(tile);
                         });
                     });
                 });
-            }).catch(function () { showEmpty('Не удалось загрузить медиафайлы'); });
+            }).catch(function () { showEmpty(BF.i18n.t('media.error.media')); });
         } else if (type === 'files') {
             var query = panels.fileSearch.value.trim();
             BF.api.listChatAttachments(chatId, 4, 0, 30, query).then(function (data) {
                 if (!current()) return;
                 var files = data.attachments || [];
-                if (files.length === 0) { showEmpty(query ? 'Файлы не найдены' : 'Нет файлов'); return; }
+                if (files.length === 0) { showEmpty(BF.i18n.t(query ? 'media.notFound.files' : 'media.empty.files')); return; }
                 var list = document.createElement('div');
                 list.className = 'profile-file-list';
                 content.appendChild(list);
@@ -2625,15 +2633,15 @@
                             var icon = document.createElement('span');
                             icon.textContent = '\u{1F4C4}';
                             el.appendChild(icon);
-                            el.appendChild(document.createTextNode(' ' + (att.fileName || 'Файл')));
+                            el.appendChild(document.createTextNode(' ' + (att.fileName || BF.i18n.t('attachment.file'))));
                             list.appendChild(el);
                         });
                     });
                 });
-            }).catch(function () { showEmpty('Не удалось загрузить файлы'); });
+            }).catch(function () { showEmpty(BF.i18n.t('media.error.files')); });
         } else if (type === 'audio' || type === 'voice') {
             var attType = type === 'audio' ? 5 : 6;
-            var emptyText = type === 'audio' ? 'Нет аудио' : 'Нет голосовых';
+            var emptyText = BF.i18n.t(type === 'audio' ? 'media.empty.audio' : 'media.empty.voice');
             BF.api.listChatAttachments(chatId, attType, 0, 30).then(function (data) {
                 if (!current()) return;
                 var items = data.attachments || [];
@@ -2655,7 +2663,7 @@
                             if (type === 'audio') {
                                 var nm = document.createElement('div');
                                 nm.className = 'profile-audio-name';
-                                nm.textContent = att.fileName || 'Аудио';
+                                nm.textContent = att.fileName || BF.i18n.t('attachment.audio');
                                 el.appendChild(nm);
                             }
                             var audio = document.createElement('audio');
@@ -2667,7 +2675,7 @@
                         });
                     });
                 });
-            }).catch(function () { showEmpty('Не удалось загрузить вложения'); });
+            }).catch(function () { showEmpty(BF.i18n.t('media.error.attachments')); });
         }
     }
 
@@ -2701,7 +2709,7 @@
         BF.callsUI.ensureMediaPermissions(media)
             .then(function () { return BF.calls.initiate(target, media); })
             .catch(function (e) {
-                if (!e || e.code !== 'media-permission-dismissed') console.error('Не удалось начать звонок:', e);
+                if (!e || e.code !== 'media-permission-dismissed') console.error('call start failed:', e);
             })
             .finally(function () { isInitiatingCall = false; });
     }
@@ -2723,8 +2731,8 @@
         var overlay = $('#chatBackgroundSelector');
         var selectorTitle = $('#chatBackgroundSelectorTitle');
         var grid = $('#chatBackgroundSelectorGrid');
-        selectorTitle.textContent = 'Фон: ' + (title || 'чат');
-        grid.innerHTML = '<div class="sd-hint">Загрузка…</div>';
+        selectorTitle.textContent = BF.i18n.t('chat.background.for', { title: title || BF.i18n.t('common.chat').toLowerCase() });
+        grid.innerHTML = '<div class="sd-hint">' + u.escapeHtml(BF.i18n.t('common.loadingShort')) + '</div>';
         overlay.classList.add('visible');
 
         BF.api.getPersonalization().then(function (data) {
@@ -2754,9 +2762,9 @@
                 });
                 grid.appendChild(card);
             }
-            addCard('', 'Использовать глобальный');
+            addCard('', BF.i18n.t('chat.background.useGlobal'));
             ids.forEach(function (fileId) { addCard(fileId, ''); });
-        }).catch(function () { grid.innerHTML = '<div class="sd-hint error">Не удалось загрузить фоны</div>'; });
+        }).catch(function () { grid.innerHTML = '<div class="sd-hint error">' + u.escapeHtml(BF.i18n.t('chat.background.error')) + '</div>'; });
     }
 
     var _chatBackgroundSelector = $('#chatBackgroundSelector');
@@ -2779,7 +2787,7 @@
         if (!text || !navigator.clipboard) return;
         navigator.clipboard.writeText(String(text)).then(function () {
             BF.sound.play('success');
-            groupToast('Скопировано');
+            groupToast(BF.i18n.t('common.copied'));
         }).catch(function () {});
     }
     document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
@@ -2798,7 +2806,7 @@
         if (groupToast._t) clearTimeout(groupToast._t);
         groupToast._t = setTimeout(function () {
             soonToastEl.classList.remove('visible');
-            soonToastEl.textContent = 'Скоро будет';
+            soonToastEl.textContent = BF.i18n.t('common.comingSoon');
         }, 1800);
     }
 
@@ -2814,7 +2822,7 @@
 
     function openGroupInfo() {
         if (!currentChatInfo || !currentChatId) return;
-        groupName.textContent = currentChatInfo.title || 'Группа';
+        groupName.textContent = currentChatInfo.title || BF.i18n.t('group.default');
         var _groupChatId = $('#groupChatId');
         if (_groupChatId) _groupChatId.textContent = currentChatId || '—';
         renderGroupAvatar(currentChatInfo.picture, currentChatInfo.title);
@@ -2833,7 +2841,7 @@
         BF.api.listChatMembers(chatId).then(function (data) {
             if (chatId !== currentChatId) return;
             var members = (data && data.members) || [];
-            groupCount.textContent = members.length + ' участников';
+            groupCount.textContent = BF.i18n.tp('group.memberCount', members.length);
             members.forEach(function (m) {
                 var fullName = ((m.firstName || '') + ' ' + (m.lastName || '')).trim() || ('ID ' + m.userId);
 
@@ -2847,14 +2855,14 @@
 
                 var nm = document.createElement('div');
                 nm.className = 'group-member-name';
-                nm.textContent = m.userId === myUserId ? (fullName + ' (вы)') : fullName;
+                nm.textContent = m.userId === myUserId ? BF.i18n.t('group.member.you', { name: fullName }) : fullName;
                 row.appendChild(nm);
 
                 if (m.userId !== myUserId) {
                     var rm = document.createElement('button');
                     rm.className = 'group-member-remove';
                     rm.innerHTML = '&times;';
-                    rm.title = 'Удалить';
+                    rm.title = BF.i18n.t('common.delete');
                     rm.addEventListener('click', function () { confirmRemoveMember(m, fullName); });
                     row.appendChild(rm);
                 }
@@ -2871,22 +2879,22 @@
                     }
                 }).catch(function () {});
             });
-        }).catch(function () { groupToast('Ошибка загрузки участников'); });
+        }).catch(function () { groupToast(BF.i18n.t('group.error.loadMembers')); });
     }
 
     function confirmRemoveMember(member, name) {
-        if (!window.confirm('Удалить ' + name + ' из группы?')) return;
+        if (!window.confirm(BF.i18n.t('group.removeMember.confirm', { name: name }))) return;
         BF.api.kickUser(currentChatId, member.userId)
             .then(function () { loadGroupMembers(); })
-            .catch(function () { groupToast('Не удалось удалить участника'); });
+            .catch(function () { groupToast(BF.i18n.t('group.error.removeMember')); });
     }
 
     function renameGroup() {
         var current = currentChatInfo ? currentChatInfo.title : '';
-        var next = window.prompt('Название группы', current || '');
+        var next = window.prompt(BF.i18n.t('newchat.groupTitle.placeholder'), current || '');
         if (next == null) return;
         next = next.trim();
-        if (!next) { groupToast('Название не может быть пустым'); return; }
+        if (!next) { groupToast(BF.i18n.t('group.error.emptyTitle')); return; }
         BF.api.updateGroupChat(currentChatId, next, null).then(function (res) {
             var title = (res && res.chat && res.chat.title) || next;
             if (currentChatInfo) currentChatInfo.title = title;
@@ -2894,8 +2902,8 @@
             chatHeaderName.textContent = title;
             var c = chats.find(function (x) { return x.id === currentChatId; });
             if (c) { c.title = title; renderChatList(); }
-            groupToast('Название обновлено');
-        }).catch(function () { groupToast('Не удалось изменить название'); });
+            groupToast(BF.i18n.t('group.titleUpdated'));
+        }).catch(function () { groupToast(BF.i18n.t('group.error.renameFailed')); });
     }
 
     function addGroupMember(userId, name) {
@@ -2904,8 +2912,8 @@
             groupAddInput.value = '';
             groupAddResults.innerHTML = '';
             loadGroupMembers();
-            groupToast(name + ' добавлен(а)');
-        }).catch(function () { groupToast('Не удалось добавить участника'); });
+            groupToast(BF.i18n.t('group.memberAdded', { name: name }));
+        }).catch(function () { groupToast(BF.i18n.t('group.error.addMember')); });
     }
 
     groupClose.addEventListener('click', function () { groupOverlay.classList.remove('visible'); });
@@ -2922,7 +2930,7 @@
         var file = groupAvatarInput.files[0];
         groupAvatarInput.value = '';
         if (!file) return;
-        groupToast('Загрузка…');
+        groupToast(BF.i18n.t('common.loadingShort'));
         BF.files.uploadFile(file, 6 /* CHAT_PICTURE */).then(function (fileId) {
             return BF.api.updateGroupChat(currentChatId, null, fileId);
         }).then(function (res) {
@@ -2934,8 +2942,8 @@
                 var c = chats.find(function (x) { return x.id === currentChatId; });
                 if (c) { c.picture = pic; renderChatList(); }
             }
-            groupToast('Аватар обновлён');
-        }).catch(function () { groupToast('Не удалось обновить аватар'); });
+            groupToast(BF.i18n.t('group.avatarUpdated'));
+        }).catch(function () { groupToast(BF.i18n.t('group.error.avatarFailed')); });
     });
 
     groupAddBtn.addEventListener('click', function () {
@@ -3032,7 +3040,7 @@
         BF.api.listStickerPacks(0, 50).then(function (data) {
             stickerPacksCache = data.packs || [];
             if (stickerPacksCache.length === 0) {
-                if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">Стикерпаки не найдены</div>';
+                if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('sticker.noPacks')) + '</div>';
                 return;
             }
             // Prefetch всех паков для обложек и кэша контента
@@ -3058,7 +3066,7 @@
                 if (stickerPacksCache.length > 0) loadStickerPackContent(stickerPacksCache[0].id);
             });
         }).catch(function () {
-            if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">Ошибка загрузки</div>';
+            if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('common.loadError')) + '</div>';
         });
     }
 
@@ -3101,7 +3109,7 @@
         var cached = stickerPacksContentCache[packId];
         var stickers = cached ? cached.stickers : [];
         if (stickers.length === 0) {
-            stickerGrid.innerHTML = '<div class="sticker-pack-empty">В этом паке нет стикеров</div>';
+            stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('sticker.packEmpty')) + '</div>';
             return;
         }
         // Показываем full-версии стикеров (fileId, не preview)
@@ -3176,7 +3184,7 @@
             previewText: buildReplyPreviewText(msg)
         };
         if (msg.senderId === myUserId) {
-            pendingReply.authorName = 'Вы';
+            pendingReply.authorName = BF.i18n.t('call.you');
             renderReplyPreview();
         } else {
             getUser(msg.senderId).then(function (sender) {
@@ -3219,7 +3227,7 @@
         messageInput.value = origText;
         messageInput.style.height = 'auto';
         messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-        if (epbText) epbText.textContent = origText || '(вложения)';
+        if (epbText) epbText.textContent = origText || BF.i18n.t('composer.edit.attachmentsOnly');
         if (editPreviewBar) editPreviewBar.classList.add('visible');
         try { messageInput.focus(); } catch (e) {}
     }
@@ -3321,7 +3329,7 @@
                 pinBtn.style.display = '';
                 var alreadyPinned = BF.pinned && BF.pinned.isPinned && BF.pinned.isPinned(msgId);
                 var pinLabel = pinBtn.querySelector('.cm-label');
-                if (pinLabel) pinLabel.textContent = alreadyPinned ? 'Открепить' : 'Закрепить';
+                if (pinLabel) pinLabel.textContent = BF.i18n.t(alreadyPinned ? 'menu.unpin' : 'menu.pin');
                 pinBtn.dataset.state = alreadyPinned ? 'pinned' : 'unpinned';
             }
         }
@@ -3414,8 +3422,8 @@
     function updateForwardCounter() {
         if (!forwardCounterEl) return;
         var n = forwardSelection.size;
-        if (n === 0) forwardCounterEl.textContent = 'Не выбрано чатов';
-        else forwardCounterEl.textContent = 'Выбрано: ' + n;
+        if (n === 0) forwardCounterEl.textContent = BF.i18n.t('forward.noChatsSelected');
+        else forwardCounterEl.textContent = BF.i18n.t('forward.selected', { count: n });
         if (forwardSendBtn) forwardSendBtn.disabled = n === 0;
     }
 
@@ -3443,7 +3451,7 @@
             item.dataset.chatId = chat.id;
             item.innerHTML =
                 '<div class="fwd-avatar">' + chatAvatarMarkup(chat) + '</div>' +
-                '<div class="fwd-name">' + u.escapeHtml(chat.title || 'Чат') + '</div>' +
+                '<div class="fwd-name">' + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + '</div>' +
                 '<div class="fwd-check">&#10003;</div>';
             item.addEventListener('click', function () {
                 var id = chat.id;
@@ -3477,7 +3485,7 @@
         var ids = Array.from(forwardSelection);
         forwardSendBtn.disabled = true;
         var originalLabel = forwardSendBtn.textContent;
-        forwardSendBtn.textContent = 'Отправка...';
+        forwardSendBtn.textContent = BF.i18n.t('forward.sending');
 
         var chain = ids.reduce(function (p, chatId) {
             return p.then(function () {
@@ -3494,11 +3502,11 @@
             forwardSendBtn.textContent = originalLabel;
             closeForwardModal();
             if (soonToastEl) {
-                soonToastEl.textContent = 'Переслано в ' + ids.length + ' ' + (ids.length === 1 ? 'чат' : 'чатов');
+                soonToastEl.textContent = BF.i18n.tp('forward.done', ids.length);
                 soonToastEl.classList.add('visible');
                 setTimeout(function () {
                     soonToastEl.classList.remove('visible');
-                    soonToastEl.textContent = 'Скоро будет';
+                    soonToastEl.textContent = BF.i18n.t('common.comingSoon');
                 }, 1800);
             }
         });
@@ -3777,7 +3785,7 @@
             if (without.length > 0) {
                 var hdr1 = document.createElement('div');
                 hdr1.className = 'cm-section-title';
-                hdr1.textContent = 'Добавить в папку';
+                hdr1.textContent = BF.i18n.t('folder.addToFolder');
                 chatContextMenu.appendChild(hdr1);
                 without.forEach(function (f) {
                     var btn = document.createElement('button');
@@ -3785,7 +3793,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'add-folder';
                     btn.dataset.folderId = f.folderId;
-                    btn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -3793,7 +3801,7 @@
             if (inFolders.length > 0) {
                 var hdr2 = document.createElement('div');
                 hdr2.className = 'cm-section-title';
-                hdr2.textContent = 'Удалить из папки';
+                hdr2.textContent = BF.i18n.t('folder.removeFromFolder');
                 chatContextMenu.appendChild(hdr2);
                 inFolders.forEach(function (f) {
                     var btn = document.createElement('button');
@@ -3801,7 +3809,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'remove-folder';
                     btn.dataset.folderId = f.folderId;
-                    btn.innerHTML = contextMenuIcon('folder-minus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || 'Папка') + '</span>';
+                    btn.innerHTML = contextMenuIcon('folder-minus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -3817,7 +3825,7 @@
         createBtn.type = 'button';
         createBtn.className = 'cm-item';
         createBtn.dataset.act = 'create-folder';
-        createBtn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">Создать папку</span>';
+        createBtn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(BF.i18n.t('folder.create')) + '</span>';
         chatContextMenu.appendChild(createBtn);
     }
 
@@ -3971,7 +3979,7 @@
     if (BF.push && BF.push.init) BF.push.init();
 
     window.addEventListener('bf-pwa-update', function () {
-        if (window.confirm('Доступна новая версия BarkFluff. Перезагрузить сейчас?')) BF.push.applyUpdate();
+        if (window.confirm(BF.i18n.t('pwa.updateAvailable'))) BF.push.applyUpdate();
     });
 
     if (BF.pinned && BF.pinned.init) {
@@ -3984,14 +3992,31 @@
         });
     }
 
-    if (BF.folders && BF.folders.init) {
-        BF.folders.setOnChange(function () { renderChatList(); });
-        BF.folders.init().then(function () {
-            return loadChats(true);
-        }).then(updateTitleBadge).then(maybeOpenChatFromCookie).then(maybeOpenChatFromPushUrl).then(maybeOpenPendingPushChat);
-    } else {
-        loadChats(true).then(updateTitleBadge).then(maybeOpenChatFromCookie).then(maybeOpenChatFromPushUrl).then(maybeOpenPendingPushChat);
-    }
+    // Первый рендер — только после загрузки словаря, иначе список успеет отрисоваться на ключах.
+    BF.i18n.ready.then(function () {
+        if (BF.folders && BF.folders.init) {
+            BF.folders.setOnChange(function () { renderChatList(); });
+            return BF.folders.init().then(function () {
+                return loadChats(true);
+            });
+        }
+        return loadChats(true);
+    }).then(updateTitleBadge).then(maybeOpenChatFromCookie).then(maybeOpenChatFromPushUrl).then(maybeOpenPendingPushChat);
+
+    // Смена языка в настройках — перерисовать динамические части интерфейса.
+    BF.i18n.onChange(function () {
+        renderChatList();
+        updateTitleBadge();
+        if (BF.folders && BF.folders.renderTabs) BF.folders.renderTabs();
+        if (currentChatId) {
+            if (currentChatType === 1) {
+                var chat = chats.find(function (c) { return c.id === currentChatId; });
+                if (chat) openPrivateChat(chat);
+            } else {
+                openChat(currentChatId);
+            }
+        }
+    });
 
     if (navigator.serviceWorker) {
         navigator.serviceWorker.addEventListener('message', function (event) {
