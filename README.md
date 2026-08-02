@@ -1,7 +1,7 @@
 [English](README.md) · [Русский](.readme/lang/ru/README.md)
 
 <p align="center">
-  <img src="Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff.icon.white-512.png" width="112" alt="BarkFluff logo">
+  <img src="Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff.icon.white-512.png" width="112" alt="logo">
 </p>
 
 <h1 align="center">BarkFluff</h1>
@@ -29,7 +29,7 @@
 BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover their service endpoints through Beacon, receive live changes through streaming updates, and communicate with independent services that can evolve and scale without turning the product into a distributed tangle.
 
 <p align="center">
-  <img src="docs/images/readme/product-preview-placeholder.svg" alt="Placeholder for a BarkFluff product preview" width="920">
+  <img src="https://github.com/Liis17/BarkFluff/blob/24d7752ec5c73a6af81454be208918f64befbde0/assets/2026-08/27f65b3197f8476984ba83043fd2d9c8.png" width="920">
 </p>
 
 ## Download
