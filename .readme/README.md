@@ -13,7 +13,8 @@
 <p align="center">
   <a href="../README.md">Overview</a> ·
   <a href="#backend">Backend</a> ·
-  <a href="#clients">Clients</a>
+  <a href="#clients">Clients</a> ·
+  <a href="#bot-api">Bot API</a>
 </p>
 
 ---
@@ -32,6 +33,10 @@ Choose the guide for the part of the platform you are working with. Architecture
 - [iOS](clients/ios.md)
 - [Linux](clients/linux.md)
 - [Web](clients/web.md)
+
+## Bot API
+
+- [Build a bot](bots.md)
 
 ## Language editions
 
