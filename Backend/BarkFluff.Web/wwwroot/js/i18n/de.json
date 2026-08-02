@@ -88,6 +88,8 @@
   "call.reject": "Ablehnen",
   "call.screenShare": "Bildschirmfreigabe",
   "call.screenShare.stop": "Freigabe beenden",
+  "call.status.micOff": "Mikrofon aus",
+  "call.status.speaking": "Spricht",
   "call.tile.screen": "{name} · Bildschirmfreigabe",
   "call.title": "Anruf",
   "call.video": "Videoanruf",
