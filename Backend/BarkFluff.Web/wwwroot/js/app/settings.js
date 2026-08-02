@@ -22,9 +22,9 @@
     var VIS_FRIENDS = 1;
     var VIS_NONE = 2;
     var VIS_OPTIONS = [
-        { value: VIS_ALL, label: 'Все' },
-        { value: VIS_FRIENDS, label: 'Друзья' },
-        { value: VIS_NONE, label: 'Никто' }
+        { value: VIS_ALL, labelKey: 'privacy.visibility.all' },
+        { value: VIS_FRIENDS, labelKey: 'privacy.visibility.friends' },
+        { value: VIS_NONE, labelKey: 'privacy.visibility.none' }
     ];
 
     // UploadFileType enum values used here
@@ -168,7 +168,7 @@
     function makeSaveBtn(label) {
         var btn = document.createElement('button');
         btn.className = 'sd-btn sd-btn-primary';
-        btn.textContent = label || 'Сохранить';
+        btn.textContent = label || BF.i18n.t('common.save');
         return btn;
     }
 
@@ -230,7 +230,7 @@
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'sd-segmented-option' + (opt.value === initial ? ' active' : '');
-            b.textContent = opt.label;
+            b.textContent = opt.labelKey ? BF.i18n.t(opt.labelKey) : opt.label;
             b.addEventListener('click', function () {
                 if (current === opt.value) return;
                 current = opt.value;
@@ -264,7 +264,7 @@
     // ========== VIEWS ==========
 
     function renderMain() {
-        titleEl.innerHTML = ICONS.settings + '<span>Настройки</span>';
+        titleEl.innerHTML = ICONS.settings + '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.title')) + '</span>';
         body.innerHTML = '';
 
         // Profile block (avatar + name + username) → navigate to profile
@@ -299,28 +299,28 @@
         });
 
         // Section: Account
-        var secAccount = makeSection('Аккаунт', [
-            { icon: ICONS.edit, label: 'Имя и юзернейм', view: 'name' },
-            { icon: ICONS.fileText, label: 'Биография', view: 'bio' }
+        var secAccount = makeSection(BF.i18n.t('settings.section.account'), [
+            { icon: ICONS.edit, label: BF.i18n.t('settings.nameAndUsername'), view: 'name' },
+            { icon: ICONS.fileText, label: BF.i18n.t('settings.bio'), view: 'bio' }
         ]);
         body.appendChild(secAccount);
 
         // Section: Privacy
-        var secPrivacy = makeSection('Конфиденциальность', [
-            { icon: ICONS.shield, label: 'Приватность', view: 'privacy' }
+        var secPrivacy = makeSection(BF.i18n.t('settings.section.confidentiality'), [
+            { icon: ICONS.shield, label: BF.i18n.t('settings.privacy'), view: 'privacy' }
         ]);
         body.appendChild(secPrivacy);
 
         // Section: Security
-        var secSecurity = makeSection('Безопасность', [
-            { icon: ICONS.lock, label: 'Пароль', view: 'password' },
-            { icon: ICONS.shield, label: 'Двухфакторная аутентификация', view: 'twofa' }
+        var secSecurity = makeSection(BF.i18n.t('settings.section.security'), [
+            { icon: ICONS.lock, label: BF.i18n.t('common.password'), view: 'password' },
+            { icon: ICONS.shield, label: BF.i18n.t('settings.twofa'), view: 'twofa' }
         ]);
         body.appendChild(secSecurity);
 
         // Section: Personalization
-        var secPers = makeSection('Персонализация', [
-            { icon: ICONS.palette, label: 'Фон чата и постер', view: 'personalization' }
+        var secPers = makeSection(BF.i18n.t('settings.section.personalization'), [
+            { icon: ICONS.palette, label: BF.i18n.t('settings.personalization'), view: 'personalization' }
         ]);
         body.appendChild(secPers);
 
@@ -331,8 +331,8 @@
         body.appendChild(secLanguage);
 
         // Section: Devices
-        var secDevices = makeSection('Устройства', [
-            { icon: ICONS.smartphone, label: 'Активные сессии', view: 'sessions' }
+        var secDevices = makeSection(BF.i18n.t('settings.section.devices'), [
+            { icon: ICONS.smartphone, label: BF.i18n.t('settings.sessions'), view: 'sessions' }
         ]);
         body.appendChild(secDevices);
 
@@ -340,17 +340,17 @@
         secNotifications.className = 'sd-section';
         var notificationsTitle = document.createElement('div');
         notificationsTitle.className = 'sd-section-title';
-        notificationsTitle.textContent = 'Уведомления';
+        notificationsTitle.textContent = BF.i18n.t('settings.section.notifications');
         secNotifications.appendChild(notificationsTitle);
         var pushSupported = !!(BF.push && BF.push.isSupported && BF.push.isSupported());
         var pushStatus = BF.push && BF.push.status ? BF.push.status() : 'unsupported';
         var pushDescription = pushStatus === 'denied'
-            ? 'Браузер заблокировал уведомления. Разрешите их в настройках сайта.'
+            ? BF.i18n.t('settings.push.denied')
             : pushSupported
-                ? 'Показывать новые события, когда приложение скрыто или закрыто'
-                : 'Недоступно: нужен HTTPS и настроенный Firebase Web Push';
+                ? BF.i18n.t('settings.push.description')
+                : BF.i18n.t('settings.push.unsupported');
         var pushToggle = makeToggleRow(
-            'Браузерные уведомления',
+            BF.i18n.t('settings.push.title'),
             pushDescription,
             pushStatus === 'enabled',
             function (next) {
@@ -371,15 +371,15 @@
             var installBtn = document.createElement('button');
             installBtn.type = 'button';
             installBtn.className = 'sd-item';
-            installBtn.textContent = 'Установить приложение BarkFluff';
+            installBtn.textContent = BF.i18n.t('settings.installApp');
             installBtn.addEventListener('click', function () { BF.push.install().then(function () { renderMain(); }); });
             secInstall.appendChild(installBtn);
             body.appendChild(secInstall);
         }
 
         // Section: About
-        var secAbout = makeSection('О приложении', [
-            { icon: ICONS.info, label: 'О BarkFluff', view: 'about' }
+        var secAbout = makeSection(BF.i18n.t('settings.section.about'), [
+            { icon: ICONS.info, label: BF.i18n.t('settings.about'), view: 'about' }
         ]);
         body.appendChild(secAbout);
 
@@ -393,7 +393,7 @@
             '<polyline points="16 17 21 12 16 7"/>' +
             '<line x1="21" y1="12" x2="9" y2="12"/>' +
             '</svg>' +
-            '<span>Выйти из аккаунта</span>';
+            '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.logout')) + '</span>';
         logoutBtn.addEventListener('click', function () {
             confirmOverlay.classList.add('visible');
         });
@@ -422,7 +422,7 @@
 
     // --- Profile (avatar upload) ---
     function renderProfile() {
-        titleEl.textContent = 'Фото профиля';
+        titleEl.textContent = BF.i18n.t('settings.profilePhoto');
         body.innerHTML = '';
 
         var avatarUpload = document.createElement('div');
@@ -434,7 +434,7 @@
 
         var hint = document.createElement('div');
         hint.className = 'sd-avatar-hint';
-        hint.textContent = 'Нажмите, чтобы изменить фото';
+        hint.textContent = BF.i18n.t('settings.profilePhoto.hint');
 
         var fileInput = document.createElement('input');
         fileInput.type = 'file';
@@ -466,12 +466,12 @@
         fileInput.addEventListener('change', function () {
             var file = fileInput.files[0];
             if (!file) return;
-            statusEl.textContent = 'Загрузка…';
+            statusEl.textContent = BF.i18n.t('common.loadingShort');
             statusEl.className = 'sd-hint';
             // USER_AVATAR = 1
             BF.files.uploadFile(file, 1).then(function (fileId) {
                 return BF.api.setProfilePicture(fileId).then(function () {
-                    statusEl.textContent = 'Фото обновлено';
+                    statusEl.textContent = BF.i18n.t('settings.photoUpdated');
                     // Update cached user picture
                     if (currentUser) {
                         var url = URL.createObjectURL(file);
@@ -485,7 +485,7 @@
                     }
                 });
             }).catch(function () {
-                statusEl.textContent = 'Ошибка загрузки';
+                statusEl.textContent = BF.i18n.t('common.loadError');
                 statusEl.className = 'sd-hint error';
             });
         });
@@ -493,21 +493,21 @@
 
     // --- Name & Username ---
     function renderName() {
-        titleEl.textContent = 'Имя и юзернейм';
+        titleEl.textContent = BF.i18n.t('settings.nameAndUsername');
         body.innerHTML = '';
 
         var form = document.createElement('div');
         form.className = 'sd-form';
 
-        var fnInput = makeInput('text', 'Имя', '');
-        var lnInput = makeInput('text', 'Фамилия', '');
-        var unInput = makeInput('text', 'Юзернейм', '');
+        var fnInput = makeInput('text', BF.i18n.t('profile.firstName'), '');
+        var lnInput = makeInput('text', BF.i18n.t('profile.lastName'), '');
+        var unInput = makeInput('text', BF.i18n.t('profile.username'), '');
         var unHint = makeHint('');
         var saveBtn = makeSaveBtn();
 
-        form.appendChild(makeField('Имя', fnInput));
-        form.appendChild(makeField('Фамилия', lnInput));
-        var unField = makeField('Юзернейм', unInput);
+        form.appendChild(makeField(BF.i18n.t('profile.firstName'), fnInput));
+        form.appendChild(makeField(BF.i18n.t('profile.lastName'), lnInput));
+        var unField = makeField(BF.i18n.t('profile.username'), unInput);
         unField.appendChild(unHint);
         form.appendChild(unField);
         form.appendChild(saveBtn);
@@ -539,7 +539,7 @@
                 return;
             }
             if (val.length < 3 || val.length > 32 || !/^[a-zA-Z0-9_]+$/.test(val)) {
-                unHint.textContent = 'Латиница, цифры, _; от 3 до 32 символов';
+                unHint.textContent = BF.i18n.t('profile.username.rules');
                 unHint.className = 'sd-hint error';
                 unAvailable = false;
                 return;
@@ -548,12 +548,12 @@
                 BF.api.checkExistUsername(val).then(function (r) {
                     if (unInput.value.trim() !== val) return;
                     if (r.exist) {
-                        unHint.textContent = 'Юзернейм уже занят';
+                        unHint.textContent = BF.i18n.t('profile.username.taken');
                         unHint.className = 'sd-hint error';
                         unAvailable = false;
                         BF.sound.play('droplet');
                     } else {
-                        unHint.textContent = 'Юзернейм свободен';
+                        unHint.textContent = BF.i18n.t('profile.username.available');
                         unHint.className = 'sd-hint';
                         unAvailable = true;
                     }
@@ -596,17 +596,17 @@
                 // Show success feedback
                 var ok = document.createElement('div');
                 ok.className = 'sd-hint';
-                ok.textContent = 'Сохранено';
+                ok.textContent = BF.i18n.t('common.saved');
                 form.appendChild(ok);
                 setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
             }).catch(function (err) {
                 saveBtn.disabled = false;
                 if (extractErrorCode(err) === 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47') {
-                    unHint.textContent = 'Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа';
+                    unHint.textContent = BF.i18n.t('profile.username.invalidFormat');
                     unHint.className = 'sd-hint error';
                     BF.sound.play('droplet');
                 } else if (err && err.message === 'username_not_changed') {
-                    unHint.textContent = 'Сервер не подтвердил смену юзернейма';
+                    unHint.textContent = BF.i18n.t('profile.username.notConfirmed');
                     unHint.className = 'sd-hint error';
                     BF.sound.play('droplet');
                 }
@@ -616,7 +616,7 @@
 
     // --- Bio ---
     function renderBio() {
-        titleEl.textContent = 'Биография';
+        titleEl.textContent = BF.i18n.t('settings.bio');
         body.innerHTML = '';
 
         var form = document.createElement('div');
@@ -625,11 +625,11 @@
         var bioInput = document.createElement('textarea');
         bioInput.className = 'sd-input';
         bioInput.rows = 4;
-        bioInput.placeholder = 'Расскажите о себе…';
+        bioInput.placeholder = BF.i18n.t('profile.bio.placeholder');
         bioInput.style.resize = 'vertical';
 
         var saveBtn = makeSaveBtn();
-        form.appendChild(makeField('Биография', bioInput));
+        form.appendChild(makeField(BF.i18n.t('settings.bio'), bioInput));
         form.appendChild(saveBtn);
         body.appendChild(form);
 
@@ -644,7 +644,7 @@
                 saveBtn.disabled = false;
                 var ok = document.createElement('div');
                 ok.className = 'sd-hint';
-                ok.textContent = 'Сохранено';
+                ok.textContent = BF.i18n.t('common.saved');
                 form.appendChild(ok);
                 setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
             }).catch(function () { saveBtn.disabled = false; });
@@ -653,22 +653,22 @@
 
     // --- Password ---
     function renderPassword() {
-        titleEl.textContent = 'Пароль';
+        titleEl.textContent = BF.i18n.t('common.password');
         body.innerHTML = '';
 
         var form = document.createElement('div');
         form.className = 'sd-form';
 
-        var oldInput = makeInput('password', 'Текущий пароль', '');
-        var newInput = makeInput('password', 'Новый пароль', '');
-        var repInput = makeInput('password', 'Повтор пароля', '');
+        var oldInput = makeInput('password', BF.i18n.t('password.current'), '');
+        var newInput = makeInput('password', BF.i18n.t('password.new'), '');
+        var repInput = makeInput('password', BF.i18n.t('password.repeat'), '');
         var errEl = makeHint('', true);
         errEl.style.display = 'none';
-        var saveBtn = makeSaveBtn('Изменить пароль');
+        var saveBtn = makeSaveBtn(BF.i18n.t('password.change'));
 
-        form.appendChild(makeField('Текущий пароль', oldInput));
-        form.appendChild(makeField('Новый пароль', newInput));
-        form.appendChild(makeField('Повтор нового пароля', repInput));
+        form.appendChild(makeField(BF.i18n.t('password.current'), oldInput));
+        form.appendChild(makeField(BF.i18n.t('password.new'), newInput));
+        form.appendChild(makeField(BF.i18n.t('password.repeatNew'), repInput));
         form.appendChild(errEl);
         form.appendChild(saveBtn);
         body.appendChild(form);
@@ -678,8 +678,8 @@
             var op = oldInput.value;
             var np = newInput.value;
             var rp = repInput.value;
-            if (!np) { showErr('Введите новый пароль'); return; }
-            if (np !== rp) { showErr('Пароли не совпадают'); return; }
+            if (!np) { showErr(BF.i18n.t('password.error.empty')); return; }
+            if (np !== rp) { showErr(BF.i18n.t('password.error.mismatch')); return; }
 
             saveBtn.disabled = true;
             BF.api.setPassword(np, op || undefined).then(function () {
@@ -689,16 +689,16 @@
                 repInput.value = '';
                 var ok = document.createElement('div');
                 ok.className = 'sd-hint';
-                ok.textContent = 'Пароль изменён';
+                ok.textContent = BF.i18n.t('password.changed');
                 form.appendChild(ok);
                 setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
             }).catch(function (err) {
                 saveBtn.disabled = false;
                 var code = extractErrorCode(err);
                 if (code === ERR_WRONG_OLD_PASSWORD) {
-                    showErr('Неверный текущий пароль');
+                    showErr(BF.i18n.t('password.error.wrongCurrent'));
                 } else {
-                    showErr('Ошибка при изменении пароля');
+                    showErr(BF.i18n.t('password.error.changeFailed'));
                 }
             });
 
@@ -712,16 +712,16 @@
 
     // --- Two-Factor Authentication ---
     function renderTwoFA() {
-        titleEl.textContent = 'Двухфакторная аутентификация';
+        titleEl.textContent = BF.i18n.t('settings.twofa');
         body.innerHTML = '';
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">Загрузка…</div>';
+        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
 
         BF.api.listOtpVerification().then(function (data) {
             body.innerHTML = '';
             renderTwoFARow('Authenticator (TOTP)', data.authenticatorEnabled, OTP_AUTHENTICATOR);
-            renderTwoFARow('Почта (Email)', data.emailEnabled, OTP_EMAIL);
+            renderTwoFARow(BF.i18n.t('twofa.email'), data.emailEnabled, OTP_EMAIL);
         }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка загрузки</div>';
+            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.loadError') + '</div>';
         });
     }
 
@@ -735,11 +735,11 @@
 
         var badge = document.createElement('span');
         badge.className = 'twofa-badge ' + (enabled ? 'on' : 'off');
-        badge.textContent = enabled ? 'Включён' : 'Выключен';
+        badge.textContent = BF.i18n.t(enabled ? 'twofa.enabled' : 'twofa.disabled');
 
         var toggleBtn = document.createElement('button');
         toggleBtn.className = 'twofa-toggle ' + (enabled ? 'disable' : 'enable');
-        toggleBtn.textContent = enabled ? 'Отключить' : 'Включить';
+        toggleBtn.textContent = BF.i18n.t(enabled ? 'common.disable' : 'common.enable');
 
         row.appendChild(typeEl);
         row.appendChild(badge);
@@ -776,7 +776,7 @@
     }
 
     function renderTwoFAEnableAuthenticator() {
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">Создание QR-кода…</div>';
+        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('twofa.creatingQr') + '</div>';
         BF.api.enableOtpVerification(OTP_AUTHENTICATOR).then(function (data) {
             body.innerHTML = '';
             var form = document.createElement('div');
@@ -784,7 +784,7 @@
 
             var instr = document.createElement('div');
             instr.className = 'sd-hint';
-            instr.textContent = 'Отсканируйте QR-код в приложении аутентификатора (Google Authenticator, Authy и др.)';
+            instr.textContent = BF.i18n.t('twofa.scanQr');
             form.appendChild(instr);
 
             if (data.otpQr) {
@@ -800,13 +800,13 @@
                 form.appendChild(codeEl);
             }
 
-            var otpInput = makeInput('text', 'Код из приложения', '');
+            var otpInput = makeInput('text', BF.i18n.t('twofa.codeFromApp'), '');
             otpInput.maxLength = 8;
             var errEl = makeHint('', true);
             errEl.style.display = 'none';
-            var confirmBtn = makeSaveBtn('Подтвердить');
+            var confirmBtn = makeSaveBtn(BF.i18n.t('common.confirm'));
 
-            form.appendChild(makeField('Код подтверждения', otpInput));
+            form.appendChild(makeField(BF.i18n.t('twofa.confirmationCode'), otpInput));
             form.appendChild(errEl);
             form.appendChild(confirmBtn);
             body.appendChild(form);
@@ -819,12 +819,12 @@
                     renderTwoFA();
                 }).catch(function () {
                     confirmBtn.disabled = false;
-                    errEl.textContent = 'Неверный код';
+                    errEl.textContent = BF.i18n.t('twofa.error.wrongCode');
                     errEl.style.display = '';
                 });
             });
         }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка</div>';
+            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.error') + '</div>';
         });
     }
 
@@ -835,18 +835,18 @@
 
         var instr = document.createElement('div');
         instr.className = 'sd-hint';
-        instr.textContent = 'Введите код из приложения аутентификатора для отключения.';
+        instr.textContent = BF.i18n.t('twofa.disableHint');
         form.appendChild(instr);
 
-        var otpInput = makeInput('text', 'Код из приложения', '');
+        var otpInput = makeInput('text', BF.i18n.t('twofa.codeFromApp'), '');
         otpInput.maxLength = 8;
         var errEl = makeHint('', true);
         errEl.style.display = 'none';
-        var confirmBtn = makeSaveBtn('Отключить');
+        var confirmBtn = makeSaveBtn(BF.i18n.t('common.disable'));
         confirmBtn.className = 'sd-btn';
         confirmBtn.style.cssText = 'background:rgba(220,38,38,0.1);color:var(--error);';
 
-        form.appendChild(makeField('Код подтверждения', otpInput));
+        form.appendChild(makeField(BF.i18n.t('twofa.confirmationCode'), otpInput));
         form.appendChild(errEl);
         form.appendChild(confirmBtn);
         body.appendChild(form);
@@ -859,7 +859,7 @@
                 renderTwoFA();
             }).catch(function () {
                 confirmBtn.disabled = false;
-                errEl.textContent = 'Неверный код';
+                errEl.textContent = BF.i18n.t('twofa.error.wrongCode');
                 errEl.style.display = '';
             });
         });
@@ -867,8 +867,8 @@
 
     // --- Sessions ---
     function renderSessions() {
-        titleEl.textContent = 'Активные сессии';
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">Загрузка…</div>';
+        titleEl.textContent = BF.i18n.t('settings.sessions');
+        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
 
         var currentDeviceId = BF.device ? BF.device.getDeviceId() : null;
 
@@ -876,7 +876,7 @@
             body.innerHTML = '';
             var sessions = data.sessions || [];
             if (sessions.length === 0) {
-                body.innerHTML = '<div class="sd-hint" style="padding:20px">Нет активных сессий</div>';
+                body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('sessions.empty') + '</div>';
                 return;
             }
 
@@ -887,9 +887,9 @@
             if (otherSessions.length > 0) {
                 var termAllBtn = document.createElement('button');
                 termAllBtn.className = 'sessions-terminate-all';
-                termAllBtn.textContent = 'Завершить все остальные сессии (' + otherSessions.length + ')';
+                termAllBtn.textContent = BF.i18n.t('sessions.terminateOthers', { count: otherSessions.length });
                 termAllBtn.addEventListener('click', function () {
-                    if (!window.confirm('Завершить ' + otherSessions.length + ' остальных сессий? Они будут разлогинены.')) return;
+                    if (!window.confirm(BF.i18n.t('sessions.terminateOthers.confirm', { count: otherSessions.length }))) return;
                     termAllBtn.disabled = true;
                     var p = Promise.resolve();
                     otherSessions.forEach(function (s) {
@@ -902,7 +902,7 @@
 
             sessions.forEach(function (s) { body.appendChild(buildSessionItem(s, currentDeviceId)); });
         }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка загрузки</div>';
+            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.loadError') + '</div>';
         });
     }
 
@@ -916,14 +916,14 @@
 
         var name = document.createElement('div');
         name.className = 'session-name';
-        name.textContent = s.customName || s.originalName || s.appName || 'Устройство';
+        name.textContent = s.customName || s.originalName || s.appName || BF.i18n.t('sessions.device');
 
         var meta = document.createElement('div');
         meta.className = 'session-meta';
         var parts = [];
         if (s.operationSystem) parts.push(s.operationSystem);
         if (s.location) parts.push(s.location);
-        if (s.createdAt) parts.push('с ' + new Date(s.createdAt).toLocaleDateString('ru'));
+        if (s.createdAt) parts.push(BF.i18n.t('sessions.since', { date: new Date(s.createdAt).toLocaleDateString(BF.i18n.current()) }));
         meta.textContent = parts.join(' · ');
 
         info.appendChild(name);
@@ -933,7 +933,7 @@
         if (isCurrent) {
             var badge = document.createElement('span');
             badge.style.cssText = 'font-size:11px;color:var(--primary);font-weight:600;flex-shrink:0;';
-            badge.textContent = 'Это устройство';
+            badge.textContent = BF.i18n.t('sessions.thisDevice');
             item.appendChild(badge);
             return item;
         }
@@ -943,7 +943,7 @@
 
         var renameBtn = document.createElement('button');
         renameBtn.className = 'session-rename';
-        renameBtn.textContent = 'Переименовать';
+        renameBtn.textContent = BF.i18n.t('group.rename');
         renameBtn.addEventListener('click', function () {
             if (item.querySelector('.session-rename-input')) return;
             var box = document.createElement('div');
@@ -952,7 +952,7 @@
             input.type = 'text';
             input.maxLength = 64;
             input.value = s.customName || s.originalName || '';
-            input.placeholder = 'Имя устройства';
+            input.placeholder = BF.i18n.t('sessions.deviceName');
             var ok = document.createElement('button');
             ok.className = 'session-rename';
             ok.textContent = 'OK';
@@ -961,7 +961,7 @@
                 ok.disabled = true;
                 BF.api.renameDevice(s.deviceId, newName).then(function () {
                     s.customName = newName;
-                    name.textContent = newName || s.originalName || s.appName || 'Устройство';
+                    name.textContent = newName || s.originalName || s.appName || BF.i18n.t('sessions.device');
                     info.removeChild(box);
                 }).catch(function () { ok.disabled = false; });
             });
@@ -974,7 +974,7 @@
 
         var termBtn = document.createElement('button');
         termBtn.className = 'session-terminate';
-        termBtn.textContent = 'Завершить';
+        termBtn.textContent = BF.i18n.t('sessions.terminate');
         termBtn.addEventListener('click', function () {
             termBtn.disabled = true;
             BF.api.removeActiveSession(s.deviceId).then(function () {
@@ -990,8 +990,8 @@
 
     // --- Privacy ---
     function renderPrivacy() {
-        titleEl.textContent = 'Приватность';
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">Загрузка…</div>';
+        titleEl.textContent = BF.i18n.t('settings.privacy');
+        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
 
         BF.api.getPrivacySettings().then(function (data) {
             var s = data.settings || {
@@ -1004,13 +1004,13 @@
             var togglesSec = document.createElement('div');
             togglesSec.className = 'sd-section';
             var profileToggle = makeToggleRow(
-                'Профиль виден на сайте',
-                'Страница barkfluff.com/' + (currentUser && currentUser.username ? currentUser.username : 'username') + ' доступна другим',
+                BF.i18n.t('privacy.profileVisible'),
+                BF.i18n.t('privacy.profileVisible.description', { url: 'barkfluff.com/' + (currentUser && currentUser.username ? currentUser.username : 'username') }),
                 s.profileVisibleOnSite, null
             );
             var searchToggle = makeToggleRow(
-                'Показывать в поиске',
-                'Другие пользователи смогут находить вас по имени',
+                BF.i18n.t('privacy.searchable'),
+                BF.i18n.t('privacy.searchable.description'),
                 s.searchVisible, null
             );
             togglesSec.appendChild(profileToggle.row);
@@ -1018,10 +1018,10 @@
             body.appendChild(togglesSec);
 
             var segments = [
-                { key: 'avatarVisibility', label: 'Видимость аватара' },
-                { key: 'bioVisibility',    label: 'Видимость описания' },
-                { key: 'emailVisibility',  label: 'Видимость email' },
-                { key: 'onlineVisibility', label: 'Видимость онлайн-статуса' }
+                { key: 'avatarVisibility', label: BF.i18n.t('privacy.avatarVisibility') },
+                { key: 'bioVisibility',    label: BF.i18n.t('privacy.bioVisibility') },
+                { key: 'emailVisibility',  label: BF.i18n.t('privacy.emailVisibility') },
+                { key: 'onlineVisibility', label: BF.i18n.t('privacy.onlineVisibility') }
             ];
             var segCtrls = {};
             segments.forEach(function (seg) {
@@ -1041,7 +1041,7 @@
             var hint = document.createElement('div');
             hint.className = 'sd-hint';
             hint.style.padding = '12px 20px 0';
-            hint.textContent = 'На данный момент «Друзья» трактуется как «Никто» — система отношений в разработке.';
+            hint.textContent = BF.i18n.t('privacy.friendsHint');
             body.appendChild(hint);
 
             var btnWrap = document.createElement('div');
@@ -1064,7 +1064,7 @@
                     var ok = document.createElement('div');
                     ok.className = 'sd-hint';
                     ok.style.padding = '6px 20px 0';
-                    ok.textContent = 'Сохранено';
+                    ok.textContent = BF.i18n.t('common.saved');
                     btnWrap.appendChild(ok);
                     setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
                 }).catch(function () {
@@ -1072,20 +1072,20 @@
                     var err = document.createElement('div');
                     err.className = 'sd-hint error';
                     err.style.padding = '6px 20px 0';
-                    err.textContent = 'Ошибка сохранения';
+                    err.textContent = BF.i18n.t('common.saveError');
                     btnWrap.appendChild(err);
                     setTimeout(function () { if (err.parentNode) err.parentNode.removeChild(err); }, 3000);
                 });
             });
         }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка загрузки</div>';
+            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.loadError') + '</div>';
         });
     }
 
     // --- Personalization (poster + chat backgrounds) ---
     function renderPersonalization() {
-        titleEl.textContent = 'Персонализация';
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">Загрузка…</div>';
+        titleEl.textContent = BF.i18n.t('settings.section.personalization');
+        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
 
         var p = Promise.all([loadCurrentUser(), BF.api.getPersonalization()]);
         p.then(function (results) {
@@ -1099,7 +1099,7 @@
             body.innerHTML = '';
             renderPersonalizationContent(user, pers);
         }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">Ошибка загрузки</div>';
+            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.loadError') + '</div>';
         });
     }
 
@@ -1142,10 +1142,10 @@
         actions.className = 'sd-poster-actions';
         var setBtn = document.createElement('button');
         setBtn.className = 'sd-btn sd-btn-primary';
-        setBtn.textContent = 'Установить новый постер';
+        setBtn.textContent = BF.i18n.t('personalization.poster.set');
         var rmBtn = document.createElement('button');
         rmBtn.className = 'sd-btn-danger';
-        rmBtn.textContent = 'Удалить';
+        rmBtn.textContent = BF.i18n.t('common.delete');
         actions.appendChild(setBtn);
         actions.appendChild(rmBtn);
 
@@ -1179,7 +1179,7 @@
         setBtn.addEventListener('click', function () {
             openPosterFilePicker(function (blob) {
                 if (!blob) return;
-                posterStatus.textContent = 'Загрузка…';
+                posterStatus.textContent = BF.i18n.t('common.loadingShort');
                 posterStatus.className = 'sd-hint';
                 posterStatus.style.padding = '6px 20px 0';
                 BF.files.uploadFile(blob, FT_USER_PROFILE_POSTER).then(function (fileId) {
@@ -1187,11 +1187,11 @@
                         pers.profilePosterFileId = fileId;
                         paintPoster(fileId);
                         if (currentUser) currentUser.profilePosterFileId = fileId;
-                        posterStatus.textContent = 'Постер обновлён';
+                        posterStatus.textContent = BF.i18n.t('personalization.poster.updated');
                         setTimeout(function () { posterStatus.textContent = ''; }, 2000);
                     });
                 }).catch(function () {
-                    posterStatus.textContent = 'Ошибка загрузки';
+                    posterStatus.textContent = BF.i18n.t('common.loadError');
                     posterStatus.className = 'sd-hint error';
                     posterStatus.style.padding = '6px 20px 0';
                 });
@@ -1211,7 +1211,7 @@
         // ===== Appearance section =====
         var apHead = document.createElement('div');
         apHead.className = 'sd-section-heading';
-        apHead.textContent = 'Внешний вид сообщений';
+        apHead.textContent = BF.i18n.t('personalization.appearance');
         body.appendChild(apHead);
 
         // Chat preview
@@ -1227,16 +1227,16 @@
         var msgs = document.createElement('div');
         msgs.className = 'sd-chat-preview-msgs';
         var mockMsgs = [
-            { side: 'incoming', text: 'Привет! Как настроение?' },
-            { side: 'outgoing', text: 'Отлично! Только что закончил работу' },
-            { side: 'incoming', text: 'Здорово, может встретимся вечером?' },
-            { side: 'outgoing', text: 'Конечно, в 19:00 у кафе?' },
-            { side: 'incoming', text: 'Договорились! 👍' }
+            { side: 'incoming', textKey: 'personalization.preview.1' },
+            { side: 'outgoing', textKey: 'personalization.preview.2' },
+            { side: 'incoming', textKey: 'personalization.preview.3' },
+            { side: 'outgoing', textKey: 'personalization.preview.4' },
+            { side: 'incoming', textKey: 'personalization.preview.5' }
         ];
         mockMsgs.forEach(function (m) {
             var b = document.createElement('div');
             b.className = 'sd-preview-msg ' + m.side;
-            b.textContent = m.text;
+            b.textContent = BF.i18n.t(m.textKey);
             msgs.appendChild(b);
         });
         chatPreview.appendChild(msgs);
@@ -1282,7 +1282,7 @@
             chatPreview.style.setProperty('--preview-bg-image', bgUrl ? ('url("' + bgUrl + '")') : 'none');
         }
 
-        var radiusCtl = buildSlider('Закругление пузырей', 0, 20, 1,
+        var radiusCtl = buildSlider(BF.i18n.t('personalization.bubbleRadius'), 0, 20, 1,
             BF.personalization.getRadius(), 'px',
             function (n) { BF.personalization.setRadius(n); applyPreview(); });
         body.appendChild(radiusCtl.row);
@@ -1293,8 +1293,8 @@
         blurToggleSec.className = 'sd-section';
         blurToggleSec.style.marginTop = '8px';
         var blurToggle = makeToggleRow(
-            'Размытие фона',
-            'Применяется к выбранному изображению фона',
+            BF.i18n.t('personalization.backgroundBlur'),
+            BF.i18n.t('personalization.backgroundBlur.description'),
             blurInitial,
             function (next) {
                 BF.personalization.setBlurEnabled(next);
@@ -1305,13 +1305,13 @@
         blurToggleSec.appendChild(blurToggle.row);
         body.appendChild(blurToggleSec);
 
-        var blurSliderCtl = buildSlider('Радиус размытия', 1, 25, 1,
+        var blurSliderCtl = buildSlider(BF.i18n.t('personalization.blurRadius'), 1, 25, 1,
             BF.personalization.getBlurRadius(), '',
             function (n) { BF.personalization.setBlurRadius(n); applyPreview(); });
         blurSliderCtl.slider.disabled = !blurInitial;
         body.appendChild(blurSliderCtl.row);
 
-        var dimCtl = buildSlider('Затенение фона', 0, 100, 1,
+        var dimCtl = buildSlider(BF.i18n.t('personalization.backgroundDim'), 0, 100, 1,
             BF.personalization.getDim(), '%',
             function (n) { BF.personalization.setDim(n); applyPreview(); });
         body.appendChild(dimCtl.row);
@@ -1319,7 +1319,7 @@
         // ===== Backgrounds section =====
         var bgHead = document.createElement('div');
         bgHead.className = 'sd-section-heading';
-        bgHead.textContent = 'Глобальный фон чатов';
+        bgHead.textContent = BF.i18n.t('personalization.globalBackground');
         body.appendChild(bgHead);
 
         var bgWrap = document.createElement('div');
@@ -1348,7 +1348,7 @@
             // "None" tile
             var none = document.createElement('div');
             none.className = 'sd-bg-card none-card' + (!activeId ? ' active' : '');
-            none.textContent = 'Без фона';
+            none.textContent = BF.i18n.t('personalization.noBackground');
             none.addEventListener('click', function () {
                 BF.personalization.setBackgroundFileId('').then(function () {
                     applyPreview();
@@ -1379,7 +1379,7 @@
                 rm.type = 'button';
                 rm.className = 'sd-bg-card-remove';
                 rm.textContent = '×';
-                rm.title = 'Удалить из коллекции';
+                rm.title = BF.i18n.t('personalization.removeFromCollection');
                 rm.addEventListener('click', function (e) {
                     e.stopPropagation();
                     rm.disabled = true;
@@ -1402,7 +1402,7 @@
             var add = document.createElement('div');
             add.className = 'sd-bg-card sd-bg-card-add';
             add.textContent = '+';
-            add.title = 'Добавить новый фон';
+            add.title = BF.i18n.t('personalization.addBackground');
             add.addEventListener('click', function () { bgInput.click(); });
             grid.appendChild(add);
         }
@@ -1410,7 +1410,7 @@
         bgInput.addEventListener('change', function () {
             var f = bgInput.files[0];
             if (!f) return;
-            bgStatus.textContent = 'Загрузка…';
+            bgStatus.textContent = BF.i18n.t('common.loadingShort');
             bgStatus.className = 'sd-hint';
             BF.files.uploadFile(f, FT_MESSAGE_ATTACHMENT_IMAGE).then(function (fileId) {
                 var nextIds = (pers.chatBackgroundFileIds || []).concat([fileId]);
@@ -1422,11 +1422,11 @@
                     // Auto-select newly added global background
                     BF.personalization.setBackgroundFileId(fileId).then(applyPreview);
                     rerenderGrid();
-                    bgStatus.textContent = 'Фон добавлен';
+                    bgStatus.textContent = BF.i18n.t('personalization.backgroundAdded');
                     setTimeout(function () { bgStatus.textContent = ''; }, 2000);
                 });
             }).catch(function () {
-                bgStatus.textContent = 'Ошибка загрузки';
+                bgStatus.textContent = BF.i18n.t('common.loadError');
                 bgStatus.className = 'sd-hint error';
             });
             bgInput.value = '';
@@ -1682,16 +1682,16 @@
 
     // --- About ---
     function renderAbout() {
-        titleEl.textContent = 'О BarkFluff';
+        titleEl.textContent = BF.i18n.t('settings.about');
         body.innerHTML = '';
 
         var dev = window.BF && BF.device ? BF.device : null;
         var rows = [
-            { label: 'Версия веб-клиента', value: WEB_VERSION },
-            { label: 'Браузер', value: dev ? dev.getBrowserName() : '—' },
-            { label: 'ОС', value: dev ? dev.getOsName() : '—' },
+            { label: BF.i18n.t('about.webVersion'), value: WEB_VERSION },
+            { label: BF.i18n.t('about.browser'), value: dev ? dev.getBrowserName() : '—' },
+            { label: BF.i18n.t('about.os'), value: dev ? dev.getOsName() : '—' },
             { label: 'Device ID', value: dev ? dev.getDeviceId() : '—' },
-            { label: 'Сервер', value: window.location.origin }
+            { label: BF.i18n.t('about.server'), value: window.location.origin }
         ];
 
         rows.forEach(function (r) {
