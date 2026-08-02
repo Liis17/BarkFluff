@@ -80,15 +80,17 @@
         /* Sticker editor */
         .editor-layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
         .editor-stage {
-            flex: 1 1 380px;
-            max-width: 480px;
-            aspect-ratio: 1;
+            flex: 0 0 420px;
+            width: 420px;
+            height: 420px;
+            max-width: 100%;
             background: var(--md-surface-container);
             border: 1px solid var(--md-outline-variant);
             border-radius: var(--md-shape-lg);
             overflow: hidden;
+            position: relative;
         }
-        .editor-stage img { display: block; max-width: 100%; opacity: 0; }
+        .editor-stage img { display: block; max-width: 100%; max-height: 100%; }
         .editor-controls { flex: 1 1 240px; min-width: 240px; max-width: 320px; display: flex; flex-direction: column; gap: 18px; }
         .editor-ctrl-group { display: flex; flex-direction: column; gap: 6px; }
         .editor-ctrl-group .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -384,45 +386,69 @@
     }
 
     window.openStickerEditor = function (file, target) {
+        if (typeof Cropper === 'undefined') {
+            alert('Не удалось загрузить Cropper.js (CDN недоступен). Проверьте подключение к интернету и обновите страницу.');
+            console.error('Cropper is undefined — CDN script not loaded');
+            return;
+        }
         editorTarget = target;
         document.getElementById('editorTitle').textContent = target.kind === 'cover' ? 'Редактор обложки' : 'Редактор стикера';
         if (editorCropper) { editorCropper.destroy(); editorCropper = null; }
-        const img = document.getElementById('editorImage');
+
+        // Открываем scrim ДО инициализации, чтобы контейнер имел ненулевые размеры
+        document.getElementById('stickerEditorScrim').classList.add('open');
+
+        // Пересоздаём img чистым элементом — надёжнее, чем переиспользовать после destroy()
+        const stage = document.querySelector('.editor-stage');
+        const oldImg = document.getElementById('editorImage');
+        const img = document.createElement('img');
+        img.id = 'editorImage';
+        img.alt = 'editor';
+        stage.replaceChild(img, oldImg);
+
+        const url = URL.createObjectURL(file);
         img.onload = () => {
             img.onload = null;
-            editorCropper = new Cropper(img, {
-                aspectRatio: 1,
-                viewMode: 1,
-                autoCropArea: 1,
-                background: false,
-                responsive: true,
-                movable: true,
-                scalable: true,
-                rotatable: true,
-                zoomable: true,
-                minContainerWidth: 200,
-                minContainerHeight: 200,
-                ready: () => {
-                    editorState = { zoom: 1, rotate: 0, radius: 0 };
-                    document.getElementById('editorZoom').value = 1;
-                    document.getElementById('editorRotate').value = 0;
-                    document.getElementById('editorRadius').value = 0;
-                    updateEditorLabels();
-                    updateEditorPreview();
-                },
-                crop: () => updateEditorPreview(),
-                zoom: (e) => {
-                    const nz = clamp(editorState.zoom * e.detail.ratio, 0.1, 3);
-                    if (Math.abs(nz - editorState.zoom) > 0.001) {
-                        editorState.zoom = nz;
-                        document.getElementById('editorZoom').value = nz;
-                        document.getElementById('editorZoomValue').textContent = Math.round(nz * 100) + '%';
+            try {
+                editorCropper = new Cropper(img, {
+                    aspectRatio: 1,
+                    viewMode: 1,
+                    autoCropArea: 1,
+                    background: false,
+                    responsive: true,
+                    restore: false,
+                    movable: true,
+                    scalable: true,
+                    rotatable: true,
+                    zoomable: true,
+                    zoomOnWheel: true,
+                    minContainerWidth: 200,
+                    minContainerHeight: 200,
+                    ready: () => {
+                        editorState = { zoom: 1, rotate: 0, radius: 0 };
+                        document.getElementById('editorZoom').value = 1;
+                        document.getElementById('editorRotate').value = 0;
+                        document.getElementById('editorRadius').value = 0;
+                        updateEditorLabels();
+                        updateEditorPreview();
+                    },
+                    crop: () => updateEditorPreview(),
+                    zoom: (e) => {
+                        const nz = clamp(editorState.zoom * e.detail.ratio, 0.1, 3);
+                        if (Math.abs(nz - editorState.zoom) > 0.001) {
+                            editorState.zoom = nz;
+                            document.getElementById('editorZoom').value = nz;
+                            document.getElementById('editorZoomValue').textContent = Math.round(nz * 100) + '%';
+                        }
                     }
-                }
-            });
+                });
+            } catch (err) {
+                console.error('Cropper init failed:', err);
+                alert('Ошибка инициализации Cropper: ' + err.message);
+            }
         };
-        img.src = URL.createObjectURL(file);
-        document.getElementById('stickerEditorScrim').classList.add('open');
+        img.onerror = () => { console.error('Failed to load image for editor'); URL.revokeObjectURL(url); };
+        img.src = url;
     };
 
     window.closeStickerEditor = function () {
