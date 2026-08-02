@@ -58,10 +58,6 @@ Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) fo
 
 ## Clients
 
-<p align="center">
-  <img src="docs/images/readme/clients-placeholder.svg" alt="Placeholder for BarkFluff client screenshots" width="920">
-</p>
-
 - **Android** — Kotlin and gRPC-OkHttp · [build guide](.readme/clients/android.md)
 - **Windows** — WPF and .NET · [build guide](.readme/clients/windows.md)
 - **macOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/macos.md)
@@ -84,10 +80,6 @@ Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) fo
 > [`.readme/`](.readme) is the public setup hub; [`Obsidian/ClaudeVault/`](Obsidian/ClaudeVault) is the project knowledge base.
 
 ## Project status
-
-<p align="center">
-  <img src="docs/images/readme/project-status.svg" alt="BarkFluff is under active development" width="920">
-</p>
 
 > ### 🚧 Actively developed
 > BarkFluff is under active development. Android V1 is the supported Android client; the Compose-based V2 project is experimental and should only change as part of an explicit task.
