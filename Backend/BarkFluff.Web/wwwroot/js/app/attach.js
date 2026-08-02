@@ -39,10 +39,10 @@
     }
 
     function formatSize(bytes) {
-        if (bytes < 1024) return bytes + ' Б';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
-        if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' МБ';
-        return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' ГБ';
+        if (bytes < 1024) return BF.i18n.t('unit.bytes', { value: bytes });
+        if (bytes < 1024 * 1024) return BF.i18n.t('unit.kb', { value: (bytes / 1024).toFixed(1) });
+        if (bytes < 1024 * 1024 * 1024) return BF.i18n.t('unit.mb', { value: (bytes / 1024 / 1024).toFixed(1) });
+        return BF.i18n.t('unit.gb', { value: (bytes / 1024 / 1024 / 1024).toFixed(2) });
     }
 
     function getFileExt(name) {
@@ -86,9 +86,7 @@
     }
 
     function updateSubtitle() {
-        var n = currentFiles.length;
-        var word = n === 1 ? 'файл' : (n >= 2 && n <= 4 ? 'файла' : 'файлов');
-        subtitle.textContent = n + ' ' + word;
+        subtitle.textContent = BF.i18n.tp('attach.fileCount', currentFiles.length);
     }
 
     function autosizeCaption() {
@@ -100,7 +98,7 @@
         var rm = document.createElement('button');
         rm.className = 'attach-remove';
         rm.type = 'button';
-        rm.title = 'Удалить';
+        rm.title = BF.i18n.t('common.delete');
         rm.textContent = '\xd7';
         rm.addEventListener('click', function (e) {
             e.stopPropagation();
@@ -138,7 +136,7 @@
                 img.src = item.previewUrl;
                 img.alt = item.file.name;
                 img.style.cursor = 'pointer';
-                img.title = 'Редактировать';
+                img.title = BF.i18n.t('common.edit');
                 img.addEventListener('click', function (e) {
                     e.stopPropagation();
                     if (!window.BF.imageEditor) return;
