@@ -37,10 +37,10 @@
     var lastResults = [];
     var busy = false;
 
-    var MODE_TITLES = {
-        message: 'Новое сообщение',
-        group: 'Новая группа',
-        private: 'Приватный чат'
+    var MODE_TITLE_KEYS = {
+        message: 'newchat.mode.message',
+        group: 'newchat.mode.group',
+        private: 'newchat.mode.private'
     };
 
     function openMenu() { menu.classList.toggle('visible'); }
@@ -50,7 +50,7 @@
         mode = newMode;
         selected = new Map();
         busy = false;
-        titleEl.textContent = MODE_TITLES[mode];
+        titleEl.textContent = BF.i18n.t(MODE_TITLE_KEYS[mode]);
         groupTitleInput.value = '';
         groupTitleInput.style.display = mode === 'group' ? '' : 'none';
         chipsEl.style.display = mode === 'group' ? '' : 'none';
@@ -62,7 +62,7 @@
         resultsEl.innerHTML = '';
         errorEl.textContent = '';
         createBtn.disabled = false;
-        createBtn.textContent = 'Создать';
+        createBtn.textContent = BF.i18n.t('common.create');
         renderChips();
         overlay.classList.add('visible');
         setTimeout(function () {
@@ -102,7 +102,7 @@
         lastResults = users;
         resultsEl.innerHTML = '';
         if (users.length === 0) {
-            resultsEl.innerHTML = '<div class="newchat-empty">Ничего не найдено</div>';
+            resultsEl.innerHTML = '<div class="newchat-empty">' + BF.utils.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
             return;
         }
         users.forEach(function (user) {
@@ -174,31 +174,31 @@
     function clearBusy() {
         busy = false;
         createBtn.disabled = false;
-        createBtn.textContent = 'Создать';
+        createBtn.textContent = BF.i18n.t('common.create');
     }
 
     function createGroup() {
         var title = groupTitleInput.value.trim();
-        if (!title) { errorEl.textContent = 'Введите название группы'; return; }
-        if (selected.size === 0) { errorEl.textContent = 'Выберите хотя бы одного участника'; return; }
-        setBusy('Создание…');
+        if (!title) { errorEl.textContent = BF.i18n.t('newchat.error.noGroupTitle'); return; }
+        if (selected.size === 0) { errorEl.textContent = BF.i18n.t('newchat.error.noMembers'); return; }
+        setBusy(BF.i18n.t('newchat.creating'));
         BF.api.createGroupChat(Array.from(selected.keys()), title).then(function (resp) {
             closeOverlay();
             if (resp && resp.chat) opts.upsertChat(resp.chat);
         }).catch(function (e) {
             console.error('[newchat] createGroupChat failed', e);
             clearBusy();
-            errorEl.textContent = 'Не удалось создать группу';
+            errorEl.textContent = BF.i18n.t('newchat.error.groupFailed');
         });
     }
 
     function createPrivate() {
-        if (selected.size !== 1) { errorEl.textContent = 'Выберите собеседника'; return; }
+        if (selected.size !== 1) { errorEl.textContent = BF.i18n.t('newchat.error.noPeer'); return; }
         var pass = passInput.value;
-        if (pass.length < 6) { errorEl.textContent = 'Пароль — минимум 6 символов'; return; }
+        if (pass.length < 6) { errorEl.textContent = BF.i18n.t('newchat.error.shortPassword'); return; }
         var peer = selected.values().next().value;
         var remember = rememberInput.checked;
-        setBusy('Создание…');
+        setBusy(BF.i18n.t('newchat.creating'));
         var salt = BF.privateChat.generateSalt();
         BF.privateChat.deriveKey(pass, salt).then(function (key) {
             return BF.privateChat.computeVerifier(key).then(function (verifier) {
@@ -213,7 +213,7 @@
         }).catch(function (e) {
             console.error('[newchat] createPrivateChat failed', e);
             clearBusy();
-            errorEl.textContent = 'Не удалось создать приватный чат';
+            errorEl.textContent = BF.i18n.t('newchat.error.privateFailed');
         });
     }
 

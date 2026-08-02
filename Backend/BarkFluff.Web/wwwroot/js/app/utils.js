@@ -7,10 +7,17 @@
 
     window.BF = window.BF || {};
 
+    function locale() {
+        return BF.i18n.current();
+    }
+
+    function timeOf(d) {
+        return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+    }
+
     function formatTime(ts) {
         if (!ts) return '';
-        var d = new Date(ts);
-        return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        return timeOf(new Date(ts));
     }
 
     function formatChatListTime(ts) {
@@ -18,31 +25,31 @@
         var d = new Date(ts);
         var today = new Date();
         if (d.toDateString() === today.toDateString()) {
-            return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            return timeOf(d);
         }
         var yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         if (d.toDateString() === yesterday.toDateString()) {
-            return 'вчера в ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            return BF.i18n.t('date.yesterdayAt', { time: timeOf(d) });
         }
-        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
 
     function formatDate(ts) {
         if (!ts) return '';
         var d = new Date(ts);
         var today = new Date();
-        if (d.toDateString() === today.toDateString()) return 'Сегодня';
+        if (d.toDateString() === today.toDateString()) return BF.i18n.t('date.today');
         var yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        if (d.toDateString() === yesterday.toDateString()) return 'Вчера';
-        return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        if (d.toDateString() === yesterday.toDateString()) return BF.i18n.t('date.yesterday');
+        return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
     function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' Б';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+        if (bytes < 1024) return BF.i18n.t('unit.bytes', { value: bytes });
+        if (bytes < 1024 * 1024) return BF.i18n.t('unit.kb', { value: (bytes / 1024).toFixed(1) });
+        return BF.i18n.t('unit.mb', { value: (bytes / (1024 * 1024)).toFixed(1) });
     }
 
     function truncate(text, len) {
@@ -412,13 +419,13 @@
 
     function attachmentEmoji(type) {
         switch (type) {
-            case 'IMAGE': case 'GIF': return '\u{1F4F7} Фото';
-            case 'VIDEO': return '\u{1F3AC} Видео';
-            case 'AUDIO': return '\u{1F3B5} Аудио';
-            case 'VOICE': return '\u{1F3A4} Голосовое';
-            case 'DOCUMENT': return '\u{1F4C4} Документ';
-            case 'STICKER': return '\u{1F92A} Стикер';
-            default: return '\u{1F4CE} Вложение';
+            case 'IMAGE': case 'GIF': return '\u{1F4F7} ' + BF.i18n.t('attachment.photo');
+            case 'VIDEO': return '\u{1F3AC} ' + BF.i18n.t('attachment.video');
+            case 'AUDIO': return '\u{1F3B5} ' + BF.i18n.t('attachment.audio');
+            case 'VOICE': return '\u{1F3A4} ' + BF.i18n.t('attachment.voice');
+            case 'DOCUMENT': return '\u{1F4C4} ' + BF.i18n.t('attachment.document');
+            case 'STICKER': return '\u{1F92A} ' + BF.i18n.t('attachment.sticker');
+            default: return '\u{1F4CE} ' + BF.i18n.t('attachment.generic');
         }
     }
 
@@ -440,13 +447,13 @@
     function attachmentPreviewHtml(type) {
         var icon, label;
         switch (type) {
-            case 'IMAGE': case 'GIF': icon = PREVIEW_ICONS.image; label = 'Фото'; break;
-            case 'VIDEO': icon = PREVIEW_ICONS.video; label = 'Видео'; break;
-            case 'AUDIO': icon = PREVIEW_ICONS.audio; label = 'Аудио'; break;
-            case 'VOICE': icon = PREVIEW_ICONS.voice; label = 'Голосовое'; break;
-            case 'DOCUMENT': icon = PREVIEW_ICONS.document; label = 'Документ'; break;
-            case 'STICKER': icon = PREVIEW_ICONS.sticker; label = 'Стикер'; break;
-            default: icon = PREVIEW_ICONS.attach; label = 'Вложение';
+            case 'IMAGE': case 'GIF': icon = PREVIEW_ICONS.image; label = BF.i18n.t('attachment.photo'); break;
+            case 'VIDEO': icon = PREVIEW_ICONS.video; label = BF.i18n.t('attachment.video'); break;
+            case 'AUDIO': icon = PREVIEW_ICONS.audio; label = BF.i18n.t('attachment.audio'); break;
+            case 'VOICE': icon = PREVIEW_ICONS.voice; label = BF.i18n.t('attachment.voice'); break;
+            case 'DOCUMENT': icon = PREVIEW_ICONS.document; label = BF.i18n.t('attachment.document'); break;
+            case 'STICKER': icon = PREVIEW_ICONS.sticker; label = BF.i18n.t('attachment.sticker'); break;
+            default: icon = PREVIEW_ICONS.attach; label = BF.i18n.t('attachment.generic');
         }
         return icon + '<span class="preview-text">' + escapeHtml(label) + '</span>';
     }
@@ -488,7 +495,7 @@
     }
 
     function formatLastSeen(lastSeenTs) {
-        if (!lastSeenTs) return 'не в сети';
+        if (!lastSeenTs) return BF.i18n.t('lastSeen.offline');
         var now = Date.now();
         var diff = now - lastSeenTs;
         if (diff < 0) diff = 0;
@@ -498,30 +505,16 @@
         var hours = Math.floor(minutes / 60);
         var days = Math.floor(hours / 24);
 
-        if (seconds < 60) return 'был(а) в сети только что';
-        if (minutes < 60) {
-            if (minutes === 1) return 'был(а) в сети 1 минуту назад';
-            if (minutes < 5) return 'был(а) в сети ' + minutes + ' минуты назад';
-            if (minutes < 21) return 'был(а) в сети ' + minutes + ' минут назад';
-            var m10 = minutes % 10;
-            if (m10 === 1) return 'был(а) в сети ' + minutes + ' минуту назад';
-            if (m10 >= 2 && m10 <= 4) return 'был(а) в сети ' + minutes + ' минуты назад';
-            return 'был(а) в сети ' + minutes + ' минут назад';
-        }
-        if (hours < 24) {
-            if (hours === 1) return 'был(а) в сети 1 час назад';
-            if (hours < 5) return 'был(а) в сети ' + hours + ' часа назад';
-            if (hours < 21) return 'был(а) в сети ' + hours + ' часов назад';
-            var h10 = hours % 10;
-            if (h10 === 1) return 'был(а) в сети ' + hours + ' час назад';
-            if (h10 >= 2 && h10 <= 4) return 'был(а) в сети ' + hours + ' часа назад';
-            return 'был(а) в сети ' + hours + ' часов назад';
-        }
-        if (days === 1) return 'был(а) в сети вчера';
-        if (days < 7) return 'был(а) в сети ' + days + ' дн. назад';
+        if (seconds < 60) return BF.i18n.t('lastSeen.justNow');
+        if (minutes < 60) return BF.i18n.tp('lastSeen.minutes', minutes);
+        if (hours < 24) return BF.i18n.tp('lastSeen.hours', hours);
+        if (days === 1) return BF.i18n.t('lastSeen.yesterday');
+        if (days < 7) return BF.i18n.tp('lastSeen.days', days);
 
         var d = new Date(lastSeenTs);
-        return 'был(а) в сети ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        return BF.i18n.t('lastSeen.date', {
+            date: d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
+        });
     }
 
     window.BF.utils = {
