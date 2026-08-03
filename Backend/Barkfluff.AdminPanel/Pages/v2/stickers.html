@@ -302,7 +302,7 @@
                     </div>
                 </div>
             </div>
-            <p class="editor-hint">Колесо мыши над макетом — масштаб. Перетаскивайте рамку, чтобы выбрать область. Результат — 512×512, сервер кодирует в WebP.</p>
+            <p class="editor-hint">Масштаб — ползунком справа. Перетаскивайте рамку, чтобы выбрать область. Результат — 512×512, сервер кодирует в WebP.</p>
         </div>
         <div class="md-dialog-actions">
             <button type="button" class="md-btn md-btn-text" onclick="closeStickerEditor()">Отмена</button>
@@ -325,6 +325,7 @@
     let editorCropper = null;
     let editorTarget = null;                       // { kind, input, previewEl, iconEl, onApply? }
     let editorState = { zoom: 1, rotate: 0, radius: 0 };
+    let editorFitRatio = 1;                         // абсолютный ratio начального вписывания (1.0 ползунка = этот вид)
     let editorPreviewRaf = 0;
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -421,10 +422,13 @@
                     scalable: true,
                     rotatable: true,
                     zoomable: true,
-                    zoomOnWheel: true,
+                    zoomOnWheel: false,
+                    zoomOnTouch: false,
                     minContainerWidth: 200,
                     minContainerHeight: 200,
                     ready: () => {
+                        const cd = editorCropper.getCanvasData();
+                        editorFitRatio = (cd && cd.naturalWidth ? cd.width / cd.naturalWidth : 1) || 1;
                         editorState = { zoom: 1, rotate: 0, radius: 0 };
                         document.getElementById('editorZoom').value = 1;
                         document.getElementById('editorRotate').value = 0;
@@ -434,7 +438,7 @@
                     },
                     crop: () => updateEditorPreview(),
                     zoom: (e) => {
-                        const nz = clamp(editorState.zoom * e.detail.ratio, 0.1, 3);
+                        const nz = clamp(e.detail.ratio / editorFitRatio, 0.1, 3);
                         if (Math.abs(nz - editorState.zoom) > 0.001) {
                             editorState.zoom = nz;
                             document.getElementById('editorZoom').value = nz;
@@ -512,8 +516,7 @@
     document.getElementById('editorZoom').addEventListener('input', e => {
         if (!editorCropper) return;
         const target = parseFloat(e.target.value);
-        const ratio = target / editorState.zoom;
-        if (ratio > 0) editorCropper.zoomTo(ratio); // zoom-event обновит editorState.zoom и подпись
+        editorCropper.zoomTo(target * editorFitRatio); // zoom-event обновит editorState.zoom и подпись
     });
     document.getElementById('editorRotate').addEventListener('input', e => {
         if (!editorCropper) return;
