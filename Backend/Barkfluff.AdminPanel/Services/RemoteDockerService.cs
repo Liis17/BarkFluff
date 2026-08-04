@@ -2,22 +2,34 @@ using Barkfluff.AdminPanel.Data;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
 
+using Microsoft.Extensions.Caching.Memory;
+
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Barkfluff.AdminPanel.Services;
 
 public class RemoteDockerService
 {
+    private static readonly TimeSpan ContainersCacheTtl = TimeSpan.FromSeconds(10);
+
     private readonly RemoteDockerDbContext _db;
     private readonly IRemoteSshClient _sshClient;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<RemoteDockerService> _logger;
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _serverLocks = new();
 
-    public RemoteDockerService(RemoteDockerDbContext db, IRemoteSshClient sshClient, ILogger<RemoteDockerService> logger)
+    public RemoteDockerService(RemoteDockerDbContext db, IRemoteSshClient sshClient, IMemoryCache cache, ILogger<RemoteDockerService> logger)
     {
         _db = db;
         _sshClient = sshClient;
+        _cache = cache;
         _logger = logger;
     }
+
+    private static string ContainersCacheKey(Guid serverId) => $"remote-docker:ps:{serverId}";
+    private SemaphoreSlim GetServerLock(Guid serverId) =>
+        _serverLocks.GetOrAdd(serverId, _ => new SemaphoreSlim(1, 1));
 
     public IReadOnlyList<RemoteServerDto> GetServers() => _db.Servers.FindAll()
         .OrderBy(x => x.Name)
@@ -169,6 +181,7 @@ public class RemoteDockerService
             if (result.ExitCode != 0)
                 return Fail($"Ошибка {ActionLabel(action)} контейнера {container.ContainerName}", result.Stderr);
 
+            InvalidateContainersCache(serverId);
             _logger.LogInformation("Действие {Action} над {ContainerName} на {Server} выполнено", action, container.ContainerName, server.Name);
             return Ok($"Контейнер {container.ContainerName} успешно {ActionLabel(action)}");
         }
@@ -179,12 +192,37 @@ public class RemoteDockerService
         }
     }
 
+    /// <summary>
+    /// Список контейнеров сервера по <c>docker ps</c>. Результат кэшируется на
+    /// <see cref="ContainersCacheTtl"/>; параллельные опросы одного сервера на cache-miss
+    /// координируются через per-server <see cref="SemaphoreSlim"/> (один SSH-вызов).
+    /// </summary>
     private async Task<List<DiscoveredRemoteContainerDto>> ListContainersAsync(RemoteServer server, CancellationToken cancellationToken)
     {
-        var result = await _sshClient.RunAsync(server, "docker ps --all --format '{{json .}}'", cancellationToken);
-        ThrowIfFailed(result, "Не удалось получить список Docker-контейнеров");
-        return ParseDockerPsOutput(result.Stdout);
+        var cacheKey = ContainersCacheKey(server.Id);
+        if (_cache.TryGetValue(cacheKey, out List<DiscoveredRemoteContainerDto>? cached) && cached is not null)
+            return cached;
+
+        var gate = GetServerLock(server.Id);
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_cache.TryGetValue(cacheKey, out cached) && cached is not null)
+                return cached;
+
+            var result = await _sshClient.RunAsync(server, "docker ps --all --format '{{json .}}'", cancellationToken);
+            ThrowIfFailed(result, "Не удалось получить список Docker-контейнеров");
+            var containers = ParseDockerPsOutput(result.Stdout);
+            _cache.Set(cacheKey, containers, ContainersCacheTtl);
+            return containers;
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
+
+    private void InvalidateContainersCache(Guid serverId) => _cache.Remove(ContainersCacheKey(serverId));
 
     private async Task<List<DiscoveredContainerWithMetadata>> ListContainersWithComposeMetadataAsync(
         RemoteServer server, CancellationToken cancellationToken)
