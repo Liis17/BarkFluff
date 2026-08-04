@@ -3,6 +3,7 @@ using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
 
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using System.Text.Json;
@@ -124,6 +125,46 @@ public class RemoteDockerServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetContainersStatusAsync_CachesDockerPsAcrossCallsWithinTtl()
+    {
+        using var db = new RemoteDockerDbContext(_dbPath);
+        var server = new RemoteServer { Name = "Node", Host = "host", Username = "root", Password = "secret" };
+        db.Servers.Insert(server);
+        db.Containers.Insert(new RemoteContainer { ServerId = server.Id, ContainerName = "web" });
+        var ssh = new FakeSshClient
+        {
+            DockerPsOutput = """{"ID":"abc","Image":"barkfluff/web","Names":"web","State":"running","Status":"Up 1 minute"}"""
+        };
+        var service = CreateService(db, ssh);
+
+        await service.GetContainersStatusAsync(server.Id);
+        await service.GetContainersStatusAsync(server.Id);
+
+        Assert.Single(ssh.Commands, c => c.StartsWith("docker ps", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ExecuteActionAsync_InvalidatesCacheSoNextCallRefetches()
+    {
+        using var db = new RemoteDockerDbContext(_dbPath);
+        var server = new RemoteServer { Name = "Node", Host = "host", Username = "root", Password = "secret" };
+        db.Servers.Insert(server);
+        var container = new RemoteContainer { ServerId = server.Id, ContainerName = "web" };
+        db.Containers.Insert(container);
+        var ssh = new FakeSshClient
+        {
+            DockerPsOutput = """{"ID":"abc","Image":"barkfluff/web","Names":"web","State":"running","Status":"Up 1 minute"}"""
+        };
+        var service = CreateService(db, ssh);
+
+        await service.GetContainersStatusAsync(server.Id);
+        await service.ExecuteActionAsync(server.Id, container.Id, "restart");
+        await service.GetContainersStatusAsync(server.Id);
+
+        Assert.Equal(2, ssh.Commands.Count(c => c.StartsWith("docker ps", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public async Task ExecuteActionAsync_RejectsUpdateForNonComposeContainer()
     {
         using var db = new RemoteDockerDbContext(_dbPath);
@@ -170,7 +211,7 @@ public class RemoteDockerServiceTests : IDisposable
     }
 
     private static RemoteDockerService CreateService(RemoteDockerDbContext db, FakeSshClient ssh) =>
-        new(db, ssh, NullLogger<RemoteDockerService>.Instance);
+        new(db, ssh, new MemoryCache(new MemoryCacheOptions()), NullLogger<RemoteDockerService>.Instance);
 
     private sealed class FakeSshClient : IRemoteSshClient
     {
