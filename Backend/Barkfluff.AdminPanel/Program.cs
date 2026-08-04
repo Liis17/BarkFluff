@@ -223,20 +223,6 @@ public class Program
             }
         });
 
-        // Редирект /v2 → /v2/ (без trailing slash относительные пути styles.css/app.js
-        // резолвятся как /styles.css вместо /v2/styles.css). Делаем через middleware,
-        // т.к. MapGet("/v2") и MapGet("/v2/") дают AmbiguousMatchException — роутер
-        // рассматривает их как одну каноническую точку.
-        app.Use(async (ctx, next) =>
-        {
-            if (ctx.Request.Path.Value == "/v2")
-            {
-                ctx.Response.Redirect("/v2/");
-                return;
-            }
-            await next();
-        });
-
         // Add Token Authentication Middleware
         app.UseTokenAuth();
 
@@ -299,14 +285,6 @@ public class Program
             RequestPath = ""
         });
 
-        // Static files for redesigned UI under /v2
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-                Path.Combine(AppContext.BaseDirectory, "Pages", "Redesigned")),
-            RequestPath = "/v2"
-        });
-
         // Static assets (md3.css, sidebar.js) for the MD3 pages, referenced as /assets/*
         app.UseStaticFiles(new StaticFileOptions
         {
@@ -326,7 +304,6 @@ public class Program
         });
 
         // Page routes — serve the MD3 (v2) pages
-        app.MapGet("/v2/", async context => await ServeHtmlFile(context, Path.Combine("Redesigned", "index.html")));
         app.MapGet("/services", async context => await ServeHtmlFile(context, Path.Combine("v2", "services.html")));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, Path.Combine("v2", "logs.html")));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, Path.Combine("v2", "badges.html")));
