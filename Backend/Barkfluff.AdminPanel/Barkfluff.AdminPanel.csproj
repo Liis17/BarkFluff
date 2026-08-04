@@ -7,35 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Pages\badges.html" />
-    <None Remove="Pages\dashboard.html" />
-    <None Remove="Pages\Login.html" />
-    <None Remove="Pages\logs.html" />
-    <None Remove="Pages\Redesigned\app.js" />
-    <None Remove="Pages\Redesigned\index.html" />
-    <None Remove="Pages\Redesigned\screen-content.js" />
-    <None Remove="Pages\Redesigned\screen-dashboard.js" />
-    <None Remove="Pages\Redesigned\screen-login.js" />
-    <None Remove="Pages\Redesigned\screen-logs.js" />
-    <None Remove="Pages\Redesigned\screen-s3.js" />
-    <None Remove="Pages\Redesigned\screen-services.js" />
-    <None Remove="Pages\Redesigned\screen-notifications.js" />
-    <None Remove="Pages\Redesigned\styles.css" />
-    <None Remove="Pages\restarting.html" />
-    <None Remove="Pages\s3-storage.html" />
-    <None Remove="Pages\services.html" />
-    <None Remove="Pages\stickers.html" />
-    <None Remove="Pages\updating.html" />
-    <None Remove="Pages\s3-browser.html" />
-    <None Remove="Pages\users.html" />
-    <None Remove="Pages\notifications.html" />
-    <None Remove="Pages\mail.html" />
     <None Remove="Pages\v2\badges.html" />
     <None Remove="Pages\v2\bots.html" />
     <None Remove="Pages\v2\configuration.html" />
     <None Remove="Pages\v2\dashboard.html" />
     <None Remove="Pages\v2\federation.html" />
-    <None Remove="Pages\v2\index.html" />
     <None Remove="Pages\v2\Login.html" />
     <None Remove="Pages\v2\logs.html" />
     <None Remove="Pages\v2\mail.html" />
@@ -52,76 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Pages\badges.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="Pages\favicon.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\dashboard.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Login.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\logs.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\app.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\index.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\screen-content.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\screen-dashboard.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\screen-login.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\screen-logs.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\screen-s3.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\screen-services.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\screen-notifications.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\Redesigned\styles.css">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\restarting.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\s3-browser.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\s3-storage.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\services.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\stickers.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\updating.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\users.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\notifications.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\mail.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\v2\badges.html">
@@ -137,9 +44,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\v2\federation.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Pages\v2\index.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\v2\Login.html">
