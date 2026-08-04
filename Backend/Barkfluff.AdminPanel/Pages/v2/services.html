@@ -160,6 +160,10 @@
                             <span class="msr size-18">cloud_download</span>
                             Обновить все
                         </button>
+                        <button onclick="updateAvailableServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
+                            <span class="msr size-18">upgrade</span>
+                            Обновить доступные
+                        </button>
                         <div class="spacer"></div>
                         <button id="refreshBtn" class="md-btn md-btn-text" onclick="loadServices()">
                             <span class="msr size-18">refresh</span>
@@ -433,6 +437,11 @@
             .filter(s => s.name.startsWith('BarkFluff.'))
             .map(s => getContainerNameFromServiceName(s.name));
     }
+    function updatableContainers() {
+        return servicesData
+            .filter(s => s.name.startsWith('BarkFluff.') && s.updateAvailable)
+            .map(s => getContainerNameFromServiceName(s.name));
+    }
     async function restartAllServices() {
         if (!confirm('Перезапустить все сервисы BarkFluff?')) return;
         showProgressModal('Перезапуск сервисов', barkfluffContainers(), 'restart');
@@ -440,6 +449,12 @@
     async function updateAllServices() {
         if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
         showProgressModal('Обновление сервисов', barkfluffContainers(), 'pull');
+    }
+    async function updateAvailableServices() {
+        const containers = updatableContainers();
+        if (containers.length === 0) { alert('Нет сервисов с доступными обновлениями'); return; }
+        if (!confirm(`Обновить только сервисы с доступными обновлениями (${containers.length})?`)) return;
+        showProgressModal('Обновление доступных сервисов', containers, 'pull');
     }
 
     function showProgressModal(title, containers, action) {
