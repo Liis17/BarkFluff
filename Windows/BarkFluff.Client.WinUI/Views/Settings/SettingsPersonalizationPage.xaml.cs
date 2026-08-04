@@ -21,9 +21,33 @@ public sealed partial class SettingsPersonalizationPage : Page
         await ViewModel.LoadAsync();
     }
 
-    private async void OnCornerRadiusChanged(object sender, RangeBaseValueChangedEventArgs e) => await ViewModel.SetChatCornerRadiusAsync((int)Math.Round(e.NewValue));
-    private async void OnBlurToggled(object sender, RoutedEventArgs e) => await ViewModel.SetChatBackgroundBlurAsync(((ToggleSwitch)sender).IsOn);
-    private async void OnBlurStrengthChanged(object sender, RangeBaseValueChangedEventArgs e) => await ViewModel.SetChatBackgroundBlurRadiusAsync((int)Math.Round(e.NewValue));
-    private async void OnDimChanged(object sender, RangeBaseValueChangedEventArgs e) => await ViewModel.SetChatBackgroundDimAsync((int)Math.Round(e.NewValue));
-    private async void OnRelativeOnlineTimeToggled(object sender, RoutedEventArgs e) => await ViewModel.SetRelativeOnlineTimeAsync(((ToggleSwitch)sender).IsOn);
+    private async void OnCornerRadiusChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (ViewModel is null) return;
+        await ViewModel.SetChatCornerRadiusAsync((int)Math.Round(e.NewValue));
+    }
+
+    private async void OnBlurToggled(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is null) return;
+        await ViewModel.SetChatBackgroundBlurAsync(((ToggleSwitch)sender).IsOn);
+    }
+
+    private async void OnBlurStrengthChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (ViewModel is null) return;
+        await ViewModel.SetChatBackgroundBlurRadiusAsync((int)Math.Round(e.NewValue));
+    }
+
+    private async void OnDimChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (ViewModel is null) return;
+        await ViewModel.SetChatBackgroundDimAsync((int)Math.Round(e.NewValue));
+    }
+
+    private async void OnRelativeOnlineTimeToggled(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is null) return;
+        await ViewModel.SetRelativeOnlineTimeAsync(((ToggleSwitch)sender).IsOn);
+    }
 }

@@ -68,7 +68,7 @@
             <Grid Margin="2">
                 <Image Source="{x:Bind PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
                 <MediaPlayerElement AreTransportControlsEnabled="True"
-                                    Source="{x:Bind FileUrl}"
+                                    Source="{x:Bind FileUrl, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                     Stretch="UniformToFill"
                                     Visibility="Collapsed" />
                 <Button Width="44"
