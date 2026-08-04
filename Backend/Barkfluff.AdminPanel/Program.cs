@@ -277,14 +277,6 @@ public class Program
         // Map Mail Endpoints (IMAP/SMTP для служебных ящиков)
         app.MapMailEndpoints();
 
-        // Static files for Pages directory
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-                Path.Combine(AppContext.BaseDirectory, "Pages")),
-            RequestPath = ""
-        });
-
         // Static assets (md3.css, sidebar.js) for the MD3 pages, referenced as /assets/*
         app.UseStaticFiles(new StaticFileOptions
         {
