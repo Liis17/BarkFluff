@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   registry:
     image: registry:2
@@ -24,6 +23,8 @@ services:
       - REGISTRY_STORAGE_S3_MULTIPARTCOPYTHRESHOLDSIZE=5368709120
       - REGISTRY_STORAGE_S3_MULTIPARTCOPYCHUNKSIZE=104857600
       - REGISTRY_STORAGE_S3_MULTIPARTCOPYMAXCONCURRENCY=10
+    networks:
+      - barkfluff-docker-network
 
   nginx:
     image: nginx:alpine
@@ -37,3 +38,17 @@ services:
       - ./certs:/certs:ro
     depends_on:
       - registry
+    networks:
+      - barkfluff-docker-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-dockerreg
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - barkfluff-docker-network
+
+networks:
+  barkfluff-docker-network:
+    external: true
