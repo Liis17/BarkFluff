@@ -106,7 +106,8 @@
       "Bash(\"C:/Users/daske/AppData/Local/Microsoft/dotnet/dotnet.exe\" build *)",
       "mcp__nuget__get-latest-package-version",
       "mcp__nuget__get-package-context",
-      "mcp__playwright__browser_resize"
+      "mcp__playwright__browser_resize",
+      "Bash(docker compose *)"
     ],
     "deny": [],
     "ask": [
