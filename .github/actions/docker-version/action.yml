@@ -34,7 +34,7 @@ runs:
         REG_USER: ${{ inputs.registry-username }}
         REG_PASS: ${{ inputs.registry-password }}
       run: |
-        REGISTRY="docker.barkfluff.com:5000"
+        REGISTRY="docker.barkfluff.com"
 
         if [ "$GITHUB_REF_NAME" = "dev" ]; then
           REPO="${IMAGE}-dev"

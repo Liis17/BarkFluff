@@ -80,7 +80,7 @@ ENTRYPOINT ["dotnet", "BarkFluff.Federation.dll"]
 
 - paths-фильтр: `Backend/BarkFluff.Federation/**`, `Backend/BarkFluff.GrpcServer/**`, `rebuild.trigger`;
 - имя проекта/dll/образа: `federation` (образ по той же схеме `barkfluff-federation-dev`);
-- всё остальное (check-dotnet, Telegram-approve на master, docker-version action, registry `docker.barkfluff.com:5000`) — без изменений.
+- всё остальное (check-dotnet, Telegram-approve на master, docker-version action, registry `docker.barkfluff.com`) — без изменений.
 
 ## Изменение 7 — docker-compose-dev.yml
 
@@ -88,7 +88,7 @@ ENTRYPOINT ["dotnet", "BarkFluff.Federation.dll"]
 
 ```yaml
 federation:
-  image: docker.barkfluff.com:5000/barkfluff-federation-dev:latest
+  image: docker.barkfluff.com/barkfluff-federation-dev:latest
   container_name: federation
   restart: always
   environment:

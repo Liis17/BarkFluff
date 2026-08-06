@@ -8,7 +8,7 @@ services:
   # === Основные микросервисы ===
   
   beacon:
-    image: docker.barkfluff.com:5000/barkfluff-beacon-dev:latest
+    image: docker.barkfluff.com/barkfluff-beacon-dev:latest
     container_name: beacon
     restart: always
     environment:
@@ -20,7 +20,7 @@ services:
       - configuration
 
   configuration:
-    image: docker.barkfluff.com:5000/barkfluff-configuration-dev:latest
+    image: docker.barkfluff.com/barkfluff-configuration-dev:latest
     container_name: configuration
     restart: always
     env_file:
@@ -36,7 +36,7 @@ services:
       - barkfluff-network
 
   files:
-    image: docker.barkfluff.com:5000/barkfluff-files-dev:latest
+    image: docker.barkfluff.com/barkfluff-files-dev:latest
     container_name: files
     restart: always
     environment:
@@ -47,7 +47,7 @@ services:
       - configuration
 
   identity:
-    image: docker.barkfluff.com:5000/barkfluff-identity-dev:latest
+    image: docker.barkfluff.com/barkfluff-identity-dev:latest
     container_name: identity
     restart: always
     environment:
@@ -58,7 +58,7 @@ services:
       - configuration
 
   messages:
-    image: docker.barkfluff.com:5000/barkfluff-messages-dev:latest
+    image: docker.barkfluff.com/barkfluff-messages-dev:latest
     container_name: messages
     restart: always
     environment:
@@ -69,7 +69,7 @@ services:
       - configuration
 
   notification:
-    image: docker.barkfluff.com:5000/barkfluff-notification-dev:latest
+    image: docker.barkfluff.com/barkfluff-notification-dev:latest
     container_name: notification
     restart: always
     environment:
@@ -80,7 +80,7 @@ services:
       - configuration
 
   users:
-    image: docker.barkfluff.com:5000/barkfluff-users-dev:latest
+    image: docker.barkfluff.com/barkfluff-users-dev:latest
     container_name: users
     restart: always
     environment:
@@ -91,7 +91,7 @@ services:
       - configuration
 
   fast-auth:
-    image: docker.barkfluff.com:5000/barkfluff-fast-auth-dev:latest
+    image: docker.barkfluff.com/barkfluff-fast-auth-dev:latest
     container_name: fast-auth
     restart: always
     environment:
@@ -103,7 +103,7 @@ services:
       - configuration
 
   updates:
-    image: docker.barkfluff.com:5000/barkfluff-updates-dev:latest
+    image: docker.barkfluff.com/barkfluff-updates-dev:latest
     container_name: updates
     restart: always
     environment:
@@ -114,7 +114,7 @@ services:
       - configuration
 
   onliner:
-    image: docker.barkfluff.com:5000/barkfluff-onliner-dev:latest
+    image: docker.barkfluff.com/barkfluff-onliner-dev:latest
     container_name: onliner
     restart: always
     environment:
@@ -125,7 +125,7 @@ services:
       - configuration
 
   federation:
-    image: docker.barkfluff.com:5000/barkfluff-federation-dev:latest
+    image: docker.barkfluff.com/barkfluff-federation-dev:latest
     container_name: federation
     restart: always
     environment:
@@ -136,7 +136,7 @@ services:
       - configuration
 
   cloud-messaging:
-    image: docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:latest
+    image: docker.barkfluff.com/barkfluff-cloud-messaging-dev:latest
     container_name: cloud-messaging
     restart: always
     environment:
@@ -152,7 +152,7 @@ services:
       - configuration
 
   web:
-    image: docker.barkfluff.com:5000/barkfluff-web-dev:latest
+    image: docker.barkfluff.com/barkfluff-web-dev:latest
     container_name: web
     restart: always
     environment:
@@ -181,7 +181,7 @@ services:
       - onliner
 
   developers:
-    image: docker.barkfluff.com:5000/barkfluff-developers-dev:latest
+    image: docker.barkfluff.com/barkfluff-developers-dev:latest
     container_name: developers
     restart: always
     ports:
@@ -194,7 +194,7 @@ services:
       - configuration
 
   calls:
-    image: docker.barkfluff.com:5000/barkfluff-calls-dev:latest
+    image: docker.barkfluff.com/barkfluff-calls-dev:latest
     container_name: calls
     restart: always
     environment:
@@ -205,7 +205,7 @@ services:
       - configuration
 
   bots:
-    image: docker.barkfluff.com:5000/barkfluff-bots-dev:latest
+    image: docker.barkfluff.com/barkfluff-bots-dev:latest
     container_name: bots
     restart: always
     environment:
@@ -221,7 +221,7 @@ services:
   # === Панель администрирования ===
 
   admin-panel:
-    image: docker.barkfluff.com:5000/barkfluff-admin-panel-dev:latest
+    image: docker.barkfluff.com/barkfluff-admin-panel-dev:latest
     container_name: admin-panel
     restart: always
     user: root
