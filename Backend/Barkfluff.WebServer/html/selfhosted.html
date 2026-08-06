@@ -109,7 +109,7 @@
         <li><strong>Домен</strong> и wildcard-запись на субдомены сервисов.</li>
         <li><strong>TLS-сертификат</strong> на apex и субдомены — Let's Encrypt подходит.</li>
         <li><strong>nginx</strong> перед стеком: сервисы слушают только внутри Docker-сети, TLS терминируется на nginx. Готовые конфиги лежат в репозитории в <code>docker/nginx/</code>.</li>
-        <li><strong>Доступ к реестру образов</strong> <code>docker.barkfluff.com:5000</code>.</li>
+        <li><strong>Доступ к реестру образов</strong> <code>docker.barkfluff.com</code>.</li>
       </ul>
       <div class="callout">
         <p>Barkfluff в активной разработке. Ломающие изменения схемы БД случаются между релизами — держите бэкапы и не обновляйте продовую ноду без проверки на тестовой.</p>
@@ -155,7 +155,7 @@ services:
   # === Основные микросервисы ===
 
   configuration:
-    image: docker.barkfluff.com:5000/barkfluff-configuration:latest
+    image: docker.barkfluff.com/barkfluff-configuration:latest
     container_name: configuration
     restart: always
     env_file:
@@ -171,7 +171,7 @@ services:
       - barkfluff-network
 
   beacon:
-    image: docker.barkfluff.com:5000/barkfluff-beacon:latest
+    image: docker.barkfluff.com/barkfluff-beacon:latest
     container_name: beacon
     restart: always
     environment:
@@ -183,7 +183,7 @@ services:
       - configuration
 
   identity:
-    image: docker.barkfluff.com:5000/barkfluff-identity:latest
+    image: docker.barkfluff.com/barkfluff-identity:latest
     container_name: identity
     restart: always
     environment:
@@ -194,7 +194,7 @@ services:
       - configuration
 
   users:
-    image: docker.barkfluff.com:5000/barkfluff-users:latest
+    image: docker.barkfluff.com/barkfluff-users:latest
     container_name: users
     restart: always
     environment:
@@ -205,7 +205,7 @@ services:
       - configuration
 
   messages:
-    image: docker.barkfluff.com:5000/barkfluff-messages:latest
+    image: docker.barkfluff.com/barkfluff-messages:latest
     container_name: messages
     restart: always
     environment:
@@ -216,7 +216,7 @@ services:
       - configuration
 
   files:
-    image: docker.barkfluff.com:5000/barkfluff-files:latest
+    image: docker.barkfluff.com/barkfluff-files:latest
     container_name: files
     restart: always
     environment:
@@ -227,7 +227,7 @@ services:
       - configuration
 
   notification:
-    image: docker.barkfluff.com:5000/barkfluff-notification:latest
+    image: docker.barkfluff.com/barkfluff-notification:latest
     container_name: notification
     restart: always
     environment:
@@ -238,7 +238,7 @@ services:
       - configuration
 
   fast-auth:
-    image: docker.barkfluff.com:5000/barkfluff-fast-auth:latest
+    image: docker.barkfluff.com/barkfluff-fast-auth:latest
     container_name: fast-auth
     restart: always
     environment:
@@ -250,7 +250,7 @@ services:
       - configuration
 
   updates:
-    image: docker.barkfluff.com:5000/barkfluff-updates:latest
+    image: docker.barkfluff.com/barkfluff-updates:latest
     container_name: updates
     restart: always
     environment:
@@ -261,7 +261,7 @@ services:
       - configuration
 
   onliner:
-    image: docker.barkfluff.com:5000/barkfluff-onliner:latest
+    image: docker.barkfluff.com/barkfluff-onliner:latest
     container_name: onliner
     restart: always
     environment:
@@ -272,7 +272,7 @@ services:
       - configuration
 
   federation:
-    image: docker.barkfluff.com:5000/barkfluff-federation:latest
+    image: docker.barkfluff.com/barkfluff-federation:latest
     container_name: federation
     restart: always
     environment:
@@ -283,7 +283,7 @@ services:
       - configuration
 
   cloud-messaging:
-    image: docker.barkfluff.com:5000/barkfluff-cloud-messaging:latest
+    image: docker.barkfluff.com/barkfluff-cloud-messaging:latest
     container_name: cloud-messaging
     restart: always
     environment:
@@ -299,7 +299,7 @@ services:
       - configuration
 
   calls:
-    image: docker.barkfluff.com:5000/barkfluff-calls:latest
+    image: docker.barkfluff.com/barkfluff-calls:latest
     container_name: calls
     restart: always
     environment:
@@ -310,7 +310,7 @@ services:
       - configuration
 
   bots:
-    image: docker.barkfluff.com:5000/barkfluff-bots:latest
+    image: docker.barkfluff.com/barkfluff-bots:latest
     container_name: bots
     restart: always
     environment:
@@ -324,7 +324,7 @@ services:
       - files
 
   web:
-    image: docker.barkfluff.com:5000/barkfluff-web:latest
+    image: docker.barkfluff.com/barkfluff-web:latest
     container_name: web
     restart: always
     environment:
@@ -348,7 +348,7 @@ services:
   # === Панель администрирования ===
 
   admin-panel:
-    image: docker.barkfluff.com:5000/barkfluff-admin-panel:latest
+    image: docker.barkfluff.com/barkfluff-admin-panel:latest
     container_name: admin-panel
     restart: always
     user: root
@@ -602,7 +602,7 @@ FIREBASE_CLIENT_ID=</code></pre>
       <p>Порядок важен: Configuration должен подняться первым — он накатывает свои миграции и заполняет конфигурацию остальных сервисов значениями по умолчанию. Без этого другие сервисы не стартуют.</p>
       <figure class="code">
         <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
-        <pre><code>docker login docker.barkfluff.com:5000
+        <pre><code>docker login docker.barkfluff.com
 docker compose pull
 
 # 1. Сначала база и Configuration

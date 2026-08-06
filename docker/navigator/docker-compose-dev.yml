@@ -5,7 +5,7 @@ x-common-variables: &common-variables
 services:
   navigator-dev:
     container_name: navigator
-    image: docker.barkfluff.com:5000/barkfluff-navigator-dev:latest
+    image: docker.barkfluff.com/barkfluff-navigator-dev:latest
     restart: always
     user: root
     ports: [ "${NAVIGATOR_PORT}:${NAVIGATOR_PORT}" ]
@@ -23,7 +23,7 @@ services:
     expose:
       - "${NAVIGATOR_HTTP_PORT}"
     networks:
-      - barkfluff-network
+      - barkfluff-navigator-network
 
   nginx:
     image: nginx:alpine
@@ -37,7 +37,7 @@ services:
       - ./certs:/etc/nginx/certs:ro
     restart: always
     networks:
-      - barkfluff-network
+      - barkfluff-navigator-network
 
 networks:
   barkfluff-network:

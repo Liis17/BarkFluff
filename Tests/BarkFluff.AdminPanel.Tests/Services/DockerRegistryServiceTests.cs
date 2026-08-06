@@ -17,7 +17,7 @@ public class DockerRegistryServiceTests
     {
         var service = CreateService("{\"name\":\"barkfluff-users-dev\",\"tags\":[\"1.0.9\",\"latest\",\"1.0.10\",\"3331878f5f4f\",\"invalid\"]}");
 
-        var result = await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users-dev:1.0.9");
+        var result = await service.GetVersionStatusAsync("docker.barkfluff.com/barkfluff-users-dev:1.0.9");
 
         Assert.Equal("1.0.9", result.CurrentVersion);
         Assert.Equal("1.0.10", result.LatestVersion);
@@ -30,7 +30,7 @@ public class DockerRegistryServiceTests
         string? requestedPath = null;
         var service = CreateService("{\"tags\":[\"1.0.10\"]}", request => requestedPath = request.RequestUri?.AbsolutePath);
 
-        await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users-dev:1.0.9");
+        await service.GetVersionStatusAsync("docker.barkfluff.com/barkfluff-users-dev:1.0.9");
 
         Assert.Equal("/v2/barkfluff-users-dev/tags/list", requestedPath);
     }
@@ -38,7 +38,7 @@ public class DockerRegistryServiceTests
     [Fact]
     public async Task GetVersionStatusAsync_DerivesInstalledVersionFromLatestImageDigest()
     {
-        const string installedDigest = "docker.barkfluff.com:5000/barkfluff-users-dev@sha256:installed";
+        const string installedDigest = "docker.barkfluff.com/barkfluff-users-dev@sha256:installed";
         var service = CreateService(request => request.RequestUri?.AbsolutePath switch
         {
             "/v2/barkfluff-users-dev/tags/list" => CreateResponse("{\"tags\":[\"1.0.9\",\"1.0.10\",\"latest\"]}"),
@@ -48,7 +48,7 @@ public class DockerRegistryServiceTests
         });
 
         var result = await service.GetVersionStatusAsync(
-            "docker.barkfluff.com:5000/barkfluff-users-dev:latest",
+            "docker.barkfluff.com/barkfluff-users-dev:latest",
             installedDigest);
 
         Assert.Equal("1.0.9", result.CurrentVersion);
@@ -64,7 +64,7 @@ public class DockerRegistryServiceTests
     {
         var service = CreateService("{\"tags\":[\"1.0.10\",\"latest\"]}");
 
-        var result = await service.GetVersionStatusAsync($"docker.barkfluff.com:5000/barkfluff-users:{currentVersion}");
+        var result = await service.GetVersionStatusAsync($"docker.barkfluff.com/barkfluff-users:{currentVersion}");
 
         Assert.Equal("1.0.10", result.LatestVersion);
         Assert.Equal(updateAvailable, result.UpdateAvailable);
@@ -77,7 +77,7 @@ public class DockerRegistryServiceTests
     {
         var service = CreateService("", responseStatus: statusCode);
 
-        var result = await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users:1.0.9");
+        var result = await service.GetVersionStatusAsync("docker.barkfluff.com/barkfluff-users:1.0.9");
 
         Assert.Null(result.CurrentVersion);
         Assert.Null(result.LatestVersion);
@@ -89,7 +89,7 @@ public class DockerRegistryServiceTests
     {
         var service = CreateService("{\"tags\":[\"1.0.10\"]}");
 
-        var result = await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users:latest");
+        var result = await service.GetVersionStatusAsync("docker.barkfluff.com/barkfluff-users:latest");
 
         Assert.Null(result.CurrentVersion);
         Assert.Null(result.LatestVersion);
@@ -106,7 +106,7 @@ public class DockerRegistryServiceTests
             return CreateResponse("{\"tags\":[\"1.0.10\"]}");
         });
 
-        var result = await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users:latest");
+        var result = await service.GetVersionStatusAsync("docker.barkfluff.com/barkfluff-users:latest");
 
         Assert.Equal(0, requestCount);
         Assert.Null(result.CurrentVersion);
@@ -118,7 +118,7 @@ public class DockerRegistryServiceTests
     {
         var service = CreateService("{\"tags\":[\"latest\",\"3331878f5f4f\"]}");
 
-        var result = await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users:1.0.9");
+        var result = await service.GetVersionStatusAsync("docker.barkfluff.com/barkfluff-users:1.0.9");
 
         Assert.Null(result.CurrentVersion);
         Assert.Null(result.LatestVersion);
@@ -130,7 +130,7 @@ public class DockerRegistryServiceTests
     {
         var service = CreateService("", _ => throw new HttpRequestException("Network unavailable"));
 
-        var result = await service.GetVersionStatusAsync("docker.barkfluff.com:5000/barkfluff-users:1.0.9");
+        var result = await service.GetVersionStatusAsync("docker.barkfluff.com/barkfluff-users:1.0.9");
 
         Assert.Null(result.CurrentVersion);
         Assert.Null(result.LatestVersion);
@@ -151,7 +151,7 @@ public class DockerRegistryServiceTests
             };
         }))
         {
-            BaseAddress = new Uri("https://docker.barkfluff.com:5000")
+            BaseAddress = new Uri("https://docker.barkfluff.com")
         };
 
         return new DockerRegistryService(client, new MemoryCache(new MemoryCacheOptions()), NullLogger<DockerRegistryService>.Instance);
@@ -161,7 +161,7 @@ public class DockerRegistryServiceTests
     {
         var client = new HttpClient(new StubHttpMessageHandler(handler))
         {
-            BaseAddress = new Uri("https://docker.barkfluff.com:5000")
+            BaseAddress = new Uri("https://docker.barkfluff.com")
         };
 
         return new DockerRegistryService(client, new MemoryCache(new MemoryCacheOptions()), NullLogger<DockerRegistryService>.Instance);

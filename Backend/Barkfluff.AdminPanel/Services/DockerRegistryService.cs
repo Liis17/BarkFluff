@@ -10,7 +10,7 @@ namespace Barkfluff.AdminPanel.Services;
 
 public class DockerRegistryService
 {
-    private const string RegistryPrefix = "docker.barkfluff.com:5000/";
+    private const string RegistryPrefix = "docker.barkfluff.com/";
     private static readonly SemaphoreSlim ManifestRequestGate = new(8, 8);
     private static readonly Regex SemverTagRegex = new(
         "^(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)$",

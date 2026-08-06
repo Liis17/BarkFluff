@@ -73,7 +73,7 @@ public class Program
 
         builder.Services.AddHttpClient<DockerRegistryService>(client =>
         {
-            client.BaseAddress = new Uri("https://docker.barkfluff.com:5000");
+            client.BaseAddress = new Uri("https://docker.barkfluff.com");
             client.Timeout = TimeSpan.FromSeconds(5);
         });
 
