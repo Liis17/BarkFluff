@@ -408,14 +408,6 @@ services:
   #  networks:
   #    - barkfluff-network
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflared-backend
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
-    networks:
-      - barkfluff-network
-
 networks:
   barkfluff-network:
-    external: true
+    driver: bridge

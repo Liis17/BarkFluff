@@ -3,7 +3,6 @@ services:
     container_name: webserver
     image: docker.barkfluff.com/barkfluff-webserver-dev:latest
     restart: always
-    network_mode: host
     ports:
       - "${WEBSERVER_PORT}:${WEBSERVER_PORT}"
     environment:
@@ -58,10 +57,18 @@ services:
       UPLOAD_TOKEN: ${UPLOAD_TOKEN}
       CLIENTSTORAGE_PORT: ${CLIENTSTORAGE_PORT}
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-msk
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - barkfluff-network
+
 volumes:
   clientstorage-data:
   clientstorage-cache:
 
 networks:
   barkfluff-network:
-    driver: bridge
+    external: true
