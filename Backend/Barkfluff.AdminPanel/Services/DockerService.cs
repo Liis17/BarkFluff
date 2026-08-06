@@ -445,7 +445,7 @@ public class DockerService
     private async Task PopulateImageDigestsAsync(IEnumerable<ContainerStatusDto> containers)
     {
         await Task.WhenAll(containers
-            .Where(container => container.Image.StartsWith("docker.barkfluff.com:5000/barkfluff-", StringComparison.OrdinalIgnoreCase))
+            .Where(container => container.Image.StartsWith("docker.barkfluff.com/barkfluff-", StringComparison.OrdinalIgnoreCase))
             .Select(PopulateImageDigestAsync));
     }
 

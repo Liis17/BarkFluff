@@ -27,7 +27,7 @@ services:
       - barkfluff-network
 
   configuration2:
-    image: docker.barkfluff.com:5000/barkfluff-configuration-dev:latest
+    image: docker.barkfluff.com/barkfluff-configuration-dev:latest
     container_name: configuration2
     restart: always
     environment:
@@ -43,7 +43,7 @@ services:
       - barkfluff-network
 
   federation2:
-    image: docker.barkfluff.com:5000/barkfluff-federation-dev:latest
+    image: docker.barkfluff.com/barkfluff-federation-dev:latest
     container_name: federation2
     restart: always
     environment:
