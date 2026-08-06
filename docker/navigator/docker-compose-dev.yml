@@ -23,7 +23,7 @@ services:
     expose:
       - "${NAVIGATOR_HTTP_PORT}"
     networks:
-      - barkfluff-navigator-network
+      - barkfluff-network
 
   nginx:
     image: nginx:alpine
@@ -37,8 +37,8 @@ services:
       - ./certs:/etc/nginx/certs:ro
     restart: always
     networks:
-      - barkfluff-navigator-network
+      - barkfluff-network
 
 networks:
-  barkfluff-network:
+  barkfluff-navigator-network:
     driver: bridge
