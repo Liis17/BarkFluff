@@ -65,6 +65,23 @@
             onSelected: function () {
                 BF.nodePicker.close();
                 renderNodeBar();
+                // Токены лежат под неймспейсом ноды: у вернувшегося пользователя
+                // сессия уже есть, и показывать ему форму входа не за чем.
+                resumeOrShowLogin();
+            }
+        });
+    }
+
+    /** Живая сессия на выбранной ноде уводит сразу в мессенджер, иначе показываем вход. */
+    function resumeOrShowLogin() {
+        if (!BF.tokens.get()) { startFastAuth(); return; }
+
+        document.body.style.visibility = 'hidden';
+        BF.auth.getValidAccessToken().then(function (token) {
+            if (token) {
+                window.location.href = '/messenger';
+            } else {
+                document.body.style.visibility = '';
                 startFastAuth();
             }
         });
@@ -278,18 +295,6 @@
         // Без ноды проверять сессию не у кого — токены хранятся по нодам.
         if (!ensureNode()) return;
 
-        if (BF.tokens.get()) {
-            document.body.style.visibility = 'hidden';
-            BF.auth.getValidAccessToken().then(function (token) {
-                if (token) {
-                    window.location.href = '/messenger';
-                } else {
-                    document.body.style.visibility = '';
-                    startFastAuth();
-                }
-            });
-        } else {
-            startFastAuth();
-        }
+        resumeOrShowLogin();
     });
 })();
