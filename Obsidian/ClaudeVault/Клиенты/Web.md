@@ -60,6 +60,13 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - Смена сервера — `settings.js`, раздел «Сервер»: `BF.node.clear()` + переход на `/`.
   Сессия покидаемой ноды сохраняется.
 
+⚠️ **Локальный стенд без TLS.** Клиент держит на origin ноды 9 долгоживущих
+server-streaming подписок (8 Updates + Calls) плюс Onliner. По HTTP/1.1 браузер даёт
+**6 соединений на origin**, поэтому на стенде без TLS (Kestrel напрямую, HTTP/2 без
+TLS не согласуется) unary-вызовы к ноде встают в очередь и висят. За nginx с TLS это
+HTTP/2 без такого лимита. Симптом на стенде: `GetUploadUrl` и подобные не возвращаются,
+пока не остановить стримы.
+
 **Неймспейс хранилища.** Привязаны к ноде: `barkfluff_auth`, `barkfluff_temp`,
 `bf_private_chat_keys`, `bf_web_push_enabled`, `bf_chat_drafts_{userId}` — все с суффиксом
 `@{origin}`. Общие (без суффикса): `barkfluff_device_id` (одно устройство на все ноды, как
