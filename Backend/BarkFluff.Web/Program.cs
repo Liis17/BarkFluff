@@ -44,28 +44,22 @@ builder.WebHost.ConfigureKestrel(options =>
 
 builder.Services.AddBarkFluffMetrics("BarkFluff.Web");
 
-// CORS — разрешаем обращения из настроенных origin'ов; также публикуем gRPC-Web-трейлеры.
-// В проде список обязателен; localhost-fallback оставляем только для разработки.
-var allowedOrigins = builder.Configuration.GetSection("Web:AllowedOrigins").Get<string[]>()
-                     ?? Array.Empty<string>();
-if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
-    allowedOrigins = new[] { "http://localhost:7016" };
-
+// CORS — веб-клиент раздаётся с глобального web.barkfluff.com, а gRPC-Web ходит
+// напрямую в ноду, поэтому origin вызывающего заранее неизвестен и список не ведём.
+//
+// AllowCredentials не нужен: токен идёт заголовком x-auth-token, куки в API не
+// участвуют — значит CSRF нерелевантен, а AllowAnyOrigin допустим. API ноды и так
+// публичный и защищён токеном.
+//
+// AllowAnyHeader вместо списка: он рассинхронизировался с клиентом (разрешался
+// x-os, а метадата шлёт x-os-name) и same-origin это не выявлял — preflight'а не было.
+//
+// Preflight кэшируем на сутки, иначе каждый unary-вызов удваивает RTT.
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
-    .WithOrigins(allowedOrigins)
+    .AllowAnyOrigin()
     .WithMethods("GET", "POST", "OPTIONS")
-    .WithHeaders(
-        "content-type",
-        "x-grpc-web",
-        "x-user-agent",
-        "x-auth-token",
-        "x-device-id",
-        "x-device-name",
-        "x-ip",
-        "x-os",
-        "x-app-name",
-        "x-app-version")
-    .AllowCredentials()
+    .AllowAnyHeader()
+    .SetPreflightMaxAge(TimeSpan.FromHours(24))
     .WithExposedHeaders(
         "grpc-status",
         "grpc-message",
@@ -90,7 +84,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // gRPC-Web middleware (ниже) превращает входящий HTTP/1.1 gRPC-Web запрос
 // в обычный gRPC HTTP/2, после чего YARP форвардит его в соответствующий сервис.
 builder.Services.AddReverseProxy()
-    .LoadFromMemory(BuildRoutes(), BuildClusters(builder.Configuration));
+    .LoadFromMemory(BuildRoutes(isShellMode), BuildClusters(builder.Configuration, isShellMode));
 
 builder.Services.AddHealthChecks();
 
@@ -353,20 +347,31 @@ app.Run();
 
 // --- YARP routes / clusters ---
 
-static IReadOnlyList<RouteConfig> BuildRoutes()
+static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode)
 {
     // Полные имена gRPC-сервисов из *_api.proto (package + service).
-    (string route, string cluster, string path)[] grpcRoutes =
-    {
-        ("identity",  "identity",  "/barkfluff.identity.IdentityApi/{**catchall}"),
-        ("users",     "users",     "/barkfluff.users.UsersApi/{**catchall}"),
-        ("messages",  "messages",  "/barkfluff.messages.MessagesApi/{**catchall}"),
-        ("files",     "files",     "/barkfluff.files.FilesApi/{**catchall}"),
-        ("updates",   "updates",   "/barkfluff.updates.UpdatesApi/{**catchall}"),
-        ("onliner",   "onliner",   "/barkfluff.onliner.OnlinerApi/{**catchall}"),
-        ("fast-auth", "fast-auth", "/barkfluff.fast.auth.FastAuthApi/{**catchall}"),
-        ("calls",     "calls",     "/barkfluff.calls.CallsApi/{**catchall}"),
-    };
+    // Navigator — единственный маршрут, который есть и в shell-режиме: с него
+    // начинается выбор ноды, а сам каталог живёт вне ноды.
+    (string route, string cluster, string path)[] grpcRoutes = isShellMode
+        ? new[]
+        {
+            ("navigator", "navigator", "/barkfluff.navigator.NavigatorApi/{**catchall}"),
+        }
+        : new[]
+        {
+            ("identity",  "identity",  "/barkfluff.identity.IdentityApi/{**catchall}"),
+            ("users",     "users",     "/barkfluff.users.UsersApi/{**catchall}"),
+            ("messages",  "messages",  "/barkfluff.messages.MessagesApi/{**catchall}"),
+            ("files",     "files",     "/barkfluff.files.FilesApi/{**catchall}"),
+            ("updates",   "updates",   "/barkfluff.updates.UpdatesApi/{**catchall}"),
+            ("onliner",   "onliner",   "/barkfluff.onliner.OnlinerApi/{**catchall}"),
+            ("fast-auth", "fast-auth", "/barkfluff.fast.auth.FastAuthApi/{**catchall}"),
+            ("calls",     "calls",     "/barkfluff.calls.CallsApi/{**catchall}"),
+            // Beacon — метаданные ноды (имя, цвета, livekit_url) после подключения.
+            ("beacon",    "beacon",    "/barkfluff.beacon.BeaconApi/{**catchall}"),
+            // Каталог нод доступен и с ноды: переключение сервера работает и там.
+            ("navigator", "navigator", "/barkfluff.navigator.NavigatorApi/{**catchall}"),
+        };
 
     var routes = new List<RouteConfig>();
     // Content-Length из оригинального grpcwebtext запроса (base64-размер) не соответствует
@@ -387,6 +392,10 @@ static IReadOnlyList<RouteConfig> BuildRoutes()
         });
     }
 
+    // Шелл не проксирует файлы: аплоад идёт напрямую в ноду.
+    if (isShellMode)
+        return routes;
+
     // HTTP upload — client-streaming недоступен в gRPC-Web, поэтому используем прямой HTTP POST.
     routes.Add(new RouteConfig
     {
@@ -406,10 +415,15 @@ static IReadOnlyList<RouteConfig> BuildRoutes()
     return routes;
 }
 
-static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
+static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config, bool isShellMode)
 {
+    // Публичный каталог нод — единственный внешний адрес, который знает и шелл, и нода.
+    var navigatorCluster = ("navigator", "NavigatorService:Host", "https://navigator.barkfluff.com:443");
+
     // HTTP/2 (h2c) cluster для gRPC-вызовов — сервисы слушают gRPC на основном порту.
-    (string clusterId, string configKey, string defaultHost)[] grpcClusters =
+    (string clusterId, string configKey, string defaultHost)[] grpcClusters = isShellMode
+        ? new[] { navigatorCluster }
+        : new[]
     {
         ("identity",  "IdentityService:Host",  "http://identity:7000"),
         ("users",     "UsersService:Host",     "http://users:7001"),
@@ -419,6 +433,8 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
         ("onliner",   "OnlinerService:Host",   "http://onliner:7009"),
         ("fast-auth", "FastAuthService:Host",  "http://fast-auth:7008"),
         ("calls",     "CallsService:Host",     "http://calls:7025"),
+        ("beacon",    "BeaconService:Host",    "http://beacon:7002"),
+        navigatorCluster,
     };
 
     // Сервисы с server-streaming RPC: YARP не должен убивать долгоживущие соединения.
@@ -449,6 +465,9 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
             }
         });
     }
+
+    if (isShellMode)
+        return clusters;
 
     // Отдельный cluster для файлового upload (обычный REST POST).
     // HTTP/1.1-порт Files-сервиса (порт для REST-контроллера загрузки файлов).
