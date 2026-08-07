@@ -16,6 +16,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
     private const int MaxDescriptionLength = 512;
     private const int MaxLocationLength = 128;
     private const int MaxBeaconHostLength = 2048;
+    private const int MaxWebEndpointLength = 2048;
 
     [GeneratedRegex(@"^#?[0-9A-Fa-f]{6}$", RegexOptions.Compiled)]
     private static partial Regex HexColorRegex();
@@ -115,6 +116,20 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
             throw new ArgumentException($"Location не должно превышать {MaxLocationLength} символов");
         }
 
+        // web_endpoint необязателен: нода без веб-клиента просто не попадёт в список выбора.
+        if (!string.IsNullOrWhiteSpace(server.WebEndpoint))
+        {
+            if (server.WebEndpoint.Length > MaxWebEndpointLength || !IsValidWebEndpoint(server.WebEndpoint))
+            {
+                _logger.LogWarning(
+                    "Попытка регистрации сервера '{ServerName}' с некорректным WebEndpoint: {WebEndpoint}",
+                    server.Name,
+                    server.WebEndpoint
+                );
+                throw new InvalidWebEndpointException();
+            }
+        }
+
         ValidateHexColor(server.ColorLiteHex);
         ValidateHexColor(server.ColorMainHex);
         ValidateHexColor(server.ColorHardHex);
@@ -160,6 +175,15 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
         }
 
         return Uri.CheckHostName(host) != UriHostNameType.Unknown;
+    }
+
+    // Браузер получит этот адрес как origin gRPC-Web клиентов, поэтому требуем
+    // абсолютный http/https-URI без пути.
+    private static bool IsValidWebEndpoint(string endpoint)
+    {
+        return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+               && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+               && Uri.CheckHostName(uri.Host) != UriHostNameType.Unknown;
     }
 
     private static void ValidateHexColor(string color)

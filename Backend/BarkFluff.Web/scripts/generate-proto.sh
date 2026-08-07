@@ -13,7 +13,7 @@ OUT_DIR="$PROJECT_ROOT/wwwroot/js/proto"
 rm -rf "$TEMP_DIR"
 mkdir -p "$TEMP_DIR" "$OUT_DIR"
 
-PROTOS=(shared.proto identity_api.proto users_api.proto messages_api.proto files_api.proto updates_api.proto onliner_api.proto fast_auth_api.proto calls_api.proto)
+PROTOS=(shared.proto identity_api.proto users_api.proto messages_api.proto files_api.proto updates_api.proto onliner_api.proto fast_auth_api.proto calls_api.proto navigator_api.proto beacon_api.proto)
 
 echo "[1/3] protoc → $TEMP_DIR"
 ( cd "$PROTO_DIR" && \
@@ -44,6 +44,10 @@ const fastAuthPb  = require('./fast_auth_api_pb.js');
 const fastAuthSvc = require('./fast_auth_api_grpc_web_pb.js');
 const callsPb     = require('./calls_api_pb.js');
 const callsSvc    = require('./calls_api_grpc_web_pb.js');
+const navigatorPb  = require('./navigator_api_pb.js');
+const navigatorSvc = require('./navigator_api_grpc_web_pb.js');
+const beaconPb     = require('./beacon_api_pb.js');
+const beaconSvc    = require('./beacon_api_grpc_web_pb.js');
 
 const barkfluff = {
     grpcWeb: grpcWeb,
@@ -64,6 +68,10 @@ const barkfluff = {
     FastAuthApiPromiseClient:   fastAuthSvc.FastAuthApiPromiseClient,
     CallsApiClient:             callsSvc.CallsApiClient                || callsSvc.CallsApiPromiseClient,
     CallsApiPromiseClient:      callsSvc.CallsApiPromiseClient,
+    NavigatorApiClient:         navigatorSvc.NavigatorApiClient        || navigatorSvc.NavigatorApiPromiseClient,
+    NavigatorApiPromiseClient:  navigatorSvc.NavigatorApiPromiseClient,
+    BeaconApiClient:            beaconSvc.BeaconApiClient              || beaconSvc.BeaconApiPromiseClient,
+    BeaconApiPromiseClient:     beaconSvc.BeaconApiPromiseClient,
 };
 
 if (typeof window !== 'undefined') window.barkfluff = barkfluff;

@@ -81,7 +81,9 @@ $protos = @(
     'updates_api.proto',
     'onliner_api.proto',
     'fast_auth_api.proto',
-    'calls_api.proto'
+    'calls_api.proto',
+    'navigator_api.proto',
+    'beacon_api.proto'
 )
 
 # --- 2. protoc → commonjs JS + gRPC-Web клиенты ---
@@ -125,6 +127,10 @@ const fastAuthPb  = require('./fast_auth_api_pb.js');
 const fastAuthSvc = require('./fast_auth_api_grpc_web_pb.js');
 const callsPb     = require('./calls_api_pb.js');
 const callsSvc    = require('./calls_api_grpc_web_pb.js');
+const navigatorPb  = require('./navigator_api_pb.js');
+const navigatorSvc = require('./navigator_api_grpc_web_pb.js');
+const beaconPb     = require('./beacon_api_pb.js');
+const beaconSvc    = require('./beacon_api_grpc_web_pb.js');
 
 // В protoc-gen-js (commonjs) сообщения экспортируются в global proto.<package>.<Message>
 // Мы прокидываем глобальный proto namespace наружу как window.barkfluff.proto
@@ -148,6 +154,10 @@ const barkfluff = {
     FastAuthApiPromiseClient:   fastAuthSvc.FastAuthApiPromiseClient,
     CallsApiClient:             callsSvc.CallsApiClient                || callsSvc.CallsApiPromiseClient,
     CallsApiPromiseClient:      callsSvc.CallsApiPromiseClient,
+    NavigatorApiClient:         navigatorSvc.NavigatorApiClient        || navigatorSvc.NavigatorApiPromiseClient,
+    NavigatorApiPromiseClient:  navigatorSvc.NavigatorApiPromiseClient,
+    BeaconApiClient:            beaconSvc.BeaconApiClient              || beaconSvc.BeaconApiPromiseClient,
+    BeaconApiPromiseClient:     beaconSvc.BeaconApiPromiseClient,
 };
 
 if (typeof window !== 'undefined') window.barkfluff = barkfluff;

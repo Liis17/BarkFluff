@@ -73,6 +73,28 @@ using (var scope = app.Services.CreateScope())
 {
     var ctx = scope.ServiceProvider.GetRequiredService<NavigatorContext>();
     ctx.Database.EnsureCreated();
+    EnsureServersColumn(ctx, "WebEndpoint", "TEXT NULL");
+}
+
+// EnsureCreated() создаёт схему только для новой БД, миграций в проекте нет —
+// поэтому поля, добавленные позже, дописываем сами. Без этого на существующем
+// navigator.db любой запрос к новой колонке падает с "no such column".
+static void EnsureServersColumn(NavigatorContext ctx, string column, string definition)
+{
+    var connection = ctx.Database.GetDbConnection();
+    if (connection.State != System.Data.ConnectionState.Open)
+        connection.Open();
+
+    using (var check = connection.CreateCommand())
+    {
+        check.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('Servers') WHERE name = '{column}';";
+        if (Convert.ToInt64(check.ExecuteScalar()) > 0)
+            return;
+    }
+
+    using var alter = connection.CreateCommand();
+    alter.CommandText = $"ALTER TABLE \"Servers\" ADD COLUMN \"{column}\" {definition};";
+    alter.ExecuteNonQuery();
 }
 
 app.MapGrpcReflectionService();
@@ -125,6 +147,7 @@ app.MapGet("/admin/api/servers", async (ServersStorage serversStorage, Cancellat
             server.Location,
             beaconHost = server.BeaconHost,
             beaconPort = server.BeaconPort,
+            webEndpoint = server.WebEndpoint ?? string.Empty,
             server.LastSeenAt,
             color = server.ColorMainHex
         }));
