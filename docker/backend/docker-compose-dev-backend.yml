@@ -162,6 +162,8 @@ services:
       FilesService__Host: "http://files:7005"
       UpdatesService__Host: "http://updates:7015"
       OnlinerService__Host: "http://onliner:7009"
+      BeaconService__Host: "http://beacon:7002"
+      NavigatorService__Host: "${NAVIGATOR_SERVICE_HOST:-https://navigator.barkfluff.com:443}"
       Web__Push__VapidKey: "${WEB_PUSH_VAPID_KEY}"
       Web__Push__Firebase__ApiKey: "${WEB_PUSH_FIREBASE_API_KEY}"
       Web__Push__Firebase__AuthDomain: "${WEB_PUSH_FIREBASE_AUTH_DOMAIN}"
@@ -179,6 +181,7 @@ services:
       - files
       - updates
       - onliner
+      - beacon
 
   developers:
     image: docker.barkfluff.com/barkfluff-developers-dev:latest
