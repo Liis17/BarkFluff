@@ -507,5 +507,18 @@
   "unit.bytes": "{value} B",
   "unit.gb": "{value} GB",
   "unit.kb": "{value} KB",
-  "unit.mb": "{value} MB"
+  "unit.mb": "{value} MB",
+  "node.section": "Server selection",
+  "node.intro": "Choose the BarkFluff server to connect to. Accounts are per server.",
+  "node.manual": "Server address",
+  "node.connect": "Connect",
+  "node.change": "Change",
+  "node.recent": "Recent",
+  "node.empty": "Server list unavailable. Enter an address manually.",
+  "node.noWebSupport": "Web client not supported",
+  "node.error.address": "Invalid server address",
+  "node.error.unreachable": "Server is not responding. Check the address.",
+  "settings.section.server": "Server",
+  "settings.server.change": "Change server",
+  "settings.server.confirm": "Go back to server selection? Your session on this server will be kept."
 }

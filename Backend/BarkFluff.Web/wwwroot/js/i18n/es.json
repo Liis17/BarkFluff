@@ -507,5 +507,18 @@
   "unit.bytes": "{value} B",
   "unit.gb": "{value} GB",
   "unit.kb": "{value} KB",
-  "unit.mb": "{value} MB"
+  "unit.mb": "{value} MB",
+  "node.section": "Selección de servidor",
+  "node.intro": "Elige el servidor de BarkFluff al que conectarte. Las cuentas son propias de cada servidor.",
+  "node.manual": "Dirección del servidor",
+  "node.connect": "Conectar",
+  "node.change": "Cambiar",
+  "node.recent": "Reciente",
+  "node.empty": "Lista de servidores no disponible. Introduce una dirección manualmente.",
+  "node.noWebSupport": "Cliente web no compatible",
+  "node.error.address": "Dirección de servidor no válida",
+  "node.error.unreachable": "El servidor no responde. Comprueba la dirección.",
+  "settings.section.server": "Servidor",
+  "settings.server.change": "Cambiar de servidor",
+  "settings.server.confirm": "¿Volver a la selección de servidor? Se mantendrá tu sesión en este servidor."
 }
