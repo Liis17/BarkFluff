@@ -25,6 +25,9 @@ public class ServerInfo
     public string[]? TlsSpkiSha256 { get; set; }
     public int[]? FederationProtocolVersions { get; set; }
     public List<NavigatorSigningKeyInfo>? SigningKeys { get; set; }
+
+    // gRPC-Web шлюз ноды для браузера (BarkFluff.Web). Пусто — нода не поддерживает веб-клиент.
+    public string? WebEndpoint { get; set; }
 }
 
 public class NavigatorSigningKeyInfo
