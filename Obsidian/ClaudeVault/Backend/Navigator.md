@@ -59,7 +59,26 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 
 ## Domain/ServerInfo
 
-Поля: `Id` (long, ключ), `CreatedAt`, `AddedBy`, `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex/MainHex/HardHex` + этап 1.5: `LastSeenAt`, `ServerName?`, `FederationEndpoint?`, `TlsSpkiSha256?`, `FederationProtocolVersions?`, `SigningKeys? : List<NavigatorSigningKeyInfo>`. **`AccountsCount` в доменной модели нет** — существует только в proto-ответе, всегда `0`.
+Поля: `Id` (long, ключ), `CreatedAt`, `AddedBy`, `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex/MainHex/HardHex` + этап 1.5: `LastSeenAt`, `ServerName?`, `FederationEndpoint?`, `TlsSpkiSha256?`, `FederationProtocolVersions?`, `SigningKeys? : List<NavigatorSigningKeyInfo>` + `WebEndpoint?`. **`AccountsCount` в доменной модели нет** — существует только в proto-ответе, всегда `0`.
+
+### `web_endpoint` — адрес веб-клиента ноды
+
+`ServerInfo.web_endpoint` (proto-поле 13) — абсолютный origin gRPC-Web шлюза ноды
+(`https://gw.node.example`). Нужен для бутстрапа [[Клиенты/Web]]: браузер достаёт Beacon
+**только через этот шлюз**, поэтому его адрес обязан приходить из каталога — иначе
+дискавери замыкается сам на себя. Пустое значение = нода не предлагается веб-клиенту
+(карточка в списке заблокирована).
+
+- Заполняет [[Backend/Beacon]] (`ServerRegistrationService`) из `ExternalEndpoint:Host`
+  сервиса Web. Недоступная конфигурация не ломает регистрацию — поле просто уходит пустым.
+- Валидация в `RegisterServerCommandHandler`: длина ≤ 2048, абсолютный http/https-URI с
+  разбираемым хостом, иначе `InvalidWebEndpointException`. Поле необязательное.
+- Отдаётся в `ListServers` и `GetServerByName`, показывается в админке.
+- ⚠️ Схему создаёт `EnsureCreated()`, миграций в проекте нет — новая колонка на
+  существующей БД сама не появляется. Поэтому `Program.cs` после `EnsureCreated()` делает
+  идемпотентный `ALTER TABLE "Servers" ADD COLUMN` (`EnsureServersColumn`, проверка через
+  `pragma_table_info`). Следующие поля добавлять так же, иначе запрос упадёт с
+  «no such column» у всех клиентов.
 
 В proto `ServerInfo` адрес маяка передаётся как `beacon_uri: ServiceEndpoint` (а не отдельные host/port).
 

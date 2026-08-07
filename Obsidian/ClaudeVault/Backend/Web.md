@@ -13,6 +13,35 @@ dotnet build BarkFluff.Web.csproj
 docker-compose -f docker-compose-dev.yml up web
 ```
 
+## Режимы (`Web:Mode`)
+
+| Режим | Где живёт | Что делает |
+|---|---|---|
+| `Node` (по умолчанию) | внутри стека ноды | статика + все кластеры сервисов + Beacon + Navigator + `/api/files/upload` |
+| `Shell` | отдельный стек `docker/webshell`, домен `web.barkfluff.com` | только статика и прокси `NavigatorApi` |
+
+`Web:Mode` читается **до** `LoadConfiguration` (env-переменные `CreateBuilder` подхватывает
+сам), и в `Shell` этот вызов пропускается: рядом с шеллом нет Configuration-сервиса, а
+`LoadConfiguration` падает без ретраев. Тот же осознанный выход из платформенного шаблона,
+что у [[Backend/Navigator]]. Serilog (durable Seq-буфер на диске) и метрики недоступный Seq
+переживают, их отключать не нужно.
+
+Эндпоинт `/node-config.js` (`Cache-Control: no-store`) отдаёт клиенту режим:
+`self.BF_NODE_CONFIG = {"pinned":true,"navigatorProxy":false}` у ноды и
+`{"pinned":false,"navigatorProxy":true}` у шелла. По `pinned` [[Клиенты/Web]] решает,
+показывать ли выбор сервера.
+
+## CORS
+
+`AllowAnyOrigin` + `AllowAnyHeader` + `SetPreflightMaxAge(24ч)`, **без** `AllowCredentials`.
+
+Страница раздаётся с глобального `web.barkfluff.com`, а gRPC-Web идёт напрямую в ноду —
+origin вызывающего заранее неизвестен, вести список нечем. `AllowCredentials` не нужен:
+токен передаётся заголовком `x-auth-token`, куки в API не участвуют, поэтому CSRF
+нерелевантен. Прежний явный список заголовков разошёлся с клиентом (разрешался `x-os`, а
+`metadata.js` шлёт `x-os-name`) — same-origin это не выявлял, preflight'а не было.
+Ключ `Web:AllowedOrigins` удалён.
+
 ## Архитектура
 
 Три функции:
@@ -41,11 +70,15 @@ docker-compose -f docker-compose-dev.yml up web
 | `/barkfluff.onliner.OnlinerApi/{**catch-all}` | Onliner (7009) | gRPC/HTTP2 |
 | `/barkfluff.fast.auth.FastAuthApi/{**catch-all}` | FastAuth (7008) | gRPC/HTTP2 (server-streaming) |
 | `/barkfluff.calls.CallsApi/{**catch-all}` | Calls (7025) | gRPC/HTTP2 (server-streaming, входит в `streamingServices`, 24h timeout) |
-| `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 |
+| `/barkfluff.beacon.BeaconApi/{**catch-all}` | Beacon (`BeaconService:Host`, 7002) | gRPC/HTTP2 — метаданные ноды для экрана выбора |
+| `/barkfluff.navigator.NavigatorApi/{**catch-all}` | Navigator (`NavigatorService:Host`, публичный TLS) | gRPC/HTTP2 — каталог нод; **единственный маршрут в режиме Shell** |
+| `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 (нет в режиме Shell) |
 
 ## Frontend JS Modules (`wwwroot/js/app/`)
 
 **Инфраструктура:**
+- `node.js` — `BF.node`: выбранная нода, неймспейс ключей хранилища, история, клиенты Beacon/Navigator. Загружается первым (см. [[Клиенты/Web]])
+- `nodepicker.js` — `BF.nodePicker`: экран выбора ноды на `index.html`
 - `device.js` — `BF.device`: deviceId, browserName, osName
 - `tokens.js` — `BF.tokens`: TokenStore (localStorage/sessionStorage)
 - `metadata.js` — `BF.metadata`: сборка gRPC metadata с base64-заголовками
@@ -275,6 +308,18 @@ YARP-маршрут `fast-auth` входит в `streamingServices` set — `Act
 `scripts/firebase-compat-entry.js` собирается esbuild в `wwwroot/js/vendor/firebase-messaging-compat.bundle.js`; Docker повторяет эту сборку. `service-worker.js` подключает bundle и `/pwa-config.js`, принимает FCM data-only события и показывает безопасные уведомления. Новая версия worker ждёт явного подтверждения пользователя и получает `SKIP_WAITING` только после выбора «Обновить», поэтому не меняет оболочку посреди сессии.
 
 В `docker/backend/docker-compose-dev-backend.yml` переменные из `.env` пробрасываются в контейнер `web` как `Web__Push__*`. Шаблон значений и источники в Firebase Console — `docker/backend/sample-backend.env`; это только публичные Firebase Web/VAPID данные, не service-account ключи.
+
+## Деплой шелла (`docker/webshell/`)
+
+Автономный стек: compose + nginx + `sample.env`. Сети ноды и Configuration ему не нужны —
+в `Shell` проксируется только Navigator по публичному TLS-адресу (`NAVIGATOR_SERVICE_HOST`).
+
+Шлюз ноды описан в `docker/nginx/web.conf` и временно слушает **оба** имени
+(`gw.barkfluff.com` и `web.barkfluff.com`), чтобы переключение прошло без простоя: сначала
+поднимается шелл, затем DNS `web.barkfluff.com` переводится на него, и только после этого
+имя убирается из конфига ноды. `gw.barkfluff.com` — заглушка, оператор подставляет домен
+своей ноды и указывает его же в `ExternalEndpoint:Host` сервиса Web — оттуда
+[[Backend/Beacon]] берёт `web_endpoint` для [[Backend/Navigator]].
 
 ## Зависимости
 
