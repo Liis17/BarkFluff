@@ -9,7 +9,13 @@
     window.BF = window.BF || {};
 
     var bf = window.barkfluff;
-    var origin = window.location.origin;
+    // Origin выбранной ноды. Клиенты создаются синхронно ниже, поэтому адрес
+    // обязан быть известен уже сейчас — сети здесь быть не может.
+    var origin = BF.node.origin();
+    if (!origin) {
+        window.location.href = '/';
+        return;
+    }
 
     // gRPC-Web callback-style clients (needed for server-streaming)
     var identityClient = new bf.IdentityApiClient(origin);

@@ -7,7 +7,7 @@
 
     window.BF = window.BF || {};
 
-    var ENABLED_KEY = 'bf_web_push_enabled';
+    function ENABLED_KEY() { return BF.node.key('bf_web_push_enabled'); }
     var registration = null;
     var deferredInstallPrompt = null;
     var initialized = false;
@@ -67,7 +67,7 @@
                 return BF.api.setFirebaseToken(token, 2)
                     .then(function () { return BF.api.setNotificationsEnabled(true); })
                     .then(function () {
-                        localStorage.setItem(ENABLED_KEY, '1');
+                        localStorage.setItem(ENABLED_KEY(), '1');
                         return true;
                     });
             });
@@ -87,18 +87,18 @@
         }).catch(function () {});
 
         return Promise.all([serverClear, deleteToken]).then(function () {
-            localStorage.removeItem(ENABLED_KEY);
+            localStorage.removeItem(ENABLED_KEY());
             return true;
         });
     }
 
     function clearOnLogout() {
-        if (localStorage.getItem(ENABLED_KEY) !== '1') return Promise.resolve();
+        if (localStorage.getItem(ENABLED_KEY()) !== '1') return Promise.resolve();
         return disable();
     }
 
     function syncExistingToken(reg) {
-        if (!isSupported() || localStorage.getItem(ENABLED_KEY) !== '1' || Notification.permission !== 'granted') return Promise.resolve();
+        if (!isSupported() || localStorage.getItem(ENABLED_KEY()) !== '1' || Notification.permission !== 'granted') return Promise.resolve();
         var c = config();
         return ensureFirebase().getToken({ vapidKey: c.vapidKey, serviceWorkerRegistration: reg })
             .then(function (token) {
@@ -112,7 +112,7 @@
     function status() {
         if (!isSupported()) return 'unsupported';
         if (Notification.permission === 'denied') return 'denied';
-        return localStorage.getItem(ENABLED_KEY) === '1' ? 'enabled' : 'disabled';
+        return localStorage.getItem(ENABLED_KEY()) === '1' ? 'enabled' : 'disabled';
     }
 
     function init() {
@@ -123,7 +123,7 @@
             deferredInstallPrompt = event;
             window.dispatchEvent(new CustomEvent('bf-pwa-install-available'));
         });
-        if (localStorage.getItem(ENABLED_KEY) === '1' && window.Notification && Notification.permission === 'denied') {
+        if (localStorage.getItem(ENABLED_KEY()) === '1' && window.Notification && Notification.permission === 'denied') {
             disable();
         } else {
             registerServiceWorker().then(syncExistingToken);
@@ -154,7 +154,7 @@
         disable: disable,
         clearOnLogout: clearOnLogout,
         isSupported: isSupported,
-        isEnabled: function () { return localStorage.getItem(ENABLED_KEY) === '1'; },
+        isEnabled: function () { return localStorage.getItem(ENABLED_KEY()) === '1'; },
         status: status,
         canInstall: function () { return !!deferredInstallPrompt; },
         install: install,

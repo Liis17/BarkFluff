@@ -20,7 +20,7 @@
     var NONCE_BYTES = 12;
     var GCM_TAG_BITS = 128;
     var VERIFIER_CONSTANT = 'BARKFLUFF_PRIVATE_CHAT_VERIFIER';
-    var STORAGE_KEY = 'bf_private_chat_keys';
+    function STORAGE_KEY() { return BF.node.key('bf_private_chat_keys'); }
 
     var enc = new TextEncoder();
     var dec = new TextDecoder();
@@ -47,12 +47,12 @@
     // --- Хранение ключей ---
 
     function readStore() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY())) || {}; }
         catch (e) { return {}; }
     }
 
     function writeStore(store) {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch (e) {}
+        try { localStorage.setItem(STORAGE_KEY(), JSON.stringify(store)); } catch (e) {}
     }
 
     /** Сохранить ключ чата. remember=true → localStorage, иначе только память (до перезагрузки). */
@@ -91,7 +91,7 @@
     function clearAll() {
         keyCache.clear();
         cryptoKeyCache.clear();
-        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+        try { localStorage.removeItem(STORAGE_KEY()); } catch (e) {}
     }
 
     // --- KDF + verifier ---

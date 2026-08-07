@@ -2,13 +2,14 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-v2';
+const CACHE_NAME = 'barkfluff-shell-v3';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
     '/js/vendor/firebase-messaging-compat.bundle.js',
     '/js/i18n/ru.json', '/js/i18n/en.json', '/js/i18n/es.json', '/js/i18n/de.json', '/js/i18n/zh-Hans.json',
     '/js/app/i18n.js',
+    '/js/app/node.js',
     '/js/app/device.js', '/js/app/tokens.js', '/js/app/metadata.js', '/js/app/clients.js', '/js/app/utils.js',
     '/js/app/sound.js', '/js/app/api.js', '/js/app/drafts.js', '/js/app/privatechat.js', '/js/app/newchat.js',
     '/js/app/files.js', '/js/app/messages.js', '/js/app/realtime.js', '/js/app/calls.js', '/js/app/calls-ui.js',
@@ -38,7 +39,8 @@ self.addEventListener('fetch', function (event) {
     const url = new URL(request.url);
     if (url.origin !== self.location.origin || request.method !== 'GET') return;
     if (url.pathname.startsWith('/barkfluff.') || url.pathname.startsWith('/api/') ||
-        url.pathname === '/pwa-config.js' || url.pathname.startsWith('/legal/')) return;
+        url.pathname === '/pwa-config.js' || url.pathname === '/node-config.js' ||
+        url.pathname.startsWith('/legal/')) return;
 
     if (request.mode === 'navigate') {
         event.respondWith(fetch(request).catch(function () { return caches.match('/offline.html'); }));

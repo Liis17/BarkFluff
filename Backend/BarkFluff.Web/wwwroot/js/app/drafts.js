@@ -7,7 +7,7 @@
     var entries = {};
     var timers = {};
 
-    function key() { return 'bf_chat_drafts_' + userId; }
+    function key() { return BF.node.key('bf_chat_drafts_' + userId); }
     function save() { if (userId != null) localStorage.setItem(key(), JSON.stringify(entries)); }
     function hasContent(entry) { return !!(entry && !entry.deleted && ((entry.text || '').trim() || entry.replyToMessageId)); }
 

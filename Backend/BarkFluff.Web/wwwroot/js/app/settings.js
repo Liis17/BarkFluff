@@ -1691,7 +1691,7 @@
             { label: BF.i18n.t('about.browser'), value: dev ? dev.getBrowserName() : '—' },
             { label: BF.i18n.t('about.os'), value: dev ? dev.getOsName() : '—' },
             { label: 'Device ID', value: dev ? dev.getDeviceId() : '—' },
-            { label: BF.i18n.t('about.server'), value: window.location.origin }
+            { label: BF.i18n.t('about.server'), value: BF.node.origin() }
         ];
 
         rows.forEach(function (r) {

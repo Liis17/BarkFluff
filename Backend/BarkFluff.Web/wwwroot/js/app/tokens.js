@@ -7,34 +7,37 @@
 
     window.BF = window.BF || {};
 
-    var KEY = 'barkfluff_auth';
-    var MODE_KEY = 'barkfluff_temp';
+    // Ключи привязаны к ноде: сессия на одной ноде не должна теряться при
+    // переключении на другую и обратно.
+    function KEY() { return BF.node.key('barkfluff_auth'); }
+    function MODE_KEY() { return BF.node.key('barkfluff_temp'); }
 
     function store() {
-        return localStorage.getItem(MODE_KEY) === '1' ? sessionStorage : localStorage;
+        return localStorage.getItem(MODE_KEY()) === '1' ? sessionStorage : localStorage;
     }
 
     window.BF.tokens = {
         setTempMode: function (isTemp) {
-            if (isTemp) localStorage.setItem(MODE_KEY, '1');
-            else localStorage.removeItem(MODE_KEY);
+            if (isTemp) localStorage.setItem(MODE_KEY(), '1');
+            else localStorage.removeItem(MODE_KEY());
         },
 
         save: function (data) {
-            store().setItem(KEY, JSON.stringify(data));
+            store().setItem(KEY(), JSON.stringify(data));
         },
 
         get: function () {
-            var raw = store().getItem(KEY);
+            var key = KEY();
+            var raw = store().getItem(key);
             if (raw) return JSON.parse(raw);
-            var fb = sessionStorage.getItem(KEY) || localStorage.getItem(KEY);
+            var fb = sessionStorage.getItem(key) || localStorage.getItem(key);
             return fb ? JSON.parse(fb) : null;
         },
 
         clear: function () {
-            sessionStorage.removeItem(KEY);
-            localStorage.removeItem(KEY);
-            localStorage.removeItem(MODE_KEY);
+            sessionStorage.removeItem(KEY());
+            localStorage.removeItem(KEY());
+            localStorage.removeItem(MODE_KEY());
         },
 
         getAccessToken: function () {

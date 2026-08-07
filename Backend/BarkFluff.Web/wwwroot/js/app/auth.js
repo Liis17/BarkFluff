@@ -9,10 +9,20 @@
     window.BF = window.BF || {};
 
     var bf = window.barkfluff;
-    var origin = window.location.origin;
 
-    // Use a dedicated client without auth interceptor — login is unauthenticated
-    var identityClient = new bf.IdentityApiClient(origin);
+    // Use a dedicated client without auth interceptor — login is unauthenticated.
+    // Создаётся лениво: на шелле нода выбирается на этой же странице, до выбора
+    // адреса ещё нет.
+    var cache = { origin: null, client: null };
+    function client() {
+        var origin = BF.node.origin();
+        if (cache.origin !== origin) cache = { origin: origin, client: new bf.IdentityApiClient(origin) };
+        return cache.client;
+    }
+    var identityClient = {
+        auth: function () { var c = client(); return c.auth.apply(c, arguments); },
+        createToken: function () { var c = client(); return c.createToken.apply(c, arguments); }
+    };
 
     var ERROR_CODES = {
         OTP_REQUIRED: 'C1576884-12D8-4722-A7EE-9F9789AD1265',
