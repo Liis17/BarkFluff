@@ -16,15 +16,43 @@
     window.BF = window.BF || {};
 
     var bf = window.barkfluff;
-    var origin = window.location.origin;
 
     var identPb = function () { return window.proto.barkfluff.identity; };
     var usrPb = function () { return window.proto.barkfluff.users; };
     var filePb = function () { return window.proto.barkfluff.files; };
 
-    var identityClient = new bf.IdentityApiClient(origin);
-    var usersClient = new bf.UsersApiClient(origin);
-    var filesClient = new bf.FilesApiClient(origin);
+    // Ленивая инициализация: на шелле мастер регистрации живёт на той же странице,
+    // что и выбор ноды, поэтому origin известен только к моменту первого вызова.
+    var clientCache = { origin: null };
+
+    function clients() {
+        var origin = BF.node.origin();
+        if (clientCache.origin !== origin) {
+            clientCache = {
+                origin: origin,
+                identity: new bf.IdentityApiClient(origin),
+                users: new bf.UsersApiClient(origin),
+                files: new bf.FilesApiClient(origin)
+            };
+        }
+        return clientCache;
+    }
+
+    // Прокси перед реальным клиентом: вызовы остаются вида identityClient.createAccount(...),
+    // но клиент берётся из clients() в момент вызова, с актуальной нодой.
+    function lazyClient(name) {
+        return new Proxy({}, {
+            get: function (_, method) {
+                var client = clients()[name];
+                var value = client[method];
+                return typeof value === 'function' ? value.bind(client) : value;
+            }
+        });
+    }
+
+    var identityClient = lazyClient('identity');
+    var usersClient = lazyClient('users');
+    var filesClient = lazyClient('files');
 
     var ERROR_CODES = {
         INVALID_OTP: '803B632C-4457-4B05-9435-9C3DD0F41E00',
@@ -154,7 +182,7 @@
                 var fileId = resp.getFileId();
                 var fd = new FormData();
                 fd.append('file', blob, 'avatar.jpg');
-                fetch('/api/files/upload/' + fileId, { method: 'POST', body: fd })
+                fetch(BF.node.origin() + '/api/files/upload/' + fileId, { method: 'POST', body: fd })
                     .then(function (r) {
                         if (!r.ok) throw new Error('upload_' + r.status);
                         return r.json();
