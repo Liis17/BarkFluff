@@ -32,8 +32,46 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 
 ## Архитектура
 
+### Выбор ноды (мультинодовость)
+
+Клиент **не привязан к ноде, которая его отдала**. Статику раздаёт глобальный
+`web.barkfluff.com` ([[Backend/Web]] в режиме `Web:Mode=Shell`), а gRPC-Web и загрузка
+файлов идут **напрямую в выбранную ноду**, cross-origin. Нода при этом остаётся
+самодостаточной: её `BarkFluff.Web` раздаёт ту же статику и фиксирует себя как ноду.
+
+- `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Подключается **до**
+  `device.js`/`clients.js`: клиенты gRPC-Web создаются синхронно при загрузке скрипта и
+  захватывают origin, поэтому адрес обязан резолвиться из localStorage, без сети.
+  - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`.
+  - `key(name)` — ключ хранилища с суффиксом `@{origin}`; `set/clear/meta/list/normalize`.
+  - `beaconClient()` / `navigatorClient()` — Beacon смотрит на выбранную ноду, Navigator
+    всегда same-origin (каталог проксирует тот хост, что отдал страницу).
+- **Режим хоста** — `/node-config.js` (эндпоинт [[Backend/Web]], `no-store`):
+  `{pinned: true}` у ноды, `{pinned: false, navigatorProxy: true}` у шелла. Переключатель
+  сервера показывается только при `pinned: false`.
+- `js/app/nodepicker.js` (`BF.nodePicker`) — экран выбора в `index.html` (`#nodeSection`):
+  каталог `NavigatorApi.ListServers`, история ранее использованных нод и ручной ввод.
+  Выбор подтверждается `BeaconApi.GetServerInfo` через шлюз — иначе опечатка в адресе
+  всплыла бы только на экране логина; оттуда же берутся имя, цвета, `livekit_url`.
+  Ноды с пустым `web_endpoint` показываются заблокированными.
+- Пока нода не выбрана, `body.node-picking` скрывает форму входа и QR, а `login-page.js`
+  не проверяет сессию. После выбора `resumeOrShowLogin()` уводит в мессенджер, если под
+  неймспейсом этой ноды уже лежит валидный токен.
+- Смена сервера — `settings.js`, раздел «Сервер»: `BF.node.clear()` + переход на `/`.
+  Сессия покидаемой ноды сохраняется.
+
+**Неймспейс хранилища.** Привязаны к ноде: `barkfluff_auth`, `barkfluff_temp`,
+`bf_private_chat_keys`, `bf_web_push_enabled`, `bf_chat_drafts_{userId}` — все с суффиксом
+`@{origin}`. Общие (без суффикса): `barkfluff_device_id` (одно устройство на все ноды, как
+в [[Клиенты/Android]]), `bf_theme`, `bf_lang`, `bf_pers_*`, `bf_legal_accepted`.
+`migrateLegacy()` в `node.js` один раз переносит домультинодовые ключи под неймспейс
+origin'а страницы — обновление ноды на своём домене не разлогинивает.
+⚠️ Смену роли домена (был нодой, стал шеллом) это не покрывает: нода переезжает на другой
+origin, сопоставить ключ нечем — вход потребуется заново.
+
 ### Транспорт и авторизация
-- gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(origin)`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`).
+- gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(BF.node.origin())`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`). Без выбранной ноды модуль редиректит на `/` до создания клиентов.
+- `auth.js`, `fast-auth.js` и `register.js` держат **собственные** клиенты и строят их лениво: на шелле ноду выбирают на той же странице, поэтому origin известен только к моменту первого вызова.
 - `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16).
 - `js/app/metadata.js` (`BF.metadata.build(token)`) формирует метаданные: `x-auth-token` (plain) + base64 `x-device-id`/`x-device-name`/`x-os-name`/`x-app-name`/`x-app-version`. Device-id — из `js/app/device.js` (localStorage `barkfluff_device_id`); его методы `getBrowserName()` и `getOsName()` также выводятся в «О BarkFluff».
 - `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
@@ -89,6 +127,8 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 
 ### Хост и маршрутизация
 - [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.
+- Два режима: **Node** (по умолчанию) — все кластеры ноды + Beacon + Navigator + `/api/files/upload`; **Shell** — только статика и прокси Navigator.
+- CORS открытый (`AllowAnyOrigin` + `AllowAnyHeader`, без `AllowCredentials`): origin страницы заранее неизвестен, токен идёт заголовком `x-auth-token`, куки в API не участвуют.
 
 ### Темы
 - 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
