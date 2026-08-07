@@ -63,6 +63,7 @@ public class ServersStorage
             existing.TlsSpkiSha256 = server.TlsSpkiSha256;
             existing.FederationProtocolVersions = server.FederationProtocolVersions;
             existing.SigningKeys = server.SigningKeys;
+            existing.WebEndpoint = server.WebEndpoint;
         }
 
         await _context.SaveChangesAsync(ct);

@@ -233,4 +233,53 @@ public class RegisterServerCommandHandlerTests
         await FluentActions.Awaiting(() => Invoke(server))
             .Should().ThrowAsync<InvalidServernameException>();
     }
+
+    [Theory]
+    [InlineData("gw.example.com")]           // без схемы — браузеру нужен absolute origin
+    [InlineData("ftp://gw.example.com")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("https://")]
+    public async Task Handle_InvalidWebEndpoint_ThrowsInvalidWebEndpoint(string endpoint)
+    {
+        var server = ValidServer();
+        server.WebEndpoint = endpoint;
+
+        await FluentActions.Awaiting(() => Invoke(server))
+            .Should().ThrowAsync<InvalidWebEndpointException>();
+    }
+
+    [Fact]
+    public async Task Handle_WebEndpointTooLong_ThrowsInvalidWebEndpoint()
+    {
+        var server = ValidServer();
+        server.WebEndpoint = "https://" + new string('x', 2048) + ".example.com";
+
+        await FluentActions.Awaiting(() => Invoke(server))
+            .Should().ThrowAsync<InvalidWebEndpointException>();
+    }
+
+    [Theory]
+    [InlineData("https://gw.example.com")]
+    [InlineData("http://localhost:7016")]
+    [InlineData(null)]                        // необязательное поле: нода без веб-клиента
+    [InlineData("")]
+    public async Task Handle_ValidOrEmptyWebEndpoint_Succeeds(string? endpoint)
+    {
+        var server = ValidServer();
+        server.WebEndpoint = endpoint;
+
+        await FluentActions.Awaiting(() => Invoke(server)).Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ValidWebEndpoint_IsPersisted()
+    {
+        var server = ValidServer();
+        server.WebEndpoint = "https://gw.example.com";
+
+        await Invoke(server);
+
+        var stored = await _storage.GetServersAsync();
+        stored.Should().ContainSingle(s => s.WebEndpoint == "https://gw.example.com");
+    }
 }

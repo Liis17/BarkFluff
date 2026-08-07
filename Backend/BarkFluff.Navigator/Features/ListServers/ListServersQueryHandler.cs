@@ -43,6 +43,7 @@ public class ListServersQueryHandler : IRequestHandler<ListServersQuery, ListSer
                         ServerPublicName = server.ServerPublicName,
                         Location = server.Location,
                         AccountsCount = 0,
+                        WebEndpoint = server.WebEndpoint ?? string.Empty,
                         BeaconUri = new ServiceEndpoint()
                         {
                             Host = server.BeaconHost, Port = server.BeaconPort

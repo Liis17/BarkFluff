@@ -41,6 +41,7 @@ public class GetServerByNameQueryHandler : IRequestHandler<GetServerByNameQuery,
             Color = new ServerColor { LiteHex = server.ColorLiteHex, MainHex = server.ColorMainHex, HardHex = server.ColorHardHex },
             ServerName = server.ServerName ?? string.Empty,
             FederationEndpoint = server.FederationEndpoint ?? string.Empty,
+            WebEndpoint = server.WebEndpoint ?? string.Empty,
         };
 
         if (server.TlsSpkiSha256 != null)

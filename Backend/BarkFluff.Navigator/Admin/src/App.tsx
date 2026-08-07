@@ -8,6 +8,7 @@ type Server = {
   location: string;
   beaconHost: string;
   beaconPort: number;
+  webEndpoint: string;
   lastSeenAt: string;
   color: string;
 };
@@ -124,6 +125,7 @@ function Dashboard({ username, onLogout }: { username: string; onLogout: () => v
                 <p>{server.description}</p>
                 <dl>
                   <div><dt>Beacon</dt><dd>{server.beaconHost}:{server.beaconPort}</dd></div>
+                  <div><dt>Веб-клиент</dt><dd>{server.webEndpoint || 'Не поддерживается'}</dd></div>
                   <div><dt>Локация</dt><dd>{server.location || 'Не указана'}</dd></div>
                   <div><dt>Последняя регистрация</dt><dd>{new Date(server.lastSeenAt).toLocaleString('ru-RU')}</dd></div>
                 </dl>

@@ -50,6 +50,7 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
             AddedBy = _userContext.IsAuthenticated ? _userContext.UserId.ToString() : "Anonymous",
             ServerName = string.IsNullOrWhiteSpace(protoServer?.ServerName) ? null : protoServer.ServerName,
             FederationEndpoint = string.IsNullOrWhiteSpace(protoServer?.FederationEndpoint) ? null : protoServer.FederationEndpoint,
+            WebEndpoint = string.IsNullOrWhiteSpace(protoServer?.WebEndpoint) ? null : protoServer.WebEndpoint,
             TlsSpkiSha256 = protoServer?.TlsSpkiSha256.Count > 0 ? protoServer.TlsSpkiSha256.ToArray() : null,
             FederationProtocolVersions = protoServer?.FederationProtocolVersions.Count > 0 ? protoServer.FederationProtocolVersions.ToArray() : null,
             SigningKeys = protoServer?.SigningKeys.Count > 0
