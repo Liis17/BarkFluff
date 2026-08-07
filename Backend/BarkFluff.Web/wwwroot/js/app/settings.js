@@ -383,6 +383,32 @@
         ]);
         body.appendChild(secAbout);
 
+        // Смена ноды: на самой ноде (pinned) переключаться некуда — секции нет.
+        // Строку строим руками: makeSection умеет только переходы на view.
+        if (!BF.node.pinned()) {
+            var nodeMeta = BF.node.meta();
+            var secNode = document.createElement('div');
+            secNode.className = 'sd-section';
+            var secNodeTitle = document.createElement('div');
+            secNodeTitle.className = 'sd-section-title';
+            secNodeTitle.textContent = BF.i18n.t('settings.section.server');
+            secNode.appendChild(secNodeTitle);
+
+            var nodeRow = document.createElement('div');
+            nodeRow.className = 'sd-item';
+            nodeRow.innerHTML =
+                '<span class="sd-item-icon">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                '<rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/>' +
+                '<line x1="6" y1="7" x2="6.01" y2="7"/><line x1="6" y1="17" x2="6.01" y2="17"/></svg></span>' +
+                '<span class="sd-item-label">' +
+                BF.utils.escapeHtml((nodeMeta && nodeMeta.name) || BF.node.origin() || '') +
+                '</span><span class="sd-item-arrow">›</span>';
+            nodeRow.addEventListener('click', switchNode);
+            secNode.appendChild(nodeRow);
+            body.appendChild(secNode);
+        }
+
         // Logout button with SVG icon
         var logoutBtn = document.createElement('button');
         logoutBtn.className = 'btn-logout-settings';
@@ -398,6 +424,18 @@
             confirmOverlay.classList.add('visible');
         });
         body.appendChild(logoutBtn);
+    }
+
+    /**
+     * Уход на экран выбора ноды. Сессию текущей ноды не трогаем: токены лежат под
+     * её неймспейсом, и при возврате вход не потребуется. Стримы гасим, чтобы не
+     * оставить висящие соединения к покидаемой ноде.
+     */
+    function switchNode() {
+        if (!confirm(BF.i18n.t('settings.server.confirm'))) return;
+        BF.realtime.stopAll();
+        BF.node.clear();
+        window.location.href = '/';
     }
 
     function makeSection(title, items) {
