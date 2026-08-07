@@ -507,5 +507,18 @@
   "unit.bytes": "{value} Б",
   "unit.gb": "{value} ГБ",
   "unit.kb": "{value} КБ",
-  "unit.mb": "{value} МБ"
+  "unit.mb": "{value} МБ",
+  "node.section": "Выбор сервера",
+  "node.intro": "Выберите сервер BarkFluff, к которому подключиться. Аккаунты у серверов разные.",
+  "node.manual": "Адрес сервера",
+  "node.connect": "Подключиться",
+  "node.change": "Сменить",
+  "node.recent": "Недавний",
+  "node.empty": "Список серверов недоступен. Введите адрес вручную.",
+  "node.noWebSupport": "Веб-клиент не поддерживается",
+  "node.error.address": "Некорректный адрес сервера",
+  "node.error.unreachable": "Сервер не отвечает. Проверьте адрес.",
+  "settings.section.server": "Сервер",
+  "settings.server.change": "Сменить сервер",
+  "settings.server.confirm": "Выйти к выбору сервера? Сессия на этом сервере сохранится."
 }
