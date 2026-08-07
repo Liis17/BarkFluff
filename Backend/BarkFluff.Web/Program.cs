@@ -16,7 +16,17 @@ using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.LoadConfiguration(ServiceId.Web);
+// Web:Mode = Node (по умолчанию) — хост ноды: все кластеры сервисов, статика, upload.
+//            Shell — глобальный web.barkfluff.com: только статика + прокси Navigator.
+// Читаем ДО LoadConfiguration: env-переменные CreateBuilder подхватывает сам.
+var isShellMode = string.Equals(builder.Configuration["Web:Mode"], "Shell", StringComparison.OrdinalIgnoreCase);
+
+// Шелл живёт вне ноды, рядом с ним нет Configuration-сервиса, а LoadConfiguration
+// падает без ретраев при недоступном сервисе — поэтому в shell-режиме его пропускаем
+// и берём конфигурацию только из env/appsettings (тот же выход из платформенного
+// шаблона, что у BarkFluff.Navigator).
+if (!isShellMode)
+    builder.LoadConfiguration(ServiceId.Web);
 
 // Env-переменные контейнера должны иметь приоритет над Configuration service
 builder.Configuration.AddEnvironmentVariables();
@@ -302,6 +312,19 @@ app.MapGet("/pwa-config.js", (HttpContext ctx, IConfiguration configuration) =>
             appId
         },
         vapidKey
+    }) + ";";
+    return Results.Text(script, "application/javascript", Encoding.UTF8);
+});
+
+// Режим хоста для клиента: нода отдаёт себя как единственную (pinned),
+// глобальный шелл заставляет выбрать ноду и проксирует Navigator.
+app.MapGet("/node-config.js", (HttpContext ctx) =>
+{
+    ctx.Response.Headers.CacheControl = "no-store";
+    var script = "self.BF_NODE_CONFIG = " + JsonSerializer.Serialize(new
+    {
+        pinned = !isShellMode,
+        navigatorProxy = isShellMode
     }) + ";";
     return Results.Text(script, "application/javascript", Encoding.UTF8);
 });

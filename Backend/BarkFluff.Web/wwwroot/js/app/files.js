@@ -68,7 +68,7 @@
 
             return new Promise(function (resolve, reject) {
                 var xhr = new XMLHttpRequest();
-                xhr.open('POST', '/api/files/upload/' + data.fileId);
+                xhr.open('POST', BF.node.origin() + '/api/files/upload/' + data.fileId);
 
                 xhr.upload.addEventListener('progress', function (event) {
                     if (!event.lengthComputable || typeof onProgress !== 'function') return;
