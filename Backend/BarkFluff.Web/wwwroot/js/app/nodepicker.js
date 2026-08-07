@@ -55,7 +55,9 @@
 
         return new Promise(function (resolve) {
             var req = new window.proto.barkfluff.navigator.ListServersRequest();
-            client.listServers(req, {}, function (err, resp) {
+            // Анонимный вызов, но с device-метаданными — как fast-auth: по ним
+            // работает анти-абузный лимит на публичных эндпоинтах.
+            client.listServers(req, BF.metadata.build(), function (err, resp) {
                 if (err || !resp) { resolve([]); return; }
                 resolve(resp.getServersList().map(function (s) {
                     var color = s.getColor();
@@ -87,7 +89,7 @@
 
             var client = new bf.BeaconApiClient(origin);
             var req = new window.proto.barkfluff.beacon.GetServerInfoRequest();
-            client.getServerInfo(req, {}, function (err, resp) {
+            client.getServerInfo(req, BF.metadata.build(), function (err, resp) {
                 if (err || !resp) { finish(null); return; }
                 var color = resp.getColor();
                 finish({
