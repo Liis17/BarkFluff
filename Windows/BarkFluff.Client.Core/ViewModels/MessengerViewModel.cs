@@ -146,6 +146,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         CancelPendingReadBatch();
         _messageLoadVersion++;
         SelectedChat = null;
+        IsProfileVisible = false;
+        Profile.Reset();
         Chats.Clear();
         VisibleChats.Clear();
         Messages.Clear();
