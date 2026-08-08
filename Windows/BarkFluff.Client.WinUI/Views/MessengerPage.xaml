@@ -68,6 +68,7 @@
             <Grid Margin="2">
                 <Image Source="{x:Bind PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
                 <MediaPlayerElement AreTransportControlsEnabled="True"
+                                    AutoPlay="False"
                                     Source="{x:Bind FileUrl, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                     Stretch="UniformToFill"
                                     Visibility="Collapsed" />
@@ -141,6 +142,7 @@
                                          Height="44"
                                          Margin="0,8,0,0"
                                          AreTransportControlsEnabled="True"
+                                         AutoPlay="False"
                                          Source="{x:Bind FileUrl, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                          Visibility="Collapsed" />
                 </Grid>
@@ -776,15 +778,33 @@
                             <!--  Вложения из переписки с этим пользователем (в т.ч. чат с самим собой); чата ещё нет — секции нет вовсе.  -->
                             <StackPanel Margin="0,24,0,0" Visibility="{x:Bind ViewModel.Profile.HasAttachments, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <!--
-                                    В WinUI у ToggleButton нет GroupName (это RadioButton-фича) — эксклюзивность
-                                    держится на общем SelectedAttachmentTabIndex: конвертер пересчитывает
-                                    IsChecked у всех четырёх кнопок при каждой смене индекса.
+                                    RadioButton, не ToggleButton: эксклюзивность держит сам контрол через
+                                    GroupName, а не пересчёт IsChecked конвертером на каждую смену индекса
+                                    (TwoWay+ConvertBack(UnsetValue) на ToggleButton ненадёжно взаимодействовал
+                                    бы с автоматическим снятием отметки у соседей). Запись индекса — через
+                                    Checked в code-behind, чтение — OneWay через конвертер.
                                 -->
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <ToggleButton Content="{StaticResource Profile_TabPhotos}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=0}" />
-                                    <ToggleButton Content="{StaticResource Profile_TabVideos}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=1}" />
-                                    <ToggleButton Content="{StaticResource Profile_TabFiles}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=2}" />
-                                    <ToggleButton Content="{StaticResource Profile_TabVoice}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=3}" />
+                                    <RadioButton Content="{StaticResource Profile_TabPhotos}"
+                                                 Checked="OnProfileAttachmentTabChecked"
+                                                 GroupName="ProfileAttachmentTabs"
+                                                 IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=0}"
+                                                 Tag="0" />
+                                    <RadioButton Content="{StaticResource Profile_TabVideos}"
+                                                 Checked="OnProfileAttachmentTabChecked"
+                                                 GroupName="ProfileAttachmentTabs"
+                                                 IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=1}"
+                                                 Tag="1" />
+                                    <RadioButton Content="{StaticResource Profile_TabFiles}"
+                                                 Checked="OnProfileAttachmentTabChecked"
+                                                 GroupName="ProfileAttachmentTabs"
+                                                 IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=2}"
+                                                 Tag="2" />
+                                    <RadioButton Content="{StaticResource Profile_TabVoice}"
+                                                 Checked="OnProfileAttachmentTabChecked"
+                                                 GroupName="ProfileAttachmentTabs"
+                                                 IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=3}"
+                                                 Tag="3" />
                                 </StackPanel>
 
                                 <!--  Фото  -->
