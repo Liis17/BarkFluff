@@ -21,6 +21,8 @@
 
   const icon = (path, className = '') => window.bfIcon(path, className);
 
+  window.__mdNavItems = NAV_ITEMS;
+
   function el(html) {
     const t = document.createElement('template');
     t.innerHTML = html.trim();

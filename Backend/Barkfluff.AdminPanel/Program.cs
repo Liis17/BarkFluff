@@ -10,6 +10,7 @@ using BarkFluff.Proto.Bots;
 using BarkFluff.Proto.FederationInternal;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Identity;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Identity;
@@ -132,6 +133,11 @@ public class Program
             o.Address = new Uri(builder.Configuration["IdentityService:Host"] ?? "http://identity:7000");
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"] ?? string.Empty));
 
+        builder.Services.AddGrpcClient<MessagesServerApi.MessagesServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["MessagesService:Host"] ?? "http://messages:7007");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"] ?? string.Empty));
+
         builder.Services.AddGrpcClient<BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient>(o =>
         {
             o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7003");
@@ -252,6 +258,12 @@ public class Program
 
         // Map Users Endpoints
         app.MapUsersEndpoints();
+
+        // Map Chats Endpoints (для command palette)
+        app.MapChatsEndpoints();
+
+        // Map Files Endpoints (для command palette)
+        app.MapFilesEndpoints();
 
         // Map Bots Endpoints
         app.MapBotsEndpoints();

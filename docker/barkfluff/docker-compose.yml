@@ -240,6 +240,8 @@ services:
       FilesService__Host: "${FILES_SERVICE_HOST}"
       UsersService__Token: "${USERS_SERVICE_TOKEN}"
       FilesService__Token: "${FILES_SERVICE_TOKEN}"
+      MessagesService__Host: "${MESSAGES_SERVICE_HOST:-http://messages:7007}"
+      MessagesService__Token: "${MESSAGES_SERVICE_TOKEN:-}"
       IdentityService__Host: "${IDENTITY_SERVICE_HOST}"
       IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
       BotsService__Host: "${BOTS_SERVICE_HOST:-http://bots:7027}"
@@ -271,6 +273,7 @@ services:
     depends_on:
       - configuration
       - seq
+      - messages
 
   # === Инфраструктурные сервисы ===
 
