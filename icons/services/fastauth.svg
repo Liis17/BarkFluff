@@ -1,10 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-  <rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.12"/>
-  <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M6 9V6H9"/>
-    <path d="M15 6H18V9"/>
-    <path d="M18 15V18H15"/>
-    <path d="M9 18H6V15"/>
+  <g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M4 9V5.5C4 4.7 4.7 4 5.5 4H9"/>
+    <path d="M15 4H18.5C19.3 4 20 4.7 20 5.5V9"/>
+    <path d="M20 15V18.5C20 19.3 19.3 20 18.5 20H15"/>
+    <path d="M9 20H5.5C4.7 20 4 19.3 4 18.5V15"/>
   </g>
-  <path d="M13 8L9.5 13H12L11 16.5L15 11H12.2L13 8Z" fill="currentColor"/>
+  <path d="M13.3 7L9.3 13H12.3L11 17.5L15.6 11H12.4L13.3 7Z" fill="currentColor"/>
 </svg>
