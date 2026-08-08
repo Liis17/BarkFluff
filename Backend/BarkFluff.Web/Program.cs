@@ -336,7 +336,8 @@ app.MapFallback(async (HttpContext ctx, IWebHostEnvironment env) =>
     var path = ctx.Request.Path.Value ?? string.Empty;
     if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
         || path.Equals("/health", StringComparison.OrdinalIgnoreCase)
-        || path.Equals("/ping", StringComparison.OrdinalIgnoreCase))
+        || path.Equals("/ping", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/ping/", StringComparison.OrdinalIgnoreCase))
     {
         ctx.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
@@ -392,6 +393,44 @@ static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode)
             Match = new RouteMatch { Path = path },
             Transforms = grpcTransforms
         });
+    }
+
+    // Liveness checks use the same Web gateway as gRPC-Web. Backend services
+    // expose an anonymous GET /ping, but their listeners are not public HTTP
+    // endpoints from the browser's point of view.
+    if (!isShellMode)
+    {
+        var pingRoutes = new[]
+        {
+            (name: "identity", cluster: "identity"),
+            (name: "users", cluster: "users"),
+            (name: "messages", cluster: "messages"),
+            (name: "files", cluster: "files"),
+            (name: "updates", cluster: "updates"),
+            (name: "onliner", cluster: "onliner"),
+            (name: "fast-auth", cluster: "fast-auth"),
+            (name: "calls", cluster: "calls"),
+            (name: "beacon", cluster: "beacon"),
+            (name: "navigator", cluster: "navigator-health")
+        };
+
+        foreach (var (name, cluster) in pingRoutes)
+        {
+            routes.Add(new RouteConfig
+            {
+                RouteId = $"ping-{name}",
+                ClusterId = cluster,
+                Match = new RouteMatch
+                {
+                    Path = $"/ping/{name}",
+                    Methods = new[] { "GET" }
+                },
+                Transforms = new[]
+                {
+                    new Dictionary<string, string> { { "PathSet", "/ping" } }
+                }
+            });
+        }
     }
 
     // Шелл не проксирует файлы: аплоад идёт напрямую в ноду.
@@ -464,6 +503,28 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config, bool is
             Destinations = new Dictionary<string, DestinationConfig>
             {
                 [$"{clusterId}-1"] = new DestinationConfig { Address = host }
+            }
+        });
+    }
+
+    if (!isShellMode)
+    {
+        // Navigator is deliberately configured with its public TLS endpoint
+        // for gRPC discovery. Its liveness request must use the internal
+        // HTTP/2 listener because the public nginx route is gRPC-only.
+        var navigatorHealthHost = config["NavigatorService:HealthHost"] ?? "http://navigator:7010";
+        clusters.Add(new ClusterConfig
+        {
+            ClusterId = "navigator-health",
+            HttpRequest = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
+            {
+                Version = new Version(2, 0),
+                VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionExact,
+                ActivityTimeout = TimeSpan.FromSeconds(10)
+            },
+            Destinations = new Dictionary<string, DestinationConfig>
+            {
+                ["navigator-health-1"] = new DestinationConfig { Address = navigatorHealthHost }
             }
         });
     }

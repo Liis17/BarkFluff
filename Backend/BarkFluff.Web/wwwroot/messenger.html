@@ -3495,6 +3495,40 @@
             word-break: break-all;
         }
 
+        .sd-health {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .sd-health > .sd-btn { width: 100%; }
+        .sd-health-results { margin-top: 12px; }
+        .sd-health-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 30px;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 12px;
+        }
+        .sd-health-row:last-child { border-bottom: none; }
+        .sd-health-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-sub);
+            flex-shrink: 0;
+        }
+        .sd-health-row.available .sd-health-dot { background: #22c55e; }
+        .sd-health-row.unavailable .sd-health-dot { background: var(--error); }
+        .sd-health-name { flex: 1; color: var(--text-main); }
+        .sd-health-status { font-weight: 600; }
+        .sd-health-row.available .sd-health-status { color: #22c55e; }
+        .sd-health-row.unavailable .sd-health-status { color: var(--error); }
+        .sd-health-time {
+            color: var(--text-sub);
+            font-family: 'Menlo', 'SF Mono', monospace;
+            white-space: nowrap;
+        }
+
         /* === Session item rename input === */
         .session-rename-input {
             margin-top: 8px;
@@ -5697,7 +5731,8 @@
     <script src="/js/app/calls.js?v=calls-4"></script>
     <script src="/js/app/calls-ui.js?v=calls-8"></script>
     <script src="/js/app/personalization.js?v=personalization-2"></script>
-    <script src="/js/app/settings.js?v=personalization-2"></script>
+    <script src="/js/app/health.js?v=health-1"></script>
+    <script src="/js/app/settings.js?v=health-1"></script>
     <script src="/js/app/attach.js"></script>
     <script src="/js/app/imageeditor.js"></script>
     <script src="/js/app/folders.js?v=folders-pins-2"></script>

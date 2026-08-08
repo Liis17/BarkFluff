@@ -1746,6 +1746,44 @@
             body.appendChild(row);
         });
 
+        var healthSection = document.createElement('div');
+        healthSection.className = 'sd-health';
+
+        var checkBtn = document.createElement('button');
+        checkBtn.type = 'button';
+        checkBtn.className = 'sd-btn sd-btn-primary';
+        checkBtn.textContent = BF.i18n.t('about.checkAvailability');
+
+        var healthResults = document.createElement('div');
+        healthResults.className = 'sd-health-results';
+        healthResults.setAttribute('aria-live', 'polite');
+
+        healthSection.appendChild(checkBtn);
+        healthSection.appendChild(healthResults);
+        body.appendChild(healthSection);
+
+        checkBtn.addEventListener('click', function () {
+            checkBtn.disabled = true;
+            checkBtn.textContent = BF.i18n.t('about.checkingAvailability');
+            healthResults.textContent = '';
+
+            if (!BF.health || !BF.health.check) {
+                showHealthError(healthResults);
+                checkBtn.disabled = false;
+                checkBtn.textContent = BF.i18n.t('about.checkAvailability');
+                return;
+            }
+
+            BF.health.check().then(function (results) {
+                renderHealthResults(healthResults, results);
+            }).catch(function () {
+                showHealthError(healthResults);
+            }).finally(function () {
+                checkBtn.disabled = false;
+                checkBtn.textContent = BF.i18n.t('about.checkAvailability');
+            });
+        });
+
         var link = document.createElement('a');
         link.href = 'https://barkfluff.com';
         link.target = '_blank';
@@ -1753,6 +1791,44 @@
         link.textContent = 'barkfluff.com';
         link.style.cssText = 'display:block;text-align:center;padding:18px;color:var(--primary);font-size:14px;font-weight:600;text-decoration:none;';
         body.appendChild(link);
+    }
+
+    function renderHealthResults(container, results) {
+        container.textContent = '';
+        results.forEach(function (item) {
+            var row = document.createElement('div');
+            row.className = 'sd-health-row ' + (item.available ? 'available' : 'unavailable');
+
+            var dot = document.createElement('span');
+            dot.className = 'sd-health-dot';
+            dot.setAttribute('aria-hidden', 'true');
+
+            var name = document.createElement('span');
+            name.className = 'sd-health-name';
+            name.textContent = item.name;
+
+            var status = document.createElement('span');
+            status.className = 'sd-health-status';
+            status.textContent = BF.i18n.t(item.available ? 'about.available' : 'about.unavailable');
+
+            var time = document.createElement('span');
+            time.className = 'sd-health-time';
+            time.textContent = BF.i18n.t('about.requestTime', { value: item.elapsedMs });
+
+            row.appendChild(dot);
+            row.appendChild(name);
+            row.appendChild(status);
+            row.appendChild(time);
+            container.appendChild(row);
+        });
+    }
+
+    function showHealthError(container) {
+        var error = document.createElement('div');
+        error.className = 'sd-hint error';
+        error.textContent = BF.i18n.t('about.checkError');
+        container.textContent = '';
+        container.appendChild(error);
     }
 
     window.BF.settings = {
