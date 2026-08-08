@@ -1071,6 +1071,7 @@ public sealed class MessageAttachmentItemViewModel(
     public int ImageWidth { get; } = imageWidth;
     public int ImageHeight { get; } = imageHeight;
     public bool IsVideo { get; } = type == MessageAttachmentType.Video;
+    public bool IsVoice { get; } = type is MessageAttachmentType.Voice or MessageAttachmentType.Audio;
     public bool IsImageOrGif { get; } = type is MessageAttachmentType.Image or MessageAttachmentType.Gif;
     public bool IsMedia => type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker;
     public bool IsFile => !IsMedia;

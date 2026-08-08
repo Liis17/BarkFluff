@@ -77,6 +77,17 @@ public sealed class MessengerService : IMessengerService
 
     public byte[]? UnlockPrivateChat(Chat chat, string passphrase) => WebApiClient.UnlockPrivateChat(chat, passphrase);
 
+    public Task<(ErrorReturner error, string chatId)> GetPersonChatIdAsync(long userId, CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.GetPersonChatId(parameters, userId));
+
+    public Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachmentsAsync(
+        string chatId,
+        Proto.Shared.MessageAttachmentType attachmentType,
+        int offset,
+        int size,
+        CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.ListChatAttachments(parameters, chatId, attachmentType, sortDescending: true, offset, size));
+
     private async Task<T> WithParametersAsync<T>(Func<GlobalParam, Task<T>> operation)
     {
         if (_session.CurrentConnection?.ConnectionParameters is not { } parameters)
