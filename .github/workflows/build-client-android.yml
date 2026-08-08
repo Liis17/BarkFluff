@@ -100,9 +100,14 @@ jobs:
           test -n "$SDK_PATH"
           printf 'sdk.dir=%s\n' "$SDK_PATH" > local.properties
 
+      - name: Восстановление CA-бандла Cloudflare Origin CA
+        env:
+          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: echo "$CA_BUNDLE_B64" | base64 -d > cloudflare-origin-ca-bundle.pem
+
       - name: Автоподнятие версии
         run: |
-          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
+          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
@@ -171,7 +176,7 @@ jobs:
           else
             CHANNEL="release"
           fi
-          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
+          curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
             -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
             -F "file=@${{ steps.apk.outputs.path }}"
