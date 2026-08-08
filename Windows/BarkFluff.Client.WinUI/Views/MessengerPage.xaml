@@ -275,10 +275,10 @@
                                 </ItemsRepeater.Layout>
                             </ItemsRepeater>
 
-                            <ItemsRepeater Margin="0,8,0,0"
-                                           ItemTemplate="{StaticResource FileAttachmentTemplate}"
-                                           ItemsSource="{x:Bind FileAttachments}"
-                                           Visibility="{x:Bind HasFiles, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <ItemsControl Margin="0,8,0,0"
+                                          ItemTemplate="{StaticResource FileAttachmentTemplate}"
+                                          ItemsSource="{x:Bind FileAttachments}"
+                                          Visibility="{x:Bind HasFiles, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                             <StackPanel HorizontalAlignment="Right"
                                         Orientation="Horizontal"
