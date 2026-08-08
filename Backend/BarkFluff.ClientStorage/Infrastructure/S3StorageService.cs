@@ -109,13 +109,15 @@ public class S3StorageService : IDisposable
         }
     }
 
-    public async Task DeleteAsync(string key)
+    public async Task DeleteAsync(string key, CancellationToken cancellationToken = default)
     {
-        await _client.DeleteObjectAsync(new Amazon.S3.Model.DeleteObjectRequest
-        {
-            BucketName = _bucketName,
-            Key = key
-        });
+        await _client.DeleteObjectAsync(
+            new Amazon.S3.Model.DeleteObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = key
+            },
+            cancellationToken);
     }
 
     /// <summary>
