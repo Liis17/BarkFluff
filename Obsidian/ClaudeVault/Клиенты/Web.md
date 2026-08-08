@@ -88,6 +88,11 @@ origin, сопоставить ключ нечем — вход потребуе
 - События раздаются через `BF.realtime.on(event, cb)`; UI слушает их в `js/app/main.js`.
 - `#connectionBanner` — глобальная доступная плашка проблемы соединения с «Нет сети» / «Переподключаемся…» и ручным «Повторить», видимая также в мобильном списке чатов. После восстановления `main.js` ждёт catch-up списка и открытого чата; только успешный проход кратко (3 с) показывает в чате «Синхронизировано».
 
+### Папки чатов
+
+- `js/app/folders.js` (`BF.folders`) рендерит горизонтальные вкладки `#folderTabs` и показывает на каждой папке сумму `countUnread` её чатов; при значении больше 99 отображается `99+`.
+- `main.js::renderChatList()` передаёт актуальный список чатов в рендер вкладок, поэтому realtime-сообщение и событие прочтения сразу обновляют бейдж папки.
+
 ### Файлы и медиа
 - `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).
 - `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
