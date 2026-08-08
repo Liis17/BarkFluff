@@ -123,6 +123,13 @@
 | `updating.html` | `/updating` | Заглушка «сервер обновляется» |
 | `favicon.ico` | — | Иконка сайта |
 
+Общие UI-ресурсы `Pages/v2/assets/`: `md3.css` содержит токены и размеры
+иконок, `icons.js` — helper `bfIcon()`/`bfSetIcon()`, `sidebar.js` — общий
+сайдбар. SVG-каталог из корневого `icons/` копируется в `assets/icons/` при
+сборке AdminPanel; контейнерные иконки берутся из `icons/services`, специфичные
+действия панели — из `icons/admin`, общие edit/delete/download — из
+`icons/message-actions`.
+
 ---
 
 ## Properties/
