@@ -103,6 +103,51 @@
         </DataTemplate>
 
         <!--
+            Голосовое в профиле: строка сворачивает иконку/имя/размер, плеер — как у видео,
+            скрыт до кнопки Play (behaviors:PlayVideoBehavior — не специфична для видео, ищет
+            ближайший предок-Grid и раскрывает в нём MediaPlayerElement). Кнопка и плеер обязаны
+            лежать в одном Grid, поэтому строка и плеер — это два ряда одного Grid, а не Border+StackPanel.
+        -->
+        <DataTemplate x:Key="VoiceAttachmentTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
+            <Border Margin="0,0,0,4"
+                    Padding="8"
+                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                    CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button Width="36"
+                            Height="36"
+                            Padding="0"
+                            CornerRadius="18"
+                            behaviors:PlayVideoBehavior.Enable="True"
+                            Content="&#x25B6;" />
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="{x:Bind SizeLabel}" />
+                    </StackPanel>
+
+                    <MediaPlayerElement Grid.Row="1"
+                                         Grid.ColumnSpan="2"
+                                         Height="44"
+                                         Margin="0,8,0,0"
+                                         AreTransportControlsEnabled="True"
+                                         Source="{x:Bind FileUrl, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
+                                         Visibility="Collapsed" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!--
             Пузырь лежит прямо в шаблоне, а не в UserControl: x:Bind внутри UserControl смотрит
             на сам контрол, и связь с элементом ленты пришлось бы тянуть через DependencyProperty.
         -->
@@ -340,7 +385,7 @@
                     HorizontalContentAlignment="Left"
                     Background="Transparent"
                     BorderThickness="0"
-                    Click="OnChatHeaderClick"
+                    Command="{x:Bind ViewModel.OpenPeerProfileCommand}"
                     Visibility="{x:Bind ViewModel.HasSelectedChat, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel>
                     <TextBlock FontSize="20"
@@ -644,6 +689,189 @@
                                 Content="{StaticResource Messenger_PrivateCancel}" />
                     </StackPanel>
                 </StackPanel>
+            </Border>
+        </Grid>
+
+        <!--
+            Профиль — оверлей, а не отдельная страница (Frame): у него нет своего шага навигации,
+            открывается из шапки чата и нав-панели, закрывается тем же CloseProfileCommand.
+        -->
+        <Grid Grid.ColumnSpan="2"
+              Background="{StaticResource MessengerModalScrimBrush}"
+              Canvas.ZIndex="13"
+              Visibility="{x:Bind ViewModel.IsProfileVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Width="560"
+                    MaxHeight="680"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="24"
+                    Style="{StaticResource OnboardingCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Button Grid.Row="0"
+                            Margin="0,0,0,8"
+                            Padding="6"
+                            HorizontalAlignment="Right"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{x:Bind ViewModel.CloseProfileCommand}"
+                            ToolTipService.ToolTip="{StaticResource Profile_Close}">
+                        <FontIcon FontSize="14" Glyph="&#xE711;" />
+                    </Button>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <ProgressRing Margin="0,0,0,12"
+                                          HorizontalAlignment="Left"
+                                          IsActive="True"
+                                          Visibility="{x:Bind ViewModel.Profile.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                            <TextBlock Margin="0,0,0,12"
+                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                       Text="{x:Bind ViewModel.Profile.ErrorMessage, Mode=OneWay}"
+                                       TextWrapping="Wrap"
+                                       Visibility="{x:Bind ViewModel.Profile.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
+                            <PersonPicture Width="96"
+                                           Height="96"
+                                           HorizontalAlignment="Left"
+                                           DisplayName="{x:Bind ViewModel.Profile.DisplayName, Mode=OneWay}"
+                                           ProfilePicture="{x:Bind ViewModel.Profile.AvatarUrl, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" />
+                            <TextBlock Margin="0,18,0,0"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Text="{x:Bind ViewModel.Profile.DisplayName, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Style="{StaticResource MutedText}"
+                                       Text="{x:Bind ViewModel.Profile.Username, Mode=OneWay}"
+                                       Visibility="{x:Bind ViewModel.Profile.Username, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Style="{StaticResource MutedText}"
+                                       Text="{x:Bind ViewModel.Profile.PresenceLabel, Mode=OneWay}"
+                                       Visibility="{x:Bind ViewModel.Profile.PresenceLabel, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
+                            <!--  Почту сервер отдаёт только для собственного профиля — пустая строка прячет блок целиком.  -->
+                            <StackPanel Margin="0,20,0,0" Visibility="{x:Bind ViewModel.Profile.Email, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}">
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Profile_Email}" />
+                                <TextBlock Margin="0,4,0,0" Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,16,0,0" Visibility="{x:Bind ViewModel.Profile.Description, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}">
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Profile_About}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Text="{x:Bind ViewModel.Profile.Description, Mode=OneWay}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,16,0,0" Visibility="{x:Bind ViewModel.Profile.RegisteredAtLabel, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}">
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Profile_RegisteredAt}" />
+                                <TextBlock Margin="0,4,0,0" Text="{x:Bind ViewModel.Profile.RegisteredAtLabel, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <!--  Вложения из переписки с этим пользователем (в т.ч. чат с самим собой); чата ещё нет — секции нет вовсе.  -->
+                            <StackPanel Margin="0,24,0,0" Visibility="{x:Bind ViewModel.Profile.HasAttachments, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <!--
+                                    В WinUI у ToggleButton нет GroupName (это RadioButton-фича) — эксклюзивность
+                                    держится на общем SelectedAttachmentTabIndex: конвертер пересчитывает
+                                    IsChecked у всех четырёх кнопок при каждой смене индекса.
+                                -->
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <ToggleButton Content="{StaticResource Profile_TabPhotos}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=0}" />
+                                    <ToggleButton Content="{StaticResource Profile_TabVideos}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=1}" />
+                                    <ToggleButton Content="{StaticResource Profile_TabFiles}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=2}" />
+                                    <ToggleButton Content="{StaticResource Profile_TabVoice}" IsChecked="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=TwoWay, Converter={StaticResource IntEqualsToBoolConverter}, ConverterParameter=3}" />
+                                </StackPanel>
+
+                                <!--  Фото  -->
+                                <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}">
+                                    <ItemsRepeater ItemTemplate="{StaticResource MediaAttachmentTemplate}" ItemsSource="{x:Bind ViewModel.Profile.PhotosTab.Items}">
+                                        <ItemsRepeater.Layout>
+                                            <UniformGridLayout ItemsStretch="Fill"
+                                                               MaximumRowsOrColumns="3"
+                                                               MinItemHeight="110"
+                                                               Orientation="Horizontal" />
+                                        </ItemsRepeater.Layout>
+                                    </ItemsRepeater>
+                                    <TextBlock Margin="0,8,0,0"
+                                               Style="{StaticResource MutedText}"
+                                               Text="{StaticResource Profile_AttachmentsEmpty}"
+                                               Visibility="{x:Bind ViewModel.Profile.PhotosTab.IsEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <ProgressRing Margin="0,8,0,0"
+                                                  HorizontalAlignment="Left"
+                                                  IsActive="True"
+                                                  Visibility="{x:Bind ViewModel.Profile.PhotosTab.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <Button Margin="0,8,0,0"
+                                            Command="{x:Bind ViewModel.Profile.PhotosTab.LoadMoreCommand}"
+                                            Content="{StaticResource Profile_LoadMore}"
+                                            Visibility="{x:Bind ViewModel.Profile.PhotosTab.HasMore, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </StackPanel>
+
+                                <!--  Видео  -->
+                                <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}">
+                                    <ItemsRepeater ItemTemplate="{StaticResource MediaAttachmentTemplate}" ItemsSource="{x:Bind ViewModel.Profile.VideosTab.Items}">
+                                        <ItemsRepeater.Layout>
+                                            <UniformGridLayout ItemsStretch="Fill"
+                                                               MaximumRowsOrColumns="3"
+                                                               MinItemHeight="110"
+                                                               Orientation="Horizontal" />
+                                        </ItemsRepeater.Layout>
+                                    </ItemsRepeater>
+                                    <TextBlock Margin="0,8,0,0"
+                                               Style="{StaticResource MutedText}"
+                                               Text="{StaticResource Profile_AttachmentsEmpty}"
+                                               Visibility="{x:Bind ViewModel.Profile.VideosTab.IsEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <ProgressRing Margin="0,8,0,0"
+                                                  HorizontalAlignment="Left"
+                                                  IsActive="True"
+                                                  Visibility="{x:Bind ViewModel.Profile.VideosTab.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <Button Margin="0,8,0,0"
+                                            Command="{x:Bind ViewModel.Profile.VideosTab.LoadMoreCommand}"
+                                            Content="{StaticResource Profile_LoadMore}"
+                                            Visibility="{x:Bind ViewModel.Profile.VideosTab.HasMore, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </StackPanel>
+
+                                <!--  Файлы  -->
+                                <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=2}">
+                                    <ItemsRepeater ItemTemplate="{StaticResource FileAttachmentTemplate}" ItemsSource="{x:Bind ViewModel.Profile.FilesTab.Items}" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Style="{StaticResource MutedText}"
+                                               Text="{StaticResource Profile_AttachmentsEmpty}"
+                                               Visibility="{x:Bind ViewModel.Profile.FilesTab.IsEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <ProgressRing Margin="0,8,0,0"
+                                                  HorizontalAlignment="Left"
+                                                  IsActive="True"
+                                                  Visibility="{x:Bind ViewModel.Profile.FilesTab.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <Button Margin="0,8,0,0"
+                                            Command="{x:Bind ViewModel.Profile.FilesTab.LoadMoreCommand}"
+                                            Content="{StaticResource Profile_LoadMore}"
+                                            Visibility="{x:Bind ViewModel.Profile.FilesTab.HasMore, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </StackPanel>
+
+                                <!--  Голосовые  -->
+                                <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.Profile.SelectedAttachmentTabIndex, Mode=OneWay, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=3}">
+                                    <ItemsRepeater ItemTemplate="{StaticResource VoiceAttachmentTemplate}" ItemsSource="{x:Bind ViewModel.Profile.VoiceTab.Items}" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Style="{StaticResource MutedText}"
+                                               Text="{StaticResource Profile_AttachmentsEmpty}"
+                                               Visibility="{x:Bind ViewModel.Profile.VoiceTab.IsEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <ProgressRing Margin="0,8,0,0"
+                                                  HorizontalAlignment="Left"
+                                                  IsActive="True"
+                                                  Visibility="{x:Bind ViewModel.Profile.VoiceTab.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <Button Margin="0,8,0,0"
+                                            Command="{x:Bind ViewModel.Profile.VoiceTab.LoadMoreCommand}"
+                                            Content="{StaticResource Profile_LoadMore}"
+                                            Visibility="{x:Bind ViewModel.Profile.VoiceTab.HasMore, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

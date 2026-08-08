@@ -66,25 +66,22 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Профиль и настройки открываются прямо через <c>Frame</c>, а не через сервис навигации:
-    /// тот заменяет текущую ViewModel, и возврат к мессенджеру заново грузил бы список чатов.
+    /// Настройки открываются прямо через <c>Frame</c>, а не через сервис навигации: тот заменяет
+    /// текущую ViewModel, и возврат к мессенджеру заново грузил бы список чатов. Профиль —
+    /// оверлей поверх мессенджера (см. <see cref="MessengerViewModel.OpenOwnProfileCommand"/>),
+    /// а не отдельная страница: бургер показывает пункт «Профиль» только пока CurrentViewModel — MessengerViewModel.
     /// </summary>
     private void OnNavigationItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs eventArgs)
     {
-        var pageType = (eventArgs.InvokedItemContainer?.Tag as string) switch
+        switch (eventArgs.InvokedItemContainer?.Tag as string)
         {
-            "profile" => typeof(ProfilePage),
-            "settings" => typeof(SettingsPage),
-            _ => null
-        };
-
-        if (pageType is null || ContentFrame.CurrentSourcePageType == pageType)
-        {
-            return;
+            case "profile":
+                (_viewModel.CurrentViewModel as MessengerViewModel)?.OpenOwnProfileCommand.Execute(null);
+                break;
+            case "settings" when ContentFrame.CurrentSourcePageType != typeof(SettingsPage):
+                ContentFrame.Navigate(typeof(SettingsPage), _viewModel.Settings);
+                break;
         }
-
-        // Ноль — собственный профиль; страница настроек параметра не ждёт.
-        ContentFrame.Navigate(pageType, pageType == typeof(ProfilePage) ? 0L : _viewModel.Settings);
     }
 
     private void OnContentFrameNavigated(object sender, NavigationEventArgs eventArgs) =>
