@@ -5,6 +5,8 @@
 Точка входа для клиентов BarkFluff. Порт: **7002**.
 Собирает адреса всех бизнес-сервисов из Configuration service и отдаёт клиентам единый `GetServerInfoResponse`. Также периодически (каждые 5 минут) регистрирует себя в Navigator.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 Расположение: `Backend/BarkFluff.Beacon/`
 
 ## Сборка

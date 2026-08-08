@@ -100,6 +100,7 @@ static void EnsureServersColumn(NavigatorContext ctx, string column, string defi
 app.MapGrpcReflectionService();
 app.UseRouting();
 app.UseXAuth();
+app.MapPingEndpoint();
 app.UseStaticFiles();
 
 app.MapGrpcService<NavigatorApiService>();

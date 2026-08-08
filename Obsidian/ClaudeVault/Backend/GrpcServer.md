@@ -6,6 +6,10 @@ Shared-библиотека (.NET 10.0), подключаемая всеми bac
 
 → [[Backend/GrpcServer-ProjectMap|Карта проекта — все файлы и их назначение]]
 
+## Liveness endpoint
+
+`MapPingEndpoint()` регистрирует анонимный `GET /ping` на listener(ах) сервиса. При доступном процессе возвращает `200 text/plain` с телом `pong`. Endpoint проверяет только доступность listener и не является readiness-проверкой зависимостей.
+
 ## Startup-конвейер (порядок вызовов в Program.cs)
 
 ```csharp

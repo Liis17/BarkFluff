@@ -2,6 +2,8 @@
 
 Трекинг онлайн-статусов пользователей. Порт: **7009** (.NET 10).
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 Принцип: **presence в Redis** (общий источник истины для всех инстансов). Статусы — sorted set `onliner:presence` (member=userId, score=last-seen ms) через `IPresenceStore`/`RedisPresenceStore`. PostgreSQL — вторичное хранилище last-seen (обновляется в фоне). Real-time оповещения — gRPC server-streaming, доставка событий между инстансами через **RabbitMQ fan-out** (стрим подписчика живёт на одном инстансе). Масштабируется горизонтально (см. `docs/scaling/onliner.md`).
 
 Помимо онлайн-статусов сервис обслуживает **индикаторы набора текста** (typing) — чистый ретранслятор без БД и фоновых сервисов (см. ниже).
