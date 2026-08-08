@@ -4536,6 +4536,9 @@
 
         .folder-tab {
             flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             padding: 6px 14px;
             border-radius: 999px;
             border: 1px solid var(--card-border);
@@ -4548,6 +4551,18 @@
             white-space: nowrap;
             transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
             user-select: none;
+        }
+
+        .folder-unread {
+            background: var(--unread-badge-bg);
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.1;
+            min-width: 18px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            text-align: center;
         }
         .folder-tab:hover {
             background: var(--primary-alpha);

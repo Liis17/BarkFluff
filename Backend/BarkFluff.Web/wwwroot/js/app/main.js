@@ -242,6 +242,7 @@
     }
 
     function renderChatList() {
+        if (BF.folders && BF.folders.renderTabs) BF.folders.renderTabs(chats);
         chatListEl.innerHTML = '';
         var visibleChats = (BF.folders && BF.folders.filterChats) ? BF.folders.filterChats(chats) : chats;
         visibleChats.forEach(function (chat) {

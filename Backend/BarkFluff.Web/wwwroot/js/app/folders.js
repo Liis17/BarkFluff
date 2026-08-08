@@ -18,6 +18,7 @@
     var activeFolderId = 'all';
     var chatToFolders = new Map();    // chatId(string) → Set<folderId>
     var onChangeCb = null;            // called when active folder OR folder set changes (UI ререндер)
+    var chatsForBadges = [];          // latest chat snapshots used for folder unread badges
 
     // --- Emoji presets (closed grid in edit modal) ---
     var EMOJI_PRESETS = [
@@ -172,6 +173,15 @@
 
     function setOnChange(cb) { onChangeCb = cb; }
 
+    function getFolderUnreadCount(folder) {
+        var chatIds = new Set(folder.chatList || []);
+        var total = 0;
+        chatsForBadges.forEach(function (chat) {
+            if (chatIds.has(chat.id)) total += chat.countUnread || 0;
+        });
+        return total;
+    }
+
     // --- Public: mutations ---
 
     function addChatToFolder(folderId, chatId) {
@@ -231,7 +241,8 @@
 
     // --- Tabs render + drag-and-drop ---
 
-    function renderTabs() {
+    function renderTabs(chats) {
+        if (chats) chatsForBadges = chats;
         if (!folderTabsEl) return;
         folderTabsEl.innerHTML = '';
 
@@ -255,7 +266,19 @@
             var label = '';
             if (f.folderIcon) label += f.folderIcon + ' ';
             label += f.folderName || BF.i18n.t('folder.default');
-            tab.textContent = label;
+
+            var labelEl = document.createElement('span');
+            labelEl.className = 'folder-tab-label';
+            labelEl.textContent = label;
+            tab.appendChild(labelEl);
+
+            var unread = getFolderUnreadCount(f);
+            if (unread > 0) {
+                var unreadEl = document.createElement('span');
+                unreadEl.className = 'folder-unread';
+                unreadEl.textContent = String(unread > 99 ? '99+' : unread);
+                tab.appendChild(unreadEl);
+            }
 
             tab.title = f.folderName || '';
 
