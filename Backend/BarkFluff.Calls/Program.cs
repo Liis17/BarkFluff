@@ -127,6 +127,7 @@ public class Program
         app.UseRouting();
 
         app.UseXAuth();
+        app.MapPingEndpoint();
 
         app.MapGrpcService<CallsApiService>();
 
