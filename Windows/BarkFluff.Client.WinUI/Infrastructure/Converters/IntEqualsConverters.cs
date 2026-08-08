@@ -16,9 +16,10 @@ public sealed class IntEqualsToVisibilityConverter : IValueConverter
 }
 
 /// <summary>
-/// Переключатель вкладок профиля: <c>ToggleButton.IsChecked</c> в обе стороны с индексом вкладки.
-/// Обратный переход в false игнорируется — его посылает WinUI при снятии отметки с соседней
-/// кнопки той же <c>GroupName</c>, а не пользовательский выбор «снять текущую вкладку».
+/// Подсветка вкладки профиля: <c>RadioButton.IsChecked</c> только читает индекс (OneWay) —
+/// запись идёт обратно через <c>Checked</c> в code-behind (см. <c>OnProfileAttachmentTabChecked</c>),
+/// а не через ConvertBack: RadioButton в паре снимает отметку сам, и TwoWay-конвертер с
+/// UnsetValue на false-переходе ненадёжно взаимодействует с этим внутренним снятием.
 /// </summary>
 public sealed class IntEqualsToBoolConverter : IValueConverter
 {
@@ -26,7 +27,5 @@ public sealed class IntEqualsToBoolConverter : IValueConverter
         value is int intValue && parameter is string text && int.TryParse(text, out var expected) && intValue == expected;
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
-        value is true && parameter is string text && int.TryParse(text, out var expected)
-            ? expected
-            : DependencyProperty.UnsetValue;
+        throw new NotSupportedException();
 }

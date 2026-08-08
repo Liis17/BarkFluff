@@ -133,6 +133,32 @@ public sealed partial class ProfileViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>
+    /// Стирает данные прошлой сессии. <see cref="ProfileViewModel"/> — синглтон внутри синглтона
+    /// <c>MessengerViewModel</c>, поэтому без сброса при выходе из аккаунта следующий вошедший
+    /// увидел бы в оверлее имя, аватар и вложения предыдущего пользователя.
+    /// </summary>
+    public void Reset()
+    {
+        DisplayName = string.Empty;
+        Username = string.Empty;
+        Email = string.Empty;
+        Description = string.Empty;
+        AvatarUrl = string.Empty;
+        Initials = string.Empty;
+        RegisteredAtLabel = string.Empty;
+        PresenceLabel = string.Empty;
+        IsOwnProfile = false;
+        ErrorMessage = null;
+        SelectedAttachmentTabIndex = 0;
+        _chatId = null;
+        OnPropertyChanged(nameof(HasAttachments));
+        foreach (var tab in _attachmentTabsByIndex)
+        {
+            tab.Reset(null);
+        }
+    }
+
     private Task ApplyChatIdAsync(string? chatId)
     {
         _chatId = string.IsNullOrEmpty(chatId) ? null : chatId;

@@ -13,6 +13,8 @@ public sealed class MessengerResetTests
         var messenger = new FakeMessengerService();
         messenger.Chats.Add(MessengerTestDoubles.CreateChat("a", "Alice", peerUserId: 2));
         messenger.Chats.Add(MessengerTestDoubles.CreateChat("b", "Bob", peerUserId: 3));
+        messenger.UserData = new BarkFluff.WebApi.Core.MessengerData.NonSavedData.UserData { Id = 1, Username = "alice" };
+        messenger.PersonChatId = "self-chat";
         var realtime = new FakeRealtimeMessengerService();
         var viewModel = MessengerTestDoubles.CreateViewModel(messenger, realtime);
         await viewModel.LoadAsync();
@@ -20,6 +22,7 @@ public sealed class MessengerResetTests
         viewModel.DraftText = "unsent";
         viewModel.SearchText = "ali";
         realtime.RaiseConnection(false);
+        await viewModel.OpenOwnProfileCommand.ExecuteAsync(null);
 
         viewModel.Reset();
 
@@ -33,5 +36,10 @@ public sealed class MessengerResetTests
         Assert.Equal(string.Empty, viewModel.PrivatePassphrase);
         // Циклы остановлены вместе с сессией: «переподключение…» иначе залипло бы навсегда.
         Assert.False(viewModel.IsReconnecting);
+        // ProfileViewModel — синглтон внутри синглтона: без сброса следующий вошедший
+        // увидел бы в оверлее имя и вложения прошлого пользователя.
+        Assert.False(viewModel.IsProfileVisible);
+        Assert.Equal(string.Empty, viewModel.Profile.DisplayName);
+        Assert.False(viewModel.Profile.HasAttachments);
     }
 }
