@@ -141,11 +141,18 @@
     <x:String x:Key="Messenger_Chat">Чат</x:String>
     <x:String x:Key="Messenger_File">Файл</x:String>
     <x:String x:Key="Nav_Profile">Профиль</x:String>
-    <x:String x:Key="Profile_Title">Профиль</x:String>
     <x:String x:Key="Profile_Email">Электронная почта</x:String>
     <x:String x:Key="Profile_About">О себе</x:String>
     <x:String x:Key="Profile_RegisteredAt">С нами с</x:String>
+    <x:String x:Key="Profile_Close">Закрыть</x:String>
+    <x:String x:Key="Profile_TabPhotos">Фото</x:String>
+    <x:String x:Key="Profile_TabVideos">Видео</x:String>
+    <x:String x:Key="Profile_TabFiles">Файлы</x:String>
+    <x:String x:Key="Profile_TabVoice">Голосовые</x:String>
+    <x:String x:Key="Profile_LoadMore">Загрузить ещё</x:String>
+    <x:String x:Key="Profile_AttachmentsEmpty">Пока ничего нет</x:String>
     <x:String x:Key="Error_ProfileLoadFailed">Не удалось загрузить профиль.</x:String>
+    <x:String x:Key="Error_AttachmentsLoadFailed">Не удалось загрузить вложения.</x:String>
 
     <!--  Настройки: разделы левого списка  -->
     <x:String x:Key="Settings_Nav_General">Общие</x:String>

@@ -141,11 +141,18 @@
     <x:String x:Key="Messenger_Chat">Chat</x:String>
     <x:String x:Key="Messenger_File">File</x:String>
     <x:String x:Key="Nav_Profile">Profile</x:String>
-    <x:String x:Key="Profile_Title">Profile</x:String>
     <x:String x:Key="Profile_Email">Email</x:String>
     <x:String x:Key="Profile_About">About</x:String>
     <x:String x:Key="Profile_RegisteredAt">Member since</x:String>
+    <x:String x:Key="Profile_Close">Close</x:String>
+    <x:String x:Key="Profile_TabPhotos">Photos</x:String>
+    <x:String x:Key="Profile_TabVideos">Videos</x:String>
+    <x:String x:Key="Profile_TabFiles">Files</x:String>
+    <x:String x:Key="Profile_TabVoice">Voice</x:String>
+    <x:String x:Key="Profile_LoadMore">Load more</x:String>
+    <x:String x:Key="Profile_AttachmentsEmpty">Nothing here yet</x:String>
     <x:String x:Key="Error_ProfileLoadFailed">Could not load the profile.</x:String>
+    <x:String x:Key="Error_AttachmentsLoadFailed">Could not load attachments.</x:String>
 
     <!--  Settings: left-hand section list  -->
     <x:String x:Key="Settings_Nav_General">General</x:String>
