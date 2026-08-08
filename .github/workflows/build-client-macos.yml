@@ -77,9 +77,14 @@ jobs:
       - name: Установить xcbeautify и create-dmg
         run: brew install xcbeautify create-dmg
 
+      - name: Восстановление CA-бандла Cloudflare Origin CA
+        env:
+          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: printf '%s' "$CA_BUNDLE_B64" | base64 -D > cloudflare-origin-ca-bundle.pem
+
       - name: Автоподнятие версии
         run: |
-          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
+          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
@@ -167,7 +172,7 @@ jobs:
           else
             CHANNEL="release"
           fi
-          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffmacos/${CHANNEL}" \
+          curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffmacos/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
             -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
             -F "file=@${{ steps.dmg.outputs.path }}"
@@ -186,7 +191,7 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          bash .github/scripts/send-telegram.sh
+          bash "$GITHUB_WORKSPACE/.github/scripts/send-telegram.sh"
 
       - name: "❌ Уведомление об ошибке"
         if: failure()
@@ -202,4 +207,4 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
         run: |
-          bash .github/scripts/send-telegram.sh
+          bash "$GITHUB_WORKSPACE/.github/scripts/send-telegram.sh"
