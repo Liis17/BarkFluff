@@ -8,6 +8,7 @@ using BarkFluff.Messages.Features.CheckFileFederationAccess;
 using BarkFluff.Messages.Features.DeleteMessage;
 using BarkFluff.Messages.Features.EditMessage;
 using BarkFluff.Messages.Features.ExportData;
+using BarkFluff.Messages.Features.GetChatInfoServer;
 using BarkFluff.Messages.Features.GetChatMemberIds;
 using BarkFluff.Messages.Features.ImportFederatedChat;
 using BarkFluff.Messages.Features.ImportFederatedMessage;
@@ -177,6 +178,18 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         ServerCallContext context)
     {
         var query = new GetChatMemberIdsQuery
+        {
+            ChatId = request.ChatId
+        };
+
+        return _mediator.Send(query, context.CancellationToken);
+    }
+
+    public override Task<GetChatInfoServerResponse> GetChatInfoServer(
+        GetChatInfoServerRequest request,
+        ServerCallContext context)
+    {
+        var query = new GetChatInfoServerQuery
         {
             ChatId = request.ChatId
         };
