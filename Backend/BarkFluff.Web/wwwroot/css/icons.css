@@ -1,0 +1,20 @@
+/* Shared BarkFluff icon pack. The source SVGs stay monochrome and inherit color
+   through a CSS mask, so the same files work in every web theme. */
+.bf-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex: 0 0 auto;
+    background-color: currentColor;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    -webkit-mask-image: var(--bf-icon-url);
+    mask-image: var(--bf-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}

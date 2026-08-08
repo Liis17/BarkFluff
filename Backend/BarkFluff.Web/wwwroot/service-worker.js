@@ -2,15 +2,16 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-v4';
+const CACHE_NAME = 'barkfluff-shell-v5';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
     '/js/vendor/firebase-messaging-compat.bundle.js',
     '/js/i18n/ru.json', '/js/i18n/en.json', '/js/i18n/es.json', '/js/i18n/de.json', '/js/i18n/zh-Hans.json',
+    '/css/icons.css',
     '/js/app/i18n.js',
     '/js/app/node.js',
-    '/js/app/device.js', '/js/app/tokens.js', '/js/app/metadata.js', '/js/app/clients.js', '/js/app/utils.js',
+    '/js/app/icons.js', '/js/app/device.js', '/js/app/tokens.js', '/js/app/metadata.js', '/js/app/clients.js', '/js/app/utils.js',
     '/js/app/sound.js', '/js/app/api.js', '/js/app/drafts.js', '/js/app/privatechat.js', '/js/app/newchat.js',
     '/js/app/files.js', '/js/app/messages.js', '/js/app/realtime.js', '/js/app/calls.js', '/js/app/calls-ui.js',
     '/js/app/personalization.js', '/js/app/health.js', '/js/app/settings.js', '/js/app/attach.js', '/js/app/imageeditor.js',
@@ -47,7 +48,21 @@ self.addEventListener('fetch', function (event) {
         return;
     }
 
-    if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/icons/') ||
+    if (url.pathname.startsWith('/icons/')) {
+        event.respondWith(caches.match(request, { ignoreSearch: true }).then(function (cached) {
+            if (cached) return cached;
+            return fetch(request).then(function (response) {
+                if (response.ok) {
+                    var copy = response.clone();
+                    caches.open(CACHE_NAME).then(function (cache) { return cache.put(request, copy); });
+                }
+                return response;
+            });
+        }));
+        return;
+    }
+
+    if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/') ||
         url.pathname === '/favicon.ico' || url.pathname === '/manifest.webmanifest') {
         event.respondWith(caches.match(request, { ignoreSearch: true }).then(function (cached) {
             return cached || fetch(request);

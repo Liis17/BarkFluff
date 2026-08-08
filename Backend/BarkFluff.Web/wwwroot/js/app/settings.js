@@ -1,6 +1,6 @@
 /**
  * Settings dialog — multi-view panel: profile, name/username, bio, password, 2FA, sessions.
- * Requires: BF.api, BF.files, BF.tokens, BF.realtime, BF.device, BF.utils
+ * Requires: BF.api, BF.files, BF.tokens, BF.realtime, BF.device, BF.utils, BF.icons
  * Exposes: BF.settings
  */
 (function () {
@@ -38,20 +38,17 @@
     var ERR_WRONG_OLD_PASSWORD = 'A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04';
 
     var ICONS = {
-        settings: iconSvg('<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>'),
-        edit: iconSvg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
-        fileText: iconSvg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>'),
-        shield: iconSvg('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/>'),
-        lock: iconSvg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
-        palette: iconSvg('<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.2 2 11.5 2 16.4 5.8 20 10.5 20h1.1c.9 0 1.4-.8 1.1-1.6-.3-.9.3-1.9 1.3-1.9h1.5c4 0 6.5-2.8 6.5-6.2C22 5.7 17.5 2 12 2Z"/>'),
-        smartphone: iconSvg('<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>'),
-        info: iconSvg('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'),
-        globe: iconSvg('<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10"/>')
+        settings: BF.icons.html('settings', 'general'),
+        edit: BF.icons.html('settings', 'edit-profile'),
+        fileText: BF.icons.html('chat', 'document'),
+        privacy: BF.icons.html('settings', 'privacy'),
+        security: BF.icons.html('settings', 'security'),
+        palette: BF.icons.html('settings', 'personalization'),
+        smartphone: BF.icons.html('settings', 'active-sessions'),
+        info: BF.icons.html('settings', 'about-app'),
+        server: BF.icons.html('settings', 'about-server'),
+        globe: BF.icons.html('settings', 'language')
     };
-
-    function iconSvg(content) {
-        return '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + content + '</svg>';
-    }
     function init(opts) {
         myUserId = opts.myUserId;
         overlay = document.querySelector('#settingsOverlay');
@@ -307,14 +304,14 @@
 
         // Section: Privacy
         var secPrivacy = makeSection(BF.i18n.t('settings.section.confidentiality'), [
-            { icon: ICONS.shield, label: BF.i18n.t('settings.privacy'), view: 'privacy' }
+            { icon: ICONS.privacy, label: BF.i18n.t('settings.privacy'), view: 'privacy' }
         ]);
         body.appendChild(secPrivacy);
 
         // Section: Security
         var secSecurity = makeSection(BF.i18n.t('settings.section.security'), [
-            { icon: ICONS.lock, label: BF.i18n.t('common.password'), view: 'password' },
-            { icon: ICONS.shield, label: BF.i18n.t('settings.twofa'), view: 'twofa' }
+            { icon: ICONS.security, label: BF.i18n.t('common.password'), view: 'password' },
+            { icon: ICONS.security, label: BF.i18n.t('settings.twofa'), view: 'twofa' }
         ]);
         body.appendChild(secSecurity);
 
@@ -397,10 +394,7 @@
             var nodeRow = document.createElement('div');
             nodeRow.className = 'sd-item';
             nodeRow.innerHTML =
-                '<span class="sd-item-icon">' +
-                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                '<rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/>' +
-                '<line x1="6" y1="7" x2="6.01" y2="7"/><line x1="6" y1="17" x2="6.01" y2="17"/></svg></span>' +
+                '<span class="sd-item-icon">' + ICONS.server + '</span>' +
                 '<span class="sd-item-label">' +
                 BF.utils.escapeHtml((nodeMeta && nodeMeta.name) || BF.node.origin() || '') +
                 '</span><span class="sd-item-arrow">›</span>';
@@ -1701,7 +1695,7 @@
             var check = document.createElement('span');
             check.className = 'sd-item-icon';
             if (lang.code === current) {
-                check.innerHTML = iconSvg('<polyline points="20 6 9 17 4 12"/>');
+                check.innerHTML = BF.icons.html('message-actions', 'select');
             }
 
             row.appendChild(label);
