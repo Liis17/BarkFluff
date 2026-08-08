@@ -3,6 +3,8 @@
 gRPC-Web reverse proxy + static file server для веб-клиента. Порт: **7016**.
 
 Анонимный liveness endpoint: `GET /ping` → `pong`; дополнительно Web сохраняет readiness/health endpoint `GET /health`.
+Для проверки из браузера Web проксирует `GET /ping/{service}` в liveness endpoint
+соответствующего listener’а ноды и возвращает его `pong` без авторизации.
 
 Расположение: `Backend/BarkFluff.Web/`
 
@@ -46,10 +48,11 @@ origin вызывающего заранее неизвестен, вести с
 
 ## Архитектура
 
-Три функции:
+Четыре функции:
 1. **Статика** — раздаёт `wwwroot/` (index.html, messenger.html, JS-модули)
 2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP. **Base64-фрейминг:** каждый Write кодируется независимым padded base64-чанком и сразу флашится (`=` в середине потока — законный разделитель по спеке gRPC-Web, декодер клиента обрабатывает 4-символьные группы независимо). Раньше остаток 1-2 байта буферизовался до следующего Write — из-за этого server-streaming сообщения приходили с отставанием на одно.
 3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**). До чтения тела Web поднимает Kestrel-лимит только для этого маршрута до **512 МБ**; иначе дефолт Kestrel (~28,6 МБ) вернёт `413` до передачи в [[Backend/Files]].
+4. **Liveness-прокси** — `GET /ping/{service}` → `/ping` на `Identity`, `Users`, `Messages`, `Files`, `Updates`, `Onliner`, `FastAuth`, `Calls`, `Beacon` и `Navigator`. Проверка выполняется через внутренние HTTP/2 listener’ы, поэтому браузеру не нужно обращаться к публичным gRPC-субдоменам и обходить CORS. Для Navigator используется `NavigatorService:HealthHost` (по умолчанию для запуска приложения `http://navigator:7010`; основной dev-compose задаёт `http://navigator:64646` через `NAVIGATOR_SERVICE_HEALTH_HOST`), тогда как обычный `NavigatorService:Host` остаётся публичным адресом каталога.
 
 ## gRPC-Web трейлеры (grpc-status) — критично
 
@@ -75,6 +78,7 @@ origin вызывающего заранее неизвестен, вести с
 | `/barkfluff.beacon.BeaconApi/{**catch-all}` | Beacon (`BeaconService:Host`, 7002) | gRPC/HTTP2 — метаданные ноды для экрана выбора |
 | `/barkfluff.navigator.NavigatorApi/{**catch-all}` | Navigator (`NavigatorService:Host`, публичный TLS) | gRPC/HTTP2 — каталог нод; **единственный маршрут в режиме Shell** |
 | `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 (нет в режиме Shell) |
+| `/ping/{service}` | Identity, Users, Messages, Files, Updates, Onliner, FastAuth, Calls, Beacon, Navigator | HTTP/2 GET `/ping`, анонимно (только в режиме Node) |
 
 ## Frontend JS Modules (`wwwroot/js/app/`)
 
@@ -84,6 +88,7 @@ origin вызывающего заранее неизвестен, вести с
 - `device.js` — `BF.device`: deviceId, browserName, osName
 - `tokens.js` — `BF.tokens`: TokenStore (localStorage/sessionStorage)
 - `metadata.js` — `BF.metadata`: сборка gRPC metadata с base64-заголовками
+- `health.js` — `BF.health`: параллельная проверка `/ping` Web и `/ping/{service}` через выбранную ноду с таймаутом 8 секунд и временем ответа
 
 **Страница логина** (index.html):
 - `auth.js` — login, refreshToken, getValidAccessToken
@@ -108,6 +113,7 @@ origin вызывающего заранее неизвестен, вести с
 - `pinned.js` — `BF.pinned`: закреплённые сообщения. Плашка `#pinnedBar` под `.chat-header` Telegram-style (`1/N` слева, превью текущего, клик → переключение по кругу + scroll к оригиналу). Большая модалка `#pinnedListOverlay` со всеми пинами (рендер через `BF.messages.buildMessageElement`) + кнопка «Открепить все» с подтверждением.
 - `attach.js` — диалог прикрепления файлов: сегментированный переключатель images/docs, превью (сетка/список с иконкой расширения и размером), поле подписи (`#attachCaption`, prefill из `#messageInput`, Enter=отправка, Shift+Enter=перенос, Escape=закрыть). Подпись передаётся третьим аргументом callback'а (`outFiles, asDocuments, caption`) и используется как текст сообщения. **Клик по превью-картинке** открывает редактор `BF.imageEditor.open(file, cb)`; callback заменяет `item.file` на отредактированный, отзывает старый `previewUrl` и перерендеривает сетку.
 - `imageeditor.js` — `BF.imageEditor`: модальный canvas-редактор изображения (`#imgEditorOverlay`, z-index 260, открывается из `attach.js`). См. раздел [[#Редактор изображений (imageeditor.js)]].
+- В разделе «О приложении» (`settings.js`) кнопка «Проверить доступность» запускает `BF.health.check()` и показывает для каждого liveness listener’а `Доступен/Недоступен` и время запроса.
 - `settings.js` — многоэкранная панель настроек. Разделы: профиль (имя, юзернейм, био, аватар), пароль, 2FA (TOTP + Email), активные сессии (с переименованием устройства через `RenameDevice` и кнопкой «Завершить все остальные»), **приватность** (`GetPrivacySettings`/`UpdatePrivacySettings` — toggles `profileVisibleOnSite`/`searchVisible` + сегментированные radio для `avatarVisibility`/`bioVisibility`/`emailVisibility`/`onlineVisibility` через `ProfileFieldVisibility` enum), **персонализация** (по образцу Android/Mac: сверху превью профиля «постер 3:1 + аватар overlay + имя/@username», кнопка смены постера → модальный кроп `#posterCropOverlay` с draggable рамкой 3:1 и canvas-экспортом JPEG 90% max 2400×800, далее `BF.files.uploadFile(blob, USER_PROFILE_POSTER=10)` + `SetProfilePoster`; ниже превью чата с 5 моковыми сообщениями для демонстрации настроек; локальные слайдеры закругления пузырей/радиуса размытия/затенения + toggle размытия — все хранятся в `localStorage` и применяются к реальному чату через CSS-переменные на `:root`; сетка фонов с карточкой «Без фона», выбранной обводкой и кнопкой «+» добавления через `UpdatePersonalization` + `MESSAGE_ATTACHMENT_IMAGE=2`), **о приложении** (версия, deviceId, браузер/ОС, origin). Сохранение имени/username выполняется последовательно (`ChangeName` → `ChangeUsername`), после чего `GetUser` перечитывает серверный профиль; сообщение «Сохранено» показывается только если сервер вернул новый username. Цветовая схема (light/dark/midnight) инжектится отдельным inline-скриптом в `messenger.html` через `MutationObserver` за `#sdBody`. UI-хелперы: `makeField`/`makeInput`/`makeHint`/`makeSaveBtn`/`makeToggleRow`/`makeSegmented` + локальные `buildSlider`/`openPosterCrop`/`bindCropDrag`.
 - `personalization.js` — `BF.personalization`: локальные косметические настройки чата (по образцу Android `GlobalParam` / macOS `@AppStorage`). Хранит в `localStorage` ключи `bf_pers_bubble_radius`, `bf_pers_bg_blur_enabled`, `bf_pers_bg_blur_radius`, `bf_pers_bg_dim`, `bf_pers_bg_file_id`. Применяет к `:root` CSS-переменные `--msg-bubble-radius`, `--chat-bg-image`, `--chat-bg-blur`, `--chat-bg-dim-alpha`, которые читаются `.msg-bubble.incoming/.outgoing` и слоями `.messages-bg-layer`/`.messages-bg-dim` внутри `.messages-area`. `init()` вызывается из `main.js` сразу после `BF.realtime.startAll()`, сверяет выбранный bg-fileId с серверной коллекцией (`GetPersonalization`) и сбрасывает, если файл удалён.
 - `main.js` — bootstrap мессенджера. `openProfile(userId)` рендерит постер собеседника через `user.profilePosterFileId` → `BF.files.getFileUrls()` в `#profilePoster` поверх `.profile-header` (аватар получает `margin-top: -56px` через CSS). Поле `profilePosterFileId` маппится в `api.js:mapUser`. **Deep-link из cookie**: `maybeOpenChatFromCookie()` (вызывается в INIT после `loadChats`) читает cookie `bf_open_chat` (ставится кнопкой «Написать в браузере» на странице пользователя [[Backend/WebServer]]), сразу удаляет её (одноразово), затем `SearchUsers(username)` → точное совпадение по username (case-insensitive) → `GetPersonChatId(userId)` → `openChat(chatId)`. Auth-gate в начале `main.js` гарантирует выполнение только на странице мессенджера (иначе редирект на логин, cookie переживает вход). Логика повторяет Android `DeepLinkActivity.resolveAndOpenChat`.

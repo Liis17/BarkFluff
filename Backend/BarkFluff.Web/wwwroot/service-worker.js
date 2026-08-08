@@ -2,7 +2,7 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-v3';
+const CACHE_NAME = 'barkfluff-shell-v4';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
@@ -13,7 +13,7 @@ const APP_SHELL = [
     '/js/app/device.js', '/js/app/tokens.js', '/js/app/metadata.js', '/js/app/clients.js', '/js/app/utils.js',
     '/js/app/sound.js', '/js/app/api.js', '/js/app/drafts.js', '/js/app/privatechat.js', '/js/app/newchat.js',
     '/js/app/files.js', '/js/app/messages.js', '/js/app/realtime.js', '/js/app/calls.js', '/js/app/calls-ui.js',
-    '/js/app/personalization.js', '/js/app/settings.js', '/js/app/attach.js', '/js/app/imageeditor.js',
+    '/js/app/personalization.js', '/js/app/health.js', '/js/app/settings.js', '/js/app/attach.js', '/js/app/imageeditor.js',
     '/js/app/folders.js', '/js/app/pinned.js', '/js/app/push.js', '/js/app/main.js',
     '/icons/pwa-icon-192.png', '/icons/pwa-icon-512.png'
 ];
