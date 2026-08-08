@@ -76,7 +76,7 @@ Barkfluff.AdminPanel/
 │   ├── restarting.html                ← заглушка перезагрузки
 │   ├── updating.html                  ← заглушка обновления
 │   ├── Redesigned/                    ← SPA-редизайн (маршрут /v2/, отдельный эксперимент)
-│   └── v2/                            ← АКТИВНЫЙ UI: MD3-страницы (те же имена) + assets/{md3.css, sidebar.js}
+│   └── v2/                            ← АКТИВНЫЙ UI: MD3-страницы (те же имена) + assets/{md3.css, icons.js, sidebar.js, icons/}
 └── Properties/
     └── launchSettings.json
 ```
@@ -116,7 +116,7 @@ GET /updating          → v2/updating.html (публичный)
 GET /v2/               → Redesigned/index.html (отдельный SPA-эксперимент, не трогать)
 ```
 
-**Статика MD3-страниц.** v2-страницы ссылаются на `assets/md3.css` и `assets/sidebar.js` → отдаются из `Pages/v2/assets/` по `RequestPath = "/assets"` (добавлен в `Program.cs`). `TokenAuthMiddleware` пропускает `/assets/*` без авторизации (нужно для стилей страницы логина). Навигация (`sidebar.js`) использует абсолютные чистые URL. `preview-mode.js` (моки для офлайн-превью) НЕ подключён в проде — теги `<script>` удалены, страницы ходят в реальные `/api/*`.
+**Статика MD3-страниц.** v2-страницы ссылаются на `assets/md3.css`, `assets/icons.js` и `assets/sidebar.js` → отдаются из `Pages/v2/assets/` по `RequestPath = "/assets"` (добавлен в `Program.cs`). В `Barkfluff.AdminPanel.csproj` общий корневой каталог `icons/` линкуется в `Pages/v2/assets/icons/` и копируется при сборке. `icons.js` превращает SVG в монохромные `currentColor`-иконки через CSS mask и предоставляет `bfIcon(path, className)` для повторного использования. `TokenAuthMiddleware` пропускает `/assets/*` без авторизации (нужно для стилей и иконок страницы логина). Навигация (`sidebar.js`) использует абсолютные чистые URL. `preview-mode.js` (моки для офлайн-превью) НЕ подключён в проде — теги `<script>` удалены, страницы ходят в реальные `/api/*`.
 
 ---
 
