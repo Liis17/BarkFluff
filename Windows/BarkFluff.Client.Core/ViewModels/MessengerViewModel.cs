@@ -37,7 +37,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         IRealtimeMessengerService realtimeMessenger,
         IOnlinePresenceService presence,
         ILocalizationService localization,
-        IUiDispatcher uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ProfileViewModel profile)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
@@ -45,6 +46,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _presence = presence;
         _localization = localization;
         _uiDispatcher = uiDispatcher;
+        Profile = profile;
         _realtimeMessenger.MessageReceived += OnMessageReceived;
         _realtimeMessenger.MessageRead += OnMessageRead;
         _realtimeMessenger.PrivateMessageRead += OnPrivateMessageRead;
@@ -90,6 +92,10 @@ public sealed partial class MessengerViewModel : ObservableObject
     [ObservableProperty] private bool _isPrivateUnlockVisible;
     [ObservableProperty] private string _privatePassphrase = string.Empty;
     [ObservableProperty] private string? _privateUnlockError;
+    [ObservableProperty] private bool _isProfileVisible;
+
+    /// <summary>Профиль — оверлей поверх мессенджера, а не отдельная страница; открывается из шапки чата и нав-панели.</summary>
+    public ProfileViewModel Profile { get; }
 
     public async Task LoadAsync()
     {
@@ -350,6 +356,28 @@ public sealed partial class MessengerViewModel : ObservableObject
         PrivateUnlockError = null;
         IsPrivateUnlockVisible = false;
     }
+
+    [RelayCommand]
+    private async Task OpenOwnProfileAsync()
+    {
+        await Profile.LoadOwnAsync();
+        IsProfileVisible = true;
+    }
+
+    [RelayCommand]
+    private async Task OpenPeerProfileAsync()
+    {
+        if (SelectedChat is not { PeerUserId: { } peerUserId } chat)
+        {
+            return;
+        }
+
+        await Profile.LoadForPeerAsync(peerUserId, chat.Id);
+        IsProfileVisible = true;
+    }
+
+    [RelayCommand]
+    private void CloseProfile() => IsProfileVisible = false;
 
     private async Task LoadPrivateMessagesAsync(
         ChatItemViewModel chat,
