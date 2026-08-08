@@ -522,10 +522,16 @@
     <string name="about_device">设备</string>
     <string name="about_os">操作系统</string>
     <string name="about_microservices">服务器微服务</string>
-    <string name="about_ping_server">检查延迟</string>
-    <string name="about_ping_checking">正在检查 Beacon 连接…</string>
-    <string name="about_ping_result">Beacon 响应：%1$d 毫秒</string>
-    <string name="about_ping_failed">Beacon 未响应</string>
+    <string name="about_ping_server">检查可用性</string>
+    <string name="about_ping_checking">正在检查微服务可用性…</string>
+    <string name="about_ping_result">可用：%1$d / %2$d</string>
+    <string name="about_ping_failed">可用性检查失败</string>
+    <string name="about_ping_no_services">没有可检查的已配置微服务</string>
+    <string name="about_service_available">可用 · %1$d 毫秒</string>
+    <string name="about_service_unavailable">不可用 · %1$d 毫秒</string>
+    <string name="about_service_checking">检查中…</string>
+    <string name="about_service_not_configured">未设置地址</string>
+    <string name="about_service_not_checked">未检查</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">测试</string>
