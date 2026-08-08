@@ -610,10 +610,16 @@
     <string name="about_device">Устройство</string>
     <string name="about_os">Операционная система</string>
     <string name="about_microservices">Микросервисы сервера</string>
-    <string name="about_ping_server">Проверить пинг</string>
-    <string name="about_ping_checking">Проверяем связь с Beacon…</string>
-    <string name="about_ping_result">Ответ Beacon: %1$d мс</string>
-    <string name="about_ping_failed">Beacon не ответил</string>
+    <string name="about_ping_server">Проверить доступность</string>
+    <string name="about_ping_checking">Проверяем доступность микросервисов…</string>
+    <string name="about_ping_result">Доступны: %1$d из %2$d</string>
+    <string name="about_ping_failed">Не удалось выполнить проверку доступности</string>
+    <string name="about_ping_no_services">Нет настроенных микросервисов для проверки</string>
+    <string name="about_service_available">Доступен · %1$d мс</string>
+    <string name="about_service_unavailable">Недоступен · %1$d мс</string>
+    <string name="about_service_checking">Проверка…</string>
+    <string name="about_service_not_configured">Адрес не указан</string>
+    <string name="about_service_not_checked">Не проверяется</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Тестирование</string>
