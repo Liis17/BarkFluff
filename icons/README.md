@@ -68,6 +68,17 @@ icons/
 
 Не включены: `GrpcServer` (shared-библиотека, не самостоятельный сервис), `Users.Rust` (экспериментальный drop-in порт Users, та же роль) и `Nginx` (инфраструктурный reverse proxy, не сервис приложения).
 
+### Инфраструктура
+
+Внешние инфраструктурные сервисы (не приложения BarkFluff), иконки лежат в той же папке `services/`:
+
+| Файл | Сервис | Идея глифа |
+|---|---|---|
+| `postgresql.svg` | PostgreSQL — основная БД | голова + ухо + хобот (слон) |
+| `rabbitmq.svg` | RabbitMQ — брокер сообщений | голова кролика с ушами |
+| `redis.svg` | Redis — кэш / in-memory store | три стопки ромбов |
+| `seq.svg` | Seq — структурированные логи | строки лога + лупа |
+
 ## Действия с сообщением и символика
 
 `reply`/`forward`/`copy-plain`/`copy-image`/`pin`/`edit`/`delete` — **1:1 те же иконки**, что в контекстном меню сообщения веб-клиента (`Backend/BarkFluff.Web/wwwroot/messenger.html`, `#bf-icon-*` symbols, `copy-plain` = их `bf-icon-copy`). Там же 18×18 при viewBox 24×24, `stroke-width:2`, `round` caps/joins, `stroke: currentColor` — тот же язык, что и у сервисных иконок, просто более плотный рисунок (это и делает их «красивее»). Остальные (`copy-markdown`, `download`, `properties`, `select`, `more`) в веб-меню нет — добавлены в том же визуальном весе.

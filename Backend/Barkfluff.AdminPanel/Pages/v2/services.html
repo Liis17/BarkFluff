@@ -291,6 +291,18 @@
     }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
+    const SERVICE_ICONS = {
+        'PostgreSQL': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><circle cx="7.3" cy="8.3" r="2.1"/><path d="M14.5 13.5C16.2 13.9 17.3 15.2 16.8 16.8C16.4 18 15 18.6 13.6 18.2"/></g><circle cx="13.6" cy="8" r="0.9" fill="currentColor"/></svg>',
+        'RabbitMQ': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10C7.5 7 8 3.5 9.5 3.5S11 6 10 10"/><path d="M15 10C16.5 7 16 3.5 14.5 3.5S13 6 14 10"/><circle cx="12" cy="13.5" r="4.5"/></g><circle cx="10.3" cy="12.5" r="0.9" fill="currentColor"/><circle cx="13.7" cy="12.5" r="0.9" fill="currentColor"/></svg>',
+        'Redis': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8.5 12 6 19.5 8.5 12 11 4.5 8.5Z"/><path d="M4.5 12.5 12 10 19.5 12.5 12 15 4.5 12.5Z"/><path d="M4.5 16.5 12 14 19.5 16.5 12 19 4.5 16.5Z"/></g></svg>',
+        'Seq': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none"><g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6H13"/><path d="M4 10.5H10"/><path d="M4 15H8"/><circle cx="15.5" cy="14.5" r="3.5"/><path d="M18 17 20.5 19.5"/></g></svg>'
+    };
+    function serviceIconHtml(name) {
+        const svg = SERVICE_ICONS[name];
+        if (svg) return `<span style="display:inline-flex;width:18px;height:18px;color:var(--md-primary);">${svg}</span>`;
+        return `<span class="msr size-18" style="color:var(--md-primary);">dns</span>`;
+    }
+
     function statusBadgeHtml(state) {
         const map = {
             running:      { cls:'md-status-success', label:'Запущен' },
@@ -352,7 +364,7 @@
             <tr>
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;font-weight:500;">
-                        <span class="msr size-18" style="color:var(--md-primary);">dns</span>
+                        ${serviceIconHtml(svc.name)}
                         ${escapeHtml(svc.name)}
                         ${svc.updateAvailable ? '<span class="md-status md-status-warn" title="Доступно обновление"><span class="msr size-16">system_update_alt</span>Обновление</span>' : ''}
                     </div>
