@@ -185,6 +185,7 @@ app.MapGrpcReflectionService();
 app.UseRouting();
 
 app.UseXAuth();
+app.MapPingEndpoint();
 
 app.MapGrpcService<UpdatesApiService>();
 

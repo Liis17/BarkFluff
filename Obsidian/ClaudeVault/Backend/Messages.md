@@ -2,6 +2,8 @@
 
 Управление чатами, сообщениями и вложениями. Порт: **7007**.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 Расположение: `Backend/BarkFluff.Messages/`
 
 📁 **Карта файлов проекта:** [[Backend/Messages-ProjectMap]]

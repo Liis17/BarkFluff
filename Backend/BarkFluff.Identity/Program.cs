@@ -110,6 +110,7 @@ public class Program
         app.MapGrpcReflectionService();
 
         app.UseXAuth();
+        app.MapPingEndpoint();
 
         app.MapGrpcService<IdentityApiService>().EnableGrpcWeb();
         app.MapGrpcService<IdentityServerApiService>();

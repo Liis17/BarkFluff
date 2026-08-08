@@ -2,6 +2,8 @@
 
 QR-авторизация новых устройств (флоу как у WhatsApp Web). Порт **7008**.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 > 📂 Детальная карта файлов и классов → [[Backend/FastAuth-ProjectMap]]
 
 Расположение: `Backend/BarkFluff.FastAuth/`

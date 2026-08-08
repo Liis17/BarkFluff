@@ -3,6 +3,8 @@
 Управление файлами. Метаданные в PostgreSQL, файлы в Minio (S3). Порт: **7005**.
 Поддерживает дедупликацию по SHA256, сжатие изображений, генерацию превью, определение типа по magic bytes.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 Расположение: `Backend/BarkFluff.Files/`
 
 > 📁 Детальная карта всех файлов проекта: [[Backend/Files-ProjectMap]]

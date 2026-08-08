@@ -3,6 +3,8 @@
 Управляет реестром доступных серверов BarkFluff. Порты по умолчанию: **7010** (внутренний gRPC/HTTP2) и **7011** (внутренний HTTP/1.1 для админки).
 Публичный эндпоинт: `navigator.barkfluff.com:443` (TLS завершается в [[Backend/Nginx]]).
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 Расположение: `Backend/BarkFluff.Navigator/`
 
 Роль в федерации — вторичный канал (источник 2 discovery, [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]]): каталог публичных нод + кросс-проверка ключей при первом контакте + фолбэк-резолв, когда `/.well-known` недоступен. Сеть обязана работать при лежащем Navigator — уже знакомые ноды (`KnownServers` в [[Backend/Federation]]) продолжают общаться напрямую.

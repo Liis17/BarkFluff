@@ -274,6 +274,7 @@ app.Use(async (ctx, next) =>
 app.UseStaticFiles();
 
 app.MapHealthChecks("/health");
+app.MapPingEndpoint();
 
 // Firebase web configuration and the VAPID key are public client identifiers.
 // Service-account credentials deliberately remain exclusive to CloudMessaging.
@@ -328,13 +329,14 @@ app.MapGet("/messenger", (IWebHostEnvironment env) =>
 
 app.MapReverseProxy();
 
-// Fallback: SPA отдаётся для любого URL, КРОМЕ /api/* и /health —
-// чтобы неверный HTTP-метод на upload/health не маскировался index.html.
+// Fallback: SPA отдаётся для любого URL, КРОМЕ /api/*, /health и /ping —
+// чтобы неверный HTTP-метод на upload/health/ping не маскировался index.html.
 app.MapFallback(async (HttpContext ctx, IWebHostEnvironment env) =>
 {
     var path = ctx.Request.Path.Value ?? string.Empty;
     if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
-        || path.Equals("/health", StringComparison.OrdinalIgnoreCase))
+        || path.Equals("/health", StringComparison.OrdinalIgnoreCase)
+        || path.Equals("/ping", StringComparison.OrdinalIgnoreCase))
     {
         ctx.Response.StatusCode = StatusCodes.Status404NotFound;
         return;

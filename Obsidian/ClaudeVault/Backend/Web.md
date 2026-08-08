@@ -2,6 +2,8 @@
 
 gRPC-Web reverse proxy + static file server для веб-клиента. Порт: **7016**.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`; дополнительно Web сохраняет readiness/health endpoint `GET /health`.
+
 Расположение: `Backend/BarkFluff.Web/`
 
 📁 **Детальная карта файлов и классов:** [[Backend/Web-ProjectMap]]

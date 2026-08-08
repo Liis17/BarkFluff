@@ -145,6 +145,7 @@ public class Program
         app.UseRouting();
 
         app.UseXAuth();
+        app.MapPingEndpoint();
 
         // Регистрируем gRPC сервисы
         app.MapGrpcService<OnlinerApiService>();

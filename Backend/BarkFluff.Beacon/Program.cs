@@ -69,6 +69,7 @@ public class Program
         if (app.Environment.IsDevelopment())
             app.MapGrpcReflectionService();
         app.UseRouting();
+        app.MapPingEndpoint();
         app.MapGrpcService<BeaconApiService>();
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
