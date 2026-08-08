@@ -526,10 +526,16 @@
     <string name="about_device">Dispositivo</string>
     <string name="about_os">Sistema operativo</string>
     <string name="about_microservices">Microservicios del servidor</string>
-    <string name="about_ping_server">Comprobar ping</string>
-    <string name="about_ping_checking">Comprobando la conexión con Beacon…</string>
-    <string name="about_ping_result">Respuesta de Beacon: %1$d ms</string>
-    <string name="about_ping_failed">Beacon no respondió</string>
+    <string name="about_ping_server">Comprobar disponibilidad</string>
+    <string name="about_ping_checking">Comprobando la disponibilidad de los microservicios…</string>
+    <string name="about_ping_result">Disponibles: %1$d de %2$d</string>
+    <string name="about_ping_failed">No se pudo comprobar la disponibilidad</string>
+    <string name="about_ping_no_services">No hay microservicios configurados para comprobar</string>
+    <string name="about_service_available">Disponible · %1$d ms</string>
+    <string name="about_service_unavailable">No disponible · %1$d ms</string>
+    <string name="about_service_checking">Comprobando…</string>
+    <string name="about_service_not_configured">Dirección no indicada</string>
+    <string name="about_service_not_checked">Sin comprobar</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Pruebas</string>

@@ -1,25 +1,32 @@
 package com.barkfluff.client
 
 import android.os.Bundle
-import android.os.SystemClock
+import android.text.TextUtils
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityAboutBinding
-import com.barkfluff.client.grpc.GrpcManager
-import com.barkfluff.client.utils.refreshServerInfoFromBeacon
+import com.barkfluff.client.utils.ServicePingChecker
+import com.barkfluff.client.utils.ServicePingResult
 import com.google.android.material.divider.MaterialDivider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.supervisorScope
 
 class AboutActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAboutBinding
     private lateinit var globalParam: GlobalParam
-    private val grpcManager = GrpcManager()
+    private val servicePingChecker = ServicePingChecker()
+    private var pingResults = emptyMap<String, ServicePingResult>()
+    private var isChecking = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,31 +58,32 @@ class AboutActivity : AppCompatActivity() {
         binding.textOsVersion.text = GlobalParam.getOsVersion()
     }
 
-    private fun fillServerInfo() {
-        val services = listOf(
-            "Beacon" to globalParam.socketBeacon,
-            "Identity" to globalParam.socketIdentity,
-            "Users" to globalParam.socketUsers,
-            "Files" to globalParam.socketFiles,
-            "Messages" to globalParam.socketMessages,
-            "Updates" to globalParam.socketUpdates,
-            "Onliner" to globalParam.socketOnliner,
-            "FastAuth" to globalParam.socketFastAuth,
-            "Calls" to globalParam.socketCalls,
-            "LiveKit" to globalParam.livekitUrl
-        )
+    private fun serverServices(): List<ServiceDefinition> = listOf(
+        ServiceDefinition("Beacon", globalParam.socketBeacon),
+        ServiceDefinition("Identity", globalParam.socketIdentity),
+        ServiceDefinition("Users", globalParam.socketUsers),
+        ServiceDefinition("Files", globalParam.socketFiles),
+        ServiceDefinition("Messages", globalParam.socketMessages),
+        ServiceDefinition("Updates", globalParam.socketUpdates),
+        ServiceDefinition("Onliner", globalParam.socketOnliner),
+        ServiceDefinition("FastAuth", globalParam.socketFastAuth),
+        ServiceDefinition("Calls", globalParam.socketCalls),
+        ServiceDefinition("LiveKit", globalParam.livekitUrl, pingable = false)
+    )
 
+    private fun fillServerInfo() {
         val container = binding.serverInfoContainer
         container.removeAllViews()
+        val services = serverServices()
 
-        services.forEachIndexed { index, (name, address) ->
+        services.forEachIndexed { index, service ->
             if (index > 0) {
                 val divider = MaterialDivider(this)
                 divider.layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    marginStart = resources.getDimensionPixelSize(android.R.dimen.app_icon_size) / 3
+                    marginStart = dp(16)
                 }
                 container.addView(divider)
             }
@@ -83,39 +91,79 @@ class AboutActivity : AppCompatActivity() {
             val row = LinearLayout(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
-                ).apply {
-                    height = (56 * resources.displayMetrics.density).toInt()
-                }
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                minimumHeight = dp(56)
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
                 setPadding(
-                    (16 * resources.displayMetrics.density).toInt(), 0,
-                    (16 * resources.displayMetrics.density).toInt(), 0
+                    dp(16), dp(8), dp(16), dp(8)
                 )
             }
 
-            val nameView = TextView(this).apply {
+            val details = LinearLayout(this).apply {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                text = name
+                orientation = LinearLayout.VERTICAL
+            }
+
+            val nameView = TextView(this).apply {
+                text = service.name
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
                 setTextColor(getColorFromAttr(com.google.android.material.R.attr.colorOnSurface))
             }
 
             val addressView = TextView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                text = address.ifBlank { "—" }
+                text = service.address.ifBlank { "—" }
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
                 setTextColor(getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant))
                 setTextIsSelectable(true)
+                maxLines = 2
+                ellipsize = TextUtils.TruncateAt.END
             }
 
-            row.addView(nameView)
-            row.addView(addressView)
+            details.addView(nameView)
+            details.addView(addressView)
+            row.addView(details)
+
+            val statusView = TextView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginStart = dp(12)
+                }
+                gravity = android.view.Gravity.END
+                maxLines = 2
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                val (statusText, statusColor) = serviceStatus(service)
+                text = statusText
+                setTextColor(statusColor)
+            }
+            row.addView(statusView)
             container.addView(row)
+        }
+    }
+
+    private fun serviceStatus(service: ServiceDefinition): Pair<String, Int> {
+        val secondaryColor = getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant)
+        if (!service.pingable) {
+            return getString(R.string.about_service_not_checked) to secondaryColor
+        }
+        if (service.address.isBlank()) {
+            return getString(R.string.about_service_not_configured) to secondaryColor
+        }
+        if (isChecking) {
+            return getString(R.string.about_service_checking) to secondaryColor
+        }
+
+        val result = pingResults[service.name]
+            ?: return getString(R.string.about_service_not_checked) to secondaryColor
+        return if (result.available) {
+            getString(R.string.about_service_available, result.responseTimeMs) to
+                ContextCompat.getColor(this, R.color.success)
+        } else {
+            getString(R.string.about_service_unavailable, result.responseTimeMs) to
+                ContextCompat.getColor(this, R.color.error)
         }
     }
 
@@ -131,30 +179,61 @@ class AboutActivity : AppCompatActivity() {
     }
 
     private fun pingServer() {
+        if (isChecking) {
+            return
+        }
+
+        isChecking = true
+        pingResults = emptyMap()
         binding.pingServerButton.isEnabled = false
         binding.textPingResult.visibility = View.VISIBLE
         binding.textPingResult.text = getString(R.string.about_ping_checking)
+        fillServerInfo()
 
         lifecycleScope.launch {
-            val startedAt = SystemClock.elapsedRealtime()
-            val serverInfoUpdated = withTimeoutOrNull(3_000L) {
-                refreshServerInfoFromBeacon(grpcManager, globalParam)
-            } == true
-            if (serverInfoUpdated) {
-                fillServerInfo()
-                val responseTimeMs = SystemClock.elapsedRealtime() - startedAt
-                binding.textPingResult.text = getString(R.string.about_ping_result, responseTimeMs)
-            } else {
+            try {
+                val servicesToCheck = serverServices().filter {
+                    it.pingable && it.address.isNotBlank()
+                }
+                val results = supervisorScope {
+                    servicesToCheck.map { service ->
+                        async(Dispatchers.IO) {
+                            service.name to servicePingChecker.check(service.address)
+                        }
+                    }.awaitAll().toMap()
+                }
+                pingResults = results
+                binding.textPingResult.text = if (servicesToCheck.isEmpty()) {
+                    getString(R.string.about_ping_no_services)
+                } else {
+                    val availableCount = results.values.count { it.available }
+                    getString(R.string.about_ping_result, availableCount, servicesToCheck.size)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                pingResults = emptyMap()
                 binding.textPingResult.text = getString(R.string.about_ping_failed)
+            } finally {
+                isChecking = false
+                binding.pingServerButton.isEnabled = true
+                fillServerInfo()
             }
-            binding.pingServerButton.isEnabled = true
         }
     }
 
     override fun onDestroy() {
+        servicePingChecker.close()
         super.onDestroy()
-        grpcManager.shutdown()
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private data class ServiceDefinition(
+        val name: String,
+        val address: String,
+        val pingable: Boolean = true
+    )
 
     private fun getColorFromAttr(attr: Int): Int {
         val typedArray = obtainStyledAttributes(intArrayOf(attr))
