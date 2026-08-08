@@ -45,11 +45,4 @@ public sealed partial class MessengerPage : Page
         }
     }
 
-    private void OnChatHeaderClick(object sender, RoutedEventArgs eventArgs)
-    {
-        if (ViewModel.SelectedChat?.PeerUserId is { } peerUserId)
-        {
-            Frame.Navigate(typeof(ProfilePage), peerUserId);
-        }
-    }
 }
