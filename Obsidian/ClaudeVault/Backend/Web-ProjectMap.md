@@ -87,12 +87,24 @@
 ### `wwwroot/messenger.html`
 Главный мессенджер. Подключает все JS-модули из `js/app/`.
 
+### `wwwroot/css/icons.css`
+Стили общего SVG-пакета `/icons/`: отображают монохромные файлы как CSS mask, наследующую
+`currentColor` текущей темы.
+
+### `wwwroot/icons/`
+Каталог SVG из корневого `icons/`, подключаемый ссылками MSBuild. Пути сохраняют контракт
+`/{category}/{name}.svg`, общий для клиентов.
+
 ### `wwwroot/favicon.ico`
 Иконка приложения.
 
 ---
 
 ## Frontend — JS модули (`wwwroot/js/app/`)
+
+### `icons.js` → `BF.icons`
+Единый helper для общего пакета иконок: строит безопасные URL, создаёт DOM-элементы и HTML
+с `data-bf-icon`, а также гидратирует статическую разметку `messenger.html`.
 
 ### `node.js` → `BF.node`
 Выбранная нода: `origin()` (синхронно из localStorage `bf_node_origin`), `id()`, `key(name)` —
