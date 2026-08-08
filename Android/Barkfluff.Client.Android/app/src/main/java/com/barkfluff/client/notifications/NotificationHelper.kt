@@ -14,7 +14,9 @@ import android.graphics.Typeface
 import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.telecom.DisconnectCause
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -356,7 +358,9 @@ object NotificationHelper {
             putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
             putExtra(CallExtras.EXTRA_CHAT_TITLE, chatTitle)
             putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_NO_USER_ACTION
         }
         val contentPendingIntent = PendingIntent.getActivity(
             context,
@@ -373,7 +377,9 @@ object NotificationHelper {
             putExtra(CallExtras.EXTRA_CHAT_ID, chatId)
             putExtra(CallExtras.EXTRA_CHAT_TITLE, chatTitle)
             putExtra(CallExtras.EXTRA_MEDIA_TYPE, mediaType)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_NO_USER_ACTION
         }
         val acceptPendingIntent = PendingIntent.getActivity(
             context,
@@ -400,11 +406,26 @@ object NotificationHelper {
         val person = Person.Builder()
             .setName(displayName)
             .setKey(if (callerUserId > 0) callerUserId.toString() else callId)
+            .setImportant(true)
             .setIcon(IconCompat.createWithBitmap(toSoftwareBitmap(avatarBitmap)))
             .build()
 
         val title = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
-        startIncomingCallRingtone(context, callId)
+        val alertIssue = incomingCallAlertIssue(context)
+        when (alertIssue) {
+            IncomingCallAlertIssue.NOTIFICATIONS_DISABLED -> {
+                Log.e(TAG, "Incoming call alert skipped: notifications are disabled")
+                return
+            }
+            IncomingCallAlertIssue.CHANNEL_NOT_ALERTING -> {
+                Log.w(TAG, "Incoming call channel is not alerting; full-screen UI may not be shown")
+            }
+            IncomingCallAlertIssue.FULL_SCREEN_INTENT_DISABLED -> {
+                Log.w(TAG, "Incoming call full-screen access is disabled; Android will show only the notification")
+            }
+            null -> Unit
+        }
+
         val builder = NotificationCompat.Builder(context, CHANNEL_INCOMING_CALLS)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(context.resources.getColor(R.color.primary, null))
@@ -419,12 +440,12 @@ object NotificationHelper {
             .setVibrate(longArrayOf(0, 600, 600, 600))
             .setContentIntent(contentPendingIntent)
             .setFullScreenIntent(contentPendingIntent, true)
+            .addPerson(person)
             .setStyle(NotificationCompat.CallStyle.forIncomingCall(person, rejectPendingIntent, acceptPendingIntent))
 
-        warnIfFullScreenIntentUnavailable(context)
-        warnIfIncomingCallChannelNotAlerting(context)
         try {
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+            startIncomingCallRingtone(context, callId)
         } catch (e: SecurityException) {
             Log.w(TAG, "No notification permission for incoming call", e)
         }
@@ -578,23 +599,39 @@ object NotificationHelper {
         ringingCallId = null
     }
 
-    private fun warnIfFullScreenIntentUnavailable(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+    fun canUseFullScreenIntent(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+        return context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+    }
 
-        val manager = context.getSystemService(NotificationManager::class.java)
-        if (!manager.canUseFullScreenIntent()) {
-            Log.w(TAG, "Full-screen intent permission is disabled; Android will show only an expanded call notification")
+    fun fullScreenIntentSettingsIntent(context: Context): Intent? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || canUseFullScreenIntent(context)) {
+            return null
+        }
+        return Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+            data = Uri.parse("package:${context.packageName}")
         }
     }
 
-    private fun warnIfIncomingCallChannelNotAlerting(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
-        val manager = context.getSystemService(NotificationManager::class.java)
-        val channel = manager.getNotificationChannel(CHANNEL_INCOMING_CALLS)
-        if (channel != null && channel.importance < NotificationManager.IMPORTANCE_HIGH) {
-            Log.w(TAG, "Incoming call notification channel is not high importance; Android may keep calls only in the notification shade")
+    fun notificationSettingsIntent(context: Context): Intent =
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
         }
+
+    private fun incomingCallAlertIssue(context: Context): IncomingCallAlertIssue? {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val channelImportance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.getNotificationChannel(CHANNEL_INCOMING_CALLS)?.importance
+                ?: IncomingCallAlertPolicy.MIN_ALERTING_CHANNEL_IMPORTANCE
+        } else {
+            IncomingCallAlertPolicy.MIN_ALERTING_CHANNEL_IMPORTANCE
+        }
+
+        return IncomingCallAlertPolicy.issue(
+            notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled(),
+            channelImportance = channelImportance,
+            fullScreenIntentEnabled = canUseFullScreenIntent(context)
+        )
     }
 
     private val PLACEHOLDER_COLORS = intArrayOf(

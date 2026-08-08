@@ -460,6 +460,11 @@
     <string name="notification_settings_title">Notificaciones</string>
     <string name="notification_receive_push">Recibir notificaciones push</string>
     <string name="notification_disable_hint">Desactivar las notificaciones detiene la entrega de push por Firebase solo en este dispositivo. Otros dispositivos seguirán recibiéndolas.</string>
+    <string name="incoming_call_fullscreen_title">Llamadas en la pantalla de bloqueo</string>
+    <string name="incoming_call_fullscreen_message">Permite que BarkFluff muestre la pantalla completa de llamadas entrantes. De lo contrario, un teléfono bloqueado podría reproducir solo el tono.</string>
+    <string name="incoming_call_notifications_message">Permite las notificaciones de BarkFluff en los ajustes del sistema. Son necesarias para mostrar las llamadas entrantes con la pantalla bloqueada.</string>
+    <string name="incoming_call_fullscreen_open_settings">Abrir ajustes</string>
+    <string name="incoming_call_fullscreen_later">Más tarde</string>
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Carpetas de chat</string>

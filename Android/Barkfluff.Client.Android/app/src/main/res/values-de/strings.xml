@@ -460,6 +460,11 @@
     <string name="notification_settings_title">Benachrichtigungen</string>
     <string name="notification_receive_push">Push-Benachrichtigungen empfangen</string>
     <string name="notification_disable_hint">Das Deaktivieren der Benachrichtigungen schaltet die Firebase-Push-Zustellung nur auf diesem Gerät aus. Andere Geräte erhalten weiterhin Benachrichtigungen.</string>
+    <string name="incoming_call_fullscreen_title">Anrufe auf dem Sperrbildschirm</string>
+    <string name="incoming_call_fullscreen_message">Erlauben Sie BarkFluff, den Vollbildschirm für eingehende Anrufe anzuzeigen. Andernfalls kann ein gesperrtes Telefon nur den Klingelton abspielen.</string>
+    <string name="incoming_call_notifications_message">Erlauben Sie BarkFluff-Benachrichtigungen in den Systemeinstellungen. Sie werden benötigt, um eingehende Anrufe bei gesperrtem Bildschirm anzuzeigen.</string>
+    <string name="incoming_call_fullscreen_open_settings">Einstellungen öffnen</string>
+    <string name="incoming_call_fullscreen_later">Später</string>
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Chat-Ordner</string>

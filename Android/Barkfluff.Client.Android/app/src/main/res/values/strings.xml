@@ -530,6 +530,11 @@
     <string name="notification_settings_title">Уведомления</string>
     <string name="notification_receive_push">Получать push-уведомления</string>
     <string name="notification_disable_hint">Отключение уведомлений отключит получение push-уведомлений через Firebase только на этом устройстве. На других устройствах уведомления продолжат приходить.</string>
+    <string name="incoming_call_fullscreen_title">Звонки на заблокированном экране</string>
+    <string name="incoming_call_fullscreen_message">Разрешите BarkFluff показывать полноэкранный экран входящего звонка. Иначе при заблокированном экране будет слышен только звук звонка.</string>
+    <string name="incoming_call_notifications_message">Разрешите уведомления BarkFluff в системных настройках. Они нужны, чтобы входящий звонок отображался, когда экран заблокирован.</string>
+    <string name="incoming_call_fullscreen_open_settings">Открыть настройки</string>
+    <string name="incoming_call_fullscreen_later">Позже</string>
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Папки чатов</string>
