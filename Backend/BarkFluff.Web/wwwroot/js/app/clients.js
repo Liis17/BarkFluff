@@ -31,10 +31,16 @@
     var ERROR_CODES = {
         OTP_REQUIRED: 'C1576884-12D8-4722-A7EE-9F9789AD1265',
         INVALID_OTP: '803B632C-4457-4B05-9435-9C3DD0F41E00',
-        INVALID_CREDENTIALS: '21BFB9B5-C377-45D1-9B15-6B7F3432B397'
+        INVALID_CREDENTIALS: '21BFB9B5-C377-45D1-9B15-6B7F3432B397',
+        INVALID_REFRESH_TOKEN: '7E6A31C5-3C4D-412E-87BC-0A387617A5D3'
     };
 
     var refreshPromise = null;
+
+    function isInvalidRefreshTokenError(err) {
+        var errorCode = err && err.metadata && err.metadata['x-error-code'];
+        return errorCode === ERROR_CODES.INVALID_REFRESH_TOKEN;
+    }
 
     /**
      * Refresh the access token using the stored refresh token.
@@ -54,7 +60,9 @@
             var meta = BF.metadata.build();
             identityClient.createToken(req, meta, function (err, resp) {
                 if (err || !resp) {
-                    BF.tokens.clear();
+                    // Сетевая ошибка не означает, что refresh token недействителен.
+                    // Очищаем сессию только по явному ответу Identity.
+                    if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
                     resolve(null);
                     return;
                 }
@@ -92,8 +100,11 @@
     function authCall(method, request) {
         return getValidToken().then(function (token) {
             if (!token) {
-                window.location.href = '/';
-                return Promise.reject(new Error('no_token'));
+                if (!BF.tokens.getRefreshToken()) {
+                    window.location.href = '/';
+                    return Promise.reject(new Error('no_token'));
+                }
+                return Promise.reject(new Error('token_refresh_unavailable'));
             }
             return callWithToken(method, request, token, false);
         });
@@ -108,7 +119,7 @@
                     if (err.code === 16 && !isRetry) {
                         refreshToken().then(function (newToken) {
                             if (!newToken) {
-                                window.location.href = '/';
+                                if (!BF.tokens.getRefreshToken()) window.location.href = '/';
                                 return reject(err);
                             }
                             callWithToken(method, request, newToken, true).then(resolve, reject);
