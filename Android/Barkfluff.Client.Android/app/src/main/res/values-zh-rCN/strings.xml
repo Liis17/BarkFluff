@@ -456,6 +456,11 @@
     <string name="notification_settings_title">通知</string>
     <string name="notification_receive_push">接收推送通知</string>
     <string name="notification_disable_hint">关闭通知将仅在此设备上停止 Firebase 推送。其他设备仍将收到通知。</string>
+    <string name="incoming_call_fullscreen_title">在锁屏上显示来电</string>
+    <string name="incoming_call_fullscreen_message">允许 BarkFluff 显示全屏来电界面。否则，锁屏时可能只能听到铃声。</string>
+    <string name="incoming_call_notifications_message">请在系统设置中允许 BarkFluff 通知。锁屏时显示来电需要此权限。</string>
+    <string name="incoming_call_fullscreen_open_settings">打开设置</string>
+    <string name="incoming_call_fullscreen_later">稍后</string>
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">聊天文件夹</string>
