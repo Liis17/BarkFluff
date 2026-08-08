@@ -6,6 +6,8 @@
     <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
     <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter" />
     <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter" />
+    <converters:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter" />
+    <converters:IntEqualsToBoolConverter x:Key="IntEqualsToBoolConverter" />
 
     <!--
         Замена DataTrigger по IsMine и HasOnlyMedia. Кисти берутся синглтонами из Brushes.xaml,
