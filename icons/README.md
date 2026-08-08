@@ -1,6 +1,6 @@
 # BarkFluff — иконки
 
-Векторные SVG-иконки платформы (микросервисы, действия с сообщениями) в стиле **Material 3 Expressive Iconography** (см. [`docs/material-3-expressive-guidelines.md`](../docs/material-3-expressive-guidelines.md), раздел 16).
+Векторные SVG-иконки платформы (микросервисы, действия с сообщениями, типы устройств и папки чатов) в стиле **Material 3 Expressive Iconography** (см. [`docs/material-3-expressive-guidelines.md`](../docs/material-3-expressive-guidelines.md), раздел 16).
 
 ## Стиль (Material Symbols)
 
@@ -31,9 +31,11 @@ icons/
     <action>.svg
   devices/
     default-<device>.svg
+  folders/
+    <folder-purpose>.svg
 ```
 
-Каждая категория — своя подпапка, имя файла (kebab/lowercase) = имя сервиса/действия/устройства.
+Каждая категория — своя подпапка, имя файла (kebab/lowercase) = имя сервиса/действия/устройства или системный ключ назначения папки.
 
 ## Сервисы и символика
 
@@ -95,3 +97,61 @@ icons/
 | `default-desktop.svg` | Десктоп (обобщённый ПК) | монитор на T-образной подставке |
 | `default-desktop-mac.svg` | Десктоп Mac (iMac) | моноблочный корпус с более скруглённой рамкой, точка камеры сверху, тонкая ножка |
 | `default-macbook.svg` | MacBook | клиновидный корпус экрана + суженное к передней кромке основание, точка камеры сверху |
+
+## Иконки папок чатов
+
+Иконки в `folders/` — самостоятельные семантические глифы для выбора пользователем в папке чатов. Имя файла без `.svg` — системный ключ, который можно передавать в `folder_icon` (например, `work` или `travel`).
+
+| Ключ | Файл | Назначение |
+|---|---|---|
+| `inbox` | `inbox.svg` | входящие / общий рабочий список |
+| `favorites` | `favorites.svg` | избранные чаты |
+| `important` | `important.svg` | важные чаты |
+| `unread` | `unread.svg` | непрочитанные |
+| `muted` | `muted.svg` | чаты без уведомлений |
+| `archive` | `archive.svg` | архив |
+| `personal` | `personal.svg` | личные чаты |
+| `family` | `family.svg` | семья и близкие |
+| `friends` | `friends.svg` | друзья |
+| `groups` | `groups.svg` | групповые чаты |
+| `work` | `work.svg` | работа и проекты |
+| `study` | `study.svg` | учёба |
+| `travel` | `travel.svg` | поездки |
+| `gaming` | `gaming.svg` | игры |
+| `music` | `music.svg` | музыка |
+| `media` | `media.svg` | фото, видео и медиа |
+| `shopping` | `shopping.svg` | покупки |
+| `finance` | `finance.svg` | финансы |
+| `channels` | `channels.svg` | каналы и трансляции |
+| `bots` | `bots.svg` | боты |
+| `home` | `home.svg` | дом и быт |
+| `events` | `events.svg` | события |
+| `private` | `private.svg` | приватные чаты |
+| `health` | `health.svg` | здоровье |
+| `all-chats` | `all-chats.svg` | все чаты |
+| `mentions` | `mentions.svg` | упоминания |
+| `replies` | `replies.svg` | ответы |
+| `drafts` | `drafts.svg` | черновики |
+| `snoozed` | `snoozed.svg` | отложенные чаты |
+| `scheduled` | `scheduled.svg` | запланированные сообщения |
+| `pinned` | `pinned.svg` | закреплённые чаты |
+| `verified` | `verified.svg` | проверенные контакты |
+| `support` | `support.svg` | поддержка |
+| `podcast` | `podcast.svg` | подкасты |
+| `code` | `code.svg` | разработка |
+| `design` | `design.svg` | дизайн |
+| `science` | `science.svg` | наука |
+| `sports` | `sports.svg` | спорт |
+| `food` | `food.svg` | еда и рецепты |
+| `pets` | `pets.svg` | питомцы |
+| `nature` | `nature.svg` | природа |
+| `location` | `location.svg` | места и локации |
+| `language` | `language.svg` | языки и международные чаты |
+| `weather` | `weather.svg` | погода |
+| `books` | `books.svg` | книги |
+| `movies` | `movies.svg` | кино |
+| `voice` | `voice.svg` | голосовые сообщения |
+| `goals` | `goals.svg` | цели |
+| `news` | `news.svg` | новости |
+
+Пустой `folder_icon` по-прежнему означает отсутствие пользовательской иконки; `inbox` — рекомендуемый явный вариант для входящих.
