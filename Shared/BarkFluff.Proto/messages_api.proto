@@ -562,6 +562,9 @@ service MessagesServerApi {
   // Получить идентификаторы участников чата (для рассылки ринга группового звонка)
   rpc GetChatMemberIds(GetChatMemberIdsRequest) returns(GetChatMemberIdsResponse);
 
+  // Получить публичные метаданные чата по id, без привязки к конкретному пользователю (для админ-панели)
+  rpc GetChatInfoServer(GetChatInfoServerRequest) returns(GetChatInfoServerResponse);
+
   // Записать системное сообщение об итоге звонка в чат (вызывает сервис Calls)
   rpc PostCallSystemMessage(PostCallSystemMessageRequest) returns(PostCallSystemMessageResponse);
 
@@ -706,6 +709,18 @@ message GetChatMemberIdsRequest {
 
 message GetChatMemberIdsResponse {
   repeated int64 user_ids = 1; // идентификаторы участников чата
+}
+
+message GetChatInfoServerRequest {
+  string chat_id = 1; // идентификатор чата (Guid-строка)
+}
+
+message GetChatInfoServerResponse {
+  bool found = 1; // найден ли чат с таким id
+  string title = 2; // название чата (заполнено только для групповых чатов)
+  string picture = 3; // картинка чата (заполнена только для групповых чатов)
+  bool is_group_chat = 4; // является ли групповым чатом
+  repeated int64 member_ids = 5; // идентификаторы участников чата
 }
 
 // Итог звонка для системного сообщения. Текст форматирует Messages.
