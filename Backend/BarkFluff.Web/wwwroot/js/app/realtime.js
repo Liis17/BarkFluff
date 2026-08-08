@@ -140,6 +140,14 @@
 
     var _redirecting = false;
     function handleNoToken() {
+        // При временной ошибке refresh токены остаются в хранилище: повторяем
+        // подключение с backoff, а не отправляем пользователя на экран входа.
+        try {
+            if (BF.tokens && BF.tokens.getRefreshToken && BF.tokens.getRefreshToken()) {
+                scheduleReconnect('token', reconnect, INITIAL_BACKOFF);
+                return;
+            }
+        } catch (e) {}
         if (_redirecting) return;
         _redirecting = true;
         try { stopAll(); } catch (e) {}
