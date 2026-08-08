@@ -364,7 +364,7 @@
             }
             var progress = normalizeProgress(a.uploadProgress);
             link.innerHTML =
-                '<span class="attach-doc-icon">' + u().docIcon(a.fileName) + '</span>' +
+                '<span class="attach-doc-icon">' + u().docIcon() + '</span>' +
                 '<div class="attach-doc-info">' +
                 '<div class="attach-doc-name">' + u().escapeHtml(a.fileName || BF.i18n.t('attachment.file')) + '</div>' +
                 (a.isPending

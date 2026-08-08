@@ -45,12 +45,6 @@
         return BF.i18n.t('unit.gb', { value: (bytes / 1024 / 1024 / 1024).toFixed(2) });
     }
 
-    function getFileExt(name) {
-        var idx = (name || '').lastIndexOf('.');
-        if (idx < 0 || idx === name.length - 1) return 'FILE';
-        return name.substring(idx + 1).toUpperCase().substring(0, 4);
-    }
-
     function open(files, onSend, prefillText) {
         onSendCallback = onSend;
         currentFiles = Array.from(files).map(function (f) {
@@ -154,7 +148,7 @@
                 row.className = 'attach-doc-row';
                 var icon = document.createElement('div');
                 icon.className = 'attach-doc-icon';
-                icon.textContent = getFileExt(item.file.name);
+                icon.appendChild(BF.icons.element('chat', 'document'));
                 var info = document.createElement('div');
                 info.className = 'attach-doc-info';
                 var nm = document.createElement('div');

@@ -2,7 +2,7 @@
  * Chat folders module — UI vertical tabs above chat list, state, drag-and-drop reorder,
  * create/edit/delete modal, integration with chat context menu.
  *
- * Requires: BF.api, BF.utils
+ * Requires: BF.api, BF.utils, BF.icons
  * Exposes: BF.folders
  */
 (function () {
@@ -20,29 +20,21 @@
     var onChangeCb = null;            // called when active folder OR folder set changes (UI ререндер)
     var chatsForBadges = [];          // latest chat snapshots used for folder unread badges
 
-    // --- Emoji presets (closed grid in edit modal) ---
-    var EMOJI_PRESETS = [
-        '📥', // 📥
-        '💼', // 💼
-        '✈️', // ✈️
-        '🎓', // 🎓
-        '❤️', // ❤️
-        '👨‍👩‍👧', // 👨‍👩‍👧
-        '🛒', // 🛒
-        '🎮', // 🎮
-        '📚', // 📚
-        '🏠', // 🏠
-        '💰', // 💰
-        '🎵', // 🎵
-        '🍔', // 🍔
-        '🏋️', // 🏋️
-        '📰', // 📰
-        '🐾', // 🐾
-        '⚽',       // ⚽
-        '🎬', // 🎬
-        '✏️', // ✏️
-        '⭐'        // ⭐
+    // --- Shared folder icon keys (closed grid in edit modal) ---
+    var FOLDER_ICON_KEYS = [
+        'all-chats', 'archive', 'books', 'bots', 'channels', 'code', 'design',
+        'drafts', 'events', 'family', 'favorites', 'finance', 'food', 'friends',
+        'gaming', 'goals', 'groups', 'health', 'home', 'important', 'inbox',
+        'language', 'location', 'media', 'mentions', 'movies', 'music', 'muted',
+        'nature', 'news', 'personal', 'pets', 'pinned', 'podcast', 'private',
+        'replies', 'scheduled', 'science', 'shopping', 'snoozed', 'sports',
+        'study', 'support', 'travel', 'unread', 'verified', 'voice', 'weather',
+        'work'
     ];
+
+    function isFolderIconKey(value) {
+        return FOLDER_ICON_KEYS.indexOf(value) >= 0;
+    }
 
     // --- DOM refs (resolved at init) ---
     var folderTabsEl = null;
@@ -56,7 +48,7 @@
     var folderEditCloseBtn = null;
 
     var editingFolderId = null;       // null = create mode
-    var selectedIcon = '';            // currently selected emoji in modal
+    var selectedIcon = '';            // currently selected shared icon key in modal
 
     // --- Helpers ---
 
@@ -250,7 +242,8 @@
         allTab.type = 'button';
         allTab.className = 'folder-tab' + (activeFolderId === 'all' ? ' active' : '');
         allTab.dataset.folderId = 'all';
-        allTab.textContent = BF.i18n.t('folder.allChats');
+        allTab.appendChild(BF.icons.element('folders', 'all-chats', 'folder-tab-icon'));
+        allTab.appendChild(document.createTextNode(BF.i18n.t('folder.allChats')));
         allTab.addEventListener('click', function () { setActiveFolderId('all'); });
         folderTabsEl.appendChild(allTab);
 
@@ -263,13 +256,16 @@
             tab.dataset.folderId = fid;
             tab.draggable = true;
 
-            var label = '';
-            if (f.folderIcon) label += f.folderIcon + ' ';
-            label += f.folderName || BF.i18n.t('folder.default');
-
             var labelEl = document.createElement('span');
             labelEl.className = 'folder-tab-label';
-            labelEl.textContent = label;
+            if (isFolderIconKey(f.folderIcon)) {
+                labelEl.appendChild(BF.icons.element('folders', f.folderIcon, 'folder-tab-icon'));
+                labelEl.appendChild(document.createTextNode(' '));
+            } else if (f.folderIcon) {
+                // Keep rendering legacy emoji values until the folder is edited.
+                labelEl.appendChild(document.createTextNode(f.folderIcon + ' '));
+            }
+            labelEl.appendChild(document.createTextNode(f.folderName || BF.i18n.t('folder.default')));
             tab.appendChild(labelEl);
 
             var unread = getFolderUnreadCount(f);
@@ -409,13 +405,15 @@
         none.addEventListener('click', function () { selectIcon(''); });
         folderEmojiGrid.appendChild(none);
 
-        EMOJI_PRESETS.forEach(function (em) {
+        FOLDER_ICON_KEYS.forEach(function (iconKey) {
             var cell = document.createElement('button');
             cell.type = 'button';
-            cell.className = 'emoji-cell';
-            cell.textContent = em;
-            cell.dataset.icon = em;
-            cell.addEventListener('click', function () { selectIcon(em); });
+            cell.className = 'emoji-cell folder-icon-cell';
+            cell.title = iconKey;
+            cell.setAttribute('aria-label', iconKey);
+            cell.dataset.icon = iconKey;
+            cell.appendChild(BF.icons.element('folders', iconKey));
+            cell.addEventListener('click', function () { selectIcon(iconKey); });
             folderEmojiGrid.appendChild(cell);
         });
     }
