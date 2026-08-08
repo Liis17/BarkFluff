@@ -19,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -42,7 +43,9 @@ class MainActivity : AppCompatActivity() {
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* granted or denied — no special handling needed */ }
+    ) { granted ->
+        if (granted) requestFullScreenIntentPermission()
+    }
 
     // Порядок табов: Чаты (0) | Звонки (1) | Профиль (2)
     private val fragments = mutableMapOf<Int, Fragment>()
@@ -602,8 +605,38 @@ class MainActivity : AppCompatActivity() {
                 != PackageManager.PERMISSION_GRANTED
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
             }
         }
+
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.notification_settings_title)
+                .setMessage(R.string.incoming_call_notifications_message)
+                .setNegativeButton(R.string.incoming_call_fullscreen_later, null)
+                .setPositiveButton(R.string.incoming_call_fullscreen_open_settings) { _, _ ->
+                    runCatching { startActivity(NotificationHelper.notificationSettingsIntent(this)) }
+                        .onFailure { Log.w("MainActivity", "Failed to open notification settings", it) }
+                }
+                .show()
+            return
+        }
+
+        requestFullScreenIntentPermission()
+    }
+
+    private fun requestFullScreenIntentPermission() {
+        val settingsIntent = NotificationHelper.fullScreenIntentSettingsIntent(this) ?: return
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.incoming_call_fullscreen_title)
+            .setMessage(R.string.incoming_call_fullscreen_message)
+            .setNegativeButton(R.string.incoming_call_fullscreen_later, null)
+            .setPositiveButton(R.string.incoming_call_fullscreen_open_settings) { _, _ ->
+                runCatching { startActivity(settingsIntent) }
+                    .onFailure { Log.w("MainActivity", "Failed to open full-screen intent settings", it) }
+            }
+            .show()
     }
 
     @Suppress("DEPRECATION")
