@@ -34,6 +34,8 @@ bash Windows/BarkFluff.Client.WinUI/tools/check-localization.sh
 - **Нет** `Style.Triggers`/`DataTrigger`, `StringFormat`, `InputBindings`, `RelativeSource AncestorType`, `UniformGrid`, `MediaElement`, `BooleanToVisibilityConverter`.
 - **`ThemeDictionaries` знает только Light/Dark/HighContrast** — четвёртая тема `BarkFluffDark` туда не помещается.
 - WinUI **не публикует** `DefaultListViewStyle`, поэтому `Style TargetType="ListView"` без `BasedOn` затёр бы `ControlTemplate`; свойства списка задаются прямо на контроле.
+- **У `ToggleButton` нет `GroupName`** (в отличие от WPF) — эксклюзивный выбор из нескольких кнопок делает только `RadioButton`. Переключатель вкладок вложений в профиле — `RadioButton` с общим `GroupName`, индекс пишется из `Checked` в code-behind (не через `ConvertBack`: WinUI сам снимает отметку с соседей по группе, и `TwoWay`-конвертер с `UnsetValue` на false-переходе ненадёжно с этим взаимодействует).
+- **`MediaPlayerElement.AutoPlay` по умолчанию `true`.** Внутри виртуализованного `ItemsRepeater` (лента сообщений) это не заметно — плиток разом мало; в невиртуализованном списке (вкладки вложений профиля, см. [[#Профиль]]) реализуются сразу все элементы страницы, и без `AutoPlay="False"` заиграли бы одновременно.
 
 ## Локализация
 
@@ -60,11 +62,9 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 
 `MainWindow` — контрол `TitleBar` (`ExtendsContentIntoTitleBar` + `SetTitleBar`), под ним `NavigationView` с `Frame` внутри, плюс `TaskbarIcon` из `H.NotifyIcon.WinUI`. WinUI-версия H.NotifyIcon не даёт событий клика, только команды, поэтому двойной клик по значку привязан к `DoubleClickCommand` из code-behind.
 
-`PaneDisplayMode="LeftMinimal"` — единственный режим, дающий ровно кнопку-бургер сверху слева и панель поверх контента. Пункта два: «Профиль» и «Настройки». `IsPaneVisible` включается только когда текущая вьюмодель — `MessengerViewModel`: на онбординге и логине идти из панели некуда.
+`PaneDisplayMode="LeftMinimal"` — единственный режим, дающий ровно кнопку-бургер сверху слева и панель поверх контента. Пункта два: «Профиль» и «Настройки». `IsPaneVisible` включается только когда текущая вьюмодель — `MessengerViewModel`: на онбординге и логине идти из панели некуда. Пункт «Профиль» не переходит по `Frame` — открывает оверлей `MessengerViewModel.OpenOwnProfileCommand` поверх уже отображённой `MessengerPage` (см. [[#Профиль]]); «Настройки» по-прежнему страница.
 
-Профиль и настройки навигируются **через `Frame` напрямую**, не через `IOnboardingNavigationService`: сервис заменяет `CurrentViewModel`, а `ShowMessenger()` вызывает `LoadAsync()` — возврат перезагружал бы весь список чатов. Возврат — штатной кнопкой «назад» `NavigationView` (`IsBackEnabled` обновляется в `Frame.Navigated`). Стек онбординга чистится при каждой навигации из сервиса, иначе «назад» уводило бы на экран логина. `MessengerPage` объявлена `NavigationCacheMode="Required"`, чтобы возврат не пересоздавал ленту.
-
-`ProfilePage` — единственная страница, на которую переходят из другой страницы (из заголовка чата, с идентификатором собеседника), поэтому вьюмодель она берёт из `App.Services`, а не из `e.Parameter`.
+Настройки навигируются **через `Frame` напрямую**, не через `IOnboardingNavigationService`: сервис заменяет `CurrentViewModel`, а `ShowMessenger()` вызывает `LoadAsync()` — возврат перезагружал бы весь список чатов. Возврат — штатной кнопкой «назад» `NavigationView` (`IsBackEnabled` обновляется в `Frame.Navigated`). Стек онбординга чистится при каждой навигации из сервиса, иначе «назад» уводило бы на экран логина. `MessengerPage` объявлена `NavigationCacheMode="Required"`, чтобы возврат не пересоздавал ленту.
 
 Закрытие обрабатывает `AppWindow.Closing`: в режиме `MinimizeToTray` отмена + `Hide()`, пункт «Выход» выставляет флаг и закрывает по-настоящему.
 
@@ -140,7 +140,15 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 
 ## Профиль
 
-Одна страница на два случая: из панели навигации открывается свой профиль (`userId = 0`, так же трактует запрос сервер), из заголовка чата — профиль собеседника. Только просмотр: редактирования нет ни в одном Windows-клиенте. Присутствие собеседника берётся из кэша `IOnlinePresenceService.TryGet` — заводить ради экрана вторую подписку не нужно, все собеседники в ней уже есть. Почту сервер отдаёт только для собственного профиля, пустая строка прячет блок целиком.
+Оверлей поверх `MessengerPage`, не отдельная `Page` — та же схема, что у `Forward`/`DeleteConfirm`/`PrivateUnlock` (`Grid` со `MessengerModalScrimBrush`, `Canvas.ZIndex`, видимость по флагу вьюмодели). Открывается из шапки чата (`OpenPeerProfileCommand`) и нав-панели (`OpenOwnProfileCommand`), закрывается `CloseProfileCommand`. `ProfileViewModel` и его состояние (`IsProfileVisible`) живут на `MessengerViewModel` — оба синглтоны, поэтому `MessengerViewModel.Reset()` при выходе из аккаунта обязан звать `Profile.Reset()`, иначе следующий вошедший увидел бы в оверлее данные прошлого пользователя.
+
+Только просмотр: редактирования нет ни в одном Windows-клиенте. Присутствие собеседника берётся из кэша `IOnlinePresenceService.TryGet` — заводить ради экрана вторую подписку не нужно, все собеседники в ней уже есть. Почту сервер отдаёт только для собственного профиля, пустая строка прячет блок целиком.
+
+`LoadForPeerAsync(peerUserId, chatId)` и `LoadOwnAsync()` — два отдельных входа вместо одного `userId`-параметра. У шапки чата chatId уже под рукой (`SelectedChat.Id`), прокидывается напрямую. У своего профиля из нав-панели chatId нет — `LoadOwnAsync` резолвит его сам через `WebApi.GetPersonChatId(userId)` (chat «с самим собой» — обычный приватный чат, где все участники равны `CurrentUserId`; специального сущности «избранное» на сервере нет). Если чата ещё нет, `GetPersonChatId` кидает `ChatNotFoundException` → `ErrorReturner` с ошибкой → секция вложений просто не показывается (`HasAttachments`).
+
+Четыре вкладки вложений — Фото (`Image`), Видео (`Video`), Файлы (`Document`), Голосовые (`Voice`) — каждая своим `ProfileAttachmentsTabViewModel`, который ленивo (по выбору вкладки, `EnsureLoadedAsync`) грузит `WebApi.ListChatAttachments(chatId, attachmentType, offset, size)` и пагинируется кнопкой «Загрузить ещё» (`LoadMoreCommand`, до исчерпания `TotalCount`). Первая вкладка (Фото) грузится сразу вместе с профилем. `Gif` в «Фото» не попадает — сервер фильтрует по одному типу за раз, а объединять два независимо пагинируемых потока в один список сочли лишней сложностью ради редкого случая; при необходимости можно завести пятую вкладку. `Audio` (тип, отдельный от `Voice`) нигде не показывается — ни один клиент его не обрабатывает, WPF и Android тоже ограничиваются `Voice`.
+
+Плитки медиа и файлов переиспользуют существующие `DataTemplate` ленты сообщений (`MediaAttachmentTemplate`, `FileAttachmentTemplate`). Голосовые получили свой `VoiceAttachmentTemplate`: строка (иконка/имя/размер) + `MediaPlayerElement`, скрытый до кнопки Play — тот же `PlayVideoBehavior`, что и у видео в ленте (поведение не специфично для видео: ищет ближайший предок-`Grid` и раскрывает в нём плеер), поэтому кнопка и плеер обязаны лежать в одном `Grid`, а не в `Border`+`StackPanel`.
 
 ## Настройки
 
@@ -183,3 +191,4 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 - Поиск чатов в WPF-версии не работал: `SearchText` объявлен, но нигде не читался. В WinUI добавлена `VisibleChats` — фильтр по заголовку, всегда сохраняющий выбранный чат (иначе список сбросил бы `SelectedItem` и закрыл переписку).
 - Новый чат, о котором пришло сообщение, дозагружается точечно и вставляется первым: `Clear()` на привязанной коллекции обнулил бы `SelectedChat`.
 - `MVVMTK0045` подавлен в Core: `[ObservableProperty]` на полях несовместим с AOT в WinRT-сценариях, но AOT и trimming выключены; переход на partial-свойства требует выноса инициализаторов в конструкторы и вынесен в отдельную задачу.
+- Вложения в профиле (Фото/Видео/Файлы/Голосовые с пагинацией) реализованы только в WinUI: у WPF в `Profile.xaml` есть те же вкладки визуально, но загрузка вложений не подключена — там они остаются пустыми заглушками.

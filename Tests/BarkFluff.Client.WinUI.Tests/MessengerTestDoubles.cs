@@ -21,13 +21,19 @@ internal static class MessengerTestDoubles
     public static MessengerViewModel CreateViewModel(
         FakeMessengerService? messenger = null,
         FakeRealtimeMessengerService? realtime = null,
-        FakeOnlinePresenceService? presence = null) =>
-        new(messenger ?? new FakeMessengerService(),
+        FakeOnlinePresenceService? presence = null)
+    {
+        var effectiveMessenger = messenger ?? new FakeMessengerService();
+        var effectivePresence = presence ?? new FakeOnlinePresenceService();
+        var localization = new StubLocalizationService();
+        return new(effectiveMessenger,
             new FakePrivateChatKeyStore(),
             realtime ?? new FakeRealtimeMessengerService(),
-            presence ?? new FakeOnlinePresenceService(),
-            new StubLocalizationService(),
-            new InlineUiDispatcher());
+            effectivePresence,
+            localization,
+            new InlineUiDispatcher(),
+            new ProfileViewModel(effectiveMessenger, effectivePresence, localization));
+    }
 
     public static Chat CreateChat(string id, string title = "Chat", long peerUserId = 0, ChatType chatType = ChatType.Regular)
     {
@@ -55,6 +61,20 @@ internal static class MessengerTestDoubles
         SenderId = senderId,
         Text = text,
         SentAt = Timestamp.FromDateTime(DateTime.UtcNow)
+    };
+
+    public static ChatAttachmentInfo CreateAttachmentInfo(long id, MessageAttachmentType type) => new()
+    {
+        AttachmentId = id,
+        MessageId = id,
+        SentAt = Timestamp.FromDateTime(DateTime.UtcNow),
+        Attachment = new MessageAttachment
+        {
+            Id = id,
+            Type = type,
+            FileId = $"file-{id}",
+            FileName = $"file-{id}.bin"
+        }
     };
 }
 
@@ -228,4 +248,34 @@ internal sealed class FakeMessengerService : IMessengerService
         Task.FromResult(string.Empty);
 
     public byte[]? UnlockPrivateChat(Chat chat, string passphrase) => null;
+
+    public string? PersonChatId { get; set; }
+
+    public bool PersonChatIdFails { get; set; }
+
+    public Task<(ErrorReturner error, string chatId)> GetPersonChatIdAsync(long userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<(ErrorReturner, string)>(PersonChatIdFails
+            ? (new ErrorReturner(false, "чат не найден"), string.Empty)
+            : (new ErrorReturner(true), PersonChatId ?? string.Empty));
+
+    public List<ChatAttachmentInfo> Attachments { get; } = [];
+
+    public bool AttachmentsFail { get; set; }
+
+    public Task<(ErrorReturner error, List<ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachmentsAsync(
+        string chatId,
+        MessageAttachmentType attachmentType,
+        int offset,
+        int size,
+        CancellationToken cancellationToken = default)
+    {
+        if (AttachmentsFail)
+        {
+            return Task.FromResult<(ErrorReturner, List<ChatAttachmentInfo>?, int)>((new ErrorReturner(false, "вложения недоступны"), null, 0));
+        }
+
+        var filtered = Attachments.Where(info => info.Attachment.Type == attachmentType).ToList();
+        var page = filtered.Skip(offset).Take(size).ToList();
+        return Task.FromResult<(ErrorReturner, List<ChatAttachmentInfo>?, int)>((new ErrorReturner(true), page, filtered.Count));
+    }
 }

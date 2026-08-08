@@ -107,7 +107,9 @@
       "mcp__nuget__get-latest-package-version",
       "mcp__nuget__get-package-context",
       "mcp__playwright__browser_resize",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_console_messages"
     ],
     "deny": [],
     "ask": [

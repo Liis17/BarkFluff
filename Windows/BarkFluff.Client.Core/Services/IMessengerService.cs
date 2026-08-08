@@ -40,5 +40,14 @@ public interface IMessengerService
 
     Task<string> ResolveFileUrlAsync(string fileId, CancellationToken cancellationToken = default);
 
+    Task<(ErrorReturner error, string chatId)> GetPersonChatIdAsync(long userId, CancellationToken cancellationToken = default);
+
+    Task<(ErrorReturner error, List<BarkFluff.Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachmentsAsync(
+        string chatId,
+        BarkFluff.Proto.Shared.MessageAttachmentType attachmentType,
+        int offset,
+        int size,
+        CancellationToken cancellationToken = default);
+
     byte[]? UnlockPrivateChat(Chat chat, string passphrase);
 }
