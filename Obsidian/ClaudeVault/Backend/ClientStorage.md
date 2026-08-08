@@ -28,6 +28,7 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 | `S3_SECRET_KEY` | Секретный ключ |
 | `S3_SERVICE_URL` | URL S3 (default: `http://localhost:9000`). **В продакшене — S3-совместимое хранилище от HostKey**, не MinIO; MinIO остаётся только локальным dev-хранилищем (на сервере его нет) |
 | `S3_BUCKET_NAME` | Имя бакета (default: `client-storage`) |
+| `S3_REGION` | Регион для SigV4; для Cloudflare R2 — `auto` |
 | `UPLOAD_TOKEN` | **Обязательный** Bearer-токен для POST-эндпоинтов |
 | `REGISTRY_STORAGE_S3_CHUNKSIZE` | Размер части multipart-загрузки в S3 (default 16 МБ; для Cloudflare R2 рекомендуется 100 МБ) |
 
@@ -63,7 +64,7 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - `Infrastructure/LocalFileCache` — локальный дисковый кеш (`CACHE_DIR`, default `/app/cache`)
 - `Infrastructure/HashingReadStream` — ~~класса не существует~~; SHA-256 вычисляется инлайн в контроллере через `IncrementalHash` (один проход до отправки в S3)
 - `Services/CacheWarmupService` — `IHostedService`, прогревает кеш при старте контейнера
-- `Services/OldVersionsCleanupService` — `IHostedService`, раз в 7 дней удаляет из S3 и БД **все версии кроме самой новой** по каждой паре `ClientType × ReleaseChannel`
+- `Services/OldVersionsCleanupService` — `IHostedService`, выполняет стартовую чистку файлов старше 7 дней, каждые 3 часа оставляет максимум 3 версии и ежедневно в 03:00 по Москве оставляет только последнюю версию по каждой паре `ClientType × ReleaseChannel`
 - `Middleware/TokenAuthMiddleware` — Bearer-токен только для `/set/*`
 - `Persistence/` — EF Core + SQLite
 
@@ -82,8 +83,15 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - В `AmazonS3Config`: `Timeout=30 мин`, `RequestChecksumCalculation/ResponseChecksumValidation = WHEN_REQUIRED` — иначе SDK 4 шлёт MinIO trailing-чексуммы (CRC64NVME), которые MinIO не понимает и отвечает ошибкой
 - `S3_REGION` (env) → `AmazonS3Config.AuthenticationRegion`. Для Cloudflare R2 обязателен (значение `auto`), для MinIO/dev не задаётся
 - `TransferUtilityUploadRequest.DisablePayloadSigning = true` — Cloudflare R2 не реализует chunked signing (`STREAMING-AWS4-HMAC-SHA256-PAYLOAD`); `UNSIGNED-PAYLOAD` совместим с R2/MinIO/S3, целостность обеспечивает TLS
-- В `finally` temp-файл удаляется
-- После ответа клиенту: фоновая задача скачивает файл из S3 в локальный кеш
+- После успешной загрузки temp-файл передаётся фоновой задаче для обновления кеша и удаляется после неё; при ошибке загрузки удаляется сразу
+- После ответа клиенту фоновая задача сначала обновляет кеш из temp-файла, а при неудаче скачивает файл из S3
+
+### Автоочистка версий
+- При старте контейнера удаляются записи SQLite и соответствующие S3-объекты с `UploadedAt` старше 7 дней. Стартовая очистка завершается до запуска прогрева локального кеша.
+- Каждые 3 часа удаляются самые старые версии, если для одной пары `ClientType × ReleaseChannel` накопилось больше 3 записей; остаются 3 последние по `UploadedAt`.
+- Ежедневно в 03:00 по московскому времени (00:00 UTC) удаляются все версии, кроме последней по каждой паре `ClientType × ReleaseChannel`.
+- Очистка работает по записям SQLite и их `S3Key`; orphan-объекты в бакете без записи `ClientFiles` не сканируются и не удаляются.
+- Retention и расписание заданы в коде `OldVersionsCleanupService`, отдельные переменные конфигурации для них не предусмотрены.
 
 ### Лимиты загрузки
 - `Kestrel.Limits.MaxRequestBodySize = 512 MB`

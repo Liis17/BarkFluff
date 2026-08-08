@@ -29,8 +29,8 @@ public class Program
 
         builder.Services.AddSingleton<S3StorageService>();
         builder.Services.AddSingleton<LocalFileCache>();
-        builder.Services.AddHostedService<CacheWarmupService>();
         builder.Services.AddHostedService<OldVersionsCleanupService>();
+        builder.Services.AddHostedService<CacheWarmupService>();
 
         builder.Services.AddDbContext<ClientStorageContext>(options =>
             options.UseSqlite("Data Source=/app/data/clientstorage.db"));
