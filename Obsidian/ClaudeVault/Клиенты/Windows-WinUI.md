@@ -102,6 +102,8 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 
 `StringFormat` в WinUI нет — время отдают свойства вьюмодели `SentAtLabel` и `LastMessageAtLabel`. `UniformGrid` нет — медиасетка это `ItemsRepeater` + `UniformGridLayout`. `MediaElement` нет — `MediaPlayerElement`, скрытый до нажатия Play: держать плеер активным в каждой плитке виртуализованной ленты слишком дорого.
 
+Файловые вложения внутри пузыря (`FileAttachments`) выводятся через `ItemsControl`, а не вложенный `ItemsRepeater`. Вложенный repeater при материализации сообщения с файлом приводил WinUI 3 к нативному падению `Microsoft.UI.Xaml.dll` с кодом `0xC000027B`.
+
 ## Реалтайм
 
 | Стрим | Обёртка `WebApi` | Потребитель |
