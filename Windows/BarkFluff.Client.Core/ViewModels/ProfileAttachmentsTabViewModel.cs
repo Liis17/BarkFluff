@@ -22,6 +22,7 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
     private readonly MessageAttachmentType _attachmentType;
     private string _chatId = string.Empty;
     private bool _isLoaded;
+    private bool _hasReceivedResult;
 
     public ProfileAttachmentsTabViewModel(IMessengerService messenger, ILocalizationService localization, MessageAttachmentType attachmentType)
     {
@@ -47,6 +48,7 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
     {
         _chatId = chatId ?? string.Empty;
         _isLoaded = false;
+        _hasReceivedResult = false;
         Items.Clear();
         TotalCount = 0;
         ErrorMessage = null;
@@ -67,7 +69,9 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadMoreAsync()
     {
-        if (IsLoading || string.IsNullOrEmpty(_chatId))
+        // HasMore до первого ответа сервера ложно-false (0 < 0), поэтому страж от повторной подгрузки
+        // после исчерпания списка смотрит на _hasReceivedResult, а не просто на HasMore.
+        if (IsLoading || string.IsNullOrEmpty(_chatId) || (_hasReceivedResult && !HasMore))
         {
             return;
         }
@@ -84,6 +88,7 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
             }
 
             TotalCount = totalCount;
+            _hasReceivedResult = true;
             foreach (var info in attachments)
             {
                 Items.Add(await CreateItemAsync(info.Attachment));
