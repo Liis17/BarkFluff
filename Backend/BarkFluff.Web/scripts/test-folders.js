@@ -47,11 +47,20 @@ function loadFolders() {
         Promise: Promise,
         document: {
             getElementById: function (id) { return elements.get(id) || null; },
-            createElement: function (tagName) { return new FakeElement(tagName); }
+            createElement: function (tagName) { return new FakeElement(tagName); },
+            createTextNode: function (value) { return { textContent: value, className: '' }; }
         },
         window: {
             BF: {
                 utils: {},
+                icons: {
+                    element: function (category, name, className) {
+                        var icon = new FakeElement('span');
+                        icon.className = ('bf-icon ' + (className || '')).trim();
+                        icon.dataset.bfIcon = category + '/' + name;
+                        return icon;
+                    }
+                },
                 api: {
                     getChatFolders: function () {
                         return Promise.resolve({
