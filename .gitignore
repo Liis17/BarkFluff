@@ -409,6 +409,7 @@ Android/.gradle/9.2.1/executionHistory/executionHistory.bin
 /Tests/LoadTests/reports/
 
 # Android release signing key — не коммитить (был утёк, перевыпущен)
+Android/local.properties
 Android/Barkfluff.Client.Android/barkfluff-release.jks
 *.jks
 default.profraw
