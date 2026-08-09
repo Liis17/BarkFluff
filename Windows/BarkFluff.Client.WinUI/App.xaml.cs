@@ -15,6 +15,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
+using System.IO;
+
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
 namespace BarkFluff.Client.WinUI;
@@ -26,7 +28,11 @@ public partial class App : Application
     private IHost? _host;
     private Window? _window;
 
-    public App() => InitializeComponent();
+    public App()
+    {
+        InitializeComponent();
+        AttachCrashLogging();
+    }
 
     /// <summary>
     /// Контейнер для страниц, на которые переходят из другой страницы: у <c>Page</c> нет
@@ -126,6 +132,40 @@ public partial class App : Application
 
         _window = window;
         window.Activate();
+    }
+
+    /// <summary>
+    /// Исключение в XAML-колбэке (материализация шаблона, конвертер, обработчик события)
+    /// без обработчика превращается в нативный stowed exception 0xC000027B: процесс падает
+    /// внутри Microsoft.UI.Xaml.dll, а отладчик остаётся без управляемого стека. Обработчики
+    /// только пишут причину в файл и не гасят исключение, чтобы падение оставалось видимым.
+    /// </summary>
+    private void AttachCrashLogging()
+    {
+        UnhandledException += (_, eventArgs) => LogCrash("Xaml", eventArgs.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) => LogCrash("AppDomain", eventArgs.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, eventArgs) => LogCrash("Task", eventArgs.Exception);
+
+        DebugSettings.IsBindingTracingEnabled = true;
+        DebugSettings.BindingFailed += (_, eventArgs) => LogLine($"BindingFailed: {eventArgs.Message}");
+    }
+
+    private static void LogCrash(string source, Exception? exception) =>
+        LogLine($"{source}: {exception}");
+
+    private static void LogLine(string message)
+    {
+        try
+        {
+            var directory = AppDataPaths.CreateDefault().DataDirectory;
+            Directory.CreateDirectory(directory);
+            File.AppendAllText(
+                Path.Combine(directory, "crash.log"),
+                $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+        }
     }
 
     /// <summary>
