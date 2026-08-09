@@ -60,6 +60,8 @@ public static class PlayVideoBehavior
 
         foreach (var player in grid.Children.OfType<MediaPlayerElement>())
         {
+            // Переработка контейнера возвращает кнопку Play, а прошлый источник остаётся открытым.
+            (player.Source as MediaSource)?.Dispose();
             player.Source = MediaSource.CreateFromUri(uri);
             player.Visibility = Visibility.Visible;
             player.MediaPlayer?.Play();
