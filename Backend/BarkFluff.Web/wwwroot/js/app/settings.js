@@ -89,10 +89,11 @@
         });
     }
 
-    function open() {
-        viewStack = [];
+    function open(view) {
+        var target = view || 'main';
+        viewStack = target === 'main' ? [] : ['main'];
         currentUser = null;
-        showView('main');
+        showView(target);
         overlay.classList.add('visible');
     }
 

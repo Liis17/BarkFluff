@@ -3852,6 +3852,54 @@
 
         .newchat-empty { padding: 14px; text-align: center; color: var(--text-sub); font-size: 14px; }
 
+        /* === COMMAND PALETTE (Ctrl+K) === */
+
+        .cmdpalette-overlay { align-items: flex-start; padding-top: 12vh; }
+
+        .cmdpalette-dialog {
+            width: 92%;
+            max-width: 560px;
+            max-height: 70vh;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .cmdpalette-input {
+            width: 100%;
+            padding: 16px 20px;
+            margin: 0;
+            border: none;
+            border-bottom: 1px solid var(--input-border);
+            border-radius: 0;
+            background: transparent;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+        }
+
+        .cmdpalette-input:focus { outline: none; }
+
+        .cmdpalette-results { overflow-y: auto; padding: 6px 0; }
+
+        .cmdpalette-section {
+            padding: 8px 16px 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-sub);
+        }
+
+        .cmdpalette-item {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .cmdpalette-item:hover, .cmdpalette-item.active { background: rgba(0, 0, 0, 0.04); }
+
         /* === SCROLL-TO-BOTTOM BUTTON === */
 
         .chat-area { position: relative; }
@@ -5146,6 +5194,14 @@
         </div>
     </div>
 
+    <!-- Command palette (Ctrl+K / Cmd+K) -->
+    <div class="confirm-overlay cmdpalette-overlay" id="cmdPaletteOverlay">
+        <div class="confirm-dialog cmdpalette-dialog">
+            <input type="text" class="cmdpalette-input" id="cmdPaletteInput" data-i18n-placeholder="cmdPalette.placeholder" placeholder="Поиск команд и чатов…" autocomplete="off">
+            <div class="cmdpalette-results" id="cmdPaletteResults"></div>
+        </div>
+    </div>
+
     <!-- Пароль приватного чата -->
     <div class="confirm-overlay" id="privatePassOverlay">
         <div class="confirm-dialog">
@@ -5732,6 +5788,7 @@
     <script src="/js/app/folders.js?v=folders-pins-2"></script>
     <script src="/js/app/pinned.js?v=folders-pins-1"></script>
     <script src="/js/app/push.js"></script>
+    <script src="/js/app/cmdpalette.js?v=cmdpalette-1"></script>
     <script src="/js/app/main.js?v=private-chats-2"></script>
     <script>
     /* Inject theme picker into settings dialog */
