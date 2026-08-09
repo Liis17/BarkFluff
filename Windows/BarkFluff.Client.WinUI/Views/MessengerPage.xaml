@@ -63,7 +63,10 @@
             </Grid>
         </DataTemplate>
 
-        <!--  Плитка медиа внутри пузыря: превью всегда, плеер раскрывается кнопкой.  -->
+        <!--
+            Плитка медиа внутри пузыря: превью всегда, плеер раскрывается кнопкой. Адрес плееру
+            передаёт Tag кнопки — без него PlayVideoBehavior молча ничего не сделает.
+        -->
         <DataTemplate x:Key="MediaAttachmentTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
             <Grid Margin="2">
                 <Image Source="{x:Bind PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
