@@ -2,7 +2,6 @@
   "profiles": {
     "BarkFluff.Client.WPF": {
       "commandName": "Project",
-      "workingDirectory": "K:\\source\\BarkFluff\\Windows\\BarkFluff.Client.WPF\\bin\\x64\\Debug\\net10.0-windows10.0.26100.0\\win-x64",
       "remoteDebugEnabled": false
     }
   }
