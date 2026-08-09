@@ -4041,6 +4041,16 @@
         });
     }
 
+    if (BF.cmdPalette && BF.cmdPalette.init) {
+        BF.cmdPalette.init({
+            getChats: function () { return chats; },
+            openChat: function (chatId) {
+                openChat(chatId);
+                if (window.__mobileShowChat) window.__mobileShowChat();
+            }
+        });
+    }
+
     BF.realtime.startAll();
     if (BF.calls && BF.calls.start) BF.calls.start();
 
