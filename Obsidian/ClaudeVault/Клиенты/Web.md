@@ -209,6 +209,19 @@ origin, сопоставить ключ нечем — вход потребуе
 ### Согласие с документами и cookie (страница входа)
 Чекбокс «Я принимаю Пользовательское соглашение и Политику конфиденциальности» (`legal.js`) блокирует форму входа, регистрацию и QR fast-auth, пока не отмечен. Тексты открываются модалкой прямо на странице — markdown копируется из [[Backend/WebServer]] MSBuild-таргетом `CopyLegalDocs`, рендер через `BF.utils.renderMarkdown`. Хранится редакция документа (как `acceptedLegalRevision` в [[Клиенты/Android]]), после входа она уходит в профиль через `UsersApi.AcceptLegalConsent`. Там же плашка об использовании cookie. Подробности — [[Backend/Web]].
 
+### Command palette (Ctrl+K / Cmd+K)
+
+`js/app/cmdpalette.js` (`BF.cmdPalette`) — палитра быстрых команд, только в мессенджере (не на странице входа). `#cmdPaletteOverlay` в `messenger.html` (`.confirm-overlay`-паттерн, как `#newChatOverlay`).
+
+- Триггер: глобальный `document.keydown`, `(ctrlKey||metaKey)+K` (без Alt), `preventDefault()`. Игнорируется, если уже открыт другой модальный overlay (`.confirm-overlay.visible`/`.settings-overlay.visible`/`.profile-overlay.visible`/`.call-permission-overlay.visible`/`.image-overlay.visible`/`.newchat-menu.visible`/`.msg-context-menu.visible`) — палитры не стекуются.
+- Esc закрывает, ArrowUp/Down двигают выделение (clamp, без цикла), Enter/клик выполняет пункт и закрывает палитру.
+- Фильтр — простой case-insensitive substring по лейблу (без fuzzy-либы, тексты уже короткие).
+- **Статичные действия** (лейблы переиспользуют существующие i18n-ключи, отдельных переводов не заводили): `BF.newchat.open('message'|'group'|'private')` (потребовал добавить `open: openOverlay` в экспорт `newchat.js`, раньше был только `init`), `BF.settings.open(view)` для профиля/сессий/2FA/приватности/персонализации/языка/о приложении, `window.__setTheme('light'|'dark'|'midnight')` (уже существовавший глобальный хук темы, ничего менять не пришлось).
+  - `BF.settings.open()` расширен: теперь принимает опциональный `view` (по умолчанию `'main'`); если передан не-`'main'` view, `viewStack` инициализируется как `['main']`, чтобы кнопка «назад» вела на главный экран настроек.
+- **Динамика:** поиск по уже загрученным в память чатам (`getChats()` — колбэк из `main.js`, читает closure-переменную `chats`, без похода в API) по подстроке в `title`, до 6 совпадений, выбор → `openChat(chatId)` (+ `window.__mobileShowChat()` на мобильном layout, как в `newchat.js`).
+- Команда выхода из аккаунта сознательно не включена (деструктивное действие, не должно срабатывать по Enter в палитре).
+- Init вызывается в `main.js` рядом с `BF.newchat.init`/`BF.realtime.startAll()`.
+
 ### Управление групповыми чатами (паритет с Android)
 Клик по шапке группового чата открывает инфо-панель `#groupOverlay` (`messenger.html`, переиспользует CSS `.profile-*`; логика в `main.js` — `openGroupInfo`). Возможности:
 - смена названия (карандаш → `BF.api.updateGroupChat(chatId, title)`) и аватара (`BF.files.uploadFile(file, 6 /*CHAT_PICTURE*/)` → `updateGroupChat(chatId, null, fileId)`);
