@@ -69,7 +69,6 @@
                 <Image Source="{x:Bind PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
                 <MediaPlayerElement AreTransportControlsEnabled="True"
                                     AutoPlay="False"
-                                    Source="{x:Bind FileUrl, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                     Stretch="UniformToFill"
                                     Visibility="Collapsed" />
                 <Button Width="44"
@@ -78,6 +77,7 @@
                         VerticalAlignment="Center"
                         behaviors:PlayVideoBehavior.Enable="True"
                         Content="&#x25B6;"
+                        Tag="{x:Bind FileUrl}"
                         Visibility="{x:Bind IsVideo, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </Grid>
         </DataTemplate>
@@ -129,7 +129,8 @@
                             Padding="0"
                             CornerRadius="18"
                             behaviors:PlayVideoBehavior.Enable="True"
-                            Content="&#x25B6;" />
+                            Content="&#x25B6;"
+                            Tag="{x:Bind FileUrl}" />
                     <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
                         <TextBlock FontSize="11"
@@ -143,7 +144,6 @@
                                          Margin="0,8,0,0"
                                          AreTransportControlsEnabled="True"
                                          AutoPlay="False"
-                                         Source="{x:Bind FileUrl, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                          Visibility="Collapsed" />
                 </Grid>
             </Border>
