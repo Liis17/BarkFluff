@@ -4,7 +4,6 @@
     <converters:BoolToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
     <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter" />
-    <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter" />
     <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter" />
     <converters:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter" />
     <converters:IntEqualsToBoolConverter x:Key="IntEqualsToBoolConverter" />
