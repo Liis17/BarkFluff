@@ -187,6 +187,13 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return await operation();
             }
+            catch (Exception ex) when (IsTransientConnectionError(ex) && allowRetry)
+            {
+                // Первый вызов на свежесозданном gRPC-канале иногда не успевает поднять
+                // TLS/HTTP2-соединение за один заход (Unavailable/DeadlineExceeded) — повтор
+                // идёт уже по прогретому соединению и обычно проходит.
+                return await ExecuteWithTokenRefresh(globalParam, operation, allowRetry: false);
+            }
             catch (Exception ex) when (IsTokenRelatedError(ex) && allowRetry)
             {
                 if (globalParam?.RefreshToken == null)
@@ -238,6 +245,12 @@ namespace BarkFluff.WebApi.Core.Managers
 
             return false;
         }
+
+        /// <summary>
+        /// Ошибка соединения (не токена): не достучались до сервера или не успели за дедлайн.
+        /// </summary>
+        private static bool IsTransientConnectionError(Exception ex) =>
+            ex is RpcException { StatusCode: StatusCode.Unavailable or StatusCode.DeadlineExceeded };
 
         public async Task<TResponse> SafeCallAsync<TResponse>(Func<Task<TResponse>> apiCall, GlobalParam globalParam)
         {
