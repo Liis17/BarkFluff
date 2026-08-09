@@ -102,7 +102,11 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 
 `StringFormat` в WinUI нет — время отдают свойства вьюмодели `SentAtLabel` и `LastMessageAtLabel`. `UniformGrid` нет — медиасетка это `ItemsRepeater` + `UniformGridLayout`. `MediaElement` нет — `MediaPlayerElement`, скрытый до нажатия Play: держать плеер активным в каждой плитке виртуализованной ленты слишком дорого.
 
+`Source` плееру назначает `PlayVideoBehavior` по нажатию Play, привязки в шаблоне нет. Привязанный `Source` создавал `MediaSource` на материализации каждой плитки — включая картинки, — и переработка контейнеров в виртуализованной ленте валила процесс с `0xC000027B`. URL кнопка отдаёт через `Tag`: `DataContext` у детей шаблона `ItemsRepeater` проставляется не всегда.
+
 Файловые вложения внутри пузыря (`FileAttachments`) выводятся через `ItemsControl`, а не вложенный `ItemsRepeater`. Вложенный repeater при материализации сообщения с файлом приводил WinUI 3 к нативному падению `Microsoft.UI.Xaml.dll` с кодом `0xC000027B`.
+
+Само падение диагностируется тяжело: `Application.UnhandledException` на такой отказ не срабатывает, `crash.log` остаётся пустым, а Visual Studio без `nativeDebugging` показывает только модалку JIT-отладчика.
 
 ## Реалтайм
 
