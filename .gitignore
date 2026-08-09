@@ -409,6 +409,7 @@ Android/.gradle/9.2.1/executionHistory/executionHistory.bin
 /Tests/LoadTests/reports/
 
 # Android release signing key — не коммитить (был утёк, перевыпущен)
+Android/local.properties
 Android/Barkfluff.Client.Android/barkfluff-release.jks
 *.jks
 default.profraw
@@ -417,3 +418,7 @@ default.profraw
 # Копии legal-документов для веб-клиента: их кладёт таргет CopyLegalDocs,
 # оригинал — Backend/Barkfluff.WebServer/html/legal
 /Backend/BarkFluff.Web/wwwroot/legal/
+
+# Локальные секреты docker-стеков (в репозитории только sample-*.env)
+.env
+**/.env

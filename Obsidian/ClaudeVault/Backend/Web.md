@@ -2,6 +2,10 @@
 
 gRPC-Web reverse proxy + static file server для веб-клиента. Порт: **7016**.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`; дополнительно Web сохраняет readiness/health endpoint `GET /health`.
+Для проверки из браузера Web проксирует `GET /ping/{service}` в liveness endpoint
+соответствующего listener’а ноды и возвращает его `pong` без авторизации.
+
 Расположение: `Backend/BarkFluff.Web/`
 
 📁 **Детальная карта файлов и классов:** [[Backend/Web-ProjectMap]]
@@ -13,12 +17,42 @@ dotnet build BarkFluff.Web.csproj
 docker-compose -f docker-compose-dev.yml up web
 ```
 
+## Режимы (`Web:Mode`)
+
+| Режим | Где живёт | Что делает |
+|---|---|---|
+| `Node` (по умолчанию) | внутри стека ноды | статика + все кластеры сервисов + Beacon + Navigator + `/api/files/upload` |
+| `Shell` | отдельный стек `docker/webshell`, домен `web.barkfluff.com` | только статика и прокси `NavigatorApi` |
+
+`Web:Mode` читается **до** `LoadConfiguration` (env-переменные `CreateBuilder` подхватывает
+сам), и в `Shell` этот вызов пропускается: рядом с шеллом нет Configuration-сервиса, а
+`LoadConfiguration` падает без ретраев. Тот же осознанный выход из платформенного шаблона,
+что у [[Backend/Navigator]]. Serilog (durable Seq-буфер на диске) и метрики недоступный Seq
+переживают, их отключать не нужно.
+
+Эндпоинт `/node-config.js` (`Cache-Control: no-store`) отдаёт клиенту режим:
+`self.BF_NODE_CONFIG = {"pinned":true,"navigatorProxy":false}` у ноды и
+`{"pinned":false,"navigatorProxy":true}` у шелла. По `pinned` [[Клиенты/Web]] решает,
+показывать ли выбор сервера.
+
+## CORS
+
+`AllowAnyOrigin` + `AllowAnyHeader` + `SetPreflightMaxAge(24ч)`, **без** `AllowCredentials`.
+
+Страница раздаётся с глобального `web.barkfluff.com`, а gRPC-Web идёт напрямую в ноду —
+origin вызывающего заранее неизвестен, вести список нечем. `AllowCredentials` не нужен:
+токен передаётся заголовком `x-auth-token`, куки в API не участвуют, поэтому CSRF
+нерелевантен. Прежний явный список заголовков разошёлся с клиентом (разрешался `x-os`, а
+`metadata.js` шлёт `x-os-name`) — same-origin это не выявлял, preflight'а не было.
+Ключ `Web:AllowedOrigins` удалён.
+
 ## Архитектура
 
-Три функции:
+Четыре функции:
 1. **Статика** — раздаёт `wwwroot/` (index.html, messenger.html, JS-модули)
 2. **gRPC-Web прокси** — кастомный middleware (`GrpcWebResponseStream` в `Program.cs`) конвертирует `application/grpc-web-text` (HTTP/1.1) → HTTP/2 gRPC; YARP проксирует к бэкенд-сервисам. Используется собственная реализация, так как `Grpc.AspNetCore.Web` не работает с YARP. **Base64-фрейминг:** каждый Write кодируется независимым padded base64-чанком и сразу флашится (`=` в середине потока — законный разделитель по спеке gRPC-Web, декодер клиента обрабатывает 4-символьные группы независимо). Раньше остаток 1-2 байта буферизовался до следующего Write — из-за этого server-streaming сообщения приходили с отставанием на одно.
 3. **HTTP upload прокси** — `POST /api/files/upload/{uploadId}` → Files-сервис (HTTP-порт **7006**). До чтения тела Web поднимает Kestrel-лимит только для этого маршрута до **512 МБ**; иначе дефолт Kestrel (~28,6 МБ) вернёт `413` до передачи в [[Backend/Files]].
+4. **Liveness-прокси** — `GET /ping/{service}` → `/ping` на `Identity`, `Users`, `Messages`, `Files`, `Updates`, `Onliner`, `FastAuth`, `Calls`, `Beacon` и `Navigator`. Проверка выполняется через внутренние HTTP/2 listener’ы, поэтому браузеру не нужно обращаться к публичным gRPC-субдоменам и обходить CORS. Для Navigator используется `NavigatorService:HealthHost` (по умолчанию для запуска приложения `http://navigator:7010`; основной dev-compose задаёт `http://navigator:64646` через `NAVIGATOR_SERVICE_HEALTH_HOST`), тогда как обычный `NavigatorService:Host` остаётся публичным адресом каталога.
 
 ## gRPC-Web трейлеры (grpc-status) — критично
 
@@ -41,14 +75,20 @@ docker-compose -f docker-compose-dev.yml up web
 | `/barkfluff.onliner.OnlinerApi/{**catch-all}` | Onliner (7009) | gRPC/HTTP2 |
 | `/barkfluff.fast.auth.FastAuthApi/{**catch-all}` | FastAuth (7008) | gRPC/HTTP2 (server-streaming) |
 | `/barkfluff.calls.CallsApi/{**catch-all}` | Calls (7025) | gRPC/HTTP2 (server-streaming, входит в `streamingServices`, 24h timeout) |
-| `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 |
+| `/barkfluff.beacon.BeaconApi/{**catch-all}` | Beacon (`BeaconService:Host`, 7002) | gRPC/HTTP2 — метаданные ноды для экрана выбора |
+| `/barkfluff.navigator.NavigatorApi/{**catch-all}` | Navigator (`NavigatorService:Host`, публичный TLS) | gRPC/HTTP2 — каталог нод; **единственный маршрут в режиме Shell** |
+| `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 (нет в режиме Shell) |
+| `/ping/{service}` | Identity, Users, Messages, Files, Updates, Onliner, FastAuth, Calls, Beacon, Navigator | HTTP/2 GET `/ping`, анонимно (только в режиме Node) |
 
 ## Frontend JS Modules (`wwwroot/js/app/`)
 
 **Инфраструктура:**
+- `node.js` — `BF.node`: выбранная нода, неймспейс ключей хранилища, история, клиенты Beacon/Navigator. Загружается первым (см. [[Клиенты/Web]])
+- `nodepicker.js` — `BF.nodePicker`: экран выбора ноды на `index.html`
 - `device.js` — `BF.device`: deviceId, browserName, osName
 - `tokens.js` — `BF.tokens`: TokenStore (localStorage/sessionStorage)
 - `metadata.js` — `BF.metadata`: сборка gRPC metadata с base64-заголовками
+- `health.js` — `BF.health`: параллельная проверка `/ping` Web и `/ping/{service}` через выбранную ноду с таймаутом 8 секунд и временем ответа
 
 **Страница логина** (index.html):
 - `auth.js` — login, refreshToken, getValidAccessToken
@@ -69,10 +109,11 @@ docker-compose -f docker-compose-dev.yml up web
 - `privatechat.js` — `BF.privateChat`: приватные E2E-чаты (Argon2id через `hash-wasm.umd.min.js`, ключи в localStorage)
 - `sound.js` — `BF.sound`: звуки уведомлений
 - `imageeditor.js` — `BF.imageEditor`: редактор изображений перед отправкой
-- `folders.js` — `BF.folders`: папки чатов (горизонтальные вкладки `#folderTabs` над списком чатов, drag-and-drop реордер, контекстное меню чата `#chatContextMenu` с «Добавить/Удалить из папки», модалка `#folderEditOverlay` с emoji-сеткой 7×3). `init()` обязательно ДО `loadChats` — гайд требует «сперва папки, потом чаты».
+- `folders.js` — `BF.folders`: папки чатов (горизонтальные вкладки `#folderTabs` над списком чатов, drag-and-drop реордер, контекстное меню чата `#chatContextMenu` с «Добавить/Удалить из папки», модалка `#folderEditOverlay` с emoji-сеткой 7×3). Вкладки папок показывают сумму `countUnread` входящих чатов (`99+` при переполнении); `main.js` передаёт актуальный список чатов при каждом рендере. `init()` обязательно ДО `loadChats` — гайд требует «сперва папки, потом чаты».
 - `pinned.js` — `BF.pinned`: закреплённые сообщения. Плашка `#pinnedBar` под `.chat-header` Telegram-style (`1/N` слева, превью текущего, клик → переключение по кругу + scroll к оригиналу). Большая модалка `#pinnedListOverlay` со всеми пинами (рендер через `BF.messages.buildMessageElement`) + кнопка «Открепить все» с подтверждением.
 - `attach.js` — диалог прикрепления файлов: сегментированный переключатель images/docs, превью (сетка/список с иконкой расширения и размером), поле подписи (`#attachCaption`, prefill из `#messageInput`, Enter=отправка, Shift+Enter=перенос, Escape=закрыть). Подпись передаётся третьим аргументом callback'а (`outFiles, asDocuments, caption`) и используется как текст сообщения. **Клик по превью-картинке** открывает редактор `BF.imageEditor.open(file, cb)`; callback заменяет `item.file` на отредактированный, отзывает старый `previewUrl` и перерендеривает сетку.
 - `imageeditor.js` — `BF.imageEditor`: модальный canvas-редактор изображения (`#imgEditorOverlay`, z-index 260, открывается из `attach.js`). См. раздел [[#Редактор изображений (imageeditor.js)]].
+- В разделе «О приложении» (`settings.js`) кнопка «Проверить доступность» запускает `BF.health.check()` и показывает для каждого liveness listener’а `Доступен/Недоступен` и время запроса.
 - `settings.js` — многоэкранная панель настроек. Разделы: профиль (имя, юзернейм, био, аватар), пароль, 2FA (TOTP + Email), активные сессии (с переименованием устройства через `RenameDevice` и кнопкой «Завершить все остальные»), **приватность** (`GetPrivacySettings`/`UpdatePrivacySettings` — toggles `profileVisibleOnSite`/`searchVisible` + сегментированные radio для `avatarVisibility`/`bioVisibility`/`emailVisibility`/`onlineVisibility` через `ProfileFieldVisibility` enum), **персонализация** (по образцу Android/Mac: сверху превью профиля «постер 3:1 + аватар overlay + имя/@username», кнопка смены постера → модальный кроп `#posterCropOverlay` с draggable рамкой 3:1 и canvas-экспортом JPEG 90% max 2400×800, далее `BF.files.uploadFile(blob, USER_PROFILE_POSTER=10)` + `SetProfilePoster`; ниже превью чата с 5 моковыми сообщениями для демонстрации настроек; локальные слайдеры закругления пузырей/радиуса размытия/затенения + toggle размытия — все хранятся в `localStorage` и применяются к реальному чату через CSS-переменные на `:root`; сетка фонов с карточкой «Без фона», выбранной обводкой и кнопкой «+» добавления через `UpdatePersonalization` + `MESSAGE_ATTACHMENT_IMAGE=2`), **о приложении** (версия, deviceId, браузер/ОС, origin). Сохранение имени/username выполняется последовательно (`ChangeName` → `ChangeUsername`), после чего `GetUser` перечитывает серверный профиль; сообщение «Сохранено» показывается только если сервер вернул новый username. Цветовая схема (light/dark/midnight) инжектится отдельным inline-скриптом в `messenger.html` через `MutationObserver` за `#sdBody`. UI-хелперы: `makeField`/`makeInput`/`makeHint`/`makeSaveBtn`/`makeToggleRow`/`makeSegmented` + локальные `buildSlider`/`openPosterCrop`/`bindCropDrag`.
 - `personalization.js` — `BF.personalization`: локальные косметические настройки чата (по образцу Android `GlobalParam` / macOS `@AppStorage`). Хранит в `localStorage` ключи `bf_pers_bubble_radius`, `bf_pers_bg_blur_enabled`, `bf_pers_bg_blur_radius`, `bf_pers_bg_dim`, `bf_pers_bg_file_id`. Применяет к `:root` CSS-переменные `--msg-bubble-radius`, `--chat-bg-image`, `--chat-bg-blur`, `--chat-bg-dim-alpha`, которые читаются `.msg-bubble.incoming/.outgoing` и слоями `.messages-bg-layer`/`.messages-bg-dim` внутри `.messages-area`. `init()` вызывается из `main.js` сразу после `BF.realtime.startAll()`, сверяет выбранный bg-fileId с серверной коллекцией (`GetPersonalization`) и сбрасывает, если файл удалён.
 - `main.js` — bootstrap мессенджера. `openProfile(userId)` рендерит постер собеседника через `user.profilePosterFileId` → `BF.files.getFileUrls()` в `#profilePoster` поверх `.profile-header` (аватар получает `margin-top: -56px` через CSS). Поле `profilePosterFileId` маппится в `api.js:mapUser`. **Deep-link из cookie**: `maybeOpenChatFromCookie()` (вызывается в INIT после `loadChats`) читает cookie `bf_open_chat` (ставится кнопкой «Написать в браузере» на странице пользователя [[Backend/WebServer]]), сразу удаляет её (одноразово), затем `SearchUsers(username)` → точное совпадение по username (case-insensitive) → `GetPersonChatId(userId)` → `openChat(chatId)`. Auth-gate в начале `main.js` гарантирует выполнение только на странице мессенджера (иначе редирект на логин, cookie переживает вход). Логика повторяет Android `DeepLinkActivity.resolveAndOpenChat`.
@@ -165,7 +206,7 @@ docker-compose -f docker-compose-dev.yml up web
 Все RPC — `UsersApi` (см. [[Backend/Users-ChatFolders-ClientGuide]]). `chat_id` в API папок — **string (Guid)**, тот же формат что `Chat.id` из `messages_api`. Локально `chatToFolders: Map<string, Set<string>>`.
 
 - **Bootstrap**: `BF.folders.init()` (`getChatFolders` → заполняет `foldersById/sortedFolderIds/chatToFolders` → `renderTabs`) → затем `loadChats(true)`. Порядок жёсткий — иначе нечего фильтровать.
-- **Вкладки** `#folderTabs`: первая всегда «Все чаты» (`activeFolderId === 'all'`), остальные — `<button class="folder-tab" draggable>{icon} {name}</button>`. ПКМ на вкладке → `openEditModal(folderId)` (редактирование/удаление). Клик → `setActiveFolderId` → перерендер chat list через колбэк `setOnChange(renderChatList)`.
+- **Вкладки** `#folderTabs`: первая всегда «Все чаты» (`activeFolderId === 'all'`), остальные — `<button class="folder-tab" draggable>{icon} {name} {unread-badge}</button>`. Бейдж суммирует `countUnread` чатов из `folder.chatList`, скрыт при нуле и ограничен форматом `99+`. ПКМ на вкладке → `openEditModal(folderId)` (редактирование/удаление). Клик → `setActiveFolderId` → перерендер chat list через колбэк `setOnChange(renderChatList)`.
 - **Фильтр чатов**: `renderChatList()` применяет `BF.folders.filterChats(chats)` перед итерацией. Для `'all'` — без изменений; для папки — `chats.filter(c => folder.chatList.includes(c.id))`.
 - **DnD реордер**: `dragstart`/`dragover`/`drop` на `.folder-tab` (кроме «Все чаты»). При drop пересчитывает `sortOrder` по новому порядку и шлёт `reorderChatFolders([{folderId, sortOrder}])`. На ошибке — full refetch.
 - **Контекстное меню чата** `#chatContextMenu` (новое, отдельное от `#msgContextMenu`): ПКМ на `.chat-item` → секции «Добавить в папку» (папки без чата) / «Удалить из папки» (папки с чатом) + всегда пункт «Создать папку».
@@ -275,6 +316,18 @@ YARP-маршрут `fast-auth` входит в `streamingServices` set — `Act
 `scripts/firebase-compat-entry.js` собирается esbuild в `wwwroot/js/vendor/firebase-messaging-compat.bundle.js`; Docker повторяет эту сборку. `service-worker.js` подключает bundle и `/pwa-config.js`, принимает FCM data-only события и показывает безопасные уведомления. Новая версия worker ждёт явного подтверждения пользователя и получает `SKIP_WAITING` только после выбора «Обновить», поэтому не меняет оболочку посреди сессии.
 
 В `docker/backend/docker-compose-dev-backend.yml` переменные из `.env` пробрасываются в контейнер `web` как `Web__Push__*`. Шаблон значений и источники в Firebase Console — `docker/backend/sample-backend.env`; это только публичные Firebase Web/VAPID данные, не service-account ключи.
+
+## Деплой шелла (`docker/webshell/`)
+
+Автономный стек: compose + nginx + `sample.env`. Сети ноды и Configuration ему не нужны —
+в `Shell` проксируется только Navigator по публичному TLS-адресу (`NAVIGATOR_SERVICE_HOST`).
+
+Шлюз ноды описан в `docker/nginx/web.conf` и временно слушает **оба** имени
+(`gw.barkfluff.com` и `web.barkfluff.com`), чтобы переключение прошло без простоя: сначала
+поднимается шелл, затем DNS `web.barkfluff.com` переводится на него, и только после этого
+имя убирается из конфига ноды. `gw.barkfluff.com` — заглушка, оператор подставляет домен
+своей ноды и указывает его же в `ExternalEndpoint:Host` сервиса Web — оттуда
+[[Backend/Beacon]] берёт `web_endpoint` для [[Backend/Navigator]].
 
 ## Зависимости
 

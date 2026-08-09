@@ -248,5 +248,5 @@
         });
     }
 
-    window.BF.newchat = { init: init };
+    window.BF.newchat = { init: init, open: openOverlay };
 })();

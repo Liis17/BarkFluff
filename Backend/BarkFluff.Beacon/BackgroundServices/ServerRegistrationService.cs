@@ -28,6 +28,8 @@ public class ServerRegistrationService : BackgroundService
             {
                 using var scope = _serviceProvider.CreateScope();
                 var navigatorClient = scope.ServiceProvider.GetRequiredService<NavigatorApi.NavigatorApiClient>();
+                var configurationApiClient = scope.ServiceProvider
+                    .GetRequiredService<BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient>();
                 var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
                 var serverProps = scope.ServiceProvider.GetRequiredService<ServerPropsSettings>();
                 var colorSettings = scope.ServiceProvider.GetRequiredService<ServerColorSettings>();
@@ -46,8 +48,14 @@ public class ServerRegistrationService : BackgroundService
                 // если в конфиге лежит полный URL вида "https://beacon.example.com".
                 externalHost = NormalizeHost(externalHost);
 
+                // gRPC-Web шлюз ноды — то, к чему браузер подключается напрямую с глобального
+                // web.barkfluff.com. Берём внешний адрес BarkFluff.Web из Configuration; если
+                // он не задан, нода просто не попадёт в список выбора веб-клиента.
+                var webEndpoint = await GetWebEndpointAsync(configurationApiClient, stoppingToken);
+
                 var serverInfo = new ServerInfo
                 {
+                    WebEndpoint = webEndpoint,
                     Name = serverProps.Name,
                     Description = serverProps.Description,
                     ServerPublicName = serverProps.PublicName ?? string.Empty,
@@ -83,6 +91,37 @@ public class ServerRegistrationService : BackgroundService
             }
 
             await Task.Delay(_interval, stoppingToken);
+        }
+    }
+
+    private async Task<string> GetWebEndpointAsync(
+        BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient client,
+        CancellationToken ct)
+    {
+        try
+        {
+            var response = await client.GetConfigurationAsync(
+                new BarkFluff.Proto.Configuration.GetConfigurationRequest { ServiceId = (int)BarkFluff.Shared.Identity.ServiceId.Web },
+                cancellationToken: ct);
+
+            var host = response.Configurations
+                .FirstOrDefault(c => c.Section == "ExternalEndpoint" && c.Key == "Host")?.Value;
+
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                _logger.LogInformation("ExternalEndpoint:Host для Web не задан — нода не будет предлагаться веб-клиенту");
+                return string.Empty;
+            }
+
+            // Navigator ждёт абсолютный origin; в конфиге может лежать как голый хост, так и полный URL.
+            return host.Contains("://", StringComparison.Ordinal)
+                ? host.TrimEnd('/')
+                : $"https://{NormalizeHost(host)}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось получить ExternalEndpoint:Host для Web — регистрируемся без web_endpoint");
+            return string.Empty;
         }
     }
 

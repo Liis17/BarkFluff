@@ -29,6 +29,9 @@
     var legalCheck = $('#legalAcceptCheck');
     var legalRow = $('#legalConsentRow');
     var fastAuthCard = $('#fastAuthCard');
+    var nodeBar = $('#nodeBar');
+    var nodeBarName = $('#nodeBarName');
+    var nodeChangeBtn = $('#nodeChangeBtn');
 
     var pendingLogin = '';
     var pendingPassword = '';
@@ -47,6 +50,58 @@
         }
     }
 
+    // --- Выбор ноды ---
+    // На шелле входа без ноды не существует: пока адрес не выбран, форма и QR скрыты.
+
+    function renderNodeBar() {
+        if (BF.node.pinned()) { nodeBar.classList.add('hidden'); return; }
+        var meta = BF.node.meta();
+        nodeBarName.textContent = (meta && meta.name) || BF.node.origin() || '';
+        nodeBar.classList.remove('hidden');
+    }
+
+    function openNodePicker() {
+        BF.nodePicker.open({
+            onSelected: function () {
+                BF.nodePicker.close();
+                renderNodeBar();
+                // Токены лежат под неймспейсом ноды: у вернувшегося пользователя
+                // сессия уже есть, и показывать ему форму входа не за чем.
+                resumeOrShowLogin();
+            }
+        });
+    }
+
+    /** Живая сессия на выбранной ноде уводит сразу в мессенджер, иначе показываем вход. */
+    function resumeOrShowLogin() {
+        if (!BF.tokens.get()) { startFastAuth(); return; }
+
+        document.body.style.visibility = 'hidden';
+        BF.auth.getValidAccessToken().then(function (token) {
+            if (token) {
+                window.location.href = '/messenger';
+            } else {
+                document.body.style.visibility = '';
+                startFastAuth();
+            }
+        });
+    }
+
+    function ensureNode() {
+        if (BF.node.origin()) { renderNodeBar(); return true; }
+        openNodePicker();
+        return false;
+    }
+
+    BF.nodePicker.init();
+
+    nodeChangeBtn.addEventListener('click', function () {
+        // Токены остаются под неймспейсом прежней ноды — вернувшись, вход не потребуется.
+        if (BF.fastAuth) BF.fastAuth.cancel();
+        BF.node.clear();
+        openNodePicker();
+    });
+
     // --- Согласие с документами ---
 
     /**
@@ -54,7 +109,7 @@
      * пока документы не приняты: иначе согласие обходится в один клик.
      */
     function startFastAuth() {
-        if (BF.fastAuth && legalCheck.checked) BF.fastAuth.start();
+        if (BF.fastAuth && legalCheck.checked && BF.node.origin()) BF.fastAuth.start();
     }
 
     function applyGate() {
@@ -230,25 +285,16 @@
     legalCheck.checked = BF.legal.isAccepted();
     applyGate();
 
-    // Словарь нужен до первых статусов QR и текстов ошибок
+    // Словарь нужен до первых статусов QR, текстов ошибок и карточек нод
     BF.i18n.ready.then(function () {
         return BF.legal.init();
     }).then(function () {
         legalCheck.checked = BF.legal.isAccepted();
         applyGate();
 
-        if (BF.tokens.get()) {
-            document.body.style.visibility = 'hidden';
-            BF.auth.getValidAccessToken().then(function (token) {
-                if (token) {
-                    window.location.href = '/messenger';
-                } else {
-                    document.body.style.visibility = '';
-                    startFastAuth();
-                }
-            });
-        } else {
-            startFastAuth();
-        }
+        // Без ноды проверять сессию не у кого — токены хранятся по нодам.
+        if (!ensureNode()) return;
+
+        resumeOrShowLogin();
     });
 })();

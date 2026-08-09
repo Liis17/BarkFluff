@@ -1,5 +1,7 @@
 using Barkfluff.AdminPanel.Models.Dtos;
 
+using Microsoft.Extensions.Caching.Memory;
+
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -11,10 +13,16 @@ namespace Barkfluff.AdminPanel.Services;
 /// </summary>
 public class DockerService
 {
-    private readonly ILogger<DockerService> _logger;
+    private const string ContainersCacheKey = "docker:containers:list";
+    private static readonly SemaphoreSlim ContainersGate = new(1, 1);
+    private static readonly TimeSpan ContainersCacheTtl = TimeSpan.FromSeconds(10);
 
-    public DockerService(ILogger<DockerService> logger)
+    private readonly ILogger<DockerService> _logger;
+    private readonly IMemoryCache _cache;
+
+    public DockerService(IMemoryCache cache, ILogger<DockerService> logger)
     {
+        _cache = cache;
         _logger = logger;
     }
 
@@ -40,9 +48,32 @@ public class DockerService
     }
 
     /// <summary>
-    /// Получить список всех контейнеров и их статусы
+    /// Получить список всех контейнеров и их статусы.
+    /// Результат кэшируется на <see cref="ContainersCacheTtl"/>; параллельные запросы
+    /// на cache-miss координируются через <see cref="ContainersGate"/> (один docker ps).
     /// </summary>
     public async Task<List<ContainerStatusDto>> GetContainersAsync()
+    {
+        if (_cache.TryGetValue(ContainersCacheKey, out List<ContainerStatusDto>? cached) && cached is not null)
+            return cached;
+
+        await ContainersGate.WaitAsync();
+        try
+        {
+            if (_cache.TryGetValue(ContainersCacheKey, out cached) && cached is not null)
+                return cached;
+
+            var containers = await LoadContainersFromDockerAsync();
+            _cache.Set(ContainersCacheKey, containers, ContainersCacheTtl);
+            return containers;
+        }
+        finally
+        {
+            ContainersGate.Release();
+        }
+    }
+
+    private async Task<List<ContainerStatusDto>> LoadContainersFromDockerAsync()
     {
         try
         {
@@ -57,6 +88,11 @@ public class DockerService
             throw;
         }
     }
+
+    /// <summary>
+    /// Сбросить кэш списка контейнеров. Вызывать после мутаций (start/stop/restart/pull).
+    /// </summary>
+    private void InvalidateContainersCache() => _cache.Remove(ContainersCacheKey);
 
     /// <summary>
     /// Получить статус конкретного контейнера
@@ -87,6 +123,7 @@ public class DockerService
         try
         {
             await RunDockerCommandAsync("start", containerName);
+            InvalidateContainersCache();
 
             _logger.LogInformation("Контейнер {ContainerName} запущен", containerName);
 
@@ -116,6 +153,7 @@ public class DockerService
         try
         {
             await RunDockerCommandAsync("stop", "-t", "30", containerName);
+            InvalidateContainersCache();
 
             _logger.LogInformation("Контейнер {ContainerName} остановлен", containerName);
 
@@ -145,6 +183,7 @@ public class DockerService
         try
         {
             await RunDockerCommandAsync("restart", "-t", "30", containerName);
+            InvalidateContainersCache();
 
             _logger.LogInformation("Контейнер {ContainerName} перезапущен", containerName);
 
@@ -189,6 +228,8 @@ public class DockerService
             // 3. Очистить неиспользуемые образы через docker image prune -f
             await RunDockerCommandAsync("image", "prune", "-f");
             _logger.LogInformation("Неиспользуемые образы очищены");
+
+            InvalidateContainersCache();
 
             return new ContainerActionResponseDto
             {
@@ -404,7 +445,7 @@ public class DockerService
     private async Task PopulateImageDigestsAsync(IEnumerable<ContainerStatusDto> containers)
     {
         await Task.WhenAll(containers
-            .Where(container => container.Image.StartsWith("docker.barkfluff.com:5000/barkfluff-", StringComparison.OrdinalIgnoreCase))
+            .Where(container => container.Image.StartsWith("docker.barkfluff.com/barkfluff-", StringComparison.OrdinalIgnoreCase))
             .Select(PopulateImageDigestAsync));
     }
 
@@ -520,6 +561,8 @@ public class DockerService
                 }
             }
 
+            InvalidateContainersCache();
+
             if (errors.Count > 0)
             {
                 return new ContainerActionResponseDto
@@ -596,6 +639,8 @@ public class DockerService
             {
                 _logger.LogWarning(ex, "Не удалось очистить неиспользуемые образы");
             }
+
+            InvalidateContainersCache();
 
             if (errors.Count > 0)
             {

@@ -22,7 +22,7 @@
 ## Prerequisites
 
 - Docker Engine with the Compose plugin for the container stack.
-- Access to the private `docker.barkfluff.com:5000` registry when running the supplied compose file.
+- Access to the private `docker.barkfluff.com` registry when running the supplied compose file.
 - .NET SDK **10.0.110** to build source projects. The exact SDK is pinned in [`global.json`](../global.json).
 
 ## Start the container stack
@@ -35,7 +35,7 @@ The tracked backend stack lives in `docker/backend/docker-compose-dev-backend.ym
 
 ```bash
 cd docker/backend
-docker login docker.barkfluff.com:5000
+docker login docker.barkfluff.com
 docker compose -f docker-compose-dev-backend.yml config
 docker compose -f docker-compose-dev-backend.yml pull
 docker compose -f docker-compose-dev-backend.yml up -d

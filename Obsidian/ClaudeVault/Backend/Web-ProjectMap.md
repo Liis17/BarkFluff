@@ -79,7 +79,7 @@
 ## Frontend — страницы
 
 ### `wwwroot/index.html`
-Страница входа. Подключает: `device.js`, `tokens.js`, `metadata.js`, `utils.js`, `auth.js`, `legal.js`, `fast-auth.js`, `login-page.js`, `register.js`, proto-bundle. Содержит разметку модалки регистрации `#registerOverlay` со стилями `.reg-*`, читалку документов `#legalOverlay` (`.legal-*`, переиспользует `.reg-dialog`), строку согласия `#legalConsentRow` и плашку `#cookieNotice`.
+Страница входа. Подключает: `/node-config.js`, `node.js`, `device.js`, `tokens.js`, `metadata.js`, `utils.js`, `auth.js`, `legal.js`, `nodepicker.js`, `fast-auth.js`, `login-page.js`, `register.js`, proto-bundle. Содержит секцию выбора сервера `#nodeSection` (стили `.node-*`) и плашку текущей ноды `#nodeBar`. Содержит разметку модалки регистрации `#registerOverlay` со стилями `.reg-*`, читалку документов `#legalOverlay` (`.legal-*`, переиспользует `.reg-dialog`), строку согласия `#legalConsentRow` и плашку `#cookieNotice`.
 
 ### `wwwroot/legal/`
 Генерируется при сборке MSBuild-таргетом `CopyLegalDocs` из `Backend/Barkfluff.WebServer/html/legal/*.md`. В git не хранится (`.gitignore`).
@@ -87,12 +87,35 @@
 ### `wwwroot/messenger.html`
 Главный мессенджер. Подключает все JS-модули из `js/app/`.
 
+### `wwwroot/css/icons.css`
+Стили общего SVG-пакета `/icons/`: отображают монохромные файлы как CSS mask, наследующую
+`currentColor` текущей темы.
+
+### `wwwroot/icons/`
+Каталог SVG из корневого `icons/`, подключаемый ссылками MSBuild. Пути сохраняют контракт
+`/{category}/{name}.svg`, общий для клиентов.
+
 ### `wwwroot/favicon.ico`
 Иконка приложения.
 
 ---
 
 ## Frontend — JS модули (`wwwroot/js/app/`)
+
+### `icons.js` → `BF.icons`
+Единый helper для общего пакета иконок: строит безопасные URL, создаёт DOM-элементы и HTML
+с `data-bf-icon`, а также гидратирует статическую разметку `messenger.html`.
+
+### `node.js` → `BF.node`
+Выбранная нода: `origin()` (синхронно из localStorage `bf_node_origin`), `id()`, `key(name)` —
+неймспейс `@{origin}` для ключей хранилища, `pinned()`, `normalize()`, `set/clear/forget`,
+`meta/setMeta`, `list()`, `beaconClient()`, `navigatorClient()`. Подключается **первым**
+из app-модулей: клиенты gRPC-Web создаются синхронно и захватывают origin.
+Разовая миграция домультинодовых ключей. Подробности — [[Клиенты/Web#Выбор ноды (мультинодовость)]].
+
+### `nodepicker.js` → `BF.nodePicker`
+Экран выбора ноды на `index.html` (`#nodeSection`): каталог `NavigatorApi.ListServers`,
+история и ручной ввод; выбор подтверждается `BeaconApi.GetServerInfo`. `init/open/close/connect`.
 
 ### `device.js` → `BF.device`
 Определяет и хранит `deviceId` (UUID, генерируется при первом визите, хранится в localStorage).
@@ -126,6 +149,7 @@ TokenStore: хранит access/refresh токены в localStorage или sess
 
 ### `clients.js` → `BF.clients`
 gRPC-Web клиенты для всех сервисов (IdentityApi, UsersApi, MessagesApi, FilesApi, UpdatesApi, OnlinerApi).
+Origin — `BF.node.origin()`; без выбранной ноды модуль редиректит на `/` до создания клиентов.
 `authCall(fn)` — обёртка с auto-refresh токена.
 
 ### `utils.js` → `BF.utils`

@@ -156,7 +156,8 @@
 
     function botBadgeMarkup() {
         var label = u.escapeHtml(BF.i18n.t('common.bot'));
-        return '<span class="bot-badge" role="img" aria-label="' + label + '" title="' + label + '"><svg aria-hidden="true"><use href="#bf-icon-bot"></use></svg></span>';
+        return '<span class="bot-badge" role="img" aria-label="' + label + '" title="' + label + '">' +
+            BF.icons.html('services', 'bots') + '</span>';
     }
 
     function setChatCallButtonsVisible(visible) {
@@ -242,6 +243,7 @@
     }
 
     function renderChatList() {
+        if (BF.folders && BF.folders.renderTabs) BF.folders.renderTabs(chats);
         chatListEl.innerHTML = '';
         var visibleChats = (BF.folders && BF.folders.filterChats) ? BF.folders.filterChats(chats) : chats;
         visibleChats.forEach(function (chat) {
@@ -303,7 +305,7 @@
                 '<div class="chat-avatar">' + avatarHtml +
                 onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">\u{1F512}</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
+                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">' + BF.icons.html('settings', 'security') + '</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -3770,8 +3772,8 @@
     var chatCmTargetId = null;
     var chatCmShownAt = 0;
 
-    function contextMenuIcon(name) {
-        return '<span class="cm-icon"><svg aria-hidden="true"><use href="#bf-icon-' + name + '"></use></svg></span>';
+    function contextMenuIcon() {
+        return '<span class="cm-icon">' + BF.icons.html('settings', 'chat-folders') + '</span>';
     }
 
     function buildChatContextMenu(chatId) {
@@ -3793,7 +3795,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'add-folder';
                     btn.dataset.folderId = f.folderId;
-                    btn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
+                    btn.innerHTML = contextMenuIcon() + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -3809,7 +3811,7 @@
                     btn.className = 'cm-item';
                     btn.dataset.act = 'remove-folder';
                     btn.dataset.folderId = f.folderId;
-                    btn.innerHTML = contextMenuIcon('folder-minus') + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
+                    btn.innerHTML = contextMenuIcon() + '<span class="cm-label">' + u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) + '</span>';
                     chatContextMenu.appendChild(btn);
                 });
             }
@@ -3825,7 +3827,7 @@
         createBtn.type = 'button';
         createBtn.className = 'cm-item';
         createBtn.dataset.act = 'create-folder';
-        createBtn.innerHTML = contextMenuIcon('folder-plus') + '<span class="cm-label">' + u.escapeHtml(BF.i18n.t('folder.create')) + '</span>';
+        createBtn.innerHTML = contextMenuIcon() + '<span class="cm-label">' + u.escapeHtml(BF.i18n.t('folder.create')) + '</span>';
         chatContextMenu.appendChild(createBtn);
     }
 
@@ -4034,6 +4036,16 @@
                 if (idx >= 0) chats[idx] = chat; else chats.unshift(chat);
                 renderChatList();
                 openChat(chat.id);
+                if (window.__mobileShowChat) window.__mobileShowChat();
+            }
+        });
+    }
+
+    if (BF.cmdPalette && BF.cmdPalette.init) {
+        BF.cmdPalette.init({
+            getChats: function () { return chats; },
+            openChat: function (chatId) {
+                openChat(chatId);
                 if (window.__mobileShowChat) window.__mobileShowChat();
             }
         });

@@ -25,10 +25,15 @@
 
     // Анонимный клиент для fast-auth (без auth-interceptor) — создаём локально,
     // как auth.js создаёт IdentityApiClient. Не зависит от clients.js.
+    // Клиент строится лениво: на шелле ноду выбирают на этой же странице.
     var bf = window.barkfluff;
-    var fastAuthClient = (bf && bf.FastAuthApiClient)
-        ? new bf.FastAuthApiClient(window.location.origin)
-        : null;
+    var cache = { origin: null, client: null };
+    function fastAuthClient() {
+        var origin = BF.node.origin();
+        if (!bf || !bf.FastAuthApiClient || !origin) return null;
+        if (cache.origin !== origin) cache = { origin: origin, client: new bf.FastAuthApiClient(origin) };
+        return cache.client;
+    }
 
     var stream = null;
     var countdownTimer = null;
@@ -135,14 +140,15 @@
         return new Promise(function (resolve) {
             var pkg = window.proto && window.proto.barkfluff
                 && window.proto.barkfluff.fast && window.proto.barkfluff.fast.auth;
-            if (!pkg || !fastAuthClient) {
+            var client = fastAuthClient();
+            if (!pkg || !client) {
                 resolve({ ok: false, err: 'fastauth_unavailable' });
                 return;
             }
             var req = new pkg.GenerateFastAuthTokenRequest();
             req.setFormat(pkg.TokenFormat.TOKEN_FORMAT_QR);
             var meta = BF.metadata.build(); // без auth-токена
-            fastAuthClient.generateFastAuthToken(req, meta, function (err, resp) {
+            client.generateFastAuthToken(req, meta, function (err, resp) {
                 if (err || !resp) { resolve({ ok: false, err: err }); return; }
                 var token = resp.getToken();
                 var expiresAt = resp.getExpiresAt();
@@ -166,7 +172,9 @@
         req.setFastAuthId(fastAuthId);
 
         cancelStream();
-        stream = fastAuthClient.subscribeFastAuthResult(req, meta);
+        var client = fastAuthClient();
+        if (!client) return;
+        stream = client.subscribeFastAuthResult(req, meta);
 
         stream.on('data', function (evt) {
             backoff = INITIAL_BACKOFF;

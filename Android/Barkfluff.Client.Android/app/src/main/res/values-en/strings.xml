@@ -465,6 +465,11 @@
     <string name="notification_settings_title">Notifications</string>
     <string name="notification_receive_push">Receive push notifications</string>
     <string name="notification_disable_hint">Turning notifications off disables Firebase push delivery on this device only. Other devices will keep receiving notifications.</string>
+    <string name="incoming_call_fullscreen_title">Calls on the lock screen</string>
+    <string name="incoming_call_fullscreen_message">Allow BarkFluff to show the full-screen incoming call screen. Otherwise, a locked phone may only play the ringtone.</string>
+    <string name="incoming_call_notifications_message">Allow BarkFluff notifications in system settings. They are required to show incoming calls while the screen is locked.</string>
+    <string name="incoming_call_fullscreen_open_settings">Open settings</string>
+    <string name="incoming_call_fullscreen_later">Later</string>
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Chat folders</string>
@@ -531,10 +536,16 @@
     <string name="about_device">Device</string>
     <string name="about_os">Operating system</string>
     <string name="about_microservices">Server microservices</string>
-    <string name="about_ping_server">Check ping</string>
-    <string name="about_ping_checking">Checking Beacon connection…</string>
-    <string name="about_ping_result">Beacon response: %1$d ms</string>
-    <string name="about_ping_failed">Beacon did not respond</string>
+    <string name="about_ping_server">Check availability</string>
+    <string name="about_ping_checking">Checking microservice availability…</string>
+    <string name="about_ping_result">Available: %1$d of %2$d</string>
+    <string name="about_ping_failed">Availability check failed</string>
+    <string name="about_ping_no_services">No configured microservices to check</string>
+    <string name="about_service_available">Available · %1$d ms</string>
+    <string name="about_service_unavailable">Unavailable · %1$d ms</string>
+    <string name="about_service_checking">Checking…</string>
+    <string name="about_service_not_configured">Address not configured</string>
+    <string name="about_service_not_checked">Not checked</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Testing</string>

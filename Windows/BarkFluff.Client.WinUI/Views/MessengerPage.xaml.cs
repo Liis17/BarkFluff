@@ -45,11 +45,16 @@ public sealed partial class MessengerPage : Page
         }
     }
 
-    private void OnChatHeaderClick(object sender, RoutedEventArgs eventArgs)
+    /// <summary>
+    /// IsChecked вкладок читается OneWay через конвертер; индекс пишется отсюда, а не через
+    /// ConvertBack — RadioButton сам снимает отметку с соседей по GroupName, и TwoWay-конвертер
+    /// с UnsetValue на false-переходе ненадёжно взаимодействовал бы с этим внутренним снятием.
+    /// </summary>
+    private void OnProfileAttachmentTabChecked(object sender, RoutedEventArgs eventArgs)
     {
-        if (ViewModel.SelectedChat?.PeerUserId is { } peerUserId)
+        if (sender is RadioButton { Tag: string tagText } && int.TryParse(tagText, out var index))
         {
-            Frame.Navigate(typeof(ProfilePage), peerUserId);
+            ViewModel.Profile.SelectedAttachmentTabIndex = index;
         }
     }
 }

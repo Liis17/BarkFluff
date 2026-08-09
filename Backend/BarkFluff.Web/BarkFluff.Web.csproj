@@ -39,6 +39,14 @@
     </Content>
   </ItemGroup>
 
+  <!-- Общий пакет иконок платформы используется веб-клиентом напрямую из /icons. -->
+  <ItemGroup>
+    <Content Include="..\..\icons\**\*.svg"
+             Link="wwwroot\icons\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- wwwroot\legal наполняется таргетом ниже, поэтому убираем каталог из дефолтных
        глоб-шаблонов SDK: иначе на втором сборке файлы попали бы в Content дважды. -->
   <ItemGroup>

@@ -63,12 +63,17 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Восстановление CA-бандла Cloudflare Origin CA
+        env:
+          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: printf '%s' "$CA_BUNDLE_B64" | base64 --decode > cloudflare-origin-ca-bundle.pem
+
       - name: Автоподнятие версии
         id: bump
         run: |
           VERSION_FILE="Windows/BarkFluff.Client.WPF/Services/App/AppVersion.cs"
 
-          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffwindows/beta/version" || echo "")
+          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffwindows/beta/version" || echo "")
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
@@ -145,7 +150,7 @@ jobs:
           else
             CHANNEL="release"
           fi
-          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffwindows/${CHANNEL}" \
+          curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffwindows/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
             -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
             -F "file=@wpf-build.zip"

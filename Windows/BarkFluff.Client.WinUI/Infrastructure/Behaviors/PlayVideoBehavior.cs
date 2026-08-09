@@ -2,11 +2,16 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
+using Windows.Media.Core;
+
 namespace BarkFluff.Client.WinUI.Infrastructure.Behaviors;
 
 /// <summary>
 /// Плеер создан скрытым и раскрывается по кнопке: держать <see cref="MediaPlayerElement"/>
-/// активным в каждой плитке виртуализованной ленты слишком дорого.
+/// активным в каждой плитке виртуализованной ленты слишком дорого. По той же причине
+/// <c>Source</c> назначается здесь, а не привязкой в шаблоне: <see cref="MediaSource"/>,
+/// созданный на материализации плитки, открывал поток на каждое вложение — включая картинки —
+/// и на переработке контейнеров лента падала с 0xC000027B внутри Microsoft.UI.Xaml.dll.
 /// </summary>
 public static class PlayVideoBehavior
 {
@@ -36,12 +41,13 @@ public static class PlayVideoBehavior
 
     private static void OnButtonClick(object sender, RoutedEventArgs eventArgs)
     {
-        if (sender is not DependencyObject element)
+        if (sender is not Button playButton
+            || !Uri.TryCreate(playButton.Tag as string, UriKind.Absolute, out var uri))
         {
             return;
         }
 
-        var parent = VisualTreeHelper.GetParent(element);
+        var parent = VisualTreeHelper.GetParent(playButton);
         while (parent is not null and not Grid)
         {
             parent = VisualTreeHelper.GetParent(parent);
@@ -54,13 +60,13 @@ public static class PlayVideoBehavior
 
         foreach (var player in grid.Children.OfType<MediaPlayerElement>())
         {
+            // Переработка контейнера возвращает кнопку Play, а прошлый источник остаётся открытым.
+            (player.Source as MediaSource)?.Dispose();
+            player.Source = MediaSource.CreateFromUri(uri);
             player.Visibility = Visibility.Visible;
             player.MediaPlayer?.Play();
         }
 
-        if (sender is Button playButton)
-        {
-            playButton.Visibility = Visibility.Collapsed;
-        }
+        playButton.Visibility = Visibility.Collapsed;
     }
 }

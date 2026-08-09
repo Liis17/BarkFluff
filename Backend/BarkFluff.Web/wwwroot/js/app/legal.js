@@ -99,7 +99,7 @@
             var done = false;
             var finish = function () { if (!done) { done = true; resolve(); } };
             setTimeout(finish, FLUSH_TIMEOUT);
-            new window.barkfluff.UsersApiClient(window.location.origin)
+            new window.barkfluff.UsersApiClient(BF.node.origin())
                 .acceptLegalConsent(req, BF.metadata.build(token), finish);
         });
     }

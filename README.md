@@ -1,7 +1,7 @@
 [English](README.md) · [Русский](.readme/lang/ru/README.md)
 
 <p align="center">
-  <img src="Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="112" alt="BarkFluff logo">
+  <img src="Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff.icon.white-512.png" width="112" alt="logo">
 </p>
 
 <h1 align="center">BarkFluff</h1>
@@ -29,7 +29,7 @@
 BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover their service endpoints through Beacon, receive live changes through streaming updates, and communicate with independent services that can evolve and scale without turning the product into a distributed tangle.
 
 <p align="center">
-  <img src="docs/images/readme/product-preview-placeholder.svg" alt="Placeholder for a BarkFluff product preview" width="920">
+  <img src="https://github.com/Liis17/BarkFluff/blob/24d7752ec5c73a6af81454be208918f64befbde0/assets/2026-08/27f65b3197f8476984ba83043fd2d9c8.png" width="920">
 </p>
 
 ## Download
@@ -58,10 +58,6 @@ Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) fo
 
 ## Clients
 
-<p align="center">
-  <img src="docs/images/readme/clients-placeholder.svg" alt="Placeholder for BarkFluff client screenshots" width="920">
-</p>
-
 - **Android** — Kotlin and gRPC-OkHttp · [build guide](.readme/clients/android.md)
 - **Windows** — WPF and .NET · [build guide](.readme/clients/windows.md)
 - **macOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/macos.md)
@@ -85,10 +81,6 @@ Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) fo
 
 ## Project status
 
-<p align="center">
-  <img src="docs/images/readme/project-status.svg" alt="BarkFluff is under active development" width="920">
-</p>
-
 > ### 🚧 Actively developed
 > BarkFluff is under active development. Android V1 is the supported Android client; the Compose-based V2 project is experimental and should only change as part of an explicit task.
 
@@ -99,6 +91,9 @@ Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) fo
 
 > ### 🛠️ Run and operate
 > [Backend setup](.readme/backend.md) · [Ports & environment](Backend/PORTS_CONFIGURATION.md) · [Docker reference](Backend/DOCKER_SETUP.md) · [Metrics catalogue](Backend/METRICS.md)
+
+> ### 🤖 Integrate a bot
+> [Bot API guide](.readme/bots.md) — capabilities, authentication, and REST endpoints for external bots.
 
 > ### 📚 Learn the system
 > [Documentation hub](.readme/README.md) · [Architecture](Obsidian/ClaudeVault/Архитектура.md) · [Project knowledge base](Obsidian/ClaudeVault/Index.md)

@@ -28,7 +28,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   request-approval:
     name: "📲 Запрос подтверждения"
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     outputs:
       approved: ${{ steps.result.outputs.approved }}
     steps:
@@ -64,10 +64,7 @@ jobs:
     name: "📱 Сборка Android Client"
     needs: request-approval
     if: needs.request-approval.outputs.approved == 'true'
-    runs-on: [self-hosted, linux]
-    env:
-      ANDROID_HOME: /home/liis/android-sdk
-      ANDROID_SDK_ROOT: /home/liis/android-sdk
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: Android
@@ -75,19 +72,42 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Подготовка gradlew
-        run: |
-          dos2unix gradlew
-          chmod +x gradlew
+        run: chmod +x gradlew
+
+      - name: Настройка JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            Android/**/build.gradle*
+            Android/**/settings.gradle*
+            Android/**/gradle.properties
+            Android/gradle/libs.versions.toml
+            Android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Настройка Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Установка Android SDK зависимостей
         run: |
-          echo "sdk.dir=${ANDROID_HOME}" > local.properties
-          echo "ANDROID_HOME=${ANDROID_HOME}"
-          test -d "${ANDROID_HOME}"
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+          SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          test -n "$SDK_PATH"
+          printf 'sdk.dir=%s\n' "$SDK_PATH" > local.properties
+
+      - name: Восстановление CA-бандла Cloudflare Origin CA
+        env:
+          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: echo "$CA_BUNDLE_B64" | base64 -d > cloudflare-origin-ca-bundle.pem
 
       - name: Автоподнятие версии
         run: |
-          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
+          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
@@ -122,11 +142,14 @@ jobs:
       - name: Восстановление keystore из секрета
         env:
           STORE_B64: ${{ secrets.ANDROID_RELEASE_STORE_B64 }}
-        run: echo "$STORE_B64" | base64 -d > Barkfluff.Client.Android/barkfluff-release.jks
+        run: |
+          test -n "$STORE_B64"
+          printf '%s' "$STORE_B64" | base64 --decode > Barkfluff.Client.Android/barkfluff-release.jks
+          test -s Barkfluff.Client.Android/barkfluff-release.jks
 
       - name: Сборка APK
         env:
-          RELEASE_STORE_FILE: ${{ secrets.ANDROID_RELEASE_STORE_FILE }}
+          RELEASE_STORE_FILE: ../barkfluff-release.jks
           RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
@@ -153,7 +176,7 @@ jobs:
           else
             CHANNEL="release"
           fi
-          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
+          curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
             -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
             -F "file=@${{ steps.apk.outputs.path }}"

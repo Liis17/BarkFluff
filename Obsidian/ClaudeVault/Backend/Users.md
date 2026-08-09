@@ -2,6 +2,8 @@
 
 Управление профилями пользователей, бейджами, устройствами и GDPR-экспортом. Порт: **7001**.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 Расположение: `Backend/BarkFluff.Users/`
 
 → [[Backend/Users-ProjectMap]] — карта всех файлов и классов проекта

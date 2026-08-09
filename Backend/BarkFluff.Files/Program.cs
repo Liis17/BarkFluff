@@ -132,6 +132,7 @@ public class Program
         app.MapGrpcReflectionService();
 
         app.UseXAuth();
+        app.MapPingEndpoint();
 
         app.MapControllers();
 

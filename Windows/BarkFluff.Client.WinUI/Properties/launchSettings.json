@@ -1,10 +1,12 @@
 {
   "profiles": {
     "BarkFluff.Client.WinUI (Package)": {
-      "commandName": "MsixPackage"
+      "commandName": "MsixPackage",
+      "nativeDebugging": true
     },
     "BarkFluff.Client.WinUI (Unpackaged)": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "nativeDebugging": true
     }
   }
 }

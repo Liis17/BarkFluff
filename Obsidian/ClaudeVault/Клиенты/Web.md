@@ -32,16 +32,67 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 
 ## Архитектура
 
+### Выбор ноды (мультинодовость)
+
+Клиент **не привязан к ноде, которая его отдала**. Статику раздаёт глобальный
+`web.barkfluff.com` ([[Backend/Web]] в режиме `Web:Mode=Shell`), а gRPC-Web и загрузка
+файлов идут **напрямую в выбранную ноду**, cross-origin. Нода при этом остаётся
+самодостаточной: её `BarkFluff.Web` раздаёт ту же статику и фиксирует себя как ноду.
+
+- `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Подключается **до**
+  `device.js`/`clients.js`: клиенты gRPC-Web создаются синхронно при загрузке скрипта и
+  захватывают origin, поэтому адрес обязан резолвиться из localStorage, без сети.
+  - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`.
+  - `key(name)` — ключ хранилища с суффиксом `@{origin}`; `set/clear/meta/list/normalize`.
+  - `beaconClient()` / `navigatorClient()` — Beacon смотрит на выбранную ноду, Navigator
+    всегда same-origin (каталог проксирует тот хост, что отдал страницу).
+- **Режим хоста** — `/node-config.js` (эндпоинт [[Backend/Web]], `no-store`):
+  `{pinned: true}` у ноды, `{pinned: false, navigatorProxy: true}` у шелла. Переключатель
+  сервера показывается только при `pinned: false`.
+- `js/app/nodepicker.js` (`BF.nodePicker`) — экран выбора в `index.html` (`#nodeSection`):
+  каталог `NavigatorApi.ListServers`, история ранее использованных нод и ручной ввод.
+  Выбор подтверждается `BeaconApi.GetServerInfo` через шлюз — иначе опечатка в адресе
+  всплыла бы только на экране логина; оттуда же берутся имя, цвета, `livekit_url`.
+  Ноды с пустым `web_endpoint` показываются заблокированными.
+- Пока нода не выбрана, `body.node-picking` скрывает форму входа и QR, а `login-page.js`
+  не проверяет сессию. После выбора `resumeOrShowLogin()` уводит в мессенджер, если под
+  неймспейсом этой ноды уже лежит валидный токен.
+- Смена сервера — `settings.js`, раздел «Сервер»: `BF.node.clear()` + переход на `/`.
+  Сессия покидаемой ноды сохраняется.
+
+⚠️ **Локальный стенд без TLS.** Клиент держит на origin ноды 9 долгоживущих
+server-streaming подписок (8 Updates + Calls) плюс Onliner. По HTTP/1.1 браузер даёт
+**6 соединений на origin**, поэтому на стенде без TLS (Kestrel напрямую, HTTP/2 без
+TLS не согласуется) unary-вызовы к ноде встают в очередь и висят. За nginx с TLS это
+HTTP/2 без такого лимита. Симптом на стенде: `GetUploadUrl` и подобные не возвращаются,
+пока не остановить стримы.
+
+**Неймспейс хранилища.** Привязаны к ноде: `barkfluff_auth`, `barkfluff_temp`,
+`bf_private_chat_keys`, `bf_web_push_enabled`, `bf_chat_drafts_{userId}` — все с суффиксом
+`@{origin}`. Общие (без суффикса): `barkfluff_device_id` (одно устройство на все ноды, как
+в [[Клиенты/Android]]), `bf_theme`, `bf_lang`, `bf_pers_*`, `bf_legal_accepted`.
+`migrateLegacy()` в `node.js` один раз переносит домультинодовые ключи под неймспейс
+origin'а страницы — обновление ноды на своём домене не разлогинивает.
+⚠️ Смену роли домена (был нодой, стал шеллом) это не покрывает: нода переезжает на другой
+origin, сопоставить ключ нечем — вход потребуется заново.
+
 ### Транспорт и авторизация
-- gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(origin)`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`).
-- `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16).
+- gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(BF.node.origin())`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`). Без выбранной ноды модуль редиректит на `/` до создания клиентов.
+- `auth.js`, `fast-auth.js` и `register.js` держат **собственные** клиенты и строят их лениво: на шелле ноду выбирают на той же странице, поэтому origin известен только к моменту первого вызова.
+- `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16). Временная ошибка refresh (сеть, таймаут, 5xx) сохраняет локальную сессию; [[Backend/Identity|Identity]] очищает её только через `x-error-code` невалидного refresh token (`7E6A31C5-3C4D-412E-87BC-0A387617A5D3`).
 - `js/app/metadata.js` (`BF.metadata.build(token)`) формирует метаданные: `x-auth-token` (plain) + base64 `x-device-id`/`x-device-name`/`x-os-name`/`x-app-name`/`x-app-version`. Device-id — из `js/app/device.js` (localStorage `barkfluff_device_id`); его методы `getBrowserName()` и `getOsName()` также выводятся в «О BarkFluff».
+- `js/app/health.js` (`BF.health`) — параллельная проверка `/ping` шлюза Web и `/ping/{service}` для пользовательских микросервисов; успешен только ответ `200` с телом `pong`, таймаут — 8 секунд, результат содержит время каждого запроса.
 - `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
 
 ### Real-time
-- `js/app/realtime.js` (`BF.realtime`) — server-streaming подписки [[Backend/Updates|UpdatesApi]] (new/read/edited/deleted/pinned/...) и [[Backend/Onliner|OnlinerApi]]. Реконнект с backoff 2→30с, превентивный age-timer (180с), watchdog по молчанию (90с), реакция на `visibilitychange`, forced refresh при коде 16, событие `resync` для дозагрузки пропущенного. `connection_status` сохраняет `connected` и передаёт транспортное `state`: `offline` (только browser offline), `reconnecting` или `connected`; ручной `reconnect()` сбрасывает backoff и инвалидирует отложенные попытки предыдущего цикла.
+- `js/app/realtime.js` (`BF.realtime`) — server-streaming подписки [[Backend/Updates|UpdatesApi]] (new/read/edited/deleted/pinned/...) и [[Backend/Onliner|OnlinerApi]]. Реконнект с backoff 2→30с, превентивный age-timer (180с), watchdog по молчанию (90с), реакция на `visibilitychange`, forced refresh при коде 16, событие `resync` для дозагрузки пропущенного. Если refresh временно недоступен, сессия сохраняется, а реконнект повторяется с начальным backoff; редирект на вход происходит только после очистки невалидного refresh token. `connection_status` сохраняет `connected` и передаёт транспортное `state`: `offline` (только browser offline), `reconnecting` или `connected`; ручной `reconnect()` сбрасывает backoff и инвалидирует отложенные попытки предыдущего цикла.
 - События раздаются через `BF.realtime.on(event, cb)`; UI слушает их в `js/app/main.js`.
 - `#connectionBanner` — глобальная доступная плашка проблемы соединения с «Нет сети» / «Переподключаемся…» и ручным «Повторить», видимая также в мобильном списке чатов. После восстановления `main.js` ждёт catch-up списка и открытого чата; только успешный проход кратко (3 с) показывает в чате «Синхронизировано».
+
+### Папки чатов
+
+- `js/app/folders.js` (`BF.folders`) рендерит горизонтальные вкладки `#folderTabs` и показывает на каждой папке сумму `countUnread` её чатов; при значении больше 99 отображается `99+`.
+- `main.js::renderChatList()` передаёт актуальный список чатов в рендер вкладок, поэтому realtime-сообщение и событие прочтения сразу обновляют бейдж папки.
 
 ### Файлы и медиа
 - `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).
@@ -89,12 +140,24 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 
 ### Хост и маршрутизация
 - [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.
+- Два режима: **Node** (по умолчанию) — все кластеры ноды + Beacon + Navigator + `/api/files/upload`; **Shell** — только статика и прокси Navigator.
+- CORS открытый (`AllowAnyOrigin` + `AllowAnyHeader`, без `AllowCredentials`): origin страницы заранее неизвестен, токен идёт заголовком `x-auth-token`, куки в API не участвуют.
 
 ### Темы
 - 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
 - Цвет времени и статуса сообщения задаётся отдельными переменными темы (`--msg-meta-color` и `--msg-out-meta-color`), чтобы они сохраняли контраст на тёмных входящих и исходящих облачках.
-- Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и inline-SVG иконками действий.
+- Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и иконками действий из общего пакета.
 - Вкладка без открытого чата называется «Мессенджер». Для личного чата — «Чат • Имя Фамилия»; favicon заменяется на круглую, центрированно обрезанную аватарку собеседника.
+
+### Общий пакет иконок
+Веб-клиент использует общий каталог `icons/`, чтобы визуальные идентификаторы совпадали с остальными клиентами:
+
+- MSBuild подключает `../../icons/**/*.svg` в `wwwroot/icons/`, поэтому и нода, и web-shell раздают файлы по `/icons/{category}/{name}.svg`.
+- `wwwroot/js/app/icons.js` предоставляет `BF.icons` (`html`, `element`, `url`), а `wwwroot/css/icons.css` окрашивает монохромные SVG через CSS mask и `currentColor`.
+- Общий пакет уже используется в навигации, composer, настройках, меню действий сообщения, превью вложений, папках чатов и кнопках звонка. Динамические элементы создаются через `BF.icons`, статические — через `data-bf-icon`.
+- Новые папки сохраняют ключи иконок в `folderIcon` (например, `favorites`, `work`); старые значения-эмодзи продолжают отображаться до редактирования папки.
+- Service worker включает helper и его CSS в shell-cache, а запрошенные файлы `/icons/` кэширует во время работы.
+- CI workflow веб-сервиса также отслеживает `icons/**`, поэтому обновление общего пакета запускает новую веб-сборку.
 
 ### Группировка сообщений
 - Последовательные сообщения одного отправителя объединяются визуально, если между ними не больше пяти минут и нет разделителя даты: вертикальный зазор уменьшается на 2px.
@@ -134,6 +197,7 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - **Мелькание** исключено: `i18n.js` вешает на `<html>` класс `i18n-pending` (CSS `html.i18n-pending body { visibility: hidden }`), снимает после применения словаря; страховочный таймаут 3 с не даёт странице остаться скрытой при сбое.
 - **Готовность:** `BF.i18n.ready` — промис. `main.js` откладывает до него первый рендер списка чатов, `login-page.js` — старт страницы входа. Форматирование дат/времени/размеров в `utils.js` идёт по `BF.i18n.current()`.
 - **Смена языка** — экран «Язык интерфейса» в настройках (`settings.js`, вью `language`). Применяется мгновенно: `setLang` пишет cookie, перечитывает DOM через `apply()` и рассылает событие `bf:langchange` + колбэки `onChange`. На него подписаны настройки (перерисовка открытого экрана) и `main.js` (список чатов, вкладки папок, открытый чат, заголовок вкладки).
+- **Проверка доступности** — в «О приложении» (`settings.js`, вью `about`) кнопка запускает `BF.health.check()`. Для каждого liveness listener показываются имя, `Доступен/Недоступен` и фактическое время HTTP-запроса; `/ping` проверяет Web, а `/ping/{service}` — сервисы через YARP-шлюз выбранной ноды.
 - ⚠️ Тема-пикер в `messenger.html` определяет главный экран настроек по `sdBody.dataset.view === 'main'`, а **не по тексту заголовка** — заголовок локализуется.
 - **Вне охвата:** тексты, приходящие с сервера (системные сообщения в чате, ошибки API, push от бэкенда) и сами правовые документы (`/legal/*.ru.md`) остаются на русском.
 
@@ -144,6 +208,19 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 
 ### Согласие с документами и cookie (страница входа)
 Чекбокс «Я принимаю Пользовательское соглашение и Политику конфиденциальности» (`legal.js`) блокирует форму входа, регистрацию и QR fast-auth, пока не отмечен. Тексты открываются модалкой прямо на странице — markdown копируется из [[Backend/WebServer]] MSBuild-таргетом `CopyLegalDocs`, рендер через `BF.utils.renderMarkdown`. Хранится редакция документа (как `acceptedLegalRevision` в [[Клиенты/Android]]), после входа она уходит в профиль через `UsersApi.AcceptLegalConsent`. Там же плашка об использовании cookie. Подробности — [[Backend/Web]].
+
+### Command palette (Ctrl+K / Cmd+K)
+
+`js/app/cmdpalette.js` (`BF.cmdPalette`) — палитра быстрых команд, только в мессенджере (не на странице входа). `#cmdPaletteOverlay` в `messenger.html` (`.confirm-overlay`-паттерн, как `#newChatOverlay`).
+
+- Триггер: глобальный `document.keydown`, `(ctrlKey||metaKey)+K` (без Alt), `preventDefault()`. Игнорируется, если уже открыт другой модальный overlay (`.confirm-overlay.visible`/`.settings-overlay.visible`/`.profile-overlay.visible`/`.call-permission-overlay.visible`/`.image-overlay.visible`/`.newchat-menu.visible`/`.msg-context-menu.visible`) — палитры не стекуются.
+- Esc закрывает, ArrowUp/Down двигают выделение (clamp, без цикла), Enter/клик выполняет пункт и закрывает палитру.
+- Фильтр — простой case-insensitive substring по лейблу (без fuzzy-либы, тексты уже короткие).
+- **Статичные действия** (лейблы переиспользуют существующие i18n-ключи, отдельных переводов не заводили): `BF.newchat.open('message'|'group'|'private')` (потребовал добавить `open: openOverlay` в экспорт `newchat.js`, раньше был только `init`), `BF.settings.open(view)` для профиля/сессий/2FA/приватности/персонализации/языка/о приложении, `window.__setTheme('light'|'dark'|'midnight')` (уже существовавший глобальный хук темы, ничего менять не пришлось).
+  - `BF.settings.open()` расширен: теперь принимает опциональный `view` (по умолчанию `'main'`); если передан не-`'main'` view, `viewStack` инициализируется как `['main']`, чтобы кнопка «назад» вела на главный экран настроек.
+- **Динамика:** поиск по уже загрученным в память чатам (`getChats()` — колбэк из `main.js`, читает closure-переменную `chats`, без похода в API) по подстроке в `title`, до 6 совпадений, выбор → `openChat(chatId)` (+ `window.__mobileShowChat()` на мобильном layout, как в `newchat.js`).
+- Команда выхода из аккаунта сознательно не включена (деструктивное действие, не должно срабатывать по Enter в палитре).
+- Init вызывается в `main.js` рядом с `BF.newchat.init`/`BF.realtime.startAll()`.
 
 ### Управление групповыми чатами (паритет с Android)
 Клик по шапке группового чата открывает инфо-панель `#groupOverlay` (`messenger.html`, переиспользует CSS `.profile-*`; логика в `main.js` — `openGroupInfo`). Возможности:
@@ -159,6 +236,15 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 - [[Архитектура]] — общий tech stack, XAuth.
 
 ## PWA и web-push
+
+⚠️ **На глобальном шелле PWA пока не работает.** `push.js` регистрирует service worker
+только если `/pwa-config.js` вернул непустой Firebase-конфиг, а стек `docker/webshell`
+переменные `Web__Push__*` не передаёт. Значит на `web.barkfluff.com` не будет ни push,
+ни **precache/offline-страницы, ни предложения установки** — сегодня этот домен обслуживает
+нода и SW там регистрируется, после переключения перестанет. Это известное следствие того,
+что мультинодовый push вынесен в отдельную фазу: подсунуть шеллу конфиг ноды нельзя, пока
+SW не научится получать его после выбора сервера — иначе токен уйдёт в один Firebase-проект,
+а слать пуш будет нода с другим.
 
 `Backend/BarkFluff.Web` устанавливается как PWA: `manifest.webmanifest`, иконки 192/512, `service-worker.js` и `offline.html` составляют только offline-оболочку. Service worker precache'ит HTML/локальные JS, CSS и иконки, для навигации использует network-first с fallback на offline-страницу. gRPC-Web, API, presigned URL, чаты, сообщения и вложения не кэшируются.
 

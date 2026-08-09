@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<!--
+  Dev-харнес для визуальной проверки редизайна экрана звонков.
+  НЕ часть раздаваемой статики (лежит вне wwwroot) — грузит настоящий
+  js/app/calls-ui.js поверх моков LiveKit/BF.*, чтобы прогнать реальную логику
+  без Docker/LiveKit. Своя камера/микрофон/демонстрация экрана — настоящие
+  (getUserMedia/getDisplayMedia); удалённые участники — синтетические
+  MediaStreamTrack (Web Audio осциллятор + canvas.captureStream), поэтому
+  WebGL-визуализация везде получает данные с реального AnalyserNode, а не
+  подставные значения полос.
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Call harness</title>
+<style>
+  html, body { margin: 0; background: #121214; color: #f2f2f4; font-family: ui-sans-serif, system-ui, sans-serif; }
+
+  /* ---- панель управления харнесом ---- */
+  #harnessPanel {
+    position: fixed; top: 10px; left: 10px; z-index: 2000;
+    background: rgba(20,20,24,.92); border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+    padding: 10px; display: flex; flex-direction: column; gap: 6px; max-width: 260px;
+    font-size: 12px;
+  }
+  #harnessPanel h1 { font-size: 12px; margin: 0 0 4px; text-transform: uppercase; letter-spacing: .04em; color: #8a8a92; }
+  #harnessPanel button {
+    font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,.15);
+    background: #2a2a2f; color: #f2f2f4; cursor: pointer; text-align: left;
+  }
+  #harnessPanel button:hover { background: #35353b; }
+  #harnessPanel button:disabled { opacity: .4; cursor: default; }
+  #harnessLog { font-size: 11px; color: #8a8a92; white-space: pre-wrap; max-height: 120px; overflow: auto; }
+
+  /* ---- CSS звонков (копия messenger.html) ---- */
+  .call-ring-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1200;
+      background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+  }
+  .call-ring-overlay.visible { display: flex; }
+  .call-ring-card {
+      background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; padding: 28px 32px;
+      width: 320px; max-width: 90%; text-align: center; color: #f2f2f4;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+  .call-ring-avatar {
+      width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 16px;
+      background: #2a2a2f;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 34px; font-weight: 650; color: #fff; overflow: hidden;
+      position: relative;
+  }
+  .call-ring-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .call-ring-avatar.pulsing::before, .call-ring-avatar.pulsing::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      border: 2px solid rgba(240,240,242,0.5); animation: callPulse 1.8s ease-out infinite;
+  }
+  .call-ring-avatar.pulsing::after { animation-delay: 0.9s; }
+  @keyframes callPulse { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.55); opacity: 0; } }
+  .call-ring-name { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .call-ring-sub { font-size: 13px; color: #8a8a92; margin-bottom: 24px; }
+  .call-ring-actions { display: flex; justify-content: center; gap: 40px; }
+  .call-round-btn {
+      width: 60px; height: 60px; border-radius: 50%; border: none;
+      cursor: pointer; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s, filter .15s;
+  }
+  .call-round-btn svg { width: 26px; height: 26px; }
+  .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+  .call-btn-accept { background: #2e9e5b; }
+  .call-btn-reject, .call-ctl-end { background: #e8412a; }
+
+  .call-permission-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1210;
+      background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+  }
+  .call-permission-overlay.visible { display: flex; }
+  .call-permission-card {
+      background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; padding: 28px 32px;
+      width: 360px; max-width: 90%; text-align: center; color: #f2f2f4;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+  .call-permission-title { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+  .call-permission-text { font-size: 14px; line-height: 1.45; color: #8a8a92; margin-bottom: 24px; }
+  .call-permission-actions { display: flex; justify-content: center; gap: 10px; }
+  .call-permission-actions button { border: none; border-radius: 999px; padding: 10px 16px; cursor: pointer; font: inherit; text-align: center; }
+  .call-permission-actions .primary { background: #f0f0f2; color: #141418; }
+  .call-permission-actions .secondary { background: #2a2a2f; color: #f2f2f4; }
+  .call-permission-actions button:disabled { opacity: .6; cursor: wait; }
+
+  .call-screen {
+      display: none; position: fixed; inset: 0; z-index: 1150;
+      background: #121214; color: #f2f2f4; flex-direction: column;
+      font-variant-numeric: tabular-nums;
+  }
+  .call-screen.visible { display: flex; }
+  .call-screen-top { padding: 12px 20px 6px; display: flex; align-items: baseline; gap: 12px; }
+  .call-screen-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+  .call-screen-timer { font-size: 12px; color: #8a8a92; }
+
+  .call-main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 6px 20px 14px; }
+
+  .call-spotlight { display: none; flex: 1; min-height: 0; align-items: center; justify-content: center; }
+  .call-spotlight.visible { display: flex; }
+  .call-spotlight-box {
+      position: relative; max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9;
+      width: 100%; min-height: 180px; border-radius: 18px; overflow: hidden;
+      background: #0d0d10; border: 1px solid rgba(255,255,255,.09);
+  }
+  .call-spotlight-video-host { position: absolute; inset: 0; }
+  .call-spotlight-video-host video { width: 100%; height: 100%; object-fit: cover; background: #0d0d10; }
+  .call-spotlight-canvas {
+      position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 92px;
+      mix-blend-mode: screen; pointer-events: none; opacity: 0; transition: opacity 220ms ease;
+  }
+  .call-spotlight-ring { position: absolute; inset: 0; border-radius: 18px; border: 2px solid #f0f0f2; opacity: 0; pointer-events: none; }
+  .call-spotlight-pill {
+      position: absolute; left: 14px; bottom: 14px; display: flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 999px; background: rgba(10,10,12,.6); backdrop-filter: blur(8px);
+      font-size: 13px; font-weight: 600;
+  }
+  .call-spotlight-exit {
+      position: absolute; top: 12px; right: 12px; height: 32px; padding: 0 14px; border: 0;
+      border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
+      background: rgba(10,10,12,.65); color: #f2f2f4; backdrop-filter: blur(8px); transition: background 160ms ease;
+  }
+  .call-spotlight-exit:hover { background: rgba(255,255,255,.18); }
+
+  .call-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .call-grid { display: grid; gap: 12px; justify-content: center; align-content: center; }
+  .call-tile { position: relative; cursor: pointer; width: 100%; aspect-ratio: 16 / 9; background: #0d0d10; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; overflow: hidden; }
+  .call-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0d0d10; }
+  .call-tile.screen video { object-fit: contain; }
+  .call-tile-canvas { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 78px; mix-blend-mode: screen; pointer-events: none; opacity: 0; transition: opacity 220ms ease; }
+  .call-tile-ring { position: absolute; inset: 0; border-radius: 16px; border: 2px solid #f0f0f2; opacity: 0; pointer-events: none; z-index: 2; }
+  .call-tile-pill { position: absolute; left: 12px; bottom: 12px; z-index: 3; display: flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: rgba(10,10,12,.62); backdrop-filter: blur(8px); font-size: 12px; font-weight: 600; max-width: calc(100% - 24px); }
+  .call-tile-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .call-tile-muted { display: none; flex: none; color: #e8503c; }
+  .call-tile-muted svg { width: 13px; height: 13px; display: block; }
+  .call-tile-hint { position: absolute; top: 10px; right: 10px; z-index: 3; width: 30px; height: 30px; border-radius: 9px; background: rgba(10,10,12,.6); color: #f2f2f4; opacity: 0; display: flex; align-items: center; justify-content: center; transition: opacity .15s, background .15s; pointer-events: none; }
+  .call-tile:hover .call-tile-hint { opacity: 1; }
+  .call-tile-hint svg { width: 15px; height: 15px; }
+
+  .call-voices { flex: none; display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 10px; }
+  .call-voice-tile { position: relative; width: 196px; height: 132px; border-radius: 14px; background: #1a1a1e; border: 1px solid rgba(255,255,255,.07); overflow: hidden; display: flex; flex-direction: column; }
+  .call-voice-ring { position: absolute; inset: 0; border-radius: 14px; border: 2px solid #f0f0f2; opacity: 0; pointer-events: none; z-index: 2; }
+  .call-voice-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 10px 12px 0; overflow: hidden; }
+  .call-voice-avatar { width: 38px; height: 38px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 650; color: #fff; overflow: hidden; }
+  .call-voice-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .call-voice-name { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .call-voice-status { font-size: 11px; color: #8a8a92; }
+  .call-voice-canvas { flex: none; width: 100%; height: 46px; display: block; mix-blend-mode: screen; opacity: 0; transition: opacity 220ms ease; }
+  .call-voice-muted { display: none; position: absolute; top: 9px; right: 9px; z-index: 3; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,.45); align-items: center; justify-content: center; color: #e8503c; }
+  .call-voice-muted svg { width: 13px; height: 13px; display: block; }
+
+  .call-screen.tight .call-voice-tile { width: 152px; height: 88px; }
+  .call-screen.tight .call-voice-body { gap: 4px; padding: 6px 10px 0; }
+  .call-screen.tight .call-voice-avatar { width: 24px; height: 24px; font-size: 10px; }
+  .call-screen.tight .call-voice-status { display: none; }
+  .call-screen.tight .call-voice-canvas { height: 30px; }
+
+  .call-waiting { display: none; position: absolute; inset: 0; z-index: 3; flex-direction: column; align-items: center; justify-content: center; gap: 14px; pointer-events: none; background: #121214; }
+  .call-screen.waiting .call-waiting { display: flex; }
+  .call-screen.waiting:not(.waiting-empty) .call-waiting { background: transparent; }
+  .call-waiting-avatar { width: 120px; height: 120px; border-radius: 50%; position: relative; background: #2a2a2f; display: flex; align-items: center; justify-content: center; font-size: 46px; font-weight: 650; color: #fff; overflow: hidden; }
+  .call-waiting-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .call-waiting-avatar::before, .call-waiting-avatar::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(240,240,242,0.45); animation: callPulse 1.8s ease-out infinite; }
+  .call-waiting-avatar::after { animation-delay: 0.9s; }
+  .call-waiting-name { font-size: 20px; font-weight: 700; }
+  .call-waiting-sub { font-size: 14px; color: #8a8a92; }
+
+  .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 12px; padding: 4px 20px 22px; position: relative; z-index: 5; }
+  .call-ctl { position: relative; width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; background: #2a2a2f; color: #f2f2f4; display: flex; align-items: center; justify-content: center; transition: background .16s ease, color .16s ease; }
+  .call-ctl svg { width: 20px; height: 20px; }
+  .call-ctl:hover { filter: brightness(1.18); }
+  .call-ctl.active { background: #f0f0f2; color: #141418; }
+  .call-ctl-end { background: #e8412a; color: #fff; margin-left: 6px; }
+  .call-ctl-end:hover { background: #f2543d; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .call-ctl.busy svg { opacity: .3; }
+  .call-ctl.busy::after { content: ''; position: absolute; top: 50%; left: 50%; margin: -12px 0 0 -12px; width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+
+  .call-quality-panel { display: block; position: absolute; left: 50%; bottom: 88px; transform: translateX(-50%) translateY(6px) scale(0.98); transform-origin: bottom center; background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 14px 16px; z-index: 4; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 260px; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms; }
+  .call-quality-panel.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(-50%) translateY(0) scale(1); transition: opacity 150ms ease, transform 150ms ease, visibility 0s linear; }
+  .call-quality-group + .call-quality-group { margin-top: 12px; }
+  .call-quality-title { color: #8a8a92; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 7px; position: relative; }
+  .call-quality-chips { display: flex; gap: 6px; }
+  .call-chip { flex: 1; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.8); border-radius: 8px; padding: 7px 6px; font-size: 12px; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+  .call-chip:hover { background: rgba(255,255,255,0.1); }
+  .call-chip.active { background: #f0f0f2; border-color: #f0f0f2; color: #141418; }
+  .call-quality-group.pending .call-chip { opacity: .5; pointer-events: none; }
+  .call-quality-group.pending .call-quality-title::after { content: ''; position: absolute; right: 0; top: -1px; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+
+  .call-ctl-wrap { position: relative; display: flex; }
+  .call-ctl-caret { position: absolute; right: -3px; bottom: -3px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #121214; background: #3a3a3f; color: #fff; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .call-ctl-caret svg { width: 12px; height: 12px; }
+  .call-ctl-caret:hover { background: #4a4a4f; }
+  .call-ctl-menu { display: block; position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%) translateY(6px) scale(0.98); transform-origin: bottom center; background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; padding: 6px; min-width: 220px; max-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 6; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms; }
+  .call-ctl-menu.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(-50%) translateY(0) scale(1); transition: opacity 150ms ease, transform 150ms ease, visibility 0s linear; }
+  .call-ctl-menu-item { display: block; width: 100%; text-align: left; border: none; background: transparent; color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .call-ctl-menu-item:hover { background: rgba(255,255,255,0.1); }
+  .call-ctl-menu-item.active { background: #f0f0f2; color: #141418; }
+  .call-ctl-menu-empty { color: rgba(255,255,255,0.5); padding: 8px 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+  <div id="harnessPanel">
+    <h1>Call harness</h1>
+    <button id="hStart">Начать звонок (группа, видео)</button>
+    <button id="hAddVoice">+ участник: голос, с фото</button>
+    <button id="hAddMuted">+ участник: голос, muted, без фото</button>
+    <button id="hAddCam">+ участник: камера, с фото</button>
+    <button id="hAddScreen">+ участник: экран, без фото</button>
+    <button id="hAddScreenToCam">+ экран тому же участнику с камерой</button>
+    <button id="hRemoveOne">− убрать последнего добавленного</button>
+    <button id="hEnd">Завершить звонок</button>
+    <div id="harnessLog"></div>
+  </div>
+
+  <!-- Доступ к микрофону и камере до начала звонка -->
+  <div class="call-permission-overlay" id="callPermissionOverlay" role="dialog" aria-modal="true" aria-labelledby="callPermissionTitle">
+    <div class="call-permission-card">
+      <div class="call-permission-title" id="callPermissionTitle"></div>
+      <div class="call-permission-text" id="callPermissionText"></div>
+      <div class="call-permission-actions">
+        <button class="secondary" id="callPermissionCancel" type="button">Отмена</button>
+        <button class="primary" id="callPermissionRequest" type="button">Разрешить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Входящий звонок (ring) -->
+  <div class="call-ring-overlay" id="callRingOverlay">
+    <div class="call-ring-card">
+      <div class="call-ring-avatar" id="callRingAvatar"></div>
+      <div class="call-ring-name" id="callRingName">Входящий звонок</div>
+      <div class="call-ring-sub" id="callRingSub"></div>
+      <div class="call-ring-actions">
+        <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить">✕</button>
+        <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять">✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Активный звонок -->
+  <div class="call-screen" id="callScreen">
+    <div class="call-screen-top">
+      <div class="call-screen-title" id="callScreenTitle">Звонок</div>
+      <div class="call-screen-timer" id="callScreenTimer"></div>
+    </div>
+    <div class="call-main">
+      <div class="call-spotlight" id="callSpotlight">
+        <div class="call-spotlight-box">
+          <div class="call-spotlight-video-host" id="callSpotlightVideoHost"></div>
+          <canvas class="call-spotlight-canvas" id="callSpotlightCanvas"></canvas>
+          <div class="call-spotlight-ring" id="callSpotlightRing"></div>
+          <div class="call-spotlight-pill"><span id="callSpotlightName"></span></div>
+          <button type="button" class="call-spotlight-exit" id="callSpotlightExit">Свернуть</button>
+        </div>
+      </div>
+      <div class="call-stage" id="callStage">
+        <div class="call-waiting" id="callWaiting">
+          <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
+          <div class="call-waiting-name" id="callWaitingName"></div>
+          <div class="call-waiting-sub" id="callWaitingSub"></div>
+        </div>
+        <div class="call-grid" id="callGrid"></div>
+      </div>
+      <div class="call-voices" id="callVoices"></div>
+    </div>
+    <div class="call-quality-panel" id="callQualityPanel">
+      <div class="call-quality-group" id="callAudioQualityGroup">
+        <div class="call-quality-title">Голос · для всех</div>
+        <div class="call-quality-chips" id="callAudioChips">
+          <button class="call-chip" data-q="0">Авто</button>
+          <button class="call-chip" data-q="1">Низкое</button>
+          <button class="call-chip" data-q="2">Среднее</button>
+          <button class="call-chip" data-q="3">Высокое</button>
+        </div>
+      </div>
+      <div class="call-quality-group" id="callVideoQualityGroup">
+        <div class="call-quality-title">Видео · ваш стрим</div>
+        <div class="call-quality-chips" id="callVideoChips">
+          <button class="call-chip" data-q="0">Авто</button>
+          <button class="call-chip" data-q="1">Низкое</button>
+          <button class="call-chip" data-q="2">Среднее</button>
+          <button class="call-chip" data-q="3">Высокое</button>
+        </div>
+      </div>
+    </div>
+    <div class="call-controls">
+      <div class="call-ctl-wrap">
+        <button class="call-ctl" id="callToggleMic" title="Микрофон"></button>
+        <button class="call-ctl-caret" id="callMicCaret" title="Выбрать микрофон">▾</button>
+        <div class="call-ctl-menu" id="callMicMenu"></div>
+      </div>
+      <div class="call-ctl-wrap">
+        <button class="call-ctl" id="callToggleCam" title="Камера"></button>
+        <button class="call-ctl-caret" id="callCamCaret" title="Выбрать камеру">▾</button>
+        <div class="call-ctl-menu" id="callCamMenu"></div>
+      </div>
+      <button class="call-ctl" id="callToggleScreen" title="Демонстрация экрана"></button>
+      <button class="call-ctl" id="callToggleQuality" title="Качество"></button>
+      <button class="call-ctl call-ctl-end" id="callHangup" title="Завершить"></button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+  window.BF = window.BF || {};
+
+  // ---------- моки BF.* ----------
+  var MY_USER_ID = 999;
+
+  function makeAvatarDataUrl(bg, text) {
+    var c = document.createElement('canvas'); c.width = 96; c.height = 96;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(48, 48, 48, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 48, 52);
+    return c.toDataURL('image/png');
+  }
+
+  var FAKE_USERS = {};
+  FAKE_USERS[MY_USER_ID] = { firstName: 'Вы', lastName: '', username: 'you', profilePicture: makeAvatarDataUrl('#3f6bd8', 'Я') };
+  FAKE_USERS[1001] = { firstName: 'Настя', lastName: 'Ив.', username: 'nastia', profilePicture: makeAvatarDataUrl('#e8412a', 'НИ') };
+  FAKE_USERS[1002] = { firstName: 'Максим', lastName: '', username: 'maxim', profilePicture: null };
+  FAKE_USERS[1003] = { firstName: 'Артём', lastName: 'К.', username: 'artem', profilePicture: makeAvatarDataUrl('#2e8f68', 'АК') };
+  FAKE_USERS[1004] = { firstName: 'Лиза', lastName: 'Р.', username: 'liza', profilePicture: null };
+
+  function log(msg) {
+    var el = document.getElementById('harnessLog');
+    el.textContent = '• ' + msg + '\n' + el.textContent;
+  }
+
+  BF.tokens = { getAccessToken: function () { return 'fake'; } };
+  BF.utils = { parseJwtPayload: function () { return { 'x-user-id': MY_USER_ID }; } };
+  BF.api = { getUser: function (userId) { return Promise.resolve({ user: FAKE_USERS[userId] || null }); } };
+
+  var I18N = {
+    'call.you': 'Вы', 'call.mic': 'Микрофон', 'call.camera': 'Камера',
+    'call.mic.on': 'Включить микрофон', 'call.mic.off': 'Выключить микрофон',
+    'call.camera.on': 'Включить камеру', 'call.camera.off': 'Выключить камеру',
+    'call.screenShare': 'Демонстрация экрана', 'call.screenShare.stop': 'Остановить демонстрацию',
+    'call.collapse': 'Свернуть', 'call.tile.screen': '{name} · демонстрация экрана',
+    'call.title': 'Звонок', 'call.group': 'Групповой звонок', 'call.incoming': 'Входящий звонок',
+    'call.inProgress': 'В разговоре', 'call.calling': 'Вызов…', 'call.joining': 'Подключение…',
+    'call.connecting': 'Соединение…', 'call.waitingMembers': 'Ожидание участников…',
+    'call.status.speaking': 'Говорит', 'call.status.micOff': 'Микрофон выключен',
+    'status.online': 'в сети', 'call.noDevices': 'Устройства не найдены',
+    'call.permission.title': 'Нужен доступ к {targets}', 'call.permission.text': 'Разрешите доступ к {targets}.',
+    'call.permission.denied': 'Доступ заблокирован.', 'call.permission.retry': 'Проверить снова',
+    'call.permission.camera': 'камере', 'call.permission.mic': 'микрофону',
+    'common.allow': 'Разрешить', 'common.and': ' и ', 'common.user': 'Пользователь',
+    'attachment.video': 'Видеозвонок', 'attachment.audio': 'Аудиозвонок'
+  };
+  BF.i18n = {
+    t: function (key, params) {
+      var s = I18N[key] != null ? I18N[key] : key;
+      if (params) Object.keys(params).forEach(function (k) { s = s.replace('{' + k + '}', params[k]); });
+      return s;
+    }
+  };
+
+  // ---------- BF.calls мок (сигнализация не тестируется — только UI) ----------
+  var callHandlers = {};
+  BF.calls = {
+    MediaType: { AUDIO: 0, VIDEO: 1 },
+    on: function (ev, cb) { (callHandlers[ev] = callHandlers[ev] || []).push(cb); },
+    _emit: function (ev, d) { (callHandlers[ev] || []).forEach(function (cb) { cb(d); }); },
+    getCurrent: function () { return { mediaType: BF.calls.MediaType.VIDEO }; },
+    accept: function () { return Promise.resolve(); },
+    reject: function () { return Promise.resolve(); },
+    end: function (id) { BF.calls._emit('ended', { callId: id, local: true }); return Promise.resolve(); },
+    setAudioQuality: function (id, q) {
+      setTimeout(function () { BF.calls._emit('audio_quality_changed', { callId: id, quality: q }); }, 400);
+      return Promise.resolve();
+    }
+  };
+
+  // ---------- фейковый LiveKit ----------
+  var RE = {
+    TrackSubscribed: 'trackSubscribed', TrackUnsubscribed: 'trackUnsubscribed',
+    LocalTrackPublished: 'localTrackPublished', LocalTrackUnpublished: 'localTrackUnpublished',
+    ParticipantConnected: 'participantConnected', ParticipantDisconnected: 'participantDisconnected'
+  };
+  var SRC = { Microphone: 'microphone', Camera: 'camera', ScreenShare: 'screen_share' };
+
+  function wrapTrack(kind, mediaStreamTrack, source) {
+    var attached = [];
+    return {
+      kind: kind, source: source, mediaStreamTrack: mediaStreamTrack,
+      attach: function () {
+        var el = document.createElement(kind === 'video' ? 'video' : 'audio');
+        el.srcObject = new MediaStream([mediaStreamTrack]);
+        el.autoplay = true; el.playsInline = true;
+        attached.push(el);
+        return el;
+      },
+      detach: function () {
+        var out = attached; attached = [];
+        out.forEach(function (el) { try { el.srcObject = null; } catch (e) {} });
+        return out;
+      }
+    };
+  }
+
+  function makeLocalParticipant(room, identity) {
+    var micTrack = null, camTrack = null, screenTrack = null;
+    var lp = { identity: identity };
+    lp.setMicrophoneEnabled = function (on) {
+      if (on) {
+        if (micTrack) return Promise.resolve();
+        return navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+          micTrack = wrapTrack('audio', stream.getAudioTracks()[0], SRC.Microphone);
+          room._emit(RE.LocalTrackPublished, { source: SRC.Microphone, kind: 'audio', track: micTrack }, lp);
+        }).catch(function (e) { log('микрофон недоступен: ' + e.message); });
+      }
+      if (!micTrack) return Promise.resolve();
+      var t = micTrack; micTrack = null;
+      room._emit(RE.LocalTrackUnpublished, { source: SRC.Microphone, kind: 'audio', track: t }, lp);
+      try { t.mediaStreamTrack.stop(); } catch (e) {}
+      return Promise.resolve();
+    };
+    lp.setCameraEnabled = function (on) {
+      if (on) {
+        if (camTrack) return Promise.resolve();
+        return navigator.mediaDevices.getUserMedia({ video: true }).then(function (stream) {
+          camTrack = wrapTrack('video', stream.getVideoTracks()[0], SRC.Camera);
+          room._emit(RE.LocalTrackPublished, { source: SRC.Camera, kind: 'video', track: camTrack }, lp);
+        }).catch(function (e) { log('камера недоступна: ' + e.message); });
+      }
+      if (!camTrack) return Promise.resolve();
+      var t = camTrack; camTrack = null;
+      room._emit(RE.LocalTrackUnpublished, { source: SRC.Camera, kind: 'video', track: t }, lp);
+      try { t.mediaStreamTrack.stop(); } catch (e) {}
+      return Promise.resolve();
+    };
+    lp.setScreenShareEnabled = function (on) {
+      if (on) {
+        if (screenTrack) return Promise.resolve();
+        return navigator.mediaDevices.getDisplayMedia({ video: true }).then(function (stream) {
+          var raw = stream.getVideoTracks()[0];
+          screenTrack = wrapTrack('video', raw, SRC.ScreenShare);
+          raw.addEventListener('ended', function () { lp.setScreenShareEnabled(false); });
+          room._emit(RE.LocalTrackPublished, { source: SRC.ScreenShare, kind: 'video', track: screenTrack }, lp);
+        }).catch(function (e) { log('демонстрация недоступна: ' + e.message); });
+      }
+      if (!screenTrack) return Promise.resolve();
+      var t = screenTrack; screenTrack = null;
+      room._emit(RE.LocalTrackUnpublished, { source: SRC.ScreenShare, kind: 'video', track: t }, lp);
+      try { t.mediaStreamTrack.stop(); } catch (e) {}
+      return Promise.resolve();
+    };
+    return lp;
+  }
+
+  function FakeRoom() {
+    this._h = {};
+    this.remoteParticipants = new Map();
+    this.localParticipant = makeLocalParticipant(this, String(MY_USER_ID));
+    window.__harnessRoom = this;
+  }
+  FakeRoom.prototype.on = function (ev, cb) { (this._h[ev] = this._h[ev] || []).push(cb); return this; };
+  FakeRoom.prototype._emit = function (ev) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    (this._h[ev] || []).forEach(function (cb) { cb.apply(null, args); });
+  };
+  FakeRoom.prototype.connect = function () { return Promise.resolve(); };
+  FakeRoom.prototype.disconnect = function () { window.__harnessRoom = null; };
+  FakeRoom.prototype.switchActiveDevice = function () { return Promise.resolve(); };
+
+  window.LivekitClient = {
+    Room: FakeRoom,
+    RoomEvent: RE,
+    Track: { Kind: { Audio: 'audio', Video: 'video' }, Source: SRC }
+  };
+
+  // ---------- синтетические треки для фейковых участников ----------
+  var harnessAudioCtx = null;
+  function ctx() {
+    if (!harnessAudioCtx) harnessAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return harnessAudioCtx;
+  }
+  // Реальный, но синтетический звук: осциллятор с периодической огибающей — AnalyserNode
+  // в calls-ui.js анализирует его как обычный голос (без подстановки готовых значений полос).
+  function makeFakeAudioTrack(baseFreq, amp, speed) {
+    var c = ctx();
+    var osc = c.createOscillator(), gain = c.createGain(), dest = c.createMediaStreamDestination();
+    osc.type = 'sawtooth'; osc.frequency.value = baseFreq;
+    osc.connect(gain); gain.connect(dest);
+    gain.gain.value = 0;
+    osc.start();
+    var t0 = c.currentTime;
+    var stopped = false;
+    (function tick() {
+      if (stopped) return;
+      var t = c.currentTime - t0;
+      var env = amp > 0 ? Math.max(0, Math.sin(t * speed) * 0.6 + Math.sin(t * speed * 2.7) * 0.4) * amp : 0;
+      gain.gain.setTargetAtTime(env, c.currentTime, 0.08);
+      requestAnimationFrame(tick);
+    })();
+    var track = dest.stream.getAudioTracks()[0];
+    var origStop = track.stop.bind(track);
+    track.stop = function () { stopped = true; origStop(); };
+    return track;
+  }
+  function makeFakeVideoTrack(hue, label) {
+    var c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    var cx = c.getContext('2d');
+    var stopped = false;
+    (function paint() {
+      if (stopped) return;
+      var t = Date.now() / 1000;
+      var g = cx.createLinearGradient(0, 0, 320, 180);
+      g.addColorStop(0, 'hsl(' + ((hue + t * 10) % 360) + ',55%,32%)');
+      g.addColorStop(1, 'hsl(' + ((hue + 40) % 360) + ',55%,16%)');
+      cx.fillStyle = g; cx.fillRect(0, 0, 320, 180);
+      cx.fillStyle = 'rgba(255,255,255,.85)'; cx.font = '16px sans-serif';
+      cx.fillText(label, 12, 90);
+      cx.fillText(new Date().toLocaleTimeString(), 12, 112);
+      requestAnimationFrame(paint);
+    })();
+    var stream = c.captureStream(15);
+    var track = stream.getVideoTracks()[0];
+    var origStop = track.stop.bind(track);
+    track.stop = function () { stopped = true; origStop(); };
+    return track;
+  }
+
+  // ---------- сценарий: фейковые участники ----------
+  var fake = {}; // identity -> { participant, audioTrack, videoTrack }
+  var addedOrder = [];
+
+  function spawnParticipant(identity, opts) {
+    var room = window.__harnessRoom;
+    if (!room) { log('сначала начните звонок'); return; }
+    if (fake[identity]) { log('участник ' + identity + ' уже добавлен'); return; }
+    var participant = { identity: identity };
+    fake[identity] = { participant: participant, audioTrack: null, videoTrack: null };
+    addedOrder.push(identity);
+    room._emit(RE.ParticipantConnected, participant);
+    setTimeout(function () {
+      var audioTrack = makeFakeAudioTrack(opts.baseFreq || 160, opts.muted ? 0 : (opts.amp || 0.7), opts.speed || 1.1);
+      fake[identity].audioTrack = audioTrack;
+      room._emit(RE.TrackSubscribed, wrapTrack('audio', audioTrack, SRC.Microphone), { source: SRC.Microphone }, participant);
+      if (opts.video) addVideoToParticipant(identity, opts.screen, opts.hue);
+    }, 250);
+    log('участник ' + identity + ' подключился' + (opts.video ? (opts.screen ? ' (экран)' : ' (камера)') : ' (голос)'));
+  }
+
+  function addVideoToParticipant(identity, screen, hue) {
+    var room = window.__harnessRoom;
+    var f = fake[identity];
+    if (!room || !f) return;
+    var videoTrack = makeFakeVideoTrack(hue || 200, '#' + identity + (screen ? ' · экран' : ''));
+    var source = screen ? SRC.ScreenShare : SRC.Camera;
+    room._emit(RE.TrackSubscribed, wrapTrack('video', videoTrack, source), { source: source }, f.participant);
+  }
+
+  function removeLast() {
+    var identity = addedOrder.pop();
+    if (!identity) { log('нечего убирать'); return; }
+    var room = window.__harnessRoom;
+    var f = fake[identity];
+    if (room && f) room._emit(RE.ParticipantDisconnected, f.participant);
+    if (f && f.audioTrack) try { f.audioTrack.stop(); } catch (e) {}
+    if (f && f.videoTrack) try { f.videoTrack.stop(); } catch (e) {}
+    delete fake[identity];
+    log('участник ' + identity + ' отключился');
+  }
+
+  var started = false;
+  document.getElementById('hStart').addEventListener('click', function () {
+    if (started) { log('звонок уже идёт'); return; }
+    started = true;
+    BF.calls._emit('connect', { callId: 'demo', role: 'caller', isGroup: true, mediaType: BF.calls.MediaType.VIDEO, audioQuality: 0 });
+    log('звонок начат — своя камера/микрофон настоящие (браузер запросит доступ)');
+  });
+  document.getElementById('hAddVoice').addEventListener('click', function () { spawnParticipant('1001', { amp: 0.8, speed: 1.0 }); });
+  document.getElementById('hAddMuted').addEventListener('click', function () { spawnParticipant('1002', { muted: true }); });
+  document.getElementById('hAddCam').addEventListener('click', function () { spawnParticipant('1003', { video: true, screen: false, hue: 150, amp: 0.6, speed: 1.6 }); });
+  document.getElementById('hAddScreen').addEventListener('click', function () { spawnParticipant('1004', { video: true, screen: true, hue: 260, amp: 0.5, speed: 0.8 }); });
+  document.getElementById('hAddScreenToCam').addEventListener('click', function () {
+    if (!fake['1003']) { log('сначала добавьте участника 1003 (камера)'); return; }
+    addVideoToParticipant('1003', true, 150);
+    log('участнику 1003 добавлена демонстрация экрана — теперь два блока одного участника');
+  });
+  document.getElementById('hRemoveOne').addEventListener('click', removeLast);
+  document.getElementById('hEnd').addEventListener('click', function () {
+    Object.keys(fake).forEach(function (id) {
+      if (fake[id].audioTrack) try { fake[id].audioTrack.stop(); } catch (e) {}
+      if (fake[id].videoTrack) try { fake[id].videoTrack.stop(); } catch (e) {}
+    });
+    fake = {}; addedOrder = []; started = false;
+    BF.calls.end('demo');
+    log('звонок завершён');
+  });
+})();
+</script>
+<script src="../wwwroot/js/app/calls-ui.js"></script>
+</body>
+</html>

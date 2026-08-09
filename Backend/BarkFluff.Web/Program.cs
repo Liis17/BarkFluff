@@ -16,7 +16,17 @@ using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.LoadConfiguration(ServiceId.Web);
+// Web:Mode = Node (по умолчанию) — хост ноды: все кластеры сервисов, статика, upload.
+//            Shell — глобальный web.barkfluff.com: только статика + прокси Navigator.
+// Читаем ДО LoadConfiguration: env-переменные CreateBuilder подхватывает сам.
+var isShellMode = string.Equals(builder.Configuration["Web:Mode"], "Shell", StringComparison.OrdinalIgnoreCase);
+
+// Шелл живёт вне ноды, рядом с ним нет Configuration-сервиса, а LoadConfiguration
+// падает без ретраев при недоступном сервисе — поэтому в shell-режиме его пропускаем
+// и берём конфигурацию только из env/appsettings (тот же выход из платформенного
+// шаблона, что у BarkFluff.Navigator).
+if (!isShellMode)
+    builder.LoadConfiguration(ServiceId.Web);
 
 // Env-переменные контейнера должны иметь приоритет над Configuration service
 builder.Configuration.AddEnvironmentVariables();
@@ -34,28 +44,22 @@ builder.WebHost.ConfigureKestrel(options =>
 
 builder.Services.AddBarkFluffMetrics("BarkFluff.Web");
 
-// CORS — разрешаем обращения из настроенных origin'ов; также публикуем gRPC-Web-трейлеры.
-// В проде список обязателен; localhost-fallback оставляем только для разработки.
-var allowedOrigins = builder.Configuration.GetSection("Web:AllowedOrigins").Get<string[]>()
-                     ?? Array.Empty<string>();
-if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
-    allowedOrigins = new[] { "http://localhost:7016" };
-
+// CORS — веб-клиент раздаётся с глобального web.barkfluff.com, а gRPC-Web ходит
+// напрямую в ноду, поэтому origin вызывающего заранее неизвестен и список не ведём.
+//
+// AllowCredentials не нужен: токен идёт заголовком x-auth-token, куки в API не
+// участвуют — значит CSRF нерелевантен, а AllowAnyOrigin допустим. API ноды и так
+// публичный и защищён токеном.
+//
+// AllowAnyHeader вместо списка: он рассинхронизировался с клиентом (разрешался
+// x-os, а метадата шлёт x-os-name) и same-origin это не выявлял — preflight'а не было.
+//
+// Preflight кэшируем на сутки, иначе каждый unary-вызов удваивает RTT.
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
-    .WithOrigins(allowedOrigins)
+    .AllowAnyOrigin()
     .WithMethods("GET", "POST", "OPTIONS")
-    .WithHeaders(
-        "content-type",
-        "x-grpc-web",
-        "x-user-agent",
-        "x-auth-token",
-        "x-device-id",
-        "x-device-name",
-        "x-ip",
-        "x-os",
-        "x-app-name",
-        "x-app-version")
-    .AllowCredentials()
+    .AllowAnyHeader()
+    .SetPreflightMaxAge(TimeSpan.FromHours(24))
     .WithExposedHeaders(
         "grpc-status",
         "grpc-message",
@@ -80,7 +84,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // gRPC-Web middleware (ниже) превращает входящий HTTP/1.1 gRPC-Web запрос
 // в обычный gRPC HTTP/2, после чего YARP форвардит его в соответствующий сервис.
 builder.Services.AddReverseProxy()
-    .LoadFromMemory(BuildRoutes(), BuildClusters(builder.Configuration));
+    .LoadFromMemory(BuildRoutes(isShellMode), BuildClusters(builder.Configuration, isShellMode));
 
 builder.Services.AddHealthChecks();
 
@@ -270,6 +274,7 @@ app.Use(async (ctx, next) =>
 app.UseStaticFiles();
 
 app.MapHealthChecks("/health");
+app.MapPingEndpoint();
 
 // Firebase web configuration and the VAPID key are public client identifiers.
 // Service-account credentials deliberately remain exclusive to CloudMessaging.
@@ -306,18 +311,33 @@ app.MapGet("/pwa-config.js", (HttpContext ctx, IConfiguration configuration) =>
     return Results.Text(script, "application/javascript", Encoding.UTF8);
 });
 
+// Режим хоста для клиента: нода отдаёт себя как единственную (pinned),
+// глобальный шелл заставляет выбрать ноду и проксирует Navigator.
+app.MapGet("/node-config.js", (HttpContext ctx) =>
+{
+    ctx.Response.Headers.CacheControl = "no-store";
+    var script = "self.BF_NODE_CONFIG = " + JsonSerializer.Serialize(new
+    {
+        pinned = !isShellMode,
+        navigatorProxy = isShellMode
+    }) + ";";
+    return Results.Text(script, "application/javascript", Encoding.UTF8);
+});
+
 app.MapGet("/messenger", (IWebHostEnvironment env) =>
     Results.File(Path.Combine(env.WebRootPath, "messenger.html"), "text/html"));
 
 app.MapReverseProxy();
 
-// Fallback: SPA отдаётся для любого URL, КРОМЕ /api/* и /health —
-// чтобы неверный HTTP-метод на upload/health не маскировался index.html.
+// Fallback: SPA отдаётся для любого URL, КРОМЕ /api/*, /health и /ping —
+// чтобы неверный HTTP-метод на upload/health/ping не маскировался index.html.
 app.MapFallback(async (HttpContext ctx, IWebHostEnvironment env) =>
 {
     var path = ctx.Request.Path.Value ?? string.Empty;
     if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
-        || path.Equals("/health", StringComparison.OrdinalIgnoreCase))
+        || path.Equals("/health", StringComparison.OrdinalIgnoreCase)
+        || path.Equals("/ping", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/ping/", StringComparison.OrdinalIgnoreCase))
     {
         ctx.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
@@ -330,20 +350,31 @@ app.Run();
 
 // --- YARP routes / clusters ---
 
-static IReadOnlyList<RouteConfig> BuildRoutes()
+static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode)
 {
     // Полные имена gRPC-сервисов из *_api.proto (package + service).
-    (string route, string cluster, string path)[] grpcRoutes =
-    {
-        ("identity",  "identity",  "/barkfluff.identity.IdentityApi/{**catchall}"),
-        ("users",     "users",     "/barkfluff.users.UsersApi/{**catchall}"),
-        ("messages",  "messages",  "/barkfluff.messages.MessagesApi/{**catchall}"),
-        ("files",     "files",     "/barkfluff.files.FilesApi/{**catchall}"),
-        ("updates",   "updates",   "/barkfluff.updates.UpdatesApi/{**catchall}"),
-        ("onliner",   "onliner",   "/barkfluff.onliner.OnlinerApi/{**catchall}"),
-        ("fast-auth", "fast-auth", "/barkfluff.fast.auth.FastAuthApi/{**catchall}"),
-        ("calls",     "calls",     "/barkfluff.calls.CallsApi/{**catchall}"),
-    };
+    // Navigator — единственный маршрут, который есть и в shell-режиме: с него
+    // начинается выбор ноды, а сам каталог живёт вне ноды.
+    (string route, string cluster, string path)[] grpcRoutes = isShellMode
+        ? new[]
+        {
+            ("navigator", "navigator", "/barkfluff.navigator.NavigatorApi/{**catchall}"),
+        }
+        : new[]
+        {
+            ("identity",  "identity",  "/barkfluff.identity.IdentityApi/{**catchall}"),
+            ("users",     "users",     "/barkfluff.users.UsersApi/{**catchall}"),
+            ("messages",  "messages",  "/barkfluff.messages.MessagesApi/{**catchall}"),
+            ("files",     "files",     "/barkfluff.files.FilesApi/{**catchall}"),
+            ("updates",   "updates",   "/barkfluff.updates.UpdatesApi/{**catchall}"),
+            ("onliner",   "onliner",   "/barkfluff.onliner.OnlinerApi/{**catchall}"),
+            ("fast-auth", "fast-auth", "/barkfluff.fast.auth.FastAuthApi/{**catchall}"),
+            ("calls",     "calls",     "/barkfluff.calls.CallsApi/{**catchall}"),
+            // Beacon — метаданные ноды (имя, цвета, livekit_url) после подключения.
+            ("beacon",    "beacon",    "/barkfluff.beacon.BeaconApi/{**catchall}"),
+            // Каталог нод доступен и с ноды: переключение сервера работает и там.
+            ("navigator", "navigator", "/barkfluff.navigator.NavigatorApi/{**catchall}"),
+        };
 
     var routes = new List<RouteConfig>();
     // Content-Length из оригинального grpcwebtext запроса (base64-размер) не соответствует
@@ -364,6 +395,48 @@ static IReadOnlyList<RouteConfig> BuildRoutes()
         });
     }
 
+    // Liveness checks use the same Web gateway as gRPC-Web. Backend services
+    // expose an anonymous GET /ping, but their listeners are not public HTTP
+    // endpoints from the browser's point of view.
+    if (!isShellMode)
+    {
+        var pingRoutes = new[]
+        {
+            (name: "identity", cluster: "identity"),
+            (name: "users", cluster: "users"),
+            (name: "messages", cluster: "messages"),
+            (name: "files", cluster: "files"),
+            (name: "updates", cluster: "updates"),
+            (name: "onliner", cluster: "onliner"),
+            (name: "fast-auth", cluster: "fast-auth"),
+            (name: "calls", cluster: "calls"),
+            (name: "beacon", cluster: "beacon"),
+            (name: "navigator", cluster: "navigator-health")
+        };
+
+        foreach (var (name, cluster) in pingRoutes)
+        {
+            routes.Add(new RouteConfig
+            {
+                RouteId = $"ping-{name}",
+                ClusterId = cluster,
+                Match = new RouteMatch
+                {
+                    Path = $"/ping/{name}",
+                    Methods = new[] { "GET" }
+                },
+                Transforms = new[]
+                {
+                    new Dictionary<string, string> { { "PathSet", "/ping" } }
+                }
+            });
+        }
+    }
+
+    // Шелл не проксирует файлы: аплоад идёт напрямую в ноду.
+    if (isShellMode)
+        return routes;
+
     // HTTP upload — client-streaming недоступен в gRPC-Web, поэтому используем прямой HTTP POST.
     routes.Add(new RouteConfig
     {
@@ -383,10 +456,15 @@ static IReadOnlyList<RouteConfig> BuildRoutes()
     return routes;
 }
 
-static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
+static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config, bool isShellMode)
 {
+    // Публичный каталог нод — единственный внешний адрес, который знает и шелл, и нода.
+    var navigatorCluster = ("navigator", "NavigatorService:Host", "https://navigator.barkfluff.com:443");
+
     // HTTP/2 (h2c) cluster для gRPC-вызовов — сервисы слушают gRPC на основном порту.
-    (string clusterId, string configKey, string defaultHost)[] grpcClusters =
+    (string clusterId, string configKey, string defaultHost)[] grpcClusters = isShellMode
+        ? new[] { navigatorCluster }
+        : new[]
     {
         ("identity",  "IdentityService:Host",  "http://identity:7000"),
         ("users",     "UsersService:Host",     "http://users:7001"),
@@ -396,6 +474,8 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
         ("onliner",   "OnlinerService:Host",   "http://onliner:7009"),
         ("fast-auth", "FastAuthService:Host",  "http://fast-auth:7008"),
         ("calls",     "CallsService:Host",     "http://calls:7025"),
+        ("beacon",    "BeaconService:Host",    "http://beacon:7002"),
+        navigatorCluster,
     };
 
     // Сервисы с server-streaming RPC: YARP не должен убивать долгоживущие соединения.
@@ -426,6 +506,31 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
             }
         });
     }
+
+    if (!isShellMode)
+    {
+        // Navigator is deliberately configured with its public TLS endpoint
+        // for gRPC discovery. Its liveness request must use the internal
+        // HTTP/2 listener because the public nginx route is gRPC-only.
+        var navigatorHealthHost = config["NavigatorService:HealthHost"] ?? "http://navigator:7010";
+        clusters.Add(new ClusterConfig
+        {
+            ClusterId = "navigator-health",
+            HttpRequest = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
+            {
+                Version = new Version(2, 0),
+                VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionExact,
+                ActivityTimeout = TimeSpan.FromSeconds(10)
+            },
+            Destinations = new Dictionary<string, DestinationConfig>
+            {
+                ["navigator-health-1"] = new DestinationConfig { Address = navigatorHealthHost }
+            }
+        });
+    }
+
+    if (isShellMode)
+        return clusters;
 
     // Отдельный cluster для файлового upload (обычный REST POST).
     // HTTP/1.1-порт Files-сервиса (порт для REST-контроллера загрузки файлов).

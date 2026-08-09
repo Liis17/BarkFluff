@@ -460,6 +460,11 @@
     <string name="notification_settings_title">Benachrichtigungen</string>
     <string name="notification_receive_push">Push-Benachrichtigungen empfangen</string>
     <string name="notification_disable_hint">Das Deaktivieren der Benachrichtigungen schaltet die Firebase-Push-Zustellung nur auf diesem Gerät aus. Andere Geräte erhalten weiterhin Benachrichtigungen.</string>
+    <string name="incoming_call_fullscreen_title">Anrufe auf dem Sperrbildschirm</string>
+    <string name="incoming_call_fullscreen_message">Erlauben Sie BarkFluff, den Vollbildschirm für eingehende Anrufe anzuzeigen. Andernfalls kann ein gesperrtes Telefon nur den Klingelton abspielen.</string>
+    <string name="incoming_call_notifications_message">Erlauben Sie BarkFluff-Benachrichtigungen in den Systemeinstellungen. Sie werden benötigt, um eingehende Anrufe bei gesperrtem Bildschirm anzuzeigen.</string>
+    <string name="incoming_call_fullscreen_open_settings">Einstellungen öffnen</string>
+    <string name="incoming_call_fullscreen_later">Später</string>
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">Chat-Ordner</string>
@@ -526,10 +531,16 @@
     <string name="about_device">Gerät</string>
     <string name="about_os">Betriebssystem</string>
     <string name="about_microservices">Server-Microservices</string>
-    <string name="about_ping_server">Ping prüfen</string>
-    <string name="about_ping_checking">Beacon-Verbindung wird geprüft…</string>
-    <string name="about_ping_result">Beacon-Antwort: %1$d ms</string>
-    <string name="about_ping_failed">Beacon hat nicht geantwortet</string>
+    <string name="about_ping_server">Verfügbarkeit prüfen</string>
+    <string name="about_ping_checking">Verfügbarkeit der Microservices wird geprüft…</string>
+    <string name="about_ping_result">Verfügbar: %1$d von %2$d</string>
+    <string name="about_ping_failed">Verfügbarkeitsprüfung fehlgeschlagen</string>
+    <string name="about_ping_no_services">Keine konfigurierten Microservices zum Prüfen</string>
+    <string name="about_service_available">Verfügbar · %1$d ms</string>
+    <string name="about_service_unavailable">Nicht verfügbar · %1$d ms</string>
+    <string name="about_service_checking">Wird geprüft…</string>
+    <string name="about_service_not_configured">Adresse nicht angegeben</string>
+    <string name="about_service_not_checked">Nicht geprüft</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">Test</string>

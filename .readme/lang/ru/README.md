@@ -1,7 +1,7 @@
 [English](../../../README.md) · [Русский](README.md)
 
 <p align="center">
-  <img src="../../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="112" alt="Логотип BarkFluff">
+  <img src="../../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff.icon.white-512.png" width="112" alt="Лого">
 </p>
 
 <h1 align="center">BarkFluff</h1>
@@ -29,7 +29,7 @@
 BarkFluff объединяет нативные клиенты и .NET-бэкенд с gRPC в основе. Клиенты находят сервисы через Beacon, получают события в потоковом режиме и напрямую обращаются к независимым сервисам, которые можно развивать и масштабировать без запутывания всей платформы.
 
 <p align="center">
-  <img src="../../../docs/images/readme/product-preview-placeholder.svg" alt="Заглушка для продуктового скриншота BarkFluff" width="920">
+  <img src="https://github.com/Liis17/BarkFluff/blob/24d7752ec5c73a6af81454be208918f64befbde0/assets/2026-08/27f65b3197f8476984ba83043fd2d9c8.png" width="920">
 </p>
 
 ## Скачать
@@ -58,10 +58,6 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 ## Клиенты
 
-<p align="center">
-  <img src="../../../docs/images/readme/clients-placeholder.svg" alt="Заглушка для скриншотов клиентов BarkFluff" width="920">
-</p>
-
 - **Android** — Kotlin и gRPC-OkHttp · [инструкция по сборке](../../clients/android.md)
 - **Windows** — WPF и .NET · [инструкция по сборке](../../clients/windows.md)
 - **macOS** — SwiftUI и gRPC-Swift · [инструкция по сборке](../../clients/macos.md)
@@ -85,9 +81,6 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 ## Статус проекта
 
-<p align="center">
-  <img src="../../../docs/images/readme/project-status.svg" alt="BarkFluff активно развивается" width="920">
-</p>
 
 > ### 🚧 Активная разработка
 > BarkFluff активно развивается. Android V1 — поддерживаемый Android-клиент; проект V2 на Jetpack Compose экспериментальный и должен меняться только в рамках отдельной задачи.
@@ -99,6 +92,9 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 > ### 🛠️ Запуск и эксплуатация
 > [Инструкция по бэкенду](../../backend.md) · [Порты и переменные окружения](../../../Backend/PORTS_CONFIGURATION.md) · [Справка по Docker](../../../Backend/DOCKER_SETUP.md) · [Реестр метрик](../../../Backend/METRICS.md)
+
+> ### 🤖 Интеграция бота
+> [Гайд по Bot API](../../bots.md) — возможности, аутентификация и REST-эндпоинты для внешних ботов.
 
 > ### 📚 Изучить систему
 > [Документационный хаб](../../README.md) · [Архитектура](../../../Obsidian/ClaudeVault/Архитектура.md) · [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md)

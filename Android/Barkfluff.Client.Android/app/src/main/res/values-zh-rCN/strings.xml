@@ -456,6 +456,11 @@
     <string name="notification_settings_title">通知</string>
     <string name="notification_receive_push">接收推送通知</string>
     <string name="notification_disable_hint">关闭通知将仅在此设备上停止 Firebase 推送。其他设备仍将收到通知。</string>
+    <string name="incoming_call_fullscreen_title">在锁屏上显示来电</string>
+    <string name="incoming_call_fullscreen_message">允许 BarkFluff 显示全屏来电界面。否则，锁屏时可能只能听到铃声。</string>
+    <string name="incoming_call_notifications_message">请在系统设置中允许 BarkFluff 通知。锁屏时显示来电需要此权限。</string>
+    <string name="incoming_call_fullscreen_open_settings">打开设置</string>
+    <string name="incoming_call_fullscreen_later">稍后</string>
 
     <!-- Chat Folders Settings -->
     <string name="chat_folders_settings_title">聊天文件夹</string>
@@ -522,10 +527,16 @@
     <string name="about_device">设备</string>
     <string name="about_os">操作系统</string>
     <string name="about_microservices">服务器微服务</string>
-    <string name="about_ping_server">检查延迟</string>
-    <string name="about_ping_checking">正在检查 Beacon 连接…</string>
-    <string name="about_ping_result">Beacon 响应：%1$d 毫秒</string>
-    <string name="about_ping_failed">Beacon 未响应</string>
+    <string name="about_ping_server">检查可用性</string>
+    <string name="about_ping_checking">正在检查微服务可用性…</string>
+    <string name="about_ping_result">可用：%1$d / %2$d</string>
+    <string name="about_ping_failed">可用性检查失败</string>
+    <string name="about_ping_no_services">没有可检查的已配置微服务</string>
+    <string name="about_service_available">可用 · %1$d 毫秒</string>
+    <string name="about_service_unavailable">不可用 · %1$d 毫秒</string>
+    <string name="about_service_checking">检查中…</string>
+    <string name="about_service_not_configured">未设置地址</string>
+    <string name="about_service_not_checked">未检查</string>
 
     <!-- Testing -->
     <string name="testing_settings_title">测试</string>

@@ -2,6 +2,8 @@
 
 Аутентификация, авторизация, 2FA, управление сессиями. Порт: **7000**.
 
+Анонимный liveness endpoint: `GET /ping` → `pong`.
+
 Расположение: `Backend/BarkFluff.Identity/`
 
 ## Сборка

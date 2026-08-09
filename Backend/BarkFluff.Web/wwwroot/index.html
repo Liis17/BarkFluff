@@ -7,6 +7,7 @@
     <title data-i18n="auth.pageTitle">BarkFluff — Войти</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/css/icons.css?v=shared-icons-1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -739,6 +740,111 @@
             margin: 22px 0;
         }
 
+        /* ─────────────── NODE PICKER ─────────────── */
+        /* Показывается только на глобальном шелле, пока нода не выбрана. */
+        .node-intro {
+            font-size: 14px;
+            color: var(--text-sub);
+            margin-bottom: 18px;
+        }
+
+        .node-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .node-list.busy { opacity: .55; pointer-events: none; }
+
+        .node-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--divider);
+            border-radius: 14px;
+            background: transparent;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            transition: border-color .18s var(--ease-out), background-color .18s var(--ease-out);
+        }
+
+        .node-card:hover:not(:disabled) { border-color: var(--primary); background: var(--input-bg); }
+        .node-card:disabled { opacity: .5; cursor: not-allowed; }
+
+        .node-card-dot {
+            flex: 0 0 auto;
+            width: 10px;
+            height: 10px;
+            margin-top: 5px;
+            border-radius: 50%;
+        }
+
+        .node-card-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+        .node-card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .node-card-sub {
+            font-size: 13px;
+            color: var(--text-sub);
+            overflow-wrap: anywhere;
+        }
+
+        .node-card-tag {
+            align-self: flex-start;
+            margin-top: 3px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--input-bg);
+            font-size: 11px;
+            color: var(--text-sub);
+        }
+
+        .node-empty {
+            padding: 18px 0;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-sub);
+        }
+
+        /* Пока нода не выбрана, вход и QR не имеют смысла. */
+        body.node-picking #loginSection,
+        body.node-picking #otpSection,
+        body.node-picking .qr-card { display: none !important; }
+
+        .node-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        body.node-picking .node-bar { display: none; }
+
+        /* Не .legal-link: тот класс делегирован в legal.js как открытие документа. */
+        .node-bar-change {
+            padding: 0;
+            border: none;
+            background: none;
+            font: inherit;
+            color: var(--link);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .node-bar-change:hover { opacity: 0.75; }
+
         /* ─────────────── FOOTER IN CARD ─────────────── */
         .card-footer {
             text-align: center;
@@ -1341,11 +1447,42 @@
         <header class="login-header">
             <h1 class="card-title" data-i18n="auth.welcome">Добро пожаловать</h1>
             <p class="card-subtitle" data-i18n="auth.welcome.subtitle">Войдите в свой аккаунт</p>
+            <!-- Какой сервер выбран; на самой ноде (pinned) скрыта -->
+            <div class="node-bar hidden" id="nodeBar">
+                <span id="nodeBarName"></span>
+                <button type="button" class="node-bar-change" id="nodeChangeBtn" data-i18n="node.change">Сменить</button>
+            </div>
         </header>
 
         <div class="login-row">
 
         <div class="card">
+
+            <!-- NODE SELECTION — только на глобальном шелле, пока нода не выбрана -->
+            <div id="nodeSection" class="section hidden" role="region" data-i18n-aria-label="node.section" aria-label="Выбор сервера">
+                <p class="node-intro" data-i18n="node.intro">Выберите сервер BarkFluff, к которому подключиться. Аккаунты у серверов разные.</p>
+
+                <div id="nodeList" class="node-list"></div>
+
+                <div class="divider"></div>
+
+                <form id="nodeManualForm" novalidate>
+                    <div class="form-group">
+                        <label class="form-label" for="nodeManualInput" data-i18n="node.manual">Адрес сервера</label>
+                        <div class="input-wrap">
+                            <input type="text" class="form-input" id="nodeManualInput"
+                                   placeholder="https://gw.example.com" autocomplete="url" spellcheck="false">
+                        </div>
+                        <div class="form-error" id="nodeError" role="alert"></div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="nodeConnectBtn">
+                        <span class="btn-label" data-i18n="node.connect">Подключиться</span>
+                        <span class="btn-arrow">→</span>
+                        <div class="btn-spinner"></div>
+                    </button>
+                </form>
+            </div>
 
             <!-- LOGIN SECTION -->
             <div id="loginSection" class="section" role="region" data-i18n-aria-label="auth.section.login" aria-label="Вход">
@@ -1656,6 +1793,9 @@
 
     <!-- Scripts -->
     <script src="/js/proto/barkfluff.bundle.js" onerror="void 0"></script>
+    <script src="/node-config.js"      onerror="void 0"></script>
+    <script src="/js/app/node.js"      onerror="void 0"></script>
+    <script src="/js/app/icons.js"     onerror="void 0"></script>
     <script src="/js/app/sound.js"     onerror="void 0"></script>
     <script src="/js/app/device.js"    onerror="void 0"></script>
     <script src="/js/app/tokens.js"    onerror="void 0"></script>
@@ -1663,6 +1803,7 @@
     <script src="/js/app/utils.js"     onerror="void 0"></script>
     <script src="/js/app/auth.js"      onerror="void 0"></script>
     <script src="/js/app/legal.js"     onerror="void 0"></script>
+    <script src="/js/app/nodepicker.js" onerror="void 0"></script>
     <script src="/js/app/fast-auth.js" onerror="void 0"></script>
     <script src="/js/app/login-page.js" onerror="void 0"></script>
     <script src="/js/app/register.js" onerror="void 0"></script>
