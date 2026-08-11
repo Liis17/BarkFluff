@@ -70,4 +70,19 @@
     </ItemGroup>
   </Target>
 
+  <!-- App bundle is fingerprinted and ignored by Git. Keep ordinary dotnet run/publish
+       usable from a clean checkout without requiring a separate manual npm command. -->
+  <Target Name="RestoreWebTooling"
+          BeforeTargets="Build;Publish"
+          Condition="'$(DesignTimeBuild)' != 'true' And !Exists('scripts/node_modules/esbuild/package.json')">
+    <Exec Command="npm --prefix scripts install --no-package-lock --ignore-scripts" />
+  </Target>
+
+  <Target Name="BuildMessengerApp"
+          BeforeTargets="Build;Publish"
+          DependsOnTargets="RestoreWebTooling"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm --prefix scripts run build:app" />
+  </Target>
+
 </Project>
