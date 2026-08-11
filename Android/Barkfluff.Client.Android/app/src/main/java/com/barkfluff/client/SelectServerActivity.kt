@@ -50,7 +50,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         // Инициализация
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
 
         // Загружаем внешний IP-адрес асинхронно
         lifecycleScope.launch {
@@ -79,7 +79,7 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
-        val pingManager = GrpcManager()
+        val pingManager = GrpcManager(applicationContext)
         try {
             if (pingManager.createOnlyBeaconClient(address).isFailure) return@withTimeoutOrNull null
             val start = System.currentTimeMillis()

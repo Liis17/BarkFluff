@@ -3,12 +3,15 @@ package com.barkfluff.client.security
 import android.content.Context
 import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
+import okhttp3.Call
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.net.HttpURLConnection
 import java.security.KeyStore
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
+import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
@@ -21,6 +24,18 @@ import javax.net.ssl.X509TrustManager
  */
 class TlsTransportFactory(context: Context) {
     val trustStore = TlsTrustStore(context)
+
+    val allowsCleartext: Boolean
+        get() = TlsVariantPolicy.allowCleartext
+
+    fun normalizeGrpcAddress(address: String): String {
+        val endpoint = TlsEndpoint.parseAddress(address, TlsVariantPolicy.allowCleartext)
+        return "${endpoint.scheme}://${endpoint.host}:${endpoint.port}"
+    }
+
+    fun isAllowed(url: HttpUrl): Boolean = runCatching {
+        TlsEndpoint.requireUrl(url.toString(), TlsVariantPolicy.allowCleartext)
+    }.isSuccess
 
     fun createGrpcChannel(address: String): ManagedChannel {
         val endpoint = TlsEndpoint.parseAddress(address, TlsVariantPolicy.allowCleartext)
@@ -51,11 +66,43 @@ class TlsTransportFactory(context: Context) {
         return builder
     }
 
-    fun createOkHttpClient(url: HttpUrl, configure: OkHttpClient.Builder.() -> Unit = {}): OkHttpClient =
-        configure(OkHttpClient.Builder(), url).apply(configure).build()
+    fun createOkHttpClient(
+        url: HttpUrl,
+        customize: OkHttpClient.Builder.() -> Unit = {}
+    ): OkHttpClient {
+        val builder = configure(OkHttpClient.Builder(), url)
+        builder.customize()
+        return builder.build()
+    }
 
     private fun socketConfig(host: String): TlsSocketConfig =
         TlsVariantPolicy.socketConfig(TlsEndpoint.canonicalHost(host), trustStore)
+}
+
+/** Selects an OkHttp TLS configuration for each requested hostname. */
+class TlsCallFactory(
+    context: Context,
+    private val customize: OkHttpClient.Builder.() -> Unit = {}
+) : Call.Factory {
+    private val transport = TlsTransportFactory(context)
+    private val clients = ConcurrentHashMap<String, OkHttpClient>()
+
+    override fun newCall(request: Request): Call {
+        val url = request.url
+        val key = "${url.scheme}://${url.host}:${url.port}"
+        val client = clients[key] ?: synchronized(clients) {
+            clients[key] ?: transport.createOkHttpClient(url, customize).also { clients[key] = it }
+        }
+        return client.newCall(request)
+    }
+
+    fun close() {
+        clients.values.forEach { client ->
+            client.connectionPool.evictAll()
+            client.dispatcher.executorService.shutdown()
+        }
+        clients.clear()
+    }
 }
 
 internal data class TlsSocketConfig(

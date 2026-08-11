@@ -24,7 +24,7 @@ class AboutActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAboutBinding
     private lateinit var globalParam: GlobalParam
-    private val servicePingChecker = ServicePingChecker()
+    private val servicePingChecker by lazy { ServicePingChecker(applicationContext) }
     private var pingResults = emptyMap<String, ServicePingResult>()
     private var isChecking = false
 

@@ -124,7 +124,7 @@ class BarkFluffApplication : Application() {
         NotificationHelper.createChannels(this)
         chatCacheRepository = ChatCacheRepository(applicationContext)
         CallTelecomManager.registerPhoneAccount(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
         chatDraftRepository = ChatDraftRepository(applicationContext, grpcManager, chatCacheRepository)
         connectivityManager = getSystemService(ConnectivityManager::class.java)
         connectivityManager.registerDefaultNetworkCallback(networkCallback)

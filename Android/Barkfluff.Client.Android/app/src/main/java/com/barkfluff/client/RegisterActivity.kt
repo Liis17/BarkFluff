@@ -139,7 +139,7 @@ class RegisterActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
 
         // Создаем gRPC клиенты один раз при старте
         createGrpcClients()

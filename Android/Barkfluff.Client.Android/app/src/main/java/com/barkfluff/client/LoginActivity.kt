@@ -65,7 +65,7 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
