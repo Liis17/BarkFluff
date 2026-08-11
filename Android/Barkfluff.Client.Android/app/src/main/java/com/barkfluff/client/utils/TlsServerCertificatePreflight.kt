@@ -4,6 +4,11 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.security.TlsCertificateInfo
 import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
+import kotlinx.coroutines.CancellationException
+import java.security.cert.CertificateException
+
+class TlsEndpointSecurityException(address: String, cause: Throwable) :
+    IllegalStateException("TLS certificate validation failed for $address", cause)
 
 /**
  * Finds the first endpoint whose certificate needs an explicit user decision. Unreachable
@@ -16,7 +21,15 @@ class TlsServerCertificatePreflight(
     fun approvalRequired(serverInfo: GrpcManager.ServerInfo): TlsCertificateInfo? {
         val inspectedHosts = mutableSetOf<String>()
         for (address in serverInfo.endpointAddresses()) {
-            val certificate = runCatching { certificateProbe.inspectUrl(address) }.getOrNull() ?: continue
+            val certificate = try {
+                certificateProbe.inspectUrl(address)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                if (error is CertificateException || error is IllegalArgumentException) {
+                    throw TlsEndpointSecurityException(address, error)
+                }
+                continue
+            }
             if (!inspectedHosts.add(certificate.host)) continue
 
             val existingPin = trustStore.pinFor(certificate.host)

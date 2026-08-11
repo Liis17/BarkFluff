@@ -16,6 +16,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.security.TlsCertificateInfo
 import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
+import com.barkfluff.client.utils.TlsEndpointSecurityException
 import com.barkfluff.client.utils.TlsServerCertificatePreflight
 import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
@@ -282,8 +283,13 @@ class SelectServerActivity : AppCompatActivity() {
 
     private suspend fun preflightServerCertificates(serverInfo: GrpcManager.ServerInfo): Boolean {
         while (true) {
-            val certificate = withContext(Dispatchers.IO) {
-                certificatePreflight.approvalRequired(serverInfo)
+            val certificate = try {
+                withContext(Dispatchers.IO) {
+                    certificatePreflight.approvalRequired(serverInfo)
+                }
+            } catch (error: TlsEndpointSecurityException) {
+                showError(getString(R.string.tls_certificate_invalid))
+                return false
             } ?: return true
             if (!approveCertificateIfEligible(certificate)) return false
         }

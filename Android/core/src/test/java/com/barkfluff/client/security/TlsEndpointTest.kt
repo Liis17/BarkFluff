@@ -43,6 +43,9 @@ class TlsEndpointTest {
         assertThrows(IllegalArgumentException::class.java) {
             TlsEndpoint.requireUrl("https://:443/media")
         }
+        assertThrows(IllegalArgumentException::class.java) {
+            TlsEndpoint.requireUrl("https://files.example.test:0/media")
+        }
     }
 
     @Test
