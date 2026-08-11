@@ -660,4 +660,13 @@
         <item quantity="one">%1$s tippt…</item>
         <item quantity="other">%1$s tippen…</item>
     </plurals>
+    <string name="tls_invalid_endpoint">Geben Sie eine gültige HTTPS-Knotenadresse mit Port ein</string>
+    <string name="tls_self_signed_title">Selbstsigniertes Zertifikat</string>
+    <string name="tls_self_signed_message">Der Knoten %1$s verwendet ein selbstsigniertes Zertifikat.\n\nBetreff: %2$s\nGültig bis: %3$s\n\nPrüfen Sie diesen Fingerprint beim Knotenadministrator, bevor Sie vertrauen:\n%4$s</string>
+    <string name="tls_changed_pin_title">Knotenzertifikat geändert</string>
+    <string name="tls_changed_pin_message">Der Knoten %1$s hat einen neuen Zertifikatsschlüssel vorgelegt. Die Verbindung ist blockiert.\n\nVorheriger Fingerprint:\n%2$s\n\nNeuer Fingerprint:\n%3$s\n\nBetreff: %4$s\nGültig bis: %5$s\n\nBestätigen Sie den Ersatz erst nach Prüfung beim Knotenadministrator.</string>
+    <string name="tls_trust_certificate">Zertifikat vertrauen</string>
+    <string name="tls_cancel">Abbrechen</string>
+    <string name="tls_forget_certificate">Vertrautes Zertifikat entfernen</string>
+    <string name="tls_certificate_forgotten">Das vertraute Zertifikat für %1$s wurde entfernt</string>
 </resources>
