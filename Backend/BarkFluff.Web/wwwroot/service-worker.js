@@ -2,7 +2,7 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-v6';
+const CACHE_NAME = 'barkfluff-shell-v7';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
@@ -18,7 +18,12 @@ function cacheCurrentAppBundle(cache) {
     return fetch('/js/app/app-manifest.json', { cache: 'no-store' })
         .then(function (response) {
             if (!response.ok) throw new Error('Could not load the messenger app manifest');
-            return response.json();
+            var manifestResponse = response.clone();
+            return response.json().then(function (manifest) {
+                return cache.put('/js/app/app-manifest.json', manifestResponse).then(function () {
+                    return manifest;
+                });
+            });
         })
         .then(function (manifest) {
             if (!manifest || typeof manifest.src !== 'string') throw new Error('Invalid messenger app manifest');
@@ -52,8 +57,22 @@ self.addEventListener('fetch', function (event) {
     if (url.origin !== self.location.origin || request.method !== 'GET') return;
     if (url.pathname.startsWith('/barkfluff.') || url.pathname.startsWith('/api/') ||
         url.pathname === '/pwa-config.js' || url.pathname === '/node-config.js' ||
-        url.pathname === '/js/app/app-manifest.json' ||
         url.pathname.startsWith('/legal/')) return;
+
+    if (url.pathname === '/js/app/app-manifest.json') {
+        event.respondWith(fetch(request).then(function (response) {
+            if (response.ok) {
+                var cachedResponse = response.clone();
+                caches.open(CACHE_NAME).then(function (cache) {
+                    return cache.put('/js/app/app-manifest.json', cachedResponse);
+                });
+            }
+            return response;
+        }).catch(function () {
+            return caches.match('/js/app/app-manifest.json');
+        }));
+        return;
+    }
 
     if (request.mode === 'navigate') {
         event.respondWith(fetch(request).catch(function () { return caches.match('/offline.html'); }));
