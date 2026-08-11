@@ -2,6 +2,7 @@ package com.barkfluff.client.calls
 
 import android.content.Context
 import android.content.Intent
+import com.barkfluff.client.security.TlsTransportFactory
 import com.twilio.audioswitch.AudioDevice
 import io.livekit.android.LiveKit
 import io.livekit.android.LiveKitOverrides
@@ -22,10 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
-import java.security.cert.X509Certificate
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
+import okhttp3.HttpUrl.Companion.toHttpUrl
 
 /**
  * Движок звонка поверх LiveKit. Отдаёт UI-модель участников ([participants]) и набор управляющих
@@ -62,12 +60,9 @@ class LiveKitCallEngine(
 
         listener.onConnecting()
 
-        // Сервер использует самоподписанный сертификат — сигнальный WebSocket LiveKit
-        // поднимается через свой OkHttp со стандартным доверием Android и падает на TLS-handshake.
-        // Передаём OkHttpClient с тем же trust-all, что и gRPC-каналы в GrpcManager.
         val newRoom = LiveKit.create(
             context.applicationContext,
-            overrides = LiveKitOverrides(okHttpClient = buildTrustAllOkHttpClient())
+            overrides = LiveKitOverrides(okHttpClient = buildTlsOkHttpClient(livekitUrl))
         )
         room = newRoom
 
@@ -225,17 +220,6 @@ class LiveKitCallEngine(
 
     private fun requireRoom(): Room = room ?: error("LiveKit room is not connected")
 
-    private fun buildTrustAllOkHttpClient(): OkHttpClient {
-        val trustManager = object : X509TrustManager {
-            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-        }
-        val sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-        return OkHttpClient.Builder()
-            .sslSocketFactory(sslContext.socketFactory, trustManager)
-            .hostnameVerifier { _, _ -> true }
-            .build()
-    }
+    private fun buildTlsOkHttpClient(livekitUrl: String): OkHttpClient =
+        TlsTransportFactory(context.applicationContext).createOkHttpClient(livekitUrl.toHttpUrl())
 }

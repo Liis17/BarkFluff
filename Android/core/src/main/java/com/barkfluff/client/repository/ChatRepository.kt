@@ -9,11 +9,6 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.security.cert.X509Certificate
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 /**
  * Репозиторий для работы с чатами и сообщениями.
@@ -352,18 +347,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val url = java.net.URL(uploadUrl)
             val connection = url.openConnection() as java.net.HttpURLConnection
 
-            // Если HTTPS — применяем trust-all для самоподписанного сертификата
-            if (connection is HttpsURLConnection) {
-                val trustManager = object : X509TrustManager {
-                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                }
-                val sslContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-                connection.sslSocketFactory = sslContext.socketFactory
-                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-            }
+            grpcManager.configureHttpConnection(connection)
 
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
@@ -500,17 +484,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val url = java.net.URL(downloadUrl)
             val connection = url.openConnection() as java.net.HttpURLConnection
 
-            if (connection is HttpsURLConnection) {
-                val trustManager = object : X509TrustManager {
-                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                }
-                val sslContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-                connection.sslSocketFactory = sslContext.socketFactory
-                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-            }
+            grpcManager.configureHttpConnection(connection)
 
             connection.connectTimeout = 30000
             connection.readTimeout = 60000

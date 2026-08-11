@@ -13,17 +13,13 @@ import coil.request.ImageRequest
 import coil.size.Size
 import coil.transform.CircleCropTransformation
 import com.barkfluff.client.R
+import com.barkfluff.client.security.TlsCallFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import java.util.concurrent.ConcurrentHashMap
-import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 /**
  * Утилита для загрузки и отображения аватаров.
@@ -47,27 +43,6 @@ object AvatarLoader {
         0xFF90A4AE.toInt(), // blue grey
         0xFFA1887F.toInt(), // brown
     )
-
-    // OkHttpClient с доверием ко всем SSL сертификатам (для серверов с самоподписанными сертификатами)
-    private val okHttpClient by lazy {
-        val trustManager = object : X509TrustManager {
-            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-        }
-
-        val sslContext = SSLContext.getInstance("TLS").apply {
-            init(null, arrayOf<TrustManager>(trustManager), null)
-        }
-
-        OkHttpClient.Builder()
-            .sslSocketFactory(sslContext.socketFactory, trustManager)
-            .hostnameVerifier { _, _ -> true }
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .build()
-    }
 
     // Кэш URL-ов: fileId -> download URL (персистентный кэш для предотвращения повторных gRPC запросов)
     // Используем FileUrlCache для персистентности + ConcurrentHashMap для быстрого доступа в runtime
@@ -104,6 +79,7 @@ object AvatarLoader {
 
         // Очищаем disk cache Coil через API
         imageLoaderInstance?.diskCache?.clear()
+        tlsCallFactory?.close()
 
         // Очищаем runtime URL кеш
         urlCache.clear()
@@ -114,15 +90,22 @@ object AvatarLoader {
         }
     }
 
-    // ImageLoader с кастомным OkHttpClient (ленивая инициализация)
+    // ImageLoader выбирает TLS-клиент по hostname каждого запроса (ленивая инициализация).
     private var imageLoaderInstance: ImageLoader? = null
+    private var tlsCallFactory: TlsCallFactory? = null
 
     internal fun getImageLoader(context: android.content.Context): ImageLoader {
         if (imageLoaderInstance == null) {
             synchronized(this) {
                 if (imageLoaderInstance == null) {
+                    val callFactory = TlsCallFactory(context.applicationContext) {
+                        connectTimeout(30, TimeUnit.SECONDS)
+                        readTimeout(30, TimeUnit.SECONDS)
+                        writeTimeout(30, TimeUnit.SECONDS)
+                    }
+                    tlsCallFactory = callFactory
                     imageLoaderInstance = ImageLoader.Builder(context.applicationContext)
-                        .okHttpClient(okHttpClient)
+                        .callFactory(callFactory)
                         .memoryCache {
                             coil.memory.MemoryCache.Builder(context.applicationContext)
                                 .maxSizePercent(0.25)
