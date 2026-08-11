@@ -794,7 +794,7 @@ class GrpcManager(context: Context) {
                 onlinerEndpoint = buildEndpointUrl(response.onliner.endpoint.host, response.onliner.endpoint.port, response.onliner.tlsEnabled),
                 fastAuthEndpoint = buildEndpointUrl(response.fastAuth.endpoint.host, response.fastAuth.endpoint.port, response.fastAuth.tlsEnabled),
                 callsEndpoint = if (response.hasCalls()) buildEndpointUrl(response.calls.endpoint.host, response.calls.endpoint.port, response.calls.tlsEnabled) else "",
-                livekitUrl = response.livekitUrl
+                livekitUrl = normalizeLivekitUrl(response.livekitUrl)
             )
 
             Log.d(TAG, "Получена информация о сервере: ${serverInfo.name}")
@@ -829,6 +829,13 @@ class GrpcManager(context: Context) {
         cleanHost = cleanHost.trimEnd('/')
         val scheme = if (tlsEnabled) "https" else "http"
         return tlsTransport.normalizeGrpcAddress("$scheme://$cleanHost:$port")
+    }
+
+    private fun normalizeLivekitUrl(url: String): String {
+        if (url.isBlank()) {
+            return ""
+        }
+        return tlsTransport.normalizeUrl(url)
     }
 
     private fun createChannel(address: String): ManagedChannel = tlsTransport.createGrpcChannel(address)

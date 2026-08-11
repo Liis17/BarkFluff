@@ -37,6 +37,9 @@ class TlsTransportFactory(context: Context) {
         TlsEndpoint.requireUrl(url.toString(), TlsVariantPolicy.allowCleartext)
     }.isSuccess
 
+    fun normalizeUrl(url: String): String =
+        TlsEndpoint.requireUrl(url, TlsVariantPolicy.allowCleartext).toString()
+
     fun createGrpcChannel(address: String): ManagedChannel {
         val endpoint = TlsEndpoint.parseAddress(address, TlsVariantPolicy.allowCleartext)
         val builder = OkHttpChannelBuilder.forAddress(endpoint.host, endpoint.port)
@@ -112,7 +115,7 @@ internal data class TlsSocketConfig(
 
 internal class PinnedTrustManager(
     private val host: String,
-    private val trustStore: TlsTrustStore,
+    private val trustStore: TlsPinLookup,
     private val platformTrustManager: X509TrustManager = platformTrustManager()
 ) : X509TrustManager {
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {
@@ -142,7 +145,7 @@ internal object TlsCertificate {
     fun spkiSha256(certificate: X509Certificate): String {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
             .digest(certificate.publicKey.encoded)
-        val encoded = android.util.Base64.encodeToString(digest, android.util.Base64.NO_WRAP)
+        val encoded = java.util.Base64.getEncoder().encodeToString(digest)
         return "sha256/$encoded"
     }
 }

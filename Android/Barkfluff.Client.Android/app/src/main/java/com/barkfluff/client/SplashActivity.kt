@@ -8,6 +8,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
+import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
@@ -50,12 +51,17 @@ class SplashActivity : AppCompatActivity() {
                 return@launch
             }
 
+            val refreshResult = refreshServerInfoFromBeacon(grpcManager, globalParam, applicationContext)
+            if (refreshResult == ServerInfoRefreshResult.CertificateApprovalRequired) {
+                navigateToCertificateReview()
+                return@launch
+            }
+
             // Local chat cache must be reachable even when Beacon or token refresh is offline.
             if (globalParam.refreshToken != null && globalParam.socketIdentity.isNotBlank()) {
                 navigateToChats()
                 return@launch
             }
-            refreshServerInfoFromBeacon(grpcManager, globalParam)
             if (globalParam.socketIdentity.isBlank()) {
                 navigateToWelcome()
                 return@launch
@@ -247,6 +253,13 @@ class SplashActivity : AppCompatActivity() {
 
     private fun navigateToLogin() {
         val intent = Intent(this, LoginActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    private fun navigateToCertificateReview() {
+        val intent = Intent(this, SelectServerActivity::class.java)
+            .putExtra(SelectServerActivity.EXTRA_TRUST_REVIEW_ADDRESS, globalParam.socketBeacon)
         startActivity(intent)
         finish()
     }

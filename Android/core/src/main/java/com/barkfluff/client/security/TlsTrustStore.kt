@@ -10,14 +10,18 @@ data class TlsPin(
     val acceptedAtMillis: Long
 )
 
+internal interface TlsPinLookup {
+    fun pinFor(host: String): TlsPin?
+}
+
 /** Persists the user-approved public-key pin for one exact hostname. */
-class TlsTrustStore(context: Context) {
+class TlsTrustStore(context: Context) : TlsPinLookup {
     private val preferences: SharedPreferences = context.applicationContext.getSharedPreferences(
         PREFERENCES_NAME,
         Context.MODE_PRIVATE
     )
 
-    fun pinFor(host: String): TlsPin? {
+    override fun pinFor(host: String): TlsPin? {
         val canonicalHost = TlsEndpoint.canonicalHost(host)
         val stored = preferences.getString(key(canonicalHost), null) ?: return null
         val delimiter = stored.lastIndexOf('|')

@@ -1,0 +1,41 @@
+package com.barkfluff.client.utils
+
+import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.security.TlsCertificateInfo
+import com.barkfluff.client.security.TlsCertificateProbe
+import com.barkfluff.client.security.TlsTrustStore
+
+/**
+ * Finds the first endpoint whose certificate needs an explicit user decision. Unreachable
+ * endpoints are deliberately ignored: an unavailable service must not create a speculative pin.
+ */
+class TlsServerCertificatePreflight(
+    private val trustStore: TlsTrustStore,
+    private val certificateProbe: TlsCertificateProbe
+) {
+    fun approvalRequired(serverInfo: GrpcManager.ServerInfo): TlsCertificateInfo? {
+        val inspectedHosts = mutableSetOf<String>()
+        for (address in serverInfo.endpointAddresses()) {
+            val certificate = runCatching { certificateProbe.inspectUrl(address) }.getOrNull() ?: continue
+            if (!inspectedHosts.add(certificate.host)) continue
+
+            val existingPin = trustStore.pinFor(certificate.host)
+            if (existingPin?.spkiSha256 == certificate.spkiSha256) continue
+            if (existingPin == null && !certificate.isSelfSigned) continue
+            return certificate
+        }
+        return null
+    }
+
+    private fun GrpcManager.ServerInfo.endpointAddresses(): List<String> = listOf(
+        identityEndpoint,
+        usersEndpoint,
+        filesEndpoint,
+        messagesEndpoint,
+        updatesEndpoint,
+        onlinerEndpoint,
+        fastAuthEndpoint,
+        callsEndpoint,
+        livekitUrl
+    ).filter { it.isNotBlank() }
+}
