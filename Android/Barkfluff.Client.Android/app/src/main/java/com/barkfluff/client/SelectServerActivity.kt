@@ -16,6 +16,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.security.TlsCertificateInfo
 import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
+import com.barkfluff.client.utils.TlsServerCertificatePreflight
 import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -37,6 +38,7 @@ class SelectServerActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "SelectServerActivity"
+        const val EXTRA_TRUST_REVIEW_ADDRESS = "tls_trust_review_address"
     }
 
     private lateinit var binding: ActivitySelectServerBinding
@@ -45,6 +47,7 @@ class SelectServerActivity : AppCompatActivity() {
     private lateinit var serverAdapter: ServerAdapter
     private lateinit var tlsTrustStore: TlsTrustStore
     private val certificateProbe = TlsCertificateProbe()
+    private lateinit var certificatePreflight: TlsServerCertificatePreflight
 
     private var isConnecting = false
     private val pingCache = mutableMapOf<String, Int?>()
@@ -60,6 +63,7 @@ class SelectServerActivity : AppCompatActivity() {
         globalParam = GlobalParam(this)
         grpcManager = GrpcManager(applicationContext)
         tlsTrustStore = TlsTrustStore(applicationContext)
+        certificatePreflight = TlsServerCertificatePreflight(tlsTrustStore, certificateProbe)
 
         // Загружаем внешний IP-адрес асинхронно
         lifecycleScope.launch {
@@ -69,6 +73,13 @@ class SelectServerActivity : AppCompatActivity() {
         setupRecyclerView()
         setupClickListeners()
         loadServerList()
+
+        intent.getStringExtra(EXTRA_TRUST_REVIEW_ADDRESS)
+            ?.let(::normalizeServerAddress)
+            ?.let { address ->
+                binding.serverAddressEditText.setText(address)
+                connectToServer(address)
+            }
     }
 
     private fun setupRecyclerView() {
@@ -270,36 +281,12 @@ class SelectServerActivity : AppCompatActivity() {
     }.getOrNull()
 
     private suspend fun preflightServerCertificates(serverInfo: GrpcManager.ServerInfo): Boolean {
-        val addresses = listOf(
-            serverInfo.identityEndpoint,
-            serverInfo.usersEndpoint,
-            serverInfo.filesEndpoint,
-            serverInfo.messagesEndpoint,
-            serverInfo.updatesEndpoint,
-            serverInfo.onlinerEndpoint,
-            serverInfo.fastAuthEndpoint,
-            serverInfo.callsEndpoint,
-            serverInfo.livekitUrl
-        ).filter { it.isNotBlank() }
-
-        val inspectedHosts = mutableSetOf<String>()
-        for (address in addresses) {
+        while (true) {
             val certificate = withContext(Dispatchers.IO) {
-                runCatching {
-                    if (address.startsWith("wss://", ignoreCase = true)) {
-                        certificateProbe.inspectUrl(address)
-                    } else {
-                        certificateProbe.inspect(address)
-                    }
-                }.getOrNull()
-            } ?: continue
-            if (!inspectedHosts.add(certificate.host)) continue
-            val existingPin = tlsTrustStore.pinFor(certificate.host)
-            if (existingPin?.spkiSha256 == certificate.spkiSha256) continue
-            if (existingPin == null && !certificate.isSelfSigned) continue
+                certificatePreflight.approvalRequired(serverInfo)
+            } ?: return true
             if (!approveCertificateIfEligible(certificate)) return false
         }
-        return true
     }
 
     private suspend fun approveCertificateIfEligible(address: String): Boolean {

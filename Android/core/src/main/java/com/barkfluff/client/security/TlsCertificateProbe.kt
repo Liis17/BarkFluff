@@ -2,8 +2,10 @@ package com.barkfluff.client.security
 
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
+import java.net.InetSocketAddress
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SNIHostName
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509TrustManager
 
@@ -34,8 +36,14 @@ class TlsCertificateProbe {
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, arrayOf(trustManager), null)
 
-        val socket = sslContext.socketFactory.createSocket(endpoint.host, endpoint.port) as SSLSocket
+        val socket = sslContext.socketFactory.createSocket() as SSLSocket
         socket.use {
+            if (!endpoint.host.isIpAddress()) {
+                it.sslParameters = it.sslParameters.apply {
+                    serverNames = listOf(SNIHostName(endpoint.host))
+                }
+            }
+            it.connect(InetSocketAddress(endpoint.host, endpoint.port), HANDSHAKE_TIMEOUT_MS)
             it.soTimeout = HANDSHAKE_TIMEOUT_MS
             it.startHandshake()
             val session = it.session
@@ -63,6 +71,8 @@ class TlsCertificateProbe {
             true
         }
     }.getOrDefault(false)
+
+    private fun String.isIpAddress(): Boolean = contains(':') || all { it.isDigit() || it == '.' }
 
     private companion object {
         const val HANDSHAKE_TIMEOUT_MS = 5_000

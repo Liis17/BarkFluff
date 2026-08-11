@@ -643,6 +643,7 @@ class ChatActivity : AppCompatActivity() {
                 try {
                     val connection = java.net.URL(url)
                         .openConnection() as java.net.HttpURLConnection
+                    grpcManager.configureHttpConnection(connection)
                     connection.connect()
                     val bytes = connection.inputStream.readBytes()
                     connection.disconnect()
@@ -686,6 +687,7 @@ class ChatActivity : AppCompatActivity() {
     private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
         return try {
             val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            grpcManager.configureHttpConnection(conn)
             conn.connect()
             val bmp = android.graphics.BitmapFactory.decodeStream(conn.inputStream)
             conn.disconnect()
