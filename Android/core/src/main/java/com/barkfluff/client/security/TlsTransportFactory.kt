@@ -22,8 +22,10 @@ import javax.net.ssl.X509TrustManager
  * The sole transport factory for client-facing network traffic. The release variant uses the
  * platform trust store unless a user has explicitly pinned a self-signed hostname.
  */
-class TlsTransportFactory(context: Context) {
-    val trustStore = TlsTrustStore(context)
+class TlsTransportFactory internal constructor(
+    private val trustStore: TlsPinLookup
+) {
+    constructor(context: Context) : this(TlsTrustStore(context))
 
     val allowsCleartext: Boolean
         get() = TlsVariantPolicy.allowCleartext

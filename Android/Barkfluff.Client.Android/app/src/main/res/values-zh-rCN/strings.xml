@@ -664,4 +664,5 @@
     <string name="tls_cancel">取消</string>
     <string name="tls_forget_certificate">删除受信任证书</string>
     <string name="tls_certificate_forgotten">已删除 %1$s 的受信任证书</string>
+    <string name="tls_certificate_invalid">节点 endpoint 证书已被拒绝。请检查主机名和有效期。</string>
 </resources>

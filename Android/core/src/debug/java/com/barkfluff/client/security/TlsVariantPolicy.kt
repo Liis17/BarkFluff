@@ -8,12 +8,12 @@ import javax.net.ssl.X509TrustManager
 internal object TlsVariantPolicy {
     const val allowCleartext = true
 
-    fun socketConfig(host: String, trustStore: TlsTrustStore): TlsSocketConfig = socketConfigFor(TRUST_ALL)
+    fun socketConfig(host: String, trustStore: TlsPinLookup): TlsSocketConfig = socketConfigFor(TRUST_ALL)
 
     fun configureGrpcBuilder(
         builder: OkHttpChannelBuilder,
         endpoint: TlsEndpoint,
-        trustStore: TlsTrustStore
+        trustStore: TlsPinLookup
     ): OkHttpChannelBuilder = if (endpoint.usesTls) {
         builder.sslSocketFactory(socketConfig(endpoint.host, trustStore).socketFactory)
     } else {

@@ -78,6 +78,7 @@
     <string name="tls_cancel">Отмена</string>
     <string name="tls_forget_certificate">Удалить доверенный сертификат</string>
     <string name="tls_certificate_forgotten">Доверенный сертификат %1$s удалён</string>
+    <string name="tls_certificate_invalid">Сертификат endpoint ноды отклонён: проверьте имя хоста и срок действия</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Личная информация</string>

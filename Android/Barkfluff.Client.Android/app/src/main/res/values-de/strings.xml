@@ -669,4 +669,5 @@
     <string name="tls_cancel">Abbrechen</string>
     <string name="tls_forget_certificate">Vertrautes Zertifikat entfernen</string>
     <string name="tls_certificate_forgotten">Das vertraute Zertifikat für %1$s wurde entfernt</string>
+    <string name="tls_certificate_invalid">Das Zertifikat des Knotenendpunkts wurde abgelehnt. Prüfen Sie Hostname und Gültigkeitszeitraum.</string>
 </resources>

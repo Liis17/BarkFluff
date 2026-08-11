@@ -52,6 +52,7 @@ data class TlsEndpoint(
             }
             require(uri.rawUserInfo == null) { "URL credentials are not allowed" }
             require(uri.host != null) { "URL host is required" }
+            require(uri.port == -1 || uri.port in 1..65535) { "URL port is invalid" }
             return uri
         }
 

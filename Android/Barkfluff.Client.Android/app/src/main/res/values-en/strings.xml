@@ -674,4 +674,5 @@
     <string name="tls_cancel">Cancel</string>
     <string name="tls_forget_certificate">Forget trusted certificate</string>
     <string name="tls_certificate_forgotten">Trusted certificate for %1$s was removed</string>
+    <string name="tls_certificate_invalid">The node endpoint certificate was rejected. Check its hostname and validity period.</string>
 </resources>

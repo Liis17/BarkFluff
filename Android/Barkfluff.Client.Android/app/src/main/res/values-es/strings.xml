@@ -669,4 +669,5 @@
     <string name="tls_cancel">Cancelar</string>
     <string name="tls_forget_certificate">Olvidar certificado de confianza</string>
     <string name="tls_certificate_forgotten">Se eliminó el certificado de confianza de %1$s</string>
+    <string name="tls_certificate_invalid">Se rechazó el certificado del endpoint del nodo. Comprueba el nombre de host y su periodo de validez.</string>
 </resources>

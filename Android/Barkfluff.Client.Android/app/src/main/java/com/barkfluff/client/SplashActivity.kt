@@ -13,6 +13,7 @@ import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * SplashActivity - точка входа приложения
@@ -26,6 +27,7 @@ class SplashActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "SplashActivity"
         private const val TOKEN_BUFFER_MINUTES = 5
+        private const val SERVER_INFO_REFRESH_TIMEOUT_MS = 3_000L
     }
 
     private lateinit var globalParam: GlobalParam
@@ -51,8 +53,13 @@ class SplashActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val refreshResult = refreshServerInfoFromBeacon(grpcManager, globalParam, applicationContext)
-            if (refreshResult == ServerInfoRefreshResult.CertificateApprovalRequired) {
+            val refreshResult = withTimeoutOrNull(SERVER_INFO_REFRESH_TIMEOUT_MS) {
+                refreshServerInfoFromBeacon(grpcManager, globalParam, applicationContext)
+            } ?: ServerInfoRefreshResult.Unavailable
+            if (
+                refreshResult == ServerInfoRefreshResult.CertificateApprovalRequired ||
+                refreshResult == ServerInfoRefreshResult.CertificateRejected
+            ) {
                 navigateToCertificateReview()
                 return@launch
             }

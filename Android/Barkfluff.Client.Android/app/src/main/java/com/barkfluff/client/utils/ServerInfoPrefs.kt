@@ -27,6 +27,7 @@ sealed interface ServerInfoRefreshResult {
     data object Refreshed : ServerInfoRefreshResult
     data object Unavailable : ServerInfoRefreshResult
     data object CertificateApprovalRequired : ServerInfoRefreshResult
+    data object CertificateRejected : ServerInfoRefreshResult
 }
 
 suspend fun refreshServerInfoFromBeacon(
@@ -45,11 +46,15 @@ suspend fun refreshServerInfoFromBeacon(
 
     val infoResult = grpcManager.getServerInfo()
     val serverInfo = infoResult.getOrNull() ?: return ServerInfoRefreshResult.Unavailable
-    val approvalRequired = withContext(Dispatchers.IO) {
-        TlsServerCertificatePreflight(
-            TlsTrustStore(context.applicationContext),
-            TlsCertificateProbe()
-        ).approvalRequired(serverInfo)
+    val approvalRequired = try {
+        withContext(Dispatchers.IO) {
+            TlsServerCertificatePreflight(
+                TlsTrustStore(context.applicationContext),
+                TlsCertificateProbe()
+            ).approvalRequired(serverInfo)
+        }
+    } catch (_: TlsEndpointSecurityException) {
+        return ServerInfoRefreshResult.CertificateRejected
     }
     if (approvalRequired != null) {
         return ServerInfoRefreshResult.CertificateApprovalRequired
