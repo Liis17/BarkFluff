@@ -165,14 +165,14 @@
     function renderImageGrid(images, container, onMediaClick) {
         var isSticker = images.length === 1 && images[0].type === 'STICKER';
         if (isSticker) {
-            var a = images[0];
-            var fd = BF.files.getCachedFileUrl(a.fileId);
-            var url = (fd && fd.url) || (fd && fd.previewUrl) || a.previewUrl || '';
+            var sticker = images[0];
+            var stickerFile = BF.files.getCachedFileUrl(sticker.fileId);
+            var stickerUrl = (stickerFile && stickerFile.url) || (stickerFile && stickerFile.previewUrl) || sticker.previewUrl || '';
             var img = document.createElement('img');
             img.className = 'attach-sticker';
-            img.src = url;
+            img.src = stickerUrl;
             img.loading = 'lazy';
-            BF.files.bindResilientMedia(img, a.fileId, false);
+            BF.files.bindResilientMedia(img, sticker.fileId, false);
             container.appendChild(img);
             return;
         }
@@ -196,28 +196,28 @@
         }
 
         for (var i = 0; i < visible; i++) {
-            var a = images[i];
-            var fd = BF.files.getCachedFileUrl(a.fileId);
-            var url = (fd && fd.url) || '';
-            var prev = (fd && fd.previewUrl) || a.previewUrl || '';
+            var attachment = images[i];
+            var file = BF.files.getCachedFileUrl(attachment.fileId);
+            var url = (file && file.url) || '';
+            var prev = (file && file.previewUrl) || attachment.previewUrl || '';
 
             var im = document.createElement('img');
-            if (a.imageWidth > 0 && a.imageHeight > 0) { im.width = a.imageWidth; im.height = a.imageHeight; }
-            im.src = a.localPreviewUrl || prev || url;
+            if (attachment.imageWidth > 0 && attachment.imageHeight > 0) { im.width = attachment.imageWidth; im.height = attachment.imageHeight; }
+            im.src = attachment.localPreviewUrl || prev || url;
 
-            if (a.isPending) {
+            if (attachment.isPending) {
                 var item = document.createElement('div');
                 item.className = 'attach-image-item is-uploading';
-                item.dataset.uploadIndex = a.uploadIndex;
-                im.alt = a.fileName || '';
+                item.dataset.uploadIndex = attachment.uploadIndex;
+                im.alt = attachment.fileName || '';
                 item.appendChild(im);
-                item.appendChild(createCircularProgress(a.uploadProgress || 0));
+                item.appendChild(createCircularProgress(attachment.uploadProgress || 0));
                 grid.appendChild(item);
             } else {
                 im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
-                BF.files.bindResilientMedia(im, a.fileId, true);
-                im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, a.fileId));
+                BF.files.bindResilientMedia(im, attachment.fileId, true);
+                im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, attachment.fileId));
                 grid.appendChild(im);
             }
         }

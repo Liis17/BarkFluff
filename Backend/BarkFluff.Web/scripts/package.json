@@ -2,11 +2,20 @@
   "name": "barkfluff-proto-bundle",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "format": "prettier --write ../wwwroot/js/app/**/*.js *.js",
+    "lint": "cd .. && scripts/node_modules/.bin/eslint --config scripts/eslint.config.cjs wwwroot/js/app/**/*.js"
+  },
   "dependencies": {
+    "esbuild": "0.24.0",
+    "firebase": "12.17.0",
     "google-protobuf": "3.21.2",
     "grpc-web": "1.5.0",
-    "esbuild": "0.24.0",
-    "livekit-client": "2.19.2",
-    "firebase": "12.17.0"
+    "livekit-client": "2.19.2"
+  },
+  "devDependencies": {
+    "eslint": "10.8.1",
+    "globals": "17.10.0",
+    "prettier": "3.9.6"
   }
 }
