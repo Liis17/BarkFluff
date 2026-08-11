@@ -108,7 +108,7 @@ origin, сопоставить ключ нечем — вход потребуе
 
 - **Набор:** `**жирный**`, `*` / `_курсив_`, `~~зачёркнутый~~`, `` `код` ``, ` ```блоки``` `, `[текст](url)`, списки (`- ` / `* ` / `1. `), цитаты (`> `), заголовки (`#`..`######`), автоссылки на голый `http(s)://…`. HTML allowlist для README-фрагментов: `p`/`h1…h6` с `align=left|center|right`, `strong`, `sub`, `a[href]`, `img[src,alt,width,height]`.
 - **Безопасность (XSS):** текст экранируется ПЕРВЫМ (`escapeHtml`), затем добавляются только свои теги (сырых `<>&` не остаётся); HTML-теги пересобираются по allowlist без пользовательских атрибутов; `href` принимает только `http`/`https`/`mailto`, `src` — только HTTP(S). Относительные/fragment URL не имеют безопасной базы внутри сообщения: ссылка становится обычным текстом, а картинка показывает `alt`; `javascript:`/`data:` не становятся активными URL; у `<a>` — `target=_blank rel="noopener noreferrer"`. Разбор сегментный: защищённые куски (код/ссылки) не проходят emphasis.
-- CSS `.md` (`strong/em/del/sub/code/pre/ul/ol/blockquote/h1..h6/img`) — во встроенном `<style>` `messenger.html` рядом с `.msg-text`; для `.md`-контента `white-space: normal` (разметку держат блоки + `<br>`), внутри `<pre>` — `pre-wrap`.
+- CSS `.md` (`strong/em/del/sub/code/pre/ul/ol/blockquote/h1..h6/img`) — в `wwwroot/css/messenger.css` рядом с `.msg-text`; для `.md`-контента `white-space: normal` (разметку держат блоки + `<br>`), внутри `<pre>` — `pre-wrap`.
 - Композер/редактирование не меняются — в `messageInput` попадает сырой markdown (`setPendingEdit`).
 - Приватные E2E-чаты получают markdown автоматически (расшифрованные сообщения рендерятся тем же `buildMessageElement`).
 
@@ -144,7 +144,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - CORS открытый (`AllowAnyOrigin` + `AllowAnyHeader`, без `AllowCredentials`): origin страницы заранее неизвестен, токен идёт заголовком `x-auth-token`, куки в API не участвуют.
 
 ### Темы
-- 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
+- 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) в `wwwroot/css/messenger.css`.
 - Цвет времени и статуса сообщения задаётся отдельными переменными темы (`--msg-meta-color` и `--msg-out-meta-color`), чтобы они сохраняли контраст на тёмных входящих и исходящих облачках.
 - Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и иконками действий из общего пакета.
 - Вкладка без открытого чата называется «Мессенджер». Для личного чата — «Чат • Имя Фамилия»; favicon заменяется на круглую, центрированно обрезанную аватарку собеседника.
@@ -181,7 +181,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - **`applyPlaceholder(el)`** — заменяет элемент на векторную заглушку (inline-SVG data-URI, нейтральный серый) + класс `.bf-load-failed`: img → SVG в `src`, video → SVG в `poster` + сброс `src`, audio → сброс `src`, a → удаление `href`.
 - **Состояние** в data-атрибутах: `data-bf-file-id`, `data-bf-prefer-preview`, `data-bf-refreshed`, `data-bf-refreshing`, `data-bf-failed`. Защита от гонок: пока рефреш в полёте (`data-bf-refreshing`), повторные ошибки не показывают плейсхолдер; при сбросе элемента (закрытие лайтбокса) `data-bf-file-id` снимается — случайные ошибки игнорируются.
 
-Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`) и постер профиля (`openProfile`). CSS `.bf-load-failed` — во встроенном `<style>` `messenger.html`.
+Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`) и постер профиля (`openProfile`). CSS `.bf-load-failed` — в `wwwroot/css/messenger.css`.
 
 > Аватары (`chat.picture`/`user.profilePicture`) приходят с сервера готовой ссылкой (не через `urlCache`) и этим механизмом не покрываются — их рефреш требует перезапроса чата/юзера.
 
