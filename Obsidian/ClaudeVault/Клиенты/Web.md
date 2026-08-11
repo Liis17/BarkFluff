@@ -1,6 +1,6 @@
 # Web
 
-Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** (без фреймворка и бандлера приложения), раздаётся хостом [[Backend/BarkFluff.Web]].
+Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** без фреймворка, раздаётся хостом [[Backend/BarkFluff.Web]]. Исходные IIFE-модули мессенджера собираются esbuild в один fingerprinted asset.
 
 Расположение: `Backend/BarkFluff.Web/wwwroot/` (`index.html` — авторизация и регистрация, `messenger.html` — мессенджер, модули `js/app/*.js`).
 
@@ -12,10 +12,10 @@
 |------------|--------|-----------|
 | grpc-web | 1.5.0 | gRPC-Web клиенты (`protoc-gen-grpc-web`, callback-style) |
 | google-protobuf | 3.21.2 | runtime сообщений |
-| esbuild | 0.24.0 | сборка proto-бандла и LiveKit-бандла в IIFE-глобал |
+| esbuild | 0.24.0 | сборка proto-, LiveKit- и app-бандлов |
 | livekit-client | 2.19.2 | WebRTC SDK для звонков ([[Backend/Calls]]) |
 
-Приложение — обычные `<script>`-модули, каждый оборачивает себя в IIFE и вешает API на глобал `window.BF.*`.
+Исходные модули `js/app/*.js` оборачивают API в IIFE на `window.BF.*`. `messenger.html` оставляет отдельно ранний `i18n.js`, runtime-конфигурацию и vendor-бандлы, а `app-loader.js` читает `app-manifest.json` и подгружает один `app-<hash>.js` в заданной `scripts/app-bundle-entry.js` последовательности.
 
 ## Сборка
 
@@ -26,9 +26,12 @@ pwsh scripts/generate-proto.ps1      # Windows
 bash scripts/generate-proto.sh       # Linux/macOS (нужен protoc-gen-grpc-web в PATH)
 # LiveKit JS SDK (window.LivekitClient)
 pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
+# Messenger app bundle (wwwroot/js/app/app-<hash>.js + manifest)
+npm --prefix scripts install
+npm --prefix scripts run build:app
 ```
 
-Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списке в `Dockerfile.slim`.
+Бандлы proto и vendor коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. App-бандл и manifest генерируются и игнорируются Git; Docker пересобирает их из `scripts/app-bundle-entry.js`. В production `app-<hash>.js` получает `Cache-Control: public, max-age=31536000, immutable`, manifest — `no-store`.
 
 ## Архитектура
 
@@ -39,7 +42,7 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 файлов идут **напрямую в выбранную ноду**, cross-origin. Нода при этом остаётся
 самодостаточной: её `BarkFluff.Web` раздаёт ту же статику и фиксирует себя как ноду.
 
-- `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Подключается **до**
+- `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Импортируется entry-point'ом **до**
   `device.js`/`clients.js`: клиенты gRPC-Web создаются синхронно при загрузке скрипта и
   захватывают origin, поэтому адрес обязан резолвиться из localStorage, без сети.
   - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`.
@@ -246,7 +249,7 @@ origin, сопоставить ключ нечем — вход потребуе
 SW не научится получать его после выбора сервера — иначе токен уйдёт в один Firebase-проект,
 а слать пуш будет нода с другим.
 
-`Backend/BarkFluff.Web` устанавливается как PWA: `manifest.webmanifest`, иконки 192/512, `service-worker.js` и `offline.html` составляют только offline-оболочку. Service worker precache'ит HTML/локальные JS, CSS и иконки, для навигации использует network-first с fallback на offline-страницу. gRPC-Web, API, presigned URL, чаты, сообщения и вложения не кэшируются.
+`Backend/BarkFluff.Web` устанавливается как PWA: `manifest.webmanifest`, иконки 192/512, `service-worker.js` и `offline.html` составляют только offline-оболочку. Service worker precache'ит HTML/локальные JS, CSS, `app-loader.js` и текущий fingerprinted app-бандл через manifest; для навигации использует network-first с fallback на offline-страницу. gRPC-Web, API, presigned URL, чаты, сообщения и вложения не кэшируются.
 
 `BF.push` регистрирует worker после авторизации, но не запрашивает разрешение сам: пользователь включает уведомления отдельным переключателем в настройках. После явного согласия модуль получает FCM Web token с VAPID key и передаёт его в `UsersApi.SetFirebaseToken(..., WEB)`; при выключении или logout вызывает `ClearFirebaseToken` и удаляет локальный Firebase token. Если браузер запрещает уведомления либо не поддерживает API, UI показывает соответствующее состояние. Install CTA показывается только после `beforeinstallprompt` (Safari/iOS не обещает background-push в этой версии). Открытый чат сохраняется в `?chat=` URL: service worker не показывает web-push `new_message`, если этот чат видим в окне браузера; для других чатов уведомление остаётся.
 
