@@ -58,6 +58,7 @@ protobuf {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // gRPC — типы stub'ов и proto-сообщений присутствуют в публичном API ядра → api(...)
     api("io.grpc:grpc-okhttp:1.60.0")
@@ -82,4 +83,6 @@ dependencies {
     implementation(libs.argon2kt)
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    testImplementation("junit:junit:4.13.2")
 }
