@@ -1,5 +1,6 @@
 package com.barkfluff.client.security
 
+import io.grpc.okhttp.OkHttpChannelBuilder
 import java.security.cert.X509Certificate
 import javax.net.ssl.X509TrustManager
 
@@ -8,6 +9,16 @@ internal object TlsVariantPolicy {
     const val allowCleartext = true
 
     fun socketConfig(host: String, trustStore: TlsTrustStore): TlsSocketConfig = socketConfigFor(TRUST_ALL)
+
+    fun configureGrpcBuilder(
+        builder: OkHttpChannelBuilder,
+        endpoint: TlsEndpoint,
+        trustStore: TlsTrustStore
+    ): OkHttpChannelBuilder = if (endpoint.usesTls) {
+        builder.sslSocketFactory(socketConfig(endpoint.host, trustStore).socketFactory)
+    } else {
+        builder.usePlaintext()
+    }
 
     private val TRUST_ALL = object : X509TrustManager {
         override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit

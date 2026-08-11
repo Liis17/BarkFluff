@@ -43,13 +43,7 @@ class TlsTransportFactory(context: Context) {
     fun createGrpcChannel(address: String): ManagedChannel {
         val endpoint = TlsEndpoint.parseAddress(address, TlsVariantPolicy.allowCleartext)
         val builder = OkHttpChannelBuilder.forAddress(endpoint.host, endpoint.port)
-        if (endpoint.usesTls) {
-            val config = socketConfig(endpoint.host)
-            builder.sslSocketFactory(config.socketFactory)
-        } else {
-            builder.usePlaintext()
-        }
-        return builder.build()
+        return TlsVariantPolicy.configureGrpcBuilder(builder, endpoint, trustStore).build()
     }
 
     fun configure(connection: HttpURLConnection) {
