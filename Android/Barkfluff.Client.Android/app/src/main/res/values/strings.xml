@@ -69,6 +69,15 @@
     <string name="server_item_name_placeholder">Название ноды</string>
     <string name="server_item_description_placeholder">Описание ноды</string>
     <string name="server_item_handle" translatable="false">\@%1$s</string>
+    <string name="tls_invalid_endpoint">Укажите корректный HTTPS-адрес ноды с портом</string>
+    <string name="tls_self_signed_title">Самоподписанный сертификат</string>
+    <string name="tls_self_signed_message">Нода %1$s использует самоподписанный сертификат.\n\nВладелец: %2$s\nДействителен до: %3$s\n\nСверьте fingerprint с администратором ноды перед подтверждением:\n%4$s</string>
+    <string name="tls_changed_pin_title">Сертификат ноды изменился</string>
+    <string name="tls_changed_pin_message">Нода %1$s предъявила новый ключ сертификата. Соединение заблокировано.\n\nПрежний fingerprint:\n%2$s\n\nНовый fingerprint:\n%3$s\n\nВладелец: %4$s\nДействителен до: %5$s\n\nПодтверждайте замену только после сверки с администратором ноды.</string>
+    <string name="tls_trust_certificate">Доверять сертификату</string>
+    <string name="tls_cancel">Отмена</string>
+    <string name="tls_forget_certificate">Удалить доверенный сертификат</string>
+    <string name="tls_certificate_forgotten">Доверенный сертификат %1$s удалён</string>
 
     <!-- Registration Steps -->
     <string name="register_step_1">Личная информация</string>

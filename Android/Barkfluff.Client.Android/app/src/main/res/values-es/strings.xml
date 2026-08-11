@@ -660,4 +660,13 @@
         <item quantity="one">%1$s está escribiendo…</item>
         <item quantity="other">%1$s están escribiendo…</item>
     </plurals>
+    <string name="tls_invalid_endpoint">Introduce una dirección HTTPS válida de nodo con puerto</string>
+    <string name="tls_self_signed_title">Certificado autofirmado</string>
+    <string name="tls_self_signed_message">El nodo %1$s usa un certificado autofirmado.\n\nSujeto: %2$s\nCaduca: %3$s\n\nVerifica esta huella con el administrador del nodo antes de confiar:\n%4$s</string>
+    <string name="tls_changed_pin_title">El certificado del nodo cambió</string>
+    <string name="tls_changed_pin_message">El nodo %1$s presentó una nueva clave de certificado. La conexión está bloqueada.\n\nHuella anterior:\n%2$s\n\nHuella nueva:\n%3$s\n\nSujeto: %4$s\nCaduca: %5$s\n\nConfirma el reemplazo solo después de verificarlo con el administrador del nodo.</string>
+    <string name="tls_trust_certificate">Confiar en el certificado</string>
+    <string name="tls_cancel">Cancelar</string>
+    <string name="tls_forget_certificate">Olvidar certificado de confianza</string>
+    <string name="tls_certificate_forgotten">Se eliminó el certificado de confianza de %1$s</string>
 </resources>

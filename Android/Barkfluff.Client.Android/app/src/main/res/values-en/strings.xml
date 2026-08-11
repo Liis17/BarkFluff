@@ -665,4 +665,13 @@
         <item quantity="one">%1$s is typing…</item>
         <item quantity="other">%1$s are typing…</item>
     </plurals>
+    <string name="tls_invalid_endpoint">Enter a valid HTTPS node address with a port</string>
+    <string name="tls_self_signed_title">Self-signed certificate</string>
+    <string name="tls_self_signed_message">Node %1$s uses a self-signed certificate.\n\nSubject: %2$s\nExpires: %3$s\n\nVerify this fingerprint with the node administrator before trusting it:\n%4$s</string>
+    <string name="tls_changed_pin_title">Node certificate changed</string>
+    <string name="tls_changed_pin_message">Node %1$s presented a new certificate key. The connection is blocked.\n\nPrevious fingerprint:\n%2$s\n\nNew fingerprint:\n%3$s\n\nSubject: %4$s\nExpires: %5$s\n\nOnly trust the replacement after verifying it with the node administrator.</string>
+    <string name="tls_trust_certificate">Trust certificate</string>
+    <string name="tls_cancel">Cancel</string>
+    <string name="tls_forget_certificate">Forget trusted certificate</string>
+    <string name="tls_certificate_forgotten">Trusted certificate for %1$s was removed</string>
 </resources>

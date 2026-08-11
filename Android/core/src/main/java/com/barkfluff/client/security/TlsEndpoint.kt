@@ -16,6 +16,9 @@ data class TlsEndpoint(
     companion object {
         const val HTTPS = "https"
         const val HTTP = "http"
+        const val WSS = "wss"
+        const val WS = "ws"
+        const val DEFAULT_TLS_PORT = 443
 
         fun parseAddress(address: String, allowCleartext: Boolean = false): TlsEndpoint {
             val uri = parseUri(address)
@@ -41,12 +44,23 @@ data class TlsEndpoint(
             }
             val scheme = uri.scheme?.lowercase(Locale.ROOT)
                 ?: throw IllegalArgumentException("URL must use HTTPS")
-            require(scheme == HTTPS || (allowCleartext && scheme == HTTP)) {
+            require(
+                scheme == HTTPS || scheme == WSS ||
+                    (allowCleartext && (scheme == HTTP || scheme == WS))
+            ) {
                 "URL must use HTTPS"
             }
             require(uri.rawUserInfo == null) { "URL credentials are not allowed" }
             require(uri.host != null) { "URL host is required" }
             return uri
+        }
+
+        fun parseUrlEndpoint(value: String): TlsEndpoint {
+            val uri = requireUrl(value)
+            val host = canonicalHost(uri.host ?: throw IllegalArgumentException("URL host is required"))
+            val port = if (uri.port == -1) DEFAULT_TLS_PORT else uri.port
+            require(port in 1..65535) { "URL port is invalid" }
+            return TlsEndpoint(host, port)
         }
 
         fun canonicalHost(host: String): String {

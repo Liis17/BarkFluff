@@ -655,4 +655,13 @@
     <plurals name="typing_indicator_named">
         <item quantity="other">%1$s 正在输入…</item>
     </plurals>
+    <string name="tls_invalid_endpoint">请输入带端口的有效 HTTPS 节点地址</string>
+    <string name="tls_self_signed_title">自签名证书</string>
+    <string name="tls_self_signed_message">节点 %1$s 使用自签名证书。\n\n主体：%2$s\n到期时间：%3$s\n\n请先与节点管理员核对以下指纹，再确认信任：\n%4$s</string>
+    <string name="tls_changed_pin_title">节点证书已变更</string>
+    <string name="tls_changed_pin_message">节点 %1$s 提供了新的证书密钥，连接已被阻止。\n\n原指纹：\n%2$s\n\n新指纹：\n%3$s\n\n主体：%4$s\n到期时间：%5$s\n\n仅在与节点管理员核对后才确认替换。</string>
+    <string name="tls_trust_certificate">信任证书</string>
+    <string name="tls_cancel">取消</string>
+    <string name="tls_forget_certificate">删除受信任证书</string>
+    <string name="tls_certificate_forgotten">已删除 %1$s 的受信任证书</string>
 </resources>

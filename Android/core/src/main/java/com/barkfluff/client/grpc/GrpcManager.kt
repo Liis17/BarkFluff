@@ -127,6 +127,8 @@ class GrpcManager(context: Context) {
         return identityClient != null && usersClient != null && filesClient != null && messagesClient != null
     }
 
+    fun normalizeEndpointAddress(address: String): String = tlsTransport.normalizeGrpcAddress(address)
+
     /**
      * Инициализирует все клиенты по адресам из GlobalParam.
      * Идемпотентно — если клиент уже создан с тем же адресом, пропускает пересоздание.
