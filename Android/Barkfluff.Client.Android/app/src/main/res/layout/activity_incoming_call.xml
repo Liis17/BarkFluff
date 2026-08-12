@@ -36,6 +36,7 @@
             android:layout_gravity="center"
             android:background="@drawable/bg_call_avatar"
             android:gravity="center"
+            android:importantForAccessibility="no"
             tools:text="AK"
             android:textColor="?attr/colorOnPrimaryContainer"
             android:textSize="48sp"
@@ -46,6 +47,8 @@
             android:layout_width="148dp"
             android:layout_height="148dp"
             android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:scaleType="centerCrop"
             android:visibility="gone" />
     </FrameLayout>
@@ -77,6 +80,8 @@
             <ImageView
                 android:layout_width="18dp"
                 android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_phone"
                 android:tint="?attr/colorPrimary" />
 
@@ -113,6 +118,7 @@
                 android:layout_height="68dp"
                 android:background="@drawable/bg_call_reject"
                 android:clickable="true"
+                android:contentDescription="@string/incoming_call_reject"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackgroundBorderless"
                 android:padding="20dp"
@@ -142,6 +148,7 @@
                 android:layout_height="68dp"
                 android:background="@drawable/bg_call_accept"
                 android:clickable="true"
+                android:contentDescription="@string/incoming_call_answer"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackgroundBorderless"
                 android:padding="20dp"

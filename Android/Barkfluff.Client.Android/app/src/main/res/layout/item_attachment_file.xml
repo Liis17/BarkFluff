@@ -23,6 +23,8 @@
             android:id="@+id/fileIconImageView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:src="@drawable/ic_attachment"
             android:padding="10dp"
             android:scaleType="center"

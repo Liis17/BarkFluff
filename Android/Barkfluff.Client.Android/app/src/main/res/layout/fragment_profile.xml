@@ -65,6 +65,8 @@
                             android:id="@+id/avatarImage"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no"
                             android:scaleType="centerCrop"
                             android:visibility="gone"
                             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.Avatar" />

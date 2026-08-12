@@ -17,6 +17,8 @@
             android:id="@+id/memberAvatar"
             android:layout_width="44dp"
             android:layout_height="44dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:scaleType="centerCrop"
             android:visibility="gone"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
@@ -76,6 +78,8 @@
         android:id="@+id/memberMenuButton"
         android:layout_width="40dp"
         android:layout_height="40dp"
+        android:minWidth="48dp"
+        android:minHeight="48dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/group_remove_member"
         android:padding="8dp"

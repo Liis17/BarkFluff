@@ -6,9 +6,10 @@
     <ImageView
         android:id="@+id/thumbnailImage"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:contentDescription="@null" />
+         android:layout_height="match_parent"
+         android:scaleType="centerCrop"
+         android:contentDescription="@null"
+         android:importantForAccessibility="no" />
 
     <!-- Dark overlay для видео -->
     <View
@@ -24,8 +25,9 @@
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_gravity="center"
-        android:src="@drawable/ic_play_arrow"
-        android:contentDescription="@null"
-        android:visibility="gone" />
+         android:src="@drawable/ic_play_arrow"
+         android:contentDescription="@null"
+         android:importantForAccessibility="no"
+         android:visibility="gone" />
 
 </FrameLayout>
