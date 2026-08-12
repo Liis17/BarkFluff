@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityLanguageSettingsBinding
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.send.MediaSendNotification
 import com.barkfluff.client.utils.LocaleManager
 
 class LanguageSettingsActivity : AppCompatActivity() {
@@ -51,5 +52,6 @@ class LanguageSettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         NotificationHelper.createChannels(this)
+        MediaSendNotification.ensureChannel(this)
     }
 }
