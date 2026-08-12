@@ -619,6 +619,20 @@ Per-app locales через `AppCompatDelegate.setApplicationLocales` (без `at
 - UI: `LanguageSettingsActivity` (`activity_language_settings.xml`) — карточка с `RadioGroup` из 6 пунктов. Каждая строка содержит **флаг-эмодзи + нативное имя языка** (🌐 Системный, 🇷🇺 Русский, 🇬🇧 English, 🇩🇪 Deutsch, 🇪🇸 Español, 🇨🇳 中文). Открывается из `ProfileFragment` → пункт «Язык».
 - При смене языка AppCompat сам пересоздаёт Activity-стек через `recreate()`.
 
+### Правила локализации и доступности UI
+
+- Пользовательский текст нельзя оставлять литералом в Kotlin или XML. Для экранов, Toast/Snackbar, диалогов, валидации, уведомлений, notification channels и accessibility labels используются ресурсы `strings.xml`.
+- Любой translatable-ключ синхронно добавляется во все пять наборов: `values` (ru), `values-en`, `values-de`, `values-es`, `values-zh-rCN`. Форматные placeholders и `plurals` должны сохранять смысл и placeholder-ы; для русского не заменять `plurals` одной строкой.
+- Серверные ошибки, имена пользователей/чатов, содержимое сообщений, URL, ID и имена файлов не переводятся. Статическая UI-обёртка ошибки локализуется отдельно, а серверный текст передаётся как placeholder.
+- Проверка ресурсов, placeholders, `plurals`, hardcoded XML-атрибутов и Kotlin UI-контекстов запускается из `Android`:
+
+  `python tools/check_android_ui.py`
+
+- Для TalkBack интерактивные действия получают смысловые `cd_*`-ресурсы во всех локалях. Динамические состояния (play/pause, mute/unmute, камера, микрофон, screen share, pin/unpin, select/deselect) обновляют label после изменения состояния.
+- Декоративные изображения, фоновые элементы, иконки рядом с уже озвучиваемым текстом и аватары рядом с именем используют `android:contentDescription="@null"` и при необходимости `importantForAccessibility="no"`. Описание не добавляется автоматически каждому `ImageView`.
+- Самостоятельные изображения и custom views озвучивают содержательное состояние один раз; `CallTileView` сообщает имя участника и существенные состояния, а дочерние декоративные части исключены из фокуса. Интерактивные области — не менее 48dp.
+- Notification channel IDs не меняются. После смены языка каналы регистрируются повторно с локализованными названием и описанием, чтобы Android обновил отображаемые подписи.
+
 ## Топология сборки и модуль `:core`
 
 Единый Gradle-рут — `Android/`:

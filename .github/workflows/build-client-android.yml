@@ -100,6 +100,9 @@ jobs:
           test -n "$SDK_PATH"
           printf 'sdk.dir=%s\n' "$SDK_PATH" > local.properties
 
+      - name: Проверка локализации и доступности UI
+        run: python3 tools/check_android_ui.py
+
       - name: Восстановление CA-бандла Cloudflare Origin CA
         env:
           CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
