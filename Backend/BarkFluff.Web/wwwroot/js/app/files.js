@@ -38,20 +38,6 @@
     }
 
     /**
-     * Принудительно перезапросить свежую ссылку по fileId (в обход кэша) и обновить кэш.
-     * Presigned-ссылки протухают, если чат долго открыт.
-     * @param {string} fileId
-     * @returns {Promise<Object|null>} — {fileId, url, previewUrl} или null
-     */
-    function refreshFileUrl(fileId) {
-        return BF.api.getTempDownloadUrl([fileId]).then(function (data) {
-            var f = data && data.files && data.files[0];
-            if (f) { urlCache.set(f.fileId, f); return f; }
-            return null;
-        });
-    }
-
-    /**
      * Upload a file: reserve upload slot → upload via REST.
      * Returns the file ID assigned by the server.
      * @param {File} file — browser File object
@@ -318,7 +304,6 @@
         refreshFileUrl: refreshFileUrl,
         uploadFile: uploadFile,
         getUploadFileType: getUploadFileType,
-        refreshFileUrl: refreshFileUrl,
         applyPlaceholder: applyPlaceholder,
         bindResilientMedia: bindResilientMedia,
         bindResilientLink: bindResilientLink,

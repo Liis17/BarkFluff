@@ -24,7 +24,8 @@
 
     function ensureFirebase() {
         var c = config();
-        if (!c || !c.firebase || !window.firebase) throw new Error('push_not_configured');
+        var firebase = window.firebase;
+        if (!c || !c.firebase || !firebase) throw new Error('push_not_configured');
         if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(c.firebase);
         return firebase.messaging();
     }
