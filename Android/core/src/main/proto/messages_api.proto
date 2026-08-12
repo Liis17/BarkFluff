@@ -343,7 +343,14 @@ message OutgoingMessage {
 
   repeated string files_ids = 2; // Идентификаторы файлов
 
+  // DEPRECATED: до разделения reply/forward этим полем отправлялись и ответы, и пересылки.
+  // Оставлено рабочим для клиентов, которые ещё не перешли на поля 4/5 (iOS, macOS, ClientV2.WPF).
+  // Одновременно с reply_to_message_id или forwarded_message_ids — InvalidArgument.
   int64 forwarded_message_id = 3; // ID пересылаемого сообщения (0 = не пересылка)
+
+  int64 reply_to_message_id = 4; // ID сообщения, на которое отвечаем (0 = не ответ). Только из этого же чата
+
+  repeated int64 forwarded_message_ids = 5; // Пересылаемые сообщения (до 20), порядок сохраняется
 }
 
 message GetPersonChatIdRequest {

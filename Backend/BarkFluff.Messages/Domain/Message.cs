@@ -32,6 +32,13 @@ public class Message
 
     public Guid? SenderUuid { get; set; }
 
+    /// <summary>
+    /// Сообщение этого же чата, на которое отвечает данное. Хранится ссылкой, а не снапшотом:
+    /// превью резолвится при каждой выдаче, поэтому правка оригинала видна, а удаление скрывает текст.
+    /// NULL = не ответ (в том числе у всех сообщений, отправленных до разделения reply/forward).
+    /// </summary>
+    public long? ReplyToMessageId { get; set; }
+
     public void ClearContent()
     {
         if (Content is null)

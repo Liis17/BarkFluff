@@ -18,7 +18,7 @@ namespace BarkFluff.Messages.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -29,19 +29,38 @@ namespace BarkFluff.Messages.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("IsGroupChat")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("FederatedStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid?>("FederatedUuidHigh")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FederatedUuidLow")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsFederated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsGroupChat")
+                        .HasColumnType("boolean");
 
                     b.Property<byte[]>("KdfSalt")
                         .HasColumnType("bytea");
 
                     b.Property<byte[]>("PassphraseVerifier")
                         .HasColumnType("bytea");
+
+                    b.Property<string>("Picture")
+                        .HasColumnType("text");
 
                     b.Property<int>("PrivateInviteState")
                         .ValueGeneratedOnAdd()
@@ -54,9 +73,6 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<long?>("PrivateUserLowId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("Picture")
-                        .HasColumnType("text");
-
                     b.Property<string>("Title")
                         .HasColumnType("text");
 
@@ -65,63 +81,17 @@ namespace BarkFluff.Messages.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
-                    b.Property<bool>("IsFederated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<int>("FederatedStatus")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
-                    b.Property<Guid?>("FederatedUuidLow")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("FederatedUuidHigh")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("Type", "PrivateUserLowId", "PrivateUserHighId")
-                        .IsUnique()
-                        .HasFilter("\"Type\" = 1 AND \"PrivateUserLowId\" IS NOT NULL AND \"PrivateUserHighId\" IS NOT NULL");
 
                     b.HasIndex("FederatedUuidLow", "FederatedUuidHigh")
                         .IsUnique()
                         .HasFilter("\"IsFederated\" AND \"FederatedStatus\" = 0 AND \"FederatedUuidLow\" IS NOT NULL AND \"FederatedUuidHigh\" IS NOT NULL");
 
+                    b.HasIndex("Type", "PrivateUserLowId", "PrivateUserHighId")
+                        .IsUnique()
+                        .HasFilter("\"Type\" = 1 AND \"PrivateUserLowId\" IS NOT NULL AND \"PrivateUserHighId\" IS NOT NULL");
+
                     b.ToTable("Chats");
-                });
-
-            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatMember", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<Guid>("ChatId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<Guid?>("UserUuid")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ServerName")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChatId", "UserId");
-
-                    b.ToTable("ChatMembers");
                 });
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.ChatDraft", b =>
@@ -151,6 +121,36 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.HasIndex("UserId", "ChatId");
 
                     b.ToTable("ChatDrafts");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatMember", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ServerName")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("UserUuid")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatId", "UserId");
+
+                    b.ToTable("ChatMembers");
                 });
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.EncryptedMessage", b =>
@@ -205,6 +205,53 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.HasIndex("ChatId", "SentAt");
 
                     b.ToTable("EncryptedMessages");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.FederatedMessageEvent", b =>
+                {
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FederatedId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("EventBytes")
+                        .IsRequired()
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OriginServer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ChatId", "FederatedId");
+
+                    b.ToTable("FederatedMessageEvents");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.FederatedReadState", b =>
+                {
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserUuid")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LastReadFederatedMessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ChatId", "UserUuid");
+
+                    b.ToTable("FederatedReadStates");
                 });
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.GroupChatInfo", b =>
@@ -267,6 +314,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
+                    b.Property<long?>("ReplyToMessageId")
+                        .HasColumnType("bigint");
+
                     b.Property<long?>("SenderId")
                         .HasColumnType("bigint");
 
@@ -281,11 +331,11 @@ namespace BarkFluff.Messages.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ChatId", "SentAt");
-
                     b.HasIndex("ChatId", "FederatedId")
                         .IsUnique()
                         .HasFilter("\"FederatedId\" IS NOT NULL");
+
+                    b.HasIndex("ChatId", "SentAt");
 
                     b.ToTable("Messages");
                 });
@@ -338,56 +388,10 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.ToTable("PrivateChatReadStates");
                 });
 
-            modelBuilder.Entity("BarkFluff.Messages.Domain.FederatedMessageEvent", b =>
-                {
-                    b.Property<Guid>("ChatId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("FederatedId")
-                        .HasColumnType("uuid");
-
-                    b.Property<byte[]>("EventBytes")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("ReceivedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OriginServer")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("ChatId", "FederatedId");
-
-                    b.ToTable("FederatedMessageEvents");
-                });
-
-            modelBuilder.Entity("BarkFluff.Messages.Domain.FederatedReadState", b =>
-                {
-                    b.Property<Guid>("ChatId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserUuid")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("LastReadFederatedMessageId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("ReadAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("ChatId", "UserUuid");
-
-                    b.ToTable("FederatedReadStates");
-                });
-
-            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatMember", b =>
+            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatDraft", b =>
                 {
                     b.HasOne("BarkFluff.Messages.Domain.Chat", "Chat")
-                        .WithMany("Members")
+                        .WithMany()
                         .HasForeignKey("ChatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -395,10 +399,10 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Navigation("Chat");
                 });
 
-            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatDraft", b =>
+            modelBuilder.Entity("BarkFluff.Messages.Domain.ChatMember", b =>
                 {
                     b.HasOne("BarkFluff.Messages.Domain.Chat", "Chat")
-                        .WithMany()
+                        .WithMany("Members")
                         .HasForeignKey("ChatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -444,8 +448,20 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                     b2.Property<string>("ForwardedAuthorName")
                                         .HasColumnType("text");
 
+                                    b2.Property<int?>("ForwardedOrder")
+                                        .HasColumnType("integer");
+
+                                    b2.Property<Guid?>("ForwardedOriginalChatId")
+                                        .HasColumnType("uuid");
+
                                     b2.Property<long?>("ForwardedOriginalMessageId")
                                         .HasColumnType("bigint");
+
+                                    b2.Property<long?>("ForwardedOriginalSenderId")
+                                        .HasColumnType("bigint");
+
+                                    b2.Property<DateTime?>("ForwardedOriginalSentAt")
+                                        .HasColumnType("timestamp with time zone");
 
                                     b2.Property<string>("ForwardedText")
                                         .HasColumnType("text");
