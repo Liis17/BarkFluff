@@ -1,3 +1,4 @@
+using BarkFluff.Client.Core.Markdown;
 using BarkFluff.Client.Core.Models;
 using BarkFluff.WebApi.Core;
 
@@ -58,7 +59,7 @@ public sealed partial class MessengerViewModel
 
     public string ComposerHintTitle => _localization.GetString(IsEditing ? "Messenger_EditingMessage" : "Messenger_ReplyingTo");
 
-    public string ComposerHintPreview => (EditingMessage ?? ReplyTarget)?.Text ?? string.Empty;
+    public string ComposerHintPreview => MarkdownText.Strip((EditingMessage ?? ReplyTarget)?.Text);
 
     public bool CanSubmitForward => ForwardTargets.Any(target => target.IsSelected);
 
