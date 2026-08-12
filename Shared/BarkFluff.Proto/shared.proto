@@ -37,6 +37,28 @@ message Message {
   string sender_uuid = 10; // UUID автора (пусто до включения федерации)
 
   repeated string federated_read_by = 11; // UUID remote-участников, прочитавших сообщение (FederatedReadStates; рендер — Фаза 5)
+
+  ReplyInfo reply_to = 12; // Заполнено => сообщение является ответом. Резолвится сервером при выдаче
+}
+
+// Превью цитируемого сообщения для reply. В отличие от ForwardedMessageAttachment это НЕ снапшот:
+// сервер резолвит его из оригинала на каждой выдаче, поэтому правка оригинала видна сразу,
+// а удаление скрывает содержимое.
+message ReplyInfo {
+
+  int64 message_id = 1; // ID оригинала
+
+  int64 sender_id = 2; // Автор оригинала (0 для remote-автора федеративного чата)
+
+  string sender_name = 3; // Актуальное имя автора (не снапшот)
+
+  string text_preview = 4; // Актуальный текст оригинала, обрезанный до 200 символов
+
+  MessageAttachmentType first_attachment_type = 5; // Тип первого вложения оригинала (для «📷 Фото» в превью)
+
+  bool is_deleted = 6; // Оригинал удалён: text_preview пуст, клиент рисует «сообщение удалено»
+
+  string federated_message_id = 7; // UUID оригинала в федеративном чате (пусто для локальных)
 }
 
 message MessageContent {
@@ -80,6 +102,14 @@ message ForwardedMessageAttachment {
   string text = 3; // Текст оригинального сообщения
 
   repeated MessageAttachment attachments = 4; // Вложения оригинального сообщения (без FORWARDED_MESSAGE для исключения рекурсии)
+
+  string original_chat_id = 5; // Чат оригинала (пусто у снапшотов, созданных до разделения reply/forward)
+
+  int64 original_sender_id = 6; // Автор оригинала (0 у legacy-снапшотов и у remote-автора)
+
+  google.protobuf.Timestamp original_sent_at = 7; // Время отправки оригинала (пусто у legacy-снапшотов)
+
+  int32 order = 8; // Порядок внутри пересылки нескольких сообщений (0 у legacy-снапшотов)
 }
 
 enum MessageAttachmentType {

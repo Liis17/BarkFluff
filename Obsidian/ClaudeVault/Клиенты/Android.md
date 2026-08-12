@@ -310,11 +310,13 @@ androidx.media3:media3-ui:1.3.1
 
 ## Пересылка и ответы (Forward / Reply)
 
-Технически на бэкенде reply и forward — **одно и то же**: оба используют `OutgoingMessage.forwarded_message_id` (см. `messages_api.proto`). Различие чисто визуальное на клиенте.
+Reply и forward — **разные вещи** и на бэкенде тоже (см. [[Backend/Messages]]). Ответ едет `OutgoingMessage.reply_to_message_id` и приходит обратно полем `Message.reply_to` (`ReplyInfo`); пересылка едет `forwarded_message_ids` (до 20) и приходит вложениями `FORWARDED_MESSAGE`.
 
-**Эвристика выбора UI** (в `MessageAdapter.bindMessageQuote`): если `ForwardedMessageAttachment.original_message_id` найден в текущей загруженной истории чата (`hasMessageInCurrentList`), отображается компактный **reply-блок** (вертикальная полоска `?attr/colorPrimary` + автор + 1 строка превью). Иначе — полный **forward-блок** в `MaterialCardView` (с заголовком автора, текстом и медиа-сеткой через `setupAttachmentsContainer`).
+**Выбор UI** (в `MessageAdapter.bindQuoteSplit`): reply рисуется, если заполнен `item.replyTo` — компактный блок (вертикальная полоска `?attr/colorPrimary` + автор + 1 строка превью). Пересылки рисуются по вложениям, **по блоку на каждое** (`MaterialCardView` с автором, текстом и медиа-сеткой через `setupAttachmentsContainer`). Reply и forward больше не исключают друг друга.
 
-Layout цитаты: `view_message_quote.xml` (включается в `item_message_sent.xml` и `item_message_received.xml` через `<include android:id="@+id/messageQuote">`). Универсальный — переключается между `replyView` / `forwardView` по visibility.
+Прежняя эвристика «оригинал есть в текущей загруженной истории» (`hasMessageInCurrentList`) удалена: из-за неё ответ превращался в пересылку, стоило прокрутить чат. У удалённого оригинала сервер не отдаёт ни текст, ни автора — цитата показывает «Сообщение удалено» и не кликается.
+
+Layout цитаты: `view_message_quote.xml`. Reply — один `<include android:id="@+id/replyQuote">`; пересылки — `LinearLayout` `forwardQuotesContainer`, в который адаптер инфлейтит по копии на каждое пересланное сообщение (схлопнуть пачку в один блок значит потерять всё, кроме первого). Универсальный layout переключается между `replyView` / `forwardView` по visibility.
 
 При рендере основного бабла FORWARDED_MESSAGE-вложения **исключаются** из `setupAttachmentsContainer` (фильтр `displayedAttachments`), чтобы не задвоить.
 
@@ -332,7 +334,7 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 - **Long-press на вложениях**: меню картинок удалено целиком (`menu_image_attachment.xml` удалён) — теперь сохранение картинок только через основное меню. У документов осталось только «Удалить из кеша» (показывается лишь если файл закеширован). У аудио — без изменений.
 - **Свайп влево**: `ReplySwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT)`. При сдвиге `>= 64dp` — haptic + триггер. После отпускания bubble возвращается на место (`onSwiped` пуст, `clearView` сбрасывает `translationX`). Иконка стрелки рисуется справа в `onChildDraw` с alpha по прогрессу.
 - **Reply preview bar**: `replyPreviewBar` в `activity_chat.xml` — `MaterialCardView` над `attachmentPreviewBar`, показывается при `pendingReplyMessageId != 0L`. Содержит автора, превью текста (или "📷 N фото" / "📎 N файлов"), кнопку отмены `clearReplyButton`.
-- **Отправка**: `ChatRepository.sendMessage(..., forwardedMessageId = pendingReplyMessageId)`. После успеха — `clearPendingReply()`.
+- **Отправка**: `ChatRepository.sendMessage(..., replyToMessageId = pendingReplyMessageId)`. После успеха — `clearPendingReply()`.
 
 ### Редактирование и удаление сообщений
 
@@ -354,7 +356,7 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 - `BottomSheetDialogFragment` с `STATE_EXPANDED` + `skipCollapsed=true`.
 - Загружает чаты через `grpcManager.getChats()` (та же сортировка по `lastMessage.sentAt`, что в `ChatsFragment`).
 - `ForwardChatPickerAdapter` — multi-select через `selectedIds: LinkedHashSet<String>`, click тоглит CheckBox и вызывает `notifyItemChanged`.
-- Кнопка "Переслать (N)" активируется при `count > 0`. При нажатии — параллельный `async/awaitAll` вызов `chatRepository.sendMessage` для каждого выбранного чата с тем же `forwardedMessageId`, опциональным комментарием.
+- Кнопка "Переслать (N)" активируется при `count > 0`. При нажатии — параллельный `async/awaitAll` вызов `chatRepository.sendMessage` для каждого выбранного чата со списком `forwardedMessageIds` и опциональным комментарием. `newInstance` принимает `LongArray`, поэтому пачка уезжает одним сообщением на чат.
 - Layouts: `bottom_sheet_forward_chats.xml`, `item_chat_forward_picker.xml`.
 
 ## UI — Экран чата (ChatActivity + activity_chat.xml)

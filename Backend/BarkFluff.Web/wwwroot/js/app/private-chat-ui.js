@@ -158,7 +158,6 @@
         BF.realtime.unsubscribeTyping();
         deps.setMessages([]);
         deps.setNoMoreOlder(false);
-        deps.resetKnownMessageIds();
         deps.clearPendingReply();
         deps.clearPendingEdit();
         deps.closeContextMenu();

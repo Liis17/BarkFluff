@@ -713,6 +713,8 @@ public class FederationS2SApiHandler
                             RawEvent = Google.Protobuf.ByteString.CopyFrom(evt.ToByteArray()),
                             // Снапшот вложений (этап 3.1) — Messages сохранит его в MessageAttachments.
                             Attachments = { ToFlat(p.Attachments) },
+                            ReplyToFederatedMessageId = p.ReplyToFederatedMessageId,
+                            Forwards = { ToFlat(p.Forwards) },
                         }, cancellationToken: ct);
                         return (EventStatus.Ok, null);
                     }
@@ -818,6 +820,18 @@ public class FederationS2SApiHandler
             PreviewFileId = r.PreviewFileId,
             ImageWidth = r.ImageWidth,
             ImageHeight = r.ImageHeight,
+        });
+
+    // FederatedForward (S2S-контракт) → FederatedForwardFlat (внутренний контракт Messages),
+    // по той же причине, что и ToFlat для вложений.
+    private static IEnumerable<FederatedForwardFlat> ToFlat(IEnumerable<FederatedForward> forwards)
+        => forwards.Select(f => new FederatedForwardFlat
+        {
+            AuthorName = f.AuthorName,
+            Text = f.Text,
+            Attachments = { ToFlat(f.Attachments) },
+            OriginalSentAtMs = f.OriginalSentAt?.ToDateTimeOffset().ToUnixTimeMilliseconds() ?? 0,
+            Order = f.Order,
         });
 
     private static bool PayloadAuthorBelongsToOrigin(FederationEvent evt, string origin)

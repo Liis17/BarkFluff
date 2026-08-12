@@ -110,6 +110,7 @@
     <sys:String x:Key="Messenger_ForwardSelected">Selected:</sys:String>
     <sys:String x:Key="Messenger_ForwardNoneSelected">No chats selected</sys:String>
     <sys:String x:Key="Messenger_Attachment">Attachment</sys:String>
+    <sys:String x:Key="Messenger_MessageDeleted">Message deleted</sys:String>
     <sys:String x:Key="Messenger_CopyText">Copy text</sys:String>
     <sys:String x:Key="Messenger_CopyImage">Copy image</sys:String>
     <sys:String x:Key="Messenger_Pin">Pin</sys:String>

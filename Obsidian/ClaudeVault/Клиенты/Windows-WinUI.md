@@ -205,6 +205,25 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 
 `ForwardTargetViewModel` получил `Owner` по образцу `MessageItemViewModel`: в WinUI нет `RelativeSource AncestorType`, и шаблон иначе не дотянется до команды владельца.
 
+## Ответы и пересылка
+
+Reply и forward разделены на бэкенде (см. [[Backend/Messages]]), и клиент больше ничего не угадывает.
+
+- `MessageItemViewModel.Reply` (`ReplyContentViewModel`) — цитата ответа; отдельный тип от
+  `ForwardedContentViewModel`, потому что она не снапшот: сервер резолвит её из живого оригинала,
+  поэтому правка видна, а у удалённого текста нет.
+- `MessageItemViewModel.Forwards` — пересланных может быть несколько; `MessengerPage.xaml`
+  рисует их `ItemsRepeater`'ом по блоку на каждое.
+- `ApplyReplyQuoteState` удалён. Он вычислял `IsReplyQuote` пересечением id цитаты с
+  загруженными сообщениями, из-за чего ответ становился пересылкой после прокрутки истории.
+- Удалённый оригинал: «Сообщение удалено» (`Messenger_MessageDeleted`), без превью,
+  `ScrollToOriginal` по нему не срабатывает.
+- Отправка — `MessengerService.SendMessageAsync(chatId, text, replyToMessageId, forwardedMessageIds)`.
+
+`ClientV2.WPF` **не** ссылается на `Client.Core` (своя копия вьюмодели и сервиса, общий только
+`WebApi.Core`), поэтому ничего из этого его не касается: он продолжает слать устаревшее
+`ForwardingLetter.ForwardedMessageId`, которое сохранено специально ради него.
+
 ## Известные отличия от WPF-версии
 
 - `LoginViewModel.FastAuthQrCode` отдаёт base64-строку, а не `ImageSource`; картинку собирает `Base64ToImageSourceConverter`.

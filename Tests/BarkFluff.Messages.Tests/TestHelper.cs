@@ -2,9 +2,12 @@ using System.Security.Claims;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Features.Federation;
+using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence;
 using BarkFluff.Messages.Persistence.Services;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
+using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -65,6 +68,35 @@ public class TestHelper
     public static ILogger<T> CreateLogger<T>()
     {
         return Mock.Of<ILogger<T>>();
+    }
+
+    /// <summary>
+    /// Резолвер превью цитат. Users-клиент по умолчанию отдаёт пустой список пользователей:
+    /// тестам, где ответов нет, он не нужен вовсе (резолвер выходит до похода в Users),
+    /// а тестам про reply имена обычно неважны — иначе передайте свой мок.
+    /// </summary>
+    public ReplyPreviewResolver CreateReplyPreviewResolver(
+        UsersServerApi.UsersServerApiClient? usersClient = null)
+    {
+        if (usersClient is null)
+        {
+            var mock = new Mock<UsersServerApi.UsersServerApiClient>();
+            mock.Setup(c => c.ListByIdsAsync(It.IsAny<ListByIdsRequest>(), null, null, It.IsAny<CancellationToken>()))
+                .Returns(CreateAsyncCall(new ListByIdsResponse()));
+            usersClient = mock.Object;
+        }
+
+        return new ReplyPreviewResolver(MessagesStorage, usersClient);
+    }
+
+    public static AsyncUnaryCall<TResponse> CreateAsyncCall<TResponse>(TResponse response)
+    {
+        return new AsyncUnaryCall<TResponse>(
+            Task.FromResult(response),
+            Task.FromResult(new Metadata()),
+            () => Status.DefaultSuccess,
+            () => new Metadata(),
+            () => { });
     }
 
     public static IConfiguration CreateConfiguration(string serverName = "home.test")

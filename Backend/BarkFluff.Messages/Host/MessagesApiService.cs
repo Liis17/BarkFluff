@@ -32,6 +32,7 @@ using BarkFluff.Messages.Features.UnpinAll;
 using BarkFluff.Messages.Features.UnpinMessage;
 using BarkFluff.Messages.Features.UpdateGroupChat;
 using BarkFluff.Messages.Features.UpsertChatDraft;
+using BarkFluff.Messages.Mapping;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Exceptions.Files;
@@ -125,12 +126,7 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
 
         var command = new SendMessageCommand()
         {
-            Message = new OutgoingMessage
-            {
-                FileIds = request.Message.FilesIds?.Select(x => Guid.Parse(x)).ToList(),
-                Text = request.Message.Text,
-                ForwardedMessageId = request.Message.ForwardedMessageId == 0 ? null : request.Message.ForwardedMessageId
-            },
+            Message = request.Message.ToCommandMessage(),
         };
 
         switch (request.SourceIdCase)

@@ -28,6 +28,7 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
     private readonly MessageQueueSender _messageQueueSender;
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
+    private readonly ReplyPreviewResolver _replyPreviewResolver;
     private readonly ILogger<EditMessageCommandHandler> _logger;
 
     private readonly Dictionary<UploadFileType, Domain.MessageAttachmentType> _attachmentMap =
@@ -45,8 +46,9 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
     public EditMessageCommandHandler(MessagesStorage messagesStorage, ChatsStorage chatsStorage,
         FilesServerApi.FilesServerApiClient filesServerApiClient, UserContext userContext,
         MessageQueueSender messageQueueSender, IConfiguration configuration, MetricsCollector metrics,
-        ILogger<EditMessageCommandHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, ILogger<EditMessageCommandHandler> logger)
     {
+        _replyPreviewResolver = replyPreviewResolver;
         _messagesStorage = messagesStorage;
         _chatsStorage = chatsStorage;
         _filesServerApiClient = filesServerApiClient;
@@ -267,6 +269,8 @@ public class EditMessageCommandHandler : IRequestHandler<EditMessageCommand, Edi
             _metrics.Increment("messages_edited_with_attachments");
         }
 
-        return new EditMessageResponse { Message = message.ToGrpc(filesInfoMap) };
+        var replyPreviews = await _replyPreviewResolver.ResolveAsync([message]);
+
+        return new EditMessageResponse { Message = message.ToGrpc(filesInfoMap, replyPreviews: replyPreviews) };
     }
 }

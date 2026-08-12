@@ -29,8 +29,10 @@
 | Папка / Файлы | Что делает |
 |--------------|-----------|
 | `Features/SendMessage/SendMessageCommand.cs` | Команда отправки сообщения (chatId или userId получателя) |
-| `Features/SendMessage/SendMessageCommandHandler.cs` | Обработчик: авто-создаёт DM если нужно, сохраняет сообщение, публикует `NewMessageEvent` |
-| `Features/SendMessage/OutgoingMessage.cs` | DTO исходящего сообщения (Text, FileIds) |
+| `Features/SendMessage/SendMessageCommandHandler.cs` | Обработчик: авто-создаёт DM если нужно, валидирует reply, собирает снапшоты пересылок (до 20, батчами без N+1), сохраняет сообщение, публикует `NewMessageEvent` |
+| `Features/SendMessage/OutgoingMessage.cs` | DTO исходящего сообщения (Text, FileIds, ReplyToMessageId, ForwardedMessageIds) |
+| `Features/Shared/ReplyTargetValidator.cs` | Единое правило «на что можно отвечать» (существует, тот же чат, не удалён). Общее для `SendMessage` и `UpsertChatDraft` |
+| `Features/Federation/FederatedForwardImporter.cs` | Валидация и импорт снапшота пересылок из fed-события; всё непрошедшее — permanent REJECTED |
 | `Features/EditMessage/EditMessageCommand.cs` | Команда редактирования сообщения (MessageId, Text, FileIds) |
 | `Features/EditMessage/EditMessageCommandHandler.cs` | Обработчик: проверяет владельца/тип/IsDeleted, сохраняет forwarded-вложения, перезаписывает не-forward attachments, выставляет IsEdited+EditedAt, публикует `MessageEditedEvent` |
 | `Features/DeleteMessage/DeleteMessageCommand.cs` | Команда soft-delete сообщения |
@@ -127,7 +129,9 @@
 | `Mapping/ChatMapping.cs` | `Domain.Chat` → proto `Chat` (с вложением LastMessage, участниками, ChatType/KdfSalt/PassphraseVerifier для приватных чатов) |
 | `Mapping/EncryptedMessageMapping.cs` | `Domain.EncryptedMessage` → proto `EncryptedMessage` (ciphertext/nonce/AAD как ByteString) |
 | `Mapping/ChatMemberMapping.cs` | `Domain.ChatMember` → proto `ChatMember` |
-| `Mapping/MessageMapping.cs` | `Domain.Message` → proto `Message` (принимает `filesInfoMap` для подстановки данных файлов) |
+| `Mapping/MessageMapping.cs` | `Domain.Message` → proto `Message` (принимает `filesInfoMap` для подстановки данных файлов и `replyPreviews` для цитаты ответа) |
+| `Mapping/ReplyPreviewResolver.cs` | Резолвит `ReplyInfo` для страницы сообщений: один запрос в БД за оригиналами + один батч в Users за именами. Удалённый оригинал → `is_deleted` без текста и автора |
+| `Mapping/OutgoingMessageMapping.cs` | proto `OutgoingMessage` → доменный: разводит устаревшее `forwarded_message_id` и новые `reply_to_message_id`/`forwarded_message_ids`, запрещает их смешивать |
 | `Mapping/MessageContentMapping.cs` | `Domain.MessageContent` → proto `MessageContent` с вложениями |
 | `Mapping/PinnedMessageMapping.cs` | `Domain.PinnedMessage` + `Domain.Message` → proto `PinnedMessageInfo` (с подстановкой filesInfoMap) |
 

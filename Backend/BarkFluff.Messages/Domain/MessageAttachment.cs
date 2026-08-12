@@ -38,4 +38,17 @@ public class MessageAttachment
     public string? ForwardedText { get; set; }
 
     public List<ForwardedMessageAttachment>? ForwardedAttachments { get; set; }
+
+    // ---- Обогащение снапшота пересылки (разделение reply/forward) ----
+    // Без этих полей пересылка не могла показать «переслано из ⟨чат⟩ ⟨дата⟩» и перейти к оригиналу.
+    // NULL у снапшотов, созданных до разделения — legacy рендерится по-старому.
+
+    public Guid? ForwardedOriginalChatId { get; set; }
+
+    public long? ForwardedOriginalSenderId { get; set; }
+
+    public DateTime? ForwardedOriginalSentAt { get; set; }
+
+    /// <summary>Порядок внутри пересылки нескольких сообщений одним сообщением.</summary>
+    public int? ForwardedOrder { get; set; }
 }

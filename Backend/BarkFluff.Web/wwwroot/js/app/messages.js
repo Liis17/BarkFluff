@@ -98,15 +98,16 @@
         bubble.appendChild(div);
     }
 
-    function attachmentSummary(att) {
-        var t = normType(att);
-        switch (t) {
+    // Принимает имя типа: вызывается и по вложению (normType), и по ReplyInfo,
+    // где сервер отдаёт только тип первого вложения оригинала, без самого вложения.
+    function attachmentSummary(type, fileName) {
+        switch (type) {
             case 'IMAGE': case 'GIF': return '\u{1F4F7} ' + BF.i18n.t('attachment.photo');
             case 'VIDEO': return '\u{1F3AC} ' + BF.i18n.t('attachment.video');
             case 'AUDIO': return '\u{1F3B5} ' + BF.i18n.t('attachment.audio');
             case 'VOICE': return '\u{1F3A4} ' + BF.i18n.t('attachment.voice');
             case 'STICKER': return '\u{1F92A} ' + BF.i18n.t('attachment.sticker');
-            case 'DOCUMENT': return '\u{1F4C4} ' + (att.fileName || BF.i18n.t('attachment.document'));
+            case 'DOCUMENT': return '\u{1F4C4} ' + (fileName || BF.i18n.t('attachment.document'));
             default: return '\u{1F4CE} ' + BF.i18n.t('attachment.generic');
         }
     }
@@ -134,33 +135,47 @@
         container.appendChild(box);
     }
 
-    function renderReplyQuote(fwd, container, onClick) {
-        if (!fwd) return;
+    // Цитата ответа строится из ReplyInfo, который сервер резолвит из живого оригинала.
+    // Раньше сюда приходил снапшот, и правка оригинала в цитате не отражалась.
+    function renderReplyQuote(reply, container, onClick) {
+        if (!reply) return;
         var q = document.createElement('div');
         q.className = 'reply-quote';
-        if (fwd.originalMessageId) q.dataset.origId = fwd.originalMessageId;
+
         var au = document.createElement('div');
         au.className = 'rq-author';
-        au.textContent = fwd.authorName || '';
-        q.appendChild(au);
-
-        var preview = '';
-        if (fwd.text) preview = fwd.text;
-        else if (fwd.attachments && fwd.attachments.length > 0) preview = attachmentSummary(fwd.attachments[0]);
         var t = document.createElement('div');
         t.className = 'rq-text';
-        t.textContent = preview;
+
+        if (reply.isDeleted) {
+            // Сервер не отдаёт содержимое удалённого оригинала — цитата не должна быть
+            // способом его прочитать, и переходить по ней некуда.
+            q.classList.add('deleted');
+            au.textContent = 'Сообщение удалено';
+            t.textContent = '';
+            q.appendChild(au);
+            q.appendChild(t);
+            container.appendChild(q);
+            return;
+        }
+
+        if (reply.messageId) q.dataset.origId = reply.messageId;
+        au.textContent = reply.senderName || '';
+        t.textContent = reply.textPreview ||
+            (reply.firstAttachmentType ? attachmentSummary(reply.firstAttachmentType) : '');
+        q.appendChild(au);
         q.appendChild(t);
 
         if (typeof onClick === 'function') {
             q.addEventListener('click', function (e) {
                 e.stopPropagation();
-                onClick(fwd.originalMessageId);
+                onClick(reply.messageId);
             });
         }
 
         container.appendChild(q);
     }
+
 
     function renderImageGrid(images, container, onMediaClick) {
         var isSticker = images.length === 1 && images[0].type === 'STICKER';
@@ -407,7 +422,7 @@
      * @param {number} myUserId
      * @param {Function} [getUserFn] — async function(userId) → user
      * @param {Function} [onMediaClick] — function(type, url, fileId)
-     * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId), groupedWithPrevious: boolean, showSenderAvatar: boolean, showSenderGutter: boolean }
+     * @param {Object} [opts] — { onReplyClick: function(originalMessageId), groupedWithPrevious: boolean, showSenderAvatar: boolean, showSenderGutter: boolean }
      * @returns {Promise<HTMLElement>}
      */
     function buildMessageElement(msg, myUserId, getUserFn, onMediaClick, opts) {
@@ -427,22 +442,25 @@
         var isOutgoing = msg.senderId === myUserId;
         var direction = isOutgoing ? 'outgoing' : 'incoming';
         var allAtts = (msg.content && msg.content.attachments) || [];
-        var fwdAtt = null;
+        var forwards = [];
         var mediaAtts = [];
         for (var i = 0; i < allAtts.length; i++) {
             if (normType(allAtts[i]) === 'FORWARDED_MESSAGE') {
-                if (!fwdAtt) fwdAtt = allAtts[i];
+                // Переслать можно несколько сообщений сразу — берём все, иначе часть пропадёт.
+                if (allAtts[i].forwardedMessage) forwards.push(allAtts[i].forwardedMessage);
             } else {
                 mediaAtts.push(allAtts[i]);
             }
         }
-        var fwd = fwdAtt && fwdAtt.forwardedMessage;
+        forwards.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+        var fwd = forwards.length > 0;
         var _firstAtt = mediaAtts[0];
         var _firstAttType = _firstAtt ? normType(_firstAtt) : null;
         var isSticker = mediaAtts.length === 1 && _firstAttType === 'STICKER' && !fwd;
 
-        var knownIds = opts && opts.knownMessageIds;
-        var isReply = !!(fwd && knownIds && fwd.originalMessageId && knownIds.has(fwd.originalMessageId));
+        // Ответ приходит явным полем. Раньше reply и forward различались догадкой «есть ли
+        // оригинал среди загруженных», из-за чего ответ превращался в пересылку после прокрутки.
+        var replyTo = msg.replyTo || null;
 
         var group = document.createElement('div');
         group.className = 'msg-group ' + direction + (opts && opts.groupedWithPrevious ? ' grouped-with-previous' : '');
@@ -500,12 +518,9 @@
                 + (videoWithText ? ' video-with-text' : '')
                 + (docsOnly ? ' docs-only' : '');
 
-            if (fwd) {
-                if (isReply) {
-                    renderReplyQuote(fwd, bubble, opts && opts.onReplyClick);
-                } else {
-                    renderForwardedBlock(fwd, bubble, onMediaClick);
-                }
+            if (replyTo) renderReplyQuote(replyTo, bubble, opts && opts.onReplyClick);
+            for (var fi = 0; fi < forwards.length; fi++) {
+                renderForwardedBlock(forwards[fi], bubble, onMediaClick);
             }
 
             if (mediaAtts.length > 0) renderAttachments(mediaAtts, bubble, onMediaClick);
