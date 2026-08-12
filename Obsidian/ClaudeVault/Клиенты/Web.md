@@ -231,6 +231,22 @@ origin, сопоставить ключ нечем — вход потребуе
 - вкладки Медиа/Файлы (общая `renderChatMedia(type, container)`, бывшая `loadProfileMedia`).
 Аватарки чужих сообщений в ленте групповых чатов (`messages.js` → `.msg-sender-avatar`). API-обёртки `listChatMembers/addUser/kickUser/updateGroupChat` — в `api.js`. Бэкенд-методы готовы в [[Backend/Messages]], proto-bundle уже сгенерирован. Live-обновление шапки/состава у других участников не делается — приходит системное сообщение (паритет с Android).
 
+## Ответы и пересылка
+
+Reply и forward разделены на бэкенде (см. [[Backend/Messages]]).
+
+- `api.js` маппит `Message.reply_to` в `msg.replyTo` и шлёт `replyToMessageId` /
+  `forwardedMessageIds` вместо прежнего одиночного `forwardedMessageId`.
+- `messages.js` рисует цитату по `msg.replyTo`, а пересылки — по вложениям `FORWARDED_MESSAGE`,
+  **по блоку на каждое** (пачку нельзя схлопнуть в один блок). Reply и forward не исключают друг друга.
+- Эвристика `knownMessageIds` (ответ = «оригинал среди загруженных») удалена вместе со всей
+  обвязкой в `main.js` и экспортом `resetKnownMessageIds`: из-за неё ответ превращался в
+  пересылку после прокрутки истории.
+- Удалённый оригинал рисуется как «Сообщение удалено» (класс `.reply-quote.deleted`), без текста
+  и без перехода.
+- `attachmentSummary(type, fileName)` теперь принимает имя типа — reply-превью переиспользует его
+  вместе с i18n-ключами вместо своей копии строк.
+
 ## Связи
 - [[Backend/BarkFluff.Web]] — хост (YARP gRPC-Web↔gRPC + статика).
 - [[Backend/Calls]] — бэкенд звонков (LiveKit SFU), первый клиент которого — этот веб.

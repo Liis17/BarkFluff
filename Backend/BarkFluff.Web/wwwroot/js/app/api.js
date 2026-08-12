@@ -36,7 +36,25 @@
             authorName: fm.getAuthorName ? fm.getAuthorName() : '',
             originalMessageId: fm.getOriginalMessageId ? fm.getOriginalMessageId() : 0,
             text: fm.getText ? fm.getText() : '',
-            attachments: fm.getAttachmentsList ? fm.getAttachmentsList().map(mapAttachment) : []
+            attachments: fm.getAttachmentsList ? fm.getAttachmentsList().map(mapAttachment) : [],
+            originalChatId: fm.getOriginalChatId ? fm.getOriginalChatId() : '',
+            originalSenderId: fm.getOriginalSenderId ? fm.getOriginalSenderId() : 0,
+            originalSentAt: fm.getOriginalSentAt ? tsToMs(fm.getOriginalSentAt()) : null,
+            order: fm.getOrder ? fm.getOrder() : 0
+        };
+    }
+
+    // Цитата ответа. В отличие от пересылки это не снапшот: сервер резолвит её из оригинала
+    // на каждой выдаче, поэтому текст всегда актуальный, а у удалённого он пуст.
+    function mapReplyTo(r) {
+        if (!r) return null;
+        return {
+            messageId: r.getMessageId ? r.getMessageId() : 0,
+            senderId: r.getSenderId ? r.getSenderId() : 0,
+            senderName: r.getSenderName ? r.getSenderName() : '',
+            textPreview: r.getTextPreview ? r.getTextPreview() : '',
+            firstAttachmentType: r.getFirstAttachmentType ? enumName(r.getFirstAttachmentType()) : null,
+            isDeleted: r.getIsDeleted ? r.getIsDeleted() : false
         };
     }
 
@@ -67,6 +85,7 @@
             // в MessageAttachmentType, где 2=VIDEO — это поломает определение system.
             type: m.getType(),
             forwardedMessageId: m.getForwardedMessageId ? m.getForwardedMessageId() : 0,
+            replyTo: m.getReplyTo ? mapReplyTo(m.getReplyTo()) : null,
             isEdited: m.getIsEdited ? m.getIsEdited() : false,
             editedAt: m.getEditedAt ? tsToMs(m.getEditedAt()) : null,
             content: {
@@ -255,8 +274,13 @@
         if (opts.fileIds && opts.fileIds.length > 0) {
             msg.setFilesIdsList(opts.fileIds);
         }
-        if (opts.forwardedMessageId && msg.setForwardedMessageId) {
-            msg.setForwardedMessageId(opts.forwardedMessageId);
+        // Ответ и пересылка — разные поля. Раньше оба ехали forwarded_message_id, и клиент
+        // потом гадал, что из этого что.
+        if (opts.replyToMessageId && msg.setReplyToMessageId) {
+            msg.setReplyToMessageId(opts.replyToMessageId);
+        }
+        if (opts.forwardedMessageIds && opts.forwardedMessageIds.length > 0 && msg.setForwardedMessageIdsList) {
+            msg.setForwardedMessageIdsList(opts.forwardedMessageIds);
         }
         req.setMessage(msg);
 

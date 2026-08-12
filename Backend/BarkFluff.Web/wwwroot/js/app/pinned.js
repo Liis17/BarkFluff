@@ -324,7 +324,7 @@
                     myId,
                     getUserFn,
                     showMediaOverlay,
-                    { knownMessageIds: new Set(), onReplyClick: function (id) { closeListModal(); scrollToMessageFn(id); } }
+                    { onReplyClick: function (id) { closeListModal(); scrollToMessageFn(id); } }
                 ).then(function (msgEl) {
                     var item = document.createElement('div');
                     item.className = 'pinned-list-item';

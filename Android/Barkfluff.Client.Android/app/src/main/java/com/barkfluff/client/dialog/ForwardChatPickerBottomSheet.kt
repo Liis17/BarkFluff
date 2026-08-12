@@ -21,19 +21,21 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 /**
- * Модалка для пересылки сообщения в один или несколько чатов.
- * Принимает ID исходного сообщения, отправляет в выбранные чаты с тем же forwarded_message_id.
+ * Модалка для пересылки сообщений в один или несколько чатов.
+ * Принимает ID исходных сообщений и отправляет их одним сообщением в каждый выбранный чат.
  */
 class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
         private const val TAG = "ForwardPicker"
-        private const val ARG_MESSAGE_ID = "messageId"
+        private const val ARG_MESSAGE_IDS = "messageIds"
 
-        fun newInstance(messageId: Long): ForwardChatPickerBottomSheet {
+        fun newInstance(messageId: Long): ForwardChatPickerBottomSheet = newInstance(longArrayOf(messageId))
+
+        fun newInstance(messageIds: LongArray): ForwardChatPickerBottomSheet {
             return ForwardChatPickerBottomSheet().apply {
                 arguments = Bundle().apply {
-                    putLong(ARG_MESSAGE_ID, messageId)
+                    putLongArray(ARG_MESSAGE_IDS, messageIds)
                 }
             }
         }
@@ -44,7 +46,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     private lateinit var chatRepository: ChatRepository
     private lateinit var adapter: ForwardChatPickerAdapter
-    private var messageId: Long = 0L
+    private var messageIds: LongArray = longArrayOf()
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState) as BottomSheetDialog
@@ -72,8 +74,8 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        messageId = arguments?.getLong(ARG_MESSAGE_ID, 0L) ?: 0L
-        if (messageId == 0L) {
+        messageIds = arguments?.getLongArray(ARG_MESSAGE_IDS) ?: longArrayOf()
+        if (messageIds.isEmpty()) {
             dismissAllowingStateLoss()
             return
         }
@@ -133,10 +135,12 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
         lifecycleScope.launch {
             val results = selected.map { chatId ->
                 async {
+                    // Пачка уезжает одним сообщением на чат, а не N сообщениями:
+                    // получатель видит пересылку так же, как её собрал отправитель.
                     chatRepository.sendMessage(
                         chatId = chatId,
                         text = comment,
-                        forwardedMessageId = messageId
+                        forwardedMessageIds = messageIds.toList()
                     )
                 }
             }.awaitAll()

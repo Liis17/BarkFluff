@@ -45,7 +45,7 @@
 
 | Очередь | Событие | Действие |
 |---|---|---|
-| `new-messages-federation-handler` | [[Shared/Queue#NewMessageEvent]] | Если `IsFederated=true` — построить `ChatCreated` (если `IsFirstMessageInChat`) + `NewMessage` (текст парсится из `byte[] Message`, этап 2.3), подписать, в outbox для каждого ServerName из `RemoteParticipants` |
+| `new-messages-federation-handler` | [[Shared/Queue#NewMessageEvent]] | Если `IsFederated=true` — построить `ChatCreated` (если `IsFirstMessageInChat`) + `NewMessage` (текст парсится из `byte[] Message`, этап 2.3), подписать, в outbox для каждого ServerName из `RemoteParticipants`. Оттуда же берутся пересылки (`FederatedForwardMapper.FromWireMessage`) — второго источника не нужно; ответ едет `reply_to_federated_message_id` из `NewMessageEvent` |
 | `messages-edited-federation-handler` | `MessageEditedEvent` | `MessageEdited` в outbox (`NewText` — из `byte[] Message`, этап 2.4) |
 | `messages-deleted-federation-handler` | `MessageDeletedEvent` | `MessageDeleted` в outbox |
 | `read-receipts-federation-handler` | `MessageReadEvent` | `MessagesRead` в outbox |
@@ -64,6 +64,20 @@
 4. «Нода говорит только за своих»: `author.server_name` внутри payload == origin → иначе `REJECTED` (для `MessageEdited`/`MessageDeleted`/`MessagesRead` в payload identity автора нет намеренно — проверка P2-02 делается локально в Messages, см. [[Backend/Messages]]).
 5. Маршрутизация по типу (`RouteToInternalAsync`) → внутренний вызов `MessagesServerApi`: `ChatCreated`→`ImportFederatedChat` (2.3, с квотой per-origin — ниже), `NewMessage`→`ImportFederatedMessage` (2.3), `MessageEdited/Deleted/MessagesRead`→`ApplyFederatedEdit/Delete/Read` (2.4). Профильные payload'ы (`ProfileChanged`/`UserDeactivated`) — RETRY до 2.9.
 6. Успех → запись в `ProcessedEvents` + `OK`. RETRY не индексируется в ProcessedEvents (повторная доставка валидна).
+
+### Цитаты через границу ноды
+
+`NewMessagePayload` дополнен `reply_to_federated_message_id` (7) и `repeated FederatedForward` (8).
+
+- **Ответ едет uuid, а не локальным id**: у копии сообщения на каждой ноде свой `Messages.Id`.
+  На приёме uuid резолвится через `MessagesStorage.GetByFederatedIdAsync`.
+- **Оригинал ещё не импортирован → сохраняем сообщение БЕЗ цитаты, не RETRY.** Дыру дотянет
+  catch-up (2.6); цитата не должна задерживать доставку самого сообщения.
+- **Пересылка едет снапшотом целиком**: оригинал может лежать в чате, которого у ноды-получателя
+  нет вовсе. `original_message_id` намеренно не передаётся — он локален для origin.
+- Снапшот с чужой ноды проверяет `FederatedForwardImporter` (≤20 пересылок, author_name ≤255,
+  text ≤4096, ≤10 вложений на пересылку) → `FederatedForwardInvalidException`, **permanent**
+  (REJECTED), по образцу `FederatedAttachmentImporter`.
 
 ### EnqueueOutbound — internal API
 

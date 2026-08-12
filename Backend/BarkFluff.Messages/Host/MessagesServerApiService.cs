@@ -14,6 +14,7 @@ using BarkFluff.Messages.Features.ImportFederatedChat;
 using BarkFluff.Messages.Features.ImportFederatedMessage;
 using BarkFluff.Messages.Features.PostCallSystemMessage;
 using BarkFluff.Messages.Features.SendMessage;
+using BarkFluff.Messages.Mapping;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Files;
 using BarkFluff.Shared.Exceptions.Messages;
@@ -251,12 +252,7 @@ public class MessagesServerApiService : MessagesServerApi.MessagesServerApiBase
         {
             SenderId = request.SenderUserId,
             AllowChatCreation = request.AllowChatCreation,
-            Message = new OutgoingMessage
-            {
-                FileIds = request.Message.FilesIds?.Select(Guid.Parse).ToList(),
-                Text = request.Message.Text,
-                ForwardedMessageId = request.Message.ForwardedMessageId == 0 ? null : request.Message.ForwardedMessageId
-            },
+            Message = request.Message.ToCommandMessage(),
         };
 
         switch (request.SourceIdCase)

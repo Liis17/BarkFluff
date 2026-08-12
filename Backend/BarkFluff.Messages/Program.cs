@@ -85,6 +85,7 @@ public class Program
         builder.Services.AddTransient<EncryptedMessagesStorage>();
         builder.Services.AddTransient<FederatedReadStatesStorage>();
         builder.Services.AddTransient<ChatDraftsStorage>();
+        builder.Services.AddTransient<Mapping.ReplyPreviewResolver>();
         builder.Services.AddSingleton<SecretMessageBuffer>();
         builder.Services.AddSingleton<PrivateChatInviteStore>();
         builder.Services.AddTransient<MessageQueueSender>();

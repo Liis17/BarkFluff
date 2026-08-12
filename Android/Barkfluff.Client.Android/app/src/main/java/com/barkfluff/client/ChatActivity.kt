@@ -1930,7 +1930,7 @@ class ChatActivity : AppCompatActivity() {
                     chatId = chatId,
                     text = messageText,
                     fileIds = fileIds,
-                    forwardedMessageId = replyId
+                    replyToMessageId = replyId
                 )
 
                 if (result.isSuccess) {
@@ -2325,15 +2325,17 @@ class ChatActivity : AppCompatActivity() {
             when (actionId) {
                 R.id.actionReply -> setPendingReply(item)
                 R.id.actionForward -> {
-                    // Если сообщение само является пересланным — пересылаем оригинал, а не текущий snapshot
-                    val sourceId = item.attachments
-                        .firstOrNull { it.type == barkfluff.shared.Shared.MessageAttachmentType.FORWARDED_MESSAGE && it.hasForwardedMessage() }
-                        ?.forwardedMessage
-                        ?.originalMessageId
-                        ?.takeIf { it > 0 }
-                        ?: item.messageId
+                    // Если сообщение само является пересланным — пересылаем оригиналы, а не snapshot.
+                    // Пересланных может быть несколько, поэтому берём все, а не первый: иначе
+                    // пересылка пачки потеряла бы всё, кроме одного сообщения.
+                    val sourceIds = item.attachments
+                        .filter { it.type == barkfluff.shared.Shared.MessageAttachmentType.FORWARDED_MESSAGE && it.hasForwardedMessage() }
+                        .sortedBy { it.forwardedMessage.order }
+                        .map { it.forwardedMessage.originalMessageId }
+                        .filter { it > 0 }
+                        .ifEmpty { listOf(item.messageId) }
                     com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
-                        .newInstance(sourceId)
+                        .newInstance(sourceIds.toLongArray())
                         .show(supportFragmentManager, "forward_picker")
                 }
                 R.id.actionEdit -> setPendingEdit(item)
@@ -2955,7 +2957,8 @@ class ChatActivity : AppCompatActivity() {
                 ReadStatus.NONE
             },
             type = if (isSystem) MessageType.SYSTEM else MessageType.MESSAGE,
-            isEdited = msg.isEdited
+            isEdited = msg.isEdited,
+            replyTo = if (msg.hasReplyTo()) msg.replyTo else null
         )
     }
 
