@@ -151,6 +151,20 @@ public class MessagesStorage
             .ToListAsync();
     }
 
+    // Отличается от GetMessagesByIds тем, что НЕ отбрасывает удалённые: цитата на удалённое
+    // сообщение должна отрисоваться как «сообщение удалено», а не исчезнуть без следа.
+    public async Task<List<Message>> GetMessagesByIdsIncludingDeletedAsync(List<long> messageIds)
+    {
+        if (messageIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Messages
+            .Where(m => messageIds.Contains(m.Id))
+            .ToListAsync();
+    }
+
     public async Task<Message?> GetMessageById(long id)
     {
         return await _context.Messages

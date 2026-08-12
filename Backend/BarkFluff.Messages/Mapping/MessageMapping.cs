@@ -38,7 +38,8 @@ public static class MessageMapping
         return grpc;
     }
 
-    public static Message ToGrpc(this Domain.Message message, Dictionary<string, UploadFileInfo> filesInfoMap, IReadOnlyList<Guid>? federatedReadBy = null)
+    public static Message ToGrpc(this Domain.Message message, Dictionary<string, UploadFileInfo> filesInfoMap,
+        IReadOnlyList<Guid>? federatedReadBy = null, IReadOnlyDictionary<long, ReplyInfo>? replyPreviews = null)
     {
         var grpc = new Message
         {
@@ -64,6 +65,14 @@ public static class MessageMapping
 
         if (federatedReadBy is { Count: > 0 })
             grpc.FederatedReadBy.Add(federatedReadBy.Select(u => u.ToString()));
+
+        // Превью не найдено (оригинал вычищен физически, дыра в федеративной истории) — отдаём
+        // сообщение без цитаты: потерять оформление лучше, чем потерять само сообщение.
+        if (message.ReplyToMessageId is { } replyToMessageId &&
+            replyPreviews?.TryGetValue(replyToMessageId, out var preview) == true)
+        {
+            grpc.ReplyTo = preview;
+        }
 
         return grpc;
     }

@@ -18,13 +18,15 @@ public class ListPinnedMessagesQueryHandler : IRequestHandler<ListPinnedMessages
     private readonly ChatsStorage _chatsStorage;
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
     private readonly UserContext _userContext;
+    private readonly ReplyPreviewResolver _replyPreviewResolver;
     private readonly ILogger<ListPinnedMessagesQueryHandler> _logger;
 
     public ListPinnedMessagesQueryHandler(PinnedMessagesStorage pinnedMessagesStorage,
         MessagesStorage messagesStorage, ChatsStorage chatsStorage,
         FilesServerApi.FilesServerApiClient filesServerApiClient, UserContext userContext,
-        ILogger<ListPinnedMessagesQueryHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, ILogger<ListPinnedMessagesQueryHandler> logger)
     {
+        _replyPreviewResolver = replyPreviewResolver;
         _pinnedMessagesStorage = pinnedMessagesStorage;
         _messagesStorage = messagesStorage;
         _chatsStorage = chatsStorage;
@@ -107,6 +109,8 @@ public class ListPinnedMessagesQueryHandler : IRequestHandler<ListPinnedMessages
             filesInfoMap = filesInfo.FilesInfos.ToDictionary(f => f.Id, f => f);
         }
 
+        var replyPreviews = await _replyPreviewResolver.ResolveAsync(messagesById.Values);
+
         foreach (var pin in pins)
         {
             if (!messagesById.TryGetValue(pin.MessageId, out var message))
@@ -119,7 +123,7 @@ public class ListPinnedMessagesQueryHandler : IRequestHandler<ListPinnedMessages
                 continue;
             }
 
-            response.Pinned.Add(pin.ToGrpc(message, filesInfoMap));
+            response.Pinned.Add(pin.ToGrpc(message, filesInfoMap, replyPreviews));
         }
 
         return response;

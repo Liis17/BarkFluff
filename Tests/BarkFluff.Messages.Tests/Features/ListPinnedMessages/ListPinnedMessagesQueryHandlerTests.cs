@@ -26,6 +26,7 @@ public class ListPinnedMessagesQueryHandlerTests
             _h.ChatsStorage,
             _filesClient.Object,
             _h.CreateUserContext(userId),
+            _h.CreateReplyPreviewResolver(),
             TestHelper.CreateLogger<ListPinnedMessagesQueryHandler>());
     }
 

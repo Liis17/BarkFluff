@@ -25,14 +25,16 @@ public class PinMessageCommandHandler : IRequestHandler<PinMessageCommand, PinMe
     private readonly UserContext _userContext;
     private readonly MessageQueueSender _messageQueueSender;
     private readonly MetricsCollector _metrics;
+    private readonly ReplyPreviewResolver _replyPreviewResolver;
     private readonly ILogger<PinMessageCommandHandler> _logger;
 
     public PinMessageCommandHandler(PinnedMessagesStorage pinnedMessagesStorage, MessagesStorage messagesStorage,
         ChatsStorage chatsStorage, FilesServerApi.FilesServerApiClient filesServerApiClient,
         UsersServerApi.UsersServerApiClient usersServerApiClient, UserContext userContext,
         MessageQueueSender messageQueueSender, MetricsCollector metrics,
-        ILogger<PinMessageCommandHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, ILogger<PinMessageCommandHandler> logger)
     {
+        _replyPreviewResolver = replyPreviewResolver;
         _pinnedMessagesStorage = pinnedMessagesStorage;
         _messagesStorage = messagesStorage;
         _chatsStorage = chatsStorage;
@@ -78,7 +80,8 @@ public class PinMessageCommandHandler : IRequestHandler<PinMessageCommand, PinMe
             );
 
             var filesInfoMapExisting = await LoadFilesInfoAsync(message);
-            return new PinMessageResponse { Pinned = existing.ToGrpc(message, filesInfoMapExisting) };
+            var replyPreviewsExisting = await _replyPreviewResolver.ResolveAsync([message]);
+            return new PinMessageResponse { Pinned = existing.ToGrpc(message, filesInfoMapExisting, replyPreviewsExisting) };
         }
 
         var totalPinned = await _pinnedMessagesStorage.CountByChatAsync(request.ChatId);
@@ -130,8 +133,9 @@ public class PinMessageCommandHandler : IRequestHandler<PinMessageCommand, PinMe
         _metrics.Increment("messages_pinned");
 
         var filesInfoMap = await LoadFilesInfoAsync(message);
+        var replyPreviews = await _replyPreviewResolver.ResolveAsync([message]);
 
-        return new PinMessageResponse { Pinned = pin.ToGrpc(message, filesInfoMap) };
+        return new PinMessageResponse { Pinned = pin.ToGrpc(message, filesInfoMap, replyPreviews) };
     }
 
     private async Task<Dictionary<string, UploadFileInfo>?> LoadFilesInfoAsync(Domain.Message message)

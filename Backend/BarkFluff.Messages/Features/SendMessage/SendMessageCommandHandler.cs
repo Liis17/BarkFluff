@@ -35,6 +35,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     private readonly MessageQueueSender _messageQueueSender;
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
+    private readonly ReplyPreviewResolver _replyPreviewResolver;
     private readonly ILogger<SendMessageCommandHandler> _logger;
 
     private readonly Dictionary<UploadFileType, Domain.MessageAttachmentType> _attachmentMap =
@@ -52,8 +53,9 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,
         UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage,
         MessageQueueSender messageQueueSender, IConfiguration configuration, MetricsCollector metrics,
-        ILogger<SendMessageCommandHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, ILogger<SendMessageCommandHandler> logger)
     {
+        _replyPreviewResolver = replyPreviewResolver;
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
         _userContext = userContext;
@@ -574,7 +576,10 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             senderId
         );
 
-        return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap) };
+        // Отправитель должен увидеть свою цитату сразу, не дожидаясь перезагрузки истории.
+        var replyPreviews = await _replyPreviewResolver.ResolveAsync([message]);
+
+        return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap, replyPreviews: replyPreviews) };
     }
 
     /// <summary>
