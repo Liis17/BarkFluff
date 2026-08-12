@@ -8,25 +8,25 @@ namespace BarkFluff.Client.Core.Markdown;
 public sealed record MarkdownDocument(IReadOnlyList<MarkdownBlock> Blocks)
 {
     /// <summary>
-    /// Сообщение без разметки: одна строка обычного текста без стилей и ссылок.
-    /// Такие сообщения составляют основную массу ленты, и рендер отдаёт их простым
-    /// <c>TextBlock</c> вместо дерева блоков.
+    /// Сообщение без разметки: обычные строки без стилей и ссылок. Такие сообщения
+    /// составляют основную массу ленты, и рендер отдаёт их одним <c>TextBlock</c>
+    /// вместо дерева блоков.
     /// </summary>
     public bool TryGetPlainText(out string text)
     {
         text = string.Empty;
-        if (Blocks is not [MarkdownTextGroup { Alignment: MarkdownAlignment.Start } group]
-            || group.Lines is not [{ Kind: MarkdownLineKind.Paragraph } line])
+        if (Blocks is not [MarkdownTextGroup { Alignment: MarkdownAlignment.Start } group])
         {
             return false;
         }
 
-        if (line.Inlines.Any(inline => inline.Style is not MarkdownInlineStyle.None || inline.Link is not null))
+        if (group.Lines.Any(line => line.Kind is not MarkdownLineKind.Paragraph
+            || line.Inlines.Any(inline => inline.Style is not MarkdownInlineStyle.None || inline.Link is not null)))
         {
             return false;
         }
 
-        text = string.Concat(line.Inlines.Select(inline => inline.Text));
+        text = string.Join('\n', group.Lines.Select(line => string.Concat(line.Inlines.Select(inline => inline.Text))));
         return true;
     }
 }
