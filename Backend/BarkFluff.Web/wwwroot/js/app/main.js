@@ -65,7 +65,6 @@
     var pendingEdit = null; // { messageId, originalText }
     var contextMenuTarget = null;
     var forwardSelection = new Set();
-    var knownMessageIds = new Set();
     var cmenuShownAt = 0;
     var mqlMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)');
 
@@ -402,7 +401,6 @@
         currentChatPeerIsBot = false;
         messages = [];
         noMoreOlder = false;
-        knownMessageIds = new Set();
         clearPendingReply(false);
         clearPendingEdit();
         closeContextMenu();
@@ -561,7 +559,6 @@
 
     function renderMessages() {
         messagesInner.innerHTML = '';
-        knownMessageIds = new Set(messages.map(function (m) { return m.id; }));
         var allFileIds = [];
         messages.forEach(function (msg) {
             ((msg.content && msg.content.attachments) || []).forEach(function (a) {
@@ -630,7 +627,6 @@
         var groupedWithPrevious = canGroupMessages(previous, msg);
         var showSenderGutter = !!(currentChatInfo && currentChatInfo.isGroupChat) && msg.senderId !== myUserId;
         return {
-            knownMessageIds: knownMessageIds,
             onReplyClick: scrollToMessage,
             groupedWithPrevious: groupedWithPrevious,
             showSenderGutter: showSenderGutter,
@@ -639,7 +635,6 @@
     }
 
     function appendMessageToView(msg) {
-        if (msg && msg.id) knownMessageIds.add(msg.id);
         var previous = messages.length > 1 ? messages[messages.length - 2] : null;
         var refreshPrevious = previous && currentChatInfo && currentChatInfo.isGroupChat &&
             previous.senderId !== myUserId && canGroupMessages(previous, msg)
@@ -691,7 +686,6 @@
 
         var idx = messages.findIndex(function (m) { return String(m.id) === String(entry.localId); });
         if (idx >= 0) messages.splice(idx, 1);
-        knownMessageIds.delete(entry.localId);
 
         var el = findMessageGroup(entry.localId);
         if (el) el.remove();
@@ -773,8 +767,6 @@
             messages.push(msg);
         }
 
-        knownMessageIds.delete(entry.localId);
-        if (msg.id) knownMessageIds.add(msg.id);
         var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
         if (localIdx >= 0 && serverIdx < 0) {
             replacePendingElement(entry, msg);
@@ -866,7 +858,7 @@
         var replyId = pendingReply ? pendingReply.messageId : 0;
         var draftSnapshot = BF.drafts ? BF.drafts.snapshot(sentChatId) : null;
 
-        BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null, forwardedMessageId: replyId }).then(function (resp) {
+        BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null, replyToMessageId: replyId }).then(function (resp) {
             messageInput.value = '';
             messageInput.style.height = 'auto';
             sendBtn.disabled = false;
@@ -976,7 +968,7 @@
                 chatId: sentChatId,
                 text: text || null,
                 fileIds: fileIds,
-                forwardedMessageId: replyId
+                replyToMessageId: replyId
             }).then(function (resp) {
                 messageInput.value = '';
                 messageInput.style.height = 'auto';
@@ -2539,17 +2531,12 @@
     function applyMessageDelete(chatId, messageId) {
         if (messageId == null) return;
         var msgIdNum = Number(messageId);
-        var msgIdStr = String(messageId);
         console.log('[main] applyMessageDelete', { chatId: chatId, messageId: messageId, currentChatId: currentChatId });
 
         // messageId глобально уникален: ищем и удаляем во всех текущих структурах,
         // не привязываясь к chatId-сравнению (на случай расхождения форматов id).
         var idx = messages.findIndex(function (m) { return Number(m.id) === msgIdNum; });
         if (idx >= 0) messages.splice(idx, 1);
-        if (knownMessageIds && typeof knownMessageIds.delete === 'function') {
-            knownMessageIds.delete(msgIdNum);
-            knownMessageIds.delete(msgIdStr);
-        }
         if (idx >= 0) renderMessages();
 
         // Обновляем lastMessage чат-листа для всех чатов, где это сообщение последнее.
@@ -2687,20 +2674,28 @@
         if (forwardSendBtn) forwardSendBtn.disabled = n === 0;
     }
 
-    function resolveForwardSourceId(msg, fallbackId) {
-        if (!msg || !msg.content || !msg.content.attachments) return fallbackId;
+    // Пересылка пересланного отправляет оригиналы, а не снапшот. Оригиналов может быть
+    // несколько, поэтому возвращаем список: иначе пересылка пачки потеряла бы всё, кроме первого.
+    function resolveForwardSourceIds(msg, fallbackId) {
+        if (!msg || !msg.content || !msg.content.attachments) return [fallbackId];
+        var ids = [];
+        var forwards = [];
         for (var i = 0; i < msg.content.attachments.length; i++) {
             var a = msg.content.attachments[i];
             var t = a.type;
-            if ((t === 'FORWARDED_MESSAGE' || t === 8 || t === '8') && a.forwardedMessage && a.forwardedMessage.originalMessageId) {
-                return a.forwardedMessage.originalMessageId;
+            if ((t === 'FORWARDED_MESSAGE' || t === 8 || t === '8') && a.forwardedMessage) {
+                forwards.push(a.forwardedMessage);
             }
         }
-        return fallbackId;
+        forwards.sort(function (x, y) { return (x.order || 0) - (y.order || 0); });
+        for (var j = 0; j < forwards.length; j++) {
+            if (forwards[j].originalMessageId) ids.push(forwards[j].originalMessageId);
+        }
+        return ids.length > 0 ? ids : [fallbackId];
     }
 
-    function openForwardModal(originalMsgId) {
-        if (!forwardOverlay || !originalMsgId) return;
+    function openForwardModal(sourceMessageIds) {
+        if (!forwardOverlay || !sourceMessageIds || sourceMessageIds.length === 0) return;
         forwardSelection = new Set();
         if (forwardCommentEl) forwardCommentEl.value = '';
         forwardChatListEl.innerHTML = '';
@@ -2729,7 +2724,7 @@
         updateForwardCounter();
 
         forwardOverlay.classList.add('visible');
-        forwardSendBtn.onclick = function () { forwardSubmit(originalMsgId); };
+        forwardSendBtn.onclick = function () { forwardSubmit(sourceMessageIds); };
     }
 
     function closeForwardModal() {
@@ -2739,8 +2734,8 @@
         if (forwardSendBtn) forwardSendBtn.onclick = null;
     }
 
-    function forwardSubmit(originalMsgId) {
-        if (forwardSelection.size === 0 || !originalMsgId) return;
+    function forwardSubmit(sourceMessageIds) {
+        if (forwardSelection.size === 0 || !sourceMessageIds || sourceMessageIds.length === 0) return;
         var comment = forwardCommentEl ? forwardCommentEl.value.trim() : '';
         var ids = Array.from(forwardSelection);
         forwardSendBtn.disabled = true;
@@ -2752,7 +2747,7 @@
                 return BF.api.sendMessage({
                     chatId: chatId,
                     text: comment || null,
-                    forwardedMessageId: originalMsgId
+                    forwardedMessageIds: sourceMessageIds
                 }).catch(function () { });
             });
         }, Promise.resolve());
@@ -2846,7 +2841,7 @@
             if (act === 'reply') {
                 if (msg) setPendingReply(msg);
             } else if (act === 'forward') {
-                openForwardModal(resolveForwardSourceId(msg, msgId));
+                openForwardModal(resolveForwardSourceIds(msg, msgId));
             } else if (act === 'copy-text') {
                 var t = msg && msg.content && msg.content.text;
                 if (t) navigator.clipboard.writeText(t).catch(function () {});
@@ -3250,7 +3245,6 @@
         getMessages: function () { return messages; },
         setMessages: function (value) { messages = value; },
         setNoMoreOlder: function (value) { noMoreOlder = value; },
-        resetKnownMessageIds: function () { knownMessageIds = new Set(); },
         stopTypingSend: stopTypingSend,
         updateOpenChatUrl: updateOpenChatUrl,
         clearPendingReply: clearPendingReply,
