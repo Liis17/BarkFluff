@@ -51,6 +51,17 @@ abstract class CopyLegalDocsTask : DefaultTask() {
     }
 }
 
+/**
+ * CA сервера обновлений (storage.barkfluff.com) — уезжает в APK строкой BuildConfig и
+ * разворачивается в сертификат в UpdateServerTls. Источник — переменная окружения
+ * STORAGE_CA_PEM_B64 (в CI это секрет CLOUDFLARE_ORIGIN_CA_BUNDLE_B64, тот же, которым воркфлоу
+ * ходит на storage через curl --cacert). Без переменной строка пустая: локальные сборки
+ * обновления не проверяют.
+ * Пробелы и переносы строк вырезаются, чтобы значение безопасно вставлялось в строковый литерал.
+ */
+val storageCaPemB64: String = (System.getenv("STORAGE_CA_PEM_B64") ?: "")
+    .filterNot { it.isWhitespace() }
+
 val legalSourceDir = rootProject.layout.projectDirectory.dir("../Backend/Barkfluff.WebServer/html/legal")
 
 val copyLegalDocs = tasks.register<CopyLegalDocsTask>("copyLegalDocs") {
@@ -74,6 +85,8 @@ android {
         versionName = "0.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "STORAGE_CA_PEM_B64", "\"$storageCaPemB64\"")
 
         ndk {
             // Только arm64-v8a. minSdk = 31 (Android 12, 2021+) — все такие устройства уже 64-bit ARM.
@@ -118,6 +131,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     packaging {
         resources {
