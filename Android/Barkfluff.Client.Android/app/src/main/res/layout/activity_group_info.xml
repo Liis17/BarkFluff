@@ -136,7 +136,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="4dp"
-            android:text="Фон чата"
+            android:text="@string/profile_chat_background"
             app:icon="@drawable/ic_photo_library" />
 
         <!-- Инфо-карта: ID чата -->

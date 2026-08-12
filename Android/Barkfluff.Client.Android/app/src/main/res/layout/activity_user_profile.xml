@@ -269,7 +269,7 @@
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/bg_action_square"
-                android:contentDescription="Фон чата">
+                android:contentDescription="@string/profile_chat_background">
 
                 <ImageView
                     android:layout_width="22dp"
