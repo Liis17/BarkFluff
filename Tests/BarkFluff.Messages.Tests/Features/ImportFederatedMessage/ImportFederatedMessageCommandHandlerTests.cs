@@ -161,4 +161,69 @@ public class ImportFederatedMessageCommandHandlerTests
 
         await act.Should().ThrowAsync<FederatedAttachmentInvalidException>();
     }
+
+    [Fact]
+    public async Task Handle_ReplyToImportedMessage_ResolvesUuidToLocalId()
+    {
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+        var handler = CreateHandler();
+
+        var originalFederatedId = Guid.NewGuid();
+        var original = await handler.Handle(new ImportFederatedMessageCommand(
+            BuildRequest(chat.Id, originalFederatedId, remoteUuid, "original")), CancellationToken.None);
+
+        var replyRequest = BuildRequest(chat.Id, Guid.NewGuid(), remoteUuid, "answer");
+        replyRequest.ReplyToFederatedMessageId = originalFederatedId.ToString();
+
+        var reply = await handler.Handle(
+            new ImportFederatedMessageCommand(replyRequest), CancellationToken.None);
+
+        var stored = await _h.DbContext.Messages.FirstAsync(m => m.Id == reply.MessageId);
+        stored.ReplyToMessageId.Should().Be(original.MessageId);
+    }
+
+    [Fact]
+    public async Task Handle_ReplyToNotYetImportedMessage_StoresWithoutQuote()
+    {
+        // Дыра в истории — забота catch-up. Цитата не должна задерживать доставку самого
+        // сообщения бесконечным RETRY.
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+
+        var request = BuildRequest(chat.Id, Guid.NewGuid(), remoteUuid, "answer");
+        request.ReplyToFederatedMessageId = Guid.NewGuid().ToString();
+
+        var result = await CreateHandler().Handle(
+            new ImportFederatedMessageCommand(request), CancellationToken.None);
+
+        var stored = await _h.DbContext.Messages.FirstAsync(m => m.Id == result.MessageId);
+        stored.ReplyToMessageId.Should().BeNull();
+        stored.Content!.Text.Should().Be("answer");
+    }
+
+    [Fact]
+    public async Task Handle_ForwardSnapshot_IsStoredAsForwardedAttachment()
+    {
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+
+        var request = BuildRequest(chat.Id, Guid.NewGuid(), remoteUuid, string.Empty);
+        request.Forwards.Add(new FederatedForwardFlat
+        {
+            AuthorName = "Remote Author",
+            Text = "forwarded body",
+            Order = 0,
+        });
+
+        var result = await CreateHandler().Handle(
+            new ImportFederatedMessageCommand(request), CancellationToken.None);
+
+        var stored = await _h.DbContext.Messages
+            .Include(m => m.Content!.Attachments)
+            .FirstAsync(m => m.Id == result.MessageId);
+
+        stored.Content!.Attachments.Should().ContainSingle(a =>
+            a.Type == MessageAttachmentType.ForwardedMessage && a.ForwardedText == "forwarded body");
+    }
 }
