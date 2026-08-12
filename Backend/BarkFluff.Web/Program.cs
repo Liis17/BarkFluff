@@ -271,7 +271,21 @@ app.Use(async (ctx, next) =>
     await originalResponseBody.FlushAsync();
 });
 
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        var path = context.Context.Request.Path.Value ?? string.Empty;
+        if (path.StartsWith("/js/app/app-", StringComparison.Ordinal) && path.EndsWith(".js", StringComparison.Ordinal))
+        {
+            context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        }
+        else if (path == "/js/app/app-manifest.json")
+        {
+            context.Context.Response.Headers.CacheControl = "no-store";
+        }
+    }
+});
 
 app.MapHealthChecks("/health");
 app.MapPingEndpoint();

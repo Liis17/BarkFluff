@@ -1,6 +1,6 @@
 # Web
 
-Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** (без фреймворка и бандлера приложения), раздаётся хостом [[Backend/BarkFluff.Web]].
+Веб-клиент мессенджера BarkFluff — **vanilla-JS SPA** без фреймворка, раздаётся хостом [[Backend/BarkFluff.Web]]. Исходные IIFE-модули мессенджера собираются esbuild в один fingerprinted asset.
 
 Расположение: `Backend/BarkFluff.Web/wwwroot/` (`index.html` — авторизация и регистрация, `messenger.html` — мессенджер, модули `js/app/*.js`).
 
@@ -12,10 +12,10 @@
 |------------|--------|-----------|
 | grpc-web | 1.5.0 | gRPC-Web клиенты (`protoc-gen-grpc-web`, callback-style) |
 | google-protobuf | 3.21.2 | runtime сообщений |
-| esbuild | 0.24.0 | сборка proto-бандла и LiveKit-бандла в IIFE-глобал |
+| esbuild | 0.24.0 | сборка proto-, LiveKit- и app-бандлов |
 | livekit-client | 2.19.2 | WebRTC SDK для звонков ([[Backend/Calls]]) |
 
-Приложение — обычные `<script>`-модули, каждый оборачивает себя в IIFE и вешает API на глобал `window.BF.*`.
+Исходные модули `js/app/*.js` оборачивают API в IIFE на `window.BF.*`. `messenger.html` оставляет отдельно ранний `i18n.js`, runtime-конфигурацию и vendor-бандлы, а `app-loader.js` читает `app-manifest.json` и подгружает один `app-<hash>.js` в заданной `scripts/app-bundle-entry.js` последовательности.
 
 ## Сборка
 
@@ -26,9 +26,11 @@ pwsh scripts/generate-proto.ps1      # Windows
 bash scripts/generate-proto.sh       # Linux/macOS (нужен protoc-gen-grpc-web в PATH)
 # LiveKit JS SDK (window.LivekitClient)
 pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
+# Messenger app bundle (wwwroot/js/app/app-<hash>.js + manifest)
+npm --prefix scripts run build:app # вручную — только если нужен bundle без dotnet build/publish
 ```
 
-Бандлы коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. В Docker-сборке proto-бандл пересобирается заново из `scripts/proto-bundle-index.js` и **перезаписывает** закоммиченный — поэтому список proto держим синхронным в трёх местах: `generate-proto.*`, `proto-bundle-index.js` и `protoc`-списке в `Dockerfile.slim`.
+Бандлы proto и vendor коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. App-бандл и manifest генерируются и игнорируются Git; `BuildMessengerApp` в `.csproj` пересобирает их перед обычными `dotnet build`/`dotnet publish` (и при необходимости сначала устанавливает инструменты из `scripts/package.json`), Docker — из `scripts/app-bundle-entry.js`. В production `app-<hash>.js` получает `Cache-Control: public, max-age=31536000, immutable`, manifest — `no-store`. CI устанавливает Node-зависимости и запускает ESLint и проверку Prettier для новых app- и build-файлов.
 
 ## Архитектура
 
@@ -39,7 +41,7 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 файлов идут **напрямую в выбранную ноду**, cross-origin. Нода при этом остаётся
 самодостаточной: её `BarkFluff.Web` раздаёт ту же статику и фиксирует себя как ноду.
 
-- `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Подключается **до**
+- `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Импортируется entry-point'ом **до**
   `device.js`/`clients.js`: клиенты gRPC-Web создаются синхронно при загрузке скрипта и
   захватывают origin, поэтому адрес обязан резолвиться из localStorage, без сети.
   - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`.
@@ -99,7 +101,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
 - Видеосообщение без текстовой подписи выводится без полей облачка: время и статус накладываются на превью. При подписи между превью и текстом остаётся только нижний отступ.
 - **Optimistic upload.** При отправке картинок и файлов `main.js` сразу добавляет локальное исходящее сообщение со статусом часов. Картинки используют локальные `ObjectURL`, сохраняют финальную раскладку сетки, размываются и показывают круговой прогресс для каждого файла; документы показывают линейный прогресс под именем. `files.js/uploadFile` использует `XMLHttpRequest.upload.progress`, поэтому UI отражает реально переданные браузером байты. После `SendMessage` или собственного realtime-эха локальный bubble заменяется серверным: корреляция идёт по уже зарезервированному набору `fileId`, что поддерживает оба порядка прихода и не создаёт дубликат. Активные pending-сообщения хранятся по чатам и возвращаются в список после переключения между чатами или полного realtime-resync. Набор вложений отправляется целиком: при сбое любого upload сообщение снимается и показывается ошибка, а не отправляется неполная версия. `ObjectURL` освобождаются после замены или ошибки; галочки появляются только у серверного сообщения.
-- ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `main.js` при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
+- ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `js/app/media-viewer.js` (`BF.mediaViewer`) при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
 - `js/app/imageeditor.js` (`BF.imageEditor`) — редактор изображения перед отправкой (crop/rotate/flip/кисть/пикселизация/ластик). Инициализируется в `main.js` (`BF.imageEditor.init()`), открывается из `attach.js` (`BF.imageEditor.open(...)`).
 
 ### Markdown в облачках
@@ -108,7 +110,7 @@ origin, сопоставить ключ нечем — вход потребуе
 
 - **Набор:** `**жирный**`, `*` / `_курсив_`, `~~зачёркнутый~~`, `` `код` ``, ` ```блоки``` `, `[текст](url)`, списки (`- ` / `* ` / `1. `), цитаты (`> `), заголовки (`#`..`######`), автоссылки на голый `http(s)://…`. HTML allowlist для README-фрагментов: `p`/`h1…h6` с `align=left|center|right`, `strong`, `sub`, `a[href]`, `img[src,alt,width,height]`.
 - **Безопасность (XSS):** текст экранируется ПЕРВЫМ (`escapeHtml`), затем добавляются только свои теги (сырых `<>&` не остаётся); HTML-теги пересобираются по allowlist без пользовательских атрибутов; `href` принимает только `http`/`https`/`mailto`, `src` — только HTTP(S). Относительные/fragment URL не имеют безопасной базы внутри сообщения: ссылка становится обычным текстом, а картинка показывает `alt`; `javascript:`/`data:` не становятся активными URL; у `<a>` — `target=_blank rel="noopener noreferrer"`. Разбор сегментный: защищённые куски (код/ссылки) не проходят emphasis.
-- CSS `.md` (`strong/em/del/sub/code/pre/ul/ol/blockquote/h1..h6/img`) — во встроенном `<style>` `messenger.html` рядом с `.msg-text`; для `.md`-контента `white-space: normal` (разметку держат блоки + `<br>`), внутри `<pre>` — `pre-wrap`.
+- CSS `.md` (`strong/em/del/sub/code/pre/ul/ol/blockquote/h1..h6/img`) — в `wwwroot/css/messenger.css` рядом с `.msg-text`; для `.md`-контента `white-space: normal` (разметку держат блоки + `<br>`), внутри `<pre>` — `pre-wrap`.
 - Композер/редактирование не меняются — в `messageInput` попадает сырой markdown (`setPendingEdit`).
 - Приватные E2E-чаты получают markdown автоматически (расшифрованные сообщения рендерятся тем же `buildMessageElement`).
 
@@ -123,7 +125,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - `js/app/privatechat.js` (`BF.privateChat`) — deriveKey (Argon2id через **hash-wasm**, `js/vendor/hash-wasm.umd.min.js`, глобал `hashwasm`), computeVerifier/validateVerifier + encryptText/decryptMessage (WebCrypto AES-GCM). Ключи (не passphrase): in-memory `Map` + localStorage `bf_private_chat_keys` (base64, если отмечен чекбокс «запомнить»).
 - `js/app/api.js` — `mapChat` расширен (`chatType/kdfSalt/passphraseVerifier/lastActivityAt/privateInviteState/privateInviterUserId`), `mapEncryptedMessage`, методы `acceptPrivateChat/rejectPrivateChat/listPrivateMessages/sendPrivateMessage/markPrivateMessagesAsRead`.
 - `js/app/realtime.js` — стрим `SubscribePrivateMessages` → событие `private_message` (тот же паттерн backoff/watchdog/age-timer/resync).
-- `js/app/main.js`, секция `PRIVATE CHATS`: `openPrivateChat` (обходит `getChatInfo`/`listMessages`, данные чата из ListChats); карточки состояний (`showPrivateCard`) — инвайт «Принять/Отклонить» (PENDING у приглашённого), «Ожидание собеседника» (PENDING у инициатора), «Чат заблокирован» (ACCEPTED без ключа); passphrase-модал `#privatePassOverlay` с проверкой verifier'а до `AcceptPrivateChat`; расшифрованные сообщения маппятся в обычный формат и рендерятся `BF.messages.buildMessageElement`.
+- `js/app/private-chat-ui.js` (`BF.privateChatUI`): `open` (обходит `getChatInfo`/`listMessages`, данные чата из ListChats); карточки состояний (`showCard`) — инвайт «Принять/Отклонить» (PENDING у приглашённого), «Ожидание собеседника» (PENDING у инициатора), «Чат заблокирован» (ACCEPTED без ключа); passphrase-модал `#privatePassOverlay` с проверкой verifier'а до `AcceptPrivateChat`; расшифрованные сообщения маппятся в обычный формат и рендерятся `BF.messages.buildMessageElement`.
 - Ограничения: только текст (attach/стикеры/контекст-меню/звонки скрыты классом `.private-chat` и guard'ами `currentChatType === 1`), read-чек всегда серый (у `EncryptedMessage` нет `read_by`), превью в списке — «Сообщения зашифрованы», сортировка по `last_activity_at`. Стримы invite/resolution/edit/delete приватных не подключены — инвайт появляется при перечитке списка чатов.
 
 ### Черновики обычных чатов
@@ -144,7 +146,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - CORS открытый (`AllowAnyOrigin` + `AllowAnyHeader`, без `AllowCredentials`): origin страницы заранее неизвестен, токен идёт заголовком `x-auth-token`, куки в API не участвуют.
 
 ### Темы
-- 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) во встроенном `<style>` `messenger.html`.
+- 3 темы (light/dark/midnight) на CSS-переменных (`--primary`, `--text-main`, `--dialog-bg`, ...) в `wwwroot/css/messenger.css`.
 - Цвет времени и статуса сообщения задаётся отдельными переменными темы (`--msg-meta-color` и `--msg-out-meta-color`), чтобы они сохраняли контраст на тёмных входящих и исходящих облачках.
 - Открытый чат использует общую контентную ширину `--chat-content-width` для колонки сообщений, шапки и composer: верхняя панель и нижний ввод оформлены как Material You-поверхности с большими скруглениями, blur/elevation и иконками действий из общего пакета.
 - Вкладка без открытого чата называется «Мессенджер». Для личного чата — «Чат • Имя Фамилия»; favicon заменяется на круглую, центрированно обрезанную аватарку собеседника.
@@ -181,7 +183,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - **`applyPlaceholder(el)`** — заменяет элемент на векторную заглушку (inline-SVG data-URI, нейтральный серый) + класс `.bf-load-failed`: img → SVG в `src`, video → SVG в `poster` + сброс `src`, audio → сброс `src`, a → удаление `href`.
 - **Состояние** в data-атрибутах: `data-bf-file-id`, `data-bf-prefer-preview`, `data-bf-refreshed`, `data-bf-refreshing`, `data-bf-failed`. Защита от гонок: пока рефреш в полёте (`data-bf-refreshing`), повторные ошибки не показывают плейсхолдер; при сбросе элемента (закрытие лайтбокса) `data-bf-file-id` снимается — случайные ошибки игнорируются.
 
-Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`) и постер профиля (`openProfile`). CSS `.bf-load-failed` — во встроенном `<style>` `messenger.html`.
+Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` в `media-viewer.js` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`) и постер профиля (`openProfile`). CSS `.bf-load-failed` — в `wwwroot/css/messenger.css`.
 
 > Аватары (`chat.picture`/`user.profilePicture`) приходят с сервера готовой ссылкой (не через `urlCache`) и этим механизмом не покрываются — их рефреш требует перезапроса чата/юзера.
 
@@ -223,7 +225,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - Init вызывается в `main.js` рядом с `BF.newchat.init`/`BF.realtime.startAll()`.
 
 ### Управление групповыми чатами (паритет с Android)
-Клик по шапке группового чата открывает инфо-панель `#groupOverlay` (`messenger.html`, переиспользует CSS `.profile-*`; логика в `main.js` — `openGroupInfo`). Возможности:
+Клик по шапке группового чата открывает инфо-панель `#groupOverlay` (`messenger.html`, переиспользует CSS `.profile-*`; логика в `js/app/group-info.js` (`BF.groupInfo.open`)). Возможности:
 - смена названия (карандаш → `BF.api.updateGroupChat(chatId, title)`) и аватара (`BF.files.uploadFile(file, 6 /*CHAT_PICTURE*/)` → `updateGroupChat(chatId, null, fileId)`);
 - список участников (`BF.api.listChatMembers`, аватары резолвятся через `getUser`), добавление через инлайн-поиск (`searchUsers` → `addUser`) и удаление (`kickUser`);
 - вкладки Медиа/Файлы (общая `renderChatMedia(type, container)`, бывшая `loadProfileMedia`).
@@ -246,7 +248,7 @@ origin, сопоставить ключ нечем — вход потребуе
 SW не научится получать его после выбора сервера — иначе токен уйдёт в один Firebase-проект,
 а слать пуш будет нода с другим.
 
-`Backend/BarkFluff.Web` устанавливается как PWA: `manifest.webmanifest`, иконки 192/512, `service-worker.js` и `offline.html` составляют только offline-оболочку. Service worker precache'ит HTML/локальные JS, CSS и иконки, для навигации использует network-first с fallback на offline-страницу. gRPC-Web, API, presigned URL, чаты, сообщения и вложения не кэшируются.
+`Backend/BarkFluff.Web` устанавливается как PWA: `manifest.webmanifest`, иконки 192/512, `service-worker.js` и `offline.html` составляют только offline-оболочку. Service worker precache'ит HTML/локальные JS, CSS, `app-loader.js`, manifest и текущий fingerprinted app-бандл; manifest загружается network-first и при отсутствии сети отдаётся из shell-кэша. Для навигации используется network-first с fallback на offline-страницу. gRPC-Web, API, presigned URL, чаты, сообщения и вложения не кэшируются.
 
 `BF.push` регистрирует worker после авторизации, но не запрашивает разрешение сам: пользователь включает уведомления отдельным переключателем в настройках. После явного согласия модуль получает FCM Web token с VAPID key и передаёт его в `UsersApi.SetFirebaseToken(..., WEB)`; при выключении или logout вызывает `ClearFirebaseToken` и удаляет локальный Firebase token. Если браузер запрещает уведомления либо не поддерживает API, UI показывает соответствующее состояние. Install CTA показывается только после `beforeinstallprompt` (Safari/iOS не обещает background-push в этой версии). Открытый чат сохраняется в `?chat=` URL: service worker не показывает web-push `new_message`, если этот чат видим в окне браузера; для других чатов уведомление остаётся.
 

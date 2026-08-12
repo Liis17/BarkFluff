@@ -29,6 +29,9 @@ RUN npm install --omit=dev --silent
 COPY Shared/BarkFluff.Proto ./proto/
 COPY Backend/BarkFluff.Web/scripts/proto-bundle-index.js ./gen-index.js
 COPY Backend/BarkFluff.Web/scripts/firebase-compat-entry.js ./firebase-compat-entry.js
+COPY Backend/BarkFluff.Web/scripts/app-bundle-entry.js ./scripts/app-bundle-entry.js
+COPY Backend/BarkFluff.Web/scripts/build-app.js ./scripts/build-app.js
+COPY Backend/BarkFluff.Web/wwwroot/js/app ./wwwroot/js/app
 
 RUN mkdir -p gen && cd proto && protoc \
     --proto_path=. \
@@ -63,13 +66,16 @@ RUN node_modules/.bin/esbuild firebase-compat-entry.js \
     --target=es2020 \
     --log-level=warning
 
+RUN node scripts/build-app.js bundle/app
+
 # Final stage: runtime image with pre-built .NET output from runner + JS bundle from proto-build
 # Web остаётся на Alpine: healthcheck требует wget (busybox), которого нет в chiseled
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
+COPY publish/ .
 COPY --from=proto-build /protobuild/bundle/barkfluff.bundle.js /app/wwwroot/js/proto/barkfluff.bundle.js
 COPY --from=proto-build /protobuild/bundle/firebase-messaging-compat.bundle.js /app/wwwroot/js/vendor/firebase-messaging-compat.bundle.js
-COPY publish/ .
+COPY --from=proto-build /protobuild/bundle/app/ /app/wwwroot/js/app/
 RUN mkdir -p /app/logs && chown $APP_UID /app/logs
 USER $APP_UID
 EXPOSE 7016

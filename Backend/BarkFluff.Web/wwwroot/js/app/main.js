@@ -87,12 +87,6 @@
     var sendBtn = $('#sendBtn');
     var attachBtn = $('#attachBtn');
     var fileInput = $('#fileInput');
-    var imageOverlay = $('#imageOverlay');
-    var overlayImage = $('#overlayImage');
-    var overlayVideo = $('#overlayVideo');
-    var overlayPrev = $('#overlayPrev');
-    var overlayNext = $('#overlayNext');
-
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
 
@@ -138,21 +132,12 @@
     var profileMediaContent = $('#profileMediaContent');
     var currentProfileUserId = null;
 
-    // Group info panel elements
-    var groupOverlay = $('#groupOverlay');
-    var groupClose = $('#groupClose');
-    var groupAvatar = $('#groupAvatar');
-    var groupAvatarEdit = $('#groupAvatarEdit');
-    var groupAvatarInput = $('#groupAvatarInput');
-    var groupName = $('#groupName');
-    var groupNameEdit = $('#groupNameEdit');
-    var groupCount = $('#groupCount');
-    var groupMembersEl = $('#groupMembers');
-    var groupAddBtn = $('#groupAddBtn');
-    var groupAddBox = $('#groupAddBox');
-    var groupAddInput = $('#groupAddInput');
-    var groupAddResults = $('#groupAddResults');
     var groupMediaContent = $('#groupMediaContent');
+
+    BF.mediaViewer.init({
+        getCurrentChatId: function () { return currentChatId; }
+    });
+    var showMediaOverlay = BF.mediaViewer.show;
 
     function botBadgeMarkup() {
         var label = u.escapeHtml(BF.i18n.t('common.bot'));
@@ -1129,365 +1114,6 @@
         });
     }
 
-    // ========== PRIVATE CHATS (E2E через passphrase, зеркалит Android) ==========
-
-    var privatePassOverlay = $('#privatePassOverlay');
-    var privatePassTitle = $('#privatePassTitle');
-    var privatePassInput = $('#privatePassInput');
-    var privatePassRemember = $('#privatePassRemember');
-    var privatePassError = $('#privatePassError');
-    var privatePassCancel = $('#privatePassCancel');
-    var privatePassOk = $('#privatePassOk');
-    var privatePassActive = null; // { chat, onDone } — текущий запрос пароля
-
-    function closePassphraseModal() {
-        privatePassOverlay.classList.remove('visible');
-        privatePassActive = null;
-    }
-
-    // Запрос passphrase с локальной проверкой verifier'а (Argon2id → HMAC).
-    // onDone(key, remember) вызывается только после успешной проверки.
-    function promptPassphrase(chat, title, onDone) {
-        var ctx = { chat: chat, onDone: onDone };
-        privatePassActive = ctx;
-        privatePassTitle.textContent = title;
-        privatePassInput.value = '';
-        privatePassRemember.checked = true;
-        privatePassError.textContent = '';
-        privatePassOk.disabled = false;
-        privatePassOverlay.classList.add('visible');
-        setTimeout(function () { privatePassInput.focus(); }, 50);
-    }
-
-    function submitPassphrase() {
-        if (!privatePassActive) return;
-        var ctx = privatePassActive;
-        var pass = privatePassInput.value;
-        if (!pass) { privatePassError.textContent = BF.i18n.t('privatechat.error.emptyPassword'); return; }
-        privatePassOk.disabled = true;
-        privatePassError.textContent = BF.i18n.t('privatechat.checking');
-        BF.privateChat.deriveKey(pass, ctx.chat.kdfSalt).then(function (key) {
-            return BF.privateChat.validateVerifier(key, ctx.chat.passphraseVerifier).then(function (ok) {
-                if (privatePassActive !== ctx) return;
-                if (!ok) {
-                    privatePassOk.disabled = false;
-                    privatePassError.textContent = BF.i18n.t('privatechat.error.wrongPassword');
-                    return;
-                }
-                var remember = privatePassRemember.checked;
-                closePassphraseModal();
-                ctx.onDone(key, remember);
-            });
-        }).catch(function (e) {
-            console.error('[privateChat] deriveKey failed', e);
-            if (privatePassActive !== ctx) return;
-            privatePassOk.disabled = false;
-            privatePassError.textContent = BF.i18n.t('privatechat.error.checkFailed');
-        });
-    }
-
-    if (privatePassOk) privatePassOk.addEventListener('click', submitPassphrase);
-    if (privatePassCancel) privatePassCancel.addEventListener('click', closePassphraseModal);
-    if (privatePassInput) privatePassInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); submitPassphrase(); }
-    });
-
-    // Карточка-статус в области сообщений (инвайт/ожидание/разблокировка)
-    function showPrivateCard(title, text, buttons) {
-        messagesInner.innerHTML = '';
-        var card = document.createElement('div');
-        card.className = 'private-card';
-        var h = document.createElement('div');
-        h.className = 'private-card-title';
-        h.textContent = title;
-        card.appendChild(h);
-        if (text) {
-            var p = document.createElement('div');
-            p.className = 'private-card-text';
-            p.textContent = text;
-            card.appendChild(p);
-        }
-        if (buttons && buttons.length) {
-            var row = document.createElement('div');
-            row.className = 'private-card-actions';
-            buttons.forEach(function (b) {
-                var btn = document.createElement('button');
-                btn.className = 'private-card-btn' + (b.primary ? ' primary' : '');
-                btn.textContent = b.label;
-                btn.addEventListener('click', b.onClick);
-                row.appendChild(btn);
-            });
-            card.appendChild(row);
-        }
-        messagesInner.appendChild(card);
-    }
-
-    // EncryptedMessage (+расшифрованный текст) → объект сообщения для BF.messages
-    function privateToUiMessage(chatId, enc, text) {
-        return {
-            id: enc.id,
-            senderId: enc.senderId,
-            readBy: [],
-            sentAt: enc.sentAt,
-            type: 1,
-            isEdited: enc.isEdited,
-            editedAt: enc.editedAt,
-            content: {
-                text: (text !== null && text !== undefined) ? text : '\u{1F512} ' + BF.i18n.t('privatechat.decryptFailed'),
-                attachments: []
-            }
-        };
-    }
-
-    function decryptPrivateBatch(chatId, encMsgs) {
-        var alive = (encMsgs || []).filter(function (m) { return !m.isDeleted; });
-        return Promise.all(alive.map(function (m) {
-            return BF.privateChat.decryptMessage(chatId, m).then(function (t) {
-                return privateToUiMessage(chatId, m, t);
-            });
-        }));
-    }
-
-    function openPrivateChat(chat) {
-        stopTypingSend(true);
-        if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
-
-        currentChatId = chat.id;
-        updateOpenChatUrl(chat.id);
-        if (BF.personalization) BF.personalization.applyForChat(chat.id);
-        currentChatInfo = null;
-        currentChatType = 1;
-        currentChatPeerIsBot = false;
-        BF.realtime.unsubscribeTyping();
-        messages = [];
-        noMoreOlder = false;
-        knownMessageIds = new Set();
-        clearPendingReply();
-        clearPendingEdit();
-        closeContextMenu();
-        if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
-        chatEmpty.style.display = 'none';
-        chatHeader.classList.add('visible');
-        messagesArea.parentElement.classList.add('visible');
-        messagesArea.classList.add('visible');
-        messagesInner.innerHTML = '';
-        inputBar.classList.remove('visible');
-        inputBar.classList.add('private-chat');
-        loadingMessages.classList.remove('visible');
-        setChatCallButtonsVisible(false);
-        resetChatTabContext();
-
-        var privatePeer = (chat.members || []).find(function (member) { return member.userId !== myUserId; });
-        if (privatePeer) {
-            getUser(privatePeer.userId).then(function (peer) {
-                if (currentChatId !== chat.id || !peer) return;
-                setChatTabContext(chatTabTitle(peer), peer.profilePicturePreview || peer.profilePicture || chat.picture || null);
-            }).catch(function () {});
-        }
-
-        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || BF.i18n.t('newchat.mode.private'));
-        if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
-        else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
-        chatHeaderStatus.hidden = false;
-        chatHeaderStatus.classList.remove('online');
-        chatHeaderStatus.textContent = BF.i18n.t('newchat.mode.private');
-
-        if (chat.countUnread > 0) { chat.countUnread = 0; updateTitleBadge(); }
-        renderChatList();
-
-        if (chat.privateInviteState === 2) { // REJECTED
-            showPrivateCard(BF.i18n.t('privatechat.inviteRejected'), BF.i18n.t('privatechat.inviteRejected.text'));
-            return;
-        }
-        if (chat.privateInviteState === 0) { // PENDING
-            if (chat.privateInviterUserId === myUserId || !chat.privateInviterUserId) {
-                showPrivateCard(BF.i18n.t('privatechat.waitingPeer'), BF.i18n.t('privatechat.waitingPeer.text'));
-            } else {
-                showPrivateInviteCard(chat);
-            }
-            return;
-        }
-        // ACCEPTED
-        if (BF.privateChat.hasKey(chat.id)) {
-            loadPrivateMessages(chat);
-        } else {
-            showPrivateUnlockCard(chat);
-        }
-    }
-
-    function showPrivateInviteCard(chat) {
-        showPrivateCard(BF.i18n.t('privatechat.invite'),
-            BF.i18n.t('privatechat.invite.text'), [
-            { label: BF.i18n.t('call.reject'), onClick: function () { rejectPrivateInvite(chat); } },
-            { label: BF.i18n.t('call.accept'), primary: true, onClick: function () { acceptPrivateInvite(chat); } }
-        ]);
-    }
-
-    function showPrivateUnlockCard(chat) {
-        showPrivateCard(BF.i18n.t('privatechat.locked'),
-            BF.i18n.t('privatechat.locked.text'), [
-            { label: BF.i18n.t('privatechat.enterPassword'), primary: true, onClick: function () {
-                promptPassphrase(chat, BF.i18n.t('privatechat.password.title'), function (key, remember) {
-                    BF.privateChat.saveKey(chat.id, key, remember);
-                    if (currentChatId === chat.id) loadPrivateMessages(chat);
-                });
-            } }
-        ]);
-    }
-
-    function acceptPrivateInvite(chat) {
-        promptPassphrase(chat, BF.i18n.t('privatechat.password.title'), function (key, remember) {
-            BF.api.acceptPrivateChat(chat.id).then(function (resp) {
-                BF.privateChat.saveKey(chat.id, key, remember);
-                var idx = chats.findIndex(function (c) { return c.id === chat.id; });
-                var updated = (resp && resp.chat) ? resp.chat : chat;
-                updated.privateInviteState = 1;
-                updated.countUnread = 0;
-                if (idx >= 0) chats[idx] = updated;
-                renderChatList();
-                if (currentChatId === chat.id) loadPrivateMessages(updated);
-            }).catch(function (e) {
-                console.error('[privateChat] acceptPrivateChat failed', e);
-                if (currentChatId === chat.id) showPrivateInviteCard(chat);
-            });
-        });
-    }
-
-    function rejectPrivateInvite(chat) {
-        BF.api.rejectPrivateChat(chat.id).then(function () {
-            var idx = chats.findIndex(function (c) { return c.id === chat.id; });
-            if (idx >= 0) chats.splice(idx, 1);
-            renderChatList();
-            updateTitleBadge();
-            if (currentChatId === chat.id) closePrivateChatView();
-        }).catch(function (e) { console.error('[privateChat] rejectPrivateChat failed', e); });
-    }
-
-    function closePrivateChatView() {
-        currentChatId = null;
-        currentChatType = 0;
-        messages = [];
-        messagesInner.innerHTML = '';
-        chatHeader.classList.remove('visible');
-        messagesArea.classList.remove('visible');
-        messagesArea.parentElement.classList.remove('visible');
-        inputBar.classList.remove('visible');
-        chatEmpty.style.display = '';
-        resetChatTabContext();
-    }
-
-    function loadPrivateMessages(chat) {
-        var chatId = chat.id;
-        messagesInner.innerHTML = '';
-        loadingMessages.classList.add('visible');
-        return BF.api.listPrivateMessages(chatId, 0, 50, 0).then(function (data) {
-            if (chatId !== currentChatId) return;
-            return decryptPrivateBatch(chatId, data && data.messages).then(function (mapped) {
-                if (chatId !== currentChatId) return;
-                mapped.sort(function (a, b) { return a.id - b.id; });
-                messages = mapped;
-                inputBar.classList.add('visible');
-                renderMessages().then(scrollToBottom);
-                var last = mapped.length ? mapped[mapped.length - 1].id : 0;
-                if (last) BF.api.markPrivateMessagesAsRead(chatId, last).catch(function () {});
-            });
-        }).catch(function (e) {
-            console.error('[privateChat] listPrivateMessages failed', e);
-            return false;
-        }).finally(function () {
-            loadingMessages.classList.remove('visible');
-        });
-    }
-
-    // Catch-up открытого приватного чата (реконнект стрима / возврат на вкладку)
-    function reloadCurrentPrivateChat() {
-        if (currentChatType !== 1 || !currentChatId) return Promise.resolve(true);
-        var chat = chats.find(function (c) { return c.id === currentChatId; });
-        if (chat && chat.privateInviteState === 1 && BF.privateChat.hasKey(chat.id)) {
-            return loadPrivateMessages(chat).then(function (result) { return result !== false; });
-        }
-        return Promise.resolve(true);
-    }
-
-    function sendPrivateMessageFlow(text) {
-        var sentChatId = currentChatId;
-        sendBtn.disabled = true;
-        BF.privateChat.encryptText(sentChatId, text).then(function (encd) {
-            return BF.api.sendPrivateMessage(sentChatId, encd.ciphertext, encd.nonce, encd.associatedData);
-        }).then(function (resp) {
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-            sendBtn.disabled = false;
-            messageInput.focus();
-            if (resp && resp.message) {
-                var msg = privateToUiMessage(sentChatId, resp.message, text);
-                BF.sound.play('tick');
-                if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
-                    messages.push(msg);
-                    appendMessageToView(msg).then(scrollToBottom);
-                }
-                var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
-                if (chatIdx >= 0) {
-                    var chat = chats[chatIdx];
-                    chat.lastActivityAt = msg.sentAt || Date.now();
-                    chats.splice(chatIdx, 1);
-                    chats.unshift(chat);
-                    renderChatList();
-                }
-            }
-        }).catch(function (e) {
-            console.error('[privateChat] send failed', e);
-            sendBtn.disabled = false;
-        });
-    }
-
-    BF.realtime.on('private_message', function (data) {
-        handlePrivateMessage(data.chatId, data.message);
-    });
-
-    function handlePrivateMessage(chatId, enc) {
-        var chat = chats.find(function (c) { return c.id === chatId; });
-        if (chat) {
-            chat.lastActivityAt = enc.sentAt || Date.now();
-            if (chatId !== currentChatId && enc.senderId !== myUserId) {
-                chat.countUnread = (chat.countUnread || 0) + 1;
-            }
-            var idx = chats.indexOf(chat);
-            chats.splice(idx, 1);
-            chats.unshift(chat);
-            renderChatList();
-        } else {
-            // Неизвестный чат (например, свежий инвайт) — перечитываем список
-            loadChats(true);
-        }
-        updateTitleBadge();
-
-        if (enc.senderId !== myUserId) {
-            BF.sound.play('chime');
-            showNewMessageNotification(chat ? chat.title : BF.i18n.t('newchat.mode.private'),
-                { id: enc.id, chatId: chatId, content: { text: '\u{1F512} ' + BF.i18n.t('notification.newMessage') } });
-        }
-
-        if (chatId !== currentChatId) return;
-        if (enc.isDeleted) return;
-        if (!BF.privateChat.hasKey(chatId)) return; // чат ещё не разблокирован
-        if (messages.some(function (m) { return m.id === enc.id; })) return;
-        BF.privateChat.decryptMessage(chatId, enc).then(function (text) {
-            if (chatId !== currentChatId) return;
-            if (messages.some(function (m) { return m.id === enc.id; })) return;
-            var msg = privateToUiMessage(chatId, enc, text);
-            var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
-            messages.push(msg);
-            appendMessageToView(msg).then(function () {
-                if (isAtBottom) scrollToBottom();
-                else if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
-            });
-            if (enc.senderId !== myUserId) {
-                BF.api.markPrivateMessagesAsRead(chatId, enc.id).catch(function () {});
-            }
-        });
-    }
-
     // ========== MARK AS READ ==========
 
     function scheduleMarkRead() {
@@ -2164,209 +1790,6 @@
         }, 300);
     });
 
-    // ========== MEDIA OVERLAY ==========
-    var overlayFileToken = 0;
-    var overlayOpenFrame = null;
-    var overlayCloseTimer = null;
-
-    // Выставляет display + src для overlay-элементов; сбрасывает data-флаги resilient,
-    // чтобы при новом открытии bindResilientMedia обрабатывал ошибки с чистого старта.
-    function applyOverlaySrc(type, url) {
-        overlayImage.removeAttribute('data-bf-refreshed');
-        overlayImage.removeAttribute('data-bf-failed');
-        overlayVideo.removeAttribute('data-bf-refreshed');
-        overlayVideo.removeAttribute('data-bf-failed');
-        if (type === 'video') {
-            overlayImage.style.display = 'none';
-            overlayVideo.style.display = 'block';
-            overlayVideo.src = url || '';
-            if (url) overlayVideo.play();
-        } else {
-            overlayVideo.style.display = 'none';
-            overlayImage.style.display = 'block';
-            overlayImage.src = url || '';
-        }
-    }
-
-    function showMediaOverlay(type, url, fileId) {
-        if (overlayCloseTimer) {
-            clearTimeout(overlayCloseTimer);
-            overlayCloseTimer = null;
-        }
-        if (overlayOpenFrame) cancelAnimationFrame(overlayOpenFrame);
-        if (fileId) {
-            overlayImage.setAttribute('data-bf-file-id', fileId);
-            overlayVideo.setAttribute('data-bf-file-id', fileId);
-        } else {
-            overlayImage.removeAttribute('data-bf-file-id');
-            overlayVideo.removeAttribute('data-bf-file-id');
-        }
-        var token = ++overlayFileToken;
-        applyOverlaySrc(type, url);
-        overlayOpenFrame = requestAnimationFrame(function () {
-            overlayOpenFrame = null;
-            if (token === overlayFileToken) imageOverlay.classList.add('visible');
-        });
-        // Presigned-ссылки протухают при долгой сессии. При открытии полноразмерного
-        // просмотра перезапрашиваем свежий URL по fileId, чтобы избежать 404.
-        if (fileId) {
-            BF.files.refreshFileUrl(fileId).then(function (f) {
-                if (!f || token !== overlayFileToken) return;
-                var fresh = type === 'video' ? f.url : (f.url || f.previewUrl);
-                var cur = type === 'video' ? overlayVideo.src : overlayImage.src;
-                if (fresh && fresh !== cur) applyOverlaySrc(type, fresh);
-            });
-        }
-        viewerInit(fileId);
-    }
-
-    function cleanupMediaOverlay() {
-        overlayCloseTimer = null;
-        if (imageOverlay.classList.contains('visible')) return;
-        overlayImage.removeAttribute('data-bf-file-id');
-        overlayVideo.removeAttribute('data-bf-file-id');
-        overlayImage.removeAttribute('data-bf-refreshed');
-        overlayImage.removeAttribute('data-bf-failed');
-        overlayVideo.removeAttribute('data-bf-refreshed');
-        overlayVideo.removeAttribute('data-bf-failed');
-        overlayImage.src = '';
-        overlayVideo.pause();
-        overlayVideo.src = '';
-        viewerState.index = -1;
-        if (overlayPrev) overlayPrev.hidden = true;
-        if (overlayNext) overlayNext.hidden = true;
-    }
-
-    function closeMediaOverlay() {
-        overlayFileToken++;
-        if (overlayOpenFrame) {
-            cancelAnimationFrame(overlayOpenFrame);
-            overlayOpenFrame = null;
-        }
-        imageOverlay.classList.remove('visible');
-        if (overlayCloseTimer) clearTimeout(overlayCloseTimer);
-        overlayCloseTimer = setTimeout(cleanupMediaOverlay, 120);
-    }
-
-    // ----- Листаемый просмотрщик: картинки + видео всего чата через ListChatAttachments -----
-    var VIEWER_PAGE = 30;
-    var viewerState = { chatId: null, items: [], index: -1, offset: 0, exhausted: false, totalCount: 0, loading: null };
-
-    function viewerReset() {
-        viewerState = { chatId: null, items: [], index: -1, offset: 0, exhausted: false, totalCount: 0, loading: null };
-    }
-
-    function viewerItem(a, type) {
-        var att = a.attachment || {};
-        return { type: type, fileId: att.fileId, attachmentId: a.attachmentId, messageId: a.messageId, sentAt: a.sentAt };
-    }
-
-    // Догрузить следующую страницу медиа текущего чата (картинки type=1 + видео type=2).
-    function viewerLoadMore() {
-        if (viewerState.loading) return viewerState.loading;
-        if (viewerState.exhausted) return Promise.resolve();
-        var chatId = viewerState.chatId;
-        var off = viewerState.offset;
-        var p = Promise.all([
-            BF.api.listChatAttachments(chatId, 1, off, VIEWER_PAGE),
-            BF.api.listChatAttachments(chatId, 2, off, VIEWER_PAGE)
-        ]).then(function (res) {
-            if (viewerState.chatId !== chatId) return;
-            var imgs = res[0].attachments || [];
-            var vids = res[1].attachments || [];
-            var batch = imgs.map(function (a) { return viewerItem(a, 'image'); })
-                .concat(vids.map(function (a) { return viewerItem(a, 'video'); }));
-            var seen = {};
-            viewerState.items.forEach(function (it) { if (it.fileId) seen[it.fileId] = 1; });
-            batch.forEach(function (it) {
-                if (it.fileId && !seen[it.fileId]) { seen[it.fileId] = 1; viewerState.items.push(it); }
-            });
-            viewerState.items.sort(function (a, b) { return (b.sentAt || 0) - (a.sentAt || 0); });
-            viewerState.offset += VIEWER_PAGE;
-            viewerState.totalCount = (res[0].totalCount || 0) + (res[1].totalCount || 0);
-            if (imgs.length < VIEWER_PAGE && vids.length < VIEWER_PAGE) viewerState.exhausted = true;
-        }).catch(function () {}).then(function () { viewerState.loading = null; });
-        viewerState.loading = p;
-        return p;
-    }
-
-    function viewerUpdateNav() {
-        if (overlayPrev) overlayPrev.hidden = viewerState.index <= 0;
-        if (overlayNext) overlayNext.hidden = viewerState.index >= viewerState.items.length - 1 && viewerState.exhausted;
-    }
-
-    function viewerShow(index) {
-        if (index < 0 || index >= viewerState.items.length) return;
-        viewerState.index = index;
-        var it = viewerState.items[index];
-        var token = ++overlayFileToken;
-        if (it.fileId) {
-            overlayImage.setAttribute('data-bf-file-id', it.fileId);
-            overlayVideo.setAttribute('data-bf-file-id', it.fileId);
-        }
-        var fd = BF.files.getCachedFileUrl(it.fileId);
-        var url = fd && (it.type === 'video' ? fd.url : (fd.url || fd.previewUrl));
-        if (url) applyOverlaySrc(it.type, url);
-        BF.files.refreshFileUrl(it.fileId).then(function (f) {
-            if (!f || token !== overlayFileToken) return;
-            var fresh = it.type === 'video' ? f.url : (f.url || f.previewUrl);
-            if (fresh) applyOverlaySrc(it.type, fresh);
-        });
-        viewerUpdateNav();
-        if (index >= viewerState.items.length - 2 && !viewerState.exhausted) viewerLoadMore();
-    }
-
-    function viewerNav(dir) {
-        var ni = viewerState.index + dir;
-        if (ni < 0) return;
-        if (ni >= viewerState.items.length) {
-            if (viewerState.exhausted) return;
-            viewerLoadMore().then(function () {
-                if (viewerState.index + dir < viewerState.items.length) viewerShow(viewerState.index + dir);
-            });
-            return;
-        }
-        viewerShow(ni);
-    }
-
-    // Привязать открытый кадр к списку медиа чата: найти его индекс, при необходимости догружая страницы.
-    function viewerInit(fileId) {
-        var chatId = currentChatId;
-        if (!chatId || !fileId) { viewerState.index = -1; viewerUpdateNav(); return; }
-        if (viewerState.chatId !== chatId) {
-            viewerReset();
-            viewerState.chatId = chatId;
-        }
-        (function locate() {
-            for (var i = 0; i < viewerState.items.length; i++) {
-                if (viewerState.items[i].fileId === fileId) {
-                    viewerState.index = i;
-                    viewerUpdateNav();
-                    if (i >= viewerState.items.length - 2 && !viewerState.exhausted) viewerLoadMore();
-                    return;
-                }
-            }
-            if (viewerState.exhausted) { viewerState.index = -1; viewerUpdateNav(); return; }
-            viewerLoadMore().then(locate);
-        })();
-    }
-
-    BF.files.bindResilientMedia(overlayImage, null, false);
-    BF.files.bindResilientMedia(overlayVideo, null, false);
-
-    if (overlayPrev) overlayPrev.addEventListener('click', function (e) { e.stopPropagation(); viewerNav(-1); });
-    if (overlayNext) overlayNext.addEventListener('click', function (e) { e.stopPropagation(); viewerNav(1); });
-    document.addEventListener('keydown', function (e) {
-        if (!imageOverlay.classList.contains('visible')) return;
-        if (e.key === 'ArrowLeft') { e.preventDefault(); viewerNav(-1); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); viewerNav(1); }
-    });
-
-    imageOverlay.addEventListener('click', function (e) {
-        if (e.target === overlayVideo) return;
-        closeMediaOverlay();
-    });
-
     // ========== PROFILE OVERLAY ==========
 
     function openProfile(userId) {
@@ -2471,6 +1894,24 @@
 
     var profileMediaPanels = createMediaPanels(profileMediaContent);
     var groupMediaPanels = createMediaPanels(groupMediaContent);
+
+    BF.groupInfo.init({
+        getCurrentChatId: function () { return currentChatId; },
+        getCurrentChatInfo: function () { return currentChatInfo; },
+        getMyUserId: function () { return myUserId; },
+        getChats: function () { return chats; },
+        getUser: getUser,
+        renderChatList: renderChatList,
+        showToast: groupToast,
+        escapeHtml: u.escapeHtml,
+        chatHeaderName: chatHeaderName,
+        chatHeaderAvatar: chatHeaderAvatar,
+        groupMediaPanels: groupMediaPanels,
+        setMediaTabActive: setMediaTabActive,
+        renderChatMedia: renderChatMedia,
+        openChatBackgroundSelector: openChatBackgroundSelector
+    });
+    var openGroupInfo = BF.groupInfo.open;
 
     function setMediaTabActive(selector, panels, type) {
         document.querySelectorAll(selector).forEach(function (tab) { tab.classList.toggle('active', tab.dataset.type === type); });
@@ -2811,189 +2252,6 @@
             soonToastEl.textContent = BF.i18n.t('common.comingSoon');
         }, 1800);
     }
-
-    function renderGroupAvatar(picture, title) {
-        if (picture) {
-            var img = document.createElement('img');
-            img.src = picture; img.alt = '';
-            groupAvatar.replaceChildren(img);
-        } else {
-            groupAvatar.textContent = (title || '?')[0].toUpperCase();
-        }
-    }
-
-    function openGroupInfo() {
-        if (!currentChatInfo || !currentChatId) return;
-        groupName.textContent = currentChatInfo.title || BF.i18n.t('group.default');
-        var _groupChatId = $('#groupChatId');
-        if (_groupChatId) _groupChatId.textContent = currentChatId || '—';
-        renderGroupAvatar(currentChatInfo.picture, currentChatInfo.title);
-        groupAddBox.classList.add('hidden');
-        groupAddInput.value = '';
-        groupAddResults.innerHTML = '';
-        loadGroupMembers();
-        setMediaTabActive('#groupOverlay .group-media-tab', groupMediaPanels, 'media');
-        renderChatMedia('media', groupMediaPanels);
-        groupOverlay.classList.add('visible');
-    }
-
-    function loadGroupMembers() {
-        var chatId = currentChatId;
-        groupMembersEl.innerHTML = '';
-        BF.api.listChatMembers(chatId).then(function (data) {
-            if (chatId !== currentChatId) return;
-            var members = (data && data.members) || [];
-            groupCount.textContent = BF.i18n.tp('group.memberCount', members.length);
-            members.forEach(function (m) {
-                var fullName = ((m.firstName || '') + ' ' + (m.lastName || '')).trim() || ('ID ' + m.userId);
-
-                var row = document.createElement('div');
-                row.className = 'group-member';
-
-                var av = document.createElement('div');
-                av.className = 'group-member-avatar';
-                av.textContent = (fullName || '?')[0].toUpperCase();
-                row.appendChild(av);
-
-                var nm = document.createElement('div');
-                nm.className = 'group-member-name';
-                nm.textContent = m.userId === myUserId ? BF.i18n.t('group.member.you', { name: fullName }) : fullName;
-                row.appendChild(nm);
-
-                if (m.userId !== myUserId) {
-                    var rm = document.createElement('button');
-                    rm.className = 'group-member-remove';
-                    rm.innerHTML = '&times;';
-                    rm.title = BF.i18n.t('common.delete');
-                    rm.addEventListener('click', function () { confirmRemoveMember(m, fullName); });
-                    row.appendChild(rm);
-                }
-
-                groupMembersEl.appendChild(row);
-
-                getUser(m.userId).then(function (user) {
-                    if (!user) return;
-                    var pic = user.profilePicturePreview || user.profilePicture;
-                    if (pic) {
-                        var img = document.createElement('img');
-                        img.src = pic; img.alt = '';
-                        av.replaceChildren(img);
-                    }
-                }).catch(function () {});
-            });
-        }).catch(function () { groupToast(BF.i18n.t('group.error.loadMembers')); });
-    }
-
-    function confirmRemoveMember(member, name) {
-        if (!window.confirm(BF.i18n.t('group.removeMember.confirm', { name: name }))) return;
-        BF.api.kickUser(currentChatId, member.userId)
-            .then(function () { loadGroupMembers(); })
-            .catch(function () { groupToast(BF.i18n.t('group.error.removeMember')); });
-    }
-
-    function renameGroup() {
-        var current = currentChatInfo ? currentChatInfo.title : '';
-        var next = window.prompt(BF.i18n.t('newchat.groupTitle.placeholder'), current || '');
-        if (next == null) return;
-        next = next.trim();
-        if (!next) { groupToast(BF.i18n.t('group.error.emptyTitle')); return; }
-        BF.api.updateGroupChat(currentChatId, next, null).then(function (res) {
-            var title = (res && res.chat && res.chat.title) || next;
-            if (currentChatInfo) currentChatInfo.title = title;
-            groupName.textContent = title;
-            chatHeaderName.textContent = title;
-            var c = chats.find(function (x) { return x.id === currentChatId; });
-            if (c) { c.title = title; renderChatList(); }
-            groupToast(BF.i18n.t('group.titleUpdated'));
-        }).catch(function () { groupToast(BF.i18n.t('group.error.renameFailed')); });
-    }
-
-    function addGroupMember(userId, name) {
-        BF.api.addUser(currentChatId, userId).then(function () {
-            groupAddBox.classList.add('hidden');
-            groupAddInput.value = '';
-            groupAddResults.innerHTML = '';
-            loadGroupMembers();
-            groupToast(BF.i18n.t('group.memberAdded', { name: name }));
-        }).catch(function () { groupToast(BF.i18n.t('group.error.addMember')); });
-    }
-
-    groupClose.addEventListener('click', function () { groupOverlay.classList.remove('visible'); });
-    groupOverlay.addEventListener('click', function (e) { if (e.target === groupOverlay) groupOverlay.classList.remove('visible'); });
-    groupNameEdit.addEventListener('click', renameGroup);
-
-    var _groupBackgroundBtn = $('#groupBackgroundButton');
-    if (_groupBackgroundBtn) _groupBackgroundBtn.addEventListener('click', function () {
-        openChatBackgroundSelector(currentChatId, currentChatInfo && currentChatInfo.title);
-    });
-
-    groupAvatarEdit.addEventListener('click', function () { groupAvatarInput.click(); });
-    groupAvatarInput.addEventListener('change', function () {
-        var file = groupAvatarInput.files[0];
-        groupAvatarInput.value = '';
-        if (!file) return;
-        groupToast(BF.i18n.t('common.loadingShort'));
-        BF.files.uploadFile(file, 6 /* CHAT_PICTURE */).then(function (fileId) {
-            return BF.api.updateGroupChat(currentChatId, null, fileId);
-        }).then(function (res) {
-            var pic = res && res.chat && res.chat.picture;
-            if (pic) {
-                if (currentChatInfo) currentChatInfo.picture = pic;
-                renderGroupAvatar(pic, currentChatInfo && currentChatInfo.title);
-                chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(pic) + '" alt="">';
-                var c = chats.find(function (x) { return x.id === currentChatId; });
-                if (c) { c.picture = pic; renderChatList(); }
-            }
-            groupToast(BF.i18n.t('group.avatarUpdated'));
-        }).catch(function () { groupToast(BF.i18n.t('group.error.avatarFailed')); });
-    });
-
-    groupAddBtn.addEventListener('click', function () {
-        groupAddBox.classList.toggle('hidden');
-        if (!groupAddBox.classList.contains('hidden')) groupAddInput.focus();
-    });
-
-    var groupSearchTimer = null;
-    groupAddInput.addEventListener('input', function () {
-        var q = groupAddInput.value.trim();
-        if (groupSearchTimer) clearTimeout(groupSearchTimer);
-        if (!q) { groupAddResults.innerHTML = ''; return; }
-        groupSearchTimer = setTimeout(function () {
-            BF.api.searchUsers(q, 0, 20).then(function (data) {
-                groupAddResults.innerHTML = '';
-                (data.users || []).forEach(function (user) {
-                    var fullName = ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || user.username;
-                    var row = document.createElement('div');
-                    row.className = 'group-add-result';
-
-                    var av = document.createElement('div');
-                    av.className = 'group-member-avatar';
-                    var pic = user.profilePicturePreview || user.profilePicture;
-                    if (pic) {
-                        var img = document.createElement('img');
-                        img.src = pic; img.alt = '';
-                        av.appendChild(img);
-                    } else { av.textContent = (fullName || '?')[0].toUpperCase(); }
-                    row.appendChild(av);
-
-                    var nm = document.createElement('div');
-                    nm.className = 'group-member-name';
-                    nm.textContent = fullName;
-                    row.appendChild(nm);
-
-                    row.addEventListener('click', function () { addGroupMember(user.id, fullName); });
-                    groupAddResults.appendChild(row);
-                });
-            }).catch(function () {});
-        }, 300);
-    });
-
-    document.querySelectorAll('.group-media-tab').forEach(function (tab) {
-        tab.addEventListener('click', function () {
-            setMediaTabActive('#groupOverlay .group-media-tab', groupMediaPanels, tab.dataset.type);
-            renderChatMedia(tab.dataset.type, groupMediaPanels);
-        });
-    });
 
     // ========== SCROLL TO BOTTOM BUTTON ==========
 
@@ -3979,6 +3237,43 @@
     // ========== INIT ==========
 
     if (BF.push && BF.push.init) BF.push.init();
+
+    BF.privateChatUI.init({
+        getCurrentChatId: function () { return currentChatId; },
+        setCurrentChatId: function (chatId) { currentChatId = chatId; },
+        getCurrentChatType: function () { return currentChatType; },
+        setCurrentChatType: function (chatType) { currentChatType = chatType; },
+        setCurrentChatInfo: function (chatInfo) { currentChatInfo = chatInfo; },
+        setCurrentChatPeerIsBot: function (isBot) { currentChatPeerIsBot = isBot; },
+        getMyUserId: function () { return myUserId; },
+        getChats: function () { return chats; },
+        getMessages: function () { return messages; },
+        setMessages: function (value) { messages = value; },
+        setNoMoreOlder: function (value) { noMoreOlder = value; },
+        resetKnownMessageIds: function () { knownMessageIds = new Set(); },
+        stopTypingSend: stopTypingSend,
+        updateOpenChatUrl: updateOpenChatUrl,
+        clearPendingReply: clearPendingReply,
+        clearPendingEdit: clearPendingEdit,
+        closeContextMenu: closeContextMenu,
+        setChatCallButtonsVisible: setChatCallButtonsVisible,
+        resetChatTabContext: resetChatTabContext,
+        setChatTabContext: setChatTabContext,
+        chatTabTitle: chatTabTitle,
+        getUser: getUser,
+        escapeHtml: u.escapeHtml,
+        renderChatList: renderChatList,
+        updateTitleBadge: updateTitleBadge,
+        renderMessages: renderMessages,
+        scrollToBottom: scrollToBottom,
+        appendMessageToView: appendMessageToView,
+        loadChats: loadChats,
+        showNewMessageNotification: showNewMessageNotification
+    });
+    var openPrivateChat = BF.privateChatUI.open;
+    var reloadCurrentPrivateChat = BF.privateChatUI.reload;
+    var sendPrivateMessageFlow = BF.privateChatUI.send;
+    var decryptPrivateBatch = BF.privateChatUI.decryptMessages;
 
     window.addEventListener('bf-pwa-update', function () {
         if (window.confirm(BF.i18n.t('pwa.updateAvailable'))) BF.push.applyUpdate();
