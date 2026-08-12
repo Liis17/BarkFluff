@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.Toast
@@ -79,12 +80,6 @@ class MessageAdapter(
     /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
     private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
-
-    /** Проверяет, есть ли сообщение с указанным ID в текущем загруженном списке (для эвристики reply vs forward). */
-    fun hasMessageInCurrentList(messageId: Long): Boolean {
-        if (messageId <= 0L) return false
-        return currentList.any { it.type == MessageType.MESSAGE && it.messageId == messageId }
-    }
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
     fun getMessageAt(position: Int): MessageItem? {
@@ -278,7 +273,7 @@ class MessageAdapter(
             }
 
             // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
-            bindQuoteSplit(binding.replyQuote, binding.forwardQuote, item.attachments)
+            bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
 
             // Вложения для основного отображения (без FORWARDED_MESSAGE — он рендерится через quote)
             val displayedAttachments = item.attachments.filter {
@@ -421,7 +416,7 @@ class MessageAdapter(
             }
 
             // Цитата reply (выше текста) и forward (ниже текста)
-            bindQuoteSplit(binding.replyQuote, binding.forwardQuote, item.attachments)
+            bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
 
             // Вложения для основного отображения (без FORWARDED_MESSAGE — рендерится через quote)
             val displayedAttachments = item.attachments.filter {
@@ -556,38 +551,46 @@ class MessageAdapter(
     // ─── Forward / Reply Quote ────────────────────────────────────────────────
 
     /**
-     * Биндит цитату в нужный include в зависимости от эвристики:
-     *   - reply: оригинал есть в текущем загруженном списке сообщений (тот же чат)
-     *     → компактный блок в [replyBinding] (выше основного текста), forward скрыт
-     *   - forward: оригинал не найден локально
-     *     → полный блок в [forwardBinding] (ниже основного текста), reply скрыт
+     * Биндит цитату по явным данным сервера, а не по догадке:
+     *   - reply: заполнено [replyTo] → компактный блок в [replyBinding] выше основного текста
+     *   - forward: есть вложения FORWARDED_MESSAGE → блок на каждое пересланное в [forwardContainer] ниже текста
      *
-     * Когда forward-attachment нет вообще — оба контейнера скрыты.
+     * Reply и forward больше не исключают друг друга: можно переслать сообщение, отвечая на
+     * другое. Когда нет ни того, ни другого — оба контейнера скрыты.
      */
     private fun bindQuoteSplit(
         replyBinding: ViewMessageQuoteBinding,
-        forwardBinding: ViewMessageQuoteBinding,
-        attachments: List<Shared.MessageAttachment>
+        forwardContainer: LinearLayout,
+        attachments: List<Shared.MessageAttachment>,
+        replyTo: Shared.ReplyInfo?
     ) {
-        val forwardedAtt = attachments.firstOrNull {
-            it.type == Shared.MessageAttachmentType.FORWARDED_MESSAGE
-        }
-        if (forwardedAtt == null || !forwardedAtt.hasForwardedMessage()) {
+        if (replyTo != null) {
+            renderReply(replyBinding, replyTo)
+        } else {
             hideQuote(replyBinding)
-            hideQuote(forwardBinding)
+        }
+
+        val forwarded = attachments
+            .filter { it.type == Shared.MessageAttachmentType.FORWARDED_MESSAGE && it.hasForwardedMessage() }
+            .map { it.forwardedMessage }
+            .sortedBy { it.order }
+
+        forwardContainer.removeAllViews()
+
+        if (forwarded.isEmpty()) {
+            forwardContainer.visibility = View.GONE
             return
         }
 
-        val data = forwardedAtt.forwardedMessage
-        val isReply = hasMessageInCurrentList(data.originalMessageId)
-
-        if (isReply) {
-            hideQuote(forwardBinding)
-            renderReply(replyBinding, data)
-        } else {
-            hideQuote(replyBinding)
-            renderForward(forwardBinding, data)
+        // Каждое пересланное сообщение — свой блок: пачку нельзя схлопнуть в один,
+        // иначе часть пересланного просто не будет показана.
+        val inflater = LayoutInflater.from(forwardContainer.context)
+        for (data in forwarded) {
+            val quote = ViewMessageQuoteBinding.inflate(inflater, forwardContainer, false)
+            renderForward(quote, data)
+            forwardContainer.addView(quote.root)
         }
+        forwardContainer.visibility = View.VISIBLE
     }
 
     private fun hideQuote(quote: ViewMessageQuoteBinding) {
@@ -596,17 +599,44 @@ class MessageAdapter(
         quote.forwardView.visibility = View.GONE
     }
 
-    private fun renderReply(quote: ViewMessageQuoteBinding, data: Shared.ForwardedMessageAttachment) {
+    private fun renderReply(quote: ViewMessageQuoteBinding, data: Shared.ReplyInfo) {
         quote.quoteContainer.visibility = View.VISIBLE
         quote.replyView.visibility = View.VISIBLE
         quote.forwardView.visibility = View.GONE
-        quote.replyAuthorTextView.text = data.authorName.ifBlank { "Сообщение" }
-        quote.replyPreviewTextView.text = buildPreviewLine(data.text, data.attachmentsList)
+
+        if (data.isDeleted) {
+            // Сервер не отдаёт ни текст, ни автора удалённого оригинала — цитата не должна
+            // оставаться способом прочитать удалённое сообщение.
+            quote.replyAuthorTextView.text = "Сообщение удалено"
+            quote.replyPreviewTextView.text = ""
+            quote.replyView.setOnClickListener(null)
+            quote.replyView.isClickable = false
+            return
+        }
+
+        quote.replyAuthorTextView.text = data.senderName.ifBlank { "Сообщение" }
+        quote.replyPreviewTextView.text = buildReplyPreviewLine(data)
 
         // Click по reply-блоку — переход к оригиналу
-        val origId = data.originalMessageId
+        val origId = data.messageId
+        quote.replyView.isClickable = true
         quote.replyView.setOnClickListener {
             onReplyQuoteClick?.invoke(origId)
+        }
+    }
+
+    /** Превью для reply: текст оригинала, а если его нет — тип первого вложения. */
+    private fun buildReplyPreviewLine(data: Shared.ReplyInfo): String {
+        if (data.textPreview.isNotBlank()) return MarkdownRenderer.strip(data.textPreview)
+
+        return when (data.firstAttachmentType) {
+            Shared.MessageAttachmentType.IMAGE, Shared.MessageAttachmentType.GIF -> "📷 Фото"
+            Shared.MessageAttachmentType.VIDEO -> "🎬 Видео"
+            Shared.MessageAttachmentType.VOICE -> "🎤 Голосовое сообщение"
+            Shared.MessageAttachmentType.AUDIO -> "🎵 Аудио"
+            Shared.MessageAttachmentType.STICKER -> "🩷 Стикер"
+            Shared.MessageAttachmentType.DOCUMENT -> "📎 Файл"
+            else -> ""
         }
     }
 
@@ -640,41 +670,6 @@ class MessageAdapter(
             quote.forwardTextTextView.visibility = View.VISIBLE
         } else {
             quote.forwardTextTextView.visibility = View.GONE
-        }
-    }
-
-    /** Формирует короткое превью для reply: 1 строка текста ИЛИ "📷 N фото" / "📎 N файлов" если текста нет. */
-    private fun buildPreviewLine(text: String, attachments: List<Shared.MessageAttachment>): String {
-        if (text.isNotBlank()) return MarkdownRenderer.strip(text)
-        if (attachments.isEmpty()) return ""
-        val photos = attachments.count {
-            it.type == Shared.MessageAttachmentType.IMAGE ||
-            it.type == Shared.MessageAttachmentType.GIF
-        }
-        val videos = attachments.count { it.type == Shared.MessageAttachmentType.VIDEO }
-        val docs = attachments.count { it.type == Shared.MessageAttachmentType.DOCUMENT }
-        val audios = attachments.count {
-            it.type == Shared.MessageAttachmentType.AUDIO ||
-            it.type == Shared.MessageAttachmentType.VOICE
-        }
-        val stickers = attachments.count { it.type == Shared.MessageAttachmentType.STICKER }
-        return when {
-            photos > 0 -> "📷 ${photos} ${pluralize(photos, "фото", "фото", "фото")}"
-            videos > 0 -> "🎬 ${videos} ${pluralize(videos, "видео", "видео", "видео")}"
-            audios > 0 -> "🎵 ${audios} ${pluralize(audios, "аудио", "аудио", "аудио")}"
-            docs > 0 -> "📎 ${docs} ${pluralize(docs, "файл", "файла", "файлов")}"
-            stickers > 0 -> "Стикер"
-            else -> ""
-        }
-    }
-
-    private fun pluralize(n: Int, one: String, few: String, many: String): String {
-        val mod10 = n % 10
-        val mod100 = n % 100
-        return when {
-            mod10 == 1 && mod100 != 11 -> one
-            mod10 in 2..4 && mod100 !in 12..14 -> few
-            else -> many
         }
     }
 
@@ -1771,6 +1766,12 @@ data class MessageItem(
     val text: String,
     val timestamp: Long,
     val attachments: List<Shared.MessageAttachment>,
+    /**
+     * Цитируемое сообщение, если это ответ. Приходит с сервера явным полем — раньше reply и
+     * forward различались догадкой «есть ли оригинал в загруженной истории», из-за чего ответ
+     * превращался в пересылку, стоило прокрутить чат.
+     */
+    val replyTo: Shared.ReplyInfo? = null,
     val readStatus: ReadStatus = ReadStatus.NONE,
     val type: MessageType = MessageType.MESSAGE,
     val dateText: String = "",

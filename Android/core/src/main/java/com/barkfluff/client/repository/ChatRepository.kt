@@ -82,11 +82,17 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
      * @param fileIds Список ID файлов для прикрепления
      * @param forwardedMessageId ID пересылаемого сообщения (0 = не пересылка). Используется и для reply, и для forward — backend различает по контексту.
      */
+    /**
+     * Ответ и пересылка — разные вещи и едут разными полями. Раньше оба шли одним
+     * `forwarded_message_id`, и клиент угадывал, что перед ним, по наличию оригинала
+     * в загруженной истории.
+     */
     suspend fun sendMessage(
         chatId: String,
         text: String,
         fileIds: List<String> = emptyList(),
-        forwardedMessageId: Long = 0L
+        replyToMessageId: Long = 0L,
+        forwardedMessageIds: List<Long> = emptyList()
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.messagesClient == null) {
@@ -96,10 +102,11 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val outgoingMessage = MessagesApiOuterClass.OutgoingMessage.newBuilder()
                 .setText(text)
                 .addAllFilesIds(fileIds)
-                .setForwardedMessageId(forwardedMessageId)
+                .setReplyToMessageId(replyToMessageId)
+                .addAllForwardedMessageIds(forwardedMessageIds)
                 .build()
 
-            Log.d(TAG, "sendMessage: chatId=$chatId, textLength=${text.length}, fileIds=$fileIds, forwardedMessageId=$forwardedMessageId")
+            Log.d(TAG, "sendMessage: chatId=$chatId, textLength=${text.length}, fileIds=$fileIds, replyToMessageId=$replyToMessageId, forwardedMessageIds=$forwardedMessageIds")
 
             val request = MessagesApiOuterClass.SendMessageRequest.newBuilder()
                 .setChatId(chatId)

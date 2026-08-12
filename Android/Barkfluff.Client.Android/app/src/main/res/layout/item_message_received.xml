@@ -115,10 +115,14 @@
 
                 </LinearLayout>
 
-                <!-- Цитата forward (ниже основного текста) -->
-                <include
-                    android:id="@+id/forwardQuote"
-                    layout="@layout/view_message_quote" />
+                <!-- Цитаты forward (ниже основного текста). Контейнер, а не один include:
+                     переслать можно несколько сообщений сразу, и каждое рисуется своим блоком. -->
+                <LinearLayout
+                    android:id="@+id/forwardQuotesContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
 
                 <!-- Время + метка «изменено» -->
                 <LinearLayout
