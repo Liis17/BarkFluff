@@ -258,6 +258,7 @@ App Widget с закреплёнными чатами.
 | `utils/MessageTimeSpacingDecoration.kt` | app | RecyclerView.ItemDecoration; увеличенный отступ между группами сообщений с разрывом >10 мин |
 | `utils/NetworkUtils.kt` | `:core` | Получает внешний IP устройства через HTTP |
 | `utils/UpdateChecker.kt` | app | Проверяет наличие обновлений приложения |
+| `utils/UpdateServerTls.kt` | app | Доверие CA сервера обновлений из `BuildConfig.STORAGE_CA_PEM_B64` |
 | `utils/AppVersionUtil.kt` | `:core` | Читает `versionName` из PackageInfo |
 | `utils/FirebaseTokenHelper.kt` | app | Получает FCM-токен и регистрирует на сервере; логика обновления токена |
 | `utils/LogoutHelper.kt` | app | Централизованный выход: серверный Logout gRPC, удаление FCM-токена, очистка кэшей и прокси на LoginActivity |
