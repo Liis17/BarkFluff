@@ -534,6 +534,16 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
         if (isFederated)
         {
+            // Ответ уезжает межнодовым uuid оригинала. Если оригинал не федеративный (например,
+            // сообщение из этого чата, созданное до его федерализации), партнёру ссылаться не на что —
+            // отправляем сообщение без цитаты, а не отказываем в отправке.
+            Guid? replyToFederatedMessageId = null;
+            if (message.ReplyToMessageId is { } replyTargetId)
+            {
+                var replyTarget = await _messagesStorage.GetMessageById(replyTargetId);
+                replyToFederatedMessageId = replyTarget?.FederatedId;
+            }
+
             await _messageQueueSender.SendFederatedMessage(
                 message,
                 chatId.Value,
@@ -552,7 +562,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 federatedAttachments: Features.Federation.FederatedAttachmentMapper.Build(
                     message.Content?.Attachments,
                     filesInfoMap,
-                    _configuration["Federation:ServerName"] ?? string.Empty));
+                    _configuration["Federation:ServerName"] ?? string.Empty),
+                replyToFederatedMessageId: replyToFederatedMessageId);
         }
         else
         {

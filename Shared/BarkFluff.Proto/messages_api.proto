@@ -811,6 +811,22 @@ message ImportFederatedMessageRequest {
   int64 origin_ts_ms = 8;
   bytes raw_event = 9;                  // wire-байты подписанного FederationEvent (для catch-up 2.6, не парсится Messages)
   string event_id = 10;                 // event_id доставки (LWW tie-break последующих ApplyFederatedEdit/Delete, этап 2.4)
+
+  // Ответ приходит межнодовым uuid и резолвится в локальный Messages.Id на приёме. Если оригинал
+  // ещё не импортирован (дыра, дотянется catch-up), сообщение сохраняется БЕЗ цитаты — цитата
+  // не должна блокировать доставку самого сообщения.
+  string reply_to_federated_message_id = 11;
+
+  // Пересланные сообщения снапшотом: оригинал может лежать в чате, которого у нас нет.
+  repeated FederatedForwardFlat forwards = 12;
+}
+
+message FederatedForwardFlat {
+  string author_name = 1;
+  string text = 2;
+  repeated FederatedFileRefFlat attachments = 3;
+  int64 original_sent_at_ms = 4;
+  int32 order = 5;
 }
 
 message ImportFederatedMessageResponse {

@@ -107,6 +107,11 @@ public class NewMessageFederationConsumer : IConsumer<NewMessageEvent>
                 // Снапшот метаданных вложений (этап 3.1): байты остаются на origin,
                 // принимающая нода рендерит сообщение без похода к нам.
                 Attachments = { FederatedFileRefMapper.ToProto(msg.FederatedAttachments) },
+                // Ответ уезжает межнодовым uuid; пусто, если сообщение не ответ или оригинал
+                // не федеративный.
+                ReplyToFederatedMessageId = msg.ReplyToFederatedMessageId?.ToString() ?? string.Empty,
+                // Пересылка — снапшотом из того же wireMessage, второго источника не нужно.
+                Forwards = { FederatedForwardMapper.FromWireMessage(wireMessage, origin) },
             });
         await _writer.EnqueueSignedAsync(newMessage, msg.ChatId, destinations, ct);
 
