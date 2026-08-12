@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground"
@@ -35,7 +36,7 @@
             android:layout_gravity="center"
             android:background="@drawable/bg_call_avatar"
             android:gravity="center"
-            android:text="AK"
+            tools:text="AK"
             android:textColor="?attr/colorOnPrimaryContainer"
             android:textSize="48sp"
             android:textStyle="bold" />
@@ -62,7 +63,7 @@
             android:id="@+id/callerName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BarkFluff"
+            tools:text="BarkFluff"
             android:textAppearance="?attr/textAppearanceHeadlineSmall"
             android:textColor="?attr/colorOnSurface" />
 
@@ -84,7 +85,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Аудиозвонок"
+                android:text="@string/incoming_call_audio"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
         </LinearLayout>
@@ -123,7 +124,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Отклонить"
+                android:text="@string/incoming_call_reject"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
@@ -152,7 +153,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Ответить"
+                android:text="@string/incoming_call_answer"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>

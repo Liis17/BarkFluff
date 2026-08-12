@@ -737,4 +737,16 @@
         <item quantity="many">%1$s печатают…</item>
         <item quantity="other">%1$s печатают…</item>
     </plurals>
+
+    <!-- Additional UI labels -->
+    <string name="about_device_id">ID устройства</string>
+    <string name="profile_chat_background">Фон чата</string>
+    <string name="incoming_call_audio">Аудиозвонок</string>
+    <string name="incoming_call_video">Видеозвонок</string>
+    <string name="incoming_call_reject">Отклонить</string>
+    <string name="incoming_call_answer">Ответить</string>
+    <string name="calls_filter_all">Все</string>
+    <string name="calls_filter_missed">Пропущенные</string>
+    <string name="update_release_channel">Release</string>
+    <string name="update_beta_channel">Beta</string>
 </resources>
