@@ -17,6 +17,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import coil.request.ImageRequest
 import coil.size.Size
@@ -107,12 +108,7 @@ class IncomingCallActivity : AppCompatActivity() {
 
     private fun registerDismissReceiver() {
         val filter = IntentFilter(CallExtras.ACTION_DISMISS_INCOMING_CALL)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(dismissReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(dismissReceiver, filter)
-        }
+        ContextCompat.registerReceiver(this, dismissReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         dismissReceiverRegistered = true
     }
 
