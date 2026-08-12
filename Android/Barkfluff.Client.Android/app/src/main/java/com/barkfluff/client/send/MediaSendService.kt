@@ -21,6 +21,7 @@ import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
 import barkfluff.files.FilesApiOuterClass.UploadFileType
 import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.R
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.ImageCompressor
 import kotlinx.coroutines.CoroutineScope
@@ -66,8 +67,8 @@ class MediaSendService : Service() {
         // Запускаем foreground сразу с placeholder-уведомлением
         val notif = MediaSendNotification.build(
             this,
-            title = "Отправка медиа",
-            text = "Подготовка...",
+            title = getString(R.string.notification_channel_media_send_name),
+            text = getString(R.string.media_send_preparing, getString(R.string.media_send_default_chat)),
             progress = 0,
             indeterminate = true
         )
@@ -121,7 +122,10 @@ class MediaSendService : Service() {
     private suspend fun processJob(job: SendJob) {
         val grpcManager = (applicationContext as BarkFluffApplication).grpcManager
         val repo = ChatRepository(applicationContext, grpcManager)
-        val titleBase = "Отправка медиа в \"${job.chatTitle.ifBlank { "чат" }}\""
+        val titleBase = getString(
+            R.string.media_send_title,
+            job.chatTitle.ifBlank { getString(R.string.media_send_default_chat) }
+        )
 
         // Подсчитываем стадии для агрегированного прогресса
         val total = job.attachments.size.coerceAtLeast(1)
@@ -145,7 +149,12 @@ class MediaSendService : Service() {
         for ((idx, att) in job.attachments.withIndex()) {
             val pos = "${idx + 1}/$total"
             val localId = localIdForAttachment(idx)
-            updateNotification(titleBase, "Подготовка $pos...", aggregateProgress(idx, 0), indeterminate = true)
+            updateNotification(
+                titleBase,
+                getString(R.string.media_send_preparing, pos),
+                aggregateProgress(idx, 0),
+                indeterminate = true
+            )
             if (localId != null) {
                 uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.PREPARING, aggregateProgress(idx, 0)))
             }
@@ -156,7 +165,12 @@ class MediaSendService : Service() {
             }
             val (bytes, type, fileName, mime) = prepared
 
-            updateNotification(titleBase, "Загрузка $pos: 0%", aggregateProgress(idx, 0), indeterminate = false)
+            updateNotification(
+                titleBase,
+                getString(R.string.media_send_uploading, pos, 0),
+                aggregateProgress(idx, 0),
+                indeterminate = false
+            )
             val uploadResult = repo.uploadFile(
                 jpegImageBytes = bytes,
                 fileType = type,
@@ -164,7 +178,12 @@ class MediaSendService : Service() {
                 mimeType = mime,
                 onProgress = { pct ->
                     val agg = aggregateProgress(idx, pct)
-                    updateNotification(titleBase, "Загрузка $pos: $pct%", agg, indeterminate = false)
+                    updateNotification(
+                        titleBase,
+                        getString(R.string.media_send_uploading, pos, pct),
+                        agg,
+                        indeterminate = false
+                    )
                     if (localId != null) {
                         uploadEvents.tryEmit(UploadEvent(job.chatId, localId, UploadState.UPLOADING, agg))
                     }
@@ -184,7 +203,7 @@ class MediaSendService : Service() {
             return
         }
 
-        updateNotification(titleBase, "Отправка сообщения...", 100, indeterminate = true)
+        updateNotification(titleBase, getString(R.string.media_send_message), 100, indeterminate = true)
         if (job.sendSeparately && fileIds.size > 1) {
             for ((idx, fid) in fileIds.withIndex()) {
                 val text = if (idx == 0) job.text else ""
@@ -262,7 +281,12 @@ class MediaSendService : Service() {
                     PreparedAttachment(bytes, type, name, m)
                 }
                 is AttachmentSpec.Video -> {
-                    updateNotification(titleBase, "Сжатие видео $pos...", 0, indeterminate = true)
+                    updateNotification(
+                        titleBase,
+                        getString(R.string.media_send_compressing, pos),
+                        0,
+                        indeterminate = true
+                    )
                     val outFile = transformVideo(att.spec, titleBase, pos)
                         ?: return@withContext null
                     val bytes = outFile.readBytes()
@@ -331,12 +355,17 @@ class MediaSendService : Service() {
                     if (state == Transformer.PROGRESS_STATE_AVAILABLE) {
                         updateNotification(
                             titleBase,
-                            "Сжатие видео $pos: ${holder.progress}%",
+                            getString(R.string.media_send_compressing_progress, pos, holder.progress),
                             holder.progress,
                             indeterminate = false
                         )
                     } else if (state == Transformer.PROGRESS_STATE_UNAVAILABLE) {
-                        updateNotification(titleBase, "Сжатие видео $pos...", 0, indeterminate = true)
+                        updateNotification(
+                            titleBase,
+                            getString(R.string.media_send_compressing, pos),
+                            0,
+                            indeterminate = true
+                        )
                     } else if (state == Transformer.PROGRESS_STATE_NOT_STARTED) {
                         break
                     }

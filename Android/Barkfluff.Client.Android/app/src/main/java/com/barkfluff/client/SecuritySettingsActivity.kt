@@ -105,7 +105,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
         
         val stepIndicator = android.widget.TextView(this).apply {
-            text = "Шаг 1 из 3: Запрос кода"
+            text = getString(R.string.security_password_step, 1, getString(R.string.security_password_step_request))
             textSize = 14f
             gravity = android.view.Gravity.CENTER
             setTextColor(getColor(android.R.color.holo_blue_dark))
@@ -114,7 +114,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         
         // Шаг 1: Кнопка отправки кода
         val sendCodeButton = com.google.android.material.button.MaterialButton(this).apply {
-            text = "Отправить код на почту"
+            text = getString(R.string.security_send_code)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -131,7 +131,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
         
         val otpLayout = TextInputLayout(this).apply {
-            hint = "Код из email"
+            hint = getString(R.string.security_code_from_email)
         }
         val otpEdit = TextInputEditText(otpLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
@@ -140,7 +140,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         otpContainer.addView(otpLayout)
         
         val confirmCodeButton = com.google.android.material.button.MaterialButton(this).apply {
-            text = "Подтвердить код"
+            text = getString(R.string.security_confirm_code)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -158,7 +158,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
         
         val newPasswordLayout = TextInputLayout(this).apply {
-            hint = "Новый пароль"
+            hint = getString(R.string.security_new_password)
         }
         val newPasswordEdit = TextInputEditText(newPasswordLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
@@ -167,7 +167,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         passwordContainer.addView(newPasswordLayout)
         
         val confirmPasswordLayout = TextInputLayout(this).apply {
-            hint = "Подтвердите пароль"
+            hint = getString(R.string.security_confirm_password)
         }
         val confirmPasswordEdit = TextInputEditText(confirmPasswordLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
@@ -176,7 +176,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         passwordContainer.addView(confirmPasswordLayout)
         
         val savePasswordButton = com.google.android.material.button.MaterialButton(this).apply {
-            text = "Сохранить новый пароль"
+            text = getString(R.string.security_save_password)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -188,9 +188,9 @@ class SecuritySettingsActivity : AppCompatActivity() {
         container.addView(passwordContainer)
         
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Смена пароля")
+            .setTitle(R.string.security_change_password)
             .setView(container)
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .create()
         
         // Шаг 1: Отправка кода
@@ -200,13 +200,13 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 if (result.isSuccess) {
                     resetId = result.getOrNull()
                     currentStep = 2
-                    stepIndicator.text = "Шаг 2 из 3: Подтверждение кода"
+                    stepIndicator.text = getString(R.string.security_password_step, 2, getString(R.string.security_password_step_confirm))
                     stepIndicator.setTextColor(getColor(android.R.color.holo_green_dark))
                     sendCodeButton.visibility = android.view.View.GONE
                     otpContainer.visibility = android.view.View.VISIBLE
-                    Toast.makeText(this@SecuritySettingsActivity, "Код отправлен на email", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_code_sent, Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -215,7 +215,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         confirmCodeButton.setOnClickListener {
             val code = otpEdit.text?.toString() ?: ""
             if (code.length != 6) {
-                Toast.makeText(this, "Код должен содержать 6 цифр", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.security_code_length, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             
@@ -223,13 +223,13 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 val result = grpcManager.confirmResetPassword(resetId!!, code)
                 if (result.isSuccess) {
                     currentStep = 3
-                    stepIndicator.text = "Шаг 3 из 3: Новый пароль"
+                    stepIndicator.text = getString(R.string.security_password_step, 3, getString(R.string.security_password_step_new_password))
                     stepIndicator.setTextColor(getColor(android.R.color.holo_green_dark))
                     otpContainer.visibility = android.view.View.GONE
                     passwordContainer.visibility = android.view.View.VISIBLE
-                    Toast.makeText(this@SecuritySettingsActivity, "Код подтверждён", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_code_confirmed, Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@SecuritySettingsActivity, "Неверный код", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_invalid_code, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -240,21 +240,21 @@ class SecuritySettingsActivity : AppCompatActivity() {
             val confirmPassword = confirmPasswordEdit.text?.toString() ?: ""
             
             if (newPassword.length < 6) {
-                Toast.makeText(this, "Пароль должен быть не менее 6 символов", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.security_password_min_length, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             if (newPassword != confirmPassword) {
-                Toast.makeText(this, "Пароли не совпадают", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.security_password_mismatch, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             
             lifecycleScope.launch {
                 val result = grpcManager.setPasswordAfterReset(newPassword)
                 if (result.isSuccess) {
-                    Toast.makeText(this@SecuritySettingsActivity, "Пароль успешно изменён", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_password_changed, Toast.LENGTH_SHORT).show()
                     dialog.dismiss()
                 } else {
-                    Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -269,7 +269,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 val setup = result.getOrNull()!!
                 showOtpSetupDialog(setup)
             } else {
-                Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                 isUpdatingSwitch = true
                 binding.switchTwoFactorApp.isChecked = false
                 isUpdatingSwitch = false
@@ -302,7 +302,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
         // Код для ручного ввода
         val codeText = android.widget.TextView(this).apply {
-            text = "Код: ${setup.justCode}"
+            text = getString(R.string.security_manual_code, setup.justCode)
             textSize = 14f
             gravity = android.view.Gravity.CENTER
             val topMargin = (8 * resources.displayMetrics.density).toInt()
@@ -315,7 +315,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
         // Поле ввода OTP
         val otpLayout = TextInputLayout(this).apply {
-            hint = "Введите код из приложения"
+            hint = getString(R.string.security_enter_app_code)
         }
         val otpEdit = TextInputEditText(otpLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
@@ -324,12 +324,12 @@ class SecuritySettingsActivity : AppCompatActivity() {
         container.addView(otpLayout)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Настройка 2FA")
+            .setTitle(R.string.security_2fa_setup_title)
             .setView(container)
-            .setPositiveButton("Подтвердить") { _, _ ->
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
                 val code = otpEdit.text?.toString() ?: ""
                 if (code.isEmpty()) {
-                    Toast.makeText(this, "Введите код", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, R.string.security_enter_code, Toast.LENGTH_SHORT).show()
                     isUpdatingSwitch = true
                     binding.switchTwoFactorApp.isChecked = false
                     isUpdatingSwitch = false
@@ -338,16 +338,16 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     val result = grpcManager.confirmOtpSetup(code)
                     if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, "2FA включена", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_enabled, Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(this@SecuritySettingsActivity, "Неверный код", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_invalid_code, Toast.LENGTH_SHORT).show()
                         isUpdatingSwitch = true
                         binding.switchTwoFactorApp.isChecked = false
                         isUpdatingSwitch = false
                     }
                 }
             }
-            .setNegativeButton("Отмена") { _, _ ->
+            .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 isUpdatingSwitch = true
                 binding.switchTwoFactorApp.isChecked = false
                 isUpdatingSwitch = false
@@ -362,7 +362,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             if (result.isSuccess) {
                 showEmailOtpConfirmDialog()
             } else {
-                Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                 isUpdatingSwitch = true
                 binding.switchTwoFactorEmail.isChecked = false
                 isUpdatingSwitch = false
@@ -378,7 +378,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
 
         val otpLayout = TextInputLayout(this).apply {
-            hint = "Код из email"
+            hint = getString(R.string.security_code_from_email)
         }
         val otpEdit = TextInputEditText(otpLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
@@ -387,24 +387,24 @@ class SecuritySettingsActivity : AppCompatActivity() {
         container.addView(otpLayout)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Подтверждение 2FA по email")
-            .setMessage("Код отправлен на вашу почту")
+            .setTitle(R.string.security_2fa_email_title)
+            .setMessage(R.string.security_2fa_email_message)
             .setView(container)
-            .setPositiveButton("Подтвердить") { _, _ ->
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
                 val code = otpEdit.text?.toString() ?: ""
                 lifecycleScope.launch {
                     val result = grpcManager.confirmOtpSetup(code)
                     if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, "2FA по email включена", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_enabled, Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(this@SecuritySettingsActivity, "Неверный код", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_invalid_code, Toast.LENGTH_SHORT).show()
                         isUpdatingSwitch = true
                         binding.switchTwoFactorEmail.isChecked = false
                         isUpdatingSwitch = false
                     }
                 }
             }
-            .setNegativeButton("Отмена") { _, _ ->
+            .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 isUpdatingSwitch = true
                 binding.switchTwoFactorEmail.isChecked = false
                 isUpdatingSwitch = false
@@ -421,7 +421,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
 
         val otpLayout = TextInputLayout(this).apply {
-            hint = "Код из приложения"
+            hint = getString(R.string.security_code_from_app)
         }
         val otpEdit = TextInputEditText(otpLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
@@ -430,24 +430,24 @@ class SecuritySettingsActivity : AppCompatActivity() {
         container.addView(otpLayout)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Отключение 2FA")
-            .setMessage("Введите код из приложения-аутентификатора")
+            .setTitle(R.string.security_disable_2fa_title)
+            .setMessage(R.string.security_disable_2fa_message)
             .setView(container)
-            .setPositiveButton("Отключить") { _, _ ->
+            .setPositiveButton(R.string.security_disable) { _, _ ->
                 val code = otpEdit.text?.toString() ?: ""
                 lifecycleScope.launch {
                     val result = grpcManager.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Authenticator, code)
                     if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, "2FA отключена", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_disabled, Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                         isUpdatingSwitch = true
                         binding.switchTwoFactorApp.isChecked = true
                         isUpdatingSwitch = false
                     }
                 }
             }
-            .setNegativeButton("Отмена") { _, _ ->
+            .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 isUpdatingSwitch = true
                 binding.switchTwoFactorApp.isChecked = true
                 isUpdatingSwitch = false
@@ -458,22 +458,22 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun disableEmail2FA() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Отключение 2FA по email")
-            .setMessage("Вы уверены, что хотите отключить двухфакторную аутентификацию по email?")
-            .setPositiveButton("Отключить") { _, _ ->
+            .setTitle(R.string.security_disable_2fa_email_title)
+            .setMessage(R.string.security_disable_2fa_email_message)
+            .setPositiveButton(R.string.security_disable) { _, _ ->
                 lifecycleScope.launch {
                     val result = grpcManager.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Email, "")
                     if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, "2FA по email отключена", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_disabled, Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                         isUpdatingSwitch = true
                         binding.switchTwoFactorEmail.isChecked = true
                         isUpdatingSwitch = false
                     }
                 }
             }
-            .setNegativeButton("Отмена") { _, _ ->
+            .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 isUpdatingSwitch = true
                 binding.switchTwoFactorEmail.isChecked = true
                 isUpdatingSwitch = false

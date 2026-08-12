@@ -150,7 +150,10 @@ class SelectServerActivity : AppCompatActivity() {
                 // Создаем Navigator клиент
                 val createResult = grpcManager.createNavigatorClient()
                 if (createResult.isFailure) {
-                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось создать соединение с навигатором")
+                    showError(
+                        createResult.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_navigator_connection_failed)
+                    )
                     return@launch
                 }
 
@@ -165,7 +168,7 @@ class SelectServerActivity : AppCompatActivity() {
                             ServerDataElement(
                                 ip = "test1.barkfluff.com:64646",
                                 title = "BarkFluff Public Server 1",
-                                description = "Публичная нода для тестирования",
+                                description = getString(R.string.select_server_default_description_1),
                                 userCount = "125",
                                 publicName = "barkfluff-public-1",
                                 location = "Москва, RU",
@@ -174,7 +177,7 @@ class SelectServerActivity : AppCompatActivity() {
                             ServerDataElement(
                                 ip = "test2.barkfluff.com:64646",
                                 title = "BarkFluff Public Server 2",
-                                description = "Вторая публичная нода",
+                                description = getString(R.string.select_server_default_description_2),
                                 userCount = "89",
                                 publicName = "barkfluff-public-2",
                                 location = "Санкт-Петербург, RU",
@@ -187,11 +190,14 @@ class SelectServerActivity : AppCompatActivity() {
                         Log.d(TAG, "Загружено ${servers.size} серверов")
                     }
                 } else {
-                    showError(result.exceptionOrNull()?.message ?: "Не удалось загрузить список нод")
+                    showError(
+                        result.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_list_load_failed)
+                    )
                     Log.e(TAG, "Ошибка загрузки списка серверов", result.exceptionOrNull())
                 }
             } catch (e: Exception) {
-                showError("Ошибка: ${e.message}")
+                showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
                 Log.e(TAG, "Ошибка загрузки списка серверов", e)
             } finally {
                 showLoading(false)
@@ -218,7 +224,10 @@ class SelectServerActivity : AppCompatActivity() {
                 // Создаем Beacon клиент
                 val createResult = grpcManager.createOnlyBeaconClient(address)
                 if (createResult.isFailure) {
-                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось подключиться к ноде")
+                    showError(
+                        createResult.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_connection_failed)
+                    )
                     resetConnectionState()
                     return@launch
                 }
@@ -253,17 +262,20 @@ class SelectServerActivity : AppCompatActivity() {
                         // Переход на главный экран
                         openMainActivity()
                     } else {
-                        showError("Не удалось получить информацию о ноде")
+                        showError(getString(R.string.select_server_info_failed))
                         resetConnectionState()
                     }
                 } else {
-                    showError(infoResult.exceptionOrNull()?.message ?: "Не удалось получить информацию о ноде")
+                    showError(
+                        infoResult.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_info_failed)
+                    )
                     Log.e(TAG, "Ошибка получения информации о сервере", infoResult.exceptionOrNull())
                     resetConnectionState()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка подключения к серверу", e)
-                showError("Ошибка подключения: ${e.message}")
+                showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
                 resetConnectionState()
             }
         }
@@ -364,9 +376,9 @@ class SelectServerActivity : AppCompatActivity() {
     private fun showError(message: String) {
         runOnUiThread {
             MaterialAlertDialogBuilder(this)
-                .setTitle("Ошибка")
+                .setTitle(R.string.error)
                 .setMessage(message)
-                .setPositiveButton("OK", null)
+                .setPositiveButton(R.string.dialog_ok, null)
                 .show()
         }
     }
@@ -380,12 +392,12 @@ class SelectServerActivity : AppCompatActivity() {
     override fun onBackPressed() {
         // Блокируем возврат на предыдущий экран
         MaterialAlertDialogBuilder(this)
-            .setTitle("Выход из приложения")
-            .setMessage("Вы действительно хотите выйти?")
-            .setPositiveButton("Выйти") { _, _ ->
+            .setTitle(R.string.logout_title)
+            .setMessage(R.string.logout_message)
+            .setPositiveButton(R.string.logout_action) { _, _ ->
                 super.onBackPressed()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 

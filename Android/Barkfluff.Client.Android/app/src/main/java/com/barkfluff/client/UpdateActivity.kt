@@ -56,6 +56,8 @@ class UpdateActivity : AppCompatActivity() {
         private const val MIN_APK_SIZE_BYTES = 100_000L
         private const val DOWNLOAD_BUFFER_BYTES = 64 * 1024
         private const val PROGRESS_INTERVAL_MS = 100L
+        private const val CHANNEL_RELEASE = "release"
+        private const val CHANNEL_BETA = "beta"
     }
 
     private val installPermissionLauncher = registerForActivityResult(
@@ -64,7 +66,7 @@ class UpdateActivity : AppCompatActivity() {
         if (packageManager.canRequestPackageInstalls()) {
             pendingDownloadChannel?.let { startDownload(it) }
         } else {
-            Toast.makeText(this, "Разрешение на установку не предоставлено", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.update_install_permission_denied, Toast.LENGTH_SHORT).show()
         }
         pendingDownloadChannel = null
     }
@@ -90,7 +92,10 @@ class UpdateActivity : AppCompatActivity() {
         val versionName = GlobalParam.getAppVersion(this)
         currentVersion = AppVersion.parse(versionName)
         binding.textCurrentVersion.text = versionName
-        binding.textCurrentChannel.text = if (currentVersion?.isBeta == true) "Beta-канал" else "Release-канал"
+        binding.textCurrentChannel.text = getString(
+            if (currentVersion?.isBeta == true) R.string.update_current_beta_channel
+            else R.string.update_current_release_channel
+        )
     }
 
     private fun setupClickListeners() {
@@ -98,10 +103,10 @@ class UpdateActivity : AppCompatActivity() {
             checkUpdates()
         }
         binding.buttonUpdateRelease.setOnClickListener {
-            requestDownload("release")
+            requestDownload(CHANNEL_RELEASE)
         }
         binding.buttonUpdateBeta.setOnClickListener {
-            requestDownload("beta")
+            requestDownload(CHANNEL_BETA)
         }
         binding.buttonOpenWebsite.setOnClickListener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://barkfluff.com"))
@@ -111,9 +116,9 @@ class UpdateActivity : AppCompatActivity() {
 
     private fun checkUpdates() {
         binding.buttonCheckUpdates.isEnabled = false
-        binding.buttonCheckUpdates.text = "Проверка..."
-        binding.textReleaseVersion.text = "Загрузка..."
-        binding.textBetaVersion.text = "Загрузка..."
+        binding.buttonCheckUpdates.text = getString(R.string.update_checking)
+        binding.textReleaseVersion.text = getString(R.string.loading_dots)
+        binding.textBetaVersion.text = getString(R.string.loading_dots)
         binding.buttonUpdateRelease.visibility = View.GONE
         binding.buttonUpdateBeta.visibility = View.GONE
         binding.textReleaseDate.visibility = View.GONE
@@ -122,8 +127,8 @@ class UpdateActivity : AppCompatActivity() {
         binding.textBetaStatus.text = ""
 
         lifecycleScope.launch {
-            releaseInfo = UpdateChecker.getVersionInfo("release")
-            betaInfo = UpdateChecker.getVersionInfo("beta")
+            releaseInfo = UpdateChecker.getVersionInfo(CHANNEL_RELEASE)
+            betaInfo = UpdateChecker.getVersionInfo(CHANNEL_BETA)
 
             updateChannelUI(
                 info = releaseInfo,
@@ -142,7 +147,7 @@ class UpdateActivity : AppCompatActivity() {
             )
 
             binding.buttonCheckUpdates.isEnabled = true
-            binding.buttonCheckUpdates.text = "Проверить обновления"
+            binding.buttonCheckUpdates.text = getString(R.string.update_check)
         }
     }
 
@@ -154,22 +159,22 @@ class UpdateActivity : AppCompatActivity() {
         button: com.google.android.material.button.MaterialButton
     ) {
         if (info == null) {
-            textVersion.text = "Недоступно"
+            textVersion.text = getString(R.string.update_unavailable)
             return
         }
 
         val version = info.version
         if (version.isNullOrBlank()) {
-            textVersion.text = "Нет данных"
+            textVersion.text = getString(R.string.update_no_data)
             return
         }
 
-        textVersion.text = "Версия: $version"
+        textVersion.text = getString(R.string.update_version, version)
 
         info.uploadedAt?.let { dateStr ->
             val formatted = formatDate(dateStr)
             if (formatted != null) {
-                textDate.text = "Обновлено: $formatted"
+                textDate.text = getString(R.string.update_updated, formatted)
                 textDate.visibility = View.VISIBLE
             }
         }
@@ -179,14 +184,14 @@ class UpdateActivity : AppCompatActivity() {
             when {
                 remoteVersion > currentVersion!! -> {
                     button.visibility = View.VISIBLE
-                    textStatus.text = "Доступно обновление"
+                    textStatus.text = getString(R.string.update_available)
                     textStatus.setTextColor(getColor(android.R.color.holo_green_dark))
                 }
                 remoteVersion == currentVersion -> {
-                    textStatus.text = "Установлено"
+                    textStatus.text = getString(R.string.update_installed)
                 }
                 else -> {
-                    textStatus.text = "Ниже текущей"
+                    textStatus.text = getString(R.string.update_below_current)
                 }
             }
         }
@@ -197,7 +202,10 @@ class UpdateActivity : AppCompatActivity() {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             inputFormat.timeZone = TimeZone.getTimeZone("UTC")
             val date = inputFormat.parse(isoDate.substringBefore('.').substringBefore('Z')) ?: return null
-            val outputFormat = SimpleDateFormat("d MMMM yyyy, HH:mm", Locale("ru"))
+            val outputFormat = SimpleDateFormat(
+                "d MMMM yyyy, HH:mm",
+                resources.configuration.locales[0]
+            )
             outputFormat.format(date)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse date: $isoDate", e)
@@ -226,7 +234,7 @@ class UpdateActivity : AppCompatActivity() {
     private fun startDownload(channel: String) {
         val url = UpdateChecker.getDownloadUrl(channel).toHttpUrlOrNull()
         if (url == null) {
-            Toast.makeText(this, "Некорректный адрес обновления", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.update_invalid_url, Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -234,10 +242,10 @@ class UpdateActivity : AppCompatActivity() {
         val destFile = File(cacheDir, UPDATE_FILE_NAME)
 
         binding.cardProgress.visibility = View.VISIBLE
-        binding.textDownloadStatus.text = "Загрузка обновления..."
+        binding.textDownloadStatus.text = getString(R.string.update_downloading)
         binding.progressDownload.isIndeterminate = false
         binding.progressDownload.progress = 0
-        binding.textDownloadPercent.text = "0%"
+        binding.textDownloadPercent.text = getString(R.string.update_percent, 0)
         binding.buttonUpdateRelease.isEnabled = false
         binding.buttonUpdateBeta.isEnabled = false
 
@@ -253,7 +261,7 @@ class UpdateActivity : AppCompatActivity() {
 
             result
                 .onSuccess {
-                    binding.textDownloadStatus.text = "Загрузка завершена"
+                    binding.textDownloadStatus.text = getString(R.string.update_download_complete)
                     binding.progressDownload.isIndeterminate = false
                     binding.progressDownload.progress = 100
                     installDownloadedApk(destFile)
@@ -261,8 +269,8 @@ class UpdateActivity : AppCompatActivity() {
                 .onFailure { cause ->
                     Log.e(TAG, "Ошибка загрузки обновления", cause)
                     runCatching { destFile.delete() }
-                    binding.textDownloadStatus.text = "Ошибка загрузки"
-                    Toast.makeText(this@UpdateActivity, "Ошибка загрузки обновления", Toast.LENGTH_SHORT).show()
+                    binding.textDownloadStatus.text = getString(R.string.update_download_error)
+                    Toast.makeText(this@UpdateActivity, R.string.update_download_failed, Toast.LENGTH_SHORT).show()
                 }
         }
     }
@@ -320,9 +328,14 @@ class UpdateActivity : AppCompatActivity() {
         if (total > 0) {
             val percent = (downloaded * 100 / total).toInt()
             binding.progressDownload.progress = percent
-            binding.textDownloadPercent.text = "$percent% (${formatSize(downloaded)} / ${formatSize(total)})"
+            binding.textDownloadPercent.text = getString(
+                R.string.update_download_progress,
+                percent,
+                formatSize(downloaded),
+                formatSize(total)
+            )
         } else {
-            binding.textDownloadPercent.text = formatSize(downloaded)
+            binding.textDownloadPercent.text = getString(R.string.update_downloaded_size, formatSize(downloaded))
         }
     }
 
@@ -336,9 +349,9 @@ class UpdateActivity : AppCompatActivity() {
 
     private fun formatSize(bytes: Long): String {
         return when {
-            bytes >= 1_048_576 -> String.format("%.1f МБ", bytes / 1_048_576.0)
-            bytes >= 1024 -> String.format("%.0f КБ", bytes / 1024.0)
-            else -> "$bytes Б"
+            bytes >= 1_048_576 -> getString(R.string.update_size_megabytes, bytes / 1_048_576.0)
+            bytes >= 1024 -> getString(R.string.update_size_kilobytes, bytes / 1024.0)
+            else -> getString(R.string.update_size_bytes, bytes)
         }
     }
 
@@ -350,7 +363,7 @@ class UpdateActivity : AppCompatActivity() {
         try {
             if (!destFile.exists() || destFile.length() < MIN_APK_SIZE_BYTES) {
                 Log.e(TAG, "APK invalid: size=${destFile.length()} — возможно сервер вернул не APK")
-                Toast.makeText(this, "Ошибка: загруженный файл повреждён", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.update_corrupt_file, Toast.LENGTH_SHORT).show()
                 installTriggered = false
                 return
             }
@@ -375,8 +388,9 @@ class UpdateActivity : AppCompatActivity() {
             scheduleInstallErrorHint()
         } catch (e: Exception) {
             Log.e(TAG, "Error installing APK", e)
-            Toast.makeText(this, "Ошибка установки: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.update_install_error, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             installTriggered = false
         }
     }
+
 }

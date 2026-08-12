@@ -67,7 +67,7 @@ class PrivateChatController(
         activity.lifecycleScope.launch {
             val chat = app.grpcManager.getChat(chatId).getOrNull()
             if (chat == null) {
-                Toast.makeText(activity, "Чат не найден", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                 activity.finish()
                 return@launch
             }
@@ -121,16 +121,16 @@ class PrivateChatController(
         content.addView(passwordLayout)
         content.addView(remember)
         MaterialAlertDialogBuilder(activity)
-            .setTitle("Введите passphrase")
-            .setMessage("Этот чат зашифрован общим паролем. Введите passphrase, чтобы принять запрос.")
+            .setTitle(R.string.passphrase_dialog_title)
+            .setMessage(R.string.private_chat_accept_message)
             .setView(content)
-            .setPositiveButton("OK") { _, _ ->
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
                 if (passphrase.isEmpty()) return@setPositiveButton
                 activity.lifecycleScope.launch {
                     val chat = app.grpcManager.getChat(chatId).getOrNull()
                     if (chat == null) {
-                        Toast.makeText(activity, "Чат не найден", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                         return@launch
                     }
                     repo.acceptPrivateChatInvite(
@@ -145,11 +145,11 @@ class PrivateChatController(
                         loadHistory()
                     }.onFailure {
                         Log.w(TAG, "Failed to accept private chat invite", it)
-                        Toast.makeText(activity, "Неверный passphrase", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, R.string.invalid_passphrase, Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
@@ -158,7 +158,11 @@ class PrivateChatController(
             repo.rejectPrivateChat(chatId)
                 .onSuccess { activity.finish() }
                 .onFailure {
-                    Toast.makeText(activity, "Не удалось отклонить: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        activity,
+                        activity.getString(R.string.private_chat_decline_failed, it.message.orEmpty()),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
         }
     }
@@ -224,11 +228,11 @@ class PrivateChatController(
         content.addView(passwordLayout)
         content.addView(remember)
         MaterialAlertDialogBuilder(activity)
-            .setTitle("Введите passphrase")
-            .setMessage("Этот чат зашифрован общим паролем. Введите passphrase для расшифровки истории.")
+            .setTitle(R.string.passphrase_dialog_title)
+            .setMessage(R.string.private_chat_unlock_message)
             .setView(content)
             .setCancelable(false)
-            .setPositiveButton("OK") { _, _ ->
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
                 if (passphrase.isEmpty()) {
                     activity.finish()
@@ -237,7 +241,7 @@ class PrivateChatController(
                 activity.lifecycleScope.launch {
                     val chat = app.grpcManager.getChat(chatId).getOrNull()
                     if (chat == null) {
-                        Toast.makeText(activity, "Чат не найден", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                         activity.finish()
                         return@launch
                     }
@@ -246,12 +250,12 @@ class PrivateChatController(
                         loadCachedHistory()
                         loadHistory()
                     } else {
-                        Toast.makeText(activity, "Неверный passphrase", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, R.string.invalid_passphrase, Toast.LENGTH_LONG).show()
                         activity.finish()
                     }
                 }
             }
-            .setNegativeButton("Отмена") { _, _ -> activity.finish() }
+            .setNegativeButton(R.string.btn_cancel) { _, _ -> activity.finish() }
             .show()
     }
 
@@ -285,7 +289,11 @@ class PrivateChatController(
                 messages.maxOfOrNull { it.raw.id }?.let { repo.markMessagesRead(chatId, it) }
             }.onFailure {
                 Log.w(TAG, "Failed to load private history", it)
-                Toast.makeText(activity, "Не удалось загрузить историю: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.private_chat_history_load_failed, it.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -308,7 +316,11 @@ class PrivateChatController(
                     }
                 }
                 .onFailure {
-                    Toast.makeText(activity, "Не удалось отправить: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        activity,
+                        activity.getString(R.string.private_chat_message_send_failed, it.message.orEmpty()),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
         }
     }
@@ -349,7 +361,7 @@ class PrivateChatController(
         return MessageItem(
             messageId = raw.id,
             senderId = raw.senderId,
-            text = plaintext ?: "[не удалось расшифровать]",
+            text = plaintext ?: activity.getString(R.string.private_chat_decryption_failed),
             timestamp = raw.sentAt.seconds * 1000L,
             attachments = emptyList(),
             type = MessageType.MESSAGE

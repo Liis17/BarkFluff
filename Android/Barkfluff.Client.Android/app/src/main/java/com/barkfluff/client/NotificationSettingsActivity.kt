@@ -76,7 +76,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка обновления статуса уведомлений", result.exceptionOrNull())
                 Toast.makeText(
                     this@NotificationSettingsActivity,
-                    "Не удалось обновить настройку уведомлений",
+                    R.string.notification_update_error,
                     Toast.LENGTH_SHORT
                 ).show()
 

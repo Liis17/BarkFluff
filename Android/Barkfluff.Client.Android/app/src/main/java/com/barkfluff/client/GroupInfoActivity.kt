@@ -106,7 +106,7 @@ class GroupInfoActivity : AppCompatActivity() {
             if (uri != null) uploadAndSetAvatar(uri)
         } else if (result.resultCode == UCrop.RESULT_ERROR) {
             val error = UCrop.getError(result.data!!)
-            Toast.makeText(this, "Ошибка: ${error?.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.settings_error_detail, error?.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -152,25 +152,26 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun showChatBackgroundDialog() {
         lifecycleScope.launch {
             val fileIds = grpcManager.getPersonalization().getOrElse {
-                Toast.makeText(this@GroupInfoActivity, "Не удалось загрузить фоны", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@GroupInfoActivity, R.string.profile_background_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val labels = listOf("Использовать глобальный фон") + fileIds.map { "Фон ${it.take(8)}" }
+            val labels = listOf(getString(R.string.profile_use_global_background)) +
+                fileIds.map { getString(R.string.profile_background_named, it.take(8)) }
             val current = globalParam.chatBackgroundOverrides[chatId]
             var selected = fileIds.indexOf(current).takeIf { it >= 0 }?.plus(1) ?: 0
             MaterialAlertDialogBuilder(this@GroupInfoActivity)
-                .setTitle("Фон чата")
+                .setTitle(R.string.profile_chat_background)
                 .setSingleChoiceItems(labels.toTypedArray(), selected) { _, which -> selected = which }
-                .setNegativeButton("Отмена", null)
-                .setPositiveButton("Применить") { _, _ ->
+                .setNegativeButton(R.string.btn_cancel, null)
+                .setPositiveButton(R.string.btn_apply) { _, _ ->
                     lifecycleScope.launch {
                         val fileId = if (selected == 0) "" else fileIds[selected - 1]
                         val result = grpcManager.setChatBackground(chatId, fileId)
                         if (result.isSuccess) {
                             globalParam.setChatBackgroundOverride(chatId, fileId)
-                            Toast.makeText(this@GroupInfoActivity, "Фон чата обновлён", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@GroupInfoActivity, R.string.profile_background_updated, Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(this@GroupInfoActivity, "Не удалось установить фон", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@GroupInfoActivity, R.string.profile_background_set_error, Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -184,7 +185,7 @@ class GroupInfoActivity : AppCompatActivity() {
         chatIdCard.visibility = if (showIds) View.VISIBLE else View.GONE
         if (showIds) {
             binding.groupChatIdValue.text = chatId
-            binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
+            binding.rowChatId.setOnClickListener { copyToClipboard(getString(R.string.profile_chat_id_label), chatId) }
         }
     }
 
@@ -284,7 +285,7 @@ class GroupInfoActivity : AppCompatActivity() {
             barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> {
                 val cachedPath = FileCache.getFile(att.fileId)?.absolutePath
                 startActivity(
-                    MediaViewerActivity.createIntent(this, att.fileId, att.fileName.ifBlank { "Видео" }, cachedPath)
+                    MediaViewerActivity.createIntent(this, att.fileId, att.fileName.ifBlank { getString(R.string.attachment_video) }, cachedPath)
                 )
             }
             else -> {
@@ -301,7 +302,7 @@ class GroupInfoActivity : AppCompatActivity() {
                                 setDataAndType(uri, "*/*")
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            startActivity(Intent.createChooser(intent, "Открыть с помощью"))
+                            startActivity(Intent.createChooser(intent, getString(R.string.open_with)))
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error opening file", e)
@@ -441,7 +442,7 @@ class GroupInfoActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = grpcManager.listChatMembers(chatId)
             if (result.isFailure) {
-                Toast.makeText(this@GroupInfoActivity, "Ошибка загрузки участников", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@GroupInfoActivity, R.string.group_members_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
@@ -454,7 +455,7 @@ class GroupInfoActivity : AppCompatActivity() {
             val items = members.map { member ->
                 async(Dispatchers.IO) {
                     val name = "${member.firstName} ${member.lastName}".trim()
-                        .ifBlank { "ID ${member.userId}" }
+                        .ifBlank { getString(R.string.group_member_id, member.userId) }
                     val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
                         avatarSourceFor(user)
                     }
@@ -528,24 +529,24 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun memberSubtitle(status: Pair<Boolean, Long>?): String {
         if (status == null) return ""
-        return if (status.first) "в сети" else OnlineTimeFormatter.formatLastSeen(this, status.second)
+        return if (status.first) getString(R.string.profile_online) else OnlineTimeFormatter.formatLastSeen(this, status.second)
     }
 
     private fun confirmRemove(member: GroupMemberAdapter.MemberItem) {
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.group_remove_member)
-            .setMessage("Удалить ${member.name} из группы?")
-            .setPositiveButton("Удалить") { _, _ ->
+            .setMessage(getString(R.string.group_remove_member_message, member.name))
+            .setPositiveButton(R.string.btn_delete) { _, _ ->
                 lifecycleScope.launch {
                     val result = grpcManager.kickUser(chatId, member.userId)
                     if (result.isSuccess) {
                         loadMembers()
                     } else {
-                        Toast.makeText(this@GroupInfoActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@GroupInfoActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
@@ -557,10 +558,10 @@ class GroupInfoActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.group_change_name)
             .setView(editText)
-            .setPositiveButton("Сохранить") { _, _ ->
+            .setPositiveButton(R.string.btn_save) { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isEmpty()) {
-                    Toast.makeText(this, "Название не может быть пустым", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, R.string.group_name_empty, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
                 lifecycleScope.launch {
@@ -569,11 +570,11 @@ class GroupInfoActivity : AppCompatActivity() {
                         chatTitle = newName
                         binding.groupName.text = newName
                     } else {
-                        Toast.makeText(this@GroupInfoActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@GroupInfoActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
@@ -609,7 +610,7 @@ class GroupInfoActivity : AppCompatActivity() {
                     barkfluff.files.FilesApiOuterClass.UploadFileType.CHAT_PICTURE
                 )
                 if (uploadResult.isFailure) {
-                    Toast.makeText(this@GroupInfoActivity, "Ошибка загрузки: ${uploadResult.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@GroupInfoActivity, getString(R.string.settings_error_detail, uploadResult.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
@@ -618,13 +619,13 @@ class GroupInfoActivity : AppCompatActivity() {
                 if (updateResult.isSuccess) {
                     chatAvatarFileId = updateResult.getOrNull()?.pictureFileId?.ifBlank { fileId } ?: fileId
                     renderHeader()
-                    Toast.makeText(this@GroupInfoActivity, "Аватар обновлён", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@GroupInfoActivity, R.string.group_avatar_updated, Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@GroupInfoActivity, "Ошибка: ${updateResult.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@GroupInfoActivity, getString(R.string.settings_error_detail, updateResult.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка обновления аватара группы", e)
-                Toast.makeText(this@GroupInfoActivity, "Ошибка обновления аватара", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@GroupInfoActivity, R.string.group_avatar_update_error, Toast.LENGTH_SHORT).show()
             }
         }
     }

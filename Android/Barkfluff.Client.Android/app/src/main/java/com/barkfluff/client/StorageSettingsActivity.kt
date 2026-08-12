@@ -164,10 +164,16 @@ class StorageSettingsActivity : AppCompatActivity() {
 
     private fun formatBytes(bytes: Long): String {
         return when {
-            bytes < 1024 -> "$bytes Б"
-            bytes < 1024 * 1024 -> "%.1f КБ".format(bytes / 1024.0)
-            bytes < 1024L * 1024 * 1024 -> "%.1f МБ".format(bytes / (1024.0 * 1024.0))
-            else -> "%.2f ГБ".format(bytes / (1024.0 * 1024.0 * 1024.0))
+            bytes < 1024 -> getString(R.string.file_size_bytes, bytes)
+            bytes < 1024 * 1024 -> getString(R.string.file_size_kilobytes, bytes / 1024.0)
+            bytes < 1024L * 1024 * 1024 -> getString(
+                R.string.file_size_megabytes,
+                bytes / (1024.0 * 1024.0)
+            )
+            else -> getString(
+                R.string.file_size_gigabytes,
+                bytes / (1024.0 * 1024.0 * 1024.0)
+            )
         }
     }
 
@@ -251,7 +257,7 @@ class StorageSettingsActivity : AppCompatActivity() {
             }
 
             renderCacheSize(imageCacheSize, chatCacheStats)
-            Snackbar.make(binding.root, "Кеш очищен", Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(binding.root, R.string.storage_cache_cleared, Snackbar.LENGTH_SHORT).show()
         }
     }
 }

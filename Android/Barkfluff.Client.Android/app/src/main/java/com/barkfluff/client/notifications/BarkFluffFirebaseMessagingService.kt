@@ -5,6 +5,7 @@ import android.util.Log
 import coil.ImageLoader
 import coil.request.ImageRequest
 import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.R
 import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.data.GlobalParam
@@ -95,7 +96,8 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         val senderId = data["sender_id"]?.toLongOrNull() ?: return
-        val senderName = data["sender_name"]?.takeIf { it.isNotBlank() } ?: "Unknown"
+        val senderName = data["sender_name"]?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.notification_unknown_sender)
         val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
         val chatTitle = data["chat_title"]?.takeIf { it.isNotBlank() }
         val chatAvatarUrl = data["chat_avatar_url"]?.takeIf { it.isNotBlank() }
@@ -114,7 +116,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
         // Определяем отображаемое имя и аватар
         val displayName = if (isGroupChat && !chatTitle.isNullOrBlank()) {
-            "$senderName в $chatTitle"
+            getString(R.string.notification_sender_in_chat, senderName, chatTitle)
         } else {
             senderName
         }
@@ -126,15 +128,23 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         // Формируем текст в зависимости от типа контента
-        val countSuffix = if (attachmentCount > 1) " ($attachmentCount)" else ""
+        val count = attachmentCount.coerceAtLeast(1)
         val displayText = when (contentType) {
-            ATTACHMENT_TYPE_IMAGE -> if (messageText.isBlank()) "\uD83D\uDCF7 Фото$countSuffix" else "\uD83D\uDCF7 $messageText"
-            ATTACHMENT_TYPE_VIDEO -> "\uD83C\uDFAC Видео$countSuffix"
-            ATTACHMENT_TYPE_GIF -> "\uD83C\uDF7F GIF$countSuffix"
-            ATTACHMENT_TYPE_DOCUMENT -> "\uD83D\uDCC4 Документ$countSuffix"
-            ATTACHMENT_TYPE_AUDIO -> "\uD83C\uDFB5 Аудио$countSuffix"
-            ATTACHMENT_TYPE_VOICE -> "\uD83C\uDFA4 Голосовое сообщение"
-            ATTACHMENT_TYPE_STICKER -> "Стикер"
+            ATTACHMENT_TYPE_IMAGE -> if (messageText.isBlank()) {
+                "\uD83D\uDCF7 ${resources.getQuantityString(R.plurals.photos_count, count, count)}"
+            } else {
+                "\uD83D\uDCF7 $messageText"
+            }
+            ATTACHMENT_TYPE_VIDEO ->
+                "\uD83C\uDFAC ${resources.getQuantityString(R.plurals.videos_count, count, count)}"
+            ATTACHMENT_TYPE_GIF ->
+                "\uD83C\uDF7F ${resources.getQuantityString(R.plurals.gifs_count, count, count)}"
+            ATTACHMENT_TYPE_DOCUMENT ->
+                "\uD83D\uDCC4 ${resources.getQuantityString(R.plurals.files_count, count, count)}"
+            ATTACHMENT_TYPE_AUDIO ->
+                "\uD83C\uDFB5 ${resources.getQuantityString(R.plurals.audios_count, count, count)}"
+            ATTACHMENT_TYPE_VOICE -> getString(R.string.reply_voice)
+            ATTACHMENT_TYPE_STICKER -> getString(R.string.reply_sticker)
             else -> messageText
         }
 
@@ -221,7 +231,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         }
         val callerName = data["caller_name"]?.takeIf { it.isNotBlank() }
             ?: data["chat_title"]?.takeIf { it.isNotBlank() }
-            ?: "BarkFluff"
+            ?: applicationContext.getString(R.string.app_name)
 
         val callerUserId = data["caller_user_id"]?.toLongOrNull() ?: 0L
         val chatId = data["chat_id"].orEmpty()

@@ -117,7 +117,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         if (isGranted) {
             doOpenCamera()
         } else {
-            Toast.makeText(requireContext(), "Разрешение на камеру отклонено", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), R.string.picker_camera_permission_denied, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -379,7 +379,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
             cameraLauncher.launch(pendingCameraUri)
         } catch (e: Exception) {
             Log.e(TAG, "Error opening camera", e)
-            Toast.makeText(requireContext(), "Не удалось открыть камеру", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), R.string.picker_camera_open_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -392,7 +392,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error opening system photo picker", e)
-            Toast.makeText(requireContext(), "Не удалось открыть галерею", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), R.string.picker_gallery_open_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -401,7 +401,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
             filePickerLauncher.launch(arrayOf("*/*"))
         } catch (e: Exception) {
             Log.e(TAG, "Error opening file picker", e)
-            Toast.makeText(requireContext(), "Не удалось открыть выбор файлов", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), R.string.picker_file_open_failed, Toast.LENGTH_SHORT).show()
         }
     }
 

@@ -39,7 +39,7 @@ class LiveKitCallEngine(
         fun onConnected(cameraEnabled: Boolean)
         fun onReconnecting()
         fun onDisconnected()
-        fun onError(message: String)
+        fun onError()
     }
 
     private var room: Room? = null
@@ -83,7 +83,7 @@ class LiveKitCallEngine(
                         isConnected = false
                         _participants.value = emptyList()
                         android.util.Log.e("LiveKitCallEngine", "FailedToConnect", event.error)
-                        listener.onError("Не удалось подключиться к звонку")
+                        listener.onError()
                     }
                     is RoomEvent.ParticipantConnected,
                     is RoomEvent.ParticipantDisconnected,

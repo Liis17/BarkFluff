@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.R
 import com.barkfluff.client.adapter.ForwardChatPickerAdapter
 import com.barkfluff.client.databinding.BottomSheetForwardChatsBinding
 import com.barkfluff.client.repository.ChatRepository
@@ -88,7 +89,11 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
             onSelectionChanged = { count ->
                 binding.sendButton.isEnabled = count > 0
-                binding.sendButton.text = if (count > 0) "Переслать ($count)" else "Переслать"
+                binding.sendButton.text = if (count > 0) {
+                    getString(R.string.forward_button_count, count)
+                } else {
+                    getString(R.string.forward_button)
+                }
             }
         )
 
@@ -116,7 +121,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             } else {
                 Toast.makeText(
                     requireContext(),
-                    "Не удалось загрузить чаты: ${result.exceptionOrNull()?.message}",
+                    getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -130,7 +135,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
         val comment = binding.commentEditText.text?.toString()?.trim().orEmpty()
 
         binding.sendButton.isEnabled = false
-        binding.sendButton.text = "Отправка..."
+        binding.sendButton.text = getString(R.string.forward_loading)
 
         lifecycleScope.launch {
             val results = selected.map { chatId ->
@@ -149,9 +154,12 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             val failCount = results.size - successCount
 
             val msg = when {
-                failCount == 0 -> "Переслано в $successCount ${chatPlural(successCount)}"
-                successCount == 0 -> "Не удалось переслать"
-                else -> "Переслано в $successCount, ошибок: $failCount"
+                failCount == 0 -> getString(
+                    R.string.forward_success,
+                    resources.getQuantityString(R.plurals.forward_chat_count, successCount, successCount)
+                )
+                successCount == 0 -> getString(R.string.forward_failed)
+                else -> getString(R.string.forward_partial, successCount, failCount)
             }
             Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
 
@@ -160,16 +168,6 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             }
 
             dismissAllowingStateLoss()
-        }
-    }
-
-    private fun chatPlural(n: Int): String {
-        val mod10 = n % 10
-        val mod100 = n % 100
-        return when {
-            mod10 == 1 && mod100 != 11 -> "чат"
-            mod10 in 2..4 && mod100 !in 12..14 -> "чата"
-            else -> "чатов"
         }
     }
 

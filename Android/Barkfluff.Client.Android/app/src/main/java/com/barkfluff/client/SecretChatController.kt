@@ -122,7 +122,11 @@ class SecretChatController(
                     }
                 }
                 .onFailure {
-                    Toast.makeText(activity, "Не удалось отправить: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        activity,
+                        activity.getString(R.string.private_chat_message_send_failed, it.message.orEmpty()),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
         }
     }

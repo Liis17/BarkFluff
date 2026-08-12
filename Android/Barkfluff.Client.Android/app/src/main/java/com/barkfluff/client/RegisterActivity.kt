@@ -123,11 +123,11 @@ class RegisterActivity : AppCompatActivity() {
             if (uri != null) {
                 loadCroppedImage(uri)
             } else {
-                Toast.makeText(this, "Ошибка кропа", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.register_crop_error, Toast.LENGTH_SHORT).show()
             }
         } else if (result.resultCode == UCrop.RESULT_ERROR) {
             val error = UCrop.getError(result.data!!)
-            Toast.makeText(this, "Ошибка кропа: ${error?.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.register_crop_error_detail, error?.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -145,7 +145,7 @@ class RegisterActivity : AppCompatActivity() {
         createGrpcClients()
 
         // Отображаем имя сервера
-        binding.serverNameText.text = globalParam.serverName.ifBlank { "BarkFluff" }
+        binding.serverNameText.text = globalParam.serverName.ifBlank { getString(R.string.app_name) }
 
         // Восстанавливаем состояние если было
         savedInstanceState?.let {
@@ -225,7 +225,7 @@ class RegisterActivity : AppCompatActivity() {
         if (!validateCurrentStep()) return
 
         val b = step3Binding ?: return
-        b.emailValidationText.text = "Проверка..."
+        b.emailValidationText.text = getString(R.string.register_checking)
         b.emailValidationText.visibility = View.VISIBLE
         binding.nextButton.isEnabled = false
 
@@ -236,23 +236,23 @@ class RegisterActivity : AppCompatActivity() {
                     val exists = existsResult.getOrNull()!!
                     Log.d(TAG, "Email exists: $exists")
                     if (exists) {
-                        b.emailValidationText.text = "✗ Email уже зарегистрирован"
+                        b.emailValidationText.text = getString(R.string.register_email_taken)
                         b.emailValidationText.visibility = View.VISIBLE
                         binding.nextButton.isEnabled = true
                     } else {
-                        b.emailValidationText.text = "✓ Email доступен"
+                        b.emailValidationText.text = getString(R.string.register_email_available)
                         b.emailValidationText.visibility = View.VISIBLE
                         delay(500)
                         createAccountAndProceed()
                     }
                 } else {
                     Log.e(TAG, "Check email failed: ${existsResult.exceptionOrNull()?.message}")
-                    b.emailValidationText.text = "Ошибка проверки"
+                    b.emailValidationText.text = getString(R.string.register_check_error)
                     binding.nextButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check email error: ${e.message}", e)
-                b.emailValidationText.text = "Ошибка проверки"
+                b.emailValidationText.text = getString(R.string.register_check_error)
                 binding.nextButton.isEnabled = true
             }
         }
@@ -281,7 +281,7 @@ class RegisterActivity : AppCompatActivity() {
         }
 
         binding.nextButton.isEnabled = true
-        binding.nextButton.text = "Далее"
+        binding.nextButton.setText(R.string.btn_next)
 
         // Специфичные настройки кнопки для шагов
         when (step) {
@@ -340,18 +340,18 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return
         b.firstNameEditText.setText(firstName)
         b.lastNameEditText.setText(lastName)
-        b.firstNameCounterText.text = "${firstName.length}/$MAX_NAME_LENGTH"
-        b.lastNameCounterText.text = "${lastName.length}/$MAX_NAME_LENGTH"
+        b.firstNameCounterText.text = getString(R.string.register_bio_counter, firstName.length, MAX_NAME_LENGTH)
+        b.lastNameCounterText.text = getString(R.string.register_bio_counter, lastName.length, MAX_NAME_LENGTH)
 
         b.firstNameEditText.doAfterTextChanged {
             firstName = it?.toString()?.trim() ?: ""
-            b.firstNameCounterText.text = "${it?.length ?: 0}/$MAX_NAME_LENGTH"
+            b.firstNameCounterText.text = getString(R.string.register_bio_counter, it?.length ?: 0, MAX_NAME_LENGTH)
             validateFirstName()
         }
 
         b.lastNameEditText.doAfterTextChanged {
             lastName = it?.toString()?.trim() ?: ""
-            b.lastNameCounterText.text = "${it?.length ?: 0}/$MAX_NAME_LENGTH"
+            b.lastNameCounterText.text = getString(R.string.register_bio_counter, it?.length ?: 0, MAX_NAME_LENGTH)
             validateLastName()
         }
     }
@@ -359,20 +359,20 @@ class RegisterActivity : AppCompatActivity() {
     private fun validateFirstName(): Boolean {
         val b = step1Binding ?: return false
         if (firstName.isEmpty()) {
-            b.firstNameValidationText.text = "Введите имя"
+            b.firstNameValidationText.text = getString(R.string.register_first_name_required_error)
             b.firstNameValidationText.visibility = View.VISIBLE
             return false
         }
         return if (firstName.length < MIN_NAME_LENGTH) {
-            b.firstNameValidationText.text = "Минимум $MIN_NAME_LENGTH символа"
+            b.firstNameValidationText.text = getString(R.string.register_first_name_min_length, MIN_NAME_LENGTH)
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else if (firstName.length > MAX_NAME_LENGTH) {
-            b.firstNameValidationText.text = "Максимум $MAX_NAME_LENGTH символов"
+            b.firstNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else {
-            b.firstNameValidationText.text = "✓ Имя корректно"
+            b.firstNameValidationText.text = getString(R.string.register_first_name_valid)
             b.firstNameValidationText.visibility = View.VISIBLE
             true
         }
@@ -381,7 +381,7 @@ class RegisterActivity : AppCompatActivity() {
     private fun validateLastName(): Boolean {
         val b = step1Binding ?: return false
         return if (lastName.isNotEmpty() && lastName.length > MAX_NAME_LENGTH) {
-            b.lastNameValidationText.text = "Максимум $MAX_NAME_LENGTH символов"
+            b.lastNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
             b.lastNameValidationText.visibility = View.VISIBLE
             false
         } else {
@@ -399,10 +399,10 @@ class RegisterActivity : AppCompatActivity() {
             if (username.isNotEmpty()) {
                 val validPattern = Regex("^[a-z0-9_]+$")
                 if (!username.matches(validPattern)) {
-                    b.usernameValidationText.text = "Только латиница, цифры и _"
+                    b.usernameValidationText.text = getString(R.string.register_username_charset_error)
                     b.usernameValidationText.visibility = View.VISIBLE
                 } else if (username.length > MAX_USERNAME_LENGTH) {
-                    b.usernameValidationText.text = "Максимум $MAX_USERNAME_LENGTH символов"
+                    b.usernameValidationText.text = getString(R.string.register_first_name_max_length, MAX_USERNAME_LENGTH)
                     b.usernameValidationText.visibility = View.VISIBLE
                 } else {
                     b.usernameValidationText.visibility = View.GONE
@@ -417,7 +417,7 @@ class RegisterActivity : AppCompatActivity() {
         if (!validateCurrentStep()) return
 
         val b = step2Binding ?: return
-        b.usernameValidationText.text = "Проверка..."
+        b.usernameValidationText.text = getString(R.string.register_checking)
         b.usernameValidationText.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         b.usernameValidationText.visibility = View.VISIBLE
         binding.nextButton.isEnabled = false
@@ -444,12 +444,12 @@ class RegisterActivity : AppCompatActivity() {
                     }
                 } else {
                     Log.e(TAG, "Check username failed: ${existsResult.exceptionOrNull()?.message}")
-                    b.usernameValidationText.text = "Ошибка проверки"
+                    b.usernameValidationText.text = getString(R.string.register_check_error)
                     binding.nextButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check username error: ${e.message}", e)
-                b.usernameValidationText.text = "Ошибка проверки"
+                b.usernameValidationText.text = getString(R.string.register_check_error)
                 binding.nextButton.isEnabled = true
             }
         }
@@ -464,7 +464,7 @@ class RegisterActivity : AppCompatActivity() {
             if (email.isNotEmpty()) {
                 val emailPattern = android.util.Patterns.EMAIL_ADDRESS
                 if (!emailPattern.matcher(email).matches()) {
-                    b.emailValidationText.text = "Некорректный email"
+                    b.emailValidationText.text = getString(R.string.register_email_invalid)
                     b.emailValidationText.visibility = View.VISIBLE
                     binding.nextButton.isEnabled = false
                 } else {
@@ -490,7 +490,7 @@ class RegisterActivity : AppCompatActivity() {
         emailCheckJob = lifecycleScope.launch {
             delay(500) // Ждем пока пользователь закончит ввод
             
-            b.emailValidationText.text = "Проверка..."
+            b.emailValidationText.text = getString(R.string.register_checking)
             b.emailValidationText.visibility = View.VISIBLE
             binding.nextButton.isEnabled = false
             
@@ -500,23 +500,23 @@ class RegisterActivity : AppCompatActivity() {
                     val exists = existsResult.getOrNull()!!
                     Log.d(TAG, "Email exists: $exists")
                     if (exists) {
-                        b.emailValidationText.text = "✗ Email уже зарегистрирован"
+                        b.emailValidationText.text = getString(R.string.register_email_taken)
                         b.emailValidationText.visibility = View.VISIBLE
                         binding.nextButton.isEnabled = false
                     } else {
-                        b.emailValidationText.text = "✓ Email доступен"
+                        b.emailValidationText.text = getString(R.string.register_email_available)
                         b.emailValidationText.visibility = View.VISIBLE
                         binding.nextButton.isEnabled = true
                     }
                 } else {
                     Log.e(TAG, "Check email failed: ${existsResult.exceptionOrNull()?.message}")
-                    b.emailValidationText.text = "Ошибка проверки"
+                    b.emailValidationText.text = getString(R.string.register_check_error)
                     b.emailValidationText.visibility = View.VISIBLE
                     binding.nextButton.isEnabled = false
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check email error: ${e.message}", e)
-                b.emailValidationText.text = "Ошибка проверки"
+                b.emailValidationText.text = getString(R.string.register_check_error)
                 b.emailValidationText.visibility = View.VISIBLE
                 binding.nextButton.isEnabled = false
             }
@@ -527,7 +527,7 @@ class RegisterActivity : AppCompatActivity() {
         if (!validateCurrentStep()) return
 
         val b = step3Binding ?: return
-        b.emailValidationText.text = "Создание аккаунта..."
+        b.emailValidationText.text = getString(R.string.register_account_creating)
         b.emailValidationText.visibility = View.VISIBLE
         binding.nextButton.isEnabled = false
 
@@ -539,7 +539,7 @@ class RegisterActivity : AppCompatActivity() {
                     codeId = createResult.getOrNull()
                     Log.d(TAG, "Аккаунт создан, CodeId: $codeId")
                     
-                    b.emailValidationText.text = "✓ Код отправлен на $email"
+                    b.emailValidationText.text = getString(R.string.register_code_sent, email)
                     b.emailValidationText.visibility = View.VISIBLE
                     delay(1000)
                     saveCurrentStepData()
@@ -547,12 +547,15 @@ class RegisterActivity : AppCompatActivity() {
                     loadStep(currentStep)
                 } else {
                     Log.e(TAG, "Create account failed: ${createResult.exceptionOrNull()?.message}")
-                    b.emailValidationText.text = "Ошибка: ${createResult.exceptionOrNull()?.message}"
+                    b.emailValidationText.text = getString(
+                        R.string.register_error_detail,
+                        createResult.exceptionOrNull()?.message.orEmpty()
+                    )
                     binding.nextButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Create account error: ${e.message}", e)
-                b.emailValidationText.text = "Ошибка: ${e.message}"
+                b.emailValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
                 binding.nextButton.isEnabled = true
             }
         }
@@ -572,18 +575,18 @@ class RegisterActivity : AppCompatActivity() {
         val code = otpHelper?.getCode() ?: ""
 
         if (code.length != 6) {
-            b.verificationCodeValidationText.text = "Введите 6-значный код"
+            b.verificationCodeValidationText.text = getString(R.string.register_code_incomplete)
             b.verificationCodeValidationText.visibility = View.VISIBLE
             return
         }
 
         if (codeId == null) {
-            b.verificationCodeValidationText.text = "Ошибка: аккаунт не создан"
+            b.verificationCodeValidationText.text = getString(R.string.register_account_not_created)
             b.verificationCodeValidationText.visibility = View.VISIBLE
             return
         }
 
-        b.verificationCodeValidationText.text = "Проверка..."
+        b.verificationCodeValidationText.text = getString(R.string.register_checking)
         b.verificationCodeValidationText.visibility = View.VISIBLE
         binding.nextButton.isEnabled = false
 
@@ -610,25 +613,28 @@ class RegisterActivity : AppCompatActivity() {
                         // Пересоздаем gRPC клиенты с новыми токенами
                         recreateGrpcClients()
                         
-                        b.verificationCodeValidationText.text = "✓ Аккаунт подтвержден"
+                        b.verificationCodeValidationText.text = getString(R.string.register_account_confirmed)
                         delay(500)
                         saveCurrentStepData()
                         currentStep++
                         loadStep(currentStep)
                     } else {
                         Log.e(TAG, "Failed to create access token: ${tokenResult.exceptionOrNull()?.message}")
-                        b.verificationCodeValidationText.text = "Ошибка создания токена"
+                        b.verificationCodeValidationText.text = getString(R.string.register_token_error)
                         binding.nextButton.isEnabled = true
                     }
                 } else {
                     Log.e(TAG, "Confirm account failed: ${confirmResult.exceptionOrNull()?.message}")
-                    b.verificationCodeValidationText.text = "Ошибка: ${confirmResult.exceptionOrNull()?.message}"
+                    b.verificationCodeValidationText.text = getString(
+                        R.string.register_error_detail,
+                        confirmResult.exceptionOrNull()?.message.orEmpty()
+                    )
                     binding.nextButton.isEnabled = true
                     otpHelper?.clear()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Confirm account error: ${e.message}", e)
-                b.verificationCodeValidationText.text = "Ошибка: ${e.message}"
+                b.verificationCodeValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
                 binding.nextButton.isEnabled = true
                 otpHelper?.clear()
             }
@@ -789,18 +795,18 @@ class RegisterActivity : AppCompatActivity() {
             // Включаем кнопку "Далее" теперь, когда аватар выбран
             binding.nextButton.isEnabled = true
 
-            Toast.makeText(this, "Фото выбрано", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.register_photo_selected, Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Log.e(TAG, "Load cropped image error: ${e.message}", e)
-            Toast.makeText(this, "Ошибка загрузки фото: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.register_photo_upload_error, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setupStep7() {
         val b = step7Binding ?: return
 
-        b.previewFullName.text = "$firstName $lastName".trim()
-        b.previewUsername.text = "@$username"
+        b.previewFullName.text = getString(R.string.register_full_name_format, firstName, lastName).trim()
+        b.previewUsername.text = getString(R.string.register_username_format, username)
 
         avatarBytes?.let { bytes ->
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
@@ -808,10 +814,10 @@ class RegisterActivity : AppCompatActivity() {
         }
 
         b.bioEditText.setText(bio)
-        b.bioCounterText.text = "${bio.length}/$MAX_BIO_LENGTH"
+        b.bioCounterText.text = getString(R.string.register_bio_counter, bio.length, MAX_BIO_LENGTH)
         b.bioEditText.doAfterTextChanged {
             bio = it?.toString() ?: ""
-            b.bioCounterText.text = "${it?.length ?: 0}/$MAX_BIO_LENGTH"
+            b.bioCounterText.text = getString(R.string.register_bio_counter, it?.length ?: 0, MAX_BIO_LENGTH)
         }
     }
 
@@ -831,7 +837,7 @@ class RegisterActivity : AppCompatActivity() {
         b.copyCodeButton.setOnClickListener {
             val code = b.twoFaSecretCode.text.toString()
             copyToClipboard(code)
-            Toast.makeText(this, "Код скопирован", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.register_code_copied, Toast.LENGTH_SHORT).show()
         }
 
         b.openAuthenticatorButton.setOnClickListener {
@@ -855,11 +861,11 @@ class RegisterActivity : AppCompatActivity() {
                     }
                 } else {
                     Log.e(TAG, "Get OTP setup failed: ${result.exceptionOrNull()?.message}")
-                    Toast.makeText(this@RegisterActivity, "Ошибка настройки 2FA", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@RegisterActivity, R.string.register_2fa_setup_error, Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Get OTP setup error: ${e.message}", e)
-                Toast.makeText(this@RegisterActivity, "Ошибка настройки 2FA", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@RegisterActivity, R.string.register_2fa_setup_error, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -879,12 +885,16 @@ class RegisterActivity : AppCompatActivity() {
                     loadStep(currentStep)
                 } else {
                     Log.e(TAG, "Set password failed: ${result.exceptionOrNull()?.message}")
-                    Toast.makeText(this@RegisterActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@RegisterActivity,
+                        getString(R.string.register_error_detail, result.exceptionOrNull()?.message.orEmpty()),
+                        Toast.LENGTH_SHORT
+                    ).show()
                     binding.nextButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Set password error: ${e.message}", e)
-                Toast.makeText(this@RegisterActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@RegisterActivity, getString(R.string.register_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
                 binding.nextButton.isEnabled = true
             }
         }
@@ -912,12 +922,16 @@ class RegisterActivity : AppCompatActivity() {
                     loadStep(currentStep)
                 } else {
                     Log.e(TAG, "Upload avatar failed: ${uploadResult.exceptionOrNull()?.message}")
-                    Toast.makeText(this@RegisterActivity, "Ошибка загрузки: ${uploadResult.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@RegisterActivity,
+                        getString(R.string.register_avatar_upload_error, uploadResult.exceptionOrNull()?.message.orEmpty()),
+                        Toast.LENGTH_SHORT
+                    ).show()
                     binding.nextButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Upload avatar error: ${e.message}", e)
-                Toast.makeText(this@RegisterActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@RegisterActivity, getString(R.string.register_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
                 binding.nextButton.isEnabled = true
             }
         }
@@ -963,18 +977,18 @@ class RegisterActivity : AppCompatActivity() {
                 val result = grpcManager.confirmOtpSetup(code)
                 if (result.isSuccess) {
                     is2faEnabled = true
-                    Toast.makeText(this@RegisterActivity, "2FA настроена", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@RegisterActivity, R.string.register_2fa_configured, Toast.LENGTH_SHORT).show()
                     saveCurrentStepData()
                     currentStep++
                     loadStep(currentStep)
                 } else {
-                    step8Binding?.otpErrorText?.text = "Неверный код"
+                    step8Binding?.otpErrorText?.text = getString(R.string.register_invalid_code)
                     step8Binding?.otpErrorText?.visibility = View.VISIBLE
                     binding.nextButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Verify 2FA error: ${e.message}", e)
-                step8Binding?.otpErrorText?.text = "Ошибка: ${e.message}"
+                step8Binding?.otpErrorText?.text = getString(R.string.register_error_detail, e.message.orEmpty())
                 step8Binding?.otpErrorText?.visibility = View.VISIBLE
                 binding.nextButton.isEnabled = true
             }
@@ -1005,7 +1019,7 @@ class RegisterActivity : AppCompatActivity() {
                 startActivity(playStoreIntent)
             }
         } catch (e: Exception) {
-            Toast.makeText(this, "Не удалось открыть аутентификатор", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.register_authenticator_open_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1107,7 +1121,7 @@ class RegisterActivity : AppCompatActivity() {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             } else {
-                Toast.makeText(this, "Разрешение на доступ к фото не предоставлено", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.register_photo_permission_denied, Toast.LENGTH_SHORT).show()
             }
         }
     }

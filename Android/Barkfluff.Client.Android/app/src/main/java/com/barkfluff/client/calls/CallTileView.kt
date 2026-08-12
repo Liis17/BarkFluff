@@ -59,6 +59,8 @@ class CallTileView(context: Context) : FrameLayout(context) {
     private var hero = false
 
     init {
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        isFocusable = true
         clipToOutline = true
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
@@ -68,20 +70,28 @@ class CallTileView(context: Context) : FrameLayout(context) {
         }
 
         renderer.visibility = View.INVISIBLE
+        renderer.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         addView(renderer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         // Центральный блок: аватар + waveform/субтитр
         avatarBlock = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
 
         avatarFrame = FrameLayout(context)
-        avatarImage = ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+        avatarFrame.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        avatarImage = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = null
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
         avatarInitials = TextView(context).apply {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         avatarFrame.addView(avatarImage, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         avatarFrame.addView(avatarInitials, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -94,6 +104,7 @@ class CallTileView(context: Context) : FrameLayout(context) {
             typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
             visibility = View.GONE
             setPadding(dp(16), dp(20), dp(16), 0)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         avatarBlock.addView(heroName, LinearLayout.LayoutParams(
             LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
@@ -101,6 +112,7 @@ class CallTileView(context: Context) : FrameLayout(context) {
         waveform = WaveformView(context).apply {
             barColor = speakingColor
             visibility = View.GONE
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         avatarBlock.addView(waveform, LinearLayout.LayoutParams(
             LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
@@ -109,6 +121,7 @@ class CallTileView(context: Context) : FrameLayout(context) {
             setTextColor(onSurfaceVariant)
             textSize = 11f
             visibility = View.GONE
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         avatarBlock.addView(subtitle, LinearLayout.LayoutParams(
             LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
@@ -122,15 +135,19 @@ class CallTileView(context: Context) : FrameLayout(context) {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         micChip = ImageView(context).apply {
             setBackgroundResource(R.drawable.bg_call_mic_chip)
             val p = dp(5)
             setPadding(p, p, p, p)
+            contentDescription = null
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         bottomBar = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             addView(nameLabel, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             addView(micChip, LinearLayout.LayoutParams(dp(22), dp(22)))
         }
@@ -185,6 +202,14 @@ class CallTileView(context: Context) : FrameLayout(context) {
         val hasVideo = spec.track != null
         attachTrack(spec.track, engine)
 
+        contentDescription = when {
+            spec.isScreen -> context.getString(R.string.call_tile_description_screen_share, displayName)
+            !spec.participant.micEnabled -> context.getString(R.string.call_tile_description_muted, displayName)
+            speaking -> context.getString(R.string.call_tile_description_speaking, displayName)
+            hasVideo -> context.getString(R.string.call_tile_description_video, displayName)
+            else -> context.getString(R.string.call_tile_description_plain, displayName)
+        }
+
         if (hasVideo) {
             avatarBlock.visibility = View.GONE
         } else {
@@ -192,7 +217,9 @@ class CallTileView(context: Context) : FrameLayout(context) {
             waveform.setActive(speaking)
             if (!hero) {
                 subtitle.visibility = if (speaking) View.GONE else View.VISIBLE
-                subtitle.text = if (spec.isScreen) "демонстрация" else "молчит"
+                subtitle.text = context.getString(
+                    if (spec.isScreen) R.string.call_status_screen_share else R.string.call_status_silent
+                )
             } else {
                 subtitle.visibility = View.GONE
             }

@@ -151,7 +151,7 @@ class AttachmentPreviewAdapter(
                         binding.previewImageView.visibility = View.GONE
                         binding.fileIconContainer.visibility = View.VISIBLE
                         binding.videoIndicator.visibility = View.GONE
-                        binding.fileNameTextView.text = "Видео"
+                        binding.fileNameTextView.text = binding.root.context.getString(R.string.attachment_video)
                     }
                 }
 
@@ -159,7 +159,9 @@ class AttachmentPreviewAdapter(
                     binding.previewImageView.visibility = View.GONE
                     binding.fileIconContainer.visibility = View.VISIBLE
                     binding.videoIndicator.visibility = View.GONE
-                    binding.fileNameTextView.text = attachment.fileName.ifBlank { "Файл" }
+                    binding.fileNameTextView.text = attachment.fileName.ifBlank {
+                        binding.root.context.getString(R.string.attachment_file)
+                    }
                 }
             }
 
@@ -175,11 +177,13 @@ class AttachmentPreviewAdapter(
         fun bind(item: MessagesApiOuterClass.ChatAttachmentInfo) {
             val attachment = item.attachment
 
-            binding.fileNameTextView.text = attachment.fileName.ifBlank { "Файл" }
+            binding.fileNameTextView.text = attachment.fileName.ifBlank {
+                binding.root.context.getString(R.string.attachment_file)
+            }
 
             val sizeBytes = attachment.attachmentSize
             if (sizeBytes > 0) {
-                binding.fileSizeTextView.text = formatFileSize(sizeBytes)
+                binding.fileSizeTextView.text = formatFileSize(binding.root.context, sizeBytes)
                 binding.fileSizeTextView.visibility = View.VISIBLE
             } else {
                 binding.fileSizeTextView.visibility = View.GONE
@@ -188,11 +192,17 @@ class AttachmentPreviewAdapter(
             binding.root.setOnClickListener { onAttachmentClick(item) }
         }
 
-        private fun formatFileSize(bytes: Long): String = when {
-            bytes < 1024 -> "$bytes Б"
-            bytes < 1024 * 1024 -> "${bytes / 1024} КБ"
-            bytes < 1024L * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024.0))} МБ"
-            else -> "${"%.1f".format(bytes / (1024.0 * 1024.0 * 1024.0))} ГБ"
+        private fun formatFileSize(context: android.content.Context, bytes: Long): String = when {
+            bytes < 1024 -> context.getString(R.string.file_size_bytes, bytes)
+            bytes < 1024 * 1024 -> context.getString(R.string.file_size_kilobytes, bytes / 1024.0)
+            bytes < 1024L * 1024 * 1024 -> context.getString(
+                R.string.file_size_megabytes,
+                bytes / (1024.0 * 1024.0)
+            )
+            else -> context.getString(
+                R.string.file_size_gigabytes,
+                bytes / (1024.0 * 1024.0 * 1024.0)
+            )
         }
     }
 
@@ -207,6 +217,9 @@ class AttachmentPreviewAdapter(
             binding.playIcon.setImageResource(
                 if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow
             )
+            binding.playButton.contentDescription = binding.root.context.getString(
+                if (playing) R.string.cd_pause else R.string.cd_play
+            )
             binding.audioDuration.text = ""
 
             binding.playButton.setOnClickListener {
@@ -217,6 +230,7 @@ class AttachmentPreviewAdapter(
                 if (AudioPlayerHelper.isActiveFile(fileId) && AudioPlayerHelper.isPlaying()) {
                     AudioPlayerHelper.pause()
                     binding.playIcon.setImageResource(R.drawable.ic_play_arrow)
+                    binding.playButton.contentDescription = binding.root.context.getString(R.string.cd_play)
                     return@setOnClickListener
                 }
 
@@ -230,12 +244,17 @@ class AttachmentPreviewAdapter(
                             binding.playIcon.setImageResource(
                                 if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
                             )
+                            binding.playButton.contentDescription = binding.root.context.getString(
+                                if (isPlaying) R.string.cd_pause else R.string.cd_play
+                            )
                         }
                         override fun onError() {
                             binding.playIcon.setImageResource(R.drawable.ic_play_arrow)
+                            binding.playButton.contentDescription = binding.root.context.getString(R.string.cd_play)
                         }
                         override fun onComplete() {
                             binding.playIcon.setImageResource(R.drawable.ic_play_arrow)
+                            binding.playButton.contentDescription = binding.root.context.getString(R.string.cd_play)
                             binding.audioDuration.text = ""
                         }
                     })

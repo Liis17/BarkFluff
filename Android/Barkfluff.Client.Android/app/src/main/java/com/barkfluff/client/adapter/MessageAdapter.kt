@@ -379,7 +379,10 @@ class MessageAdapter(
                 if (progress != null) {
                     binding.uploadProgressOverlay.visibility = View.VISIBLE
                     binding.uploadProgressBar.progress = progress
-                    binding.uploadProgressLabel.text = "$progress%"
+                    binding.uploadProgressLabel.text = binding.root.context.getString(
+                        R.string.message_upload_progress,
+                        progress
+                    )
                     binding.uploadProgressOverlay.layoutParams = binding.uploadProgressOverlay.layoutParams.also {
                         it.width = if (binding.attachmentsContainer.visibility == View.VISIBLE)
                             binding.attachmentsContainer.layoutParams.width
@@ -607,15 +610,17 @@ class MessageAdapter(
         if (data.isDeleted) {
             // Сервер не отдаёт ни текст, ни автора удалённого оригинала — цитата не должна
             // оставаться способом прочитать удалённое сообщение.
-            quote.replyAuthorTextView.text = "Сообщение удалено"
+            quote.replyAuthorTextView.text = quote.replyView.context.getString(R.string.message_deleted)
             quote.replyPreviewTextView.text = ""
             quote.replyView.setOnClickListener(null)
             quote.replyView.isClickable = false
             return
         }
 
-        quote.replyAuthorTextView.text = data.senderName.ifBlank { "Сообщение" }
-        quote.replyPreviewTextView.text = buildReplyPreviewLine(data)
+        quote.replyAuthorTextView.text = data.senderName.ifBlank {
+            quote.replyView.context.getString(R.string.message_placeholder)
+        }
+        quote.replyPreviewTextView.text = buildReplyPreviewLine(data, quote.replyView.context)
 
         // Click по reply-блоку — переход к оригиналу
         val origId = data.messageId
@@ -626,16 +631,16 @@ class MessageAdapter(
     }
 
     /** Превью для reply: текст оригинала, а если его нет — тип первого вложения. */
-    private fun buildReplyPreviewLine(data: Shared.ReplyInfo): String {
+    private fun buildReplyPreviewLine(data: Shared.ReplyInfo, context: Context): String {
         if (data.textPreview.isNotBlank()) return MarkdownRenderer.strip(data.textPreview)
 
         return when (data.firstAttachmentType) {
-            Shared.MessageAttachmentType.IMAGE, Shared.MessageAttachmentType.GIF -> "📷 Фото"
-            Shared.MessageAttachmentType.VIDEO -> "🎬 Видео"
-            Shared.MessageAttachmentType.VOICE -> "🎤 Голосовое сообщение"
-            Shared.MessageAttachmentType.AUDIO -> "🎵 Аудио"
-            Shared.MessageAttachmentType.STICKER -> "🩷 Стикер"
-            Shared.MessageAttachmentType.DOCUMENT -> "📎 Файл"
+            Shared.MessageAttachmentType.IMAGE, Shared.MessageAttachmentType.GIF -> context.getString(R.string.reply_photo)
+            Shared.MessageAttachmentType.VIDEO -> context.getString(R.string.reply_video)
+            Shared.MessageAttachmentType.VOICE -> context.getString(R.string.reply_voice)
+            Shared.MessageAttachmentType.AUDIO -> context.getString(R.string.reply_audio)
+            Shared.MessageAttachmentType.STICKER -> context.getString(R.string.reply_sticker)
+            Shared.MessageAttachmentType.DOCUMENT -> context.getString(R.string.reply_file)
             else -> ""
         }
     }
@@ -644,7 +649,9 @@ class MessageAdapter(
         quote.quoteContainer.visibility = View.VISIBLE
         quote.replyView.visibility = View.GONE
         quote.forwardView.visibility = View.VISIBLE
-        quote.forwardAuthorTextView.text = data.authorName.ifBlank { "Пересланное сообщение" }
+        quote.forwardAuthorTextView.text = data.authorName.ifBlank {
+            quote.forwardView.context.getString(R.string.forwarded_message)
+        }
 
         // Медиа-вложения внутри пересланного сообщения (картинки/видео)
         val nestedAtts = data.attachmentsList
@@ -1315,7 +1322,7 @@ class MessageAdapter(
                             saveFileToDownloads(context, cachedFile, fileName)
                         }
                     } else {
-                        Toast.makeText(context, "Сначала скачайте аудио", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, R.string.audio_download_required, Toast.LENGTH_SHORT).show()
                     }
                     true
                 }
@@ -1337,7 +1344,7 @@ class MessageAdapter(
                     binding.playPauseButton.isEnabled = false
                     binding.playPauseButton.alpha = 0.4f
                     binding.durationText.text = "0:00"
-                    Toast.makeText(context, "Аудио удалено из кеша", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.audio_removed_from_cache, Toast.LENGTH_SHORT).show()
                     true
                 }
                 else -> false
@@ -1408,7 +1415,11 @@ class MessageAdapter(
                     } else {
                         binding.audioSeekBar.progress = (progress * 1000).toInt()
                     }
-                    binding.durationText.text = "${formatAudioTime(pos.toLong())} / ${formatAudioTime(dur.toLong())}"
+                    binding.durationText.text = binding.root.context.getString(
+                        R.string.audio_position,
+                        formatAudioTime(pos.toLong()),
+                        formatAudioTime(dur.toLong())
+                    )
                 }
                 handler.postDelayed(this, 250)
             }
@@ -1493,11 +1504,11 @@ class MessageAdapter(
         )
         val context = container.context
         val fileId = attachment.fileId
-        val fileName = attachment.fileName.ifBlank { "file" }
+        val fileName = attachment.fileName.ifBlank { context.getString(R.string.attachment_file) }
         val previewUrl = attachment.previewUrl
 
         binding.docFileName.text = fileName
-        binding.docFileSize.text = formatFileSize(attachment.attachmentSize)
+        binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
         binding.docDownloadProgress.visibility = View.GONE
 
         // Перекраска для отправленных сообщений (контраст на primaryContainer)
@@ -1600,7 +1611,7 @@ class MessageAdapter(
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE
                     binding.docDownloadProgress.visibility = View.GONE
-                    Toast.makeText(context, "Файл удалён из кеша", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.file_removed_from_cache, Toast.LENGTH_SHORT).show()
                     true
                 }
                 else -> false
@@ -1653,10 +1664,10 @@ class MessageAdapter(
                         addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     }
 
-                    val chooser = Intent.createChooser(intent, "Открыть с помощью")
+                    val chooser = Intent.createChooser(intent, context.getString(R.string.open_with))
                     context.startActivity(chooser)
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Не удалось открыть файл", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.file_open_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1704,12 +1715,16 @@ class MessageAdapter(
                     resolver.update(uri, contentValues, null, null)
                 }
 
-                Toast.makeText(context, "Файл сохранён в Downloads/BarkFluff", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.file_saved_to_downloads, Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.file_save_failed, Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Ошибка сохранения: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.file_save_error, e.message.orEmpty()),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -1728,13 +1743,19 @@ class MessageAdapter(
         return "%d:%02d".format(min, sec)
     }
 
-    private fun formatFileSize(bytes: Long): String {
+    private fun formatFileSize(context: android.content.Context, bytes: Long): String {
         return when {
             bytes <= 0 -> ""
-            bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024f)
-            bytes < 1024 * 1024 * 1024 -> "%.1f MB".format(bytes / (1024f * 1024f))
-            else -> "%.1f GB".format(bytes / (1024f * 1024f * 1024f))
+            bytes < 1024 -> context.getString(R.string.file_size_bytes, bytes)
+            bytes < 1024 * 1024 -> context.getString(R.string.file_size_kilobytes, bytes / 1024.0)
+            bytes < 1024 * 1024 * 1024 -> context.getString(
+                R.string.file_size_megabytes,
+                bytes / (1024.0 * 1024.0)
+            )
+            else -> context.getString(
+                R.string.file_size_gigabytes,
+                bytes / (1024.0 * 1024.0 * 1024.0)
+            )
         }
     }
 
@@ -1789,10 +1810,10 @@ data class MessageItem(
             attachments = emptyList(), type = MessageType.DATE_SEPARATOR, dateText = dateText
         )
 
-        fun createUnreadSeparator() = MessageItem(
+        fun createUnreadSeparator(label: String) = MessageItem(
             messageId = -2, senderId = 0, text = "", timestamp = 0,
             attachments = emptyList(), type = MessageType.UNREAD_SEPARATOR,
-            dateText = "Непрочитанные сообщения"
+            dateText = label
         )
     }
 }

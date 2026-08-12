@@ -129,11 +129,11 @@ class AddGroupMemberActivity : AppCompatActivity() {
             val result = grpcManager.addUser(chatId, userData.userId)
             showLoading(false)
             if (result.isSuccess) {
-                Toast.makeText(this@AddGroupMemberActivity, "Участник добавлен", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@AddGroupMemberActivity, R.string.group_member_added, Toast.LENGTH_SHORT).show()
                 setResult(RESULT_OK)
                 finish()
             } else {
-                Toast.makeText(this@AddGroupMemberActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@AddGroupMemberActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
             }
         }
     }

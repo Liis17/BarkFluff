@@ -270,14 +270,14 @@ class ShareReceiverActivity : AppCompatActivity() {
         }
         return ChatAdapter.ChatDisplayItem(
             chatData = chat,
-            displayTitle = chat.title.ifBlank { "Чат" },
+            displayTitle = chat.title.ifBlank { getString(R.string.chat_title_default) },
             displayAvatarFileId = chat.pictureFileId.ifBlank { null }
         )
     }
 
     private fun onChatClicked(chat: GrpcManager.ChatData) {
         val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
-        val title = displayItem?.displayTitle ?: chat.title.ifBlank { "Чат" }
+        val title = displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) }
 
         val p = payload ?: run { finish(); return }
         val sheet = ShareConfirmBottomSheet.newInstance(
