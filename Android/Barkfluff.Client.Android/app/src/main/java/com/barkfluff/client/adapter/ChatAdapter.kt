@@ -156,14 +156,14 @@ class ChatAdapter(
                 val text = lastMessage.text
                 binding.lastMessage.text = when {
                     text.isNotBlank() -> MarkdownRenderer.strip(text)
-                    else -> "Вложение"
+                    else -> binding.root.context.getString(R.string.attachment_generic)
                 }
                 binding.lastMessage.visibility = View.VISIBLE
                 binding.messageTime.text = formatTime(lastMessage.sentAt)
                 binding.messageTime.visibility = View.VISIBLE
             } else {
                 binding.privatePreviewSkeleton.visibility = View.GONE
-                binding.lastMessage.text = "Нет сообщений"
+                binding.lastMessage.text = binding.root.context.getString(R.string.messages_empty)
                 binding.lastMessage.visibility = View.VISIBLE
                 binding.messageTime.visibility = View.GONE
             }
@@ -214,12 +214,12 @@ class ChatAdapter(
                 // Вчера
                 now.get(Calendar.YEAR) == messageDate.get(Calendar.YEAR) &&
                     now.get(Calendar.DAY_OF_YEAR) - messageDate.get(Calendar.DAY_OF_YEAR) == 1 -> {
-                    "Вчера"
+                    binding.root.context.getString(R.string.date_yesterday)
                 }
                 // На этой неделе — день недели
                 now.get(Calendar.YEAR) == messageDate.get(Calendar.YEAR) &&
                     now.get(Calendar.WEEK_OF_YEAR) == messageDate.get(Calendar.WEEK_OF_YEAR) -> {
-                    SimpleDateFormat("EE", Locale("ru")).format(date)
+                    SimpleDateFormat("EE", binding.root.context.resources.configuration.locales[0]).format(date)
                 }
                 // Старше — дата
                 else -> {

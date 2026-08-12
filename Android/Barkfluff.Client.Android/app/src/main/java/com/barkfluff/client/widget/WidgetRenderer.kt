@@ -83,7 +83,7 @@ object WidgetRenderer {
             val rowViews = RemoteViews(context.packageName, R.layout.widget_chat_row)
             val displayTitle = chat.title.ifBlank { context.getString(R.string.widget_default_name) }
             rowViews.setTextViewText(R.id.rowTitle, displayTitle)
-            rowViews.setTextViewText(R.id.rowPreview, buildPreview(chat))
+            rowViews.setTextViewText(R.id.rowPreview, buildPreview(context, chat))
 
             val unread = chat.countUnread
             if (unread > 0) {
@@ -110,14 +110,14 @@ object WidgetRenderer {
         return views
     }
 
-    private fun buildPreview(chat: GrpcManager.ChatData): String {
+    private fun buildPreview(context: Context, chat: GrpcManager.ChatData): String {
         val last = chat.lastMessage
         if (last != null) {
             val text = last.text
             if (text.isNotBlank()) return text
-            return "📎 Вложение"
+            return context.getString(R.string.attachment_generic)
         }
-        return "Нет сообщений"
+        return context.getString(R.string.messages_empty)
     }
 
     private suspend fun loadAvatarBitmap(

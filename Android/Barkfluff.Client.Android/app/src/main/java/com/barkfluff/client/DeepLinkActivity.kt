@@ -45,7 +45,7 @@ class DeepLinkActivity : AppCompatActivity() {
 
         when (command) {
             is DeepLinkCommand.Unknown -> {
-                Toast.makeText(this, "Неизвестная команда", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.deep_link_unknown_command, Toast.LENGTH_SHORT).show()
                 finish()
             }
             is DeepLinkCommand.OpenUserChat -> {
@@ -74,7 +74,7 @@ class DeepLinkActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val searchResult = grpcManager.searchUsers(username, size = 20)
             if (searchResult.isFailure) {
-                Toast.makeText(this@DeepLinkActivity, "Ошибка поиска пользователя", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DeepLinkActivity, R.string.deep_link_user_search_error, Toast.LENGTH_SHORT).show()
                 finish()
                 return@launch
             }
@@ -83,14 +83,18 @@ class DeepLinkActivity : AppCompatActivity() {
             val user = users.find { it.username.equals(username, ignoreCase = true) }
 
             if (user == null) {
-                Toast.makeText(this@DeepLinkActivity, "Пользователь @$username не найден", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@DeepLinkActivity,
+                    getString(R.string.deep_link_user_not_found, username),
+                    Toast.LENGTH_SHORT
+                ).show()
                 finish()
                 return@launch
             }
 
             val chatResult = grpcManager.getPersonChatId(user.userId)
             if (chatResult.isFailure) {
-                Toast.makeText(this@DeepLinkActivity, "Не удалось открыть чат", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DeepLinkActivity, R.string.deep_link_chat_open_failed, Toast.LENGTH_SHORT).show()
                 finish()
                 return@launch
             }

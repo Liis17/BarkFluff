@@ -57,9 +57,8 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                 binding.peerDeviceLabel.visibility = View.GONE
                 binding.peerDeviceCard.visibility = View.GONE
                 binding.modeIcon.setImageResource(R.drawable.ic_key)
-                binding.modeTitle.text = "Приватный чат"
-                binding.modeDescription.text =
-                    "Шифрование по passphrase. Чат доступен на всех ваших устройствах."
+                binding.modeTitle.text = getString(R.string.private_chat_title)
+                binding.modeDescription.text = getString(R.string.private_chat_description)
             }
             Type.SECRET -> {
                 binding.passphraseLayout.visibility = View.GONE
@@ -67,9 +66,8 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                 binding.peerDeviceLabel.visibility = View.VISIBLE
                 binding.peerDeviceCard.visibility = View.VISIBLE
                 binding.modeIcon.setImageResource(R.drawable.ic_security)
-                binding.modeTitle.text = "Секретный чат"
-                binding.modeDescription.text =
-                    "End-to-End через Signal Protocol. Привязан к одному устройству собеседника."
+                binding.modeTitle.text = getString(R.string.encrypted_chat_type_secret)
+                binding.modeDescription.text = getString(R.string.secret_chat_description)
             }
         }
     }
@@ -81,7 +79,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             val result = app.grpcManager.listPeerDevices(peerId)
             result.onSuccess { devices ->
                 peerDevices = devices.filter { it.hasBundle }
-                val labels = if (peerDevices.isEmpty()) listOf("Нет устройств с prekey-bundle")
+                val labels = if (peerDevices.isEmpty()) listOf(getString(R.string.encrypted_devices_empty))
                     else peerDevices.map { "${it.displayName} (${it.deviceId.take(8)})" }
                 binding.peerDeviceSpinner.adapter = ArrayAdapter(
                     this@CreateEncryptedChatActivity,
@@ -89,7 +87,11 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                     labels
                 )
             }.onFailure {
-                Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось загрузить устройства: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@CreateEncryptedChatActivity,
+                    getString(R.string.encrypted_devices_load_failed, it.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -97,7 +99,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
     private fun onCreate() {
         val peerId = binding.peerIdEditText.text?.toString()?.toLongOrNull()
         if (peerId == null || peerId <= 0) {
-            Toast.makeText(this, "Введите корректный ID собеседника", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.encrypted_peer_id_invalid, Toast.LENGTH_SHORT).show()
             return
         }
         when (type) {
@@ -109,7 +111,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
     private fun createPrivate(peerId: Long) {
         val passphrase = binding.passphraseEditText.text?.toString().orEmpty()
         if (passphrase.length < 6) {
-            Toast.makeText(this, "Passphrase должен быть не короче 6 символов", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.encrypted_passphrase_too_short, Toast.LENGTH_SHORT).show()
             return
         }
         val app = applicationContext as BarkFluffApplication
@@ -121,16 +123,22 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             binding.createButton.isEnabled = true
             result.onSuccess { creation ->
                 val chat = creation.chat
-                val text = if (creation.created) "Приватный чат создан, дождитесь подключения собеседника" else "Открыт существующий приватный чат"
+                val text = getString(
+                    if (creation.created) R.string.private_chat_created else R.string.private_chat_existing_opened
+                )
                 Toast.makeText(this@CreateEncryptedChatActivity, text, Toast.LENGTH_LONG).show()
                 startActivity(ChatActivity.privateChatIntent(
                     this@CreateEncryptedChatActivity,
                     chatId = chat.id,
-                    title = chat.title.ifBlank { "Приватный чат" }
+                    title = chat.title.ifBlank { getString(R.string.private_chat_title) }
                 ))
                 finish()
             }.onFailure {
-                Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось создать чат: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@CreateEncryptedChatActivity,
+                    getString(R.string.private_chat_create_failed, it.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -138,12 +146,12 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
     private fun createSecret(peerId: Long) {
         val initialMessage = binding.initialMessageEditText.text?.toString()?.trim().orEmpty()
         if (initialMessage.isEmpty()) {
-            Toast.makeText(this, "Введите первое сообщение", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.secret_initial_message_required, Toast.LENGTH_SHORT).show()
             return
         }
         val selectedIndex = binding.peerDeviceSpinner.selectedItemPosition
         if (peerDevices.isEmpty() || selectedIndex < 0 || selectedIndex >= peerDevices.size) {
-            Toast.makeText(this, "У собеседника нет устройств с prekey-bundle", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.secret_peer_no_devices, Toast.LENGTH_SHORT).show()
             return
         }
         val peerDeviceId = peerDevices[selectedIndex].deviceId
@@ -155,7 +163,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.GONE
             binding.createButton.isEnabled = true
             result.onSuccess { chat ->
-                Toast.makeText(this@CreateEncryptedChatActivity, "Секретный чат отправлен, ждём подтверждения", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@CreateEncryptedChatActivity, R.string.secret_invite_sent, Toast.LENGTH_LONG).show()
                 startActivity(ChatActivity.secretChatIntent(
                     this@CreateEncryptedChatActivity,
                     secretChatId = chat.id,
@@ -163,7 +171,11 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                 ))
                 finish()
             }.onFailure {
-                Toast.makeText(this@CreateEncryptedChatActivity, "Не удалось создать секретный чат: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@CreateEncryptedChatActivity,
+                    getString(R.string.secret_chat_create_failed, it.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }

@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatFolderBinding
 import com.barkfluff.client.grpc.GrpcManager
 
@@ -36,10 +37,8 @@ class ChatFoldersAdapter(
             binding.folderName.text = folder.folderName
             val count = folder.chatIds.size
             binding.folderCount.text = when {
-                count == 0 -> "Пусто"
-                count == 1 -> "1 чат"
-                count in 2..4 -> "$count чата"
-                else -> "$count чатов"
+                count == 0 -> binding.root.context.getString(R.string.chat_folder_empty_short)
+                else -> binding.root.context.resources.getQuantityString(R.plurals.chat_folder_chat_count, count, count)
             }
             binding.folderDivider.visibility = if (isLast) View.GONE else View.VISIBLE
             binding.root.setOnClickListener { onClick(folder) }

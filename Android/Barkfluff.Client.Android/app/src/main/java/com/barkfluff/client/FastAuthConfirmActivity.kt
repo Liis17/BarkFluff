@@ -46,12 +46,15 @@ class FastAuthConfirmActivity : AppCompatActivity() {
 
         binding.toolbar.setNavigationOnClickListener { finish() }
 
-        binding.textDeviceName.text = intent.getStringExtra(EXTRA_DEVICE_NAME) ?: "Неизвестно"
-        binding.textOs.text = intent.getStringExtra(EXTRA_OS) ?: "Неизвестно"
+        binding.textDeviceName.text = intent.getStringExtra(EXTRA_DEVICE_NAME) ?: getString(R.string.fast_auth_unknown)
+        binding.textOs.text = intent.getStringExtra(EXTRA_OS) ?: getString(R.string.fast_auth_unknown)
         val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: ""
         val appVersion = intent.getStringExtra(EXTRA_APP_VERSION) ?: ""
-        binding.textApp.text = if (appVersion.isNotBlank()) "$appName $appVersion" else appName
-        binding.textIp.text = intent.getStringExtra(EXTRA_IP)?.takeIf { it.isNotBlank() } ?: "Неизвестно"
+        binding.textApp.text = if (appVersion.isNotBlank()) {
+            getString(R.string.fast_auth_app_info, appName, appVersion)
+        } else appName
+        binding.textIp.text = intent.getStringExtra(EXTRA_IP)?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.fast_auth_unknown)
 
         binding.buttonAccept.setOnClickListener { onAccept() }
         binding.buttonReject.setOnClickListener { onReject() }
@@ -69,9 +72,13 @@ class FastAuthConfirmActivity : AppCompatActivity() {
                 setResult(RESULT_OK)
                 finish()
             } else {
-                val msg = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                val msg = result.exceptionOrNull()?.message ?: getString(R.string.error)
                 Log.e(TAG, "Ошибка acceptFastAuth: $msg")
-                Toast.makeText(this@FastAuthConfirmActivity, "Ошибка: $msg", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@FastAuthConfirmActivity,
+                    getString(R.string.fast_auth_error, msg),
+                    Toast.LENGTH_LONG
+                ).show()
                 setButtonsEnabled(true)
             }
         }

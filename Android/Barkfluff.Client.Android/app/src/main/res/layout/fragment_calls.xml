@@ -19,7 +19,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:title="Звонки"
+            android:title="@string/calls_title"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
             app:titleTextColor="?attr/colorOnSurface" />
 

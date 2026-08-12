@@ -56,28 +56,18 @@ object NotificationHelper {
 
     // Канал: Личные сообщения
     const val CHANNEL_CHAT_MESSAGES = "chat_messages"
-    private const val CHANNEL_CHAT_MESSAGES_NAME = "Сообщения чатов"
-    private const val CHANNEL_CHAT_MESSAGES_DESC = "Уведомления о новых сообщениях в личных и групповых чатах"
 
     // Канал: Входящие звонки (отдельный ID, чтобы старые silent-настройки calls не гасили heads-up)
     const val CHANNEL_INCOMING_CALLS = "incoming_calls_v2"
-    private const val CHANNEL_INCOMING_CALLS_NAME = "Входящие звонки"
-    private const val CHANNEL_INCOMING_CALLS_DESC = "Всплывающие уведомления входящих звонков"
 
     // Канал: Звонки
     const val CHANNEL_CALLS = "calls"
-    private const val CHANNEL_CALLS_NAME = "Звонки"
-    private const val CHANNEL_CALLS_DESC = "Входящие и активные звонки"
 
     // Канал: Системные
     const val CHANNEL_SYSTEM = "system"
-    private const val CHANNEL_SYSTEM_NAME = "Системные"
-    private const val CHANNEL_SYSTEM_DESC = "Системные уведомления приложения"
 
     // Канал: Прочее
     const val CHANNEL_OTHER = "other"
-    private const val CHANNEL_OTHER_NAME = "Прочее"
-    private const val CHANNEL_OTHER_DESC = "Остальные уведомления"
 
     const val EXTRA_CHAT_ID = "extra_chat_id"
     const val EXTRA_MESSAGE_ID = "extra_message_id"
@@ -98,10 +88,10 @@ object NotificationHelper {
 
             val chatChannel = NotificationChannel(
                 CHANNEL_CHAT_MESSAGES,
-                CHANNEL_CHAT_MESSAGES_NAME,
+                context.getString(R.string.notification_channel_messages_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = CHANNEL_CHAT_MESSAGES_DESC
+                description = context.getString(R.string.notification_channel_messages_description)
                 group = GROUP_ID
                 enableVibration(true)
                 setShowBadge(true)
@@ -109,10 +99,10 @@ object NotificationHelper {
 
             val incomingCallsChannel = NotificationChannel(
                 CHANNEL_INCOMING_CALLS,
-                CHANNEL_INCOMING_CALLS_NAME,
+                context.getString(R.string.notification_channel_incoming_calls_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = CHANNEL_INCOMING_CALLS_DESC
+                description = context.getString(R.string.notification_channel_incoming_calls_description)
                 group = GROUP_ID
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 600, 600, 600)
@@ -122,10 +112,10 @@ object NotificationHelper {
 
             val callsChannel = NotificationChannel(
                 CHANNEL_CALLS,
-                CHANNEL_CALLS_NAME,
+                context.getString(R.string.notification_channel_calls_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = CHANNEL_CALLS_DESC
+                description = context.getString(R.string.notification_channel_calls_description)
                 group = GROUP_ID
                 enableVibration(true)
                 setShowBadge(false)
@@ -134,20 +124,20 @@ object NotificationHelper {
 
             val systemChannel = NotificationChannel(
                 CHANNEL_SYSTEM,
-                CHANNEL_SYSTEM_NAME,
+                context.getString(R.string.notification_channel_system_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = CHANNEL_SYSTEM_DESC
+                description = context.getString(R.string.notification_channel_system_description)
                 group = GROUP_ID
                 setShowBadge(false)
             }
 
             val otherChannel = NotificationChannel(
                 CHANNEL_OTHER,
-                CHANNEL_OTHER_NAME,
+                context.getString(R.string.notification_channel_other_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = CHANNEL_OTHER_DESC
+                description = context.getString(R.string.notification_channel_other_description)
                 group = GROUP_ID
                 setShowBadge(false)
             }
@@ -234,15 +224,15 @@ object NotificationHelper {
             ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
 
             // "Я" — текущий пользователь, передаётся в конструктор MessagingStyle
-            val mePerson = Person.Builder().setName("Я").build()
+            val mePerson = Person.Builder().setName(context.getString(R.string.notification_me)).build()
 
             // MessagingStyle — Android берёт иконку из senderPerson → большая круглая аватарка,
             // setSmallIcon → маленький бейдж в углу аватарки
             val cleanText = MarkdownRenderer.strip(messageText)
             val displayText = if (imageBitmap != null && cleanText.isBlank()) {
-                "\uD83D\uDCF7 Фото"
+                context.getString(R.string.notification_photo)
             } else if (imageBitmap != null) {
-                "\uD83D\uDCF7 $cleanText"
+                context.getString(R.string.notification_photo_caption, cleanText)
             } else {
                 cleanText
             }
@@ -259,7 +249,7 @@ object NotificationHelper {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setContentIntent(contentPendingIntent)
-                .addAction(0, "Прочитано", readPendingIntent)
+                .addAction(0, context.getString(R.string.notification_mark_read), readPendingIntent)
 
             // BigPictureStyle для изображений, иначе MessagingStyle
             if (imageBitmap != null) {
@@ -350,7 +340,7 @@ object NotificationHelper {
         if (callId.isBlank()) return
 
         val notificationId = callId.hashCode()
-        val displayName = callerName.ifBlank { chatTitle.ifBlank { "BarkFluff" } }
+        val displayName = callerName.ifBlank { chatTitle.ifBlank { context.getString(R.string.app_name) } }
         val contentIntent = Intent(context, IncomingCallActivity::class.java).apply {
             putExtra(CallExtras.EXTRA_CALL_ID, callId)
             putExtra(CallExtras.EXTRA_CALLER_NAME, displayName)
@@ -410,7 +400,13 @@ object NotificationHelper {
             .setIcon(IconCompat.createWithBitmap(toSoftwareBitmap(avatarBitmap)))
             .build()
 
-        val title = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
+        val title = context.getString(
+            if (mediaType.equals("video", ignoreCase = true)) {
+                R.string.incoming_call_video
+            } else {
+                R.string.incoming_call_audio
+            }
+        )
         val alertIssue = incomingCallAlertIssue(context)
         when (alertIssue) {
             IncomingCallAlertIssue.NOTIFICATIONS_DISABLED -> {
@@ -460,7 +456,7 @@ object NotificationHelper {
         livekitUrl: String,
         accessToken: String
     ): android.app.Notification {
-        val displayName = title.ifBlank { "Звонок" }
+        val displayName = title.ifBlank { context.getString(R.string.call_title_default) }
         val notificationId = callId.hashCode()
         val contentIntent = Intent(context, CallActivity::class.java).apply {
             putExtra(CallExtras.EXTRA_CALL_ID, callId)
@@ -494,12 +490,18 @@ object NotificationHelper {
             .setIcon(IconCompat.createWithBitmap(createPlaceholderBitmap(displayName, callId.hashCode().toLong())))
             .build()
 
-        val callType = if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
+        val callType = context.getString(
+            if (mediaType.equals("video", ignoreCase = true)) {
+                R.string.incoming_call_video
+            } else {
+                R.string.incoming_call_audio
+            }
+        )
         return NotificationCompat.Builder(context, CHANNEL_CALLS)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(context.resources.getColor(R.color.primary, null))
             .setContentTitle(displayName)
-            .setContentText("$callType идёт")
+            .setContentText(context.getString(R.string.notification_call_in_progress, callType))
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)

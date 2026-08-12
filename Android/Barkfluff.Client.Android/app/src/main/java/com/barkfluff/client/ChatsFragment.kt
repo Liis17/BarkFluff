@@ -437,7 +437,10 @@ class ChatsFragment : Fragment() {
                 Log.e(TAG, "Ошибка загрузки чатов", chatsResult.exceptionOrNull())
                 Snackbar.make(
                     binding.root,
-                    "Ошибка загрузки чатов: ${chatsResult.exceptionOrNull()?.message}",
+                    getString(
+                        R.string.chat_load_error,
+                        chatsResult.exceptionOrNull()?.message.orEmpty()
+                    ),
                     Snackbar.LENGTH_LONG
                 ).show()
                 showSyncOffline()
@@ -480,7 +483,7 @@ class ChatsFragment : Fragment() {
         val allChatsItem = FolderTabsAdapter.Item(
             id = null,
             icon = "",
-            name = "Все чаты",
+            name = getString(R.string.all_chats),
             unreadCount = computeAllChatsUnread()
         )
         val folderItems = folders.map { folder ->
@@ -861,7 +864,7 @@ class ChatsFragment : Fragment() {
         Log.d(TAG, "resolveDisplayItem: Групповой чат chatId=${chat.id}, title=${chat.title}, pictureFileId=$chatPictureFileId")
         return ChatAdapter.ChatDisplayItem(
             chatData = chat,
-            displayTitle = chat.title.ifBlank { "Чат" },
+            displayTitle = chat.title.ifBlank { getString(R.string.chat_title_default) },
             displayAvatarFileId = chatPictureFileId.ifBlank { null }
         )
     }
@@ -883,7 +886,7 @@ class ChatsFragment : Fragment() {
 
         val intent = Intent(requireContext(), ChatActivity::class.java).apply {
             putExtra("chat_id", chat.id)
-            putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { "Чат" })
+            putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) })
             putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
             putExtra("is_group_chat", chat.isGroupChat)
             putExtra("other_user_id", displayItem?.otherUserId ?: 0L)

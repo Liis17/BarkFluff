@@ -149,12 +149,11 @@ class StickerPanelAdapter(
 
         fun bind(header: StickerPanelItem.PackHeader) {
             nameText.text = header.packName
-            val countStr = when {
-                header.stickerCount % 10 == 1 && header.stickerCount % 100 != 11 -> "${header.stickerCount} стикер"
-                header.stickerCount % 10 in 2..4 && header.stickerCount % 100 !in 12..14 -> "${header.stickerCount} стикера"
-                else -> "${header.stickerCount} стикеров"
-            }
-            countText.text = countStr
+            countText.text = itemView.context.resources.getQuantityString(
+                R.plurals.sticker_count,
+                header.stickerCount,
+                header.stickerCount
+            )
 
             val coverFileId = findCoverFileId(header)
             if (coverFileId != null) {

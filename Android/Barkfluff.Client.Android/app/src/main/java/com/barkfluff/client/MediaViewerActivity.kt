@@ -108,7 +108,7 @@ class MediaViewerActivity : AppCompatActivity() {
                     showControls()
                     setupPlayerWithFile(file)
                 } else {
-                    Toast.makeText(this@MediaViewerActivity, "Ошибка загрузки", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MediaViewerActivity, R.string.media_load_failed, Toast.LENGTH_SHORT).show()
                     finish()
                 }
             }
@@ -132,7 +132,7 @@ class MediaViewerActivity : AppCompatActivity() {
                     if (state == Player.STATE_ENDED) {
                         binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow)
                         binding.videoSeekBar.progress = 0
-                        binding.timeText.text = "${formatTime(0)} / ${formatTime(exo.duration)}"
+                        binding.timeText.text = getString(R.string.media_time_position, formatTime(0), formatTime(exo.duration))
                         exo.seekTo(0)
                         exo.playWhenReady = false
                     }
@@ -146,8 +146,12 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun updatePlayPauseIcon() {
+        val isPlaying = player?.isPlaying == true
         binding.playPauseButton.setIconResource(
-            if (player?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play_arrow
+            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+        )
+        binding.playPauseButton.contentDescription = getString(
+            if (isPlaying) R.string.cd_pause else R.string.cd_play
         )
     }
 
@@ -167,7 +171,7 @@ class MediaViewerActivity : AppCompatActivity() {
         val duration = currentPlayer.duration.takeIf { it > 0 } ?: return
         val position = currentPlayer.currentPosition
         binding.videoSeekBar.progress = (position * 1000L / duration).toInt()
-        binding.timeText.text = "${formatTime(position)} / ${formatTime(duration)}"
+        binding.timeText.text = getString(R.string.media_time_position, formatTime(position), formatTime(duration))
     }
 
     private fun setupButtons() {
@@ -186,7 +190,11 @@ class MediaViewerActivity : AppCompatActivity() {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     val duration = player?.duration?.takeIf { it > 0 } ?: return
-                    binding.timeText.text = "${formatTime(progress.toLong() * duration / 1000L)} / ${formatTime(duration)}"
+                    binding.timeText.text = getString(
+                        R.string.media_time_position,
+                        formatTime(progress.toLong() * duration / 1000L),
+                        formatTime(duration)
+                    )
                 }
             }
 
@@ -240,7 +248,7 @@ class MediaViewerActivity : AppCompatActivity() {
 
     private fun showMoreMenu(anchor: View) {
         val popup = PopupMenu(this, anchor)
-        popup.menu.add(0, 1, 0, "Удалить из кэша")
+        popup.menu.add(0, 1, 0, R.string.file_remove_from_cache)
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> { deleteFromCacheAndClose(); true }
@@ -255,7 +263,7 @@ class MediaViewerActivity : AppCompatActivity() {
         player?.release()
         player = null
         FileCache.deleteFile(fileId)
-        Toast.makeText(this, "Видео удалено из кэша", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.file_removed_from_cache, Toast.LENGTH_SHORT).show()
         setResult(RESULT_CACHE_DELETED)
         finish()
     }
@@ -306,18 +314,20 @@ class MediaViewerActivity : AppCompatActivity() {
         val videoFile = cachedPath?.let { File(it) }?.takeIf { it.exists() }
             ?: FileCache.getFile(fileId)
         if (videoFile == null) {
-            Toast.makeText(this, "Файл не найден в кэше", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.file_not_in_cache, Toast.LENGTH_SHORT).show()
             return
         }
 
-        val displayName = fileName.ifBlank { "BarkFluff_${System.currentTimeMillis()}.mp4" }
+        val displayName = fileName.ifBlank {
+            getString(R.string.media_default_video_filename, System.currentTimeMillis())
+        }
         lifecycleScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 FileSaveUtils.saveToDownloads(this@MediaViewerActivity, videoFile, displayName)
             }
             Toast.makeText(
                 this@MediaViewerActivity,
-                if (ok) "Сохранено в Downloads/BarkFluff" else "Не удалось сохранить",
+                if (ok) R.string.file_saved_to_downloads else R.string.file_save_failed,
                 Toast.LENGTH_SHORT
             ).show()
         }

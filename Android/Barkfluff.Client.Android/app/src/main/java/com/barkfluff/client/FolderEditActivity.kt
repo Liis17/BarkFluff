@@ -68,7 +68,11 @@ class FolderEditActivity : AppCompatActivity() {
         selectedIcon = intent.getStringExtra(EXTRA_FOLDER_ICON).orEmpty()
         selectedChatIds = intent.getStringArrayListExtra(EXTRA_FOLDER_CHATS)?.toMutableList() ?: mutableListOf()
 
-        binding.toolbar.title = if (folderId == null) "Новая папка" else "Редактирование папки"
+        binding.toolbar.title = if (folderId == null) {
+            getString(R.string.folder_new_title)
+        } else {
+            getString(R.string.folder_edit_existing_title)
+        }
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.deleteButton.visibility = if (folderId != null) View.VISIBLE else View.GONE
 
@@ -97,21 +101,19 @@ class FolderEditActivity : AppCompatActivity() {
     private fun updateChatsCount() {
         val n = selectedChatIds.size
         binding.chatsCount.text = when {
-            n == 0 -> "Чаты не выбраны"
-            n == 1 -> "1 чат"
-            n in 2..4 -> "$n чата"
-            else -> "$n чатов"
+            n == 0 -> getString(R.string.folder_chats_empty)
+            else -> resources.getQuantityString(R.plurals.folder_chat_count, n, n)
         }
     }
 
     private fun onSaveClicked() {
         val name = binding.nameInput.text?.toString()?.trim().orEmpty()
         if (name.isEmpty()) {
-            binding.nameInput.error = "Введите название"
+            binding.nameInput.error = getString(R.string.folder_name_required)
             return
         }
         if (name.length > 64) {
-            binding.nameInput.error = "Не более 64 символов"
+            binding.nameInput.error = getString(R.string.folder_name_too_long)
             return
         }
 
@@ -143,7 +145,7 @@ class FolderEditActivity : AppCompatActivity() {
                 setResult(Activity.RESULT_OK)
                 finish()
             } else {
-                Toast.makeText(this@FolderEditActivity, "Ошибка сохранения папки", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@FolderEditActivity, R.string.folder_save_error, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -151,20 +153,20 @@ class FolderEditActivity : AppCompatActivity() {
     private fun confirmDelete() {
         val id = folderId ?: return
         AlertDialog.Builder(this)
-            .setTitle("Удалить папку?")
-            .setMessage("Чаты не будут удалены, только папка.")
-            .setPositiveButton("Удалить") { _, _ ->
+            .setTitle(R.string.folder_delete_title)
+            .setMessage(R.string.folder_delete_message)
+            .setPositiveButton(R.string.btn_delete) { _, _ ->
                 lifecycleScope.launch {
                     val result = grpcManager.deleteChatFolder(id)
                     if (result.isSuccess) {
                         setResult(Activity.RESULT_OK)
                         finish()
                     } else {
-                        Toast.makeText(this@FolderEditActivity, "Ошибка удаления", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@FolderEditActivity, R.string.folder_delete_error, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 

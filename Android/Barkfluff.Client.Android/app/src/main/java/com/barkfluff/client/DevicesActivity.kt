@@ -43,7 +43,7 @@ class DevicesActivity : AppCompatActivity() {
         if (granted) {
             qrScannerLauncher.launch(Intent(this, QrScannerActivity::class.java))
         } else {
-            Toast.makeText(this, "Разрешите доступ к камере в настройках", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.camera_permission_settings, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -116,7 +116,7 @@ class DevicesActivity : AppCompatActivity() {
                 updateUI()
             } else {
                 Log.e(TAG, "Ошибка загрузки сессий", result.exceptionOrNull())
-                Toast.makeText(this@DevicesActivity, "Ошибка загрузки сессий", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DevicesActivity, R.string.devices_load_error, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -203,7 +203,7 @@ class DevicesActivity : AppCompatActivity() {
 
         sheetBinding.textAppName.text = session.appName
         sheetBinding.textOS.text = session.os
-        sheetBinding.textLocation.text = session.location.ifEmpty { "Неизвестно" }
+        sheetBinding.textLocation.text = session.location.ifEmpty { getString(R.string.device_unknown) }
         sheetBinding.textDeviceId.text = session.deviceId
 
         // Кнопка переименования доступна для всех устройств
@@ -222,20 +222,20 @@ class DevicesActivity : AppCompatActivity() {
 
     private fun showRenameDeviceDialog(session: GrpcManager.SessionData) {
         val builder = MaterialAlertDialogBuilder(this)
-        builder.setTitle("Переименовать устройство")
+        builder.setTitle(R.string.device_rename)
 
         val input = android.widget.EditText(this)
-        input.hint = "Введите новое имя устройства"
+        input.hint = getString(R.string.device_rename_hint)
         input.setText(session.customName.ifEmpty { session.originalName })
         builder.setView(input)
 
-        builder.setPositiveButton("Сохранить") { _, _ ->
+        builder.setPositiveButton(R.string.btn_save) { _, _ ->
             val newCustomName = input.text.toString().trim()
             if (newCustomName.isNotEmpty()) {
                 renameDevice(session.deviceId, newCustomName)
             }
         }
-        builder.setNegativeButton("Отмена", null)
+        builder.setNegativeButton(R.string.btn_cancel, null)
         builder.show()
     }
 
@@ -256,27 +256,27 @@ class DevicesActivity : AppCompatActivity() {
                     }
                 }
                 updateUI()
-                Toast.makeText(this@DevicesActivity, "Устройство переименовано", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DevicesActivity, R.string.device_renamed, Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this@DevicesActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DevicesActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun showRemoveSessionDialog(session: GrpcManager.SessionData) {
-        val name = session.customName.ifEmpty { session.originalName }.ifEmpty { "Неизвестное устройство" }
+        val name = session.customName.ifEmpty { session.originalName }.ifEmpty { getString(R.string.device_unknown_name) }
         val isCurrentDevice = session.deviceId == globalParam.deviceId
 
         val message = if (isCurrentDevice) {
-            "Завершить сессию на этом устройстве? Вы будете разлогинены."
+            getString(R.string.device_terminate_current_message)
         } else {
-            "Завершить сессию на устройстве \"$name\"?"
+            getString(R.string.device_terminate_named_message, name)
         }
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Завершить сессию")
+            .setTitle(R.string.device_terminate_session)
             .setMessage(message)
-            .setPositiveButton("Завершить") { _, _ ->
+            .setPositiveButton(R.string.device_terminate_action) { _, _ ->
                 if (isCurrentDevice) {
                     lifecycleScope.launch {
                         LogoutHelper.performFullLogout(this@DevicesActivity, grpcManager)
@@ -285,7 +285,7 @@ class DevicesActivity : AppCompatActivity() {
                     removeSession(session.deviceId)
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
@@ -294,12 +294,12 @@ class DevicesActivity : AppCompatActivity() {
         if (otherCount == 0) return
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Завершить все сессии")
-            .setMessage("Завершить все сессии на $otherCount других устройствах? Вы останетесь в системе только на этом устройстве.")
-            .setPositiveButton("Завершить все") { _, _ ->
+            .setTitle(R.string.devices_terminate_all_title)
+            .setMessage(getString(R.string.devices_terminate_all_message, otherCount))
+            .setPositiveButton(R.string.devices_terminate_all_action) { _, _ ->
                 terminateAllOtherSessions()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
@@ -309,9 +309,9 @@ class DevicesActivity : AppCompatActivity() {
             if (result.isSuccess) {
                 allSessions = allSessions.filter { it.deviceId != deviceId }
                 updateUI()
-                Toast.makeText(this@DevicesActivity, "Сессия завершена", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DevicesActivity, R.string.device_session_terminated, Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this@DevicesActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DevicesActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -344,12 +344,12 @@ class DevicesActivity : AppCompatActivity() {
             if (failCount == 0) {
                 allSessions = allSessions.filter { it.deviceId == globalParam.deviceId }
                 updateUI()
-                Toast.makeText(this@DevicesActivity, "Все сессии завершены ($successCount)", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@DevicesActivity, getString(R.string.devices_all_terminated, successCount), Toast.LENGTH_SHORT).show()
             } else {
                 loadSessions()
                 Toast.makeText(
                     this@DevicesActivity,
-                    "Завершено: $successCount, ошибок: $failCount",
+                    getString(R.string.devices_terminated_summary, successCount, failCount),
                     Toast.LENGTH_SHORT
                 ).show()
             }

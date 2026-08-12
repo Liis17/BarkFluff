@@ -189,7 +189,7 @@ class SearchActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка получения chatId", result.exceptionOrNull())
                 android.widget.Toast.makeText(
                     this@SearchActivity,
-                    "Не удалось открыть чат: ${result.exceptionOrNull()?.message}",
+                    getString(R.string.chat_open_failed_detail, result.exceptionOrNull()?.message.orEmpty()),
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
             }
@@ -220,13 +220,13 @@ class SearchActivity : AppCompatActivity() {
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.private_chat_password_title)
-            .setMessage("Общий пароль нужен обоим участникам для расшифровки сообщений.")
+            .setMessage(R.string.private_chat_password_description)
             .setView(content)
-            .setNegativeButton("Отмена", null)
-            .setPositiveButton("Создать") { _, _ ->
+            .setNegativeButton(R.string.btn_cancel, null)
+            .setPositiveButton(R.string.encrypted_chat_create) { _, _ ->
                 val passphrase = password.text?.toString().orEmpty()
                 if (passphrase.length < 6) {
-                    Toast.makeText(this, "Пароль должен содержать не менее 6 символов", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, R.string.private_chat_password_too_short, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
                 createPrivateChat(userData, passphrase, remember.isChecked)
@@ -244,7 +244,11 @@ class SearchActivity : AppCompatActivity() {
                 startActivity(ChatActivity.privateChatIntent(this@SearchActivity, chatId = creation.chat.id, title = title))
                 finish()
             }.onFailure {
-                Toast.makeText(this@SearchActivity, "Не удалось открыть приватный чат: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@SearchActivity,
+                    getString(R.string.private_chat_open_failed, it.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
             showLoading(false)
         }

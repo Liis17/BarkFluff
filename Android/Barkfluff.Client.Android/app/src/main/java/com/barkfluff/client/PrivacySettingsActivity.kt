@@ -21,7 +21,6 @@ class PrivacySettingsActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "PrivacySettings"
-        private val VISIBILITY_LABELS = arrayOf("Все", "Друзья", "Никто")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,7 +53,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка загрузки настроек приватности", result.exceptionOrNull())
                 Toast.makeText(
                     this@PrivacySettingsActivity,
-                    "Ошибка загрузки настроек",
+                    R.string.privacy_load_error,
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -87,28 +86,28 @@ class PrivacySettingsActivity : AppCompatActivity() {
         }
 
         binding.itemAvatarVisibility.setOnClickListener {
-            showVisibilityDialog("Видимость аватара", currentSettings?.avatarVisibility) { selected ->
+            showVisibilityDialog(getString(R.string.privacy_avatar_visibility), currentSettings?.avatarVisibility) { selected ->
                 binding.tvAvatarVisibilityValue.text = visibilityLabel(selected)
                 saveSettings { it.toBuilder().setAvatarVisibility(selected).build() }
             }
         }
 
         binding.itemBioVisibility.setOnClickListener {
-            showVisibilityDialog("Видимость описания", currentSettings?.bioVisibility) { selected ->
+            showVisibilityDialog(getString(R.string.privacy_description_visibility), currentSettings?.bioVisibility) { selected ->
                 binding.tvBioVisibilityValue.text = visibilityLabel(selected)
                 saveSettings { it.toBuilder().setBioVisibility(selected).build() }
             }
         }
 
         binding.itemEmailVisibility.setOnClickListener {
-            showVisibilityDialog("Видимость почты", currentSettings?.emailVisibility) { selected ->
+            showVisibilityDialog(getString(R.string.privacy_email_visibility), currentSettings?.emailVisibility) { selected ->
                 binding.tvEmailVisibilityValue.text = visibilityLabel(selected)
                 saveSettings { it.toBuilder().setEmailVisibility(selected).build() }
             }
         }
 
         binding.itemOnlineVisibility.setOnClickListener {
-            showVisibilityDialog("Видимость онлайна", currentSettings?.onlineVisibility) { selected ->
+            showVisibilityDialog(getString(R.string.privacy_online_visibility), currentSettings?.onlineVisibility) { selected ->
                 binding.tvOnlineVisibilityValue.text = visibilityLabel(selected)
                 saveSettings { it.toBuilder().setOnlineVisibility(selected).build() }
             }
@@ -121,15 +120,20 @@ class PrivacySettingsActivity : AppCompatActivity() {
         onSelected: (UsersApiOuterClass.ProfileFieldVisibility) -> Unit
     ) {
         val currentIdx = current?.number ?: 0
+        val labels = arrayOf(
+            getString(R.string.privacy_visibility_all),
+            getString(R.string.privacy_visibility_friends),
+            getString(R.string.privacy_visibility_none)
+        )
         MaterialAlertDialogBuilder(this)
             .setTitle(title)
-            .setSingleChoiceItems(VISIBILITY_LABELS, currentIdx) { dialog, which ->
+            .setSingleChoiceItems(labels, currentIdx) { dialog, which ->
                 val selected = UsersApiOuterClass.ProfileFieldVisibility.forNumber(which)
                     ?: UsersApiOuterClass.ProfileFieldVisibility.ALL
                 onSelected(selected)
                 dialog.dismiss()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
@@ -144,7 +148,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка сохранения настроек приватности", result.exceptionOrNull())
                 Toast.makeText(
                     this@PrivacySettingsActivity,
-                    "Ошибка сохранения",
+                    R.string.privacy_save_error,
                     Toast.LENGTH_SHORT
                 ).show()
                 loadPrivacySettings()
@@ -154,10 +158,10 @@ class PrivacySettingsActivity : AppCompatActivity() {
 
     private fun visibilityLabel(visibility: UsersApiOuterClass.ProfileFieldVisibility?): String {
         return when (visibility) {
-            UsersApiOuterClass.ProfileFieldVisibility.ALL -> "Все"
-            UsersApiOuterClass.ProfileFieldVisibility.FRIENDS -> "Друзья"
-            UsersApiOuterClass.ProfileFieldVisibility.NONE -> "Никто"
-            else -> "Все"
+            UsersApiOuterClass.ProfileFieldVisibility.ALL -> getString(R.string.privacy_visibility_all)
+            UsersApiOuterClass.ProfileFieldVisibility.FRIENDS -> getString(R.string.privacy_visibility_friends)
+            UsersApiOuterClass.ProfileFieldVisibility.NONE -> getString(R.string.privacy_visibility_none)
+            else -> getString(R.string.privacy_visibility_all)
         }
     }
 }

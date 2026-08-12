@@ -67,7 +67,11 @@ class FolderChatPickerActivity : AppCompatActivity() {
 
     private fun updateToolbarTitle() {
         val n = selectedIds.size
-        binding.toolbar.title = if (n == 0) "Выбрать чаты" else "$n выбрано"
+        binding.toolbar.title = if (n == 0) {
+            getString(R.string.folder_chat_picker_select_chats)
+        } else {
+            getString(R.string.folder_chat_picker_selected, n)
+        }
     }
 
     private fun loadChats() {
@@ -76,7 +80,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
             val result = grpcManager.getChats()
             binding.loadingIndicator.visibility = View.GONE
             if (result.isFailure) {
-                Toast.makeText(this@FolderChatPickerActivity, "Ошибка загрузки чатов", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@FolderChatPickerActivity, R.string.folder_chat_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
             allChats = result.getOrNull() ?: emptyList()
@@ -99,7 +103,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
 
         inner class VH(val binding: ItemPickerChatBinding) : RecyclerView.ViewHolder(binding.root) {
             fun bind(chat: GrpcManager.ChatData) {
-                val title = if (chat.title.isNotBlank()) chat.title else "Чат"
+                val title = if (chat.title.isNotBlank()) chat.title else getString(R.string.chat_default_title)
                 binding.chatTitle.text = title
 
                 val avatarFileId = chat.picturePreviewFileId.ifBlank { chat.pictureFileId }

@@ -104,7 +104,7 @@ class CallsFragment : Fragment() {
         // Заголовки групповых чатов из списка чатов (один запрос).
         val groupTitles: Map<String, String> = if (items.any { it.isGroup }) {
             grpcManager.getChats().getOrNull()
-                ?.associate { it.id to it.title.ifBlank { "Групповой звонок" } }
+                ?.associate { it.id to it.title.ifBlank { getString(R.string.call_group_title) } }
                 ?: emptyMap()
         } else {
             emptyMap()
@@ -113,7 +113,7 @@ class CallsFragment : Fragment() {
         items.map { item ->
             async {
                 val title = if (item.isGroup) {
-                    groupTitles[item.chatId] ?: "Групповой звонок"
+                    groupTitles[item.chatId] ?: getString(R.string.call_group_title)
                 } else {
                     resolvePeerName(item.peerUserId)
                 }
@@ -123,8 +123,8 @@ class CallsFragment : Fragment() {
     }
 
     private suspend fun resolvePeerName(peerUserId: Long): String {
-        if (peerUserId <= 0L) return "Пользователь"
-        val user = grpcManager.getUserData(peerUserId).getOrNull() ?: return "Пользователь"
+        if (peerUserId <= 0L) return getString(R.string.call_default_user)
+        val user = grpcManager.getUserData(peerUserId).getOrNull() ?: return getString(R.string.call_default_user)
         return "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
     }
 
@@ -133,9 +133,9 @@ class CallsFragment : Fragment() {
         val isVideo = item.mediaType == CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
 
         val directionLabel = when {
-            isMissed -> "Пропущенный"
-            item.direction == CallsApiOuterClass.CallDirection.CALL_DIRECTION_OUTGOING -> "Исходящий"
-            else -> "Входящий"
+            isMissed -> getString(R.string.call_direction_missed)
+            item.direction == CallsApiOuterClass.CallDirection.CALL_DIRECTION_OUTGOING -> getString(R.string.call_direction_outgoing)
+            else -> getString(R.string.call_direction_incoming)
         }
 
         val time = DateUtils.getRelativeTimeSpanString(
@@ -186,7 +186,7 @@ class CallsFragment : Fragment() {
             val chatId = grpcManager.getPersonChatId(row.peerUserId).getOrNull()
             if (chatId.isNullOrBlank() || _binding == null) {
                 if (_binding != null) {
-                    Toast.makeText(requireContext(), "Не удалось открыть чат", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), R.string.call_open_chat_failed, Toast.LENGTH_SHORT).show()
                 }
                 return@launch
             }
@@ -229,7 +229,7 @@ class CallsFragment : Fragment() {
             }.onFailure { error ->
                 Log.e(TAG, "Не удалось начать звонок", error)
                 if (_binding != null) {
-                    Toast.makeText(requireContext(), "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), R.string.call_start_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -246,7 +246,7 @@ class CallsFragment : Fragment() {
 
     private fun showEmpty() {
         if (_binding == null) return
-        binding.emptyTitle.text = if (missedOnly) "Пропущенных звонков нет" else "Звонков пока нет"
+        binding.emptyTitle.text = getString(if (missedOnly) R.string.call_empty_missed else R.string.call_empty_all)
         binding.emptyState.visibility = View.VISIBLE
         binding.callsRecyclerView.visibility = View.GONE
     }

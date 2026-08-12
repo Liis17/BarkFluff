@@ -18,19 +18,17 @@ object MediaSendNotification {
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val mgr = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "Отправка медиа",
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "Прогресс отправки фото и видео в чат"
-                    setShowBadge(false)
-                    enableVibration(false)
-                    setSound(null, null)
-                }
-                mgr.createNotificationChannel(channel)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.notification_channel_media_send_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = context.getString(R.string.notification_channel_media_send_description)
+                setShowBadge(false)
+                enableVibration(false)
+                setSound(null, null)
             }
+            mgr.createNotificationChannel(channel)
         }
     }
 

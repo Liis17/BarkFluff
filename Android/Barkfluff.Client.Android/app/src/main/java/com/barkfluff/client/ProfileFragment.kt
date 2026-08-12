@@ -124,7 +124,9 @@ class ProfileFragment : Fragment() {
     private fun updateUI() {
         val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
         binding.textFullName.text = fullName.ifEmpty { getString(R.string.profile_user_placeholder) }
-        binding.textUsername.text = if (globalParam.userName.isNotEmpty()) "@${globalParam.userName}" else ""
+        binding.textUsername.text = if (globalParam.userName.isNotEmpty()) {
+            getString(R.string.register_username_format, globalParam.userName)
+        } else ""
         binding.textLanguageValue.text = getLanguageDisplayName()
 
         loadAvatar()

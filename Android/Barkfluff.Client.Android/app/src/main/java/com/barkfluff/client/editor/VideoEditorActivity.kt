@@ -259,9 +259,13 @@ class VideoEditorActivity : AppCompatActivity() {
     private fun updateTopBar() {
         val uri = currentUri()
         val pos = binding.viewPager.currentItem + 1
-        binding.counterText.text = "$pos / ${allUris.size}"
+        binding.counterText.text = getString(R.string.media_counter, pos, allUris.size)
 
         val idx = uri?.let { selectedUris.indexOf(it) } ?: -1
+        binding.checkboxTouchTarget.contentDescription = getString(
+            if (idx >= 0) R.string.cd_media_deselect else R.string.cd_media_select,
+            getString(R.string.media_video_label)
+        )
         if (idx >= 0) {
             binding.selectionIndicator.setBackgroundResource(R.drawable.selection_indicator_selected_background)
             binding.checkIcon.visibility = View.GONE

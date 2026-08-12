@@ -94,6 +94,7 @@ class ImagePickerAdapter(
         private val binding: ItemCameraButtonBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind() {
+            binding.root.contentDescription = binding.root.context.getString(R.string.camera)
             binding.root.setOnClickListener { onCameraClick() }
         }
     }
@@ -102,6 +103,7 @@ class ImagePickerAdapter(
         private val binding: ItemSystemPickerButtonBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind() {
+            binding.root.contentDescription = binding.root.context.getString(R.string.gallery_button)
             binding.root.setOnClickListener { onSystemPickerClick() }
         }
     }
@@ -110,6 +112,7 @@ class ImagePickerAdapter(
         private val binding: ItemFileButtonBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind() {
+            binding.root.contentDescription = binding.root.context.getString(R.string.file_button)
             binding.root.setOnClickListener { onFileClick() }
         }
     }
@@ -141,6 +144,18 @@ class ImagePickerAdapter(
 
             val isSelected = selectedUris.contains(item.uri)
             val selectionIndex = selectedItems.indexOfFirst { it.uri == item.uri }
+            val typeLabel = binding.root.context.getString(
+                if (item.isVideo) R.string.media_video_label else R.string.media_photo_label
+            )
+            val displayName = item.displayName.ifBlank { typeLabel }
+            binding.cardView.contentDescription = binding.root.context.getString(
+                if (item.isVideo) R.string.cd_media_preview_video else R.string.cd_media_preview_photo,
+                displayName
+            )
+            binding.checkboxTouchTarget.contentDescription = binding.root.context.getString(
+                if (isSelected) R.string.cd_media_deselect else R.string.cd_media_select,
+                displayName
+            )
 
             if (isSelected && selectionIndex >= 0) {
                 binding.selectionOverlay.visibility = View.VISIBLE

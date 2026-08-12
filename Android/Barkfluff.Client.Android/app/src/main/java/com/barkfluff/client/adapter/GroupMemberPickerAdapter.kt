@@ -31,7 +31,11 @@ class GroupMemberPickerAdapter(
     inner class ViewHolder(private val view: CheckedTextView) : RecyclerView.ViewHolder(view) {
         fun bind(user: GrpcManager.UserData) {
             val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
-            view.text = if (user.username.isBlank()) name else "$name · @${user.username}"
+            view.text = if (user.username.isBlank()) name else view.context.getString(
+                R.string.group_member_with_username,
+                name,
+                user.username
+            )
             view.isChecked = user.userId in selectedIds
             view.setOnClickListener { onToggle(user) }
         }

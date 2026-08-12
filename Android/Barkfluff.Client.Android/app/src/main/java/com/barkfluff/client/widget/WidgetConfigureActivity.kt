@@ -63,7 +63,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
         editMode = intent.getBooleanExtra(EXTRA_EDIT_MODE, false)
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            Toast.makeText(this, "Не удалось определить виджет", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.widget_not_found, Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -168,7 +168,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
 
         inner class VH(val b: ItemWidgetSelectedChatBinding) : RecyclerView.ViewHolder(b.root) {
             fun bind(chatId: String, chat: GrpcManager.ChatData?) {
-                val title = chat?.title?.takeIf { it.isNotBlank() } ?: "Чат"
+                val title = chat?.title?.takeIf { it.isNotBlank() } ?: getString(R.string.chat_title_default)
                 b.chatTitle.text = title
 
                 AvatarLoader.showPlaceholder(b.chatAvatarPlaceholder, title, chatId.hashCode().toLong())

@@ -117,7 +117,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
             val result = grpcManager.listPinnedMessages(chatId)
             binding.loadingIndicator.visibility = View.GONE
             if (result.isFailure) {
-                Toast.makeText(this@PinnedMessagesActivity, "Не удалось загрузить закреплённые", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PinnedMessagesActivity, R.string.pinned_load_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
             val (list, _) = result.getOrNull() ?: return@launch
@@ -146,7 +146,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
     private fun showUnpinMenu(item: MessageItem) {
         AlertDialog.Builder(this)
-            .setItems(arrayOf("Перейти к сообщению", "Открепить")) { _, which ->
+            .setItems(arrayOf(getString(R.string.pinned_go_to_message), getString(R.string.message_unpin))) { _, which ->
                 when (which) {
                     0 -> {
                         val data = Intent().putExtra(RESULT_SCROLL_TO_MESSAGE_ID, item.messageId)
@@ -163,7 +163,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = grpcManager.unpinMessage(chatId, messageId)
             if (result.isFailure) {
-                Toast.makeText(this@PinnedMessagesActivity, "Не удалось открепить", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PinnedMessagesActivity, R.string.message_unpin_failed, Toast.LENGTH_SHORT).show()
             } else {
                 loadPinned()
             }
@@ -172,21 +172,25 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
     private fun confirmUnpinAll() {
         AlertDialog.Builder(this)
-            .setTitle("Открепить все")
-            .setMessage("Будут откреплены все закреплённые сообщения в чате.")
-            .setPositiveButton("Открепить") { _, _ ->
+            .setTitle(R.string.pinned_unpin_all_title)
+            .setMessage(R.string.pinned_unpin_all_message)
+            .setPositiveButton(R.string.message_unpin) { _, _ ->
                 lifecycleScope.launch {
                     val result = grpcManager.unpinAllMessages(chatId)
                     if (result.isSuccess) {
-                        Toast.makeText(this@PinnedMessagesActivity, "Откреплено: ${result.getOrNull() ?: 0}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@PinnedMessagesActivity,
+                            getString(R.string.pinned_unpinned_count, result.getOrNull() ?: 0),
+                            Toast.LENGTH_SHORT
+                        ).show()
                         setResult(Activity.RESULT_OK)
                         finish()
                     } else {
-                        Toast.makeText(this@PinnedMessagesActivity, "Не удалось", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@PinnedMessagesActivity, R.string.pinned_unpin_all_failed, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 }

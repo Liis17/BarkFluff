@@ -35,7 +35,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
@@ -120,14 +120,14 @@ class UserProfileActivity : AppCompatActivity() {
         binding.dividerChatId.visibility = if (showIds) View.VISIBLE else View.GONE
         if (showIds) {
             binding.profileChatIdValue.text = chatId
-            binding.rowChatId.setOnClickListener { copyToClipboard("ChatId", chatId) }
+            binding.rowChatId.setOnClickListener { copyToClipboard(getString(R.string.profile_chat_id_label), chatId) }
         }
 
         if (showUserId) {
             binding.rowUserId.visibility = View.VISIBLE
             binding.dividerUserId.visibility = View.VISIBLE
             binding.profileUserIdValue.text = formatId(otherUserId)
-            binding.rowUserId.setOnClickListener { copyToClipboard("UserId", otherUserId.toString()) }
+            binding.rowUserId.setOnClickListener { copyToClipboard(getString(R.string.profile_user_id_label), otherUserId.toString()) }
         } else {
             binding.rowUserId.visibility = View.GONE
             binding.dividerUserId.visibility = View.GONE
@@ -165,25 +165,26 @@ class UserProfileActivity : AppCompatActivity() {
     private fun showChatBackgroundDialog() {
         lifecycleScope.launch {
             val fileIds = grpcManager.getPersonalization().getOrElse {
-                Toast.makeText(this@UserProfileActivity, "Не удалось загрузить фоны", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@UserProfileActivity, R.string.profile_background_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val labels = listOf("Использовать глобальный фон") + fileIds.map { "Фон ${it.take(8)}" }
+            val labels = listOf(getString(R.string.profile_use_global_background)) +
+                fileIds.map { getString(R.string.profile_background_named, it.take(8)) }
             val current = globalParam.chatBackgroundOverrides[chatId]
             var selected = fileIds.indexOf(current).takeIf { it >= 0 }?.plus(1) ?: 0
             MaterialAlertDialogBuilder(this@UserProfileActivity)
-                .setTitle("Фон чата")
+                .setTitle(R.string.profile_chat_background)
                 .setSingleChoiceItems(labels.toTypedArray(), selected) { _, which -> selected = which }
-                .setNegativeButton("Отмена", null)
-                .setPositiveButton("Применить") { _, _ ->
+                .setNegativeButton(R.string.btn_cancel, null)
+                .setPositiveButton(R.string.btn_apply) { _, _ ->
                     lifecycleScope.launch {
                         val fileId = if (selected == 0) "" else fileIds[selected - 1]
                         val result = grpcManager.setChatBackground(chatId, fileId)
                         if (result.isSuccess) {
                             globalParam.setChatBackgroundOverride(chatId, fileId)
-                            Toast.makeText(this@UserProfileActivity, "Фон чата обновлён", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@UserProfileActivity, R.string.profile_background_updated, Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(this@UserProfileActivity, "Не удалось установить фон", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@UserProfileActivity, R.string.profile_background_set_error, Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -194,6 +195,10 @@ class UserProfileActivity : AppCompatActivity() {
     private fun updateNotifyIcon() {
         binding.actionNotifyIcon.setImageResource(
             if (isChatMuted) R.drawable.ic_notifications_off else R.drawable.ic_notifications
+        )
+        binding.actionNotifyButton.contentDescription = getString(
+            if (isChatMuted) R.string.profile_action_notifications_enable
+            else R.string.profile_action_notifications_disable
         )
     }
 
@@ -232,7 +237,7 @@ class UserProfileActivity : AppCompatActivity() {
         lifecycleScope.launch {
             if (!ensureCallsClient()) return@launch
             if (otherUserId <= 0L) {
-                Toast.makeText(this@UserProfileActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@UserProfileActivity, R.string.chat_call_user_missing, Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
@@ -249,7 +254,7 @@ class UserProfileActivity : AppCompatActivity() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@UserProfileActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@UserProfileActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -260,13 +265,13 @@ class UserProfileActivity : AppCompatActivity() {
 
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) {
-            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
             return false
         }
 
         val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
         if (result.isFailure) {
-            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
         }
         return result.isSuccess
     }
@@ -350,7 +355,7 @@ class UserProfileActivity : AppCompatActivity() {
                             MediaViewerActivity.createIntent(
                                 this,
                                 att.fileId,
-                                att.fileName.ifBlank { "Видео" },
+                                att.fileName.ifBlank { getString(R.string.attachment_video) },
                                 cachedPath
                             )
                         )
@@ -373,13 +378,13 @@ class UserProfileActivity : AppCompatActivity() {
                                         setDataAndType(uri, mimeType)
                                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
-                                    startActivity(Intent.createChooser(intent, "Открыть с помощью"))
+                                    startActivity(Intent.createChooser(intent, getString(R.string.open_with)))
                                 } else {
-                                    Toast.makeText(this@UserProfileActivity, "Не удалось скачать файл", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@UserProfileActivity, R.string.profile_download_failed, Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error opening file", e)
-                                Toast.makeText(this@UserProfileActivity, "Ошибка открытия файла", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@UserProfileActivity, R.string.profile_file_open_error, Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -599,12 +604,14 @@ class UserProfileActivity : AppCompatActivity() {
                     val displayName = "${user.firstName} ${user.lastName}".trim()
 
                     binding.profileNameTextView.text = if (displayName.isNotBlank()) displayName else user.username
-                    binding.profileUsernameTextView.text = "@${user.username}"
+                    binding.profileUsernameTextView.text = getString(R.string.register_username_format, user.username)
                     binding.profileUsernameTextView.visibility = View.VISIBLE
 
                     if (user.registrationDate > 0) {
-                        val sdf = SimpleDateFormat("d MMMM yyyy", Locale("ru"))
-                        binding.profileRegistrationValue.text = sdf.format(Date(user.registrationDate))
+                        binding.profileRegistrationValue.text = DateFormat.getDateInstance(
+                            DateFormat.LONG,
+                            resources.configuration.locales[0]
+                        ).format(Date(user.registrationDate))
                         binding.rowRegistration.visibility = View.VISIBLE
                     } else {
                         binding.rowRegistration.visibility = View.GONE
@@ -660,7 +667,7 @@ class UserProfileActivity : AppCompatActivity() {
                         val isOnline = userStatus.status.getNumber() ==
                                 barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
                         if (isOnline) {
-                            binding.profileOnlineStatusTextView.text = "в сети"
+                            binding.profileOnlineStatusTextView.text = getString(R.string.profile_online)
                             binding.profileOnlineStatusTextView.setTextColor(
                                 ContextCompat.getColor(this@UserProfileActivity, R.color.profile_presence_online)
                             )
@@ -679,7 +686,7 @@ class UserProfileActivity : AppCompatActivity() {
                             binding.onlineIndicator.visibility = View.GONE
                         }
                     } else {
-                        binding.profileOnlineStatusTextView.text = "был(а) недавно"
+                        binding.profileOnlineStatusTextView.text = getString(R.string.profile_last_seen_recently)
                         binding.statusDot.visibility = View.GONE
                         binding.onlineIndicator.visibility = View.GONE
                     }

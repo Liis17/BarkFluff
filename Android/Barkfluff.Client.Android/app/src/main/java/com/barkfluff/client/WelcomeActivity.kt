@@ -32,7 +32,7 @@ class WelcomeActivity : AppCompatActivity() {
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-            Toast.makeText(this, "Все разрешения предоставлены", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.welcome_permissions_granted, Toast.LENGTH_SHORT).show()
         }
         navigateToMain()
     }
@@ -43,10 +43,10 @@ class WelcomeActivity : AppCompatActivity() {
     ) { result ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (Environment.isExternalStorageManager()) {
-                Toast.makeText(this, "Доступ к хранилищу предоставлен", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.welcome_storage_granted, Toast.LENGTH_SHORT).show()
                 requestRemainingPermissions()
             } else {
-                Toast.makeText(this, "Доступ к хранилищу не предоставлен", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.welcome_storage_denied, Toast.LENGTH_SHORT).show()
                 navigateToMain()
             }
         }

@@ -3,13 +3,13 @@
     <item
         android:id="@+id/navigation_chats"
         android:icon="@drawable/ic_chat_bubble"
-        android:title="Чаты" />
+        android:title="@string/nav_chats" />
     <item
         android:id="@+id/navigation_calls"
         android:icon="@drawable/ic_phone"
-        android:title="Звонки" />
+        android:title="@string/nav_calls" />
     <item
         android:id="@+id/navigation_profile"
         android:icon="@drawable/ic_info"
-        android:title="Профиль" />
+        android:title="@string/nav_profile" />
 </menu>

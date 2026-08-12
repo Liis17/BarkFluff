@@ -378,11 +378,11 @@ class ChatActivity : AppCompatActivity() {
             KIND_SECRET -> {
                 val chat = app.secretChatRepository.getChat(chatId)
                 if (chat == null) {
-                    Toast.makeText(this, "Секретный чат не найден", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, R.string.secret_chat_not_found, Toast.LENGTH_LONG).show()
                     finish()
                     return
                 }
-                binding.chatNameTextView.text = "Секретный чат · ${chat.peerUserId}"
+                binding.chatNameTextView.text = getString(R.string.secret_chat_title, chat.peerUserId)
                 binding.chatAvatarPlaceholder.text = "🔒"
                 SecretChatController(this, binding, e2eAdapter, app, globalParam, chat)
                     .start(intent.getStringExtra(EXTRA_INITIAL_MESSAGE))
@@ -439,11 +439,11 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
-        binding.chatNameTextView.text = chatTitle.ifBlank { "Чат" }
+        binding.chatNameTextView.text = chatTitle.ifBlank { getString(R.string.chat_default_title) }
 
         // Показываем статус онлайна только для личных чатов
         if (!isGroupChat && otherUserId > 0) {
-            binding.onlineStatusTextView.text = "загрузка..."
+            binding.onlineStatusTextView.text = getString(R.string.chat_status_loading)
             // Загрузка статуса онлайна будет в loadChatInfo()
         } else {
             binding.onlineStatusTextView.visibility = View.GONE
@@ -506,7 +506,7 @@ class ChatActivity : AppCompatActivity() {
                 app.callRepository.initiateGroup(chatId, mediaType)
             } else {
                 if (otherUserId <= 0L) {
-                    Toast.makeText(this@ChatActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ChatActivity, R.string.chat_call_user_missing, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
                 app.callRepository.initiateDirect(otherUserId, mediaType)
@@ -523,7 +523,7 @@ class ChatActivity : AppCompatActivity() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@ChatActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -534,13 +534,13 @@ class ChatActivity : AppCompatActivity() {
 
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) {
-            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
             return false
         }
 
         val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
         if (result.isFailure) {
-            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
         }
         return result.isSuccess
     }
@@ -810,7 +810,9 @@ class ChatActivity : AppCompatActivity() {
 
             for (member in members) {
                 if (member.userId == currentUserId) continue
-                val name = "${member.firstName} ${member.lastName}".trim().ifBlank { "ID ${member.userId}" }
+                val name = "${member.firstName} ${member.lastName}".trim().ifBlank {
+                    getString(R.string.group_member_id, member.userId)
+                }
                 val avatarSource = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
                     avatarSourceFor(user)
                 }
@@ -872,7 +874,9 @@ class ChatActivity : AppCompatActivity() {
             try {
                 val user = grpcManager.getUserData(userId).getOrNull()
                 if (user != null) {
-                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank { "ID $userId" }
+                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank {
+                        getString(R.string.group_member_id, userId)
+                    }
                     groupMemberInfoCache[userId] = name to avatarSourceFor(user)
                 }
             } finally {
@@ -1554,13 +1558,13 @@ class ChatActivity : AppCompatActivity() {
             try {
                 val fileId = sticker.fileId
                 if (fileId.isBlank()) {
-                    Toast.makeText(this@ChatActivity, "Ошибка: стикер без файла", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ChatActivity, R.string.sticker_file_missing, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
                 sendMessage(text = "", fileIds = listOf(fileId))
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending sticker", e)
-                Toast.makeText(this@ChatActivity, "Ошибка отправки стикера", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.sticker_send_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -1877,7 +1881,7 @@ class ChatActivity : AppCompatActivity() {
             if (fileIds.isNotEmpty()) {
                 sendMessage(text = text, fileIds = fileIds)
             } else {
-                Toast.makeText(this@ChatActivity, "Не удалось загрузить файлы", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
                 if (text.isNotBlank()) {
                     sendMessage(text = text)
                 }
@@ -1945,7 +1949,7 @@ class ChatActivity : AppCompatActivity() {
                     updateOptimisticStatus(localId, ReadStatus.FAILED)
                     Toast.makeText(
                         this@ChatActivity,
-                        "Ошибка отправки: ${result.exceptionOrNull()?.message}",
+                        getString(R.string.message_send_error, result.exceptionOrNull()?.message.orEmpty()),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -1954,7 +1958,7 @@ class ChatActivity : AppCompatActivity() {
                 updateOptimisticStatus(localId, ReadStatus.FAILED)
                 Toast.makeText(
                     this@ChatActivity,
-                    "Ошибка отправки: ${e.message}",
+                    getString(R.string.message_send_error, e.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -2028,7 +2032,7 @@ class ChatActivity : AppCompatActivity() {
     private fun sendEdit(messageId: Long, text: String) {
         val fileIds = pendingEditFileIds
         if (text.isBlank() && fileIds.isEmpty()) {
-            Toast.makeText(this, "Сообщение не может быть пустым", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.message_empty, Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -2042,7 +2046,7 @@ class ChatActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(
                     this@ChatActivity,
-                    "Ошибка редактирования: ${result.exceptionOrNull()?.message}",
+                    getString(R.string.message_edit_error, result.exceptionOrNull()?.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -2055,14 +2059,14 @@ class ChatActivity : AppCompatActivity() {
         pendingReplyMessageId = item.messageId
 
         val author = item.senderName?.takeIf { it.isNotBlank() }
-            ?: if (item.senderId == currentUserId) "Вы" else "Сообщение"
+            ?: if (item.senderId == currentUserId) getString(R.string.current_user) else getString(R.string.message_placeholder)
         val preview = if (item.text.isNotBlank()) {
             item.text
         } else {
             buildAttachmentSummary(item.attachments)
         }
 
-        binding.replyPreviewAuthorText.text = "Ответ $author"
+        binding.replyPreviewAuthorText.text = getString(R.string.reply_to_author, author)
         binding.replyPreviewContentText.text = preview
         binding.replyPreviewBar.visibility = View.VISIBLE
         binding.messageEditText.requestFocus()
@@ -2160,10 +2164,10 @@ class ChatActivity : AppCompatActivity() {
 
     private fun confirmAndDelete(item: MessageItem) {
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("Удалить сообщение?")
-            .setMessage("Это действие нельзя отменить.")
-            .setNegativeButton("Отмена", null)
-            .setPositiveButton("Удалить") { _, _ ->
+            .setTitle(R.string.delete_message_title)
+            .setMessage(R.string.delete_message_message)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .setPositiveButton(R.string.btn_delete) { _, _ ->
                 lifecycleScope.launch {
                     val result = chatRepository.deleteMessage(item.messageId)
                     if (result.isSuccess) {
@@ -2172,7 +2176,7 @@ class ChatActivity : AppCompatActivity() {
                     } else {
                         Toast.makeText(
                             this@ChatActivity,
-                            "Ошибка удаления: ${result.exceptionOrNull()?.message}",
+                            getString(R.string.message_delete_error, result.exceptionOrNull()?.message.orEmpty()),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -2223,11 +2227,20 @@ class ChatActivity : AppCompatActivity() {
         }
         val stickers = attachments.count { it.type == barkfluff.shared.Shared.MessageAttachmentType.STICKER }
         return when {
-            photos > 0 -> "📷 $photos фото"
-            videos > 0 -> "🎬 $videos видео"
-            audios > 0 -> "🎵 $audios аудио"
-            docs > 0 -> "📎 $docs файл(ов)"
-            stickers > 0 -> "Стикер"
+            photos > 0 -> getString(
+                R.string.chat_attachment_photo_summary,
+                resources.getQuantityString(R.plurals.photos_count, photos, photos)
+            )
+            videos > 0 -> getString(
+                R.string.chat_attachment_video_summary,
+                resources.getQuantityString(R.plurals.videos_count, videos, videos)
+            )
+            audios > 0 -> getString(R.string.chat_attachment_audio_summary, audios)
+            docs > 0 -> getString(
+                R.string.chat_attachment_file_summary,
+                resources.getQuantityString(R.plurals.files_count, docs, docs)
+            )
+            stickers > 0 -> getString(R.string.chat_attachment_sticker_summary)
             else -> ""
         }
     }
@@ -2243,7 +2256,7 @@ class ChatActivity : AppCompatActivity() {
             it.type == MessageType.MESSAGE && it.messageId == messageId
         }
         if (position < 0) {
-            Toast.makeText(this, "Сообщение не загружено", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.message_not_loaded, Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -2373,7 +2386,9 @@ class ChatActivity : AppCompatActivity() {
         saveDocsView.isVisible = docAtts.isNotEmpty()
 
         if (saveImagesView.isVisible) {
-            saveImagesView.text = if (imageAtts.size == 1) "Сохранить изображение" else "Сохранить изображения"
+            saveImagesView.text = getString(
+                if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images
+            )
         }
 
         copyTextView.setOnClickListener { copyMessageText(item); dismiss() }
@@ -2384,7 +2399,7 @@ class ChatActivity : AppCompatActivity() {
         // Пункт «Закрепить» / «Открепить» — переключается по состоянию
         val pinView = popupView.findViewById<TextView>(R.id.actionPin)
         val isPinned = pinnedById.containsKey(item.messageId)
-        pinView.text = if (isPinned) "Открепить" else "Закрепить"
+        pinView.text = getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
 
         popupView.findViewById<View>(R.id.actionReply).setOnClickListener { onClickWithDismiss(R.id.actionReply) }
         editView.setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
@@ -2425,14 +2440,14 @@ class ChatActivity : AppCompatActivity() {
     private fun copyMessageText(item: MessageItem) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("BarkFluff message", item.text))
-        Toast.makeText(this, "Текст скопирован", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun copyMessageImage(att: barkfluff.shared.Shared.MessageAttachment) {
         lifecycleScope.launch {
             val srcFile = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
             if (srcFile == null) {
-                Toast.makeText(this@ChatActivity, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.message_image_download_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
             try {
@@ -2458,16 +2473,16 @@ class ChatActivity : AppCompatActivity() {
                     ClipData.Item(uri)
                 )
                 cm.setPrimaryClip(clip)
-                Toast.makeText(this@ChatActivity, "Изображение скопировано", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.message_image_copied, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this@ChatActivity, "Не удалось скопировать", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.message_copy_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun saveMessageImages(images: List<barkfluff.shared.Shared.MessageAttachment>) {
         if (images.isEmpty()) return
-        Toast.makeText(this, "Сохраняю...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.saving, Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             var saved = 0
             for (att in images) {
@@ -2482,7 +2497,7 @@ class ChatActivity : AppCompatActivity() {
             }
             Toast.makeText(
                 this@ChatActivity,
-                if (saved > 0) "Сохранено в галерею: $saved" else "Не удалось сохранить",
+                if (saved > 0) getString(R.string.saved_to_gallery, saved) else getString(R.string.save_failed),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -2490,7 +2505,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun saveMessageDocuments(docs: List<barkfluff.shared.Shared.MessageAttachment>) {
         if (docs.isEmpty()) return
-        Toast.makeText(this, "Сохраняю...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.saving, Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             var saved = 0
             for (att in docs) {
@@ -2505,7 +2520,7 @@ class ChatActivity : AppCompatActivity() {
             }
             Toast.makeText(
                 this@ChatActivity,
-                if (saved > 0) "Сохранено в загрузки: $saved" else "Не удалось сохранить",
+                if (saved > 0) getString(R.string.saved_to_downloads, saved) else getString(R.string.save_failed),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -2649,7 +2664,7 @@ class ChatActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         val isOnline = status.status.number == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.number
                         if (isOnline) {
-                            applyOnlineStatus("в сети", true)
+                            applyOnlineStatus(getString(R.string.profile_online), true)
                         } else {
                             val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, status.lastSeen.seconds * 1000)
                             applyOnlineStatus(lastSeen, false)
@@ -2673,13 +2688,13 @@ class ChatActivity : AppCompatActivity() {
                     if (userStatus != null) {
                         val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
                         if (isOnline) {
-                            applyOnlineStatus("в сети", true)
+                            applyOnlineStatus(getString(R.string.profile_online), true)
                         } else {
                             val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeen.seconds * 1000)
                             applyOnlineStatus(lastSeen, false)
                         }
                     } else {
-                        applyOnlineStatus("был(а) недавно", false)
+                        applyOnlineStatus(getString(R.string.status_recently_seen), false)
                     }
                 }
             }
@@ -2745,7 +2760,7 @@ class ChatActivity : AppCompatActivity() {
                     }
                     Toast.makeText(
                         this@ChatActivity,
-                        "Ошибка загрузки сообщений",
+                        getString(R.string.messages_load_failed),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -2905,7 +2920,7 @@ class ChatActivity : AppCompatActivity() {
                 it.type == MessageType.MESSAGE && it.messageId == firstUnreadMessageId
             }
             if (unreadIndex >= 0) {
-                messageItems.add(unreadIndex, MessageItem.createUnreadSeparator())
+                messageItems.add(unreadIndex, MessageItem.createUnreadSeparator(getString(R.string.unread_messages)))
                 scrollToPosition = unreadIndex // Скроллим к разделителю
             }
         }
@@ -2979,9 +2994,9 @@ class ChatActivity : AppCompatActivity() {
         val messageDate = startOfDay(timestampMillis)
 
         return when {
-            messageDate == today -> "Сегодня"
-            messageDate == yesterday -> "Вчера"
-            else -> SimpleDateFormat("dd MMMM yyyy", Locale("ru")).format(Date(timestampMillis))
+            messageDate == today -> getString(R.string.date_today)
+            messageDate == yesterday -> getString(R.string.date_yesterday)
+            else -> SimpleDateFormat("dd MMMM yyyy", resources.configuration.locales[0]).format(Date(timestampMillis))
         }
     }
 
@@ -3259,12 +3274,12 @@ class ChatActivity : AppCompatActivity() {
         }
         binding.pinnedMessageBar.visibility = View.VISIBLE
         binding.pinnedTitle.text = if (pinnedTotalCount > 1) {
-            "Закреплённое сообщение · ${pinnedTotalCount}"
+            getString(R.string.pinned_message_count, pinnedTotalCount)
         } else {
-            "Закреплённое сообщение"
+            getString(R.string.pinned_message)
         }
         val text = first.message.content?.text ?: ""
-        binding.pinnedPreview.text = if (text.isBlank()) "[вложение]" else text
+        binding.pinnedPreview.text = if (text.isBlank()) getString(R.string.attachment_preview) else text
     }
 
     private fun scrollToMessageId(messageId: Long) {
@@ -3291,16 +3306,16 @@ class ChatActivity : AppCompatActivity() {
             if (isPinned) {
                 val result = grpcManager.unpinMessage(chatId, item.messageId)
                 if (result.isFailure) {
-                    Toast.makeText(this@ChatActivity, "Не удалось открепить сообщение", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ChatActivity, R.string.message_unpin_failed, Toast.LENGTH_SHORT).show()
                 }
             } else {
                 val result = grpcManager.pinMessage(chatId, item.messageId)
                 if (result.isFailure) {
                     val cause = result.exceptionOrNull()
                     val msg = if (cause is GrpcManager.PinErrorException && cause.isTooManyPinned) {
-                        "Достигнут лимит закреплённых сообщений (100). Открепите старые, чтобы закрепить новое."
+                        getString(R.string.pin_limit_reached)
                     } else {
-                        "Не удалось закрепить сообщение"
+                        getString(R.string.message_pin_failed)
                     }
                     Toast.makeText(this@ChatActivity, msg, Toast.LENGTH_LONG).show()
                 } else {

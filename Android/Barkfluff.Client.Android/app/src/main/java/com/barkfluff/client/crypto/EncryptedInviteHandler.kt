@@ -40,7 +40,9 @@ object EncryptedInviteHandler {
         }
         owner.lifecycleScope.launch {
             app.realtimeService.privateChatInviteResolutions.collect { res ->
-                val text = if (res.accepted) "Собеседник принял приватный чат" else "Собеседник отклонил приватный чат"
+                val text = activity.getString(
+                    if (res.accepted) R.string.private_invite_accepted_by_peer else R.string.private_invite_declined_by_peer
+                )
                 Toast.makeText(activity, text, Toast.LENGTH_SHORT).show()
             }
         }
@@ -53,11 +55,11 @@ object EncryptedInviteHandler {
             app.realtimeService.secretChatResolutions.collect { res ->
                 if (res.accepted) {
                     app.secretChatRepository.markInitiatorChatAccepted(res.inviteId)
-                    Toast.makeText(activity, "Секретный чат подтверждён", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, R.string.secret_chat_confirmed, Toast.LENGTH_SHORT).show()
                 } else {
                     val chat = app.secretChatRepository.findByInviteId(res.inviteId)
                     chat?.let { app.secretChatRepository.forgetChat(it.id) }
-                    Toast.makeText(activity, "Секретный чат отклонён собеседником", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, R.string.secret_chat_declined_by_peer, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -83,15 +85,15 @@ object EncryptedInviteHandler {
         content.addView(passwordLayout)
         content.addView(remember)
         MaterialAlertDialogBuilder(activity)
-            .setTitle("Приглашение в приватный чат")
-            .setMessage("Пользователь ${invite.inviterUserId} пригласил вас в приватный чат. Введите общий passphrase для расшифровки.")
+            .setTitle(R.string.private_invite_title)
+            .setMessage(activity.getString(R.string.private_invite_message, invite.inviterUserId))
             .setView(content)
             .setCancelable(false)
-            .setPositiveButton("Принять") { _, _ ->
+            .setPositiveButton(R.string.private_chat_invite_accept) { _, _ ->
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
                 acceptPrivate(activity, invite, passphrase, remember.isChecked)
             }
-            .setNegativeButton("Отклонить") { _, _ ->
+            .setNegativeButton(R.string.private_chat_invite_decline) { _, _ ->
                 rejectPrivate(activity, invite.chatId)
             }
             .show()
@@ -114,14 +116,18 @@ object EncryptedInviteHandler {
                 rememberKey = rememberKey
             )
             result.onSuccess { chat ->
-                Toast.makeText(activity, "Приватный чат принят", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, R.string.private_chat_accepted, Toast.LENGTH_SHORT).show()
                 activity.startActivity(ChatActivity.privateChatIntent(
                     activity,
                     chatId = chat.id,
-                    title = chat.title.ifBlank { "Приватный чат" }
+                    title = chat.title.ifBlank { activity.getString(R.string.private_chat_title) }
                 ))
             }.onFailure {
-                Toast.makeText(activity, "Не удалось принять чат: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.private_chat_accept_failed, it.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -135,11 +141,17 @@ object EncryptedInviteHandler {
 
     private fun showSecretInviteDialog(activity: Activity, invite: UpdatesApiOuterClass.SecretChatInviteEvent) {
         MaterialAlertDialogBuilder(activity)
-            .setTitle("Приглашение в секретный чат")
-            .setMessage("Пользователь ${invite.senderUserId} (устройство ${invite.senderDeviceId.take(8)}) хочет начать секретный чат с этим устройством.\n\nЭто Signal Double Ratchet — сообщения видны только на этом устройстве и не сохраняются на сервере.")
+            .setTitle(R.string.secret_invite_title)
+            .setMessage(
+                activity.getString(
+                    R.string.secret_invite_message,
+                    invite.senderUserId,
+                    invite.senderDeviceId.take(8)
+                )
+            )
             .setCancelable(false)
-            .setPositiveButton("Принять") { _, _ -> acceptSecret(activity, invite) }
-            .setNegativeButton("Отклонить") { _, _ -> rejectSecret(activity, invite.inviteId) }
+            .setPositiveButton(R.string.private_chat_invite_accept) { _, _ -> acceptSecret(activity, invite) }
+            .setNegativeButton(R.string.private_chat_invite_decline) { _, _ -> rejectSecret(activity, invite.inviteId) }
             .show()
     }
 
@@ -153,7 +165,7 @@ object EncryptedInviteHandler {
                 initialEnvelope = invite.initialEnvelope.toByteArray()
             )
             result.onSuccess { (chat, plaintext) ->
-                Toast.makeText(activity, "Секретный чат начат", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, R.string.secret_chat_started, Toast.LENGTH_SHORT).show()
                 activity.startActivity(ChatActivity.secretChatIntent(
                     activity,
                     secretChatId = chat.id,
@@ -161,7 +173,11 @@ object EncryptedInviteHandler {
                 ))
             }.onFailure {
                 Log.w(TAG, "acceptSecret failed", it)
-                Toast.makeText(activity, "Не удалось принять: ${it.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.secret_chat_accept_failed, it.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
