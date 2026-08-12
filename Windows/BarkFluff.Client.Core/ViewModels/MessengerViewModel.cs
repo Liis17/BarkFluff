@@ -3,6 +3,7 @@ using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Presence;
 using BarkFluff.Client.Core.Infrastructure.Threading;
+using BarkFluff.Client.Core.Markdown;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
@@ -572,7 +573,7 @@ public sealed partial class MessengerViewModel : ObservableObject
 
         var preview = string.IsNullOrWhiteSpace(forwarded.Text)
             ? _localization.GetString("Messenger_Attachment")
-            : forwarded.Text;
+            : MarkdownText.Strip(forwarded.Text);
         return new ForwardedContentViewModel(forwarded.AuthorName, forwarded.OriginalMessageId, preview);
     }
 
@@ -971,11 +972,11 @@ public sealed partial class ChatItemViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Сжимает текст в одну строку и обрезает по числу видимых символов.
+    /// Убирает markdown-разметку, сжимает текст в одну строку и обрезает по числу видимых символов.
     /// </summary>
     internal static string CreatePreview(string text, int maxElements)
     {
-        var normalized = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var normalized = string.Join(' ', MarkdownText.Strip(text).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         var elementStarts = StringInfo.ParseCombiningCharacters(normalized);
         return elementStarts.Length <= maxElements
             ? normalized
