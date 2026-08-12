@@ -45,11 +45,13 @@
                     android:layout_width="96dp"
                     android:layout_height="96dp">
 
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/avatarImage"
-                        android:layout_width="96dp"
-                        android:layout_height="96dp"
-                        android:scaleType="centerCrop"
+                      <com.google.android.material.imageview.ShapeableImageView
+                          android:id="@+id/avatarImage"
+                          android:layout_width="96dp"
+                          android:layout_height="96dp"
+                          android:contentDescription="@null"
+                          android:importantForAccessibility="no"
+                          android:scaleType="centerCrop"
                         android:visibility="gone"
                         app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.App.CornerSize50Percent" />
 

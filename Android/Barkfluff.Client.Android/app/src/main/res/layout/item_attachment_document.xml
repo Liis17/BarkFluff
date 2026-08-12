@@ -15,10 +15,11 @@
     <ImageView
         android:id="@+id/docFileIcon"
         android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:src="@drawable/ic_file"
-        android:contentDescription="@null"
-        app:tint="?attr/colorPrimary" />
+          android:layout_height="32dp"
+          android:src="@drawable/ic_file"
+          android:contentDescription="@null"
+          android:importantForAccessibility="no"
+          app:tint="?attr/colorPrimary" />
 
     <!-- Имя файла + размер + прогресс -->
     <LinearLayout

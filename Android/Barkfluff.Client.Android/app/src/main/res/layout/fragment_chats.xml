@@ -31,12 +31,14 @@
                 android:layout_gravity="center_vertical|start">
 
                 <!-- Аватар картинка -->
-                <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/userAvatar"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_gravity="center"
-                    android:scaleType="centerCrop"
+                 <com.google.android.material.imageview.ShapeableImageView
+                     android:id="@+id/userAvatar"
+                     android:layout_width="40dp"
+                     android:layout_height="40dp"
+                     android:layout_gravity="center"
+                     android:contentDescription="@null"
+                     android:importantForAccessibility="no"
+                     android:scaleType="centerCrop"
                     android:visibility="gone"
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
@@ -71,6 +73,8 @@
                 style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:layout_gravity="center_vertical|end"
                 android:layout_marginEnd="52dp"
                 android:contentDescription="@string/chats_sync_retry"

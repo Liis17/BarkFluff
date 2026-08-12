@@ -25,6 +25,8 @@
                 android:id="@+id/profilePosterImageView"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:scaleType="centerCrop"
                 android:visibility="gone"
                 app:layout_constraintStart_toStartOf="parent"
@@ -58,6 +60,8 @@
                 android:id="@+id/backButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:layout_marginTop="38dp"
                 android:layout_marginStart="12dp"
                 android:background="@drawable/bg_circle_surface"
@@ -71,10 +75,12 @@
                 android:id="@+id/moreButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:layout_marginTop="38dp"
                 android:layout_marginEnd="12dp"
                 android:background="@drawable/bg_circle_surface"
-                android:contentDescription="@string/profile_action_notifications"
+                android:contentDescription="@string/cd_more_menu"
                 android:src="@drawable/ic_more_vert"
                 android:visibility="gone"
                 app:tint="@android:color/white"
@@ -96,6 +102,8 @@
                 android:id="@+id/profileAvatarImageView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:scaleType="centerCrop"
                 android:visibility="gone"
                 app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
@@ -145,6 +153,8 @@
                 android:layout_width="22dp"
                 android:layout_height="22dp"
                 android:layout_marginStart="6dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_check_circle"
                 android:visibility="gone"
                 app:tint="@color/profile_accent"
@@ -242,6 +252,8 @@
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_phone"
                     app:tint="@color/profile_accent" />
             </FrameLayout>
@@ -259,6 +271,8 @@
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_notifications"
                     app:tint="@color/profile_accent" />
             </FrameLayout>
@@ -275,6 +289,8 @@
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_photo_library"
                     app:tint="@color/profile_accent" />
             </FrameLayout>
@@ -311,6 +327,8 @@
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
+                        android:contentDescription="@null"
+                        android:importantForAccessibility="no"
                         android:src="@drawable/ic_badge"
                         app:tint="@color/profile_accent" />
 
@@ -340,6 +358,8 @@
                     <ImageView
                         android:layout_width="20dp"
                         android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:importantForAccessibility="no"
                         android:src="@drawable/ic_copy_content"
                         app:tint="@color/profile_text_dim" />
                 </LinearLayout>
@@ -365,6 +385,8 @@
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
+                        android:contentDescription="@null"
+                        android:importantForAccessibility="no"
                         android:src="@drawable/ic_forum"
                         app:tint="@color/profile_accent" />
 
@@ -394,6 +416,8 @@
                     <ImageView
                         android:layout_width="20dp"
                         android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:importantForAccessibility="no"
                         android:src="@drawable/ic_copy_content"
                         app:tint="@color/profile_text_dim" />
                 </LinearLayout>
@@ -418,6 +442,8 @@
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
+                        android:contentDescription="@null"
+                        android:importantForAccessibility="no"
                         android:src="@drawable/ic_calendar_month"
                         app:tint="@color/profile_accent" />
 

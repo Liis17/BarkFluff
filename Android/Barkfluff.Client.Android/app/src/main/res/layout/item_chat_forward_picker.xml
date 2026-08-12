@@ -19,6 +19,8 @@
             android:id="@+id/chatAvatar"
             android:layout_width="48dp"
             android:layout_height="48dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:scaleType="centerCrop"
             android:visibility="gone"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"

@@ -10,6 +10,8 @@
     <ImageView
         android:layout_width="48dp"
         android:layout_height="48dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
         android:src="@drawable/ic_sticker"
         app:tint="?attr/colorOnSurfaceVariant" />
 

@@ -51,11 +51,13 @@
                 tools:text="3/10"
                 tools:visibility="visible" />
 
-            <ImageButton
-                android:id="@+id/menuButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+    <ImageButton
+        android:id="@+id/menuButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:minWidth="48dp"
+        android:minHeight="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/options"
                 android:padding="8dp"
                 android:src="@drawable/ic_more_vert"
@@ -78,6 +80,8 @@
             <ImageView
                 android:layout_width="64dp"
                 android:layout_height="64dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_storage"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -130,6 +134,8 @@
             <ImageView
                 android:layout_width="64dp"
                 android:layout_height="64dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_image_placeholder"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
