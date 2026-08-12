@@ -41,7 +41,18 @@ public static class MessageContentMapping
                     AuthorName = attachment.ForwardedAuthorName ?? string.Empty,
                     OriginalMessageId = attachment.ForwardedOriginalMessageId ?? 0,
                     Text = attachment.ForwardedText ?? string.Empty,
+                    // Снапшоты, созданные до разделения reply/forward, этих полей не имеют —
+                    // отдаём нули/пустые, клиент трактует их как «источник неизвестен».
+                    OriginalChatId = attachment.ForwardedOriginalChatId?.ToString() ?? string.Empty,
+                    OriginalSenderId = attachment.ForwardedOriginalSenderId ?? 0,
+                    Order = attachment.ForwardedOrder ?? 0,
                 };
+
+                if (attachment.ForwardedOriginalSentAt is { } originalSentAt)
+                {
+                    forwarded.OriginalSentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(
+                        DateTime.SpecifyKind(originalSentAt, DateTimeKind.Utc));
+                }
 
                 if (attachment.ForwardedAttachments != null)
                 {
