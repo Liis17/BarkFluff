@@ -15,6 +15,8 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         public bool IsSystemMessage { get; set; } = false;
         public bool IsEdited { get; set; } = false;
         public Timestamp? EditedAt { get; set; } = null;
+        /// <summary>Заполнено => сообщение является ответом. Резолвится сервером, не снапшот.</summary>
+        public ReplyPreviewModel? ReplyTo { get; set; } = null;
         public MessageModel() { }
 
     }

@@ -225,7 +225,7 @@
                     </Border.ContextFlyout>
                     <Grid>
                         <StackPanel>
-                            <!--  Цитата ответа уводит к оригиналу, блок пересылки — просто превью.  -->
+                            <!--  Цитата ответа уводит к оригиналу; у удалённого прыгать некуда.  -->
                             <Button Margin="0,0,0,6"
                                     Padding="8,5"
                                     HorizontalAlignment="Stretch"
@@ -235,8 +235,7 @@
                                     Command="{x:Bind Owner.ScrollToOriginalCommand}"
                                     CommandParameter="{x:Bind}"
                                     CornerRadius="6"
-                                    IsHitTestVisible="{x:Bind IsReplyQuote, Mode=OneWay}"
-                                    Visibility="{x:Bind HasForwarded, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    Visibility="{x:Bind HasReply, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -249,16 +248,51 @@
                                     <StackPanel Grid.Column="1">
                                         <TextBlock FontSize="12"
                                                    FontWeight="SemiBold"
-                                                   Text="{x:Bind Forwarded.AuthorName}"
+                                                   Text="{x:Bind Reply.SenderName}"
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock FontSize="12"
                                                    Opacity=".8"
-                                                   Text="{x:Bind Forwarded.Preview}"
+                                                   Text="{x:Bind Reply.Preview}"
                                                    TextTrimming="CharacterEllipsis"
                                                    TextWrapping="NoWrap" />
                                     </StackPanel>
                                 </Grid>
                             </Button>
+
+                            <!--  Пересылок может быть несколько — каждая своим блоком.  -->
+                            <ItemsRepeater ItemsSource="{x:Bind Forwards}"
+                                           Visibility="{x:Bind HasForwards, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ForwardedContentViewModel">
+                                        <Border Margin="0,0,0,6"
+                                                Padding="8,5"
+                                                Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                                CornerRadius="6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="2"
+                                                        Margin="0,0,8,0"
+                                                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                                        CornerRadius="1" />
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Text="{x:Bind AuthorName}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock FontSize="12"
+                                                               Opacity=".8"
+                                                               Text="{x:Bind Preview}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="NoWrap" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
 
                             <controls:MarkdownTextBlock Text="{x:Bind Text, Mode=OneWay}"
                                                         TextForeground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
