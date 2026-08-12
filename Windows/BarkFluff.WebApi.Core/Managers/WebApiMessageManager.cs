@@ -17,6 +17,30 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
+        /// Ответ и пересылка едут разными полями: раньше оба уходили одним
+        /// forwarded_message_id, и различить их потом можно было только догадкой.
+        /// </summary>
+        private static Proto.Messages.OutgoingMessage BuildOutgoingMessage(ForwardingLetter letter)
+        {
+            var message = new Proto.Messages.OutgoingMessage
+            {
+                Text = letter.Text,
+                FilesIds = { letter.FilesId },
+            };
+
+            // Смешивать старое поле с новыми нельзя — сервер отвечает InvalidArgument.
+            if (letter.ForwardedMessageId != 0)
+            {
+                message.ForwardedMessageId = letter.ForwardedMessageId;
+                return message;
+            }
+
+            message.ReplyToMessageId = letter.ReplyToMessageId;
+            message.ForwardedMessageIds.AddRange(letter.ForwardedMessageIds);
+            return message;
+        }
+
+        /// <summary>
         /// Преобразует серверное сообщение в модель клиента.
         /// </summary>
         internal static MessageModel MapMessage(Proto.Shared.Message message, string chatId) => new MessageModel
@@ -31,6 +55,15 @@ namespace BarkFluff.WebApi.Core.Managers
             ReadBy = message.ReadBy.ToList(),
             IsEdited = message.IsEdited,
             EditedAt = message.EditedAt,
+            ReplyTo = message.ReplyTo is null ? null : new ReplyPreviewModel
+            {
+                MessageId = message.ReplyTo.MessageId,
+                SenderId = message.ReplyTo.SenderId,
+                SenderName = message.ReplyTo.SenderName,
+                TextPreview = message.ReplyTo.TextPreview,
+                FirstAttachmentType = message.ReplyTo.FirstAttachmentType,
+                IsDeleted = message.ReplyTo.IsDeleted,
+            },
         };
 
         /// <summary>
@@ -53,6 +86,10 @@ namespace BarkFluff.WebApi.Core.Managers
                 AuthorName = a.ForwardedMessage.AuthorName,
                 OriginalMessageId = a.ForwardedMessage.OriginalMessageId,
                 Text = a.ForwardedMessage.Text,
+                OriginalChatId = a.ForwardedMessage.OriginalChatId,
+                OriginalSenderId = a.ForwardedMessage.OriginalSenderId,
+                OriginalSentAt = a.ForwardedMessage.OriginalSentAt,
+                Order = a.ForwardedMessage.Order,
                 Attachments = a.ForwardedMessage.Attachments.Select(inner => new AttachmentsModel
                 {
                     Id = inner.Id,
@@ -167,7 +204,7 @@ namespace BarkFluff.WebApi.Core.Managers
                         response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             ChatId = options.recipient,
-                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId }, ForwardedMessageId = letter.ForwardedMessageId },
+                            Message = BuildOutgoingMessage(letter),
                         });
                     }
                     else
@@ -176,7 +213,7 @@ namespace BarkFluff.WebApi.Core.Managers
                         response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             UserId = long.Parse(options.recipient),
-                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId }, ForwardedMessageId = letter.ForwardedMessageId },
+                            Message = BuildOutgoingMessage(letter),
                         });
                     }
 

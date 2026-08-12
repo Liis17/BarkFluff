@@ -77,7 +77,8 @@ public sealed class MessengerPresentationTests
             isMine: false,
             [media, document],
             currentUserId: 1,
-            forwarded: null);
+            forwards: [],
+            reply: null);
 
         Assert.True(message.HasMedia);
         Assert.True(message.HasFiles);

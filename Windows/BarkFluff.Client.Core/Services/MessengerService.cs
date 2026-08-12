@@ -25,8 +25,18 @@ public sealed class MessengerService : IMessengerService
     public Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.GetChats(parameters));
 
-    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long forwardedMessageId = 0, CancellationToken cancellationToken = default) =>
-        WithParametersAsync(parameters => _webApi.SendMessage(parameters, (false, chatId), new ForwardingLetter { Text = text, ForwardedMessageId = forwardedMessageId }));
+    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(
+        string chatId,
+        string text,
+        long replyToMessageId = 0,
+        IReadOnlyList<long>? forwardedMessageIds = null,
+        CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.SendMessage(parameters, (false, chatId), new ForwardingLetter
+        {
+            Text = text,
+            ReplyToMessageId = replyToMessageId,
+            ForwardedMessageIds = forwardedMessageIds?.ToList() ?? [],
+        }));
 
     public Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.EditMessage(parameters, chatId, messageId, text));

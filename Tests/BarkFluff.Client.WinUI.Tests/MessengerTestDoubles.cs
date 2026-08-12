@@ -202,7 +202,7 @@ internal sealed class FakeMessengerService : IMessengerService
             ? (new ErrorReturner(false, "чаты недоступны"), null)
             : (new ErrorReturner(true), [.. Chats]));
 
-    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long forwardedMessageId = 0, CancellationToken cancellationToken = default) =>
+    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long replyToMessageId = 0, IReadOnlyList<long>? forwardedMessageIds = null, CancellationToken cancellationToken = default) =>
         Task.FromResult<(ErrorReturner, MessageModel?)>(SendFails
             ? (new ErrorReturner(false, "сообщение не отправлено"), null)
             : (new ErrorReturner(true), null));

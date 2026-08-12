@@ -14,7 +14,12 @@ public interface IMessengerService
 
     Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default);
 
-    Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long forwardedMessageId = 0, CancellationToken cancellationToken = default);
+    Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(
+        string chatId,
+        string text,
+        long replyToMessageId = 0,
+        IReadOnlyList<long>? forwardedMessageIds = null,
+        CancellationToken cancellationToken = default);
 
     Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default);
 
