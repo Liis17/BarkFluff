@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.animation.ValueAnimator
 import android.content.Intent
@@ -640,6 +641,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    @SuppressLint("MissingSuperCall")
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         MaterialAlertDialogBuilder(this)
