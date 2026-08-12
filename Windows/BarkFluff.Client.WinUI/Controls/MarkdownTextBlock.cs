@@ -407,7 +407,11 @@ public sealed class MarkdownTextBlock : UserControl
 
         if (image.Height is { } height)
         {
-            view.Height = height;
+            // Высота ужимается пропорционально ужатой ширине, иначе внутри пузыря
+            // остаётся пустое место под картинкой.
+            view.Height = image.Width is { } requested && requested > MaxImageWidth
+                ? height * MaxImageWidth / requested
+                : height;
         }
 
         AutomationProperties.SetName(view, image.Alt);
