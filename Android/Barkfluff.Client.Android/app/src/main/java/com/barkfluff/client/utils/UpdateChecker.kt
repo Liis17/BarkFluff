@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 data class ChannelVersionInfo(
     val version: String?,
@@ -24,6 +25,11 @@ object UpdateChecker {
         try {
             val url = URL("$BASE_URL/get/$CLIENT_NAME/$channel/version")
             val connection = url.openConnection() as HttpURLConnection
+            // storage.barkfluff.com за приватным CA — системному хранилищу он не известен.
+            val trust = UpdateServerTls.trust
+            if (trust != null && connection is HttpsURLConnection) {
+                connection.sslSocketFactory = trust.socketFactory
+            }
             connection.requestMethod = "GET"
             connection.connectTimeout = TIMEOUT
             connection.readTimeout = TIMEOUT

@@ -140,6 +140,17 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 
 Следствие: публичный endpoint с неполной TLS-цепочкой теперь корректно отклоняется release-клиентом — владелец ноды обязан развернуть fullchain, см. [[Backend/Nginx]].
 
+## Система обновлений и её TLS
+
+Сервер обновлений [[Backend/ClientStorage|ClientStorage]] (`storage.barkfluff.com`) отдаётся за Cloudflare Origin CA, которого нет в системном хранилище Android. Сертификат едет в APK строкой `BuildConfig.STORAGE_CA_PEM_B64`: `app/build.gradle.kts` заполняет её из переменной окружения `STORAGE_CA_PEM_B64`, а воркфлоу `build-client-android.yml` подставляет туда секрет `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64` — тот же, которым он ходит на storage через `curl --cacert`. Без переменной строка пустая, и локальные сборки просто работают на системном хранилище (обновления в них не проверяются).
+
+`utils/UpdateServerTls.kt` разворачивает base64 в `X509Certificate` → `KeyStore` → `TrustManagerFactory` → `SSLSocketFactory`. Этот factory подставляется только двум местам: `HttpURLConnection` в `UpdateChecker` (проверка версии) и OkHttp-клиенту загрузки APK в `UpdateActivity`.
+
+Два решения, которые важно не откатить:
+
+- **`network_security_config` намеренно не трогается.** Любой `domain-config` там ломает `PinnedTrustManager` из `core/security/`: он делегирует в hostname-неосведомлённый `checkServerTrusted(chain, authType)`, а платформенный `RootTrustManager` при наличии per-domain конфигураций на такой вызов бросает `CertificateException`. Отвалился бы весь остальной трафик приложения — gRPC, аватары, LiveKit.
+- **APK качается своим OkHttp, а не системным `DownloadManager`.** `DownloadManager` работает в отдельном системном процессе: он не читает `network_security_config` приложения и не принимает `SSLSocketFactory`, поэтому до storage за приватным CA он не доходит в принципе.
+
 ## Разлогин (LogoutHelper)
 
 `utils/LogoutHelper.kt` — централизованный хелпер полного выхода из аккаунта:
