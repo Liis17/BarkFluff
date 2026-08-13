@@ -587,6 +587,56 @@
 
     </LinearLayout>
 
+    <!-- Индикатор записи голосового: накрывает грядку ввода на время записи
+         (ChatActivity.showVoiceRecordingBar) -->
+    <LinearLayout
+        android:id="@+id/voiceRecordBar"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_chat_input_bar"
+        android:elevation="5dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="18dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/inputBar"
+        app:layout_constraintEnd_toEndOf="@id/inputBar"
+        app:layout_constraintStart_toStartOf="@id/inputBar"
+        app:layout_constraintTop_toTopOf="@id/inputBar"
+        tools:visibility="visible">
+
+        <View
+            android:id="@+id/voiceRecordDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_voice_record_dot" />
+
+        <TextView
+            android:id="@+id/voiceRecordTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textFontWeight="600"
+            android:textSize="16sp"
+            tools:text="0:07" />
+
+        <TextView
+            android:id="@+id/voiceRecordHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:gravity="end|center_vertical"
+            android:maxLines="1"
+            android:text="@string/voice_record_slide_to_cancel"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
     <!-- Кнопка отправки: круг с микрофоном → вытянутая pill со стрелкой, фон и форма
          анимируются в ChatActivity.updateSendButtonMode() -->
     <ImageButton

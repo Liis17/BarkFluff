@@ -245,6 +245,8 @@
     <string name="voice_record_start_failed">No se pudo iniciar la grabación</string>
     <string name="voice_record_cancelled">Grabación cancelada</string>
     <string name="voice_record_too_short">El mensaje de voz es demasiado corto</string>
+    <string name="voice_record_slide_to_cancel">Desliza a la izquierda para cancelar</string>
+    <string name="voice_record_release_to_cancel">Suelta para cancelar</string>
     <string name="cd_sticker_preview">Vista previa del sticker</string>
     <string name="cd_close">Cerrar</string>
     <string name="cd_refresh">Actualizar</string>

@@ -292,6 +292,9 @@
     <string name="voice_record_start_failed">Не удалось начать запись</string>
     <string name="voice_record_cancelled">Запись отменена</string>
     <string name="voice_record_too_short">Голосовое сообщение слишком короткое</string>
+    <string name="voice_record_timer_format" translatable="false">%1$d:%2$02d</string>
+    <string name="voice_record_slide_to_cancel">Смахните влево для отмены</string>
+    <string name="voice_record_release_to_cancel">Отпустите для отмены</string>
     <string name="cd_sticker_preview">Предпросмотр стикера</string>
     <string name="cd_close">Закрыть</string>
     <string name="cd_refresh">Обновить</string>

@@ -245,6 +245,8 @@
     <string name="voice_record_start_failed">Aufnahme konnte nicht gestartet werden</string>
     <string name="voice_record_cancelled">Aufnahme abgebrochen</string>
     <string name="voice_record_too_short">Sprachnachricht ist zu kurz</string>
+    <string name="voice_record_slide_to_cancel">Zum Abbrechen nach links wischen</string>
+    <string name="voice_record_release_to_cancel">Zum Abbrechen loslassen</string>
     <string name="cd_sticker_preview">Sticker-Vorschau</string>
     <string name="cd_close">Schließen</string>
     <string name="cd_refresh">Aktualisieren</string>
