@@ -284,6 +284,14 @@ app.UseStaticFiles(new StaticFileOptions
         {
             context.Context.Response.Headers.CacheControl = "no-store";
         }
+        else
+        {
+            // Остальная статика раздаётся под фиксированными именами (proto- и vendor-бандлы,
+            // css, словари i18n). Без заголовка браузер кэширует их по эвристике и может
+            // держать старую версию часами. no-cache оставляет файл в кэше, но обязывает
+            // проверять ETag — обновление приходит с ближайшим 200, а не с ручным бампом.
+            context.Context.Response.Headers.CacheControl = "no-cache";
+        }
     }
 });
 
