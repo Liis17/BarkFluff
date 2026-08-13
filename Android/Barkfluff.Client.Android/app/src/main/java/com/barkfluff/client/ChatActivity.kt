@@ -172,6 +172,8 @@ class ChatActivity : AppCompatActivity() {
     private var voiceRecordingStartedAtMs = 0L
     private var voiceDownRawX = 0f
     private var voiceCancelPending = false
+    private var voiceTimerJob: Job? = null
+    private var voiceDotAnimator: ValueAnimator? = null
 
     // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
     // 0 = нет активного ответа.
@@ -237,6 +239,11 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
         private const val MIN_VOICE_RECORDING_MS = 500L
+        private const val VOICE_BAR_FADE_DURATION_MS = 160L
+        private const val VOICE_DOT_BLINK_DURATION_MS = 700L
+        private const val VOICE_TIMER_TICK_MS = 200L
+        /** Доля смещения пальца, на которую уезжает подсказка отмены. */
+        private const val VOICE_HINT_DRAG_RATIO = 0.35f
         private const val HEADER_MORPH_DURATION_MS = 280L
         private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
         private const val SEND_BUTTON_NARROW_DP = 60f
@@ -1361,12 +1368,14 @@ class ChatActivity : AppCompatActivity() {
                 if (voiceRecorder == null) return true
 
                 val cancelDistancePx = resources.displayMetrics.widthPixels * 0.5f
-                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f)
-                binding.sendButton.translationX = dx.coerceAtLeast(-cancelDistancePx)
+                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f).coerceAtLeast(-cancelDistancePx)
+                binding.sendButton.translationX = dx
+                binding.voiceRecordHint.translationX = dx * VOICE_HINT_DRAG_RATIO
 
                 val cancelNow = -dx >= cancelDistancePx
                 if (cancelNow != voiceCancelPending) {
                     voiceCancelPending = cancelNow
+                    updateVoiceRecordHint(cancelNow)
                     tintSendButton(
                         if (cancelNow) androidx.appcompat.R.attr.colorError
                         else com.google.android.material.R.attr.colorOnPrimaryContainer
@@ -1410,6 +1419,7 @@ class ChatActivity : AppCompatActivity() {
             voiceRecordingFile = file
             voiceRecordingStartedAtMs = System.currentTimeMillis()
             tintSendButton(com.google.android.material.R.attr.colorOnPrimaryContainer)
+            showVoiceRecordingBar()
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start voice recording", e)
@@ -1440,6 +1450,7 @@ class ChatActivity : AppCompatActivity() {
             voiceRecorder = null
             voiceRecordingFile = null
             voiceRecordingStartedAtMs = 0L
+            hideVoiceRecordingBar()
             resetVoiceButtonDrag()
         }
 
@@ -1458,6 +1469,93 @@ class ChatActivity : AppCompatActivity() {
         }
 
         sendVoiceMessage(file)
+    }
+
+    /**
+     * На время записи прячет грядку ввода и показывает поверх неё индикатор:
+     * мигающая точка, счётчик длительности и подсказка отмены.
+     */
+    private fun showVoiceRecordingBar() {
+        updateVoiceRecordTimer()
+        updateVoiceRecordHint(cancelPending = false)
+        binding.voiceRecordHint.translationX = 0f
+        binding.voiceRecordDot.alpha = 1f
+
+        binding.voiceRecordBar.alpha = 0f
+        binding.voiceRecordBar.visibility = View.VISIBLE
+        binding.voiceRecordBar.animate()
+            .alpha(1f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .start()
+        binding.inputBar.animate()
+            .alpha(0f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .withEndAction { binding.inputBar.visibility = View.INVISIBLE }
+            .start()
+
+        voiceDotAnimator?.cancel()
+        voiceDotAnimator = ValueAnimator.ofFloat(1f, 0.25f).apply {
+            duration = VOICE_DOT_BLINK_DURATION_MS
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            addUpdateListener { binding.voiceRecordDot.alpha = it.animatedValue as Float }
+            start()
+        }
+
+        voiceTimerJob?.cancel()
+        voiceTimerJob = lifecycleScope.launch {
+            while (isActive) {
+                updateVoiceRecordTimer()
+                delay(VOICE_TIMER_TICK_MS)
+            }
+        }
+    }
+
+    private fun hideVoiceRecordingBar() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = null
+        voiceDotAnimator?.cancel()
+        voiceDotAnimator = null
+
+        if (binding.voiceRecordBar.visibility != View.VISIBLE) return
+
+        binding.voiceRecordBar.animate()
+            .alpha(0f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .withEndAction {
+                binding.voiceRecordBar.visibility = View.GONE
+                binding.voiceRecordHint.translationX = 0f
+            }
+            .start()
+        binding.inputBar.visibility = View.VISIBLE
+        binding.inputBar.animate()
+            .alpha(1f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .start()
+    }
+
+    private fun updateVoiceRecordTimer() {
+        val elapsedSec = ((System.currentTimeMillis() - voiceRecordingStartedAtMs) / 1000L)
+            .coerceAtLeast(0L)
+        binding.voiceRecordTimer.text = getString(
+            R.string.voice_record_timer_format,
+            elapsedSec / 60,
+            elapsedSec % 60
+        )
+    }
+
+    private fun updateVoiceRecordHint(cancelPending: Boolean) {
+        binding.voiceRecordHint.setText(
+            if (cancelPending) R.string.voice_record_release_to_cancel
+            else R.string.voice_record_slide_to_cancel
+        )
+        binding.voiceRecordHint.setTextColor(
+            MaterialColors.getColor(
+                binding.voiceRecordHint,
+                if (cancelPending) androidx.appcompat.R.attr.colorError
+                else com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+        )
     }
 
     private fun resetVoiceButtonDrag() {
@@ -3721,5 +3819,7 @@ class ChatActivity : AppCompatActivity() {
         headerNameAnimator?.cancel()
         headerStatusAnimator?.cancel()
         sendButtonMorphAnimator?.cancel()
+        voiceTimerJob?.cancel()
+        voiceDotAnimator?.cancel()
     }
 }

@@ -245,6 +245,8 @@
     <string name="voice_record_start_failed">无法开始录音</string>
     <string name="voice_record_cancelled">录音已取消</string>
     <string name="voice_record_too_short">语音消息太短</string>
+    <string name="voice_record_slide_to_cancel">向左滑动取消</string>
+    <string name="voice_record_release_to_cancel">松开取消</string>
     <string name="cd_sticker_preview">贴纸预览</string>
     <string name="cd_close">关闭</string>
     <string name="cd_refresh">刷新</string>
