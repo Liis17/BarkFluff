@@ -202,6 +202,7 @@ if (-not (Test-Path $esbuild)) { $esbuild = Join-Path $scriptRoot 'node_modules\
     --global-name=BarkFluffBundle `
     --outfile="$outDir\barkfluff.bundle.js" `
     --target=es2020 `
+    --minify `
     --log-level=warning
 
 if ($LASTEXITCODE -ne 0) { throw "esbuild failed ($LASTEXITCODE)" }
