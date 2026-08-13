@@ -1745,17 +1745,44 @@
     // ========== SEARCH ==========
 
     var searchTimer = null;
+    var searchToken = 0;
     searchInput.addEventListener('input', function () {
         clearTimeout(searchTimer);
         var query = searchInput.value.trim();
+        var qLower = query.toLowerCase();
         if (!query) { searchResults.classList.remove('visible'); searchResults.innerHTML = ''; return; }
 
-        searchTimer = setTimeout(function () {
-            BF.api.searchUsers(query, 0, 20).then(function (data) {
-                if (!data || !data.users) return;
-                searchResults.classList.add('visible');
-                searchResults.innerHTML = '';
-                data.users.forEach(function (user) {
+        // Локальный фильтр по уже загруженным чатам (синхронно, как в cmdpalette).
+        var matchedChats = chats.filter(function (c) {
+            return (c.title || '').toLowerCase().indexOf(qLower) >= 0;
+        });
+
+        function render(users) {
+            searchResults.classList.add('visible');
+            searchResults.innerHTML = '';
+            if (matchedChats.length === 0 && (!users || users.length === 0)) {
+                searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">' + u.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
+                return;
+            }
+            matchedChats.forEach(function (chat) {
+                var el = document.createElement('div');
+                el.className = 'search-result-item';
+                var initial = (chat.title || '?')[0].toUpperCase();
+                var avHtml = chat.picture
+                    ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">'
+                    : initial;
+                el.innerHTML = '<div class="chat-avatar">' + avHtml + '</div>' +
+                    '<div class="search-result-info"><div class="user-name">' + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + '</div></div>';
+                el.addEventListener('click', function () {
+                    searchInput.value = '';
+                    searchResults.classList.remove('visible');
+                    searchResults.innerHTML = '';
+                    openChat(chat.id);
+                });
+                searchResults.appendChild(el);
+            });
+            if (users) {
+                users.forEach(function (user) {
                     var el = document.createElement('div');
                     el.className = 'search-result-item';
                     var initial = (user.firstName || user.username || '?')[0].toUpperCase();
@@ -1775,9 +1802,16 @@
                     });
                     searchResults.appendChild(el);
                 });
-                if (data.users.length === 0) {
-                    searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">' + u.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
-                }
+            }
+        }
+
+        render(null);
+
+        var token = ++searchToken;
+        searchTimer = setTimeout(function () {
+            BF.api.searchUsers(query, 0, 20).then(function (data) {
+                if (token !== searchToken) return;
+                render(data && data.users ? data.users : []);
             });
         }, 300);
     });

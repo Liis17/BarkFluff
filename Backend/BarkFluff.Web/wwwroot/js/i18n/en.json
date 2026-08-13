@@ -490,7 +490,7 @@
   "settings.sessions": "Active Sessions",
   "settings.title": "Settings",
   "settings.twofa": "Two-factor authentication",
-  "sidebar.search.placeholder": "Search users...",
+  "sidebar.search.placeholder": "Search",
   "status.online": "online",
   "status.typing": "typing…",
   "status.typing.many": "{names} are typing…",
