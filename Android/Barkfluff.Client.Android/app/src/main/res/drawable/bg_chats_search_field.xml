@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pill-поле поиска на экране списка чатов (макет M3E, вариант 3) -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/colorOnSurfaceVariant">
+
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorOnSurfaceVariant" />
+            <corners android:radius="@dimen/shape_corner_full" />
+        </shape>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSurfaceContainerHigh" />
+            <corners android:radius="@dimen/shape_corner_full" />
+        </shape>
+    </item>
+
+</ripple>

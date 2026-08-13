@@ -768,6 +768,13 @@
     <string name="chats_sync_updating">Обновление…</string>
     <string name="chats_sync_offline">Нет сети / данные могут быть неактуальны</string>
     <string name="chats_sync_retry">Повторить</string>
+    <string name="chats_unread_none">Нет непрочитанных сообщений</string>
+    <plurals name="chats_unread_summary">
+        <item quantity="one">%1$d непрочитанное сообщение</item>
+        <item quantity="few">%1$d непрочитанных сообщения</item>
+        <item quantity="many">%1$d непрочитанных сообщений</item>
+        <item quantity="other">%1$d непрочитанных сообщений</item>
+    </plurals>
     <string name="storage_cache_size_with_chats">Кеш изображений: %1$.1f МБ\\nКеш чатов: %2$d чатов · %3$d сообщений · %4$s</string>
     <string name="nav_chats">Чаты</string>
     <string name="calls_title">Звонки</string>

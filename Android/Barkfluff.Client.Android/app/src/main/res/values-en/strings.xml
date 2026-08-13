@@ -643,6 +643,11 @@
     <string name="chats_sync_updating">Updating…</string>
     <string name="chats_sync_offline">No connection / data may be outdated</string>
     <string name="chats_sync_retry">Retry</string>
+    <string name="chats_unread_none">No unread messages</string>
+    <plurals name="chats_unread_summary">
+        <item quantity="one">%1$d unread message</item>
+        <item quantity="other">%1$d unread messages</item>
+    </plurals>
     <string name="storage_cache_size_with_chats">Image cache: %1$.1f MB\\nChat cache: %2$d chats · %3$d messages · %4$s</string>
     <string name="create_chat_sheet_title">New chat</string>
     <string name="create_chat_regular">Regular chat</string>

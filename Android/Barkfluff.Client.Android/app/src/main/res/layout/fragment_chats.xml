@@ -6,47 +6,80 @@
     android:layout_height="match_parent"
     android:background="@color/profile_settings_background">
 
-    <!-- AppBar с Material 3 дизайном -->
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/appBarLayout"
+    <!-- Шапка: крупный заголовок + счётчик непрочитанных + аватар, лента папок, поле поиска -->
+    <LinearLayout
+        android:id="@+id/headerContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/profile_settings_background"
-        app:liftOnScroll="true"
-        app:liftOnScrollTargetViewId="@id/chatRecyclerView"
+        android:orientation="vertical"
         app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Toolbar с аватаром слева, именем по центру и кнопкой поиска справа -->
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+        <!-- Сворачиваемая часть: заголовок и аватар уезжают при прокрутке вниз -->
+        <LinearLayout
+            android:id="@+id/headerCollapsible"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface">
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:gravity="top"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="6dp">
 
-            <!-- Аватар пользователя слева (FrameLayout с ImageView и placeholder) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/headerTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="-0.014"
+                    android:lineHeight="44sp"
+                    android:text="@string/nav_chats"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textFontWeight="600"
+                    android:textSize="36sp" />
+
+                <TextView
+                    android:id="@+id/headerSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginEnd="12dp"
+                    android:ellipsize="end"
+                    android:lineHeight="20sp"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="14sp"
+                    tools:text="12 непрочитанных сообщений" />
+
+            </LinearLayout>
+
+            <!-- Аватар пользователя справа -->
             <FrameLayout
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_gravity="center_vertical|start">
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp">
 
-                <!-- Аватар картинка -->
-                 <com.google.android.material.imageview.ShapeableImageView
-                     android:id="@+id/userAvatar"
-                     android:layout_width="40dp"
-                     android:layout_height="40dp"
-                     android:layout_gravity="center"
-                     android:contentDescription="@null"
-                     android:importantForAccessibility="no"
-                     android:scaleType="centerCrop"
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/userAvatar"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
                     android:visibility="gone"
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
-                <!-- Плейсхолдер аватара с инициалами -->
                 <TextView
                     android:id="@+id/userAvatarPlaceholder"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:layout_gravity="center"
                     android:gravity="center"
                     android:textColor="@android:color/white"
@@ -56,45 +89,7 @@
 
             </FrameLayout>
 
-            <!-- Имя пользователя по центру -->
-            <TextView
-                android:id="@+id/toolbarTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:textAppearance="?attr/textAppearanceTitleLarge"
-                android:textColor="?attr/colorOnSurface"
-                android:ellipsize="end"
-                android:maxLines="1"
-                tools:text="Иван Иванов" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/toolbarRetryButton"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="52dp"
-                android:contentDescription="@string/chats_sync_retry"
-                android:visibility="gone"
-                app:icon="@drawable/ic_refresh"
-                app:iconTint="?attr/colorPrimary" />
-
-            <!-- Кнопка поиска (M3 IconButton) -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/searchButton"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="4dp"
-                android:contentDescription="@string/cd_search"
-                app:icon="@drawable/ic_search"
-                app:iconTint="?attr/colorOnSurfaceVariant" />
-
-        </com.google.android.material.appbar.MaterialToolbar>
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/foldersRecyclerView"
@@ -102,11 +97,66 @@
             android:layout_height="wrap_content"
             android:clipToPadding="false"
             android:overScrollMode="never"
-            android:paddingHorizontal="8dp"
+            android:paddingHorizontal="16dp"
             android:paddingVertical="4dp"
             android:visibility="gone" />
 
-    </com.google.android.material.appbar.AppBarLayout>
+        <!-- Строка поиска: pill-поле открывает SearchActivity -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="10dp">
+
+            <LinearLayout
+                android:id="@+id/searchField"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chats_search_field"
+                android:clickable="true"
+                android:contentDescription="@string/cd_search"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp">
+
+                <ImageView
+                    android:layout_width="21dp"
+                    android:layout_height="21dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_search"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="@string/chat_search_hint"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="15sp" />
+
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolbarRetryButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@string/chats_sync_retry"
+                android:visibility="gone"
+                app:icon="@drawable/ic_refresh"
+                app:iconTint="?attr/colorPrimary"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
     <!-- Список чатов -->
     <androidx.recyclerview.widget.RecyclerView
@@ -114,9 +164,10 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipToPadding="false"
-        android:paddingTop="8dp"
+        android:paddingHorizontal="8dp"
+        android:paddingTop="2dp"
         android:paddingBottom="16dp"
-        app:layout_constraintTop_toBottomOf="@id/appBarLayout"
+        app:layout_constraintTop_toBottomOf="@id/headerContainer"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -131,7 +182,7 @@
         android:orientation="vertical"
         android:padding="48dp"
         android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/appBarLayout"
+        app:layout_constraintTop_toBottomOf="@id/headerContainer"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -185,6 +236,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/appBarLayout" />
+        app:layout_constraintTop_toBottomOf="@id/headerContainer" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

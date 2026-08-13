@@ -1,8 +1,13 @@
 package com.barkfluff.client.adapter
 
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.Typeface
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -99,6 +104,9 @@ class ChatAdapter(
         fun bind(item: ChatDisplayItem) {
             val chat = item.chatData
 
+            // Непрочитанный чат крупнее и заметнее: своя форма, фон, аватар и типографика
+            applyUnreadStyle(chat.countUnread > 0)
+
             // Название чата
             binding.chatTitle.text = item.displayTitle.trim()
             val isPrivateChat = chat.chatType == Shared.ChatType.CHAT_TYPE_PRIVATE
@@ -120,9 +128,6 @@ class ChatAdapter(
 
             // Последнее сообщение
             val lastMessage = chat.lastMessage
-            binding.lastMessage.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(binding.lastMessage, com.google.android.material.R.attr.colorOnSurfaceVariant)
-            )
             if (isPrivateChat) {
                 if (chat.privateInviteState != Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED) {
                     // Запрос на приватный чат: вместо скелетона — статус инвайта.
@@ -196,6 +201,59 @@ class ChatAdapter(
             binding.root.setOnClickListener {
                 onChatClick(chat)
             }
+        }
+
+        /**
+         * Оформление строки по наличию непрочитанных: форма, фон, размер аватара и типографика
+         * (макет M3E, вариант 3).
+         */
+        private fun applyUnreadStyle(isUnread: Boolean) {
+            val density = binding.root.resources.displayMetrics.density
+            fun dp(value: Int) = (value * density).toInt()
+
+            val card = binding.chatCard
+            card.radius = dp(if (isUnread) 28 else 20).toFloat()
+            card.setCardBackgroundColor(
+                if (isUnread) {
+                    com.google.android.material.color.MaterialColors.getColor(
+                        card, com.google.android.material.R.attr.colorPrimaryContainer
+                    )
+                } else {
+                    Color.TRANSPARENT
+                }
+            )
+            card.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = if (isUnread) dp(8) else 0
+            }
+
+            val verticalPadding = dp(if (isUnread) 16 else 12)
+            binding.chatRow.setPadding(dp(18), verticalPadding, dp(18), verticalPadding)
+
+            val avatarSize = dp(if (isUnread) 58 else 50)
+            binding.avatarContainer.updateLayoutParams {
+                width = avatarSize
+                height = avatarSize
+            }
+
+            val onPrimaryContainer = com.google.android.material.color.MaterialColors.getColor(
+                card, com.google.android.material.R.attr.colorOnPrimaryContainer
+            )
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                card, com.google.android.material.R.attr.colorOnSurface
+            )
+            val onSurfaceVariant = com.google.android.material.color.MaterialColors.getColor(
+                card, com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+            val secondaryColor = if (isUnread) onPrimaryContainer else onSurfaceVariant
+
+            binding.chatTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isUnread) 17f else 16f)
+            binding.chatTitle.typeface = Typeface.create(Typeface.SANS_SERIF, if (isUnread) 600 else 400, false)
+            binding.chatTitle.setTextColor(if (isUnread) onPrimaryContainer else onSurface)
+
+            binding.lastMessage.typeface = Typeface.create(Typeface.SANS_SERIF, if (isUnread) 500 else 400, false)
+            binding.lastMessage.setTextColor(secondaryColor)
+            binding.messageTime.setTextColor(secondaryColor)
+            binding.readStatus.imageTintList = ColorStateList.valueOf(secondaryColor)
         }
 
         private fun formatTime(timestampMillis: Long): String {
