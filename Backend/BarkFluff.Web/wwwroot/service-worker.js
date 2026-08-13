@@ -2,7 +2,7 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-v7';
+const CACHE_NAME = 'barkfluff-shell-v8';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
@@ -95,8 +95,21 @@ self.addEventListener('fetch', function (event) {
 
     if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/') ||
         url.pathname === '/favicon.ico' || url.pathname === '/manifest.webmanifest') {
-        event.respondWith(caches.match(request, { ignoreSearch: true }).then(function (cached) {
-            return cached || fetch(request);
+        // stale-while-revalidate: кэш отдаётся сразу, но сеть опрашивается всегда и запись
+        // обновляется. Эти файлы лежат под фиксированными именами, поэтому cache-first
+        // оставлял клиента на старой версии до ручного бампа CACHE_NAME.
+        // Ключ кэша — путь без query: варианты ?v=... не должны плодить записи.
+        var assetKey = url.pathname;
+        event.respondWith(caches.open(CACHE_NAME).then(function (cache) {
+            return cache.match(assetKey).then(function (cached) {
+                var network = fetch(request).then(function (response) {
+                    if (response.ok) return cache.put(assetKey, response.clone()).then(function () { return response; });
+                    return response;
+                });
+                if (!cached) return network;
+                event.waitUntil(network.catch(function () {}));
+                return cached;
+            });
         }));
     }
 });
