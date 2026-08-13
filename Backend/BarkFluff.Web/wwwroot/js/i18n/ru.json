@@ -109,6 +109,7 @@
   "chat.background.useGlobal": "Использовать глобальный",
   "chat.empty.hint": "Чтобы начать диалог выберите чат из списка слева",
   "chat.scrollToLatest": "К последнему сообщению",
+  "chat.unreadMessages": "Непрочитанные сообщения",
   "chatlist.draft": "Черновик",
   "cmdPalette.placeholder": "Поиск команд и чатов…",
   "cmdPalette.sectionActions": "Действия",

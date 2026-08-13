@@ -109,6 +109,7 @@
   "chat.background.useGlobal": "Usar el global",
   "chat.empty.hint": "Selecciona un chat de la lista de la izquierda para empezar a conversar",
   "chat.scrollToLatest": "Ir al último mensaje",
+  "chat.unreadMessages": "Mensajes sin leer",
   "chatlist.draft": "Borrador",
   "cmdPalette.placeholder": "Buscar comandos y chats…",
   "cmdPalette.sectionActions": "Acciones",
