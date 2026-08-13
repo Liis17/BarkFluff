@@ -407,6 +407,7 @@
         noMoreOlder = false;
         hasNewerGap = false;
         isLoadingNewer = false;
+        isJumpingToTail = false;
         clearPendingReply(false);
         clearPendingEdit();
         closeContextMenu();
@@ -910,9 +911,10 @@
         loadMessagesPage(pagedChatId, newestId, 0, 30).then(function (data) {
             if (pagedChatId !== currentChatId) return;
             var fetched = (data && data.messages) || [];
-            if (fetched.length < 30) hasNewerGap = false;
-
             var fresh = fetched.filter(function (m) { return !messages.some(function (em) { return em.id === m.id; }); });
+            // `api.js` подменяет offsetBefore=0 на 30, поэтому в ответе всегда есть уже
+            // загруженные сообщения: конец чата определяем по числу действительно новых.
+            if (fresh.length < 30) hasNewerGap = false;
             if (fresh.length === 0) return;
 
             var chain = Promise.resolve();
