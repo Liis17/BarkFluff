@@ -88,6 +88,8 @@
     var fileInput = $('#fileInput');
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
+    var scrollBadge = scrollToBottomBtn ? scrollToBottomBtn.querySelector('.scroll-badge') : null;
+    var newMessagesBelowCount = 0;
 
     // Reply / Forward / Context menu DOM refs
     var msgContextMenu = $('#msgContextMenu');
@@ -405,6 +407,8 @@
         clearPendingEdit();
         closeContextMenu();
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
+        newMessagesBelowCount = 0;
+        updateScrollBadge();
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
         messagesArea.parentElement.classList.add('visible');
@@ -574,6 +578,7 @@
         return p.then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
+            var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
             messages.forEach(function (msg, index) {
                 chain = chain.then(function () {
                     var msgDate = u.formatDate(msg.sentAt);
@@ -584,6 +589,12 @@
                         sep.dataset.date = msgDate;
                         sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                         messagesInner.appendChild(sep);
+                    }
+                    if (unreadId && Number(msg.id) === Number(unreadId)) {
+                        var usep = document.createElement('div');
+                        usep.className = 'msg-unread-separator';
+                        usep.innerHTML = '<span>' + u.escapeHtml(BF.i18n.t('chat.unreadMessages')) + '</span>';
+                        messagesInner.appendChild(usep);
                     }
                     return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
                         el.dataset.date = msgDate;
@@ -596,6 +607,12 @@
     }
 
     function scrollToBottom() { messagesArea.scrollTop = messagesArea.scrollHeight; }
+
+    function updateScrollBadge() {
+        if (!scrollBadge) return;
+        scrollBadge.textContent = newMessagesBelowCount > 0 ? String(newMessagesBelowCount) : '';
+        scrollBadge.style.display = newMessagesBelowCount > 0 ? 'flex' : 'none';
+    }
 
     function buildMessageViewElement(msg) {
         var atts = (msg.content && msg.content.attachments) || [];
@@ -1501,6 +1518,10 @@
         // Показываем/скрываем кнопку прокрутки вниз
         var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
+        if (distFromBottom <= 300 && newMessagesBelowCount > 0) {
+            newMessagesBelowCount = 0;
+            updateScrollBadge();
+        }
 
         if (_markReadScrollTimer) return;
         _markReadScrollTimer = setTimeout(function () {
@@ -1609,6 +1630,8 @@
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
                 } else {
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
+                    newMessagesBelowCount++;
+                    updateScrollBadge();
                 }
                 // Auto-mark as read if message is visible (user is at bottom)
                 if (isAtBottom && msg.senderId !== myUserId) {
@@ -2285,6 +2308,8 @@
         scrollToBottomBtn.addEventListener('click', function () {
             scrollToBottom();
             scrollToBottomBtn.classList.remove('visible');
+            newMessagesBelowCount = 0;
+            updateScrollBadge();
         });
     }
 

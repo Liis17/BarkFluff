@@ -109,6 +109,7 @@
   "chat.background.useGlobal": "Globalen verwenden",
   "chat.empty.hint": "Wähle links einen Chat aus, um ein Gespräch zu beginnen",
   "chat.scrollToLatest": "Zur neuesten Nachricht",
+  "chat.unreadMessages": "Ungelesene Nachrichten",
   "chatlist.draft": "Entwurf",
   "cmdPalette.placeholder": "Befehle und Chats suchen…",
   "cmdPalette.sectionActions": "Aktionen",

@@ -109,6 +109,7 @@
   "chat.background.useGlobal": "使用全局背景",
   "chat.empty.hint": "从左侧列表中选择聊天以开始对话",
   "chat.scrollToLatest": "跳到最新消息",
+  "chat.unreadMessages": "未读消息",
   "chatlist.draft": "草稿",
   "cmdPalette.placeholder": "搜索命令和聊天…",
   "cmdPalette.sectionActions": "操作",
