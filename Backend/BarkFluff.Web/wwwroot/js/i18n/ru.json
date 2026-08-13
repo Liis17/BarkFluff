@@ -490,7 +490,7 @@
   "settings.sessions": "Активные сессии",
   "settings.title": "Настройки",
   "settings.twofa": "Двухфакторная аутентификация",
-  "sidebar.search.placeholder": "Поиск пользователей...",
+  "sidebar.search.placeholder": "Поиск",
   "status.online": "в сети",
   "status.typing": "печатает…",
   "status.typing.many": "{names} печатают…",
