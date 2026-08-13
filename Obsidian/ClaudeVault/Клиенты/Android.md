@@ -78,6 +78,18 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 
 - `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`). В phone-варианте `floatingNavContainer` центрирует над ним группу вкладок и FAB с отступом 20dp от нижнего inset; старый невидимый `bottomNavigation` оставлен только для общей ViewBinding-совместимости с `layout-w600dp`.
 - `fragment_chats.xml`: `RecyclerView` (`chatRecyclerView`) занимает всё пространство фрагмента.
+
+### Редизайн по макету M3E «Вариант 3»
+
+Экран приведён к макету `Мессенджер M3E - Вариант 3.dc.html`. Палитра макета (тёплая оранжевая) намеренно **не** зашита в ресурсы: значения смаплены на роли темы (`#FEF8F6`→`colorSurface`, `#FF6B35`→`colorPrimary`, `#FFDAD0`→`colorPrimaryContainer`, `#F0E2DC`/`#F6EAE5`→`colorSurfaceContainerHigh`), поэтому Material You и тёмная тема продолжают работать. Форма, размеры, типографика и анимации перенесены из макета точно. Нижние вкладки и FAB (`MainActivity`) редизайн **не затрагивает**.
+
+- `AppBarLayout` + `MaterialToolbar` удалены. Вместо них `headerContainer` (LinearLayout): сворачиваемый блок `headerCollapsible` (заголовок «Чаты» 36sp/44 weight 600 + `headerSubtitle` + аватар пользователя 48dp справа), лента папок `foldersRecyclerView`, строка поиска.
+- `headerSubtitle` — одна строка на два назначения: статус синхронизации (`chats_sync_updating` / `chats_sync_offline` / `connecting`), иначе счётчик непрочитанных (`plurals/chats_unread_summary`, при нуле `chats_unread_none`). Обновляется из `publishMainUnread()`, анимация смены текста — прежняя fade/slide (`updateHeaderSubtitle`).
+- `searchField` — pill-поле (`bg_chats_search_field`, ripple) с иконкой и подписью «Поиск чатов»; тап открывает существующий `SearchActivity`. Инлайн-фильтрации списка нет.
+- **Сворачивание по направлению прокрутки** (`ChatsFragment.updateHeaderCollapse` / `setHeaderCollapsed`): прокрутка вниз при offset > 20dp схлопывает `headerCollapsible` (высота → 0 + alpha, 360 мс, `PathInterpolator(0.2,0,0,1)`) и сжимает поле поиска 52→48dp (300 мс); прокрутка вверх возвращает. Порог реакции — 6dp, чтобы состояние не дребезжало. По окончании разворачивания высота возвращается в `WRAP_CONTENT` — иначе блок «залипает» на пиксельном значении при смене контента.
+- `item_chat.xml` — один layout на два состояния, всё различие выставляет `ChatAdapter.applyUnreadStyle(isUnread)`: корневая `MaterialCardView` `chatCard` (радиус 20→28dp, фон transparent→`colorPrimaryContainer`, нижний отступ 0→8dp), паддинг строки 12→16dp, `avatarContainer` 50→58dp, заголовок 16sp/w400→17sp/w600, превью w400→w500, вторичный цвет `colorOnSurfaceVariant`→`colorOnPrimaryContainer`, бейдж непрочитанных 26dp pill. Вес шрифта задаётся `Typeface.create(SANS_SERIF, weight, false)` (API 28+).
+- `item_chat_skeleton.xml` синхронизирован с новой геометрией строки (74dp, аватар 50dp, паддинг 18dp).
+- Перенесены **только** визуал и анимации. Лента закреплённых чатов, свайп-архив, мультивыбор строк и реакции из макета не переносились: это отдельные фичи с серверной частью.
 - `ChatAdapter` добавляет прозрачный **footer-спейсер** (126dp = 1.5 × высота элемента чата ≈ 84dp) в конец списка:
   - `VIEW_TYPE_FOOTER` / `FooterViewHolder` — не требует биндинга.
   - `submitList()` переопределён: `ensureFooter()` удаляет все footer-элементы из списка и добавляет один в конец перед каждой отправкой в DiffUtil.
@@ -377,6 +389,21 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
   2. `chatDimOverlay` — оверлей затенения фона (View, `visibility=gone` при dim=0)
   3. `messagesRecyclerView` + панели кнопок (с elevation)
   4. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
+
+### Редизайн по макету M3E «Вариант 3»
+
+Цвета так же смаплены на роли темы, а не зашиты (см. одноимённый раздел экрана списка чатов).
+
+- **Шапка `chatHeaderBar`** заменила плавающую карточку `chatInfoCard` + отдельные круглые кнопки: плоская панель на `colorSurface` — `[←] [имя + статус] [☎] [⋯] [аватар 44dp]`. `chatInfoCard` остался id кликабельной области «имя + статус» (теперь LinearLayout), поэтому переходы в `UserProfileActivity` / `GroupInfoActivity` не менялись.
+- **Порядок в XML важен**: блок шапки объявлен *после* `messagesRecyclerView`, иначе фон чата и лента рисовались бы поверх неё. Лента привязана к шапке через forward reference `@+id/chatHeaderBar`, а сама шапка резервирует верхний inset своим `paddingTop` (раньше это делали три отдельных `topMargin`).
+- Когда у чата есть обои (`setupChatBackground`), фон шапки переключается на `TRANSPARENT`, чтобы изображение продолжалось под ней; без обоев возвращается `colorSurface`.
+- **Схлопывание инвертировано относительно списка чатов**: прокрутка **вверх** (в историю) уменьшает имя 22→17sp, схлопывает `chatStatusContainer` и поднимает `translationZ` шапки до 4dp; прокрутка вниз возвращает (`updateHeaderCompact` / `setHeaderCompact`, 280 мс). Поле ввода не скрывается никогда.
+- **Пузыри группируются по сериям одного отправителя** (`MessageAdapter.groupPositionOf` по соседям в списке; любой не-`MESSAGE` элемент прерывает серию). Форма — `applyBubbleShape` через `ShapeAppearanceModel`: base = `chatMessageCornerRadius` (дефолт поднят 20→**28dp**), середина серии = base/2, «хвостик» последнего сообщения = 8dp. Отступ между сериями 10dp, внутри серии 3dp (`applyGroupSpacing`). Настройка радиуса из персонализации продолжает работать — она задаёт base.
+- Текст сообщения 17sp/24, время в пузыре — weight 600. Разделитель дат (`item_message_date_separator.xml`, используется и для разделителя непрочитанных) — pill-чип `colorPrimaryContainer` без линий по бокам.
+- **Грядка ввода**: `TextInputLayout` + четыре отдельные круглые кнопки заменены на `inputBar` — pill 60dp (`bg_chat_input_bar`) со скрепкой, `EditText` (`messageEditText`, уже не `TextInputEditText`) и стикерами внутри. `inputRowBarrier` теперь ссылается на `inputBar` и `sendButton`.
+- **Морфинг кнопки отправки** (`applySendButtonShape`): пустой ввод — круг 60dp `colorPrimaryContainer` с микрофоном, есть что отправить — pill 96dp/radius 20dp `colorPrimary` со стрелкой. Фон — программный `GradientDrawable` (анимируются ширина, радиус, цвет; 300 мс). Голосовой режим и drag-to-cancel не менялись, но тинт иконки при записи теперь `colorOnPrimaryContainer` / `colorError`.
+- Плашки `replyPreviewBar` / `editPreviewBar` / `attachmentPreviewBar` выровнены по грядке (отступ 14dp) и получили форму 28dp сверху / 12dp снизу (`ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar`).
+- Реакции на сообщения из макета не переносились — на бэкенде их нет.
 - **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
 
