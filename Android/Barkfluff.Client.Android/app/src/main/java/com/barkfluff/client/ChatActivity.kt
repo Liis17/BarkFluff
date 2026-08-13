@@ -11,16 +11,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Typeface
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.PathInterpolator
+import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
@@ -130,6 +134,12 @@ class ChatActivity : AppCompatActivity() {
     private var lastStatusText: CharSequence? = null
     private var lastIndicatorVisible = false
 
+    // Сжатие шапки при прокрутке в историю сообщений
+    private var headerCompact = false
+    private var statusExpandedHeight = 0
+    private var headerNameAnimator: ValueAnimator? = null
+    private var headerStatusAnimator: ValueAnimator? = null
+
     // Пагинация сообщений
     private var isLoadingMessages = false
     private var hasMoreMessagesUp = true
@@ -220,6 +230,11 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
         private const val MIN_VOICE_RECORDING_MS = 500L
+        private const val HEADER_MORPH_DURATION_MS = 280L
+        private const val HEADER_SHADOW_DURATION_MS = 250L
+        private const val HEADER_SHADOW_ELEVATION_DP = 4f
+        /** Минимальный шаг прокрутки, меняющий состояние шапки. */
+        private const val HEADER_SCROLL_THRESHOLD_DP = 6
 
         // Тип чата, отображаемого в этом Activity.
         const val KIND_REGULAR = 0
@@ -399,9 +414,7 @@ class ChatActivity : AppCompatActivity() {
     private fun setupWindowInsets() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val backBaseMargin = (binding.btnBack.layoutParams as ViewGroup.MarginLayoutParams).topMargin
-        val moreBaseMargin = (binding.btnMore.layoutParams as ViewGroup.MarginLayoutParams).topMargin
-        val infoCardBaseMargin = (binding.chatInfoCard.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        val headerBasePaddingTop = binding.chatHeaderBar.paddingTop
 
         val attachBaseMargin = (binding.attachButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val stickerBaseMargin = (binding.stickerButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
@@ -418,14 +431,12 @@ class ChatActivity : AppCompatActivity() {
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val bottomInset = maxOf(bars.bottom, ime.bottom)
 
-            binding.btnBack.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = backBaseMargin + bars.top }
-            binding.btnMore.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = moreBaseMargin + bars.top }
-            binding.chatInfoCard.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = infoCardBaseMargin + bars.top }
-            // Recyclerview остаётся edge-to-edge (constraint на true parent bottom, как и сверху) —
-            // фон/обои ленты уходят под панель ввода и жестовую навигацию, а контент просто
-            // не долистывается ниже paddingBottom.
+            // Статус-бар резервирует сама шапка — лента начинается уже под ней.
+            binding.chatHeaderBar.updatePadding(top = headerBasePaddingTop + bars.top)
+            // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
+            // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
             binding.messagesRecyclerView.updatePadding(
-                top = recyclerBasePaddingTop + bars.top,
+                top = recyclerBasePaddingTop,
                 bottom = recyclerBasePaddingBottom + inputRowBandPx + bottomInset
             )
 
@@ -436,6 +447,66 @@ class ChatActivity : AppCompatActivity() {
 
             insets
         }
+    }
+
+    /**
+     * В отличие от списка чатов, шапка чата сжимается при прокрутке **вверх** (в историю):
+     * имя уменьшается, строка статуса схлопывается, под шапкой появляется тень.
+     */
+    private fun updateHeaderCompact(dy: Int) {
+        val threshold = HEADER_SCROLL_THRESHOLD_DP * resources.displayMetrics.density
+        when {
+            dy < -threshold -> setHeaderCompact(true)
+            dy > threshold -> setHeaderCompact(false)
+        }
+    }
+
+    private fun setHeaderCompact(compact: Boolean) {
+        if (headerCompact == compact) return
+        headerCompact = compact
+        val density = resources.displayMetrics.density
+        val easing = PathInterpolator(0.2f, 0f, 0f, 1f)
+
+        val nameView = binding.chatNameTextView
+        val nameFrom = nameView.textSize / resources.displayMetrics.scaledDensity
+        headerNameAnimator?.cancel()
+        headerNameAnimator = ValueAnimator.ofFloat(nameFrom, if (compact) 17f else 22f).apply {
+            duration = HEADER_MORPH_DURATION_MS
+            interpolator = easing
+            addUpdateListener {
+                nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.animatedValue as Float)
+            }
+            start()
+        }
+        nameView.typeface = Typeface.create(Typeface.SANS_SERIF, if (compact) 500 else 600, false)
+
+        val statusContainer = binding.chatStatusContainer
+        if (statusExpandedHeight == 0) statusExpandedHeight = statusContainer.height
+        if (statusExpandedHeight > 0) {
+            headerStatusAnimator?.cancel()
+            headerStatusAnimator = ValueAnimator.ofInt(
+                statusContainer.height,
+                if (compact) 0 else statusExpandedHeight
+            ).apply {
+                duration = HEADER_MORPH_DURATION_MS
+                interpolator = easing
+                addUpdateListener { animator ->
+                    val value = animator.animatedValue as Int
+                    statusContainer.updateLayoutParams { height = value }
+                    statusContainer.alpha = value.toFloat() / statusExpandedHeight
+                }
+                doOnEnd {
+                    if (compact) return@doOnEnd
+                    statusContainer.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+                }
+                start()
+            }
+        }
+
+        binding.chatHeaderBar.animate()
+            .translationZ(if (compact) HEADER_SHADOW_ELEVATION_DP * density else 0f)
+            .setDuration(HEADER_SHADOW_DURATION_MS)
+            .start()
     }
 
     private fun setupToolbar() {
@@ -595,10 +666,17 @@ class ChatActivity : AppCompatActivity() {
         applyDimOverlay()
         if (fileId.isBlank()) {
             binding.chatBackgroundImage.visibility = View.GONE
+            binding.chatHeaderBar.setBackgroundColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.chatHeaderBar, com.google.android.material.R.attr.colorSurface
+                )
+            )
             return
         }
 
         binding.chatBackgroundImage.visibility = View.VISIBLE
+        // Обои чата продолжаются под шапкой, поэтому её собственный фон убираем
+        binding.chatHeaderBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         val applyBlur = globalParam.chatBackgroundBlur
 
         lifecycleScope.launch {
@@ -782,6 +860,9 @@ class ChatActivity : AppCompatActivity() {
 
                     // Показ/скрытие кнопки прокрутки вниз
                     updateScrollToBottomButton()
+
+                    // Шапка сжимается при уходе в историю сообщений
+                    updateHeaderCompact(dy)
 
                     // Safety-net: долистали до самого низа и подгружать больше нечего —
                     // помечаем прочитанными все загруженные чужие сообщения (страхует от
