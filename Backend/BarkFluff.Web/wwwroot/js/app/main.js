@@ -39,9 +39,13 @@
     var currentChatInfo = null;
     var currentChatType = 0; // ChatType: 0=REGULAR, 1=PRIVATE
     var currentChatPeerIsBot = false;
+    var MAX_MESSAGES = 200; // скользящее окно ленты: сколько сообщений держим в DOM
     var messages = [];
     var isLoadingOlder = false;
     var noMoreOlder = false;
+    var isLoadingNewer = false;
+    var hasNewerGap = false;      // хвост буфера обрезан — окно не доходит до конца чата
+    var isJumpingToTail = false;
     var markReadTimer = null;
     var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
@@ -401,6 +405,8 @@
         currentChatPeerIsBot = false;
         messages = [];
         noMoreOlder = false;
+        hasNewerGap = false;
+        isLoadingNewer = false;
         clearPendingReply(false);
         clearPendingEdit();
         closeContextMenu();
@@ -557,21 +563,30 @@
         return inner;
     }
 
-    function renderMessages() {
-        messagesInner.innerHTML = '';
-        var allFileIds = [];
-        messages.forEach(function (msg) {
+    function makeDateSeparator(msgDate) {
+        var sep = document.createElement('div');
+        sep.className = 'msg-date-separator';
+        sep.dataset.date = msgDate;
+        sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
+        return sep;
+    }
+
+    function prefetchAttachmentUrls(list) {
+        var fileIds = [];
+        list.forEach(function (msg) {
             ((msg.content && msg.content.attachments) || []).forEach(function (a) {
-                if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) allFileIds.push(a.fileId);
+                if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) fileIds.push(a.fileId);
             });
             collectFwdAttachments(msg).forEach(function (a) {
-                if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) allFileIds.push(a.fileId);
+                if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) fileIds.push(a.fileId);
             });
         });
+        return fileIds.length > 0 ? BF.files.getFileUrls(fileIds) : Promise.resolve();
+    }
 
-        var p = allFileIds.length > 0 ? BF.files.getFileUrls(allFileIds) : Promise.resolve();
-
-        return p.then(function () {
+    function renderMessages() {
+        messagesInner.innerHTML = '';
+        return prefetchAttachmentUrls(messages).then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
             messages.forEach(function (msg, index) {
@@ -579,11 +594,7 @@
                     var msgDate = u.formatDate(msg.sentAt);
                     if (msgDate !== lastDate) {
                         lastDate = msgDate;
-                        var sep = document.createElement('div');
-                        sep.className = 'msg-date-separator';
-                        sep.dataset.date = msgDate;
-                        sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
-                        messagesInner.appendChild(sep);
+                        messagesInner.appendChild(makeDateSeparator(msgDate));
                     }
                     return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
                         el.dataset.date = msgDate;
@@ -595,7 +606,97 @@
         });
     }
 
-    function scrollToBottom() { messagesArea.scrollTop = messagesArea.scrollHeight; }
+    // Дорисовывает подгруженные старые сообщения перед лентой, не перестраивая её целиком.
+    // Вызывается после того, как newMsgs уже добавлены в начало массива messages.
+    function prependMessages(newMsgs) {
+        var firstOldEl = messagesInner.firstElementChild;
+        var oldFirstMsg = messages[newMsgs.length] || null;
+        var lastDate = null;
+
+        return prefetchAttachmentUrls(newMsgs).then(function () {
+            var frag = document.createDocumentFragment();
+            var chain = Promise.resolve();
+            newMsgs.forEach(function (msg, index) {
+                chain = chain.then(function () {
+                    var msgDate = u.formatDate(msg.sentAt);
+                    if (msgDate !== lastDate) {
+                        lastDate = msgDate;
+                        frag.appendChild(makeDateSeparator(msgDate));
+                    }
+                    return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
+                        el.dataset.date = msgDate;
+                        frag.appendChild(el);
+                    });
+                });
+            });
+            return chain.then(function () { return frag; });
+        }).then(function (frag) {
+            // Разделитель даты бывшего первого сообщения теперь дублирует вставленный блок.
+            if (lastDate && firstOldEl && firstOldEl.classList.contains('msg-date-separator') &&
+                firstOldEl.dataset.date === lastDate) firstOldEl.remove();
+            messagesInner.insertBefore(frag, messagesInner.firstChild);
+
+            // Группировка бывшего первого сообщения могла измениться: перед ним появился сосед.
+            if (!oldFirstMsg || !canGroupMessages(newMsgs[newMsgs.length - 1], oldFirstMsg)) return;
+            return buildMessageViewElement(oldFirstMsg).then(function (replacement) {
+                var el = findMessageGroup(oldFirstMsg.id);
+                if (!el || !el.isConnected) return;
+                replacement.dataset.date = el.dataset.date;
+                el.replaceWith(replacement);
+            });
+        });
+    }
+
+    // Скользящее окно: держим в буфере не больше MAX_MESSAGES сообщений.
+    // 'tail' — после подгрузки старых, 'head' — после подгрузки новых.
+    function trimMessages(side) {
+        var extra = messages.length - MAX_MESSAGES;
+        if (extra <= 0) return;
+
+        var dropped = side === 'head'
+            ? messages.splice(0, extra)
+            : messages.splice(messages.length - extra, extra);
+
+        var droppedIds = new Set(dropped.map(function (msg) { return String(msg.id); }));
+        Array.prototype.slice.call(messagesInner.querySelectorAll('.msg-group')).forEach(function (node) {
+            if (droppedIds.has(String(node.dataset.msgId))) node.remove();
+        });
+        removeOrphanSeparators();
+
+        // Обрезав голову, снимаем флаг «старее ничего нет»: отрезанное снова можно догрузить.
+        if (side === 'head') noMoreOlder = false;
+        else hasNewerGap = true;
+    }
+
+    function removeOrphanSeparators() {
+        Array.prototype.slice.call(messagesInner.querySelectorAll('.msg-date-separator')).forEach(function (sep) {
+            var next = sep.nextElementSibling;
+            if (!next || next.classList.contains('msg-date-separator')) sep.remove();
+        });
+    }
+
+    function scrollToBottom() {
+        if (hasNewerGap) { jumpToLiveTail(); return; }
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // Возврат к живому хвосту, когда скользящее окно обрезало последние сообщения.
+    function jumpToLiveTail() {
+        if (isJumpingToTail || !currentChatId) return;
+        isJumpingToTail = true;
+        var chatId = currentChatId;
+
+        loadMessagesPage(chatId, 0, 30, 0).then(function (data) {
+            if (chatId !== currentChatId || !data || !data.messages) return;
+            messages = data.messages;
+            mergePendingUploadsIntoMessages(chatId);
+            hasNewerGap = false;
+            noMoreOlder = false;
+            return renderMessages().then(function () {
+                messagesArea.scrollTop = messagesArea.scrollHeight;
+            });
+        }).finally(function () { isJumpingToTail = false; });
+    }
 
     function buildMessageViewElement(msg) {
         var atts = (msg.content && msg.content.attachments) || [];
@@ -635,6 +736,18 @@
     }
 
     function appendMessageToView(msg) {
+        // Хвост буфера обрезан — сообщение лежит за пределами загруженного окна. Не рисуем его
+        // и убираем из массива, чтобы тот остался непрерывным: пользователь увидит сообщение,
+        // когда вернётся к живому хвосту (кнопка «вниз» или прокрутка).
+        if (hasNewerGap) {
+            var gapIdx = messages.findIndex(function (m) { return String(m.id) === String(msg.id); });
+            if (gapIdx >= 0) messages.splice(gapIdx, 1);
+            return Promise.resolve();
+        }
+        return appendMessageElement(msg);
+    }
+
+    function appendMessageElement(msg) {
         var previous = messages.length > 1 ? messages[messages.length - 2] : null;
         var refreshPrevious = previous && currentChatInfo && currentChatInfo.isGroupChat &&
             previous.senderId !== myUserId && canGroupMessages(previous, msg)
@@ -653,13 +766,7 @@
                 for (var node = messagesInner.lastElementChild; node; node = node.previousElementSibling) {
                     if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
                 }
-                if (msgDate !== lastMsgDate) {
-                    var sep = document.createElement('div');
-                    sep.className = 'msg-date-separator';
-                    sep.dataset.date = msgDate;
-                    sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
-                    messagesInner.appendChild(sep);
-                }
+                if (msgDate !== lastMsgDate) messagesInner.appendChild(makeDateSeparator(msgDate));
                 el.dataset.date = msgDate;
                 messagesInner.appendChild(el);
             });
@@ -782,6 +889,43 @@
         return true;
     }
 
+    // Страница ленты: обычный чат или приватный (там батч приходит зашифрованным).
+    function loadMessagesPage(chatId, fromMessageId, offsetBefore, offsetAfter) {
+        if (currentChatType !== 1) return BF.api.listMessages(chatId, fromMessageId, offsetBefore, offsetAfter);
+        return BF.api.listPrivateMessages(chatId, fromMessageId, offsetBefore, offsetAfter).then(function (d) {
+            return decryptPrivateBatch(chatId, d && d.messages).then(function (mapped) {
+                mapped.sort(function (a, b) { return a.id - b.id; });
+                return { messages: mapped };
+            });
+        });
+    }
+
+    // Подгрузка новых сообщений, когда скользящее окно обрезало хвост ленты.
+    function loadNewerMessages() {
+        if (!hasNewerGap || isLoadingNewer || isJumpingToTail || !currentChatId || messages.length === 0) return;
+        isLoadingNewer = true;
+        var pagedChatId = currentChatId;
+        var newestId = messages[messages.length - 1].id || 0;
+
+        loadMessagesPage(pagedChatId, newestId, 0, 30).then(function (data) {
+            if (pagedChatId !== currentChatId) return;
+            var fetched = (data && data.messages) || [];
+            if (fetched.length < 30) hasNewerGap = false;
+
+            var fresh = fetched.filter(function (m) { return !messages.some(function (em) { return em.id === m.id; }); });
+            if (fresh.length === 0) return;
+
+            var chain = Promise.resolve();
+            fresh.forEach(function (msg) {
+                chain = chain.then(function () {
+                    messages.push(msg);
+                    return appendMessageElement(msg);
+                });
+            });
+            return chain.then(function () { trimMessages('head'); });
+        }).finally(function () { isLoadingNewer = false; });
+    }
+
     // Lazy-load older messages
     messagesArea.addEventListener('scroll', function () {
         if (messagesArea.scrollTop < 100 && !isLoadingOlder && !noMoreOlder && currentChatId && messages.length > 0) {
@@ -791,23 +935,16 @@
             var prevHeight = messagesArea.scrollHeight;
             var pagedChatId = currentChatId;
 
-            var older = currentChatType === 1
-                ? BF.api.listPrivateMessages(pagedChatId, oldestId, 30, 0).then(function (d) {
-                    return decryptPrivateBatch(pagedChatId, d && d.messages).then(function (mapped) {
-                        mapped.sort(function (a, b) { return a.id - b.id; });
-                        return { messages: mapped };
-                    });
-                })
-                : BF.api.listMessages(pagedChatId, oldestId, 30, 0);
-
-            older.then(function (data) {
+            loadMessagesPage(pagedChatId, oldestId, 30, 0).then(function (data) {
+                if (pagedChatId !== currentChatId) return;
                 if (data && data.messages && data.messages.length > 0) {
                     var newMsgs = data.messages.filter(function (m) { return !messages.some(function (em) { return em.id === m.id; }); });
                     if (newMsgs.length === 0) { noMoreOlder = true; }
                     else {
                         messages = newMsgs.concat(messages);
-                        return renderMessages().then(function () {
+                        return prependMessages(newMsgs).then(function () {
                             messagesArea.scrollTop = messagesArea.scrollHeight - prevHeight;
+                            trimMessages('tail');
                         });
                     }
                 } else { noMoreOlder = true; }
@@ -1420,6 +1557,7 @@
             if (!tailOnly) {
                 messages = fetched;
                 mergePendingUploadsIntoMessages(chatId);
+                hasNewerGap = false; // буфер заменён хвостом — обрезанного «вперёд» больше нет
                 return renderMessages().then(function () {
                     if (wasAtBottom) scrollToBottom();
                     return refreshChatListQuiet();
@@ -1501,6 +1639,7 @@
         // Показываем/скрываем кнопку прокрутки вниз
         var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
+        if (distFromBottom < 100) loadNewerMessages();
 
         if (_markReadScrollTimer) return;
         _markReadScrollTimer = setTimeout(function () {
@@ -3243,7 +3382,7 @@
         getMyUserId: function () { return myUserId; },
         getChats: function () { return chats; },
         getMessages: function () { return messages; },
-        setMessages: function (value) { messages = value; },
+        setMessages: function (value) { messages = value; hasNewerGap = false; isLoadingNewer = false; },
         setNoMoreOlder: function (value) { noMoreOlder = value; },
         stopTypingSend: stopTypingSend,
         updateOpenChatUrl: updateOpenChatUrl,
