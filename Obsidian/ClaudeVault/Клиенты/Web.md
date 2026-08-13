@@ -30,7 +30,7 @@ pwsh scripts/vendor-livekit.ps1      # либо bash scripts/vendor-livekit.sh
 npm --prefix scripts run build:app # вручную — только если нужен bundle без dotnet build/publish
 ```
 
-Бандлы proto и vendor коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. App-бандл и manifest генерируются и игнорируются Git; `BuildMessengerApp` в `.csproj` пересобирает их перед обычными `dotnet build`/`dotnet publish` (и при необходимости сначала устанавливает инструменты из `scripts/package.json`), Docker — из `scripts/app-bundle-entry.js`. В production `app-<hash>.js` получает `Cache-Control: public, max-age=31536000, immutable`, manifest — `no-store`. CI устанавливает Node-зависимости и запускает ESLint и проверку Prettier для новых app- и build-файлов.
+Proto-бандл собирается с `--minify` (1.7 МБ вместо 2.9 МБ; property mangling у esbuild выключен, поэтому reflection-код `google-protobuf`/`grpc-web` не страдает). Бандлы proto и vendor коммитятся в `wwwroot/js/proto/` и `wwwroot/js/vendor/`. App-бандл и manifest генерируются и игнорируются Git; `BuildMessengerApp` в `.csproj` пересобирает их перед обычными `dotnet build`/`dotnet publish` (и при необходимости сначала устанавливает инструменты из `scripts/package.json`), Docker — из `scripts/app-bundle-entry.js`. В production `app-<hash>.js` получает `Cache-Control: public, max-age=31536000, immutable`, manifest — `no-store`. CI устанавливает Node-зависимости и запускает ESLint и проверку Prettier для новых app- и build-файлов.
 
 ## Архитектура
 
@@ -62,9 +62,12 @@ npm --prefix scripts run build:app # вручную — только если н
 - Смена сервера — `settings.js`, раздел «Сервер»: `BF.node.clear()` + переход на `/`.
   Сессия покидаемой ноды сохраняется.
 
-⚠️ **Локальный стенд без TLS.** Клиент держит на origin ноды 9 долгоживущих
-server-streaming подписок (8 Updates + Calls) плюс Onliner. По HTTP/1.1 браузер даёт
-**6 соединений на origin**, поэтому на стенде без TLS (Kestrel напрямую, HTTP/2 без
+⚠️ **Локальный стенд без TLS.** Клиент держит на origin ноды **11** долгоживущих
+server-streaming подписок: 8 Updates (`realtime.js`: new/read/edited/deleted/pinned/
+unpinned/allUnpinned/privateMessages), 2 Onliner (online-статусы + typing) и 1 Calls
+(`calls.js`, device-scope). Typing подписывается на открытый чат, поэтому в простое их
+10, с открытым чатом — 11. По HTTP/1.1 браузер даёт **6 соединений на origin**, то есть
+лимит превышен уже без открытого чата: на стенде без TLS (Kestrel напрямую, HTTP/2 без
 TLS не согласуется) unary-вызовы к ноде встают в очередь и висят. За nginx с TLS это
 HTTP/2 без такого лимита. Симптом на стенде: `GetUploadUrl` и подобные не возвращаются,
 пока не остановить стримы.
@@ -160,6 +163,17 @@ origin, сопоставить ключ нечем — вход потребуе
 - Новые папки сохраняют ключи иконок в `folderIcon` (например, `favorites`, `work`); старые значения-эмодзи продолжают отображаться до редактирования папки.
 - Service worker включает helper и его CSS в shell-cache, а запрошенные файлы `/icons/` кэширует во время работы.
 - CI workflow веб-сервиса также отслеживает `icons/**`, поэтому обновление общего пакета запускает новую веб-сборку.
+
+### Скользящее окно ленты
+
+`main.js` держит в памяти и в DOM не больше `MAX_MESSAGES = 200` сообщений открытого чата.
+
+- Подгрузка старых (скролл вверх, страница 30) вставляется **инкрементально** — `prependMessages()` строит только новые узлы и кладёт их перед лентой, чинит разделитель даты на стыке и пересобирает бывшее первое сообщение, если изменилась группировка. Полный `renderMessages()` (с `innerHTML = ''`) остаётся только для смены чата, resync и jump-to-message.
+- `trimMessages('tail'|'head')` отрезает противоположный край. Обрезка хвоста поднимает `hasNewerGap` (окно не доходит до конца чата), обрезка головы сбрасывает `noMoreOlder`, иначе отрезанную историю нельзя было бы догрузить обратно.
+- При `hasNewerGap` живые сообщения **не рисуются**: единственный guard стоит в `appendMessageToView`, он же убирает сообщение из массива, чтобы буфер остался непрерывным. Все пять мест отправки/realtime и `private-chat-ui.js` проходят через него.
+- Скролл вниз догружает по 30 вперёд (`loadNewerMessages`, `offsetAfter`); вернулось меньше 30 → `hasNewerGap = false`, окно снова на живом хвосте.
+- `scrollToBottom()` при `hasNewerGap` вместо прокрутки вызывает `jumpToLiveTail()`: перезагрузка последних 30 + `mergePendingUploadsIntoMessages` (иначе оптимистичные загрузки исчезнут прямо во время upload) + полный рендер. Это же покрывает кнопку «вниз» и отправку своего сообщения из середины истории.
+- Общий `loadMessagesPage(chatId, fromId, before, after)` скрывает разницу обычного и приватного чата (во втором батч ещё расшифровывается).
 
 ### Группировка сообщений
 - Последовательные сообщения одного отправителя объединяются визуально, если между ними не больше пяти минут и нет разделителя даты: вертикальный зазор уменьшается на 2px.
@@ -265,6 +279,8 @@ SW не научится получать его после выбора сер�
 а слать пуш будет нода с другим.
 
 `Backend/BarkFluff.Web` устанавливается как PWA: `manifest.webmanifest`, иконки 192/512, `service-worker.js` и `offline.html` составляют только offline-оболочку. Service worker precache'ит HTML/локальные JS, CSS, `app-loader.js`, manifest и текущий fingerprinted app-бандл; manifest загружается network-first и при отсутствии сети отдаётся из shell-кэша. Для навигации используется network-first с fallback на offline-страницу. gRPC-Web, API, presigned URL, чаты, сообщения и вложения не кэшируются.
+
+⚠️ **Инвалидация статики под фиксированными именами.** `/js/` и `/css/` (proto- и vendor-бандлы, `messenger.css`, словари i18n) отдаются **stale-while-revalidate**: кэш сразу, сеть всегда, запись обновляется — свежая версия приезжает со следующей загрузки. Ключ кэша — путь без query, поэтому `?v=`-хвосты в HTML ни на что не влияют. Раньше здесь был cache-first с `ignoreSearch`, из-за чего бамп `?v=` был no-op, а единственным рычагом оставался ручной бамп `CACHE_NAME`. Хост дополняет это заголовком `Cache-Control: no-cache` для той же статики (`Program.cs`, `OnPrepareResponse`) — браузер ревалидирует по ETag; `immutable` остаётся только у `app-<hash>.js`, `no-store` — у `app-manifest.json`, `/pwa-config.js`, `/node-config.js`.
 
 `BF.push` регистрирует worker после авторизации, но не запрашивает разрешение сам: пользователь включает уведомления отдельным переключателем в настройках. После явного согласия модуль получает FCM Web token с VAPID key и передаёт его в `UsersApi.SetFirebaseToken(..., WEB)`; при выключении или logout вызывает `ClearFirebaseToken` и удаляет локальный Firebase token. Если браузер запрещает уведомления либо не поддерживает API, UI показывает соответствующее состояние. Install CTA показывается только после `beforeinstallprompt` (Safari/iOS не обещает background-push в этой версии). Открытый чат сохраняется в `?chat=` URL: service worker не показывает web-push `new_message`, если этот чат видим в окне браузера; для других чатов уведомление остаётся.
 
