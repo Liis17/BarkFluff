@@ -140,6 +140,7 @@
                         android:id="@+id/timeTextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textFontWeight="600"
                         android:textAppearance="?attr/textAppearanceLabelSmall"
                         android:textColor="?attr/colorOnPrimaryContainer"
                         android:alpha="0.7"

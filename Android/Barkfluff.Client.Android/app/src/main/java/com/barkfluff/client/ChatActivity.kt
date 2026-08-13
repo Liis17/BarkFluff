@@ -140,6 +140,13 @@ class ChatActivity : AppCompatActivity() {
     private var headerNameAnimator: ValueAnimator? = null
     private var headerStatusAnimator: ValueAnimator? = null
 
+    // Морфинг кнопки отправки (круг с микрофоном ↔ pill со стрелкой)
+    private val sendButtonBackground = android.graphics.drawable.GradientDrawable().apply {
+        shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+    }
+    private var sendButtonMorphAnimator: ValueAnimator? = null
+    private var sendButtonWide: Boolean? = null
+
     // Пагинация сообщений
     private var isLoadingMessages = false
     private var hasMoreMessagesUp = true
@@ -231,6 +238,11 @@ class ChatActivity : AppCompatActivity() {
         private const val LOAD_MESSAGES_DELAY_MS = 500L
         private const val MIN_VOICE_RECORDING_MS = 500L
         private const val HEADER_MORPH_DURATION_MS = 280L
+        private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
+        private const val SEND_BUTTON_NARROW_DP = 60f
+        private const val SEND_BUTTON_WIDE_DP = 96f
+        private const val SEND_BUTTON_NARROW_CORNER_DP = 30f
+        private const val SEND_BUTTON_WIDE_CORNER_DP = 20f
         private const val HEADER_SHADOW_DURATION_MS = 250L
         private const val HEADER_SHADOW_ELEVATION_DP = 4f
         /** Минимальный шаг прокрутки, меняющий состояние шапки. */
@@ -416,10 +428,8 @@ class ChatActivity : AppCompatActivity() {
 
         val headerBasePaddingTop = binding.chatHeaderBar.paddingTop
 
-        val attachBaseMargin = (binding.attachButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val stickerBaseMargin = (binding.stickerButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val sendBaseMargin = (binding.sendButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val inputBaseMargin = (binding.messageInputLayout.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val inputBaseMargin = (binding.inputBar.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val recyclerBasePaddingTop = binding.messagesRecyclerView.paddingTop
         val recyclerBasePaddingBottom = binding.messagesRecyclerView.paddingBottom
         // Высота полосы, зарезервированной под кнопки ввода (inputRowBottom, фикс. 64dp) —
@@ -440,10 +450,8 @@ class ChatActivity : AppCompatActivity() {
                 bottom = recyclerBasePaddingBottom + inputRowBandPx + bottomInset
             )
 
-            binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bottomInset }
-            binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bottomInset }
             binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
-            binding.messageInputLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
+            binding.inputBar.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
 
             insets
         }
@@ -1106,6 +1114,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessageInput() {
+        binding.sendButton.background = sendButtonBackground
+        applySendButtonShape(canSend = false, animate = false)
         binding.sendButton.applySpringPress()
         binding.sendButton.setOnClickListener {
             when {
@@ -1229,7 +1239,58 @@ class ChatActivity : AppCompatActivity() {
         binding.sendButton.contentDescription = getString(
             if (sendButtonVoiceMode) R.string.cd_record_voice else R.string.cd_send
         )
-        tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+        applySendButtonShape(canSend = !sendButtonVoiceMode)
+        tintSendButton(
+            if (sendButtonVoiceMode) {
+                com.google.android.material.R.attr.colorOnPrimaryContainer
+            } else {
+                com.google.android.material.R.attr.colorOnPrimary
+            }
+        )
+    }
+
+    /**
+     * Морфинг кнопки отправки по макету: пустой ввод — круг 60dp в тоне primaryContainer,
+     * есть что отправить — вытянутая pill 96dp в primary.
+     */
+    private fun applySendButtonShape(canSend: Boolean, animate: Boolean = true) {
+        // Форма меняется только на переходе — иначе анимация перезапускалась бы на каждый символ
+        if (sendButtonWide == canSend) return
+        sendButtonWide = canSend
+        val density = resources.displayMetrics.density
+        val targetWidth = ((if (canSend) SEND_BUTTON_WIDE_DP else SEND_BUTTON_NARROW_DP) * density).toInt()
+        val targetRadius = (if (canSend) SEND_BUTTON_WIDE_CORNER_DP else SEND_BUTTON_NARROW_CORNER_DP) * density
+        val targetColor = MaterialColors.getColor(
+            binding.sendButton,
+            if (canSend) {
+                androidx.appcompat.R.attr.colorPrimary
+            } else {
+                com.google.android.material.R.attr.colorPrimaryContainer
+            }
+        )
+
+        sendButtonBackground.setColor(targetColor)
+        if (!animate) {
+            sendButtonBackground.cornerRadius = targetRadius
+            binding.sendButton.updateLayoutParams { width = targetWidth }
+            return
+        }
+
+        sendButtonMorphAnimator?.cancel()
+        val startWidth = binding.sendButton.width.takeIf { it > 0 } ?: targetWidth
+        val startRadius = sendButtonBackground.cornerRadius
+        sendButtonMorphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = SEND_BUTTON_MORPH_DURATION_MS
+            interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+            addUpdateListener { animator ->
+                val fraction = animator.animatedFraction
+                sendButtonBackground.cornerRadius = startRadius + (targetRadius - startRadius) * fraction
+                binding.sendButton.updateLayoutParams {
+                    width = (startWidth + (targetWidth - startWidth) * fraction).toInt()
+                }
+            }
+            start()
+        }
     }
 
     private fun tintSendButton(attr: Int) {
@@ -1308,7 +1369,7 @@ class ChatActivity : AppCompatActivity() {
                     voiceCancelPending = cancelNow
                     tintSendButton(
                         if (cancelNow) androidx.appcompat.R.attr.colorError
-                        else androidx.appcompat.R.attr.colorPrimary
+                        else com.google.android.material.R.attr.colorOnPrimaryContainer
                     )
                 }
                 true
@@ -1348,7 +1409,7 @@ class ChatActivity : AppCompatActivity() {
             voiceRecorder = recorder
             voiceRecordingFile = file
             voiceRecordingStartedAtMs = System.currentTimeMillis()
-            tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+            tintSendButton(com.google.android.material.R.attr.colorOnPrimaryContainer)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start voice recording", e)
@@ -3657,5 +3718,8 @@ class ChatActivity : AppCompatActivity() {
         onlineStatusSubscription?.cancel()
         stopTypingHeartbeat(sendCancel = true)
         realtimeService.changeTypingSubscription(emptyList())
+        headerNameAnimator?.cancel()
+        headerStatusAnimator?.cancel()
+        sendButtonMorphAnimator?.cancel()
     }
 }

@@ -308,13 +308,13 @@
         android:id="@+id/editPreviewBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="8dp"
+        android:layout_marginHorizontal="14dp"
         android:layout_marginBottom="4dp"
         android:elevation="4dp"
         android:visibility="gone"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar"
         app:strokeWidth="0dp"
         app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
         app:layout_constraintStart_toStartOf="parent"
@@ -391,13 +391,13 @@
         android:id="@+id/replyPreviewBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="8dp"
+        android:layout_marginHorizontal="14dp"
         android:layout_marginBottom="4dp"
         android:elevation="4dp"
         android:visibility="gone"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar"
         app:strokeWidth="0dp"
         app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
         app:layout_constraintStart_toStartOf="parent"
@@ -471,13 +471,13 @@
         android:id="@+id/attachmentPreviewBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="8dp"
+        android:layout_marginHorizontal="14dp"
         android:layout_marginBottom="4dp"
         android:elevation="4dp"
         android:visibility="gone"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar"
         app:strokeWidth="0dp"
         app:layout_constraintBottom_toTopOf="@id/inputRowBarrier"
         app:layout_constraintStart_toStartOf="parent"
@@ -531,94 +531,83 @@
          [📎]  [ Поле ввода сообщения ]  [😊] [➤]
          ═══════════════════════════════════════════ -->
 
-    <!-- Кнопка прикрепления — круглая, слева -->
-    <ImageButton
-        android:id="@+id/attachButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_circle_btn"
-        android:contentDescription="@string/cd_attach_file"
-        android:padding="12dp"
-        android:rotation="45"
-        android:elevation="4dp"
-        android:src="@drawable/ic_attachment"
-        app:tint="?attr/colorOnSurfaceVariant"
-        app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- Кнопка стикеров — круглая, справа -->
-    <ImageButton
-        android:id="@+id/stickerButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="4dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_circle_btn"
-        android:contentDescription="@string/cd_stickers"
-        android:padding="12dp"
-        android:elevation="4dp"
-        android:src="@drawable/ic_sticker"
-        app:tint="?attr/colorOnSurfaceVariant"
-        app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
-        app:layout_constraintEnd_toStartOf="@id/sendButton" />
-
-    <!-- Кнопка отправки — круглая, крайняя справа -->
-    <ImageButton
-        android:id="@+id/sendButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_circle_btn"
-        android:contentDescription="@string/cd_send"
-        android:padding="12dp"
-        android:elevation="4dp"
-        android:src="@drawable/ic_send_filled"
-        app:tint="?attr/colorPrimary"
-        app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- Поле ввода сообщения — между кнопками, высота 48dp как у кнопок -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/messageInputLayout"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+    <!-- Грядка ввода: скрепка, поле и стикеры внутри одной pill-плашки -->
+    <LinearLayout
+        android:id="@+id/inputBar"
         android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_marginHorizontal="4dp"
+        android:layout_height="60dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="10dp"
         android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_chat_input_bar"
         android:elevation="4dp"
-        app:boxBackgroundColor="?attr/colorSurface"
-        app:boxCornerRadiusBottomEnd="24dp"
-        app:boxCornerRadiusBottomStart="24dp"
-        app:boxCornerRadiusTopEnd="24dp"
-        app:boxCornerRadiusTopStart="24dp"
-        app:hintEnabled="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
         app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
-        app:layout_constraintStart_toEndOf="@id/attachButton"
-        app:layout_constraintEnd_toStartOf="@id/stickerButton">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/sendButton">
 
-        <com.google.android.material.textfield.TextInputEditText
+        <ImageButton
+            android:id="@+id/attachButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_attach_file"
+            android:padding="11dp"
+            android:rotation="45"
+            android:src="@drawable/ic_attachment"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+        <EditText
             android:id="@+id/messageEditText"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:background="@null"
+            android:gravity="center_vertical"
             android:hint="@string/chat_message_hint"
+            android:importantForAutofill="no"
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="4"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="0dp"
-            android:textAppearance="?attr/textAppearanceBodyLarge" />
+            android:paddingHorizontal="6dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
+            android:textSize="17sp" />
 
-    </com.google.android.material.textfield.TextInputLayout>
+        <ImageButton
+            android:id="@+id/stickerButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_stickers"
+            android:padding="11dp"
+            android:src="@drawable/ic_sticker"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+    </LinearLayout>
+
+    <!-- Кнопка отправки: круг с микрофоном → вытянутая pill со стрелкой, фон и форма
+         анимируются в ChatActivity.updateSendButtonMode() -->
+    <ImageButton
+        android:id="@+id/sendButton"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginBottom="8dp"
+        android:contentDescription="@string/cd_send"
+        android:elevation="4dp"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:padding="16dp"
+        android:src="@drawable/ic_send_filled"
+        app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Вспомогательный невидимый View, задаёт нижнюю границу панели ввода -->
     <View
         android:id="@+id/inputRowBottom"
         android:layout_width="0dp"
-        android:layout_height="64dp"
+        android:layout_height="76dp"
         android:visibility="invisible"
         android:elevation="4dp"
         app:layout_constraintBottom_toTopOf="@id/stickerPanelContainer"
@@ -631,7 +620,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="top"
-        app:constraint_referenced_ids="attachButton,messageInputLayout,stickerButton,sendButton" />
+        app:constraint_referenced_ids="inputBar,sendButton" />
 
     <!-- ═══════════════════════════════════════════
          INLINE СТИКЕР-ПАНЕЛЬ
