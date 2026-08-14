@@ -1,46 +1,42 @@
 # Масштабирование: BarkFluff.Bots
 
-**Вердикт: НЕ МОЖЕТ.** Четыре in-memory Singleton-сервиса держат состояние, критичное для Bot API
-(rate-limit, сигнал новых апдейтов, реестр ботов, guard одиночного поллинга). В коде уже есть прямые
-пометки разработчика «при масштабировании переезжает в Redis».
+**Вердикт: МОЖЕТ (реализовано).** Все четыре in-memory состояния перенесены в Redis/RabbitMQ
+fan-out; отзыв сессий — по общему fan-out-паттерну.
 
-## Блокеры
+> Статус: план реализован. Смотри историю коммитов `Bots:` / `Federation:` вокруг 2026-08-14.
 
-| Блокер | Файл | Почему ломается при N экземплярах |
+## Как было (блокеры до реализации)
+
+| Блокер | Файл | Почему ломался при N экземплярах |
 |--------|------|-----------------------------------|
-| `BotRateLimiter` (in-memory счётчик 30 req/s) | `Backend/BarkFluff.Bots/Services/BotRateLimiter.cs:9-27` | Счётчик per-instance: при N инстансах бот получает 30×N req/s вместо 30 |
-| `BotUpdateNotifier` (in-memory `TaskCompletionSource`) | `Backend/BarkFluff.Bots/Services/BotUpdateNotifier.cs:6-46` | Сигнал «новый update» будит только ждущих на этом инстансе; long-poll/стрим на другом инстансе не проснётся (комментарий в коде прямо это отмечает) |
-| `BotRegistryCache` (in-memory реестр ботов) | `Backend/BarkFluff.Bots/Services/BotRegistryCache.cs:7-37` | Обновление бота через один инстанс не видно другим до перезагрузки |
-| `BotPollingGuard` (in-memory guard одного активного потока) | `Backend/BarkFluff.Bots/Services/BotPollingGuard.cs:5-17` | Два клиента на разных инстансах одновременно пройдут guard для одного бота |
-| `BotAccessValidator` (зависит от двух предыдущих) | `Backend/BarkFluff.Bots/Services/BotAccessValidator.cs:13-46` | Наследует проблемы `BotRegistryCache` + `BotRateLimiter` |
-| `BotsCleanupService` (дублируемый таймер) | `Backend/BarkFluff.Bots/Program.cs:73` | Каждый час на каждом инстансе; идемпотентный DELETE, не критично |
-| Отзыв сессий (shared) | эндпоинт `session-revoked-*` bots | См. [_shared-token-revocation.md](_shared-token-revocation.md) |
+| `BotRateLimiter` (in-memory счётчик 30 req/s) | `Services/BotRateLimiter.cs` (заменён на `RedisBotRateLimiter`) | Счётчик per-instance: при N инстансах бот получает 30×N req/s вместо 30 |
+| `BotUpdateNotifier` (in-memory `TaskCompletionSource`) | `Services/BotUpdateNotifier.cs` | Сигнал «новый update» будит только ждущих на этом инстансе; long-poll/стрим на другом инстансе не проснётся |
+| `BotRegistryCache` (in-memory реестр ботов) | `Services/BotRegistryCache.cs` | Обновление бота через один инстанс не видно другим до перезагрузки |
+| `BotPollingGuard` (in-memory guard одного активного потока) | `Services/BotPollingGuard.cs` (заменён на `RedisBotPollingGuard`) | Два клиента на разных инстансах одновременно пройдут guard для одного бота |
+| `BotsCleanupService` (дублируемый таймер) | `Services/BotsCleanupService.cs` | Каждый час на каждом инстансе; идемпотентный DELETE, не критично — оставлен как есть |
+| Отзыв сессий (shared) | эндпоинт `session-revoked-bots` отсутствовал | `TokenRevocationCache` никогда не наполнялся |
 
-## План реализации
+## Что сделано
 
-Всё сводится к переносу четырёх состояний в **Redis** (уже подключён; образец —
-`Backend/BarkFluff.Messages/Infrastructure/SecretMessageBuffer.cs`).
-
-1. **`BotRateLimiter` → Redis.** Скользящее окно через `INCR` ключа `botrate:{botId}:{unixSecond}` +
-   `EXPIRE 1`; лимит проверять по значению после `INCR`. Общий счётчик на все инстансы.
-2. **`BotUpdateNotifier` → Redis pub/sub.** `Signal(botId)` → `PUBLISH bot-updates:{botId}`; ждущие
-   на всех инстансах подписаны на канал и просыпаются. (Комментарий в коде уже предполагает этот путь.)
-3. **`BotRegistryCache` → инвалидация через pub/sub.** Оставить локальный кэш для скорости, но при
-   `Set()` публиковать инвалидацию `bot-registry-invalidate:{botId}`; подписчики на всех инстансах
-   перечитывают бота из БД. Либо просто читать из БД/Redis без локального кэша (Bots — единственный
-   писатель, нагрузка на чтение невелика).
-4. **`BotPollingGuard` → распределённый лок.** `SET pollguard:{botId} {instanceId} NX EX <ttl>` для
-   входа; `Exit` — `DEL` (с проверкой владельца). Гарантирует один активный поток на бота глобально.
-5. **`BotsCleanupService`** — по желанию под распределённым локом (не критично, DELETE идемпотентен).
-6. Отзыв сессий — по общему плану.
-
-> Объём работы здесь больше, чем в остальных сервисах: затрагивает 4 сервиса и их потребителей.
-> Порядок приоритета: `BotUpdateNotifier` и `BotPollingGuard` (иначе доставка апдейтов ломается) →
-> `BotRateLimiter` (безопасность лимитов) → `BotRegistryCache` (консистентность данных).
+1. **`BotRateLimiter` → Redis.** `RedisBotRateLimiter`: скользящее окно `INCR botrate:{botId}:{unixSecond}`
+   + `EXPIRE` — общий счётчик на все инстансы (пункт плана 1).
+2. **`BotUpdateNotifier` → fan-out через RabbitMQ** (вместо Redis pub/sub из плана — эквивалентно):
+   `Signal` публикует `BotUpdateSignalEvent`, пер-instance очередь `bot-update-signal-{InstanceId}`
+   (AutoDelete) будит локальных waiter'ов на каждом инстансе (пункт 2).
+3. **`BotRegistryCache` → инвалидация fan-out.** Локальный кэш остался; `Set/Remove` публикуют
+   `BotRegistryChangedEvent`, очередь `bot-registry-changed-{InstanceId}` → каждый инстанс
+   перечитывает бота из БД (пункт 3, вариант A плана).
+4. **`BotPollingGuard` → распределённый лок.** `RedisBotPollingGuard`: `SET NX EX 90` с владельцем
+   `InstanceId`, owner-checked `DEL` + `RenewAsync` для долгих стримов (пункт 4).
+5. **Отзыв сессий.** `SessionRevokedConsumer` + пер-instance очередь
+   `session-revoked-bots-{InstanceId}` — консистентно с остальными сервисами. Сегодня Bots
+   обслуживает только Service/Bot-токены (user-путь отсутствует), так что это консистентность
+   паттерна и future-proofing.
+6. `BotsCleanupService` не тронут (план: опционально, DELETE идемпотентен).
 
 ## Критерии проверки
 
 - `dotnet build Backend/BarkFluff.Bots/BarkFluff.Bots.csproj`.
-- Тесты `BarkFluff.Bots.Tests` зелёные; добавить тесты на Redis-версии rate-limiter/guard.
+- Тесты `BarkFluff.Bots.Tests` зелёные (включая `SessionRevokedConsumerTests`).
 - Ручная логика: 2 инстанса; бот делает 30 req/s суммарно — 31-й отклоняется; апдейт, принятый на A,
   будит long-poll клиента на B; одновременный getUpdates с двух инстансов — второй получает «занято».
