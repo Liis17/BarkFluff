@@ -13,6 +13,16 @@ Package: `com.barkfluff.client`
 
 - Kotlin 2.2.20, AGP 8.9.1
 - gRPC-OkHttp 1.60.0 (NOT grpc-netty)
+
+## Иконка приложения (adaptive, вектор)
+
+Иконка полностью векторная (adaptive icon, минимально доступный API 26; minSdk 31 — растровые фолбэки не нужны).
+
+- `drawable/ic_launcher_background.xml` — full-bleed радиальный градиент `#FFF→#F3F3F3→#EDEDED` (центр 50%/48%, r 72%) на viewport 1536×1536 через `aapt:attr`/`<gradient>`. Без скругления — форму накладывает маска лаунчера.
+- `drawable/ic_launcher_foreground.xml` — глиф лого `#111116`; путь из исходной SVG (`app_icon_vector.svg`) обёрнут в `<group>` с pivot (768,768) и scale 0.76: максимальный радиус глифа 616 юнитов × 0.76 = 468 < 469.3 (safe zone 66dp).
+- `mipmap-anydpi-v26/ic_launcher.xml` / `ic_launcher_round.xml` — `<adaptive-icon>` со слоями `background` + `foreground` + `monochrome` (тот же foreground; даёт MD3 themed-иконку на Android 13+, tint системный, на API <33 слой игнорируется).
+- Растровые WebP `ic_launcher*.webp` из `mipmap-*hdpi` удалены.
+- ⚠️ In-app использование (`activity_splash`, `activity_login`, `activity_welcome`, `activity_register`, `step_register_07_bio`, `activity_about` → `@mipmap/ic_launcher(_round)`) пока не менялось: `AdaptiveIconDrawable` в `ImageView` рисуется без маски (полный квадрат с градиентом и уменьшенным глифом). Замена на отдельный in-app drawable — отдельная будущая задача.
 - ViewBinding, без Hilt/MVVM
 
 ## Архитектура
