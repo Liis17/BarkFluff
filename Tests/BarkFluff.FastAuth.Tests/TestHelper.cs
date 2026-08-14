@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using BarkFluff.FastAuth.Domain;
-using BarkFluff.FastAuth.Infrastructure;
+using BarkFluff.FastAuth.Tests.Fakes;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.FastAuth;
@@ -14,7 +14,8 @@ namespace BarkFluff.FastAuth.Tests;
 
 public class TestHelper
 {
-    public FastAuthSessionsManager SessionsManager { get; } = new();
+    public InMemoryFastAuthSessionStore Store { get; } = new();
+    public InMemoryFastAuthEventBus EventBus { get; } = new();
     public MetricsCollector Metrics { get; } = new();
 
     public RequestContext CreateRequestContext(
@@ -54,15 +55,12 @@ public class TestHelper
         return new UserContext(httpContextAccessor.Object);
     }
 
-    public FastAuthSession CreateSession(
-        string? id = null,
-        DateTime? createdAt = null,
-        DateTime? expiresAt = null)
+    public FastAuthSessionState CreateSession(DateTime? expiresAt = null)
     {
-        var now = createdAt ?? DateTime.UtcNow;
-        return new FastAuthSession
+        var now = DateTime.UtcNow;
+        var session = new FastAuthSessionState
         {
-            Id = id ?? Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid().ToString(),
             CreatedAt = now,
             ExpiresAt = expiresAt ?? now + TimeSpan.FromMinutes(5),
             DeviceName = "TestDevice",
@@ -71,18 +69,18 @@ public class TestHelper
             AppVersion = "1.0",
             IpAddress = "127.0.0.1"
         };
+        Store.Seed(session);
+        return session;
     }
 
-    public FastAuthSession CreateAndRegisterSession(
-        string? id = null,
-        DateTime? createdAt = null,
-        DateTime? expiresAt = null)
+    /// <summary>Создаёт сессию и проводит Scan, как это делает ScanFastAuthCommandHandler.</summary>
+    public async Task<(FastAuthSessionState Session, string ConfirmationCode)> CreateAndScanSessionAsync(
+        long userId = 42, DateTime? expiresAt = null)
     {
-        var session = CreateSession(id, createdAt, expiresAt);
-        var internalSession = SessionsManager.Create(
-            session.DeviceName, session.OperationSystem,
-            session.AppName, session.AppVersion, session.IpAddress);
-        return internalSession;
+        var session = CreateSession(expiresAt);
+        var code = Guid.NewGuid().ToString();
+        await Store.TryScanAsync(session.Id, userId, code);
+        return (await Store.GetAsync(session.Id)!, code);
     }
 
     public Mock<IdentityServerApi.IdentityServerApiClient> CreateIdentityClientMock()
@@ -120,7 +118,11 @@ public class TestHelper
 
     public Mock<IServerStreamWriter<FastAuthResult>> CreateMockStreamWriter()
     {
-        return new Mock<IServerStreamWriter<FastAuthResult>>();
+        var mock = new Mock<IServerStreamWriter<FastAuthResult>>();
+        mock
+            .Setup(s => s.WriteAsync(It.IsAny<FastAuthResult>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return mock;
     }
 
     public static ILogger<T> CreateLogger<T>()
