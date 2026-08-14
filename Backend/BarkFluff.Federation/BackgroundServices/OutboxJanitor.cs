@@ -1,5 +1,6 @@
 using BarkFluff.Federation.Domain.Enums;
 using BarkFluff.Federation.Persistence.Contexts;
+using BarkFluff.Federation.Services;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -8,18 +9,29 @@ namespace BarkFluff.Federation.BackgroundServices;
 // Janitor: чистит delivered-записи outbox и ProcessedEvents по TTL (этап 2.2).
 // Окна взяты с запасом: 7 дней для Delivered (для отладки) и 14 дней для ProcessedEvents
 // (больше максимального окна ретраев отправителя). Конфигурируется.
+//
+// Single-runner (масштабирование, docs/scaling/federation.md): чистку выполняет один инстанс
+// под Redis-локом; DELETE идемпотентен, поэтому best-effort-лок достаточен.
 public class OutboxJanitor : BackgroundService
 {
     private static readonly TimeSpan LoopInterval = TimeSpan.FromHours(1);
     private static readonly TimeSpan DefaultDeliveredTtl = TimeSpan.FromDays(7);
     private static readonly TimeSpan DefaultProcessedTtl = TimeSpan.FromDays(14);
 
+    private const string LockKey = "federation:lock:outbox-janitor";
+
+    // TTL с запасом против часового интервала: лидер продлевает каждый тик; при падении лидера
+    // лок истекает и задачу подхватывает другой инстанс.
+    private static readonly TimeSpan LockTtl = TimeSpan.FromHours(2);
+
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ISingleRunner _singleRunner;
     private readonly ILogger<OutboxJanitor> _logger;
 
-    public OutboxJanitor(IServiceScopeFactory scopeFactory, ILogger<OutboxJanitor> logger)
+    public OutboxJanitor(IServiceScopeFactory scopeFactory, ISingleRunner singleRunner, ILogger<OutboxJanitor> logger)
     {
         _scopeFactory = scopeFactory;
+        _singleRunner = singleRunner;
         _logger = logger;
     }
 
@@ -30,6 +42,10 @@ public class OutboxJanitor : BackgroundService
         {
             try
             {
+                // Single-runner: чистку делает один инстанс, остальные пропускают тик.
+                if (!await _singleRunner.TryAcquireAsync(LockKey, LockTtl))
+                    continue;
+
                 await CleanupOnceAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

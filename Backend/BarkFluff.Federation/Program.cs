@@ -95,6 +95,8 @@ public class Program
             ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
                 ?? throw new InvalidOperationException("Redis configuration is missing")));
         builder.Services.AddSingleton<IChatCreatedQuotaLimiter, ChatCreatedQuotaLimiter>();
+        // Single-runner для фоновых задач (масштабирование, docs/scaling/federation.md).
+        builder.Services.AddSingleton<ISingleRunner, RedisSingleRunner>();
 
         // Outbox (этап 2.2): writer + диспетчер + janitor.
         builder.Services.AddScoped<OutboxWriter>();
