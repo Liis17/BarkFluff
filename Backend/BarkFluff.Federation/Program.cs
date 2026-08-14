@@ -87,7 +87,7 @@ public class Program
         builder.Services.AddSingleton<IWellKnownClient, WellKnownClient>();
         builder.Services.AddScoped<INavigatorClient, NavigatorClient>();
         builder.Services.AddScoped<ServerResolver>();
-        builder.Services.AddSingleton<DiscoveryTriggerRateLimiter>();
+        builder.Services.AddSingleton<IDiscoveryTriggerRateLimiter, RedisDiscoveryTriggerRateLimiter>();
         builder.Services.AddHostedService<PeerRefreshBackgroundService>();
 
         // Redis (этап 2.5) — квота ChatCreated per-origin (ChatCreatedQuotaLimiter).

@@ -97,7 +97,7 @@ public static class TestHelpers
         services.AddSingleton<S2SChannelFactory>();
         services.AddSingleton<IS2SChannelInvalidator>(sp => sp.GetRequiredService<S2SChannelFactory>());
         services.AddScoped<ServerResolver>();
-        services.AddSingleton<DiscoveryTriggerRateLimiter>();
+        services.AddSingleton<IDiscoveryTriggerRateLimiter>(new FakeDiscoveryTriggerRateLimiter());
         // OutboxDispatcher (2.5) публикует FederatedChatRejectedEvent на privacy-DeadLetter.
         services.AddSingleton(publishEndpoint ?? Mock.Of<IPublishEndpoint>());
         return services.BuildServiceProvider();
