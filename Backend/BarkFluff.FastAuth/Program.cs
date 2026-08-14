@@ -8,6 +8,8 @@ using BarkFluff.Shared.Identity;
 
 using Serilog;
 
+using StackExchange.Redis;
+
 namespace BarkFluff.FastAuth;
 
 public class Program
@@ -26,6 +28,11 @@ public class Program
             builder.Services.AddGrpcReflection();
 
         builder.Services.AddXAuth(builder.Configuration);
+
+        // Redis — общий стор QR-сессий + pub/sub wake-up стримов (масштабирование, см. docs/scaling/fastauth.md).
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
+                ?? throw new InvalidOperationException("Redis configuration is missing")));
 
         builder.Services.AddGrpcClient<IdentityServerApi.IdentityServerApiClient>(o =>
             {
