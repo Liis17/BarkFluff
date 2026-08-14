@@ -462,6 +462,16 @@ class ChatActivity : AppCompatActivity() {
 
             insets
         }
+
+        // Лента edge-to-edge уходит под шапку и статус-бар: верхний отступ ленты
+        // и область блюр-копии обоев следуют за текущей высотой шапки
+        // (инсеты статус-бара, сжатие шапки в компакт-режиме при прокрутке).
+        binding.chatHeaderBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            val headerBottom = binding.chatHeaderBar.bottom
+            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop + headerBottom)
+            binding.chatHeaderBlurImage.clipBounds =
+                android.graphics.Rect(0, 0, binding.chatHeaderBlurImage.width, headerBottom)
+        }
     }
 
     /**
@@ -675,23 +685,51 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /** Скруглённый чип-фон для блоков шапки (back / инфо / действия) — радиус больше половины
+     *  высоты любого блока, поэтому GradientDrawable сам клэмпит его до pill/circle формы. */
+    private fun headerChipDrawable(color: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 999f * resources.displayMetrics.density
+            setColor(color)
+        }
+
     private fun setupChatBackground() {
         val loadVersion = ++chatBackgroundLoadVersion
         val fileId = globalParam.chatBackgroundFileIdFor(chatId)
         applyDimOverlay()
         if (fileId.isBlank()) {
             binding.chatBackgroundImage.visibility = View.GONE
+            binding.chatHeaderBlurImage.visibility = View.GONE
             binding.chatHeaderBar.setBackgroundColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     binding.chatHeaderBar, com.google.android.material.R.attr.colorSurface
                 )
             )
+            binding.btnBack.background = null
+            binding.chatInfoCard.background = null
+            binding.headerActionsCluster.background = null
             return
         }
 
         binding.chatBackgroundImage.visibility = View.VISIBLE
-        // Обои чата продолжаются под шапкой, поэтому её собственный фон убираем
-        binding.chatHeaderBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        // Обои просвечивают через блюр-копию (chatHeaderBlurImage) во всех зазорах шапки —
+        // сама шапка прозрачна, а имя/время читаются за счёт отдельных чипов-подложек
+        // на каждом блоке (back / инфо / действия), как в Telegram.
+        binding.chatHeaderBar.background = null
+        val surfaceColor = com.google.android.material.color.MaterialColors.getColor(
+            binding.chatHeaderBar, com.google.android.material.R.attr.colorSurface
+        )
+        val chipColor = android.graphics.Color.argb(
+            (255 * 0.7f).toInt(),
+            android.graphics.Color.red(surfaceColor),
+            android.graphics.Color.green(surfaceColor),
+            android.graphics.Color.blue(surfaceColor)
+        )
+        binding.btnBack.background = headerChipDrawable(chipColor)
+        binding.chatInfoCard.background = headerChipDrawable(chipColor)
+        binding.headerActionsCluster.background = headerChipDrawable(chipColor)
+        binding.chatHeaderBlurImage.visibility = View.VISIBLE
         val applyBlur = globalParam.chatBackgroundBlur
 
         lifecycleScope.launch {
@@ -700,6 +738,7 @@ class ChatActivity : AppCompatActivity() {
             if (cachedFile != null && cachedFile.exists()) {
                 if (loadVersion == chatBackgroundLoadVersion) {
                     applyBackgroundFromFile(cachedFile, applyBlur, loadVersion)
+                    applyHeaderBlur(cachedFile, loadVersion)
                 }
                 return@launch
             }
@@ -709,6 +748,8 @@ class ChatActivity : AppCompatActivity() {
             } ?: return@launch
 
             if (loadVersion != chatBackgroundLoadVersion) return@launch
+
+            applyHeaderBlur(url, loadVersion)
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 // API 31+: загружаем через Coil, blur через RenderEffect
@@ -775,6 +816,41 @@ class ChatActivity : AppCompatActivity() {
                 20f, 20f, android.graphics.Shader.TileMode.CLAMP
             ) else null
         )
+    }
+
+    /**
+     * Блюр-копия обоев для подложки шапки (chatHeaderBlurImage), обрезаемая
+     * clipBounds'ом до высоты шапки. Блюрится всегда — независимо от настройки
+     * chatBackgroundBlur основного фона: на API 31+ через RenderEffect,
+     * на старых устройствах через ScriptIntrinsicBlur по bitmap.
+     */
+    private fun applyHeaderBlur(source: Any, loadVersion: Int) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            binding.chatHeaderBlurImage.load(source, AvatarLoader.getImageLoader(this)) {
+                listener(onSuccess = { _, _ ->
+                    if (loadVersion == chatBackgroundLoadVersion) {
+                        binding.chatHeaderBlurImage.setRenderEffect(
+                            android.graphics.RenderEffect.createBlurEffect(
+                                20f, 20f, android.graphics.Shader.TileMode.CLAMP
+                            )
+                        )
+                    }
+                })
+            }
+        } else {
+            lifecycleScope.launch {
+                val bitmap = withContext(Dispatchers.IO) {
+                    when (source) {
+                        is java.io.File -> android.graphics.BitmapFactory.decodeFile(source.absolutePath)
+                        is String -> loadBitmapFromUrl(source)
+                        else -> null
+                    }
+                }
+                if (bitmap != null && loadVersion == chatBackgroundLoadVersion) {
+                    binding.chatHeaderBlurImage.setImageBitmap(blurBitmapLegacy(bitmap))
+                }
+            }
+        }
     }
 
     private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
