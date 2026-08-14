@@ -25,13 +25,14 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 - ASP.NET Core, gRPC server-streaming
 - MediatR (Generate / Scan / Accept / Reject)
 - QRCoder (PNG → base64)
-- In-memory `ConcurrentDictionary<string, FastAuthSession>` + `Channel<FastAuthResult>` per session
-- BackgroundService для TTL и очистки финализированных сессий
+- **Redis** (StackExchange.Redis) — общий стор QR-сессий + pub/sub wake-up стримов (масштабирование, см. `docs/scaling/fastauth.md`)
+- Lua-скрипты для атомарных переходов состояний сессии
 
 ## Зависимости
 
-- [[Backend/Configuration]] — discovery
+- [[Backend/Configuration]] — discovery + ключ `Redis`
 - [[Backend/Identity]] — выпуск access/refresh через `CreateSessionForUserServer` (новый server-метод)
+- Redis — стор сессий (`fastauth:session:{id}`), захват подписчика (`fastauth:subscriber:{id}`), канал событий `fastauth:events`
 
 ## Proto
 
@@ -59,22 +60,28 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 
 ## Архитектура
 
-- `Domain/FastAuthSession.cs` — модель сессии в памяти + `Channel<FastAuthResult>` для стрима событий + lock для атомарных переходов состояния (`TryScan`, `TryAccept`, `TryReject`, `TryExpire`).
-- `Infrastructure/FastAuthSessionsManager.cs` — singleton, `ConcurrentDictionary<string, FastAuthSession>`. TTL `SessionTtl=5min`, `FinalRetention=30s`.
-- `Infrastructure/FastAuthExpirationService.cs` — `BackgroundService`, тикает раз в 30 сек, помечает истёкшие как `EXPIRED` и удаляет финализированные сессии старше `FinalRetention`.
+Сервис **stateless-масштабируемый**: любое количество инстансов за балансировщиком — сессии в Redis, событие подтверждения доставляется в стрим через Redis pub/sub.
+
+- `Domain/FastAuthSessionState.cs` — неизменяемый снимок сессии (record) + `FastAuthSessionResult` + тайминги (`SessionTtl=5min`, `FinalRetention=30s`, `ExpirySlack=30s`).
+- `Domain/FastAuthSessionStore.cs` — контракты `IFastAuthSessionStore` / `IFastAuthEventBus`.
+- `Infrastructure/RedisFastAuthSessionStore.cs` — стор сессий: ключ `fastauth:session:{id}`, TTL = 5 мин + 30 сек slack (после логического истечения значение читаемо — Expired отличим от NotFound); финализированная сессия живёт 30 сек (реконнект забирает токены). Переходы `TryScan/TryAccept/TryReject/TryExpire` — Lua-скрипты: атомарная проверка статуса/confirmation_code/userId/срока. Захват единственного подписчика — `SETNX fastauth:subscriber:{id}` с токеном владельца.
+- `Infrastructure/FastAuthEventBus.cs` — hosted-сервис: подписан на канал `fastauth:events`; локальный реестр ожидающих (`Channel<FastAuthResult>`). Переход на инстансе B публикует событие → стрим на инстансе A просыпается. Гонка «переход до подписки» закрыта перечитыванием стора после Attach.
 - `Infrastructure/QrCodeGenerator.cs` — обёртка над QRCoder.
 - `Features/{GenerateFastAuthToken,ScanFastAuth,AcceptFastAuth,RejectFastAuth}` — MediatR handlers.
-- `Features/SubscribeFastAuthResult` — прямой handler (без MediatR), читает `Channel` → пишет в `IServerStreamWriter`.
+- `Features/SubscribeFastAuthResult` — прямой handler (без MediatR): финальная сессия → сразу отдаёт результат; иначе ждёт с **локальным дедлайном до ExpiresAt** → пишет EXPIRED (sweeper не нужен, TTL Redis чистит данные).
 - `Host/{FastAuthApiService,FastAuthServerApiService}.cs` — gRPC overrides с `[AllowAnonymous]` / `[Authorize(User|Service)]`.
-- `DependencyInjection.cs` — `AddFastAuthServices()`: регистрирует `FastAuthSessionsManager`, `QrCodeGenerator`, `FastAuthExpirationService` (hosted), MediatR.
+- `DependencyInjection.cs` — `AddFastAuthServices()`: стор, шина (singleton + hosted), QrCodeGenerator, MediatR.
+
+Порядок Accept: pre-check → `Identity.CreateSessionForUserServer` → Lua-финализация → при проигрыше гонки компенсация `RemoveActiveSessionServer`.
 
 ## Защиты
 
 - `confirmation_code` (GUID) обязателен для Accept/Reject — нельзя подтвердить без `Scan`.
-- Только один подписчик стрима на сессию — повторный `Subscribe` отклоняется.
-- Все state-переходы идут через `lock` внутри `FastAuthSession`.
-- TTL принудительно закрывает стрим даже если клиент не отвалился.
+- Только один подписчик стрима на сессию **глобально** (SETNX в Redis) — повторный `Subscribe` отклоняется на любом инстансе; после дисконнекта захват освобождается (реконнект возможен).
+- Все state-переходы атомарны в Redis (Lua) — гонки параллельных Scan/Accept/Reject на разных инстансах решаются как раньше in-process lock.
+- TTL принудительно закрывает стрим даже если клиент не отвалился: локальный дедлайн до ExpiresAt в подписчике + TTL ключа в Redis.
 - `Accept` сверяет `userId` с тем, который зафиксирован при `Scan` — другой пользователь не может подтвердить.
+- Финальный результат (с токенами) хранится в Redis только `FinalRetention=30 сек`.
 
 ### Security-аудит (S-серия)
 
@@ -85,8 +92,10 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 
 ## Метрики
 
-- `sessions_generated`, `sessions_scanned`, `sessions_accepted`, `sessions_rejected`, `sessions_expired`, `sessions_removed`
+- `sessions_generated`, `sessions_scanned`, `sessions_accepted`, `sessions_rejected`, `sessions_expired`
 - `active_subscriptions`, `active_subscriptions_closed`
+
+> `sessions_removed` упразднён: финализированные сессии удаляет TTL Redis, sweeper'а больше нет.
 
 ## Конфиг
 
@@ -94,9 +103,12 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 {
   "RunSettings": { "Port": 7008 },
   "ConfigurationServiceAddr": "http://localhost:7003",
+  "Redis": "redis:6379",
   "IdentityService": {
     "Host": "http://localhost:7000",
     "Token": "<Service JWT>"
   }
 }
 ```
+
+> Ключ `Redis` раздаёт Configuration-сервис (ServiceId=7, миграция `20260814100000_AddRedisConfigurationForFastAuth`; значение по умолчанию подставляет `ConfigurationDefaultsPopulator`). Без него сервис падает при старте.
