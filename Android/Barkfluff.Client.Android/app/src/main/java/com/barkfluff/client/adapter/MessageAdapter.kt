@@ -99,6 +99,13 @@ class MessageAdapter(
         private const val VIEW_TYPE_SYSTEM = 6
         private const val VOICE_AUTO_DOWNLOAD_LIMIT_BYTES = 2L * 1024L * 1024L
 
+        /**
+         * Payload для случая, когда подгрузился кэш участников группы: меняются только
+         * имя и мини-аватар отправителя, полный ребинд (с перезапуском загрузки вложений)
+         * не нужен.
+         */
+        const val PAYLOAD_SENDER_INFO = "sender_info"
+
         /** «Хвостик» последнего пузыря в серии. */
         private const val BUBBLE_TAIL_CORNER_DP = 8f
         /** Отступ между сериями сообщений. */
@@ -245,6 +252,21 @@ class MessageAdapter(
             is UnreadSeparatorViewHolder -> holder.bind(item)
             is SystemMessageViewHolder -> holder.bind(item)
             is FooterViewHolder -> { /* спейсер, биндинг не нужен */ }
+        }
+    }
+
+    override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int,
+        payloads: MutableList<Any>
+    ) {
+        // Незнакомый payload или пустой список — обычный полный бинд.
+        if (payloads.isEmpty() || payloads.any { it != PAYLOAD_SENDER_INFO }) {
+            super.onBindViewHolder(holder, position, payloads)
+            return
+        }
+        if (holder is ReceivedMessageViewHolder) {
+            holder.bindSenderInfo(getItem(position))
         }
     }
 
@@ -460,6 +482,43 @@ class MessageAdapter(
         private var lastTouchRawX: Float = 0f
         private var lastTouchRawY: Float = 0f
 
+        /** Вызывается и из полного bind, и из частичного обновления по PAYLOAD_SENDER_INFO. */
+        fun bindSenderInfo(item: MessageItem) {
+            if (!isGroupChat) {
+                binding.senderInfoLayout.visibility = View.GONE
+                return
+            }
+            binding.senderInfoLayout.visibility = View.VISIBLE
+
+            // Имя и аватар отправителя берём из резолвера (кэш участников чата),
+            // с фолбэком на поля самого сообщения.
+            val resolved = senderInfoProvider?.invoke(item.senderId)
+            val senderName = resolved?.first ?: item.senderName
+            val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
+
+            binding.senderNameTextView.text = senderName
+
+            if (!senderAvatarFileId.isNullOrBlank()) {
+                AvatarLoader.loadByFileId(
+                    imageView = binding.senderAvatarImageView,
+                    placeholderView = binding.senderAvatarPlaceholder,
+                    fileId = senderAvatarFileId,
+                    displayName = senderName ?: "",
+                    userId = item.senderId,
+                    size = 48
+                ) {
+                    getFileUrl(senderAvatarFileId)
+                }
+            } else {
+                binding.senderAvatarImageView.visibility = View.GONE
+                AvatarLoader.showPlaceholder(
+                    binding.senderAvatarPlaceholder,
+                    senderName ?: "",
+                    item.senderId
+                )
+            }
+        }
+
         @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
@@ -482,39 +541,7 @@ class MessageAdapter(
                 it.type != Shared.MessageAttachmentType.FORWARDED_MESSAGE
             }
 
-            if (isGroupChat) {
-                binding.senderInfoLayout.visibility = View.VISIBLE
-
-                // Имя и аватар отправителя берём из резолвера (кэш участников чата),
-                // с фолбэком на поля самого сообщения.
-                val resolved = senderInfoProvider?.invoke(item.senderId)
-                val senderName = resolved?.first ?: item.senderName
-                val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
-
-                binding.senderNameTextView.text = senderName
-
-                if (!senderAvatarFileId.isNullOrBlank()) {
-                    AvatarLoader.loadByFileId(
-                        imageView = binding.senderAvatarImageView,
-                        placeholderView = binding.senderAvatarPlaceholder,
-                        fileId = senderAvatarFileId,
-                        displayName = senderName ?: "",
-                        userId = item.senderId,
-                        size = 48
-                    ) {
-                        getFileUrl(senderAvatarFileId)
-                    }
-                } else {
-                    binding.senderAvatarImageView.visibility = View.GONE
-                    AvatarLoader.showPlaceholder(
-                        binding.senderAvatarPlaceholder,
-                        senderName ?: "",
-                        item.senderId
-                    )
-                }
-            } else {
-                binding.senderInfoLayout.visibility = View.GONE
-            }
+            bindSenderInfo(item)
 
             // Определяем, является ли сообщение «чистым стикером»
             val isPureSticker = item.text.isBlank() &&
