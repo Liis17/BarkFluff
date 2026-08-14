@@ -2,7 +2,7 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-v7';
+const CACHE_NAME = 'barkfluff-shell-dc4cffa7';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
@@ -95,8 +95,16 @@ self.addEventListener('fetch', function (event) {
 
     if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/') ||
         url.pathname === '/favicon.ico' || url.pathname === '/manifest.webmanifest') {
-        event.respondWith(caches.match(request, { ignoreSearch: true }).then(function (cached) {
-            return cached || fetch(request);
+        // Stale-while-revalidate: отдаём кэш мгновенно, в фоне тянем свежее.
+        // Immutable app-<hash>.js здесь — no-op (HTTP-кэш отдаёт 304 без сети).
+        event.respondWith(caches.open(CACHE_NAME).then(function (cache) {
+            return cache.match(request).then(function (cached) {
+                var network = fetch(request).then(function (response) {
+                    if (response && response.ok) cache.put(request, response.clone());
+                    return response;
+                }).catch(function () { return cached; });
+                return cached || network;
+            });
         }));
     }
 });
