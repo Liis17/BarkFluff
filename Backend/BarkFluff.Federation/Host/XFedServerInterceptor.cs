@@ -27,7 +27,7 @@ public class XFedServerInterceptor : Interceptor
     private readonly MetricsCollector _metrics;
     private readonly ILogger<XFedServerInterceptor> _logger;
     private readonly ServerResolver _resolver;
-    private readonly DiscoveryTriggerRateLimiter _rateLimiter;
+    private readonly IDiscoveryTriggerRateLimiter _rateLimiter;
 
     public XFedServerInterceptor(
         FederationContext context,
@@ -36,7 +36,7 @@ public class XFedServerInterceptor : Interceptor
         MetricsCollector metrics,
         ILogger<XFedServerInterceptor> logger,
         ServerResolver resolver,
-        DiscoveryTriggerRateLimiter rateLimiter)
+        IDiscoveryTriggerRateLimiter rateLimiter)
     {
         _context = context;
         _configuration = configuration;
@@ -127,7 +127,7 @@ public class XFedServerInterceptor : Interceptor
         // Discovery-на-лету (docs/rearch/03-discovery.md, "Политика обновления"): неизвестный
         // origin/key_id → резолв → повторная проверка один раз. Rate-limit per-server защищает
         // от флуда случайными key_id.
-        if (!keyUsable && _rateLimiter.TryTrigger(origin))
+        if (!keyUsable && await _rateLimiter.TryTriggerAsync(origin))
         {
             await _resolver.ResolveAsync(origin);
 
