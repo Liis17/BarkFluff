@@ -991,7 +991,12 @@ class ChatActivity : AppCompatActivity() {
                 groupMemberInfoCache[member.userId] = name to avatarSource
             }
 
-            messageAdapter.notifyDataSetChanged()
+            // Изменились только имя и мини-аватар отправителя — полный ребинд не нужен.
+            messageAdapter.notifyItemRangeChanged(
+                0,
+                messageAdapter.itemCount,
+                MessageAdapter.PAYLOAD_SENDER_INFO
+            )
         }
     }
 
@@ -3859,7 +3864,10 @@ class ChatActivity : AppCompatActivity() {
         if (::messageAdapter.isInitialized) {
             messageAdapter.messageCornerRadiusDp = globalParam.chatMessageCornerRadius
             messageAdapter.stickerSizeDp = globalParam.chatStickerSizeDp
-            messageAdapter.notifyDataSetChanged()
+            // notifyItemRangeChanged вместо notifyDataSetChanged: содержимое перерисовывается
+            // так же, но структура списка остаётся валидной — сохраняются пул холдеров,
+            // позиция скролла и анимации.
+            messageAdapter.notifyItemRangeChanged(0, messageAdapter.itemCount)
         }
     }
 
