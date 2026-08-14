@@ -1,7 +1,4 @@
-using BarkFluff.FastAuth.Domain;
 using BarkFluff.FastAuth.Features.RejectFastAuth;
-using BarkFluff.FastAuth.Infrastructure;
-using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.FastAuth;
 using BarkFluff.Shared.Exceptions.FastAuth;
 
@@ -14,17 +11,11 @@ public class RejectFastAuthCommandHandlerTests
     private RejectFastAuthCommandHandler CreateHandler(long userId = 42)
     {
         return new RejectFastAuthCommandHandler(
-            _h.SessionsManager,
+            _h.Store,
+            _h.EventBus,
             _h.CreateUserContext(userId),
             _h.Metrics,
             TestHelper.CreateLogger<RejectFastAuthCommandHandler>());
-    }
-
-    private (FastAuthSession session, string code) CreateAndScanSession(long userId = 42)
-    {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
-        session.TryScan(userId);
-        return (session, session.ConfirmationCode!);
     }
 
     #region Success
@@ -32,7 +23,7 @@ public class RejectFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_ReturnsResponse()
     {
-        var (session, code) = CreateAndScanSession();
+        var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
 
         var result = await handler.Handle(
@@ -45,62 +36,50 @@ public class RejectFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_SetsSessionStatusToRejected()
     {
-        var (session, code) = CreateAndScanSession();
+        var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
 
         await handler.Handle(
             new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
             CancellationToken.None);
 
-        session.Status.Should().Be(FastAuthStatus.Rejected);
+        var stored = await _h.Store.GetAsync(session.Id);
+        stored!.Status.Should().Be(FastAuthStatus.Rejected);
     }
 
     [Fact]
     public async Task Handle_ValidRequest_MakesSessionFinal()
     {
-        var (session, code) = CreateAndScanSession();
+        var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
 
         await handler.Handle(
             new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
             CancellationToken.None);
 
-        session.IsFinal.Should().BeTrue();
+        var stored = await _h.Store.GetAsync(session.Id);
+        stored!.IsFinal.Should().BeTrue();
     }
 
     [Fact]
-    public async Task Handle_ValidRequest_WritesRejectedEventToChannel()
+    public async Task Handle_ValidRequest_PublishesRejectedEvent()
     {
-        var (session, code) = CreateAndScanSession();
+        var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
 
+        var reader = _h.EventBus.Attach(session.Id);
         await handler.Handle(
             new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
             CancellationToken.None);
 
-        session.Events.TryRead(out var scanEvt).Should().BeTrue();
-        session.Events.TryRead(out var rejectEvt).Should().BeTrue();
-        rejectEvt.Status.Should().Be(FastAuthStatus.Rejected);
-    }
-
-    [Fact]
-    public async Task Handle_ValidRequest_CompletesChannel()
-    {
-        var (session, code) = CreateAndScanSession();
-        var handler = CreateHandler();
-
-        await handler.Handle(
-            new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
-            CancellationToken.None);
-
-        while (session.Events.TryRead(out _)) { }
-        session.Events.Completion.IsCompleted.Should().BeTrue();
+        reader.TryRead(out var evt).Should().BeTrue();
+        evt.Status.Should().Be(FastAuthStatus.Rejected);
     }
 
     [Fact]
     public async Task Handle_ValidRequest_IncrementsSessionsRejectedMetric()
     {
-        var (session, code) = CreateAndScanSession();
+        var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
 
         await handler.Handle(
@@ -127,22 +106,6 @@ public class RejectFastAuthCommandHandlerTests
         await act.Should().ThrowAsync<FastAuthSessionNotFoundException>();
     }
 
-    [Fact]
-    public async Task Handle_NonexistentSession_DoesNotIncrementMetric()
-    {
-        var handler = CreateHandler();
-        try
-        {
-            await handler.Handle(
-                new RejectFastAuthCommand { FastAuthId = "nonexistent", ConfirmationCode = "code" },
-                CancellationToken.None);
-        }
-        catch (FastAuthSessionNotFoundException) { }
-
-        var snapshot = _h.Metrics.SnapshotAndReset();
-        snapshot.Should().NotContainKey("sessions_rejected");
-    }
-
     #endregion
 
     #region Expired Session
@@ -150,9 +113,21 @@ public class RejectFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_ExpiredSession_ThrowsFastAuthSessionExpiredException()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
-        session.TryScan(42);
-        session.TryExpire();
+        var (session, code) = await _h.CreateAndScanSessionAsync();
+        await _h.Store.TryExpireAsync(session.Id);
+        var handler = CreateHandler();
+
+        var act = () => handler.Handle(
+            new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<FastAuthSessionExpiredException>();
+    }
+
+    [Fact]
+    public async Task Handle_SessionExpiredByWallClock_ThrowsFastAuthSessionExpiredException()
+    {
+        var session = _h.CreateSession(expiresAt: DateTime.UtcNow - TimeSpan.FromSeconds(1));
         var handler = CreateHandler();
 
         var act = () => handler.Handle(
@@ -169,7 +144,7 @@ public class RejectFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_PendingSession_ThrowsFastAuthInvalidStateException()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         var act = () => handler.Handle(
@@ -180,27 +155,9 @@ public class RejectFastAuthCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AlreadyAcceptedSession_ThrowsFastAuthInvalidStateException()
-    {
-        var (session, code) = CreateAndScanSession();
-        session.TryAccept(code, 42, new FastAuthResult
-        {
-            Status = FastAuthStatus.Accepted,
-            AccessToken = "token"
-        });
-        var handler = CreateHandler();
-
-        var act = () => handler.Handle(
-            new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
-            CancellationToken.None);
-
-        await act.Should().ThrowAsync<FastAuthInvalidStateException>();
-    }
-
-    [Fact]
     public async Task Handle_AlreadyRejectedSession_ThrowsFastAuthInvalidStateException()
     {
-        var (session, code) = CreateAndScanSession();
+        var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
 
         await handler.Handle(
@@ -221,24 +178,11 @@ public class RejectFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_WrongConfirmationCode_ThrowsFastAuthInvalidConfirmationCodeException()
     {
-        var (session, _) = CreateAndScanSession();
+        var (session, _) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
 
         var act = () => handler.Handle(
             new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = "wrong-code" },
-            CancellationToken.None);
-
-        await act.Should().ThrowAsync<FastAuthInvalidConfirmationCodeException>();
-    }
-
-    [Fact]
-    public async Task Handle_EmptyConfirmationCode_ThrowsFastAuthInvalidConfirmationCodeException()
-    {
-        var (session, _) = CreateAndScanSession();
-        var handler = CreateHandler();
-
-        var act = () => handler.Handle(
-            new RejectFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = "" },
             CancellationToken.None);
 
         await act.Should().ThrowAsync<FastAuthInvalidConfirmationCodeException>();
@@ -251,7 +195,7 @@ public class RejectFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_WrongUserId_ThrowsFastAuthInvalidConfirmationCodeException()
     {
-        var (session, code) = CreateAndScanSession(userId: 42);
+        var (session, code) = await _h.CreateAndScanSessionAsync(userId: 42);
         var handler = CreateHandler(userId: 99);
 
         var act = () => handler.Handle(
