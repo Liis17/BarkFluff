@@ -12,6 +12,8 @@ using BarkFluff.Shared.Exceptions.Federation;
 
 using Google.Protobuf;
 
+using MassTransit;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,6 +71,7 @@ public class FederationInternalApiServiceTests
                 new MetricsCollector(),
                 new FederatedFileOptions(configuration),
                 new RemoteFileCircuitBreaker(configuration, new MetricsCollector()),
+                Mock.Of<IPublishEndpoint>(),
                 NullLogger<FederationInternalApiHandler>.Instance);
         }
 

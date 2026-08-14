@@ -167,6 +167,7 @@ public class Program
             x.AddConsumer<MessageDeletedFederationConsumer>();
             x.AddConsumer<MessageReadFederationConsumer>();
             x.AddConsumer<SessionRevokedConsumer>();
+            x.AddConsumer<SigningKeyRotatedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -194,6 +195,14 @@ public class Program
                     e.AutoDelete = true;
                     e.Durable = false;
                     e.ConfigureConsumer<PresenceStatusChangedConsumer>(context);
+                });
+
+                // Fan-out: каждый инстанс перезагружает кэш активного ключа и well-known при ротации.
+                cfg.ReceiveEndpoint($"signing-key-rotated-federation-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<SigningKeyRotatedConsumer>(context);
                 });
             });
         });

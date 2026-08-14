@@ -7,8 +7,12 @@ using BarkFluff.Proto.FederationInternal;
 
 using Grpc.Core;
 
+using MassTransit;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using Moq;
 
 namespace BarkFluff.Federation.Tests.Host;
 
@@ -58,6 +62,7 @@ public class SetPresenceInterestTests
             new MetricsCollector(),
             new FederatedFileOptions(configuration),
                 new RemoteFileCircuitBreaker(configuration, new MetricsCollector()),
+            Mock.Of<IPublishEndpoint>(),
             NullLogger<FederationInternalApiHandler>.Instance);
 
         return new Harness(service, registry);
