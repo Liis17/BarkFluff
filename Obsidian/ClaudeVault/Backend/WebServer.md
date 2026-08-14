@@ -40,6 +40,8 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 > Существующий username от несуществующего страница **не отличает** — оба дают 200 с шаблоном, факт регистрации выясняет уже клиентский `fetch('/api/user/…')`. Это осознанно: по коду ответа нельзя перебрать список аккаунтов. 404 отдаётся только на то, что username быть не может в принципе, поэтому о пользователях он ничего не сообщает.
 
 > **Кнопка «Написать в браузере» (`#webChatBtn`)** в обоих шаблонах (`userpage.html` + `paws.page.html`): при клике пишет cookie `bf_open_chat=<username>` (`domain=.barkfluff.com`, `max-age=300`, `SameSite=Lax`) и редиректит на `https://web.barkfluff.com`. Веб-мессенджер [[Backend/Web]] после загрузки читает эту cookie и открывает чат с пользователем (см. `maybeOpenChatFromCookie` в `main.js`). Логика повторяет deep-link Android (`bf://user-username=<username>`).
+>
+> Кнопка показывается **на всех устройствах**. До этого её гасил `@media (hover: none), (pointer: coarse)` — правило существовало с момента добавления кнопки и скрывало её не только на телефонах, но и на планшетах и тач-ноутбуках. Это расходилось с карточкой «Веб — Любой современный браузер» на главной (`barkfluff.html`), которая ведёт на `web.barkfluff.com` без ограничений по устройству.
 - **`LegalPageService`** — файлы из `html/legal/` по имени страницы; также обрабатывает `selfhosted.html`
 - **`SupportChatService`** — in-memory сессии чата (`ConcurrentDictionary`)
 - **`TelegramService`** — Telegram-бот для уведомлений чата поддержки. Ответ администратора — reply, первая строка — GUID чата
