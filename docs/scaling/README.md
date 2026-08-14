@@ -33,6 +33,7 @@
 | CloudMessaging | Background-consumer RabbitMQ (competing), без локального состояния |
 | Web | YARP reverse-proxy, полностью stateless |
 | Developers | gRPC + PostgreSQL, без in-memory состояния и фоновых задач |
+| FastAuth | QR-сессии в Redis (Lua-переходы) + pub/sub wake-up стримов — реализовано, см. [fastauth.md](fastauth.md) |
 
 ### 🔒 Сознательно single-instance — масштабировать не планируем
 
@@ -57,7 +58,6 @@
 | Onliner | in-memory реестры стримов + дублируемый `OfflineDetectionService` | [onliner.md](onliner.md) |
 | Calls | in-memory реестр стримов + `CallTimeoutScheduler` | [calls.md](calls.md) |
 | Bots | `BotRateLimiter` / `BotUpdateNotifier` / `BotRegistryCache` / `BotPollingGuard` | [bots.md](bots.md) |
-| FastAuth | in-memory `FastAuthSessionsManager` + `FastAuthExpirationService` | [fastauth.md](fastauth.md) |
 | Federation | дублируемые `OutboxDispatcher`/`OutboxJanitor` + in-memory rate-limiter | [federation.md](federation.md) |
 | Files | локальная ФС для temp + shared TokenRevocation | [files.md](files.md) |
 | Identity | shared TokenRevocation | [identity.md](identity.md) |
