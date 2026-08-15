@@ -6,6 +6,13 @@ namespace Barkfluff.AdminPanel.Services;
 
 public class SshNetRemoteSshClient : IRemoteSshClient
 {
+    internal static async Task WriteToShellAsync(Stream stream, byte[] buffer, int offset, int count,
+        CancellationToken cancellationToken = default)
+    {
+        await stream.WriteAsync(buffer, offset, count, cancellationToken);
+        await stream.FlushAsync(cancellationToken);
+    }
+
     public async Task TestConnectionAsync(RemoteServer server, CancellationToken cancellationToken = default)
     {
         using var client = new SshClient(CreateConnectionInfo(server));
@@ -68,7 +75,7 @@ public class SshNetRemoteSshClient : IRemoteSshClient
             stream.ReadAsync(buffer, offset, count, cancellationToken);
 
         public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
-            stream.WriteAsync(buffer, offset, count, cancellationToken);
+            WriteToShellAsync(stream, buffer, offset, count, cancellationToken);
 
         public ValueTask DisposeAsync()
         {
