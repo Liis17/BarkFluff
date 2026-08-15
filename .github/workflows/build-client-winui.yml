@@ -123,7 +123,7 @@ jobs:
           Write-Host "Сертификат восстановлен: thumbprint=$($certificate.Thumbprint)"
 
       - name: Восстановление зависимостей
-        run: dotnet restore Windows/BarkFluff.Client.WinUI/BarkFluff.Client.WinUI.csproj
+        run: dotnet restore Windows/BarkFluff.Client.WinUI/BarkFluff.Client.WinUI.csproj -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64 -p:PublishReadyToRun=true
 
       - name: Сборка и упаковка MSIX
         id: package
