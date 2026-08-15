@@ -162,6 +162,22 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 
 Следствие: публичный endpoint с неполной TLS-цепочкой теперь корректно отклоняется release-клиентом — владелец ноды обязан развернуть fullchain, см. [[Backend/Nginx]].
 
+## Каналы сборки (stable / dev / nightly)
+
+Три product flavor'а по измерению `channel` в `app/build.gradle.kts` — каждый со своим `applicationId`, поэтому сборки разных каналов стоят на устройстве рядом. Стабильный flavor называется `stable`, а не `release`: Gradle запрещает совпадение имени flavor'а с именем buildType.
+
+| Ветка | Flavor | applicationId | Имя в лаунчере | Канал ClientStorage | Имя APK |
+|---|---|---|---|---|---|
+| `master` | `stable` | `com.barkfluff.client` | Barkfluff | `release` | `Barkfluff-release-X.Y.Z.apk` |
+| `dev` | `dev` | `com.barkfluff.dev` | Barkfluff.dev | `dev` | `Barkfluff-dev-X.Y.Z.apk` |
+| `nightly` | `nightly` | `com.barkfluff.nightly` | Barkfluff.nightly | `nightly` | `Barkfluff-nightly-X.Y.Z.apk` |
+
+- **`BuildConfig.UPDATE_CHANNEL`** — канал сборки. По нему `UpdateChecker.hasUpdate()` следит только за своим каналом, а `UpdateActivity` показывает кнопку обновления лишь в своей карточке: APK чужого канала не обновит приложение, а встанет вторым. Канал больше **не** определяется суффиксом « beta» в версии — `AppVersion.isBeta` для этого не используется.
+- **Ресурсы каналов** — `app/src/dev/res/` и `app/src/nightly/res/` перекрывают `main`: `app_name` во всех пяти локалях и adaptive-иконка. Иконка собрана из двух слоёв (фон-текстура PNG в `drawable-nodpi/`, белый глиф-вектор с обводкой), потому что маска adaptive-иконки показывает только центральные 66% холста и срезала бы готовое изображение по краям.
+- **`google-services.json`** содержит client-записи всех трёх пакетов. Без записи под конкретный `applicationId` плагин `com.google.gms.google-services` роняет сборку флейвора.
+- **Версия.** `versionName` поднимает только сборка ветки `nightly` (patch + 1 от версии в канале `nightly`); `dev` и `master` переиздают ту же версию как есть. В git `versionName` всегда остаётся `0.0.1` — реальное значение `sed`'ом подставляет CI и обратно не коммитит. Следствие: два пуша в `dev` подряд без промежуточной nightly-сборки дают два APK с одинаковой версией, и клиент не увидит второй как обновление.
+- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла.
+
 ## Система обновлений и её TLS
 
 Сервер обновлений [[Backend/ClientStorage|ClientStorage]] (`storage.barkfluff.com`) отдаётся за Cloudflare Origin CA, которого нет в системном хранилище Android. Сертификат едет в APK строкой `BuildConfig.STORAGE_CA_PEM_B64`: `app/build.gradle.kts` заполняет её из переменной окружения `STORAGE_CA_PEM_B64`, а воркфлоу `build-client-android.yml` подставляет туда секрет `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64` — тот же, которым он ходит на storage через `curl --cacert`. Без переменной строка пустая, и локальные сборки просто работают на системном хранилище (обновления в них не проверяются).
