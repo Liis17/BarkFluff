@@ -95,8 +95,35 @@
         .svc-row.pending   { opacity: .35; }
         .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
 
+        .remote-console-dialog { max-width: 1080px; }
+        .remote-console-output {
+            margin: 0;
+            min-height: 360px;
+            max-height: calc(100vh - 280px);
+            overflow: auto;
+            padding: 16px;
+            border-radius: var(--md-shape-md);
+            background: #1d1b20;
+            color: #f5eff7;
+            font: 13px/1.45 'Roboto Mono', monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .remote-console-input {
+            flex: 1;
+            min-width: 180px;
+            background: #1d1b20;
+            color: #f5eff7;
+            border: 1px solid var(--md-outline);
+            border-radius: var(--md-shape-sm);
+            padding: 10px 12px;
+            font: 13px 'Roboto Mono', monospace;
+        }
+        .remote-console-input:focus { outline: 2px solid var(--md-primary); outline-offset: -1px; }
+
         @media (max-width: 600px) {
             .tab-bar { flex-wrap: wrap; }
+            .remote-console-output { min-height: 280px; }
         }
     </style>
 </head>
@@ -232,6 +259,29 @@
             <div id="containerDialogError" style="display:none;color:var(--md-error);font-size:13px;"></div>
         </div>
         <div class="md-dialog-actions"><button class="md-btn md-btn-text" onclick="closeDialog('containerDialogScrim')">Закрыть</button></div>
+    </div>
+</div>
+
+<div id="consoleDialogScrim" class="md-scrim" onclick="if(event.target===this)closeConsoleDialog()">
+    <div class="md-dialog md-dialog-xl remote-console-dialog">
+        <div class="md-dialog-header">
+            <div>
+                <h3 id="consoleDialogTitle">SSH-консоль</h3>
+                <div style="font-size:13px;color:var(--md-on-surface-variant);">Команды выполняются на удалённом сервере</div>
+            </div>
+            <span id="consoleConnectionStatus" class="md-status md-status-info">Подключение…</span>
+        </div>
+        <div class="md-dialog-body" style="padding-bottom:8px;">
+            <pre id="consoleOutput" class="remote-console-output">Подключение к серверу…</pre>
+        </div>
+        <div class="md-dialog-actions" style="justify-content:stretch;flex-wrap:wrap;">
+            <form id="consoleInputForm" style="display:flex;align-items:center;gap:8px;flex:1;min-width:260px;">
+                <input id="consoleInput" class="remote-console-input" type="text" autocomplete="off" spellcheck="false" placeholder="Введите команду и нажмите Enter" disabled>
+                <button class="md-btn md-btn-filled md-btn-square-press" type="submit" id="consoleSendBtn" disabled>Отправить</button>
+            </form>
+            <button class="md-btn md-btn-tonal" type="button" onclick="sendConsoleInterrupt()">Ctrl+C</button>
+            <button class="md-btn md-btn-text" type="button" onclick="closeConsoleDialog()">Закрыть</button>
+        </div>
     </div>
 </div>
 
@@ -585,6 +635,7 @@
     let activeTab = 'barkfluff';
     let editingServerId = null;
     let containerServerId = null;
+    let consoleSocket = null;
 
     function switchTab(id) {
         activeTab = id;
@@ -623,6 +674,7 @@
                 </div>
                 <div class="actions-row">
                     <button class="md-btn md-btn-tonal md-btn-xs" onclick="openContainerDialog('${server.id}')">${bfIcon('admin/add', 'size-18')}Добавить контейнер</button>
+                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openConsoleDialog('${server.id}')">${bfIcon('admin/terminal', 'size-18')}Открыть консоль</button>
                     <div class="spacer"></div>
                     <button class="md-icon-btn" title="Изменить сервер" onclick="openServerDialog('${server.id}')">${bfIcon('message-actions/edit')}</button>
                     <button class="md-icon-btn" title="Удалить сервер" onclick="deleteServer('${server.id}')">${bfIcon('message-actions/delete')}</button>
@@ -752,6 +804,94 @@
         } catch (e) { showDialogError('containerDialogError', e.message); }
     }
 
+    function openConsoleDialog(serverId) {
+        const server = remoteServers.find(item => item.id === serverId);
+        if (!server) return;
+
+        if (consoleSocket) closeConsoleDialog();
+        document.getElementById('consoleDialogTitle').textContent = `SSH-консоль — ${server.name}`;
+        document.getElementById('consoleOutput').textContent = 'Подключение к серверу…\n';
+        setConsoleStatus('Подключение…', 'md-status-info');
+        setConsoleInputEnabled(false);
+        document.getElementById('consoleDialogScrim').classList.add('open');
+
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socket = new WebSocket(`${protocol}//${location.host}/api/remote/servers/${serverId}/console`);
+        consoleSocket = socket;
+
+        socket.onopen = () => {
+            if (consoleSocket !== socket) {
+                socket.close(1000, 'Консоль закрыта');
+                return;
+            }
+            setConsoleStatus('Подключено', 'md-status-success');
+            setConsoleInputEnabled(true);
+            document.getElementById('consoleInput').focus();
+        };
+        socket.onmessage = event => {
+            if (consoleSocket !== socket) return;
+            appendConsoleOutput(event.data);
+        };
+        socket.onerror = () => {
+            if (consoleSocket !== socket) return;
+            setConsoleStatus('Ошибка подключения', 'md-status-error');
+            setConsoleInputEnabled(false);
+            appendConsoleOutput('\n[Не удалось подключиться к SSH-серверу]\n');
+        };
+        socket.onclose = () => {
+            if (consoleSocket !== socket) return;
+            consoleSocket = null;
+            setConsoleStatus('Соединение закрыто', 'md-status-neutral');
+            setConsoleInputEnabled(false);
+            appendConsoleOutput('\n[SSH-соединение закрыто]\n');
+        };
+    }
+
+    function closeConsoleDialog() {
+        const socket = consoleSocket;
+        consoleSocket = null;
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING))
+            socket.close(1000, 'Консоль закрыта');
+        setConsoleInputEnabled(false);
+        document.getElementById('consoleDialogScrim').classList.remove('open');
+    }
+
+    function sendConsoleCommand(event) {
+        event.preventDefault();
+        const input = document.getElementById('consoleInput');
+        if (!consoleSocket || consoleSocket.readyState !== WebSocket.OPEN) return;
+        consoleSocket.send(input.value + '\r');
+        input.value = '';
+    }
+
+    function sendConsoleInterrupt() {
+        if (consoleSocket?.readyState === WebSocket.OPEN) {
+            consoleSocket.send('\u0003');
+            document.getElementById('consoleInput').focus();
+        }
+    }
+
+    function setConsoleStatus(text, className) {
+        const status = document.getElementById('consoleConnectionStatus');
+        status.textContent = text;
+        status.className = `md-status ${className}`;
+    }
+
+    function setConsoleInputEnabled(enabled) {
+        document.getElementById('consoleInput').disabled = !enabled;
+        document.getElementById('consoleSendBtn').disabled = !enabled;
+    }
+
+    function appendConsoleOutput(data) {
+        let text = typeof data === 'string' ? data : '';
+        text = text.replace(/\x1B(?:[@-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+        const output = document.getElementById('consoleOutput');
+        output.textContent += text;
+        if (output.textContent.length > 200000)
+            output.textContent = output.textContent.slice(-180000);
+        output.scrollTop = output.scrollHeight;
+    }
+
     async function deleteContainer(serverId, containerId) {
         if (!confirm('Убрать контейнер из списка панели? Сам Docker-контейнер не будет удалён.')) return;
         const response = await fetch(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE' });
@@ -765,6 +905,7 @@
     async function responseMessage(response) { try { return (await response.json()).message || `HTTP ${response.status}`; } catch { return `HTTP ${response.status}`; } }
 
     document.getElementById('serverForm').addEventListener('submit', saveServer);
+    document.getElementById('consoleInputForm').addEventListener('submit', sendConsoleCommand);
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти из панели?')) return;

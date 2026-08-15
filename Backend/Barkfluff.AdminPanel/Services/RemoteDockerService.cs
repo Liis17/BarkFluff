@@ -146,6 +146,12 @@ public class RemoteDockerService
         return container is not null && container.ServerId == serverId && _db.Containers.Delete(containerId);
     }
 
+    public Task<IRemoteSshShell> OpenShellAsync(Guid serverId, CancellationToken cancellationToken = default)
+    {
+        var server = RequireServer(serverId);
+        return _sshClient.OpenShellAsync(server, cancellationToken);
+    }
+
     public async Task<ContainerActionResponseDto> ExecuteActionAsync(Guid serverId, Guid containerId, string action,
         CancellationToken cancellationToken = default)
     {
