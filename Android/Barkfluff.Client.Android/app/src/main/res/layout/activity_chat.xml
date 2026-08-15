@@ -5,7 +5,6 @@
     android:id="@+id/chatRootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     tools:context=".ChatActivity">
 
     <!-- ═══════════════════════════════════════════
@@ -25,19 +24,6 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ═══════════════════════════════════════════
-         ОВЕРЛЕЙ ЗАТЕНЕНИЯ ФОНА — поверх фона, под контентом
-         ═══════════════════════════════════════════ -->
-    <View
-        android:id="@+id/chatDimOverlay"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- ═══════════════════════════════════════════
          БЛЮР-КОПИЯ ОБОЕВ под шапкой: на весь экран
          (чтобы centerCrop совпадал с фоном), в рантайме
          обрезается clipBounds'ом до высоты шапки.
@@ -50,6 +36,19 @@
         android:contentDescription="@null"
         android:importantForAccessibility="no"
         android:scaleType="centerCrop"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ═══════════════════════════════════════════
+         ОВЕРЛЕЙ ЗАТЕНЕНИЯ ФОНА — поверх обеих копий фона, под контентом
+         ═══════════════════════════════════════════ -->
+    <View
+        android:id="@+id/chatDimOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
