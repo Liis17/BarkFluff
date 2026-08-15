@@ -53,7 +53,7 @@
         loadMembers();
         deps.setMediaTabActive('#groupOverlay .group-media-tab', deps.groupMediaPanels, 'media');
         deps.renderChatMedia('media', deps.groupMediaPanels);
-        overlay.classList.add('visible');
+        BF.utils.openOverlay(overlay);
     }
 
     function loadMembers() {
@@ -270,10 +270,10 @@
         addResults = $('#groupAddResults');
 
         closeButton.addEventListener('click', function () {
-            overlay.classList.remove('visible');
+            BF.utils.closeOverlay(overlay);
         });
         overlay.addEventListener('click', function (event) {
-            if (event.target === overlay) overlay.classList.remove('visible');
+            if (event.target === overlay) BF.utils.closeOverlay(overlay);
         });
         nameEdit.addEventListener('click', rename);
 

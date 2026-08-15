@@ -514,6 +514,106 @@
         });
     }
 
+    // ===== Overlay focus management (a11y) =====
+    // openOverlay/closeOverlay: focus-trap + inert фона + возврат фокуса на триггер.
+    var overlayStack = [];
+    var trapInstalled = false;
+    var FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+        'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    function isFocusVisibleEl(el) {
+        return !!(el.offsetWidth || el.offsetHeight) || el.getClientRects().length > 0;
+    }
+
+    function focusables(rootEl) {
+        return Array.prototype.filter.call(rootEl.querySelectorAll(FOCUSABLE_SELECTOR), isFocusVisibleEl);
+    }
+
+    function trapKeydown(e) {
+        if (e.key !== 'Tab') return;
+        var top = overlayStack[overlayStack.length - 1];
+        if (!top) return;
+        var items = focusables(top.overlay);
+        if (items.length === 0) { e.preventDefault(); return; }
+        var first = items[0];
+        var last = items[items.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey) {
+            if (active === first || !top.overlay.contains(active)) { e.preventDefault(); last.focus(); }
+        } else {
+            if (active === last || !top.overlay.contains(active)) { e.preventDefault(); first.focus(); }
+        }
+    }
+
+    function inertBackground(overlayEl) {
+        var inerted = [];
+        Array.prototype.forEach.call(document.body.children, function (child) {
+            if (child === overlayEl || child.contains(overlayEl)) return;
+            var tag = child.tagName;
+            if (tag === 'SCRIPT' || tag === 'LINK' || tag === 'NOSCRIPT' || tag === 'STYLE') return;
+            if (child.classList && child.classList.contains('blobs')) return;
+            child.inert = true;
+            inerted.push(child);
+        });
+        return inerted;
+    }
+
+    function openOverlay(overlayEl, opts) {
+        opts = opts || {};
+        for (var i = 0; i < overlayStack.length; i++) {
+            if (overlayStack[i].overlay === overlayEl) return;
+        }
+        var entry = {
+            overlay: overlayEl,
+            inerted: inertBackground(overlayEl),
+            prevFocus: document.activeElement,
+            prevRole: overlayEl.getAttribute('role'),
+            prevModal: overlayEl.getAttribute('aria-modal')
+        };
+        overlayStack.push(entry);
+        overlayEl.setAttribute('role', opts.role || 'dialog');
+        overlayEl.setAttribute('aria-modal', 'true');
+        overlayEl.classList.add('visible');
+        if (!trapInstalled) {
+            document.addEventListener('keydown', trapKeydown, true);
+            trapInstalled = true;
+        }
+        var target = opts.focus;
+        if (!target) {
+            var items = focusables(overlayEl);
+            target = items[0];
+        }
+        if (target && typeof target.focus === 'function') {
+            setTimeout(function () { target.focus(); }, 30);
+        }
+    }
+
+    function closeOverlay(overlayEl) {
+        overlayEl.classList.remove('visible');
+        var idx = -1;
+        for (var i = overlayStack.length - 1; i >= 0; i--) {
+            if (overlayStack[i].overlay === overlayEl) { idx = i; break; }
+        }
+        if (idx === -1) return;
+        var entry = overlayStack.splice(idx, 1)[0];
+        entry.inerted.forEach(function (el) {
+            var stillHeld = overlayStack.some(function (other) { return other.inerted.indexOf(el) >= 0; });
+            if (!stillHeld) el.inert = false;
+        });
+        if (entry.prevRole === null) overlayEl.removeAttribute('role');
+        else overlayEl.setAttribute('role', entry.prevRole);
+        if (entry.prevModal === null) overlayEl.removeAttribute('aria-modal');
+        else overlayEl.setAttribute('aria-modal', entry.prevModal);
+        var prev = entry.prevFocus;
+        if (prev && document.contains(prev) && typeof prev.focus === 'function') {
+            setTimeout(function () { prev.focus(); }, 0);
+        }
+        if (overlayStack.length === 0 && trapInstalled) {
+            document.removeEventListener('keydown', trapKeydown, true);
+            trapInstalled = false;
+        }
+    }
+
     window.BF.utils = {
         formatTime: formatTime,
         formatChatListTime: formatChatListTime,
@@ -529,6 +629,8 @@
         docIcon: docIcon,
         parseJwtPayload: parseJwtPayload,
         isStatusOnline: isStatusOnline,
-        formatLastSeen: formatLastSeen
+        formatLastSeen: formatLastSeen,
+        openOverlay: openOverlay,
+        closeOverlay: closeOverlay
     };
 })();
