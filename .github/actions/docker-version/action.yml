@@ -3,7 +3,7 @@ description: "Запрашивает у реестра последний semver
 
 inputs:
   image:
-    description: "Базовое имя образа без суффикса -dev (например barkfluff-messages)"
+    description: "Базовое имя образа без суффикса окружения (например barkfluff-messages)"
     required: true
   registry-username:
     description: "Логин к docker-реестру"
@@ -36,11 +36,17 @@ runs:
       run: |
         REGISTRY="docker.barkfluff.com"
 
-        if [ "$GITHUB_REF_NAME" = "dev" ]; then
-          REPO="${IMAGE}-dev"
-        else
-          REPO="$IMAGE"
-        fi
+        case "$GITHUB_REF_NAME" in
+          dev)
+            REPO="${IMAGE}-dev"
+            ;;
+          nightly)
+            REPO="${IMAGE}-nightly"
+            ;;
+          master|*)
+            REPO="$IMAGE"
+            ;;
+        esac
 
         # -k: самоподписанный сертификат; 404 (репозитория ещё нет) не валит шаг
         RESP=$(curl -sk -u "$REG_USER:$REG_PASS" "https://$REGISTRY/v2/$REPO/tags/list" || true)

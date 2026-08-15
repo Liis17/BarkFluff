@@ -61,7 +61,7 @@ Barkfluff.AdminPanel/
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
 │   ├── ConfigurationService.cs        ← gRPC-клиент конфигурации
 │   ├── MailService.cs                 ← IMAP/SMTP клиент (MailKit) для служебных ящиков
-│   └── RemoteDockerService.cs         ← Docker на удалённых хостах по SSH-туннелю
+│   └── RemoteDockerService.cs         ← Docker и интерактивная консоль на удалённых хостах по SSH-туннелю
 ├── Pages/
 │   ├── Login.html                     ← форма входа
 │   ├── dashboard.html                 ← KPI, трафик, метрики
@@ -326,6 +326,7 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | `CreateServerAsync` / `UpdateServerAsync` / `DeleteServer` | CRUD серверов с проверкой SSH и каскадным удалением записей контейнеров |
 | `DiscoverContainersAsync` / `AddContainerAsync` | Поиск Docker-контейнеров и сохранение выбранного с Compose-метками |
 | `GetContainersStatusAsync` / `ExecuteActionAsync` | Статусы и start/stop/restart; pull + recreate доступен только Docker Compose |
+| `OpenShellAsync` | Открывает интерактивный SSH-сеанс для браузерной консоли после WebSocket upgrade; пароль остаётся на стороне AdminPanel, вывод PTY передаётся binary-фреймами |
 
 ---
 
@@ -479,6 +480,7 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | GET / POST | `/api/remote/servers/{serverId}/containers` | Статусы / добавление контейнера |
 | DELETE | `/api/remote/servers/{serverId}/containers/{containerId}` | Убрать контейнер из панели |
 | POST | `/api/remote/servers/{serverId}/containers/{containerId}/{action}` | start, stop, restart или Compose pull |
+| GET (WebSocket) | `/api/remote/servers/{serverId}/console` | Сначала принимает WebSocket, затем открывает SSH-сеанс через PTY; ready/error-сигналы, binary-вывод PTY, auth cookie и same-origin `Origin` обязательны |
 
 ### /api/seq/compress-metrics — LogsCompressionEndpoints.cs
 

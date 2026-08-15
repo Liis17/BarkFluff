@@ -213,6 +213,7 @@ public class Program
         // Configure the pipeline
         app.UseForwardedHeaders();
         app.UseHttpsRedirection();
+        app.UseWebSockets();
 
         // Serve favicon.ico before auth middleware (always accessible)
         app.MapGet("/favicon.ico", async context =>

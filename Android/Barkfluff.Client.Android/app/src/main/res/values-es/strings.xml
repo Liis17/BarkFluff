@@ -800,7 +800,8 @@
     <string name="calls_filter_all">Todas</string>
     <string name="calls_filter_missed">Perdidas</string>
     <string name="update_release_channel">Release</string>
-    <string name="update_beta_channel">Beta</string>
+    <string name="update_dev_channel">Dev</string>
+    <string name="update_nightly_channel">Nightly</string>
 
     <!-- Calls and notifications -->
     <string name="call_title_default">Llamada</string>
@@ -1174,7 +1175,8 @@
     <string name="pinned_unpinned_count">Desfijados: %1$d</string>
     <string name="pinned_unpin_all_failed">No se pudieron desfijar los mensajes</string>
     <string name="update_current_release_channel">Canal Release</string>
-    <string name="update_current_beta_channel">Canal Beta</string>
+    <string name="update_current_dev_channel">Canal Dev</string>
+    <string name="update_current_nightly_channel">Canal Nightly</string>
     <string name="update_install_permission_denied">No se concedió el permiso de instalación</string>
     <string name="update_checking">Comprobando…</string>
     <string name="update_unavailable">No disponible</string>

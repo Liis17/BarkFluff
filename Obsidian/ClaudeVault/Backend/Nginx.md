@@ -3,7 +3,7 @@
 Набор nginx-конфигураций для продакшн-деплоя всей платформы BarkFluff.
 Nginx выступает **reverse proxy** перед всеми микросервисами — терминирует TLS, маршрутизирует трафик по субдоменам, поддерживает как gRPC (`grpc_pass`), так и HTTP (`proxy_pass`).
 
-**Расположение:** `docker/nginx/`
+**Расположение:** `docker/{dev,nightly,master}/nginx/`
 
 ---
 
@@ -49,7 +49,7 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `onliner.conf` | `onliner.barkfluff.com` → [[Onliner]] | 7009 | gRPC |
 | `updates.conf` | `updates.barkfluff.com` → [[Updates]] | 7015 | gRPC |
 | `web.conf` | `web.barkfluff.com` → [[Web]] | 7016 | HTTP (YARP proxy) |
-| `admin-panel.conf` | `panel.barkfluff.com` → [[AdminPanel]] | 51888 | HTTP |
+| `admin-panel.conf` | `panel.barkfluff.com` → [[AdminPanel]] | 51888 | HTTP + WSS (WebSocket) |
 | `developers.conf` | `developers.barkfluff.com` → [[Developers]] | 7020 | HTTP (gRPC-Web) |
 | `calls.conf` | `calls.barkfluff.com` → [[Calls]] | 7025 (gRPC) | gRPC |
 | `bots.conf` | `bots.barkfluff.com` → [[Bots]] | 7027 (gRPC) + 7028 (HTTP REST) | gRPC + HTTP |
@@ -115,6 +115,7 @@ Security-аудит (S1/D2): rate limit на анонимные (без JWT) э�
 ### `admin-panel.conf` и `developers.conf`
 HTTP-сервисы (не gRPC), используют `proxy_pass`:
 - `panel.barkfluff.com` → `admin-panel:51888`
+- `/api/remote/` на `panel.barkfluff.com` проксируется как HTTP/1.1 WebSocket Upgrade; для этого server block не включает HTTP/2, а консольный location отключает proxy buffering и держит таймаут 3600s.
 - `developers.barkfluff.com` → `developers:7020`
 
 ### `calls.conf`
@@ -170,5 +171,5 @@ WSS-сигнализация LiveKit SFU: `listen 443 ssl` (**без** `http2` �
 
 ## Актуальность
 
-Проверено по коду `docker/nginx/`. Все порты соответствуют портам сервисов из [[Архитектура]].
+Проверено по коду `docker/dev/nginx/`; конфигурации `nightly` и `master` содержат тот же набор маршрутов. Все порты соответствуют портам сервисов из [[Архитектура]].
 Конфиги актуальны на момент последнего исследования.

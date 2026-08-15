@@ -30,8 +30,8 @@
 | Файл | Назначение |
 |------|-----------|
 | `Domain/ClientFile.cs` | EF Core-сущность. Хранит метаданные дистрибутива: `ClientType`, `ReleaseChannel`, `OriginalFileName`, `S3Key`, `ContentType`, `FileSize`, `Checksum` (SHA-256 hex), `UploadedAt`, `Version` (из заголовка `X-App-Version`). |
-| `Domain/ClientType.cs` | Enum: `Windows`, `Kotlin`, `MacOS`, `iOS` — поддерживаемые платформы. |
-| `Domain/ReleaseChannel.cs` | Enum: `Release`, `Beta` — каналы выпуска. |
+| `Domain/ClientType.cs` | Enum: `Windows`, `WinUI`, `Kotlin`, `MacOS`, `iOS` — поддерживаемые платформы. |
+| `Domain/ReleaseChannel.cs` | Enum: `Release`, `Beta`, `Dev`, `Nightly` — каналы выпуска. |
 
 ---
 

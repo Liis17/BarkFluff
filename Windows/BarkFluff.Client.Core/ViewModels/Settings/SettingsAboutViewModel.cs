@@ -15,7 +15,7 @@ public sealed partial class SettingsAboutViewModel(IClientSession session, ISett
     public string Version => Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
     public string DeviceName => Environment.MachineName;
     public string DeviceId => session.CurrentConnection?.ConnectionParameters.DeviceId ?? string.Empty;
-    public string OperatingSystem => Environment.OSVersion.VersionString;
+    public string OperatingSystem => ClientMetadata.OperatingSystem;
     public ObservableCollection<SettingsAboutServiceItem> Services { get; } = [];
 
     public async Task LoadAsync()

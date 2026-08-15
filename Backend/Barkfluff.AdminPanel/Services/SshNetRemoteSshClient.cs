@@ -6,6 +6,13 @@ namespace Barkfluff.AdminPanel.Services;
 
 public class SshNetRemoteSshClient : IRemoteSshClient
 {
+    internal static async Task WriteToShellAsync(Stream stream, byte[] buffer, int offset, int count,
+        CancellationToken cancellationToken = default)
+    {
+        await stream.WriteAsync(buffer, offset, count, cancellationToken);
+        await stream.FlushAsync(cancellationToken);
+    }
+
     public async Task TestConnectionAsync(RemoteServer server, CancellationToken cancellationToken = default)
     {
         using var client = new SshClient(CreateConnectionInfo(server));
@@ -28,6 +35,22 @@ public class SshNetRemoteSshClient : IRemoteSshClient
         }
     }
 
+    public async Task<IRemoteSshShell> OpenShellAsync(RemoteServer server, CancellationToken cancellationToken = default)
+    {
+        var client = new SshClient(CreateConnectionInfo(server));
+        try
+        {
+            await Task.Run(client.Connect, cancellationToken);
+            var stream = client.CreateShellStream("xterm-256color", 120, 32, 0, 0, 16 * 1024);
+            return new SshNetRemoteSshShell(client, stream);
+        }
+        catch
+        {
+            client.Dispose();
+            throw;
+        }
+    }
+
     private static Renci.SshNet.ConnectionInfo CreateConnectionInfo(RemoteServer server)
     {
         var passwordAuth = new PasswordAuthenticationMethod(server.Username, server.Password);
@@ -42,5 +65,26 @@ public class SshNetRemoteSshClient : IRemoteSshClient
         {
             Timeout = TimeSpan.FromSeconds(15)
         };
+    }
+
+    private sealed class SshNetRemoteSshShell(SshClient client, ShellStream stream) : IRemoteSshShell
+    {
+        private int _disposed;
+
+        public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
+            stream.ReadAsync(buffer, offset, count, cancellationToken);
+
+        public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
+            WriteToShellAsync(stream, buffer, offset, count, cancellationToken);
+
+        public ValueTask DisposeAsync()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+                return ValueTask.CompletedTask;
+
+            stream.Dispose();
+            client.Dispose();
+            return ValueTask.CompletedTask;
+        }
     }
 }

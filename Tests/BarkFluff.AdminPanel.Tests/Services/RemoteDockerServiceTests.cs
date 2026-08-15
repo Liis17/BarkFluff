@@ -205,6 +205,20 @@ public class RemoteDockerServiceTests : IDisposable
         Assert.Contains("docker compose -f '/srv/docker-compose.yml' pull 'web'", Assert.Single(ssh.Commands));
     }
 
+    [Fact]
+    public async Task OpenShellAsync_OpensShellForStoredServer()
+    {
+        using var db = new RemoteDockerDbContext(_dbPath);
+        var server = new RemoteServer { Name = "Node", Host = "host", Username = "root", Password = "secret" };
+        db.Servers.Insert(server);
+        var ssh = new FakeSshClient();
+        var service = CreateService(db, ssh);
+
+        await using var shell = await service.OpenShellAsync(server.Id);
+
+        Assert.True(ssh.ShellWasOpened);
+    }
+
     public void Dispose()
     {
         if (File.Exists(_dbPath)) File.Delete(_dbPath);
@@ -219,6 +233,7 @@ public class RemoteDockerServiceTests : IDisposable
         public string DockerPsOutput { get; init; } = string.Empty;
         public string LabelsOutput { get; init; } = "{}";
         public List<string> Commands { get; } = [];
+        public bool ShellWasOpened { get; private set; }
 
         public Task TestConnectionAsync(RemoteServer server, CancellationToken cancellationToken = default)
         {
@@ -235,5 +250,22 @@ public class RemoteDockerServiceTests : IDisposable
                 : string.Empty;
             return Task.FromResult(new RemoteSshCommandResult(output, string.Empty, 0));
         }
+
+        public Task<IRemoteSshShell> OpenShellAsync(RemoteServer server, CancellationToken cancellationToken = default)
+        {
+            ShellWasOpened = true;
+            return Task.FromResult<IRemoteSshShell>(new FakeSshShell());
+        }
+    }
+
+    private sealed class FakeSshShell : IRemoteSshShell
+    {
+        public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
+            Task.FromResult(0);
+
+        public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

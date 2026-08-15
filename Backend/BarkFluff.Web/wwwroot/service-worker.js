@@ -95,16 +95,8 @@ self.addEventListener('fetch', function (event) {
 
     if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/') ||
         url.pathname === '/favicon.ico' || url.pathname === '/manifest.webmanifest') {
-        // Stale-while-revalidate: отдаём кэш мгновенно, в фоне тянем свежее.
-        // Immutable app-<hash>.js здесь — no-op (HTTP-кэш отдаёт 304 без сети).
-        event.respondWith(caches.open(CACHE_NAME).then(function (cache) {
-            return cache.match(request).then(function (cached) {
-                var network = fetch(request).then(function (response) {
-                    if (response && response.ok) cache.put(request, response.clone());
-                    return response;
-                }).catch(function () { return cached; });
-                return cached || network;
-            });
+        event.respondWith(caches.match(request, { ignoreSearch: true }).then(function (cached) {
+            return cached || fetch(request);
         }));
     }
 });

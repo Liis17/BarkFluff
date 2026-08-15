@@ -812,7 +812,8 @@
     <string name="calls_filter_all">Все</string>
     <string name="calls_filter_missed">Пропущенные</string>
     <string name="update_release_channel">Release</string>
-    <string name="update_beta_channel">Beta</string>
+    <string name="update_dev_channel">Dev</string>
+    <string name="update_nightly_channel">Nightly</string>
 
     <!-- Calls and notifications -->
     <string name="call_title_default">Звонок</string>
@@ -1203,7 +1204,8 @@
     <string name="pinned_unpinned_count">Откреплено: %1$d</string>
     <string name="pinned_unpin_all_failed">Не удалось открепить сообщения</string>
     <string name="update_current_release_channel">Release-канал</string>
-    <string name="update_current_beta_channel">Beta-канал</string>
+    <string name="update_current_dev_channel">Dev-канал</string>
+    <string name="update_current_nightly_channel">Nightly-канал</string>
     <string name="update_install_permission_denied">Разрешение на установку не предоставлено</string>
     <string name="update_checking">Проверка…</string>
     <string name="update_unavailable">Недоступно</string>
