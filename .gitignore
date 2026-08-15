@@ -427,3 +427,4 @@ default.profraw
 # Локальные секреты docker-стеков (в репозитории только sample-*.env)
 .env
 **/.env
+/Android/.idea/caches
