@@ -23,7 +23,7 @@ bash Windows/BarkFluff.Client.WinUI/tools/check-localization.sh
 
 Workflow `.github/workflows/build-client-winui.yml` запускается для изменений WinUI-клиента в ветках `master`, `release`, `beta`, `dev` и `nightly`, а также вручную. Он восстанавливает PFX self-signed сертификат из секрета `WINUI_MSIX_CERTIFICATE_B64`, импортирует его в хранилище сертификатов runner-а и подписывает им MSIX. Пароль PFX хранится в `WINUI_MSIX_CERTIFICATE_PASSWORD`; сертификат должен соответствовать `Publisher` в `Package.appxmanifest`.
 
-Ветка `master` или `release` публикуется в канал `release` через `/set/barkfluffwinui`; ветки `beta`, `dev` и `nightly` — через `/set/barkfluffwinui/{channel}`. Папка установщика архивируется в файл `BarkFluffWinUI_{ветка}_{версия}.zip` и загружается в ClientStorage. Для загрузки переиспользуются те же секреты, что и в Android workflow: `CLIENT_STORAGE_URL`, `CLIENT_STORAGE_TOKEN` и `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64`. Новые секреты нужны только для PFX WinUI-сертификата.
+Ветка `master` или `release` публикуется в канал `release` через `/set/barkfluffwinui`; ветки `beta`, `dev` и `nightly` — через `/set/barkfluffwinui/{channel}`. Папка установщика архивируется в файл `BarkFluffWinUI_{ветка}_{версия}.zip` и загружается в ClientStorage. Для загрузки переиспользуются те же секреты, что и в Android workflow: `CLIENT_STORAGE_URL`, `CLIENT_STORAGE_TOKEN` и `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64`. Новые секреты нужны только для PFX WinUI-сертификата. После завершения workflow отправляет success/failure-уведомление в Telegram через общие `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHANNEL_ID`.
 
 ## Разделение на две сборки
 

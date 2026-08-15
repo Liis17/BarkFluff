@@ -291,3 +291,38 @@ jobs:
               Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
             }
           }
+
+      - name: "✅ Уведомление об успехе"
+        if: success()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            🪟 *WinUI Client* v${{ steps.package.outputs.version }}
+            📦 Канал: `${{ steps.target.outputs.channel }}`
+            📁 Архив: `${{ steps.archive.outputs.name }}`
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          bash .github/scripts/send-telegram.sh
+
+      - name: "❌ Уведомление об ошибке"
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            🪟 *WinUI Client*
+            📦 Канал: `${{ steps.target.outputs.channel }}`
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          bash .github/scripts/send-telegram.sh
