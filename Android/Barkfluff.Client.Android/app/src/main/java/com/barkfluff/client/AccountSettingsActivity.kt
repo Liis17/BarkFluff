@@ -50,7 +50,7 @@ class AccountSettingsActivity : AppCompatActivity() {
             }
         } else if (result.resultCode == UCrop.RESULT_ERROR) {
             val error = UCrop.getError(result.data!!)
-            Toast.makeText(this, "Ошибка: ${error?.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.settings_error_detail, error?.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -80,35 +80,35 @@ class AccountSettingsActivity : AppCompatActivity() {
         }
 
         binding.itemFirstName.setOnClickListener {
-            showEditDialog("Имя", globalParam.firstName) { newValue ->
+            showEditDialog(getString(R.string.account_first_name), globalParam.firstName) { newValue ->
                 lifecycleScope.launch {
                     val result = grpcManager.changeName(newValue, globalParam.lastName)
                     if (result.isSuccess) {
                         globalParam.firstName = newValue
                         updateUI()
                     } else {
-                        Toast.makeText(this@AccountSettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AccountSettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
 
         binding.itemLastName.setOnClickListener {
-            showEditDialog("Фамилия", globalParam.lastName, allowEmpty = true) { newValue ->
+            showEditDialog(getString(R.string.account_last_name), globalParam.lastName, allowEmpty = true) { newValue ->
                 lifecycleScope.launch {
                     val result = grpcManager.changeName(globalParam.firstName, newValue)
                     if (result.isSuccess) {
                         globalParam.lastName = newValue
                         updateUI()
                     } else {
-                        Toast.makeText(this@AccountSettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AccountSettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
 
         binding.itemUsername.setOnClickListener {
-            showEditDialog("Имя пользователя", globalParam.userName) { newValue ->
+            showEditDialog(getString(R.string.account_username), globalParam.userName) { newValue ->
                 lifecycleScope.launch {
                     val checkResult = grpcManager.checkUsername(newValue)
                     if (checkResult.isSuccess && checkResult.getOrNull() == false) {
@@ -117,24 +117,24 @@ class AccountSettingsActivity : AppCompatActivity() {
                             globalParam.userName = newValue
                             updateUI()
                         } else {
-                            Toast.makeText(this@AccountSettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@AccountSettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        Toast.makeText(this@AccountSettingsActivity, "Имя пользователя уже занято", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AccountSettingsActivity, R.string.account_username_taken, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
 
         binding.itemBio.setOnClickListener {
-            showEditDialog("О себе", globalParam.description, allowEmpty = true) { newValue ->
+            showEditDialog(getString(R.string.account_bio), globalParam.description, allowEmpty = true) { newValue ->
                 lifecycleScope.launch {
                     val result = grpcManager.changeBio(newValue)
                     if (result.isSuccess) {
                         globalParam.description = newValue
                         updateUI()
                     } else {
-                        Toast.makeText(this@AccountSettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AccountSettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -142,16 +142,16 @@ class AccountSettingsActivity : AppCompatActivity() {
 
         binding.buttonLogout.setOnClickListener {
             MaterialAlertDialogBuilder(this)
-                .setTitle("Выход")
-                .setMessage("Вы уверены, что хотите выйти из аккаунта?")
-                .setPositiveButton("Выйти") { _, _ ->
+                .setTitle(R.string.account_logout_title)
+                .setMessage(R.string.account_logout_message)
+                .setPositiveButton(R.string.account_logout_action) { _, _ ->
                     globalParam.clearUserData()
                     val intent = Intent(this, LoginActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
                     finishAffinity()
                 }
-                .setNegativeButton("Отмена", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show()
         }
     }
@@ -159,13 +159,17 @@ class AccountSettingsActivity : AppCompatActivity() {
     private fun updateUI() {
         binding.textFirstName.text = globalParam.firstName
         binding.textLastName.text = globalParam.lastName
-        binding.textUsername.text = "@${globalParam.userName}"
-        binding.textBio.text = globalParam.description.ifBlank { "Не указано" }
+        binding.textUsername.text = getString(R.string.register_username_format, globalParam.userName)
+        binding.textBio.text = globalParam.description.ifBlank { getString(R.string.not_specified) }
         loadAvatar()
     }
 
     private fun loadAvatar() {
-        val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
+        val displayName = getString(
+            R.string.register_full_name_format,
+            globalParam.firstName,
+            globalParam.lastName
+        ).trim()
 
         val urlToUse = globalParam.profilePictureUrl
 
@@ -216,13 +220,13 @@ class AccountSettingsActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle(title)
             .setView(inputLayout)
-            .setPositiveButton("Сохранить") { _, _ ->
+            .setPositiveButton(R.string.btn_save) { _, _ ->
                 val newValue = editText.text?.toString()?.trim() ?: ""
                 if ((allowEmpty || newValue.isNotEmpty()) && newValue != currentValue) {
                     onSave(newValue)
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
@@ -275,21 +279,21 @@ class AccountSettingsActivity : AppCompatActivity() {
                                 globalParam.profilePictureUrl = userData.profilePictureUrl
                             }
                             updateUI()
-                            Toast.makeText(this@AccountSettingsActivity, "Аватар обновлен", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@AccountSettingsActivity, R.string.account_avatar_updated, Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(this@AccountSettingsActivity, "Ошибка установки аватара", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@AccountSettingsActivity, R.string.account_avatar_set_error, Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        Toast.makeText(this@AccountSettingsActivity, "Ошибка загрузки: ${uploadResult.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AccountSettingsActivity, getString(R.string.account_avatar_upload_error, uploadResult.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка загрузки аватара", e)
-                    Toast.makeText(this@AccountSettingsActivity, "Ошибка загрузки аватара", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@AccountSettingsActivity, R.string.account_avatar_load_error, Toast.LENGTH_SHORT).show()
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка чтения изображения", e)
-            Toast.makeText(this, "Ошибка чтения изображения", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.account_image_read_error, Toast.LENGTH_SHORT).show()
         }
     }
 }

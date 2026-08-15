@@ -111,7 +111,7 @@ class ImageViewerActivity : AppCompatActivity() {
 
     private fun updateCounter(position: Int) {
         if (fileIds.size > 1) {
-            binding.counterTextView.text = "${position + 1} / ${fileIds.size}"
+            binding.counterTextView.text = getString(R.string.media_counter, position + 1, fileIds.size)
             binding.counterTextView.visibility = View.VISIBLE
         } else {
             binding.counterTextView.visibility = View.GONE
@@ -130,7 +130,7 @@ class ImageViewerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val source = getImageFile(fileIds[currentPosition])
             if (source == null) {
-                Toast.makeText(this@ImageViewerActivity, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ImageViewerActivity, R.string.message_image_download_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
@@ -158,9 +158,9 @@ class ImageViewerActivity : AppCompatActivity() {
                 )
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(clipData)
-                Toast.makeText(this@ImageViewerActivity, "Изображение скопировано", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ImageViewerActivity, R.string.message_image_copied, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this@ImageViewerActivity, "Не удалось скопировать", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ImageViewerActivity, R.string.message_copy_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -222,7 +222,7 @@ class ImageViewerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val source = getImageFile(fileId)
             if (source == null) {
-                Toast.makeText(this@ImageViewerActivity, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ImageViewerActivity, R.string.message_image_download_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
@@ -231,7 +231,7 @@ class ImageViewerActivity : AppCompatActivity() {
             }
             Toast.makeText(
                 this@ImageViewerActivity,
-                if (ok) "Сохранено в галерею (Pictures/BarkFluff)" else "Не удалось сохранить",
+                if (ok) R.string.image_saved_to_gallery else R.string.save_failed,
                 Toast.LENGTH_SHORT
             ).show()
         }

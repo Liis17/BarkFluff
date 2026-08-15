@@ -25,6 +25,7 @@ import barkfluff.shared.Shared
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
+import com.barkfluff.client.security.TlsTransportFactory
 import io.grpc.*
 import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
@@ -34,17 +35,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
-import java.security.cert.X509Certificate
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 /**
  * Менеджер для работы с gRPC
  * Аналог WebApiClientManager из WPF клиента
  */
-class GrpcManager {
+class GrpcManager(context: Context) {
 
     companion object {
         private const val TAG = "GrpcManager"
@@ -66,6 +62,7 @@ class GrpcManager {
     // CallEventsService, виджет, 401-retry) рефрешат через него, чтобы параллельные
     // обновления не аннулировали refresh-токен друг друга (сервер ротирует refresh-токен).
     private val tokenRefreshMutex = Mutex()
+    private val tlsTransport = TlsTransportFactory(context.applicationContext)
 
     // Адреса, использованные при создании каналов (для идемпотентности)
     private var navigatorAddress: String? = null
@@ -130,6 +127,8 @@ class GrpcManager {
         return identityClient != null && usersClient != null && filesClient != null && messagesClient != null
     }
 
+    fun normalizeEndpointAddress(address: String): String = tlsTransport.normalizeGrpcAddress(address)
+
     /**
      * Инициализирует все клиенты по адресам из GlobalParam.
      * Идемпотентно — если клиент уже создан с тем же адресом, пропускает пересоздание.
@@ -163,7 +162,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Beacon сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(beaconAddress)
+        val normalized = tlsTransport.normalizeGrpcAddress(beaconAddress)
         if (this.beaconAddress == normalized && beaconClient != null) return Result.success(Unit)
 
         return try {
@@ -188,7 +187,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("URL навигатора не может быть пустым"))
         }
 
-        val normalized = ensureHttpPrefix(navigatorUrl)
+        val normalized = tlsTransport.normalizeGrpcAddress(navigatorUrl)
         if (this.navigatorAddress == normalized && navigatorClient != null) return Result.success(Unit)
 
         return try {
@@ -212,7 +211,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Identity сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(identityAddress)
+        val normalized = tlsTransport.normalizeGrpcAddress(identityAddress)
         if (this.identityAddress == normalized && identityClient != null) return Result.success(Unit)
 
         return try {
@@ -252,7 +251,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Users сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(usersAddress)
+        val normalized = tlsTransport.normalizeGrpcAddress(usersAddress)
         if (this.usersAddress == normalized && usersClient != null) return Result.success(Unit)
 
         return try {
@@ -795,7 +794,7 @@ class GrpcManager {
                 onlinerEndpoint = buildEndpointUrl(response.onliner.endpoint.host, response.onliner.endpoint.port, response.onliner.tlsEnabled),
                 fastAuthEndpoint = buildEndpointUrl(response.fastAuth.endpoint.host, response.fastAuth.endpoint.port, response.fastAuth.tlsEnabled),
                 callsEndpoint = if (response.hasCalls()) buildEndpointUrl(response.calls.endpoint.host, response.calls.endpoint.port, response.calls.tlsEnabled) else "",
-                livekitUrl = response.livekitUrl
+                livekitUrl = normalizeLivekitUrl(response.livekitUrl)
             )
 
             Log.d(TAG, "Получена информация о сервере: ${serverInfo.name}")
@@ -829,40 +828,21 @@ class GrpcManager {
         }
         cleanHost = cleanHost.trimEnd('/')
         val scheme = if (tlsEnabled) "https" else "http"
-        return "$scheme://$cleanHost:$port"
+        return tlsTransport.normalizeGrpcAddress("$scheme://$cleanHost:$port")
     }
 
-    private fun createChannel(address: String): ManagedChannel {
-        val url = ensureHttpPrefix(address)
-        val useTls = url.startsWith("https://")
-        val hostPort = url.removePrefix("http://").removePrefix("https://")
-        val parts = hostPort.split(":")
-        val host = parts[0]
-        val port = parts[1].toInt()
-
-        val builder = OkHttpChannelBuilder.forAddress(host, port)
-        if (useTls) {
-            // Доверяем всем сертификатам (сервер использует самоподписанный сертификат)
-            val trustManager = object : X509TrustManager {
-                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-            }
-            val sslContext = SSLContext.getInstance("TLS")
-            sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-            builder.sslSocketFactory(sslContext.socketFactory)
-        } else {
-            builder.usePlaintext()
+    private fun normalizeLivekitUrl(url: String): String {
+        if (url.isBlank()) {
+            return ""
         }
-        return builder.build()
+        return tlsTransport.normalizeUrl(url)
     }
 
-    private fun ensureHttpPrefix(url: String): String {
-        return if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            "https://$url"
-        } else {
-            url
-        }
+    private fun createChannel(address: String): ManagedChannel = tlsTransport.createGrpcChannel(address)
+
+    /** Applies the same host-scoped TLS policy to presigned HTTP(S) connections. */
+    fun configureHttpConnection(connection: HttpURLConnection) {
+        tlsTransport.configure(connection)
     }
 
     private fun toBase64(value: String): String {
@@ -985,7 +965,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Files сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(filesAddress)
+        val normalized = tlsTransport.normalizeGrpcAddress(filesAddress)
         if (this.filesAddress == normalized && filesClient != null) return Result.success(Unit)
 
         return try {
@@ -1024,7 +1004,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Messages сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(messagesAddress)
+        val normalized = tlsTransport.normalizeGrpcAddress(messagesAddress)
         if (this.messagesAddress == normalized && messagesClient != null) return Result.success(Unit)
 
         return try {
@@ -1063,7 +1043,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Updates сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(updatesAddress)
+        val normalized = tlsTransport.normalizeGrpcAddress(updatesAddress)
         if (this.updatesAddress == normalized && updatesClient != null) return Result.success(Unit)
 
         return try {
@@ -1102,7 +1082,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Onliner сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(onlinerAddress)
+        val normalized = tlsTransport.normalizeGrpcAddress(onlinerAddress)
         if (this.onlinerAddress == normalized && onlinerClient != null) return Result.success(Unit)
 
         return try {
@@ -1138,7 +1118,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес FastAuth сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(address)
+        val normalized = tlsTransport.normalizeGrpcAddress(address)
         if (this.fastAuthAddress == normalized && fastAuthClient != null) return Result.success(Unit)
 
         return try {
@@ -1174,7 +1154,7 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Calls сервера не указан"))
         }
 
-        val normalized = ensureHttpPrefix(address)
+        val normalized = tlsTransport.normalizeGrpcAddress(address)
         if (this.callsAddress == normalized && callsClient != null) return Result.success(Unit)
 
         return try {
@@ -1762,18 +1742,7 @@ class GrpcManager {
             val url = URL(uploadData.url)
             val connection = url.openConnection() as HttpURLConnection
 
-            // Если HTTPS — применяем trust-all для самоподписанного сертификата
-            if (connection is HttpsURLConnection) {
-                val trustManager = object : X509TrustManager {
-                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                }
-                val sslContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-                connection.sslSocketFactory = sslContext.socketFactory
-                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-            }
+            configureHttpConnection(connection)
 
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
@@ -2702,17 +2671,7 @@ class GrpcManager {
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
             val url = java.net.URL(uploadData.url)
             val connection = url.openConnection() as java.net.HttpURLConnection
-            if (connection is javax.net.ssl.HttpsURLConnection) {
-                val trustManager = object : javax.net.ssl.X509TrustManager {
-                    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-                    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-                    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
-                }
-                val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf<javax.net.ssl.TrustManager>(trustManager), null)
-                connection.sslSocketFactory = sslContext.socketFactory
-                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-            }
+            configureHttpConnection(connection)
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
             connection.doOutput = true

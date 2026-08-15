@@ -1,11 +1,13 @@
 package com.barkfluff.client.utils
 
 import android.util.Log
+import com.barkfluff.client.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 data class ChannelVersionInfo(
     val version: String?,
@@ -24,6 +26,11 @@ object UpdateChecker {
         try {
             val url = URL("$BASE_URL/get/$CLIENT_NAME/$channel/version")
             val connection = url.openConnection() as HttpURLConnection
+            // storage.barkfluff.com за приватным CA — системному хранилищу он не известен.
+            val trust = UpdateServerTls.trust
+            if (trust != null && connection is HttpsURLConnection) {
+                connection.sslSocketFactory = trust.socketFactory
+            }
             connection.requestMethod = "GET"
             connection.connectTimeout = TIMEOUT
             connection.readTimeout = TIMEOUT
@@ -46,17 +53,15 @@ object UpdateChecker {
         }
     }
 
+    /**
+     * Следим только за своим каналом: у сборок разных каналов разные applicationId,
+     * поэтому APK чужого канала не обновит приложение, а встанет рядом.
+     */
     suspend fun hasUpdate(currentVersion: String): Boolean {
         val current = AppVersion.parse(currentVersion) ?: return false
-        return if (current.isBeta) {
-            val betaInfo = getVersionInfo("beta")
-            val betaVersion = AppVersion.parse(betaInfo?.version)
-            betaVersion != null && betaVersion > current
-        } else {
-            val releaseInfo = getVersionInfo("release")
-            val releaseVersion = AppVersion.parse(releaseInfo?.version)
-            releaseVersion != null && releaseVersion > current
-        }
+        val info = getVersionInfo(BuildConfig.UPDATE_CHANNEL)
+        val remote = AppVersion.parse(info?.version)
+        return remote != null && remote > current
     }
 
     fun getDownloadUrl(channel: String): String {

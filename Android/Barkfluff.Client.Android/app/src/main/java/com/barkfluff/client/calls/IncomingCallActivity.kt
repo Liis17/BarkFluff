@@ -17,6 +17,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import coil.request.ImageRequest
 import coil.size.Size
@@ -57,7 +58,9 @@ class IncomingCallActivity : AppCompatActivity() {
         configureLockScreenPresentation()
 
         callId = intent.getStringExtra(CallExtras.EXTRA_CALL_ID).orEmpty()
-        callerName = intent.getStringExtra(CallExtras.EXTRA_CALLER_NAME).orEmpty().ifBlank { "BarkFluff" }
+        callerName = intent.getStringExtra(CallExtras.EXTRA_CALLER_NAME).orEmpty().ifBlank {
+            getString(R.string.app_name)
+        }
         mediaType = intent.getStringExtra(CallExtras.EXTRA_MEDIA_TYPE).orEmpty()
         callerUserId = intent.getLongExtra(CallExtras.EXTRA_CALLER_USER_ID, 0L)
 
@@ -105,20 +108,20 @@ class IncomingCallActivity : AppCompatActivity() {
 
     private fun registerDismissReceiver() {
         val filter = IntentFilter(CallExtras.ACTION_DISMISS_INCOMING_CALL)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(dismissReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(dismissReceiver, filter)
-        }
+        ContextCompat.registerReceiver(this, dismissReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         dismissReceiverRegistered = true
     }
 
     private fun bindViews() {
         findViewById<TextView>(R.id.callerName).text = callerName
         findViewById<TextView>(R.id.avatarInitials).text = initialsOf(callerName)
-        findViewById<TextView>(R.id.callType).text =
-            if (mediaType.equals("video", ignoreCase = true)) "Видеозвонок" else "Аудиозвонок"
+        findViewById<TextView>(R.id.callType).text = getString(
+            if (mediaType.equals("video", ignoreCase = true)) {
+                R.string.incoming_call_video
+            } else {
+                R.string.incoming_call_audio
+            }
+        )
 
         findViewById<ImageView>(R.id.rejectButton).setOnClickListener { rejectCall() }
         findViewById<ImageView>(R.id.acceptButton).setOnClickListener { acceptCall() }
@@ -313,7 +316,7 @@ class IncomingCallActivity : AppCompatActivity() {
             }.onFailure {
                 CallTelecomRegistry.clearAnswering(callId)
                 actionTaken = false
-                Toast.makeText(this@IncomingCallActivity, "Не удалось принять звонок", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@IncomingCallActivity, R.string.call_accept_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -338,7 +341,7 @@ class IncomingCallActivity : AppCompatActivity() {
         val globalParam = GlobalParam(this)
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) {
-            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
             return false
         }
 

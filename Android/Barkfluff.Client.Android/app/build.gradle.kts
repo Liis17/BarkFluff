@@ -51,6 +51,17 @@ abstract class CopyLegalDocsTask : DefaultTask() {
     }
 }
 
+/**
+ * CA сервера обновлений (storage.barkfluff.com) — уезжает в APK строкой BuildConfig и
+ * разворачивается в сертификат в UpdateServerTls. Источник — переменная окружения
+ * STORAGE_CA_PEM_B64 (в CI это секрет CLOUDFLARE_ORIGIN_CA_BUNDLE_B64, тот же, которым воркфлоу
+ * ходит на storage через curl --cacert). Без переменной строка пустая: локальные сборки
+ * обновления не проверяют.
+ * Пробелы и переносы строк вырезаются, чтобы значение безопасно вставлялось в строковый литерал.
+ */
+val storageCaPemB64: String = (System.getenv("STORAGE_CA_PEM_B64") ?: "")
+    .filterNot { it.isWhitespace() }
+
 val legalSourceDir = rootProject.layout.projectDirectory.dir("../Backend/Barkfluff.WebServer/html/legal")
 
 val copyLegalDocs = tasks.register<CopyLegalDocsTask>("copyLegalDocs") {
@@ -67,7 +78,6 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.barkfluff.client"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
@@ -75,10 +85,38 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        buildConfigField("String", "STORAGE_CA_PEM_B64", "\"$storageCaPemB64\"")
+
         ndk {
             // Только arm64-v8a. minSdk = 31 (Android 12, 2021+) — все такие устройства уже 64-bit ARM.
             // armeabi-v7a добавил бы ~70 МБ libsignal_jni.so без какого-либо охвата реальных пользователей.
             abiFilters += "arm64-v8a"
+        }
+    }
+
+    /**
+     * Каналы обновлений. Каждый — отдельный applicationId, поэтому сборки разных каналов
+     * ставятся на устройство рядом. Стабильный канал называется stable, а не release:
+     * имя release занято buildType, и Gradle не разрешает их совпадение.
+     * UPDATE_CHANNEL — имя канала в ClientStorage, по нему UpdateChecker выбирает,
+     * за какой веткой обновлений следить.
+     */
+    flavorDimensions += "channel"
+    productFlavors {
+        create("stable") {
+            dimension = "channel"
+            applicationId = "com.barkfluff.client"
+            buildConfigField("String", "UPDATE_CHANNEL", "\"release\"")
+        }
+        create("dev") {
+            dimension = "channel"
+            applicationId = "com.barkfluff.dev"
+            buildConfigField("String", "UPDATE_CHANNEL", "\"dev\"")
+        }
+        create("nightly") {
+            dimension = "channel"
+            applicationId = "com.barkfluff.nightly"
+            buildConfigField("String", "UPDATE_CHANNEL", "\"nightly\"")
         }
     }
 
@@ -118,6 +156,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     packaging {
         resources {

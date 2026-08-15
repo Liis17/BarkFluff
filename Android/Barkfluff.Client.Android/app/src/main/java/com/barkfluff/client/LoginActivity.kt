@@ -65,7 +65,7 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
@@ -96,14 +96,14 @@ class LoginActivity : AppCompatActivity() {
     private fun initIdentityClient() {
         val identityAddress = globalParam.socketIdentity
         if (identityAddress.isBlank()) {
-            showError("Адрес сервера авторизации не настроен")
+            showError(getString(R.string.login_identity_address_missing))
             return
         }
 
         // Для авторизации не используем interceptor, так как токена еще нет
         val result = grpcManager.createIdentityClient(identityAddress)
         if (result.isFailure) {
-            showError("Не удалось подключиться к серверу авторизации")
+            showError(getString(R.string.login_identity_connection_failed))
             Log.e(TAG, "Failed to create identity client", result.exceptionOrNull())
         }
     }
@@ -228,7 +228,7 @@ class LoginActivity : AppCompatActivity() {
 
         val otpCode = getOtpCode()
         if (otpCode.length != 6) {
-            showError("Введите 6-значный код")
+            showError(getString(R.string.login_otp_invalid_length))
             return
         }
 
@@ -321,9 +321,9 @@ class LoginActivity : AppCompatActivity() {
         isOtpMode = true
         binding.loginFieldsGroup.visibility = View.GONE
         binding.otpGroup.visibility = View.VISIBLE
-        binding.titleText.text = "Двухфакторная аутентификация"
-        binding.subtitleText.text = "Подтвердите вход"
-        binding.loginButton.text = "Подтвердить"
+        binding.titleText.setText(R.string.login_2fa_title)
+        binding.subtitleText.setText(R.string.login_2fa_message)
+        binding.loginButton.setText(R.string.btn_confirm)
 
         // Clear and focus first box
         otpBoxes.forEach { it.text?.clear() }
@@ -332,18 +332,18 @@ class LoginActivity : AppCompatActivity() {
 
     private fun validateLogin(login: String): Boolean {
         if (login.isBlank()) {
-            binding.usernameInputLayout.error = "Введите имя пользователя или email"
+            binding.usernameInputLayout.error = getString(R.string.login_empty_login)
             return false
         }
 
         if (login.contains("@")) {
             if (!EMAIL_PATTERN.matcher(login).matches()) {
-                binding.usernameInputLayout.error = "Некорректный формат email"
+                binding.usernameInputLayout.error = getString(R.string.login_invalid_email)
                 return false
             }
         } else {
             if (!USERNAME_PATTERN.matcher(login).matches()) {
-                binding.usernameInputLayout.error = "Минимум 3 символа (буквы, цифры, . и _)"
+                binding.usernameInputLayout.error = getString(R.string.login_username_too_short)
                 return false
             }
         }
@@ -354,7 +354,7 @@ class LoginActivity : AppCompatActivity() {
 
     private fun validatePassword(password: String): Boolean {
         if (password.length < MIN_PASSWORD_LENGTH) {
-            binding.passwordInputLayout.error = "Минимум $MIN_PASSWORD_LENGTH символов"
+            binding.passwordInputLayout.error = getString(R.string.login_password_too_short, MIN_PASSWORD_LENGTH)
             return false
         }
 
@@ -365,7 +365,9 @@ class LoginActivity : AppCompatActivity() {
     private fun setLoadingState(loading: Boolean) {
         isLoading = loading
         binding.loginButton.isEnabled = !loading
-        binding.loginButton.text = if (loading) "" else if (isOtpMode) "Подтвердить" else "Войти"
+        binding.loginButton.text = if (loading) "" else getString(
+            if (isOtpMode) R.string.btn_confirm else R.string.btn_login
+        )
         binding.loginProgressBar.visibility = if (loading) View.VISIBLE else View.GONE
     }
 
@@ -402,9 +404,9 @@ class LoginActivity : AppCompatActivity() {
             isOtpMode = false
             binding.loginFieldsGroup.visibility = View.VISIBLE
             binding.otpGroup.visibility = View.GONE
-            binding.titleText.text = "Добро пожаловать"
-            binding.subtitleText.text = "Войдите в свой аккаунт"
-            binding.loginButton.text = "Войти"
+            binding.titleText.setText(R.string.login_welcome_title)
+            binding.subtitleText.setText(R.string.login_account_prompt)
+            binding.loginButton.setText(R.string.btn_login)
             hideError()
         } else {
             super.onBackPressed()

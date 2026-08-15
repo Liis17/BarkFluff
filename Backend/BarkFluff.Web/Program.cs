@@ -271,7 +271,29 @@ app.Use(async (ctx, next) =>
     await originalResponseBody.FlushAsync();
 });
 
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        var path = context.Context.Request.Path.Value ?? string.Empty;
+        if (path.StartsWith("/js/app/app-", StringComparison.Ordinal) && path.EndsWith(".js", StringComparison.Ordinal))
+        {
+            context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        }
+        else if (path == "/js/app/app-manifest.json")
+        {
+            context.Context.Response.Headers.CacheControl = "no-store";
+        }
+        else
+        {
+            // Остальная статика раздаётся под фиксированными именами (proto- и vendor-бандлы,
+            // css, словари i18n). Без заголовка браузер кэширует их по эвристике и может
+            // держать старую версию часами. no-cache оставляет файл в кэше, но обязывает
+            // проверять ETag — обновление приходит с ближайшим 200, а не с ручным бампом.
+            context.Context.Response.Headers.CacheControl = "no-cache";
+        }
+    }
+});
 
 app.MapHealthChecks("/health");
 app.MapPingEndpoint();

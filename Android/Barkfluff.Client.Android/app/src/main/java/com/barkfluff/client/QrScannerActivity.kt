@@ -78,13 +78,13 @@ class QrScannerActivity : AppCompatActivity() {
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка запуска камеры", e)
-                Toast.makeText(this, "Ошибка запуска камеры", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.qr_camera_start_error, Toast.LENGTH_SHORT).show()
                 finish()
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    @androidx.camera.core.ExperimentalGetImage
+    @androidx.annotation.OptIn(markerClass = [androidx.camera.core.ExperimentalGetImage::class])
     private fun processImageProxy(
         scanner: com.google.mlkit.vision.barcode.BarcodeScanner,
         imageProxy: ImageProxy
@@ -119,7 +119,7 @@ class QrScannerActivity : AppCompatActivity() {
 
     private fun onQrDetected(fastAuthId: String) {
         binding.progressScanning.visibility = View.VISIBLE
-        binding.textScanHint.text = "Получение данных об устройстве…"
+        binding.textScanHint.text = getString(R.string.qr_device_data_loading)
 
         lifecycleScope.launch {
             val result = grpcManager.scanFastAuth(fastAuthId)
@@ -139,10 +139,10 @@ class QrScannerActivity : AppCompatActivity() {
                 startActivity(intent)
                 finish()
             } else {
-                val msg = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                val msg = result.exceptionOrNull()?.message ?: getString(R.string.unknown_error)
                 Log.e(TAG, "Ошибка scanFastAuth: $msg")
-                Toast.makeText(this@QrScannerActivity, "Ошибка: $msg", Toast.LENGTH_LONG).show()
-                binding.textScanHint.text = "Наведите камеру на QR-код"
+                Toast.makeText(this@QrScannerActivity, getString(R.string.settings_error_detail, msg), Toast.LENGTH_LONG).show()
+                binding.textScanHint.text = getString(R.string.qr_scanner_hint)
                 isProcessing.set(false)
             }
         }

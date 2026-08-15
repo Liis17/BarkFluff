@@ -8,10 +8,12 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
+import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * SplashActivity - точка входа приложения
@@ -25,6 +27,7 @@ class SplashActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "SplashActivity"
         private const val TOKEN_BUFFER_MINUTES = 5
+        private const val SERVER_INFO_REFRESH_TIMEOUT_MS = 3_000L
     }
 
     private lateinit var globalParam: GlobalParam
@@ -34,7 +37,7 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
 
         // Проверяем данные и переходим на нужный экран
         checkDataAndNavigate()
@@ -50,12 +53,22 @@ class SplashActivity : AppCompatActivity() {
                 return@launch
             }
 
+            val refreshResult = withTimeoutOrNull(SERVER_INFO_REFRESH_TIMEOUT_MS) {
+                refreshServerInfoFromBeacon(grpcManager, globalParam, applicationContext)
+            } ?: ServerInfoRefreshResult.Unavailable
+            if (
+                refreshResult == ServerInfoRefreshResult.CertificateApprovalRequired ||
+                refreshResult == ServerInfoRefreshResult.CertificateRejected
+            ) {
+                navigateToCertificateReview()
+                return@launch
+            }
+
             // Local chat cache must be reachable even when Beacon or token refresh is offline.
             if (globalParam.refreshToken != null && globalParam.socketIdentity.isNotBlank()) {
                 navigateToChats()
                 return@launch
             }
-            refreshServerInfoFromBeacon(grpcManager, globalParam)
             if (globalParam.socketIdentity.isBlank()) {
                 navigateToWelcome()
                 return@launch
@@ -247,6 +260,13 @@ class SplashActivity : AppCompatActivity() {
 
     private fun navigateToLogin() {
         val intent = Intent(this, LoginActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    private fun navigateToCertificateReview() {
+        val intent = Intent(this, SelectServerActivity::class.java)
+            .putExtra(SelectServerActivity.EXTRA_TRUST_REVIEW_ADDRESS, globalParam.socketBeacon)
         startActivity(intent)
         finish()
     }

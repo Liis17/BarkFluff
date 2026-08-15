@@ -99,7 +99,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     val result = grpcManager.reorderChatFolders(orders)
                     if (result.isFailure) {
-                        Toast.makeText(this@ChatFoldersSettingsActivity, "Не удалось изменить порядок", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ChatFoldersSettingsActivity, R.string.chat_folders_reorder_error, Toast.LENGTH_SHORT).show()
                         loadFolders()
                     }
                 }
@@ -117,7 +117,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
                 binding.emptyState.visibility = if (folders.isEmpty()) View.VISIBLE else View.GONE
             } else {
                 Log.e(TAG, "Не удалось загрузить папки", result.exceptionOrNull())
-                Toast.makeText(this@ChatFoldersSettingsActivity, "Ошибка загрузки папок", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatFoldersSettingsActivity, R.string.chat_folders_load_error, Toast.LENGTH_SHORT).show()
             }
         }
     }

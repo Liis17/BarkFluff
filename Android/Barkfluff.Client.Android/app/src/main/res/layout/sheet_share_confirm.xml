@@ -37,6 +37,8 @@
         android:layout_height="200dp"
         android:scaleType="centerCrop"
         android:background="?attr/colorSurfaceContainerHigh"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
         android:visibility="gone"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large" />
 

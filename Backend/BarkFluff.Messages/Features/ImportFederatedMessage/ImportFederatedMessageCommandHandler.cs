@@ -117,6 +117,29 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
         // Байты не реплицируются — они останутся на origin и потянутся по требованию (3.2/3.3).
         var attachments = FederatedAttachmentImporter.Import(r.Attachments);
 
+        // (4d) снапшот пересылок: те же правила доверия, битый снапшот отклоняется permanent.
+        attachments.AddRange(FederatedForwardImporter.Import(r.Forwards));
+
+        // (4e) ответ приходит межнодовым uuid — резолвим в локальный Id. Если оригинал ещё не
+        // импортирован (дыра, дотянется catch-up 2.6), сохраняем сообщение БЕЗ цитаты: потерять
+        // оформление лучше, чем задержать само сообщение до бесконечного RETRY.
+        long? replyToMessageId = null;
+        if (!string.IsNullOrEmpty(r.ReplyToFederatedMessageId))
+        {
+            if (!Guid.TryParse(r.ReplyToFederatedMessageId, out var replyToFederatedId))
+                throw new ChatIdNotValidException();
+
+            var replyTarget = await _messagesStorage.GetByFederatedIdAsync(chatId, replyToFederatedId);
+            replyToMessageId = replyTarget?.Id;
+
+            if (replyTarget is null)
+            {
+                _logger.LogDebug(
+                    "ImportFederatedMessage: оригинал {ReplyToFederatedId} ещё не импортирован в чат {ChatId} — сохраняем без цитаты",
+                    replyToFederatedId, chatId);
+            }
+        }
+
         // (5) вставка сообщения.
         var sentAt = originTs;
         var message = new Message
@@ -129,6 +152,7 @@ public class ImportFederatedMessageCommandHandler : IRequestHandler<ImportFedera
             LastChangeAt = sentAt,
             Type = MessageContentType.Generic,
             ReadBy = new List<long>(),
+            ReplyToMessageId = replyToMessageId,
             Content = new MessageContent
             {
                 Text = r.Text,

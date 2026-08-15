@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - master
+      - nightly
     paths:
       - 'Backend/BarkFluff.Web/**'
       - 'icons/**'
@@ -13,55 +14,32 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
-  request-approval:
-    name: "📲 Запрос подтверждения"
-    runs-on: ubuntu-latest
-    outputs:
-      approved: ${{ steps.result.outputs.approved }}
-    steps:
-      - name: "📲 Собрать BarkFluff.Web?"
-        id: approval
-        if: github.ref_name != 'dev'
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Web?"
-          APPROVAL_BUTTON: "\u2705 Собрать"
-          REJECT_BUTTON: "\u274C Отменить"
-          APPROVED_TEXT: "\u2705 Сборка BarkFluff.Web одобрена"
-          REJECTED_TEXT: "\u274C Сборка BarkFluff.Web отклонена"
-          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
-      - name: Результат
-        id: result
-        run: |
-          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
-            echo "approved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "approved=false" >> "$GITHUB_OUTPUT"
-          fi
-
   # ═══════════════════════════════════════════════════════════════
   #  3. dotnet publish → Docker build (Node/proto в Docker, .NET на раннере) → Push
   # ═══════════════════════════════════════════════════════════════
   build:
     name: "🐋 Сборка и публикация BarkFluff.Web"
-    needs: request-approval
-    if: needs.request-approval.outputs.approved == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+
+      - name: "\U0001F9F9 Проверка JavaScript"
+        run: |
+          npm --prefix Backend/BarkFluff.Web/scripts install --no-package-lock --ignore-scripts
+          npm --prefix Backend/BarkFluff.Web/scripts run lint
+          npm --prefix Backend/BarkFluff.Web/scripts run format:check
 
       - name: "⚙️ dotnet publish (Linux Release)"
         run: |

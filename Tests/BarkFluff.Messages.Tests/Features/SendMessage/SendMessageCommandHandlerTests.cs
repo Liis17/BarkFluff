@@ -42,6 +42,7 @@ public class SendMessageCommandHandlerTests
             _queueSender,
             TestHelper.CreateConfiguration(),
             _h.Metrics,
+            _h.CreateReplyPreviewResolver(),
             TestHelper.CreateLogger<SendMessageCommandHandler>());
     }
 
@@ -324,6 +325,7 @@ public class SendMessageCommandHandlerTests
             _queueSender,
             TestHelper.CreateConfiguration(),
             _h.Metrics,
+            _h.CreateReplyPreviewResolver(),
             TestHelper.CreateLogger<SendMessageCommandHandler>());
 
         await handler.Handle(new SendMessageCommand

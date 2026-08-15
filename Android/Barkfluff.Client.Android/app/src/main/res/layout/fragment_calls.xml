@@ -19,7 +19,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:title="Звонки"
+            android:title="@string/calls_title"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
             app:titleTextColor="?attr/colorOnSurface" />
 
@@ -46,14 +46,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checked="true"
-                    android:text="Все" />
+                    android:text="@string/calls_filter_all" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/filterMissedChip"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Пропущенные" />
+                    android:text="@string/calls_filter_missed" />
 
             </com.google.android.material.chip.ChipGroup>
         </HorizontalScrollView>

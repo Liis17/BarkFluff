@@ -114,7 +114,7 @@
     function closeForChat() {
         currentChatId = null;
         clear();
-        if (pinnedListOverlay) pinnedListOverlay.classList.remove('visible');
+        if (pinnedListOverlay) BF.utils.closeOverlay(pinnedListOverlay);
     }
 
     function isPinned(messageId) {
@@ -160,7 +160,7 @@
         if (!currentChatId) return Promise.resolve();
         return BF.api.unpinAll(currentChatId).then(function () {
             clear();
-            if (pinnedListOverlay) pinnedListOverlay.classList.remove('visible');
+            if (pinnedListOverlay) BF.utils.closeOverlay(pinnedListOverlay);
         }).catch(function (e) {
             console.error('[pinned] unpinAll failed', e);
         });
@@ -205,7 +205,7 @@
     function applyAllUnpinnedEvent(data) {
         if (!data || data.chatId !== currentChatId) return;
         clear();
-        if (pinnedListOverlay) pinnedListOverlay.classList.remove('visible');
+        if (pinnedListOverlay) BF.utils.closeOverlay(pinnedListOverlay);
     }
 
     function applyMessageDeleted(messageId) {
@@ -291,12 +291,12 @@
 
     function openListModal() {
         if (!pinnedListOverlay) return;
-        pinnedListOverlay.classList.add('visible');
+        BF.utils.openOverlay(pinnedListOverlay);
         renderList();
     }
 
     function closeListModal() {
-        if (pinnedListOverlay) pinnedListOverlay.classList.remove('visible');
+        if (pinnedListOverlay) BF.utils.closeOverlay(pinnedListOverlay);
     }
 
     function renderList() {
@@ -324,7 +324,7 @@
                     myId,
                     getUserFn,
                     showMediaOverlay,
-                    { knownMessageIds: new Set(), onReplyClick: function (id) { closeListModal(); scrollToMessageFn(id); } }
+                    { onReplyClick: function (id) { closeListModal(); scrollToMessageFn(id); } }
                 ).then(function (msgEl) {
                     var item = document.createElement('div');
                     item.className = 'pinned-list-item';

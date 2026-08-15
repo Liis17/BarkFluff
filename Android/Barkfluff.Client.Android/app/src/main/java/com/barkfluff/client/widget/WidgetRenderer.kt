@@ -21,16 +21,27 @@ import com.barkfluff.client.MainActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
 
 /**
  * Рендерит RemoteViews для App Widget'а по WidgetConfig + снимку чатов.
- * Аватары грузит синхронно через Coil → круглый Bitmap → setImageViewBitmap.
+ * Аватары грузит параллельно через Coil → круглый Bitmap → setImageViewBitmap.
+ * Каждая загрузка ограничена по времени: при отказе или таймауте вместо аватара
+ * подставляются инициалы, поэтому render всегда возвращает готовые RemoteViews.
  */
 object WidgetRenderer {
 
     private const val TAG = "WidgetRenderer"
     private const val AVATAR_SIZE_DP = 40
     private const val ROW_REQUEST_CODE_MULTIPLIER = 10
+
+    /** Лимит на один аватар. Аватары грузятся параллельно, поэтому это же и лимит на все. */
+    private const val AVATAR_TIMEOUT_MS = 3_000L
 
     private val PLACEHOLDER_COLORS = intArrayOf(
         0xFFE57373.toInt(), 0xFFFF8A65.toInt(), 0xFFFFB74D.toInt(),
@@ -79,11 +90,19 @@ object WidgetRenderer {
 
         views.setViewVisibility(R.id.widgetEmptyText, View.GONE)
 
+        // Аватары грузим все сразу: последовательная загрузка упирается в сетевые таймауты
+        // и не укладывается в бюджет обновления.
+        val avatarBitmaps = coroutineScope {
+            orderedChats
+                .map { chat -> async { loadAvatarBitmap(context, chat, grpcManager) } }
+                .awaitAll()
+        }
+
         orderedChats.forEachIndexed { index, chat ->
             val rowViews = RemoteViews(context.packageName, R.layout.widget_chat_row)
             val displayTitle = chat.title.ifBlank { context.getString(R.string.widget_default_name) }
             rowViews.setTextViewText(R.id.rowTitle, displayTitle)
-            rowViews.setTextViewText(R.id.rowPreview, buildPreview(chat))
+            rowViews.setTextViewText(R.id.rowPreview, buildPreview(context, chat))
 
             val unread = chat.countUnread
             if (unread > 0) {
@@ -94,7 +113,7 @@ object WidgetRenderer {
                 rowViews.setViewVisibility(R.id.rowBadge, View.GONE)
             }
 
-            val avatarBitmap = loadAvatarBitmap(context, chat, grpcManager)
+            val avatarBitmap = avatarBitmaps[index]
             if (avatarBitmap != null) {
                 rowViews.setImageViewBitmap(R.id.rowAvatar, avatarBitmap)
             }
@@ -110,14 +129,14 @@ object WidgetRenderer {
         return views
     }
 
-    private fun buildPreview(chat: GrpcManager.ChatData): String {
+    private fun buildPreview(context: Context, chat: GrpcManager.ChatData): String {
         val last = chat.lastMessage
         if (last != null) {
             val text = last.text
             if (text.isNotBlank()) return text
-            return "📎 Вложение"
+            return context.getString(R.string.attachment_generic)
         }
-        return "Нет сообщений"
+        return context.getString(R.string.messages_empty)
     }
 
     private suspend fun loadAvatarBitmap(
@@ -134,38 +153,46 @@ object WidgetRenderer {
             return placeholderBitmap(displayName, seedId, sizePx)
         }
 
-        var url: String? = AvatarLoader.urlCache[fileId]
-        if (url == null) {
-            url = AvatarLoader.getUrlFromCache(fileId)
-        }
-        if (url == null && grpcManager != null) {
-            url = runCatching { grpcManager.getFileDownloadUrl(fileId).getOrNull() }.getOrNull()
-            if (!url.isNullOrBlank()) {
-                AvatarLoader.urlCache[fileId] = url!!
-                AvatarLoader.putUrlInCache(fileId, url!!)
-            }
-        }
-
-        if (url.isNullOrBlank()) {
-            return placeholderBitmap(displayName, seedId, sizePx)
-        }
-
+        // Под таймаутом вся сетевая часть: и резолв ссылки через gRPC, и сама загрузка.
         return try {
-            val imageLoader = AvatarLoader.getImageLoader(context)
-            val request = ImageRequest.Builder(context)
-                .data(url)
-                .memoryCacheKey(fileId)
-                .diskCacheKey(fileId)
-                .allowHardware(false)
-                .size(sizePx)
-                .build()
-            val result = imageLoader.execute(request)
-            if (result is SuccessResult) {
-                val src = (result.drawable as? BitmapDrawable)?.bitmap
-                if (src != null) circularCrop(src, sizePx) else placeholderBitmap(displayName, seedId, sizePx)
-            } else {
-                placeholderBitmap(displayName, seedId, sizePx)
+            withTimeout(AVATAR_TIMEOUT_MS) {
+                var url: String? = AvatarLoader.urlCache[fileId]
+                if (url == null) {
+                    url = AvatarLoader.getUrlFromCache(fileId)
+                }
+                if (url == null && grpcManager != null) {
+                    url = runCatching { grpcManager.getFileDownloadUrl(fileId).getOrNull() }.getOrNull()
+                    if (!url.isNullOrBlank()) {
+                        AvatarLoader.urlCache[fileId] = url!!
+                        AvatarLoader.putUrlInCache(fileId, url!!)
+                    }
+                }
+
+                if (url.isNullOrBlank()) {
+                    return@withTimeout placeholderBitmap(displayName, seedId, sizePx)
+                }
+
+                val imageLoader = AvatarLoader.getImageLoader(context)
+                val request = ImageRequest.Builder(context)
+                    .data(url)
+                    .memoryCacheKey(fileId)
+                    .diskCacheKey(fileId)
+                    .allowHardware(false)
+                    .size(sizePx)
+                    .build()
+                val result = imageLoader.execute(request)
+                if (result is SuccessResult) {
+                    val src = (result.drawable as? BitmapDrawable)?.bitmap
+                    if (src != null) circularCrop(src, sizePx) else placeholderBitmap(displayName, seedId, sizePx)
+                } else {
+                    placeholderBitmap(displayName, seedId, sizePx)
+                }
             }
+        } catch (e: TimeoutCancellationException) {
+            Log.w(TAG, "Avatar load timed out (${AVATAR_TIMEOUT_MS}ms) for chat=${chat.id}")
+            placeholderBitmap(displayName, seedId, sizePx)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Failed to load avatar for chat=${chat.id}", e)
             placeholderBitmap(displayName, seedId, sizePx)

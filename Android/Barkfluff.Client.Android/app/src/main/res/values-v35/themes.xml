@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 15+ specific edge-to-edge enforcement -->
+    <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">false</item>
+    </style>
+</resources>

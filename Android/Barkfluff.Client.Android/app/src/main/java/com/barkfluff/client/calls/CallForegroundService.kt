@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import com.barkfluff.client.R
 import com.barkfluff.client.notifications.NotificationHelper
 
 class CallForegroundService : Service() {
@@ -31,7 +32,9 @@ class CallForegroundService : Service() {
             return
         }
 
-        val title = intent.getStringExtra(CallExtras.EXTRA_CALLER_NAME).orEmpty().ifBlank { "Звонок" }
+        val title = intent.getStringExtra(CallExtras.EXTRA_CALLER_NAME).orEmpty().ifBlank {
+            getString(R.string.call_title_default)
+        }
         val mediaType = intent.getStringExtra(CallExtras.EXTRA_MEDIA_TYPE).orEmpty()
         val livekitUrl = intent.getStringExtra(CallExtras.EXTRA_LIVEKIT_URL).orEmpty()
         val accessToken = intent.getStringExtra(CallExtras.EXTRA_ACCESS_TOKEN).orEmpty()

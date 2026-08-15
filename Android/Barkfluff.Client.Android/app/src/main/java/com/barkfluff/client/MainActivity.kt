@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.animation.ValueAnimator
 import android.content.Intent
@@ -227,7 +228,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val searchResult = grpcManager.searchUsers(username, size = 20)
             if (searchResult.isFailure) {
-                Toast.makeText(this@MainActivity, "Ошибка поиска пользователя", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, R.string.main_user_search_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
@@ -235,18 +236,19 @@ class MainActivity : AppCompatActivity() {
             val user = users.find { it.username.equals(username, ignoreCase = true) }
 
             if (user == null) {
-                Toast.makeText(this@MainActivity, "Пользователь @$username не найден", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, getString(R.string.deep_link_user_not_found, username), Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
             val chatResult = grpcManager.getPersonChatId(user.userId)
             if (chatResult.isFailure) {
-                Toast.makeText(this@MainActivity, "Не удалось открыть чат", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, R.string.deep_link_chat_open_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
             val chatId = chatResult.getOrNull()!!
-            val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+            val displayName = getString(R.string.register_full_name_format, user.firstName, user.lastName)
+                .trim().ifBlank { user.username }
             val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }.ifBlank { null }
 
             OpenChatManager.setOpenChat(chatId)
@@ -639,15 +641,16 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    @SuppressLint("MissingSuperCall")
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Выход из приложения")
-            .setMessage("Вы действительно хотите выйти?")
-            .setPositiveButton("Выйти") { _, _ ->
+            .setTitle(R.string.logout_dialog_title)
+            .setMessage(R.string.logout_dialog_message)
+            .setPositiveButton(R.string.logout_dialog_confirm) { _, _ ->
                 finishAffinity()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 }

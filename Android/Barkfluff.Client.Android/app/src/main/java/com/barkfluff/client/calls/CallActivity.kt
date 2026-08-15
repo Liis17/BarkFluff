@@ -103,7 +103,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         if (initialGranted) {
             connectToLiveKit()
         } else {
-            statusText.text = "Разрешите микрофон и камеру, чтобы начать звонок"
+            statusText.text = getString(R.string.call_permission_required)
         }
     }
 
@@ -122,7 +122,9 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
                         screenShareEnabled = true
                     )
                 }
-                .onFailure { Toast.makeText(this@CallActivity, "Не удалось включить демонстрацию", Toast.LENGTH_SHORT).show() }
+                .onFailure {
+                    Toast.makeText(this@CallActivity, R.string.call_screen_share_enable_failed, Toast.LENGTH_SHORT).show()
+                }
         }
     }
 
@@ -133,7 +135,9 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         livekitUrl = intent.getStringExtra(CallExtras.EXTRA_LIVEKIT_URL).orEmpty().ifBlank { GlobalParam(this).livekitUrl }
         accessToken = intent.getStringExtra(CallExtras.EXTRA_ACCESS_TOKEN).orEmpty()
         mediaType = intent.getStringExtra(CallExtras.EXTRA_MEDIA_TYPE).orEmpty()
-        callTitle = intent.getStringExtra(CallExtras.EXTRA_CALLER_NAME).orEmpty().ifBlank { "Звонок" }
+        callTitle = intent.getStringExtra(CallExtras.EXTRA_CALLER_NAME).orEmpty().ifBlank {
+            getString(R.string.call_title_default)
+        }
         desiredCameraEnabled = isVideoCall()
 
         if (callId.isBlank()) {
@@ -150,7 +154,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         observeCallEvents()
 
         if (livekitUrl.isBlank() || accessToken.isBlank()) {
-            statusText.text = "Нет данных для подключения к LiveKit"
+            statusText.text = getString(R.string.call_connection_data_missing)
             return
         }
 
@@ -179,7 +183,9 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         )
 
         callTitleText.text = callTitle
-        statusText.text = if (isVideoCall()) "Подключение видеозвонка..." else "Подключение аудиозвонка..."
+        statusText.text = getString(
+            if (isVideoCall()) R.string.call_connecting_video else R.string.call_connecting_audio
+        )
         statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
 
         // Закруглённое стеклянное мини-окно «Вы»
@@ -227,11 +233,11 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun buildControls() {
         controlBar.removeAllViews()
-        micButton = addControl(R.drawable.ic_mic, "Микро") { toggleMicrophone() }
-        cameraButton = addControl(R.drawable.ic_video, "Камера") { toggleCamera() }
-        addControl(R.drawable.ic_call_end, "Завершить", big = true) { endCallAndClose() }
-        screenButton = addControl(R.drawable.ic_screen_share, "Экран") { startScreenShare() }
-        addControl(R.drawable.ic_more_vert, "Ещё") { showMoreSheet() }
+        micButton = addControl(R.drawable.ic_mic, getString(R.string.call_control_microphone)) { toggleMicrophone() }
+        cameraButton = addControl(R.drawable.ic_video, getString(R.string.call_control_camera)) { toggleCamera() }
+        addControl(R.drawable.ic_call_end, getString(R.string.call_control_end), big = true) { endCallAndClose() }
+        screenButton = addControl(R.drawable.ic_screen_share, getString(R.string.call_control_screen_share)) { startScreenShare() }
+        addControl(R.drawable.ic_more_vert, getString(R.string.call_control_more)) { showMoreSheet() }
     }
 
     private fun addControl(icon: Int, label: String, big: Boolean = false, onClick: () -> Unit): ImageView {
@@ -302,7 +308,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         CallForegroundService.stop(this)
         NotificationHelper.dismissCall(this, callId)
         CallTelecomRegistry.disconnect(callId, DisconnectCause.REMOTE)
-        statusText.text = "Звонок завершён"
+        statusText.text = getString(R.string.call_ended)
         finish()
     }
 
@@ -314,7 +320,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
                 screenShareEnabled = false
             )
             if (!connectOnce()) {
-                scheduleLiveKitReconnect("Не удалось подключиться к звонку")
+                scheduleLiveKitReconnect(getString(R.string.call_connection_failed))
             }
         }
     }
@@ -331,8 +337,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }.onFailure {
             Log.e(TAG, "connectToLiveKit failed: callEnded=$callEnded, finishing=$isFinishing", it)
             if (!callEnded && !isFinishing) {
-                statusText.text = "Не удалось подключиться к звонку"
-                Toast.makeText(this@CallActivity, "Ошибка подключения к LiveKit", Toast.LENGTH_SHORT).show()
+                statusText.text = getString(R.string.call_connection_failed)
+                Toast.makeText(this@CallActivity, R.string.call_livekit_connection_error, Toast.LENGTH_SHORT).show()
             }
         }.isSuccess
     }
@@ -362,7 +368,12 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             while (!callEnded && !isFinishing && reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempt++
                 val delayMs = reconnectDelayMs(reconnectAttempt)
-                statusText.text = "$reason. Повторная попытка $reconnectAttempt/$MAX_RECONNECT_ATTEMPTS..."
+                statusText.text = getString(
+                    R.string.call_reconnect_attempt,
+                    reason,
+                    reconnectAttempt,
+                    MAX_RECONNECT_ATTEMPTS
+                )
                 delay(delayMs)
 
                 if (!refreshLiveKitCredentialsForReconnect()) {
@@ -377,7 +388,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
             if (!callEnded && !isFinishing) {
                 statusDot.background.mutate().setTint(resolveColor(androidx.appcompat.R.attr.colorError))
-                statusText.text = "Не удалось восстановить соединение"
+                statusText.text = getString(R.string.call_reconnect_failed)
             }
         }
     }
@@ -550,20 +561,25 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         val uid = participant.identity.toLongOrNull() ?: 0L
         if (participant.isLocal) {
-            val info = TileInfo("Вы", null, uid, AvatarLoader.colorForUser(uid))
+            val info = TileInfo(getString(R.string.current_user), null, uid, AvatarLoader.colorForUser(uid))
             infoCache[participant.identity] = info
             return info
         }
 
         val livekitName = participant.name.takeIf { it.isNotBlank() && it != participant.identity }
-        val placeholder = TileInfo(livekitName ?: "Участник", null, uid, AvatarLoader.colorForUser(uid))
+        val placeholder = TileInfo(
+            livekitName ?: getString(R.string.call_participant_default),
+            null,
+            uid,
+            AvatarLoader.colorForUser(uid)
+        )
 
         if (uid > 0L && resolving.add(participant.identity)) {
             lifecycleScope.launch {
                 val user = (application as BarkFluffApplication).grpcManager.getUserData(uid).getOrNull()
                 if (user != null) {
                     val name = "${user.firstName} ${user.lastName}".trim()
-                        .ifBlank { user.username }.ifBlank { "Участник" }
+                        .ifBlank { user.username }.ifBlank { getString(R.string.call_participant_default) }
                     val url = user.profilePicturePreviewUrl.ifBlank { user.profilePictureUrl }.ifBlank { null }
                     infoCache[participant.identity] = TileInfo(name, url, uid, AvatarLoader.colorForUser(uid))
                     renderTiles(lastParticipants)
@@ -589,13 +605,15 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         micButton.setImageResource(if (micOn) R.drawable.ic_mic else R.drawable.ic_mic_off)
         applyButtonState(micButton, active = !micOn)
-        micButton.contentDescription = if (micOn) "Выключить микрофон" else "Включить микрофон"
+        micButton.contentDescription = getString(if (micOn) R.string.call_mic_disable else R.string.call_mic_enable)
 
         applyButtonState(cameraButton, active = cameraOn)
-        cameraButton.contentDescription = if (cameraOn) "Выключить камеру" else "Включить камеру"
+        cameraButton.contentDescription = getString(if (cameraOn) R.string.call_camera_disable else R.string.call_camera_enable)
 
         applyButtonState(screenButton, active = screenOn)
-        screenButton.contentDescription = if (screenOn) "Выключить демонстрацию экрана" else "Демонстрация экрана"
+        screenButton.contentDescription = getString(
+            if (screenOn) R.string.call_screen_share_disable else R.string.call_screen_share_enable
+        )
 
         if (cameraOn != lastForegroundCamera || screenOn != lastForegroundScreen) {
             lastForegroundCamera = cameraOn
@@ -641,13 +659,15 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             val enabled = !(lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled ?: false)
             desiredCameraEnabled = enabled
             callEngine.setCameraEnabled(enabled)
-                .onFailure { Toast.makeText(this@CallActivity, "Не удалось переключить камеру", Toast.LENGTH_SHORT).show() }
+                .onFailure {
+                    Toast.makeText(this@CallActivity, R.string.call_camera_toggle_failed, Toast.LENGTH_SHORT).show()
+                }
         }
     }
 
     private fun flipCamera() {
         callEngine.flipCamera()
-            .onFailure { Toast.makeText(this, "Не удалось перевернуть камеру", Toast.LENGTH_SHORT).show() }
+            .onFailure { Toast.makeText(this, R.string.call_camera_flip_failed, Toast.LENGTH_SHORT).show() }
     }
 
     private fun startScreenShare() {
@@ -661,7 +681,9 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
                             screenShareEnabled = false
                         )
                     }
-                    .onFailure { Toast.makeText(this@CallActivity, "Не удалось выключить демонстрацию", Toast.LENGTH_SHORT).show() }
+                    .onFailure {
+                        Toast.makeText(this@CallActivity, R.string.call_screen_share_disable_failed, Toast.LENGTH_SHORT).show()
+                    }
             }
             return
         }
@@ -671,19 +693,19 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun showMoreSheet() {
         val dialog = BottomSheetDialog(this)
-        val content = sheetContainer("Дополнительно").apply {
+        val content = sheetContainer(getString(R.string.call_more_title)).apply {
             if (lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled == true) {
-                addView(sheetButton("Перевернуть камеру", R.drawable.ic_camera) {
+                addView(sheetButton(getString(R.string.call_flip_camera), R.drawable.ic_camera) {
                     dialog.dismiss(); flipCamera()
                 })
             }
-            addView(sheetButton("Маршрут звука", R.drawable.ic_tune) {
+            addView(sheetButton(getString(R.string.call_audio_route), R.drawable.ic_tune) {
                 dialog.dismiss(); showAudioRouteSheet()
             })
-            addView(sheetButton("Качество голоса", R.drawable.ic_tune) {
+            addView(sheetButton(getString(R.string.call_voice_quality), R.drawable.ic_tune) {
                 dialog.dismiss(); showAudioQualitySheet()
             })
-            addView(sheetButton("Качество видео собеседника", R.drawable.ic_tune) {
+            addView(sheetButton(getString(R.string.call_remote_video_quality), R.drawable.ic_tune) {
                 dialog.dismiss(); showVideoQualitySheet()
             })
         }
@@ -694,11 +716,11 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private fun showAudioRouteSheet() {
         val devices = callEngine.availableAudioDevices()
         if (devices.isEmpty()) {
-            Toast.makeText(this, "Нет доступных аудиоустройств", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_no_audio_devices, Toast.LENGTH_SHORT).show()
             return
         }
         val dialog = BottomSheetDialog(this)
-        val content = sheetContainer("Маршрут звука").apply {
+        val content = sheetContainer(getString(R.string.call_audio_route)).apply {
             devices.forEach { device ->
                 addView(sheetButton(audioDeviceLabel(device), R.drawable.ic_tune) {
                     dialog.dismiss()
@@ -712,7 +734,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun showAudioQualitySheet() {
         val dialog = BottomSheetDialog(this)
-        val content = sheetContainer("Качество голоса").apply {
+        val content = sheetContainer(getString(R.string.call_voice_quality)).apply {
             audioQualityOptions().forEach { (title, quality) ->
                 addView(sheetButton(title, R.drawable.ic_tune) {
                     dialog.dismiss()
@@ -726,7 +748,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun showVideoQualitySheet() {
         val dialog = BottomSheetDialog(this)
-        val content = sheetContainer("Качество видео собеседника").apply {
+        val content = sheetContainer(getString(R.string.call_remote_video_quality)).apply {
             videoQualityOptions().forEach { (title, quality) ->
                 addView(sheetButton(title, R.drawable.ic_tune) {
                     dialog.dismiss()
@@ -742,19 +764,19 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         lifecycleScope.launch {
             if (!ensureCallsClient()) return@launch
             (application as BarkFluffApplication).callRepository.setAudioQuality(callId, quality)
-                .onSuccess { Toast.makeText(this@CallActivity, "Качество звонка обновлено", Toast.LENGTH_SHORT).show() }
-                .onFailure { Toast.makeText(this@CallActivity, "Не удалось изменить качество", Toast.LENGTH_SHORT).show() }
+                .onSuccess { Toast.makeText(this@CallActivity, R.string.call_quality_updated, Toast.LENGTH_SHORT).show() }
+                .onFailure { Toast.makeText(this@CallActivity, R.string.call_quality_change_failed, Toast.LENGTH_SHORT).show() }
         }
     }
 
     private fun setRemoteVideoQuality(quality: VideoQuality) {
         val remotes = lastParticipants.filterNot { it.isLocal }
         if (remotes.isEmpty()) {
-            Toast.makeText(this, "Нет удалённых участников", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_no_remote_participants, Toast.LENGTH_SHORT).show()
             return
         }
         remotes.forEach { callEngine.setRemoteVideoQuality(it.identity, quality) }
-        Toast.makeText(this, "Качество видео обновлено", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.call_video_quality_updated, Toast.LENGTH_SHORT).show()
     }
 
     private fun endCallAndClose() {
@@ -785,7 +807,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onConnecting() {
-        statusText.text = "Соединение..."
+        statusText.text = getString(R.string.connecting)
     }
 
     override fun onConnected(cameraEnabled: Boolean) {
@@ -802,22 +824,23 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     override fun onReconnecting() {
         stopCallTimer()
-        statusText.text = "Восстанавливаем соединение..."
+        statusText.text = getString(R.string.call_status_reconnecting)
     }
 
     override fun onDisconnected() {
         if (!callEnded && !isFinishing) {
             stopCallTimer()
             statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
-            scheduleLiveKitReconnect("Соединение потеряно")
+            scheduleLiveKitReconnect(getString(R.string.call_status_connection_lost))
             return
         }
         stopCallTimer()
         statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
-        statusText.text = "Звонок завершён"
+        statusText.text = getString(R.string.call_ended)
     }
 
-    override fun onError(message: String) {
+    override fun onError() {
+        val message = getString(R.string.call_connection_failed)
         if (!callEnded && !isFinishing) {
             stopCallTimer()
             statusText.text = message
@@ -849,11 +872,15 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun renderCallDuration() {
         if (callStartedAtMs == 0L) {
-            statusText.text = "В разговоре"
+            statusText.text = getString(R.string.call_status_in_call)
             return
         }
         val elapsedSeconds = ((System.currentTimeMillis() - callStartedAtMs) / 1_000L).coerceAtLeast(0L)
-        statusText.text = "В разговоре · ${formatDuration(elapsedSeconds)}"
+        statusText.text = getString(
+            R.string.call_status_in_call_duration,
+            getString(R.string.call_status_in_call),
+            formatDuration(elapsedSeconds)
+        )
     }
 
     private fun formatDuration(totalSeconds: Long): String {
@@ -927,23 +954,26 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }
 
     private fun audioDeviceLabel(device: AudioDevice): String = when (device) {
-        is AudioDevice.Speakerphone -> "Динамик"
-        is AudioDevice.Earpiece -> "Телефон"
-        is AudioDevice.WiredHeadset -> "Проводная гарнитура"
-        is AudioDevice.BluetoothHeadset -> device.name.ifBlank { "Bluetooth-гарнитура" }
+        is AudioDevice.Speakerphone -> getString(R.string.call_audio_device_speaker)
+        is AudioDevice.Earpiece -> getString(R.string.call_audio_device_phone)
+        is AudioDevice.WiredHeadset -> getString(R.string.call_audio_device_wired)
+        is AudioDevice.BluetoothHeadset -> device.name
+            .takeIf { it.isNotBlank() }
+            ?.let { getString(R.string.call_audio_device_bluetooth, it) }
+            ?: getString(R.string.call_audio_device_bluetooth_default)
     }
 
     private fun audioQualityOptions(): List<Pair<String, CallsApiOuterClass.CallAudioQuality>> = listOf(
-        "Авто" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_AUTO,
-        "Низкое" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_LOW,
-        "Среднее" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_MEDIUM,
-        "Высокое" to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_HIGH
+        getString(R.string.call_quality_auto) to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_AUTO,
+        getString(R.string.call_quality_low) to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_LOW,
+        getString(R.string.call_quality_medium) to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_MEDIUM,
+        getString(R.string.call_quality_high) to CallsApiOuterClass.CallAudioQuality.CALL_AUDIO_QUALITY_HIGH
     )
 
     private fun videoQualityOptions(): List<Pair<String, VideoQuality>> = listOf(
-        "Низкое" to VideoQuality.LOW,
-        "Среднее" to VideoQuality.MEDIUM,
-        "Высокое" to VideoQuality.HIGH
+        getString(R.string.call_quality_low) to VideoQuality.LOW,
+        getString(R.string.call_quality_medium) to VideoQuality.MEDIUM,
+        getString(R.string.call_quality_high) to VideoQuality.HIGH
     )
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

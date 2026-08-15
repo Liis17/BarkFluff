@@ -27,6 +27,7 @@ public class ListMessagesCommandHandlerTests
             _h.MessagesStorage,
             _h.FederatedReadStatesStorage,
             _filesClient.Object,
+            _h.CreateReplyPreviewResolver(),
             TestHelper.CreateLogger<ListMessagesCommandHandler>());
     }
 

@@ -105,6 +105,22 @@ public class ClientStorageController : ControllerBase
     public Task<IActionResult> GetIOSChannelVersion(string channel)
         => ParseChannelAndGetVersion(ClientType.iOS, channel);
 
+    [HttpGet("/get/barkfluffwinui")]
+    public Task<IActionResult> GetWinUI()
+        => DownloadClient(ClientType.WinUI, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffwinui/version")]
+    public Task<IActionResult> GetWinUIVersion()
+        => GetVersion(ClientType.WinUI, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffwinui/{channel}")]
+    public Task<IActionResult> GetWinUIChannel(string channel)
+        => ParseChannelAndDownload(ClientType.WinUI, channel);
+
+    [HttpGet("/get/barkfluffwinui/{channel}/version")]
+    public Task<IActionResult> GetWinUIChannelVersion(string channel)
+        => ParseChannelAndGetVersion(ClientType.WinUI, channel);
+
     [HttpPost("/set/barkfluffwindows")]
     [RequestSizeLimit(512L * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 512L * 1024 * 1024)]
@@ -153,6 +169,18 @@ public class ClientStorageController : ControllerBase
     public Task<IActionResult> SetIOSChannel(IFormFile file, string channel)
         => ParseChannelAndUpload(file, ClientType.iOS, channel);
 
+    [HttpPost("/set/barkfluffwinui")]
+    [RequestSizeLimit(512L * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 512L * 1024 * 1024)]
+    public Task<IActionResult> SetWinUI(IFormFile file)
+        => UploadClient(file, ClientType.WinUI, ReleaseChannel.Release);
+
+    [HttpPost("/set/barkfluffwinui/{channel}")]
+    [RequestSizeLimit(512L * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 512L * 1024 * 1024)]
+    public Task<IActionResult> SetWinUIChannel(IFormFile file, string channel)
+        => ParseChannelAndUpload(file, ClientType.WinUI, channel);
+
     // --- Helpers ---
 
     private bool TryParseChannel(string channel, out ReleaseChannel releaseChannel)
@@ -161,7 +189,9 @@ public class ClientStorageController : ControllerBase
         {
             case "release": releaseChannel = ReleaseChannel.Release; return true;
             case "beta":    releaseChannel = ReleaseChannel.Beta;    return true;
-            default:        releaseChannel = default;                return false;
+            case "dev":     releaseChannel = ReleaseChannel.Dev;     return true;
+            case "nightly": releaseChannel = ReleaseChannel.Nightly; return true;
+            default:         releaseChannel = default;                return false;
         }
     }
 
@@ -173,9 +203,17 @@ public class ClientStorageController : ControllerBase
             ClientType.Kotlin  => "kotlin",
             ClientType.MacOS   => "macos",
             ClientType.iOS     => "ios",
+            ClientType.WinUI   => "winui",
             _                  => throw new ArgumentOutOfRangeException(nameof(clientType))
         };
-        var ch = channel == ReleaseChannel.Release ? "release" : "beta";
+        var ch = channel switch
+        {
+            ReleaseChannel.Release => "release",
+            ReleaseChannel.Beta    => "beta",
+            ReleaseChannel.Dev     => "dev",
+            ReleaseChannel.Nightly => "nightly",
+            _                      => throw new ArgumentOutOfRangeException(nameof(channel))
+        };
         return $"/get/barkfluff{slug}/{ch}";
     }
 
@@ -193,28 +231,28 @@ public class ClientStorageController : ControllerBase
     private Task<IActionResult> ParseChannelAndDownload(ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
-            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta, dev, nightly" }));
         return DownloadClient(clientType, rc);
     }
 
     private Task<IActionResult> ParseChannelAndGetVersion(ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
-            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta, dev, nightly" }));
         return GetVersion(clientType, rc);
     }
 
     private Task<IActionResult> ParseChannelAndUpload(IFormFile file, ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
-            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta, dev, nightly" }));
         return UploadClient(file, clientType, rc);
     }
 
     private Task<IActionResult> ParseChannelAndGetBitsUrl(ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
-            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta, dev, nightly" }));
         return GetBitsUrl(clientType, rc);
     }
 

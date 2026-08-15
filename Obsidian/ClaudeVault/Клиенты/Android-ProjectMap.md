@@ -259,6 +259,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - Загрузка сообщений с **пагинацией** (подгрузка вверх/вниз по scroll)
 - Поддержка типов вложений: изображения, видео, аудио, документы, стикеры
 - **Inline sticker panel** (переключение keyboard ↔ стикер-панель с анимацией, KeyboardHeightTracker)
+- **Поле ввода**: `inputBar` имеет динамическую высоту (`wrap_content`, максимум 8 строк у `messageEditText`), поэтому многострочный текст растит панель вверх; нижний padding `messagesRecyclerView` обновляется по фактической высоте. Кнопка отправки — 52dp в режиме микрофона и 68dp pill в режиме отправки.
 - Отправка файлов через `ImagePickerBottomSheet` (галерея, камера, файлы)
 - Кроп изображений через uCrop
 - Clipboard paste (вставка изображений из буфера)
@@ -266,7 +267,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - Read receipts (при входе в чат отмечает сообщения прочитанными)
 - Профиль чата открывается как отдельный экран **`UserProfileActivity`** (кнопка назад), больше НЕ диалог
 - Контекстное меню сообщения (copy, save, forward)
-- **Фон чата**: загружает по `GlobalParam.chatBackgroundFileId` из `FileCache` или Files API. На API 31+ blur через `RenderEffect`, на API 26–30 через `ScriptIntrinsicBlur` (deprecated). Фон кешируется в `FileCache`.
+- **Фон чата**: загружает по `GlobalParam.chatBackgroundFileId` из `FileCache` или Files API. На API 31+ blur через `RenderEffect`, на API 26–30 через `ScriptIntrinsicBlur` (deprecated). `chatHeaderBlurImage` — отдельная blur-копия, обрезанная до высоты шапки; `chatDimOverlay` находится поверх обеих копий фона. Корневой layout edge-to-edge, системные inset’ы вручную применяются к контенту. Фон кешируется в `FileCache`.
 - **Закругление пузырей**: передаёт `GlobalParam.chatMessageCornerRadius` в `MessageAdapter`
 
 Хранит состояние:
@@ -423,9 +424,9 @@ Toggle уведомлений, настройки каналов Android.
 
 Экран обновления приложения. Показывает текущую версию, changelog. Запускает скачивание APK.
 
-Скачивает APK через `DownloadManager` в `Environment.DIRECTORY_DOWNLOADS/barkfluff_{channel}_update.apk`, перед установкой копирует во внутренний `cacheDir/update_pending.apk` и запускает `Intent.ACTION_VIEW` через FileProvider. Перед стартом установки сохраняет путь к APK и `downloadId` в GlobalParam (`pendingUpdateApkPath`, `pendingUpdateDownloadId`) — чтобы BarkFluffApplication на следующем старте удалил файл, его копию из `cacheDir` и запись из БД `DownloadManager`.
+Скачивает APK сам, через OkHttp, стримом в `cacheDir/update_pending.apk` с прогрессом по `Content-Length` (при его отсутствии — indeterminate), затем запускает `Intent.ACTION_VIEW` через FileProvider. Системный `DownloadManager` не используется намеренно: он работает в отдельном системном процессе, в него нельзя подставить `SSLSocketFactory`, поэтому CA сервера обновлений (см. [[Android#Система обновлений и её TLS]]) для него недоступен и TLS-рукопожатие с `storage.barkfluff.com` не проходит. Чистить APK отдельно не нужно — `BarkFluffApplication.cleanupPendingUpdate()` удаляет `cacheDir/update_pending.apk` при следующем старте.
 
-**Связи:** `UpdateChecker`, `AppVersionUtil`, `GlobalParam`, `BarkFluffApplication`
+**Связи:** `UpdateChecker`, `UpdateServerTls`, `AppVersionUtil`, `GlobalParam`, `BarkFluffApplication`
 
 ---
 
@@ -816,6 +817,16 @@ In-memory LRU кэш битмапов (используется как допо�
 ### `utils/UpdateChecker.kt`
 
 Проверяет наличие обновлений (запрос к серверу/GitHub). Возвращает `Boolean`. Используется в `MainActivity` и `ProfileFragment`.
+
+`HttpURLConnection` к `storage.barkfluff.com`; перед запросом на соединение ставится `sslSocketFactory` из `UpdateServerTls` — иначе приватный CA сервера обновлений не проходит проверку.
+
+---
+
+### `utils/UpdateServerTls.kt`
+
+Разворачивает CA сервера обновлений из base64-строки `BuildConfig.STORAGE_CA_PEM_B64` в `SSLSocketFactory` + `X509TrustManager` (lazy, один раз на процесс). Пустая строка (локальная сборка без переменной окружения) → `trust == null`, вызывающий код работает на системном хранилище.
+
+**Связи:** `UpdateChecker`, `UpdateActivity`
 
 ---
 

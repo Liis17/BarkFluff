@@ -54,8 +54,11 @@ dotnet build BarkFluff.Proto.csproj
 - `MessageReadEvent.new_read_by` — **полный** список прочитавших, не только новых
 - `UploadFileType` — отдельный enum от `MessageAttachmentType`, маппировать при отправке сообщений
 - `GetUserByUsernameResponse.profile_poster_url` (field 7) — URL постера профиля (пусто если не задан); заполняется в Users через Files gRPC
-- `MessageAttachment.forwarded_message` (field 10) — `ForwardedMessageAttachment`: `author_name`, `original_message_id`, `text`, `repeated attachments` (без FORWARDED_MESSAGE). Заполняется только при `type = FORWARDED_MESSAGE`
-- `OutgoingMessage.forwarded_message_id` (field 3) — ID пересылаемого сообщения; 0 = не пересылка
+- `MessageAttachment.forwarded_message` (field 10) — `ForwardedMessageAttachment`: `author_name`, `original_message_id`, `text`, `repeated attachments` (без FORWARDED_MESSAGE), плюс `original_chat_id` (5), `original_sender_id` (6), `original_sent_at` (7), `order` (8). Заполняется только при `type = FORWARDED_MESSAGE`; поля 5–8 пусты у снапшотов, созданных до разделения reply/forward
+- `Message.reply_to` (field 12) — `ReplyInfo`: `message_id`, `sender_id`, `sender_name`, `text_preview` (≤200 символов), `first_attachment_type`, `is_deleted`, `federated_message_id`. Заполнено => сообщение является ответом. **Не снапшот**: сервер резолвит его из живого оригинала при каждой выдаче
+- `OutgoingMessage.reply_to_message_id` (field 4) — ответ; только на сообщение того же чата
+- `OutgoingMessage.forwarded_message_ids` (field 5) — пересылка до 20 сообщений, порядок сохраняется
+- `OutgoingMessage.forwarded_message_id` (field 3) — **DEPRECATED**: до разделения reply/forward им отправлялись оба действия. Оставлено рабочим для необновлённых клиентов (iOS, macOS, ClientV2.WPF, Linux) и трактуется как пересылка. Смешивать с полями 4/5 нельзя → InvalidArgument
 - `MessageAttachmentType.FORWARDED_MESSAGE = 8` — пересланное сообщение; исключается из медиа-галереи `ListChatAttachments` при пустом фильтре
 - `MessageAttachment.image_width` (field 8) и `image_height` (field 9) — размеры изображения в пикселях; 0 если вложение не является изображением. Используются Android-клиентом для вычисления соотношения сторон ячейки **до** загрузки картинки, чтобы облачко сообщения не меняло размер.
 - `UploadFileInfo.image_width` (field 12) и `image_height` (field 13) — аналогичные поля в данных о загруженном файле (в `files_api.proto`).

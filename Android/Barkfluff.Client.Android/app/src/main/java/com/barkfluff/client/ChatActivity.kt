@@ -11,16 +11,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Typeface
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.PathInterpolator
+import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
@@ -130,6 +134,19 @@ class ChatActivity : AppCompatActivity() {
     private var lastStatusText: CharSequence? = null
     private var lastIndicatorVisible = false
 
+    // Сжатие шапки при прокрутке в историю сообщений
+    private var headerCompact = false
+    private var statusExpandedHeight = 0
+    private var headerNameAnimator: ValueAnimator? = null
+    private var headerStatusAnimator: ValueAnimator? = null
+
+    // Морфинг кнопки отправки (круг с микрофоном ↔ pill со стрелкой)
+    private val sendButtonBackground = android.graphics.drawable.GradientDrawable().apply {
+        shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+    }
+    private var sendButtonMorphAnimator: ValueAnimator? = null
+    private var sendButtonWide: Boolean? = null
+
     // Пагинация сообщений
     private var isLoadingMessages = false
     private var hasMoreMessagesUp = true
@@ -155,6 +172,8 @@ class ChatActivity : AppCompatActivity() {
     private var voiceRecordingStartedAtMs = 0L
     private var voiceDownRawX = 0f
     private var voiceCancelPending = false
+    private var voiceTimerJob: Job? = null
+    private var voiceDotAnimator: ValueAnimator? = null
 
     // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
     // 0 = нет активного ответа.
@@ -220,6 +239,21 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
         private const val MIN_VOICE_RECORDING_MS = 500L
+        private const val VOICE_BAR_FADE_DURATION_MS = 160L
+        private const val VOICE_DOT_BLINK_DURATION_MS = 700L
+        private const val VOICE_TIMER_TICK_MS = 200L
+        /** Доля смещения пальца, на которую уезжает подсказка отмены. */
+        private const val VOICE_HINT_DRAG_RATIO = 0.35f
+        private const val HEADER_MORPH_DURATION_MS = 280L
+        private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
+        private const val SEND_BUTTON_NARROW_DP = 52f
+        private const val SEND_BUTTON_WIDE_DP = 68f
+        private const val SEND_BUTTON_NARROW_CORNER_DP = 26f
+        private const val SEND_BUTTON_WIDE_CORNER_DP = 18f
+        private const val HEADER_SHADOW_DURATION_MS = 250L
+        private const val HEADER_SHADOW_ELEVATION_DP = 4f
+        /** Минимальный шаг прокрутки, меняющий состояние шапки. */
+        private const val HEADER_SCROLL_THRESHOLD_DP = 6
 
         // Тип чата, отображаемого в этом Activity.
         const val KIND_REGULAR = 0
@@ -378,11 +412,11 @@ class ChatActivity : AppCompatActivity() {
             KIND_SECRET -> {
                 val chat = app.secretChatRepository.getChat(chatId)
                 if (chat == null) {
-                    Toast.makeText(this, "Секретный чат не найден", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, R.string.secret_chat_not_found, Toast.LENGTH_LONG).show()
                     finish()
                     return
                 }
-                binding.chatNameTextView.text = "Секретный чат · ${chat.peerUserId}"
+                binding.chatNameTextView.text = getString(R.string.secret_chat_title, chat.peerUserId)
                 binding.chatAvatarPlaceholder.text = "🔒"
                 SecretChatController(this, binding, e2eAdapter, app, globalParam, chat)
                     .start(intent.getStringExtra(EXTRA_INITIAL_MESSAGE))
@@ -399,51 +433,128 @@ class ChatActivity : AppCompatActivity() {
     private fun setupWindowInsets() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val backBaseMargin = (binding.btnBack.layoutParams as ViewGroup.MarginLayoutParams).topMargin
-        val moreBaseMargin = (binding.btnMore.layoutParams as ViewGroup.MarginLayoutParams).topMargin
-        val infoCardBaseMargin = (binding.chatInfoCard.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        val headerBasePaddingTop = binding.chatHeaderBar.paddingTop
 
-        val attachBaseMargin = (binding.attachButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val stickerBaseMargin = (binding.stickerButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val sendBaseMargin = (binding.sendButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val inputBaseMargin = (binding.messageInputLayout.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val inputBaseMargin = (binding.inputBar.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val recyclerBasePaddingTop = binding.messagesRecyclerView.paddingTop
         val recyclerBasePaddingBottom = binding.messagesRecyclerView.paddingBottom
-        // Высота полосы, зарезервированной под кнопки ввода (inputRowBottom, фикс. 64dp) —
-        // именно на столько лента должна не доходить контентом до нижнего края экрана.
-        val inputRowBandPx = binding.inputRowBottom.layoutParams.height
+        // Базовая высота полосы ввода. При многострочном тексте inputBar становится выше,
+        // поэтому нижний отступ ленты пересчитывается по фактической высоте контейнера.
+        val inputRowBandBasePx = binding.inputRowBottom.layoutParams.height
+        var lastBottomInset = 0
+
+        fun updateRecyclerBottomPadding() {
+            val inputContentHeight = maxOf(
+                binding.inputBar.height + inputBaseMargin,
+                binding.sendButton.height + sendBaseMargin
+            )
+            val inputRowBandPx = maxOf(inputRowBandBasePx, inputContentHeight)
+            binding.messagesRecyclerView.updatePadding(
+                bottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
+            )
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val bottomInset = maxOf(bars.bottom, ime.bottom)
+            lastBottomInset = bottomInset
 
-            binding.btnBack.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = backBaseMargin + bars.top }
-            binding.btnMore.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = moreBaseMargin + bars.top }
-            binding.chatInfoCard.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = infoCardBaseMargin + bars.top }
-            // Recyclerview остаётся edge-to-edge (constraint на true parent bottom, как и сверху) —
-            // фон/обои ленты уходят под панель ввода и жестовую навигацию, а контент просто
-            // не долистывается ниже paddingBottom.
-            binding.messagesRecyclerView.updatePadding(
-                top = recyclerBasePaddingTop + bars.top,
-                bottom = recyclerBasePaddingBottom + inputRowBandPx + bottomInset
-            )
+            // Статус-бар резервирует сама шапка — лента начинается уже под ней.
+            binding.chatHeaderBar.updatePadding(top = headerBasePaddingTop + bars.top)
+            // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
+            // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
+            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop)
+            updateRecyclerBottomPadding()
 
-            binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bottomInset }
-            binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bottomInset }
             binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
-            binding.messageInputLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
+            binding.inputBar.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
 
             insets
         }
+
+        binding.inputBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateRecyclerBottomPadding()
+        }
+
+        // Лента edge-to-edge уходит под шапку и статус-бар: верхний отступ ленты
+        // и область блюр-копии обоев следуют за текущей высотой шапки
+        // (инсеты статус-бара, сжатие шапки в компакт-режиме при прокрутке).
+        binding.chatHeaderBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            val headerBottom = binding.chatHeaderBar.bottom
+            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop + headerBottom)
+            binding.chatHeaderBlurImage.clipBounds =
+                android.graphics.Rect(0, 0, binding.chatHeaderBlurImage.width, headerBottom)
+        }
+    }
+
+    /**
+     * В отличие от списка чатов, шапка чата сжимается при прокрутке **вверх** (в историю):
+     * имя уменьшается, строка статуса схлопывается, под шапкой появляется тень.
+     */
+    private fun updateHeaderCompact(dy: Int) {
+        val threshold = HEADER_SCROLL_THRESHOLD_DP * resources.displayMetrics.density
+        when {
+            dy < -threshold -> setHeaderCompact(true)
+            dy > threshold -> setHeaderCompact(false)
+        }
+    }
+
+    private fun setHeaderCompact(compact: Boolean) {
+        if (headerCompact == compact) return
+        headerCompact = compact
+        val density = resources.displayMetrics.density
+        val easing = PathInterpolator(0.2f, 0f, 0f, 1f)
+
+        val nameView = binding.chatNameTextView
+        val nameFrom = nameView.textSize / resources.displayMetrics.scaledDensity
+        headerNameAnimator?.cancel()
+        headerNameAnimator = ValueAnimator.ofFloat(nameFrom, if (compact) 17f else 22f).apply {
+            duration = HEADER_MORPH_DURATION_MS
+            interpolator = easing
+            addUpdateListener {
+                nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.animatedValue as Float)
+            }
+            start()
+        }
+        nameView.typeface = Typeface.create(Typeface.SANS_SERIF, if (compact) 500 else 600, false)
+
+        val statusContainer = binding.chatStatusContainer
+        if (statusExpandedHeight == 0) statusExpandedHeight = statusContainer.height
+        if (statusExpandedHeight > 0) {
+            headerStatusAnimator?.cancel()
+            headerStatusAnimator = ValueAnimator.ofInt(
+                statusContainer.height,
+                if (compact) 0 else statusExpandedHeight
+            ).apply {
+                duration = HEADER_MORPH_DURATION_MS
+                interpolator = easing
+                addUpdateListener { animator ->
+                    val value = animator.animatedValue as Int
+                    statusContainer.updateLayoutParams { height = value }
+                    statusContainer.alpha = value.toFloat() / statusExpandedHeight
+                }
+                doOnEnd {
+                    if (compact) return@doOnEnd
+                    statusContainer.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+                }
+                start()
+            }
+        }
+
+        binding.chatHeaderBar.animate()
+            .translationZ(if (compact) HEADER_SHADOW_ELEVATION_DP * density else 0f)
+            .setDuration(HEADER_SHADOW_DURATION_MS)
+            .start()
     }
 
     private fun setupToolbar() {
-        binding.chatNameTextView.text = chatTitle.ifBlank { "Чат" }
+        binding.chatNameTextView.text = chatTitle.ifBlank { getString(R.string.chat_default_title) }
 
         // Показываем статус онлайна только для личных чатов
         if (!isGroupChat && otherUserId > 0) {
-            binding.onlineStatusTextView.text = "загрузка..."
+            binding.onlineStatusTextView.text = getString(R.string.chat_status_loading)
             // Загрузка статуса онлайна будет в loadChatInfo()
         } else {
             binding.onlineStatusTextView.visibility = View.GONE
@@ -506,7 +617,7 @@ class ChatActivity : AppCompatActivity() {
                 app.callRepository.initiateGroup(chatId, mediaType)
             } else {
                 if (otherUserId <= 0L) {
-                    Toast.makeText(this@ChatActivity, "Не удалось определить пользователя для звонка", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ChatActivity, R.string.chat_call_user_missing, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
                 app.callRepository.initiateDirect(otherUserId, mediaType)
@@ -523,7 +634,7 @@ class ChatActivity : AppCompatActivity() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@ChatActivity, "Не удалось начать звонок", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -534,13 +645,13 @@ class ChatActivity : AppCompatActivity() {
 
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) {
-            Toast.makeText(this, "Сервер звонков не настроен", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
             return false
         }
 
         val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
         if (result.isFailure) {
-            Toast.makeText(this, "Не удалось подключиться к серверу звонков", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
         }
         return result.isSuccess
     }
@@ -589,16 +700,51 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /** Скруглённый чип-фон для блоков шапки (back / инфо / действия) — радиус больше половины
+     *  высоты любого блока, поэтому GradientDrawable сам клэмпит его до pill/circle формы. */
+    private fun headerChipDrawable(color: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 999f * resources.displayMetrics.density
+            setColor(color)
+        }
+
     private fun setupChatBackground() {
         val loadVersion = ++chatBackgroundLoadVersion
         val fileId = globalParam.chatBackgroundFileIdFor(chatId)
         applyDimOverlay()
         if (fileId.isBlank()) {
             binding.chatBackgroundImage.visibility = View.GONE
+            binding.chatHeaderBlurImage.visibility = View.GONE
+            binding.chatHeaderBar.setBackgroundColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.chatHeaderBar, com.google.android.material.R.attr.colorSurface
+                )
+            )
+            binding.btnBack.background = null
+            binding.chatInfoCard.background = null
+            binding.headerActionsCluster.background = null
             return
         }
 
         binding.chatBackgroundImage.visibility = View.VISIBLE
+        // Обои просвечивают через блюр-копию (chatHeaderBlurImage) во всех зазорах шапки —
+        // сама шапка прозрачна, а имя/время читаются за счёт отдельных чипов-подложек
+        // на каждом блоке (back / инфо / действия), как в Telegram.
+        binding.chatHeaderBar.background = null
+        val surfaceColor = com.google.android.material.color.MaterialColors.getColor(
+            binding.chatHeaderBar, com.google.android.material.R.attr.colorSurface
+        )
+        val chipColor = android.graphics.Color.argb(
+            (255 * 0.7f).toInt(),
+            android.graphics.Color.red(surfaceColor),
+            android.graphics.Color.green(surfaceColor),
+            android.graphics.Color.blue(surfaceColor)
+        )
+        binding.btnBack.background = headerChipDrawable(chipColor)
+        binding.chatInfoCard.background = headerChipDrawable(chipColor)
+        binding.headerActionsCluster.background = headerChipDrawable(chipColor)
+        binding.chatHeaderBlurImage.visibility = View.VISIBLE
         val applyBlur = globalParam.chatBackgroundBlur
 
         lifecycleScope.launch {
@@ -607,6 +753,7 @@ class ChatActivity : AppCompatActivity() {
             if (cachedFile != null && cachedFile.exists()) {
                 if (loadVersion == chatBackgroundLoadVersion) {
                     applyBackgroundFromFile(cachedFile, applyBlur, loadVersion)
+                    applyHeaderBlur(cachedFile, loadVersion)
                 }
                 return@launch
             }
@@ -616,6 +763,8 @@ class ChatActivity : AppCompatActivity() {
             } ?: return@launch
 
             if (loadVersion != chatBackgroundLoadVersion) return@launch
+
+            applyHeaderBlur(url, loadVersion)
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 // API 31+: загружаем через Coil, blur через RenderEffect
@@ -643,6 +792,7 @@ class ChatActivity : AppCompatActivity() {
                 try {
                     val connection = java.net.URL(url)
                         .openConnection() as java.net.HttpURLConnection
+                    grpcManager.configureHttpConnection(connection)
                     connection.connect()
                     val bytes = connection.inputStream.readBytes()
                     connection.disconnect()
@@ -683,9 +833,45 @@ class ChatActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * Блюр-копия обоев для подложки шапки (chatHeaderBlurImage), обрезаемая
+     * clipBounds'ом до высоты шапки. Блюрится всегда — независимо от настройки
+     * chatBackgroundBlur основного фона: на API 31+ через RenderEffect,
+     * на старых устройствах через ScriptIntrinsicBlur по bitmap.
+     */
+    private fun applyHeaderBlur(source: Any, loadVersion: Int) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            binding.chatHeaderBlurImage.load(source, AvatarLoader.getImageLoader(this)) {
+                listener(onSuccess = { _, _ ->
+                    if (loadVersion == chatBackgroundLoadVersion) {
+                        binding.chatHeaderBlurImage.setRenderEffect(
+                            android.graphics.RenderEffect.createBlurEffect(
+                                20f, 20f, android.graphics.Shader.TileMode.CLAMP
+                            )
+                        )
+                    }
+                })
+            }
+        } else {
+            lifecycleScope.launch {
+                val bitmap = withContext(Dispatchers.IO) {
+                    when (source) {
+                        is java.io.File -> android.graphics.BitmapFactory.decodeFile(source.absolutePath)
+                        is String -> loadBitmapFromUrl(source)
+                        else -> null
+                    }
+                }
+                if (bitmap != null && loadVersion == chatBackgroundLoadVersion) {
+                    binding.chatHeaderBlurImage.setImageBitmap(blurBitmapLegacy(bitmap))
+                }
+            }
+        }
+    }
+
     private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
         return try {
             val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            grpcManager.configureHttpConnection(conn)
             conn.connect()
             val bmp = android.graphics.BitmapFactory.decodeStream(conn.inputStream)
             conn.disconnect()
@@ -781,6 +967,9 @@ class ChatActivity : AppCompatActivity() {
                     // Показ/скрытие кнопки прокрутки вниз
                     updateScrollToBottomButton()
 
+                    // Шапка сжимается при уходе в историю сообщений
+                    updateHeaderCompact(dy)
+
                     // Safety-net: долистали до самого низа и подгружать больше нечего —
                     // помечаем прочитанными все загруженные чужие сообщения (страхует от
                     // случаев, когда прогрессивная пометка при пагинации что-то не зацепила).
@@ -808,14 +997,21 @@ class ChatActivity : AppCompatActivity() {
 
             for (member in members) {
                 if (member.userId == currentUserId) continue
-                val name = "${member.firstName} ${member.lastName}".trim().ifBlank { "ID ${member.userId}" }
+                val name = "${member.firstName} ${member.lastName}".trim().ifBlank {
+                    getString(R.string.group_member_id, member.userId)
+                }
                 val avatarSource = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
                     avatarSourceFor(user)
                 }
                 groupMemberInfoCache[member.userId] = name to avatarSource
             }
 
-            messageAdapter.notifyDataSetChanged()
+            // Изменились только имя и мини-аватар отправителя — полный ребинд не нужен.
+            messageAdapter.notifyItemRangeChanged(
+                0,
+                messageAdapter.itemCount,
+                MessageAdapter.PAYLOAD_SENDER_INFO
+            )
         }
     }
 
@@ -870,7 +1066,9 @@ class ChatActivity : AppCompatActivity() {
             try {
                 val user = grpcManager.getUserData(userId).getOrNull()
                 if (user != null) {
-                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank { "ID $userId" }
+                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank {
+                        getString(R.string.group_member_id, userId)
+                    }
                     groupMemberInfoCache[userId] = name to avatarSourceFor(user)
                 }
             } finally {
@@ -1019,6 +1217,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessageInput() {
+        binding.sendButton.background = sendButtonBackground
+        applySendButtonShape(canSend = false, animate = false)
         binding.sendButton.applySpringPress()
         binding.sendButton.setOnClickListener {
             when {
@@ -1142,7 +1342,58 @@ class ChatActivity : AppCompatActivity() {
         binding.sendButton.contentDescription = getString(
             if (sendButtonVoiceMode) R.string.cd_record_voice else R.string.cd_send
         )
-        tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+        applySendButtonShape(canSend = !sendButtonVoiceMode)
+        tintSendButton(
+            if (sendButtonVoiceMode) {
+                com.google.android.material.R.attr.colorOnPrimaryContainer
+            } else {
+                com.google.android.material.R.attr.colorOnPrimary
+            }
+        )
+    }
+
+    /**
+     * Морфинг кнопки отправки: пустой ввод — круг 52dp в тоне primaryContainer,
+     * есть что отправить — компактная pill 68dp в primary.
+     */
+    private fun applySendButtonShape(canSend: Boolean, animate: Boolean = true) {
+        // Форма меняется только на переходе — иначе анимация перезапускалась бы на каждый символ
+        if (sendButtonWide == canSend) return
+        sendButtonWide = canSend
+        val density = resources.displayMetrics.density
+        val targetWidth = ((if (canSend) SEND_BUTTON_WIDE_DP else SEND_BUTTON_NARROW_DP) * density).toInt()
+        val targetRadius = (if (canSend) SEND_BUTTON_WIDE_CORNER_DP else SEND_BUTTON_NARROW_CORNER_DP) * density
+        val targetColor = MaterialColors.getColor(
+            binding.sendButton,
+            if (canSend) {
+                androidx.appcompat.R.attr.colorPrimary
+            } else {
+                com.google.android.material.R.attr.colorPrimaryContainer
+            }
+        )
+
+        sendButtonBackground.setColor(targetColor)
+        if (!animate) {
+            sendButtonBackground.cornerRadius = targetRadius
+            binding.sendButton.updateLayoutParams { width = targetWidth }
+            return
+        }
+
+        sendButtonMorphAnimator?.cancel()
+        val startWidth = binding.sendButton.width.takeIf { it > 0 } ?: targetWidth
+        val startRadius = sendButtonBackground.cornerRadius
+        sendButtonMorphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = SEND_BUTTON_MORPH_DURATION_MS
+            interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+            addUpdateListener { animator ->
+                val fraction = animator.animatedFraction
+                sendButtonBackground.cornerRadius = startRadius + (targetRadius - startRadius) * fraction
+                binding.sendButton.updateLayoutParams {
+                    width = (startWidth + (targetWidth - startWidth) * fraction).toInt()
+                }
+            }
+            start()
+        }
     }
 
     private fun tintSendButton(attr: Int) {
@@ -1213,15 +1464,17 @@ class ChatActivity : AppCompatActivity() {
                 if (voiceRecorder == null) return true
 
                 val cancelDistancePx = resources.displayMetrics.widthPixels * 0.5f
-                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f)
-                binding.sendButton.translationX = dx.coerceAtLeast(-cancelDistancePx)
+                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f).coerceAtLeast(-cancelDistancePx)
+                binding.sendButton.translationX = dx
+                binding.voiceRecordHint.translationX = dx * VOICE_HINT_DRAG_RATIO
 
                 val cancelNow = -dx >= cancelDistancePx
                 if (cancelNow != voiceCancelPending) {
                     voiceCancelPending = cancelNow
+                    updateVoiceRecordHint(cancelNow)
                     tintSendButton(
                         if (cancelNow) androidx.appcompat.R.attr.colorError
-                        else androidx.appcompat.R.attr.colorPrimary
+                        else com.google.android.material.R.attr.colorOnPrimaryContainer
                     )
                 }
                 true
@@ -1261,7 +1514,8 @@ class ChatActivity : AppCompatActivity() {
             voiceRecorder = recorder
             voiceRecordingFile = file
             voiceRecordingStartedAtMs = System.currentTimeMillis()
-            tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+            tintSendButton(com.google.android.material.R.attr.colorOnPrimaryContainer)
+            showVoiceRecordingBar()
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start voice recording", e)
@@ -1292,6 +1546,7 @@ class ChatActivity : AppCompatActivity() {
             voiceRecorder = null
             voiceRecordingFile = null
             voiceRecordingStartedAtMs = 0L
+            hideVoiceRecordingBar()
             resetVoiceButtonDrag()
         }
 
@@ -1310,6 +1565,93 @@ class ChatActivity : AppCompatActivity() {
         }
 
         sendVoiceMessage(file)
+    }
+
+    /**
+     * На время записи прячет грядку ввода и показывает поверх неё индикатор:
+     * мигающая точка, счётчик длительности и подсказка отмены.
+     */
+    private fun showVoiceRecordingBar() {
+        updateVoiceRecordTimer()
+        updateVoiceRecordHint(cancelPending = false)
+        binding.voiceRecordHint.translationX = 0f
+        binding.voiceRecordDot.alpha = 1f
+
+        binding.voiceRecordBar.alpha = 0f
+        binding.voiceRecordBar.visibility = View.VISIBLE
+        binding.voiceRecordBar.animate()
+            .alpha(1f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .start()
+        binding.inputBar.animate()
+            .alpha(0f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .withEndAction { binding.inputBar.visibility = View.INVISIBLE }
+            .start()
+
+        voiceDotAnimator?.cancel()
+        voiceDotAnimator = ValueAnimator.ofFloat(1f, 0.25f).apply {
+            duration = VOICE_DOT_BLINK_DURATION_MS
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            addUpdateListener { binding.voiceRecordDot.alpha = it.animatedValue as Float }
+            start()
+        }
+
+        voiceTimerJob?.cancel()
+        voiceTimerJob = lifecycleScope.launch {
+            while (isActive) {
+                updateVoiceRecordTimer()
+                delay(VOICE_TIMER_TICK_MS)
+            }
+        }
+    }
+
+    private fun hideVoiceRecordingBar() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = null
+        voiceDotAnimator?.cancel()
+        voiceDotAnimator = null
+
+        if (binding.voiceRecordBar.visibility != View.VISIBLE) return
+
+        binding.voiceRecordBar.animate()
+            .alpha(0f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .withEndAction {
+                binding.voiceRecordBar.visibility = View.GONE
+                binding.voiceRecordHint.translationX = 0f
+            }
+            .start()
+        binding.inputBar.visibility = View.VISIBLE
+        binding.inputBar.animate()
+            .alpha(1f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .start()
+    }
+
+    private fun updateVoiceRecordTimer() {
+        val elapsedSec = ((System.currentTimeMillis() - voiceRecordingStartedAtMs) / 1000L)
+            .coerceAtLeast(0L)
+        binding.voiceRecordTimer.text = getString(
+            R.string.voice_record_timer_format,
+            elapsedSec / 60,
+            elapsedSec % 60
+        )
+    }
+
+    private fun updateVoiceRecordHint(cancelPending: Boolean) {
+        binding.voiceRecordHint.setText(
+            if (cancelPending) R.string.voice_record_release_to_cancel
+            else R.string.voice_record_slide_to_cancel
+        )
+        binding.voiceRecordHint.setTextColor(
+            MaterialColors.getColor(
+                binding.voiceRecordHint,
+                if (cancelPending) androidx.appcompat.R.attr.colorError
+                else com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+        )
     }
 
     private fun resetVoiceButtonDrag() {
@@ -1552,13 +1894,13 @@ class ChatActivity : AppCompatActivity() {
             try {
                 val fileId = sticker.fileId
                 if (fileId.isBlank()) {
-                    Toast.makeText(this@ChatActivity, "Ошибка: стикер без файла", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ChatActivity, R.string.sticker_file_missing, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
                 sendMessage(text = "", fileIds = listOf(fileId))
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending sticker", e)
-                Toast.makeText(this@ChatActivity, "Ошибка отправки стикера", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.sticker_send_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -1875,7 +2217,7 @@ class ChatActivity : AppCompatActivity() {
             if (fileIds.isNotEmpty()) {
                 sendMessage(text = text, fileIds = fileIds)
             } else {
-                Toast.makeText(this@ChatActivity, "Не удалось загрузить файлы", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
                 if (text.isNotBlank()) {
                     sendMessage(text = text)
                 }
@@ -1928,7 +2270,7 @@ class ChatActivity : AppCompatActivity() {
                     chatId = chatId,
                     text = messageText,
                     fileIds = fileIds,
-                    forwardedMessageId = replyId
+                    replyToMessageId = replyId
                 )
 
                 if (result.isSuccess) {
@@ -1943,7 +2285,7 @@ class ChatActivity : AppCompatActivity() {
                     updateOptimisticStatus(localId, ReadStatus.FAILED)
                     Toast.makeText(
                         this@ChatActivity,
-                        "Ошибка отправки: ${result.exceptionOrNull()?.message}",
+                        getString(R.string.message_send_error, result.exceptionOrNull()?.message.orEmpty()),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -1952,7 +2294,7 @@ class ChatActivity : AppCompatActivity() {
                 updateOptimisticStatus(localId, ReadStatus.FAILED)
                 Toast.makeText(
                     this@ChatActivity,
-                    "Ошибка отправки: ${e.message}",
+                    getString(R.string.message_send_error, e.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -2026,7 +2368,7 @@ class ChatActivity : AppCompatActivity() {
     private fun sendEdit(messageId: Long, text: String) {
         val fileIds = pendingEditFileIds
         if (text.isBlank() && fileIds.isEmpty()) {
-            Toast.makeText(this, "Сообщение не может быть пустым", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.message_empty, Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -2040,7 +2382,7 @@ class ChatActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(
                     this@ChatActivity,
-                    "Ошибка редактирования: ${result.exceptionOrNull()?.message}",
+                    getString(R.string.message_edit_error, result.exceptionOrNull()?.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -2053,14 +2395,14 @@ class ChatActivity : AppCompatActivity() {
         pendingReplyMessageId = item.messageId
 
         val author = item.senderName?.takeIf { it.isNotBlank() }
-            ?: if (item.senderId == currentUserId) "Вы" else "Сообщение"
+            ?: if (item.senderId == currentUserId) getString(R.string.current_user) else getString(R.string.message_placeholder)
         val preview = if (item.text.isNotBlank()) {
             item.text
         } else {
             buildAttachmentSummary(item.attachments)
         }
 
-        binding.replyPreviewAuthorText.text = "Ответ $author"
+        binding.replyPreviewAuthorText.text = getString(R.string.reply_to_author, author)
         binding.replyPreviewContentText.text = preview
         binding.replyPreviewBar.visibility = View.VISIBLE
         binding.messageEditText.requestFocus()
@@ -2158,10 +2500,10 @@ class ChatActivity : AppCompatActivity() {
 
     private fun confirmAndDelete(item: MessageItem) {
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("Удалить сообщение?")
-            .setMessage("Это действие нельзя отменить.")
-            .setNegativeButton("Отмена", null)
-            .setPositiveButton("Удалить") { _, _ ->
+            .setTitle(R.string.delete_message_title)
+            .setMessage(R.string.delete_message_message)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .setPositiveButton(R.string.btn_delete) { _, _ ->
                 lifecycleScope.launch {
                     val result = chatRepository.deleteMessage(item.messageId)
                     if (result.isSuccess) {
@@ -2170,7 +2512,7 @@ class ChatActivity : AppCompatActivity() {
                     } else {
                         Toast.makeText(
                             this@ChatActivity,
-                            "Ошибка удаления: ${result.exceptionOrNull()?.message}",
+                            getString(R.string.message_delete_error, result.exceptionOrNull()?.message.orEmpty()),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -2221,11 +2563,20 @@ class ChatActivity : AppCompatActivity() {
         }
         val stickers = attachments.count { it.type == barkfluff.shared.Shared.MessageAttachmentType.STICKER }
         return when {
-            photos > 0 -> "📷 $photos фото"
-            videos > 0 -> "🎬 $videos видео"
-            audios > 0 -> "🎵 $audios аудио"
-            docs > 0 -> "📎 $docs файл(ов)"
-            stickers > 0 -> "Стикер"
+            photos > 0 -> getString(
+                R.string.chat_attachment_photo_summary,
+                resources.getQuantityString(R.plurals.photos_count, photos, photos)
+            )
+            videos > 0 -> getString(
+                R.string.chat_attachment_video_summary,
+                resources.getQuantityString(R.plurals.videos_count, videos, videos)
+            )
+            audios > 0 -> getString(R.string.chat_attachment_audio_summary, audios)
+            docs > 0 -> getString(
+                R.string.chat_attachment_file_summary,
+                resources.getQuantityString(R.plurals.files_count, docs, docs)
+            )
+            stickers > 0 -> getString(R.string.chat_attachment_sticker_summary)
             else -> ""
         }
     }
@@ -2241,7 +2592,7 @@ class ChatActivity : AppCompatActivity() {
             it.type == MessageType.MESSAGE && it.messageId == messageId
         }
         if (position < 0) {
-            Toast.makeText(this, "Сообщение не загружено", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.message_not_loaded, Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -2323,15 +2674,17 @@ class ChatActivity : AppCompatActivity() {
             when (actionId) {
                 R.id.actionReply -> setPendingReply(item)
                 R.id.actionForward -> {
-                    // Если сообщение само является пересланным — пересылаем оригинал, а не текущий snapshot
-                    val sourceId = item.attachments
-                        .firstOrNull { it.type == barkfluff.shared.Shared.MessageAttachmentType.FORWARDED_MESSAGE && it.hasForwardedMessage() }
-                        ?.forwardedMessage
-                        ?.originalMessageId
-                        ?.takeIf { it > 0 }
-                        ?: item.messageId
+                    // Если сообщение само является пересланным — пересылаем оригиналы, а не snapshot.
+                    // Пересланных может быть несколько, поэтому берём все, а не первый: иначе
+                    // пересылка пачки потеряла бы всё, кроме одного сообщения.
+                    val sourceIds = item.attachments
+                        .filter { it.type == barkfluff.shared.Shared.MessageAttachmentType.FORWARDED_MESSAGE && it.hasForwardedMessage() }
+                        .sortedBy { it.forwardedMessage.order }
+                        .map { it.forwardedMessage.originalMessageId }
+                        .filter { it > 0 }
+                        .ifEmpty { listOf(item.messageId) }
                     com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
-                        .newInstance(sourceId)
+                        .newInstance(sourceIds.toLongArray())
                         .show(supportFragmentManager, "forward_picker")
                 }
                 R.id.actionEdit -> setPendingEdit(item)
@@ -2369,7 +2722,9 @@ class ChatActivity : AppCompatActivity() {
         saveDocsView.isVisible = docAtts.isNotEmpty()
 
         if (saveImagesView.isVisible) {
-            saveImagesView.text = if (imageAtts.size == 1) "Сохранить изображение" else "Сохранить изображения"
+            saveImagesView.text = getString(
+                if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images
+            )
         }
 
         copyTextView.setOnClickListener { copyMessageText(item); dismiss() }
@@ -2380,7 +2735,7 @@ class ChatActivity : AppCompatActivity() {
         // Пункт «Закрепить» / «Открепить» — переключается по состоянию
         val pinView = popupView.findViewById<TextView>(R.id.actionPin)
         val isPinned = pinnedById.containsKey(item.messageId)
-        pinView.text = if (isPinned) "Открепить" else "Закрепить"
+        pinView.text = getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
 
         popupView.findViewById<View>(R.id.actionReply).setOnClickListener { onClickWithDismiss(R.id.actionReply) }
         editView.setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
@@ -2421,14 +2776,14 @@ class ChatActivity : AppCompatActivity() {
     private fun copyMessageText(item: MessageItem) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("BarkFluff message", item.text))
-        Toast.makeText(this, "Текст скопирован", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun copyMessageImage(att: barkfluff.shared.Shared.MessageAttachment) {
         lifecycleScope.launch {
             val srcFile = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
             if (srcFile == null) {
-                Toast.makeText(this@ChatActivity, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.message_image_download_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
             try {
@@ -2454,16 +2809,16 @@ class ChatActivity : AppCompatActivity() {
                     ClipData.Item(uri)
                 )
                 cm.setPrimaryClip(clip)
-                Toast.makeText(this@ChatActivity, "Изображение скопировано", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.message_image_copied, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this@ChatActivity, "Не удалось скопировать", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatActivity, R.string.message_copy_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun saveMessageImages(images: List<barkfluff.shared.Shared.MessageAttachment>) {
         if (images.isEmpty()) return
-        Toast.makeText(this, "Сохраняю...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.saving, Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             var saved = 0
             for (att in images) {
@@ -2478,7 +2833,7 @@ class ChatActivity : AppCompatActivity() {
             }
             Toast.makeText(
                 this@ChatActivity,
-                if (saved > 0) "Сохранено в галерею: $saved" else "Не удалось сохранить",
+                if (saved > 0) getString(R.string.saved_to_gallery, saved) else getString(R.string.save_failed),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -2486,7 +2841,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun saveMessageDocuments(docs: List<barkfluff.shared.Shared.MessageAttachment>) {
         if (docs.isEmpty()) return
-        Toast.makeText(this, "Сохраняю...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.saving, Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             var saved = 0
             for (att in docs) {
@@ -2501,7 +2856,7 @@ class ChatActivity : AppCompatActivity() {
             }
             Toast.makeText(
                 this@ChatActivity,
-                if (saved > 0) "Сохранено в загрузки: $saved" else "Не удалось сохранить",
+                if (saved > 0) getString(R.string.saved_to_downloads, saved) else getString(R.string.save_failed),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -2645,7 +3000,7 @@ class ChatActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         val isOnline = status.status.number == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.number
                         if (isOnline) {
-                            applyOnlineStatus("в сети", true)
+                            applyOnlineStatus(getString(R.string.profile_online), true)
                         } else {
                             val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, status.lastSeen.seconds * 1000)
                             applyOnlineStatus(lastSeen, false)
@@ -2669,13 +3024,13 @@ class ChatActivity : AppCompatActivity() {
                     if (userStatus != null) {
                         val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
                         if (isOnline) {
-                            applyOnlineStatus("в сети", true)
+                            applyOnlineStatus(getString(R.string.profile_online), true)
                         } else {
                             val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeen.seconds * 1000)
                             applyOnlineStatus(lastSeen, false)
                         }
                     } else {
-                        applyOnlineStatus("был(а) недавно", false)
+                        applyOnlineStatus(getString(R.string.status_recently_seen), false)
                     }
                 }
             }
@@ -2741,7 +3096,7 @@ class ChatActivity : AppCompatActivity() {
                     }
                     Toast.makeText(
                         this@ChatActivity,
-                        "Ошибка загрузки сообщений",
+                        getString(R.string.messages_load_failed),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -2901,7 +3256,7 @@ class ChatActivity : AppCompatActivity() {
                 it.type == MessageType.MESSAGE && it.messageId == firstUnreadMessageId
             }
             if (unreadIndex >= 0) {
-                messageItems.add(unreadIndex, MessageItem.createUnreadSeparator())
+                messageItems.add(unreadIndex, MessageItem.createUnreadSeparator(getString(R.string.unread_messages)))
                 scrollToPosition = unreadIndex // Скроллим к разделителю
             }
         }
@@ -2953,7 +3308,8 @@ class ChatActivity : AppCompatActivity() {
                 ReadStatus.NONE
             },
             type = if (isSystem) MessageType.SYSTEM else MessageType.MESSAGE,
-            isEdited = msg.isEdited
+            isEdited = msg.isEdited,
+            replyTo = if (msg.hasReplyTo()) msg.replyTo else null
         )
     }
 
@@ -2974,9 +3330,9 @@ class ChatActivity : AppCompatActivity() {
         val messageDate = startOfDay(timestampMillis)
 
         return when {
-            messageDate == today -> "Сегодня"
-            messageDate == yesterday -> "Вчера"
-            else -> SimpleDateFormat("dd MMMM yyyy", Locale("ru")).format(Date(timestampMillis))
+            messageDate == today -> getString(R.string.date_today)
+            messageDate == yesterday -> getString(R.string.date_yesterday)
+            else -> SimpleDateFormat("dd MMMM yyyy", resources.configuration.locales[0]).format(Date(timestampMillis))
         }
     }
 
@@ -3254,12 +3610,12 @@ class ChatActivity : AppCompatActivity() {
         }
         binding.pinnedMessageBar.visibility = View.VISIBLE
         binding.pinnedTitle.text = if (pinnedTotalCount > 1) {
-            "Закреплённое сообщение · ${pinnedTotalCount}"
+            getString(R.string.pinned_message_count, pinnedTotalCount)
         } else {
-            "Закреплённое сообщение"
+            getString(R.string.pinned_message)
         }
         val text = first.message.content?.text ?: ""
-        binding.pinnedPreview.text = if (text.isBlank()) "[вложение]" else text
+        binding.pinnedPreview.text = if (text.isBlank()) getString(R.string.attachment_preview) else text
     }
 
     private fun scrollToMessageId(messageId: Long) {
@@ -3286,16 +3642,16 @@ class ChatActivity : AppCompatActivity() {
             if (isPinned) {
                 val result = grpcManager.unpinMessage(chatId, item.messageId)
                 if (result.isFailure) {
-                    Toast.makeText(this@ChatActivity, "Не удалось открепить сообщение", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ChatActivity, R.string.message_unpin_failed, Toast.LENGTH_SHORT).show()
                 }
             } else {
                 val result = grpcManager.pinMessage(chatId, item.messageId)
                 if (result.isFailure) {
                     val cause = result.exceptionOrNull()
                     val msg = if (cause is GrpcManager.PinErrorException && cause.isTooManyPinned) {
-                        "Достигнут лимит закреплённых сообщений (100). Открепите старые, чтобы закрепить новое."
+                        getString(R.string.pin_limit_reached)
                     } else {
-                        "Не удалось закрепить сообщение"
+                        getString(R.string.message_pin_failed)
                     }
                     Toast.makeText(this@ChatActivity, msg, Toast.LENGTH_LONG).show()
                 } else {
@@ -3523,7 +3879,10 @@ class ChatActivity : AppCompatActivity() {
         if (::messageAdapter.isInitialized) {
             messageAdapter.messageCornerRadiusDp = globalParam.chatMessageCornerRadius
             messageAdapter.stickerSizeDp = globalParam.chatStickerSizeDp
-            messageAdapter.notifyDataSetChanged()
+            // notifyItemRangeChanged вместо notifyDataSetChanged: содержимое перерисовывается
+            // так же, но структура списка остаётся валидной — сохраняются пул холдеров,
+            // позиция скролла и анимации.
+            messageAdapter.notifyItemRangeChanged(0, messageAdapter.itemCount)
         }
     }
 
@@ -3556,5 +3915,10 @@ class ChatActivity : AppCompatActivity() {
         onlineStatusSubscription?.cancel()
         stopTypingHeartbeat(sendCancel = true)
         realtimeService.changeTypingSubscription(emptyList())
+        headerNameAnimator?.cancel()
+        headerStatusAnimator?.cancel()
+        sendButtonMorphAnimator?.cancel()
+        voiceTimerJob?.cancel()
+        voiceDotAnimator?.cancel()
     }
 }

@@ -53,6 +53,7 @@
                     <ImageView
                         android:layout_width="64dp"
                         android:layout_height="64dp"
+                        android:contentDescription="@null"
                         android:importantForAccessibility="no"
                         android:src="@mipmap/ic_launcher_round" />
 
@@ -137,7 +138,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Device ID"
+                            android:text="@string/about_device_id"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textColor="?attr/colorOnSurface" />
 

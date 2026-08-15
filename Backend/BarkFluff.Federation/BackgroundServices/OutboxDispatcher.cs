@@ -20,6 +20,10 @@ namespace BarkFluff.Federation.BackgroundServices;
 // per-(Destination, ChatId): событие чата попадает в батч только если у чата нет более раннего
 // (меньший Id) недоставленного события; события разных чатов едут независимо.
 //
+// Масштабирование (docs/scaling/federation.md): батч забирается атомарно через
+// SELECT … FOR UPDATE SKIP LOCKED + статус Processing (claim-then-send), поэтому несколько
+// инстансов делят работу без дублей забора; застрявшие после крэша строки возвращает reclaim.
+//
 // Backoff: 30s → 2m → 10m → 1h → 6h (далее кап 6h); MaxAttempts (по умолчанию эквивалент 7 суток
 // окна ретраев, configurable) → DeadLetter. REJECTED → DeadLetter немедленно, очередь чата едет дальше.
 public class OutboxDispatcher : BackgroundService
@@ -35,6 +39,10 @@ public class OutboxDispatcher : BackgroundService
     ];
     private const int MaxBatchSize = 100;
     private const int MaxBatchBytes = 1_000_000;
+
+    // Lease на застролбленные Processing-строки: переживает типовую gRPC-отправку, при крэше
+    // инстанса reclaim вернёт строку в Pending после истечения lease.
+    private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(2);
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
@@ -93,6 +101,20 @@ public class OutboxDispatcher : BackgroundService
         var now = DateTime.UtcNow;
         var maxAttempts = GetMaxAttempts();
 
+        // Reclaim (масштабирование, docs/scaling/federation.md): строки, застрявшие в Processing
+        // после крэша инстанса (истёкший lease в NextAttemptAt), возвращаем в Pending — их заберёт
+        // любой инстанс на следующих проходах (дубли на приёме отсекает ProcessedEvents пира).
+        var stuckRows = await context.Outbox
+            .Where(r => r.Status == OutboxStatus.Processing && r.NextAttemptAt <= now)
+            .ToListAsync(ct);
+        if (stuckRows.Count > 0)
+        {
+            foreach (var row in stuckRows)
+                row.Status = OutboxStatus.Pending;
+            await context.SaveChangesAsync(ct);
+            _metrics.Add("outbox_reclaimed", stuckRows.Count);
+        }
+
         // Группировка по Destination — обрабатываем один Destination за раз, чтобы транзакционно
         // применять результаты per-event.
         var destinations = await context.Outbox
@@ -119,22 +141,54 @@ public class OutboxDispatcher : BackgroundService
         int maxAttempts,
         CancellationToken ct)
     {
+        // Claim-then-send (масштабирование, docs/scaling/federation.md): батч атомарно «застолблен»
+        // за этим инстансом в короткой транзакции — SELECT … FOR UPDATE SKIP LOCKED + статус
+        // Processing с lease в NextAttemptAt; отправка идёт уже вне блокировки строк. Несколько
+        // инстансов делят работу без дублей забора.
+        var isNpgsql = context.Database.IsNpgsql();
+        await using var tx = isNpgsql ? await context.Database.BeginTransactionAsync(ct) : null;
+
         // Упорядочивание per-chat: событие попадает в батч только если у того же ChatId нет
-        // более раннего (меньший Id) недоставленного Pending-события.
+        // более раннего (меньший Id) недоставленного события — Pending ИЛИ Processing (голова
+        // в полёте на другом инстансе тоже блокирует очередь чата).
         //
-        // Реализация: для каждой строки считаем, есть ли Pending-строка с тем же Destination+ChatId,
-        // меньшим Id и тем же ChatId (если ChatId = null — отдаём без ограничения).
-        var batchRows = await (
-            from r in context.Outbox
-            where r.Destination == destination && r.Status == OutboxStatus.Pending && r.NextAttemptAt <= now
-            where r.ChatId == null || !context.Outbox.Any(earlier =>
-                earlier.Destination == destination
-                && earlier.ChatId == r.ChatId
-                && earlier.Id < r.Id
-                && earlier.Status == OutboxStatus.Pending)
-            orderby r.ChatId, r.Id
-            select r
-        ).Take(MaxBatchSize).ToListAsync(ct);
+        // Реализация: для каждой строки считаем, есть ли Pending/Processing-строка с тем же
+        // Destination+ChatId и меньшим Id (если ChatId = null — отдаём без ограничения).
+        List<FederationOutbox> batchRows;
+
+        // Row-level лок только на PostgreSQL (паттерн job-queue; precedent — PrekeyStorage):
+        // тестовые провайдеры (InMemory/SQLite) raw-SQL лок не поддерживают — там claim
+        // работает через статус Processing в одиночном экземпляре.
+        if (isNpgsql)
+        {
+            batchRows = await context.Outbox.FromSqlInterpolated($"""
+                SELECT * FROM "FederationOutbox" AS r
+                WHERE r."Destination" = {destination} AND r."Status" = 0 AND r."NextAttemptAt" <= {now}
+                  AND (r."ChatId" IS NULL OR NOT EXISTS (
+                      SELECT 1 FROM "FederationOutbox" AS e
+                      WHERE e."Destination" = r."Destination"
+                        AND e."ChatId" = r."ChatId"
+                        AND e."Id" < r."Id"
+                        AND e."Status" IN (0, 3)))
+                ORDER BY r."ChatId" NULLS FIRST, r."Id"
+                LIMIT {MaxBatchSize}
+                FOR UPDATE SKIP LOCKED
+                """).ToListAsync(ct);
+        }
+        else
+        {
+            batchRows = await (
+                from r in context.Outbox
+                where r.Destination == destination && r.Status == OutboxStatus.Pending && r.NextAttemptAt <= now
+                where r.ChatId == null || !context.Outbox.Any(earlier =>
+                    earlier.Destination == destination
+                    && earlier.ChatId == r.ChatId
+                    && earlier.Id < r.Id
+                    && (earlier.Status == OutboxStatus.Pending || earlier.Status == OutboxStatus.Processing))
+                orderby r.ChatId, r.Id
+                select r
+            ).Take(MaxBatchSize).ToListAsync(ct);
+        }
 
         if (batchRows.Count == 0)
             return;
@@ -149,6 +203,18 @@ public class OutboxDispatcher : BackgroundService
             selected.Add(row);
             totalBytes += row.PayloadBytes.Length;
         }
+
+        // Claim: отмечаем выбранные строки Processing с lease — при крэше между claim и
+        // отправкой reclaim вернёт их в Pending после истечения lease.
+        foreach (var row in selected)
+        {
+            row.Status = OutboxStatus.Processing;
+            row.NextAttemptAt = now + ProcessingLease;
+        }
+
+        await context.SaveChangesAsync(ct);
+        if (tx is not null)
+            await tx.CommitAsync(ct);
 
         // Проверим: пир доступен?
         var server = await resolver.ResolveAsync(destination, ct);
@@ -248,6 +314,7 @@ public class OutboxDispatcher : BackgroundService
             return;
         }
 
+        row.Status = OutboxStatus.Pending;
         row.LastError = reason;
         row.NextAttemptAt = now + GetBackoff(row.Attempts);
         _metrics.Increment("outbox_retry");

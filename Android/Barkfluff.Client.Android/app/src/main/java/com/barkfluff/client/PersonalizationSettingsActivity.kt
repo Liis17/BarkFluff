@@ -90,7 +90,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
             if (uri != null) uploadPosterFromUri(uri)
         } else if (result.resultCode == UCrop.RESULT_ERROR) {
             val error = UCrop.getError(result.data!!)
-            Toast.makeText(this, "Ошибка кадрирования: ${error?.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.settings_error_detail, error?.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -199,9 +199,11 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                     val displayName = "${userData.firstName} ${userData.lastName}".trim()
                     currentPosterFileId = userData.profilePosterFileId
 
-                    binding.profilePreviewFullName.text = displayName.ifEmpty { "Пользователь" }
+                    binding.profilePreviewFullName.text = displayName.ifEmpty { getString(R.string.profile_user_placeholder) }
                     binding.profilePreviewUsername.text =
-                        if (userData.username.isNotEmpty()) "@${userData.username}" else ""
+                        if (userData.username.isNotEmpty()) {
+                            getString(R.string.register_username_format, userData.username)
+                        } else ""
 
                     val avatarUrl = userData.profilePictureUrl
                     if (avatarUrl.isNotBlank()) {
@@ -297,19 +299,19 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 binding.buttonSetPoster.isEnabled = false
-                binding.buttonSetPoster.text = "Загрузка..."
+                binding.buttonSetPoster.text = getString(R.string.loading_dots)
 
                 // UCrop уже сохранил обрезанное изображение как JPEG 90%, читаем байты напрямую
                 val jpegBytes = withContext(Dispatchers.IO) {
                     contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 } ?: run {
-                    Toast.makeText(this@PersonalizationSettingsActivity, "Не удалось обработать изображение", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@PersonalizationSettingsActivity, R.string.account_image_read_error, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
                 val uploadResult = grpcManager.uploadProfilePoster(jpegBytes)
                 if (uploadResult.isFailure) {
-                    Toast.makeText(this@PersonalizationSettingsActivity, "Ошибка загрузки файла", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@PersonalizationSettingsActivity, R.string.personalization_poster_upload_failed, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
@@ -318,16 +320,16 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 if (setResult.isSuccess) {
                     currentPosterFileId = fileId
                     loadPosterPreview()
-                    Toast.makeText(this@PersonalizationSettingsActivity, "Постер установлен", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@PersonalizationSettingsActivity, R.string.personalization_poster_installed, Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@PersonalizationSettingsActivity, "Ошибка установки постера", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@PersonalizationSettingsActivity, R.string.personalization_poster_set_failed, Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка загрузки постера", e)
-                Toast.makeText(this@PersonalizationSettingsActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PersonalizationSettingsActivity, getString(R.string.settings_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             } finally {
                 binding.buttonSetPoster.isEnabled = true
-                binding.buttonSetPoster.text = "Установить новый постер"
+                binding.buttonSetPoster.text = getString(R.string.personalization_set_new_poster)
             }
         }
     }
@@ -450,12 +452,12 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun setupDimSlider() {
         val saved = globalParam.chatBackgroundDim
         binding.dimSlider.value = saved.toFloat()
-        binding.dimValue.text = "$saved%"
+        binding.dimValue.text = getString(R.string.personalization_percentage, saved)
         updatePreviewDim()
 
         binding.dimSlider.addOnChangeListener { _, value, fromUser ->
             val pct = value.toInt()
-            binding.dimValue.text = "$pct%"
+            binding.dimValue.text = getString(R.string.personalization_percentage, pct)
             if (fromUser) globalParam.chatBackgroundDim = pct
             updatePreviewDim()
         }
@@ -477,7 +479,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                         backgroundAdapter.selectedFileId = fileId
                         updatePreviewBackground(fileId)
                     } else {
-                        Toast.makeText(this@PersonalizationSettingsActivity, "Не удалось установить фон", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@PersonalizationSettingsActivity, R.string.profile_background_set_error, Toast.LENGTH_SHORT).show()
                     }
                 }
             },
@@ -563,14 +565,14 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 binding.buttonAddBackground.isEnabled = false
-                binding.buttonAddBackground.text = "Загрузка..."
+                binding.buttonAddBackground.text = getString(R.string.loading_dots)
 
                 val bytes = withContext(Dispatchers.IO) {
                     compressToJpeg85(uri)
                 } ?: run {
                     Toast.makeText(
                         this@PersonalizationSettingsActivity,
-                        "Не удалось обработать изображение",
+                        R.string.account_image_read_error,
                         Toast.LENGTH_SHORT
                     ).show()
                     return@launch
@@ -592,7 +594,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(
                         this@PersonalizationSettingsActivity,
-                        "Ошибка загрузки фона",
+                        R.string.personalization_background_upload_failed,
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -600,12 +602,12 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка при загрузке фона", e)
                 Toast.makeText(
                     this@PersonalizationSettingsActivity,
-                    "Ошибка: ${e.message}",
+                    getString(R.string.settings_error_detail, e.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             } finally {
                 binding.buttonAddBackground.isEnabled = true
-                binding.buttonAddBackground.text = "Добавить фон"
+                binding.buttonAddBackground.text = getString(R.string.personalization_add_background)
             }
         }
     }

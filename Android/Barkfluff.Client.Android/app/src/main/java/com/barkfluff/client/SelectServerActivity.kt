@@ -1,10 +1,10 @@
 package com.barkfluff.client
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -13,12 +13,23 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.security.TlsCertificateInfo
+import com.barkfluff.client.security.TlsCertificateProbe
+import com.barkfluff.client.security.TlsTrustStore
+import com.barkfluff.client.utils.TlsEndpointSecurityException
+import com.barkfluff.client.utils.TlsServerCertificatePreflight
 import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.regex.Pattern
+import java.net.URI
+import java.text.DateFormat
+import java.util.Date
+import kotlin.coroutines.resume
 
 /**
  * Активность выбора сервера
@@ -28,15 +39,16 @@ class SelectServerActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "SelectServerActivity"
-        private const val MIN_PORT = 1
-        private const val MAX_PORT = 65535
-        private val SERVER_ADDRESS_PATTERN = Pattern.compile("^([^:]+):(\\d+)$")
+        const val EXTRA_TRUST_REVIEW_ADDRESS = "tls_trust_review_address"
     }
 
     private lateinit var binding: ActivitySelectServerBinding
     private lateinit var globalParam: GlobalParam
     private lateinit var grpcManager: GrpcManager
     private lateinit var serverAdapter: ServerAdapter
+    private lateinit var tlsTrustStore: TlsTrustStore
+    private val certificateProbe = TlsCertificateProbe()
+    private lateinit var certificatePreflight: TlsServerCertificatePreflight
 
     private var isConnecting = false
     private val pingCache = mutableMapOf<String, Int?>()
@@ -50,7 +62,9 @@ class SelectServerActivity : AppCompatActivity() {
 
         // Инициализация
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
+        tlsTrustStore = TlsTrustStore(applicationContext)
+        certificatePreflight = TlsServerCertificatePreflight(tlsTrustStore, certificateProbe)
 
         // Загружаем внешний IP-адрес асинхронно
         lifecycleScope.launch {
@@ -60,6 +74,13 @@ class SelectServerActivity : AppCompatActivity() {
         setupRecyclerView()
         setupClickListeners()
         loadServerList()
+
+        intent.getStringExtra(EXTRA_TRUST_REVIEW_ADDRESS)
+            ?.let(::normalizeServerAddress)
+            ?.let { address ->
+                binding.serverAddressEditText.setText(address)
+                connectToServer(address)
+            }
     }
 
     private fun setupRecyclerView() {
@@ -79,7 +100,7 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
-        val pingManager = GrpcManager()
+        val pingManager = GrpcManager(applicationContext)
         try {
             if (pingManager.createOnlyBeaconClient(address).isFailure) return@withTimeoutOrNull null
             val start = System.currentTimeMillis()
@@ -97,9 +118,17 @@ class SelectServerActivity : AppCompatActivity() {
         // Кнопка подключения
         binding.connectButton.setOnClickListener {
             val address = binding.serverAddressEditText.text.toString().trim()
-            if (validateServerAddress(address)) {
-                connectToServer(address)
-            }
+            normalizeServerAddress(address)?.let(::connectToServer)
+        }
+        binding.forgetTrustedCertificateButton.setOnClickListener {
+            val address = binding.serverAddressEditText.text.toString().trim()
+            val normalized = normalizeServerAddress(address) ?: return@setOnClickListener
+            val host = URI(normalized).host ?: return@setOnClickListener
+            tlsTrustStore.removePin(host)
+            MaterialAlertDialogBuilder(this)
+                .setMessage(getString(R.string.tls_certificate_forgotten, host))
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
         }
     }
 
@@ -121,7 +150,10 @@ class SelectServerActivity : AppCompatActivity() {
                 // Создаем Navigator клиент
                 val createResult = grpcManager.createNavigatorClient()
                 if (createResult.isFailure) {
-                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось создать соединение с навигатором")
+                    showError(
+                        createResult.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_navigator_connection_failed)
+                    )
                     return@launch
                 }
 
@@ -136,7 +168,7 @@ class SelectServerActivity : AppCompatActivity() {
                             ServerDataElement(
                                 ip = "test1.barkfluff.com:64646",
                                 title = "BarkFluff Public Server 1",
-                                description = "Публичная нода для тестирования",
+                                description = getString(R.string.select_server_default_description_1),
                                 userCount = "125",
                                 publicName = "barkfluff-public-1",
                                 location = "Москва, RU",
@@ -145,7 +177,7 @@ class SelectServerActivity : AppCompatActivity() {
                             ServerDataElement(
                                 ip = "test2.barkfluff.com:64646",
                                 title = "BarkFluff Public Server 2",
-                                description = "Вторая публичная нода",
+                                description = getString(R.string.select_server_default_description_2),
                                 userCount = "89",
                                 publicName = "barkfluff-public-2",
                                 location = "Санкт-Петербург, RU",
@@ -158,11 +190,14 @@ class SelectServerActivity : AppCompatActivity() {
                         Log.d(TAG, "Загружено ${servers.size} серверов")
                     }
                 } else {
-                    showError(result.exceptionOrNull()?.message ?: "Не удалось загрузить список нод")
+                    showError(
+                        result.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_list_load_failed)
+                    )
                     Log.e(TAG, "Ошибка загрузки списка серверов", result.exceptionOrNull())
                 }
             } catch (e: Exception) {
-                showError("Ошибка: ${e.message}")
+                showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
                 Log.e(TAG, "Ошибка загрузки списка серверов", e)
             } finally {
                 showLoading(false)
@@ -172,7 +207,7 @@ class SelectServerActivity : AppCompatActivity() {
 
     private fun onServerSelected(server: ServerDataElement) {
         Log.d(TAG, "Выбран сервер: ${server.title} (${server.ip})")
-        connectToServer(server.ip)
+        normalizeServerAddress(server.ip)?.let(::connectToServer)
     }
 
     private fun connectToServer(address: String) {
@@ -186,24 +221,34 @@ class SelectServerActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                // Сохраняем адрес beacon
-                globalParam.socketBeacon = address
-
                 // Создаем Beacon клиент
                 val createResult = grpcManager.createOnlyBeaconClient(address)
                 if (createResult.isFailure) {
-                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось подключиться к ноде")
+                    showError(
+                        createResult.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_connection_failed)
+                    )
                     resetConnectionState()
                     return@launch
                 }
 
-                // Получаем информацию о сервере
-                val infoResult = grpcManager.getServerInfo()
+                // Получаем информацию о сервере. Для self-signed Beacon сперва показываем
+                // fingerprint, а адрес сохраняем только после завершения trust flow.
+                var infoResult = grpcManager.getServerInfo()
+                if (infoResult.isFailure && approveCertificateIfEligible(address)) {
+                    infoResult = grpcManager.getServerInfo()
+                }
 
                 if (infoResult.isSuccess) {
                     val serverInfo = infoResult.getOrNull()
                     if (serverInfo != null) {
+                        if (!preflightServerCertificates(serverInfo)) {
+                            resetConnectionState()
+                            return@launch
+                        }
+
                         // Сохраняем информацию о сервере в GlobalParam
+                        globalParam.socketBeacon = address
                         globalParam.applyServerInfo(serverInfo)
 
                         Log.d(TAG, "Успешное подключение к серверу: ${serverInfo.name}")
@@ -217,17 +262,20 @@ class SelectServerActivity : AppCompatActivity() {
                         // Переход на главный экран
                         openMainActivity()
                     } else {
-                        showError("Не удалось получить информацию о ноде")
+                        showError(getString(R.string.select_server_info_failed))
                         resetConnectionState()
                     }
                 } else {
-                    showError(infoResult.exceptionOrNull()?.message ?: "Не удалось получить информацию о ноде")
+                    showError(
+                        infoResult.exceptionOrNull()?.message
+                            ?: getString(R.string.select_server_info_failed)
+                    )
                     Log.e(TAG, "Ошибка получения информации о сервере", infoResult.exceptionOrNull())
                     resetConnectionState()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка подключения к серверу", e)
-                showError("Ошибка подключения: ${e.message}")
+                showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
                 resetConnectionState()
             }
         }
@@ -239,64 +287,79 @@ class SelectServerActivity : AppCompatActivity() {
         showLoading(false)
     }
 
-    private fun validateServerAddress(input: String): Boolean {
-        val trimmedInput = input.trim()
+    private fun normalizeServerAddress(input: String): String? = runCatching {
+        grpcManager.normalizeEndpointAddress(input)
+    }.onFailure {
+        showError(getString(R.string.tls_invalid_endpoint))
+    }.getOrNull()
 
-        if (trimmedInput.isBlank()) {
-            showError("Укажите адрес ноды")
-            return false
+    private suspend fun preflightServerCertificates(serverInfo: GrpcManager.ServerInfo): Boolean {
+        while (true) {
+            val certificate = try {
+                withContext(Dispatchers.IO) {
+                    certificatePreflight.approvalRequired(serverInfo)
+                }
+            } catch (error: TlsEndpointSecurityException) {
+                showError(getString(R.string.tls_certificate_invalid))
+                return false
+            } ?: return true
+            if (!approveCertificateIfEligible(certificate)) return false
         }
-
-        val match = SERVER_ADDRESS_PATTERN.matcher(trimmedInput)
-        if (!match.matches()) {
-            showError("Используйте формат: адрес:порт")
-            return false
-        }
-
-        val host = match.group(1).trim()
-        val portStr = match.group(2)
-
-        val port = portStr.toIntOrNull()
-        if (port == null || port < MIN_PORT || port > MAX_PORT) {
-            showError("Порт должен быть числом от $MIN_PORT до $MAX_PORT")
-            return false
-        }
-
-        if (!isValidHost(host)) {
-            showError("Некорректный адрес ноды")
-            return false
-        }
-
-        return true
     }
 
-    private fun isValidHost(host: String): Boolean {
-        if (host.isBlank()) {
-            return false
-        }
+    private suspend fun approveCertificateIfEligible(address: String): Boolean {
+        val certificate = withContext(Dispatchers.IO) {
+            runCatching { certificateProbe.inspect(address) }.getOrNull()
+        } ?: return false
+        return approveCertificateIfEligible(certificate)
+    }
 
-        // Проверяем IP адрес
-        try {
-            val parts = host.split(".")
-            if (parts.size == 4) {
-                parts.forEach { part ->
-                    val num = part.toIntOrNull() ?: return@forEach
-                    if (num < 0 || num > 255) {
-                        return false
-                    }
-                }
-                return true
+    private suspend fun approveCertificateIfEligible(certificate: TlsCertificateInfo): Boolean {
+        val existingPin = tlsTrustStore.pinFor(certificate.host)
+        if (existingPin?.spkiSha256 == certificate.spkiSha256) return true
+        if (existingPin == null && !certificate.isSelfSigned) return false
+
+        return suspendCancellableCoroutine { continuation ->
+            val expiry = DateFormat.getDateTimeInstance().format(Date(certificate.expiresAtMillis))
+            val message = if (existingPin == null) {
+                getString(
+                    R.string.tls_self_signed_message,
+                    certificate.host,
+                    certificate.subject,
+                    expiry,
+                    certificate.spkiSha256
+                )
+            } else {
+                getString(
+                    R.string.tls_changed_pin_message,
+                    certificate.host,
+                    existingPin.spkiSha256,
+                    certificate.spkiSha256,
+                    certificate.subject,
+                    expiry
+                )
             }
-        } catch (e: Exception) {
-            // Не IP адрес
-        }
-
-        // Проверяем DNS имя
-        return try {
-            val uri = Uri.parse("http://$host")
-            uri.host != null
-        } catch (e: Exception) {
-            false
+            val dialog = MaterialAlertDialogBuilder(this)
+                .setTitle(
+                    if (existingPin == null) R.string.tls_self_signed_title else R.string.tls_changed_pin_title
+                )
+                .setMessage(message)
+                .setNegativeButton(R.string.tls_cancel) { _, _ ->
+                    if (continuation.isActive) continuation.resume(false)
+                }
+                .setPositiveButton(R.string.tls_trust_certificate) { _, _ ->
+                    tlsTrustStore.replacePin(certificate.host, certificate.spkiSha256)
+                    if (continuation.isActive) continuation.resume(true)
+                }
+                .create()
+            dialog.setOnShowListener {
+                dialog.findViewById<TextView>(android.R.id.message)?.setTextIsSelectable(true)
+            }
+            dialog.setOnCancelListener {
+                if (continuation.isActive) continuation.resume(false)
+            }
+            continuation.invokeOnCancellation { dialog.dismiss() }
+            dialog.show()
         }
     }
 
@@ -313,9 +376,9 @@ class SelectServerActivity : AppCompatActivity() {
     private fun showError(message: String) {
         runOnUiThread {
             MaterialAlertDialogBuilder(this)
-                .setTitle("Ошибка")
+                .setTitle(R.string.error)
                 .setMessage(message)
-                .setPositiveButton("OK", null)
+                .setPositiveButton(R.string.dialog_ok, null)
                 .show()
         }
     }
@@ -329,12 +392,12 @@ class SelectServerActivity : AppCompatActivity() {
     override fun onBackPressed() {
         // Блокируем возврат на предыдущий экран
         MaterialAlertDialogBuilder(this)
-            .setTitle("Выход из приложения")
-            .setMessage("Вы действительно хотите выйти?")
-            .setPositiveButton("Выйти") { _, _ ->
+            .setTitle(R.string.logout_title)
+            .setMessage(R.string.logout_message)
+            .setPositiveButton(R.string.logout_action) { _, _ ->
                 super.onBackPressed()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 

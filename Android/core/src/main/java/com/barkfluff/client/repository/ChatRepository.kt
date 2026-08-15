@@ -9,11 +9,6 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.security.cert.X509Certificate
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 /**
  * Репозиторий для работы с чатами и сообщениями.
@@ -87,11 +82,17 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
      * @param fileIds Список ID файлов для прикрепления
      * @param forwardedMessageId ID пересылаемого сообщения (0 = не пересылка). Используется и для reply, и для forward — backend различает по контексту.
      */
+    /**
+     * Ответ и пересылка — разные вещи и едут разными полями. Раньше оба шли одним
+     * `forwarded_message_id`, и клиент угадывал, что перед ним, по наличию оригинала
+     * в загруженной истории.
+     */
     suspend fun sendMessage(
         chatId: String,
         text: String,
         fileIds: List<String> = emptyList(),
-        forwardedMessageId: Long = 0L
+        replyToMessageId: Long = 0L,
+        forwardedMessageIds: List<Long> = emptyList()
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.messagesClient == null) {
@@ -101,10 +102,11 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val outgoingMessage = MessagesApiOuterClass.OutgoingMessage.newBuilder()
                 .setText(text)
                 .addAllFilesIds(fileIds)
-                .setForwardedMessageId(forwardedMessageId)
+                .setReplyToMessageId(replyToMessageId)
+                .addAllForwardedMessageIds(forwardedMessageIds)
                 .build()
 
-            Log.d(TAG, "sendMessage: chatId=$chatId, textLength=${text.length}, fileIds=$fileIds, forwardedMessageId=$forwardedMessageId")
+            Log.d(TAG, "sendMessage: chatId=$chatId, textLength=${text.length}, fileIds=$fileIds, replyToMessageId=$replyToMessageId, forwardedMessageIds=$forwardedMessageIds")
 
             val request = MessagesApiOuterClass.SendMessageRequest.newBuilder()
                 .setChatId(chatId)
@@ -352,18 +354,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val url = java.net.URL(uploadUrl)
             val connection = url.openConnection() as java.net.HttpURLConnection
 
-            // Если HTTPS — применяем trust-all для самоподписанного сертификата
-            if (connection is HttpsURLConnection) {
-                val trustManager = object : X509TrustManager {
-                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                }
-                val sslContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-                connection.sslSocketFactory = sslContext.socketFactory
-                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-            }
+            grpcManager.configureHttpConnection(connection)
 
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
@@ -500,17 +491,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val url = java.net.URL(downloadUrl)
             val connection = url.openConnection() as java.net.HttpURLConnection
 
-            if (connection is HttpsURLConnection) {
-                val trustManager = object : X509TrustManager {
-                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                }
-                val sslContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-                connection.sslSocketFactory = sslContext.socketFactory
-                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-            }
+            grpcManager.configureHttpConnection(connection)
 
             connection.connectTimeout = 30000
             connection.readTimeout = 60000

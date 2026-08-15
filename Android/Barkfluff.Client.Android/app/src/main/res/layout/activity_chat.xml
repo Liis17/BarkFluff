@@ -5,152 +5,7 @@
     android:id="@+id/chatRootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     tools:context=".ChatActivity">
-
-    <!-- ═══════════════════════════════════════════
-         ВЕРХНЯЯ ПАНЕЛЬ: [←] [Аватар | Имя | Время] [⋯]
-         ═══════════════════════════════════════════ -->
-
-    <!-- Кнопка «Назад» — круглая, слева -->
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_circle_btn"
-        android:contentDescription="@string/cd_back"
-        android:padding="12dp"
-        android:src="@drawable/ic_arrow_back"
-        android:elevation="4dp"
-        app:tint="?attr/colorOnSurface"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- Кнопка «Меню» — круглая, справа -->
-    <ImageButton
-        android:id="@+id/btnMore"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_circle_btn"
-        android:contentDescription="@string/cd_more_menu"
-        android:padding="12dp"
-        android:rotation="90"
-        android:src="@drawable/ic_more_vert"
-        android:elevation="4dp"
-        app:tint="?attr/colorOnSurface"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- Центральная панель чата — закруглённая карточка между кнопками -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/chatInfoCard"
-        android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginHorizontal="4dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:elevation="4dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="4dp"
-        app:strokeWidth="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toEndOf="@id/btnBack"
-        app:layout_constraintEnd_toStartOf="@id/btnMore">
-
-        <LinearLayout
-            android:id="@+id/chatInfoContainer"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="8dp"
-            android:paddingEnd="12dp">
-
-            <!-- Аватар чата -->
-            <FrameLayout
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:layout_marginEnd="10dp">
-
-                <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/chatAvatar"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:scaleType="centerCrop"
-                    android:visibility="gone"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
-
-                <TextView
-                    android:id="@+id/chatAvatarPlaceholder"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:background="@drawable/background_color_indicator"
-                    android:gravity="center"
-                    android:textColor="@android:color/white"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:visibility="visible" />
-
-                <!-- Индикатор онлайн -->
-                <View
-                    android:id="@+id/onlineIndicator"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:layout_gravity="bottom|end"
-                    android:background="@drawable/online_indicator"
-                    android:visibility="gone" />
-
-            </FrameLayout>
-
-            <!-- Имя + статус -->
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/chatNameTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorOnSurface"
-                    tools:text="Имя пользователя" />
-
-                <TextView
-                    android:id="@+id/onlineStatusTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textAppearance="?attr/textAppearanceLabelSmall"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    tools:text="в сети" />
-
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/btnAudioCall"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="4dp"
-                android:background="@drawable/bg_circle_btn"
-                android:contentDescription="@string/cd_audio_call"
-                android:padding="10dp"
-                android:src="@drawable/ic_phone"
-                app:tint="?attr/colorOnSurface" />
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
 
     <!-- ═══════════════════════════════════════════
          ФОН ЧАТА — на весь экран, под панелями
@@ -159,6 +14,8 @@
         android:id="@+id/chatBackgroundImage"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
         android:scaleType="centerCrop"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
@@ -167,7 +24,26 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ═══════════════════════════════════════════
-         ОВЕРЛЕЙ ЗАТЕНЕНИЯ ФОНА — поверх фона, под контентом
+         БЛЮР-КОПИЯ ОБОЕВ под шапкой: на весь экран
+         (чтобы centerCrop совпадал с фоном), в рантайме
+         обрезается clipBounds'ом до высоты шапки.
+         Лента сообщений скроллится ПОВЕРХ неё, под шапкой.
+         ═══════════════════════════════════════════ -->
+    <ImageView
+        android:id="@+id/chatHeaderBlurImage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ═══════════════════════════════════════════
+         ОВЕРЛЕЙ ЗАТЕНЕНИЯ ФОНА — поверх обеих копий фона, под контентом
          ═══════════════════════════════════════════ -->
     <View
         android:id="@+id/chatDimOverlay"
@@ -180,15 +56,16 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ═══════════════════════════════════════════
-         СПИСОК СООБЩЕНИЙ — на весь экран, под панелями
-         paddingTop/Bottom = высота верхней/нижней панели
+         СПИСОК СООБЩЕНИЙ — edge-to-edge: от верхнего края
+         экрана (под шапкой и статус-баром) до низа,
+         paddingBottom = высота панели ввода
          ═══════════════════════════════════════════ -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipToPadding="false"
-        android:paddingTop="72dp"
+        android:paddingTop="4dp"
         android:paddingBottom="8dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -197,8 +74,161 @@
         tools:listitem="@layout/item_message_sent" />
 
     <!-- ═══════════════════════════════════════════
+         ВЕРХНЯЯ ПАНЕЛЬ: [←] [Имя | статус] [☎] [⋯] [Аватар]
+         Имя уменьшается, а статус скрывается при прокрутке в историю сообщений.
+         Сама панель прозрачна — вместо сплошной подложки на всю ширину
+         каждый блок (back, инфо, действия) получает свой скруглённый чип-фон
+         (setupChatBackground), между блоками виден блюр обоев (Telegram-style).
+         ═══════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/chatHeaderBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@null"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_back"
+            android:padding="12dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="?attr/colorOnSurface" />
+
+        <!-- Имя + статус: тап открывает профиль собеседника или карточку группы -->
+        <LinearLayout
+            android:id="@+id/chatInfoCard"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:background="@null"
+            android:foreground="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="2dp">
+
+            <TextView
+                android:id="@+id/chatNameTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:lineHeight="28sp"
+                android:maxLines="1"
+                android:textColor="?attr/colorOnSurface"
+                android:textFontWeight="600"
+                android:textSize="22sp"
+                tools:text="Имя пользователя" />
+
+            <!-- Обёртка нужна, чтобы схлопывать строку статуса по высоте -->
+            <FrameLayout
+                android:id="@+id/chatStatusContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:id="@+id/onlineStatusTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:lineHeight="16sp"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                    tools:text="в сети" />
+
+            </FrameLayout>
+
+        </LinearLayout>
+
+        <!-- Кластер действий (звонок, меню, аватар) — отдельный чип-блок -->
+        <LinearLayout
+            android:id="@+id/headerActionsCluster"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@null"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnAudioCall"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/cd_audio_call"
+                android:padding="11dp"
+                android:src="@drawable/ic_phone"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
+                android:id="@+id/btnMore"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/cd_more_menu"
+                android:padding="11dp"
+                android:rotation="90"
+                android:src="@drawable/ic_more_vert"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <FrameLayout
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="2dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/chatAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                <TextView
+                    android:id="@+id/chatAvatarPlaceholder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/background_color_indicator"
+                    android:gravity="center"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="visible" />
+
+                <!-- Индикатор онлайн -->
+                <View
+                    android:id="@+id/onlineIndicator"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="bottom|end"
+                    android:background="@drawable/online_indicator"
+                    android:visibility="gone" />
+
+            </FrameLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ═══════════════════════════════════════════
          ПЛАШКА ЗАКРЕПЛЁННОГО СООБЩЕНИЯ (Telegram-style)
-         Накладывается поверх верха ленты, ниже chatInfoCard
+         Накладывается поверх верха ленты, ниже шапки чата
          ═══════════════════════════════════════════ -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/pinnedMessageBar"
@@ -214,7 +244,7 @@
         app:cardCornerRadius="16dp"
         app:cardElevation="6dp"
         app:strokeWidth="0dp"
-        app:layout_constraintTop_toBottomOf="@id/chatInfoCard"
+        app:layout_constraintTop_toBottomOf="@id/chatHeaderBar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -230,7 +260,8 @@
                 android:layout_height="20dp"
                 android:layout_marginEnd="10dp"
                 android:src="@drawable/ic_pin"
-                android:contentDescription="@string/cd_pinned"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 app:tint="?attr/colorPrimary" />
 
             <LinearLayout
@@ -264,6 +295,8 @@
                 android:id="@+id/pinnedListButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_all_pinned"
                 android:src="@drawable/ic_menu_hamburger"
@@ -311,13 +344,13 @@
         android:id="@+id/editPreviewBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="8dp"
+        android:layout_marginHorizontal="14dp"
         android:layout_marginBottom="4dp"
         android:elevation="4dp"
         android:visibility="gone"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar"
         app:strokeWidth="0dp"
         app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
         app:layout_constraintStart_toStartOf="parent"
@@ -373,6 +406,8 @@
                 android:id="@+id/clearEditButton"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_cancel_edit"
                 android:padding="4dp"
@@ -392,13 +427,13 @@
         android:id="@+id/replyPreviewBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="8dp"
+        android:layout_marginHorizontal="14dp"
         android:layout_marginBottom="4dp"
         android:elevation="4dp"
         android:visibility="gone"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar"
         app:strokeWidth="0dp"
         app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
         app:layout_constraintStart_toStartOf="parent"
@@ -452,6 +487,8 @@
                 android:id="@+id/clearReplyButton"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_cancel_reply"
                 android:padding="4dp"
@@ -470,13 +507,13 @@
         android:id="@+id/attachmentPreviewBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="8dp"
+        android:layout_marginHorizontal="14dp"
         android:layout_marginBottom="4dp"
         android:elevation="4dp"
         android:visibility="gone"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar"
         app:strokeWidth="0dp"
         app:layout_constraintBottom_toTopOf="@id/inputRowBarrier"
         app:layout_constraintStart_toStartOf="parent"
@@ -513,6 +550,8 @@
                 android:id="@+id/clearAttachmentsButton"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_clear_attachments"
                 android:padding="4dp"
@@ -528,94 +567,136 @@
          [📎]  [ Поле ввода сообщения ]  [😊] [➤]
          ═══════════════════════════════════════════ -->
 
-    <!-- Кнопка прикрепления — круглая, слева -->
-    <ImageButton
-        android:id="@+id/attachButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="8dp"
+    <!-- Грядка ввода: скрепка, поле и стикеры внутри одной pill-плашки -->
+    <LinearLayout
+        android:id="@+id/inputBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:minHeight="52dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="10dp"
         android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_circle_btn"
-        android:contentDescription="@string/cd_attach_file"
-        android:padding="12dp"
-        android:rotation="45"
+        android:background="@drawable/bg_chat_input_bar"
         android:elevation="4dp"
-        android:src="@drawable/ic_attachment"
-        app:tint="?attr/colorOnSurfaceVariant"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
         app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/sendButton">
 
-    <!-- Кнопка стикеров — круглая, справа -->
-    <ImageButton
-        android:id="@+id/stickerButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="4dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_circle_btn"
-        android:contentDescription="@string/cd_stickers"
-        android:padding="12dp"
-        android:elevation="4dp"
-        android:src="@drawable/ic_sticker"
-        app:tint="?attr/colorOnSurfaceVariant"
-        app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
-        app:layout_constraintEnd_toStartOf="@id/sendButton" />
+        <ImageButton
+            android:id="@+id/attachButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_attach_file"
+            android:padding="11dp"
+            android:rotation="45"
+            android:src="@drawable/ic_attachment"
+            app:tint="?attr/colorOnSurfaceVariant" />
 
-    <!-- Кнопка отправки — круглая, крайняя справа -->
+        <EditText
+            android:id="@+id/messageEditText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@null"
+            android:gravity="center_vertical"
+            android:hint="@string/chat_message_hint"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minHeight="44dp"
+            android:maxLines="8"
+            android:paddingHorizontal="6dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
+            android:textSize="17sp" />
+
+        <ImageButton
+            android:id="@+id/stickerButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_stickers"
+            android:padding="11dp"
+            android:src="@drawable/ic_sticker"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+    </LinearLayout>
+
+    <!-- Индикатор записи голосового: накрывает грядку ввода на время записи
+         (ChatActivity.showVoiceRecordingBar) -->
+    <LinearLayout
+        android:id="@+id/voiceRecordBar"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_chat_input_bar"
+        android:elevation="5dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="18dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/inputBar"
+        app:layout_constraintEnd_toEndOf="@id/inputBar"
+        app:layout_constraintStart_toStartOf="@id/inputBar"
+        app:layout_constraintTop_toTopOf="@id/inputBar"
+        tools:visibility="visible">
+
+        <View
+            android:id="@+id/voiceRecordDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_voice_record_dot" />
+
+        <TextView
+            android:id="@+id/voiceRecordTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textFontWeight="600"
+            android:textSize="16sp"
+            tools:text="0:07" />
+
+        <TextView
+            android:id="@+id/voiceRecordHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:gravity="end|center_vertical"
+            android:maxLines="1"
+            android:text="@string/voice_record_slide_to_cancel"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <!-- Кнопка отправки: круг с микрофоном → вытянутая pill со стрелкой, фон и форма
+         анимируются в ChatActivity.updateSendButtonMode() -->
     <ImageButton
         android:id="@+id/sendButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_marginEnd="14dp"
         android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_circle_btn"
         android:contentDescription="@string/cd_send"
-        android:padding="12dp"
         android:elevation="4dp"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:padding="14dp"
         android:src="@drawable/ic_send_filled"
-        app:tint="?attr/colorPrimary"
         app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
         app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- Поле ввода сообщения — между кнопками, высота 48dp как у кнопок -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/messageInputLayout"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_marginHorizontal="4dp"
-        android:layout_marginBottom="8dp"
-        android:elevation="4dp"
-        app:boxBackgroundColor="?attr/colorSurface"
-        app:boxCornerRadiusBottomEnd="24dp"
-        app:boxCornerRadiusBottomStart="24dp"
-        app:boxCornerRadiusTopEnd="24dp"
-        app:boxCornerRadiusTopStart="24dp"
-        app:hintEnabled="false"
-        app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
-        app:layout_constraintStart_toEndOf="@id/attachButton"
-        app:layout_constraintEnd_toStartOf="@id/stickerButton">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/messageEditText"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@null"
-            android:hint="@string/chat_message_hint"
-            android:inputType="textMultiLine|textCapSentences"
-            android:maxLines="4"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="0dp"
-            android:textAppearance="?attr/textAppearanceBodyLarge" />
-
-    </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Вспомогательный невидимый View, задаёт нижнюю границу панели ввода -->
     <View
         android:id="@+id/inputRowBottom"
         android:layout_width="0dp"
-        android:layout_height="64dp"
+        android:layout_height="68dp"
         android:visibility="invisible"
         android:elevation="4dp"
         app:layout_constraintBottom_toTopOf="@id/stickerPanelContainer"
@@ -628,7 +709,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="top"
-        app:constraint_referenced_ids="attachButton,messageInputLayout,stickerButton,sendButton" />
+        app:constraint_referenced_ids="inputBar,sendButton" />
 
     <!-- ═══════════════════════════════════════════
          INLINE СТИКЕР-ПАНЕЛЬ
@@ -697,7 +778,7 @@
         android:elevation="6dp"
         android:textAppearance="?attr/textAppearanceBodyMedium"
         android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/chatInfoCard"
+        app:layout_constraintTop_toBottomOf="@id/chatHeaderBar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:visibility="gone" />

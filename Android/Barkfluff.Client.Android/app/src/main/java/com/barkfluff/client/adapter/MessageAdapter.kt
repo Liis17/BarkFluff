@@ -15,10 +15,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -28,6 +30,7 @@ import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.shape.CornerFamily
 import com.google.android.material.shape.ShapeAppearanceModel
@@ -69,7 +72,7 @@ class MessageAdapter(
     private val downloadToCache: suspend (fileId: String, onProgress: (Int) -> Unit) -> java.io.File? = { _, _ -> null },
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     /** Закругление облачков сообщений в dp (0..30). */
-    var messageCornerRadiusDp: Int = 20,
+    var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
     /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
@@ -79,12 +82,6 @@ class MessageAdapter(
     /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
     private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
-
-    /** Проверяет, есть ли сообщение с указанным ID в текущем загруженном списке (для эвристики reply vs forward). */
-    fun hasMessageInCurrentList(messageId: Long): Boolean {
-        if (messageId <= 0L) return false
-        return currentList.any { it.type == MessageType.MESSAGE && it.messageId == messageId }
-    }
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
     fun getMessageAt(position: Int): MessageItem? {
@@ -101,6 +98,20 @@ class MessageAdapter(
         private const val VIEW_TYPE_FOOTER = 5
         private const val VIEW_TYPE_SYSTEM = 6
         private const val VOICE_AUTO_DOWNLOAD_LIMIT_BYTES = 2L * 1024L * 1024L
+
+        /**
+         * Payload для случая, когда подгрузился кэш участников группы: меняются только
+         * имя и мини-аватар отправителя, полный ребинд (с перезапуском загрузки вложений)
+         * не нужен.
+         */
+        const val PAYLOAD_SENDER_INFO = "sender_info"
+
+        /** «Хвостик» последнего пузыря в серии. */
+        private const val BUBBLE_TAIL_CORNER_DP = 8f
+        /** Отступ между сериями сообщений. */
+        private const val BUBBLE_GROUP_GAP_DP = 10
+        /** Отступ между сообщениями внутри одной серии. */
+        private const val BUBBLE_INNER_GAP_DP = 3
 
         private val voiceAutoDownloads = mutableSetOf<String>()
         private val voiceWaveformCache = mutableMapOf<String, FloatArray>()
@@ -235,12 +246,73 @@ class MessageAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = getItem(position)
         when (holder) {
-            is SentMessageViewHolder -> holder.bind(item)
-            is ReceivedMessageViewHolder -> holder.bind(item)
+            is SentMessageViewHolder -> holder.bind(item, groupPositionOf(position))
+            is ReceivedMessageViewHolder -> holder.bind(item, groupPositionOf(position))
             is DateSeparatorViewHolder -> holder.bind(item)
             is UnreadSeparatorViewHolder -> holder.bind(item)
             is SystemMessageViewHolder -> holder.bind(item)
             is FooterViewHolder -> { /* спейсер, биндинг не нужен */ }
+        }
+    }
+
+    override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int,
+        payloads: MutableList<Any>
+    ) {
+        // Незнакомый payload или пустой список — обычный полный бинд.
+        if (payloads.isEmpty() || payloads.any { it != PAYLOAD_SENDER_INFO }) {
+            super.onBindViewHolder(holder, position, payloads)
+            return
+        }
+        if (holder is ReceivedMessageViewHolder) {
+            holder.bindSenderInfo(getItem(position))
+        }
+    }
+
+    /** Место сообщения в серии подряд идущих сообщений одного отправителя. */
+    data class GroupPosition(val isFirst: Boolean, val isLast: Boolean)
+
+    private fun groupPositionOf(position: Int): GroupPosition {
+        val item = getItem(position)
+        val previous = if (position > 0) getItem(position - 1) else null
+        val next = if (position < itemCount - 1) getItem(position + 1) else null
+        fun continues(neighbour: MessageItem?) =
+            neighbour != null && neighbour.type == MessageType.MESSAGE && neighbour.senderId == item.senderId
+        return GroupPosition(isFirst = !continues(previous), isLast = !continues(next))
+    }
+
+    /**
+     * Форма пузыря по макету M3E: серия сообщений одного отправителя срастается,
+     * «хвостик» (маленький угол) остаётся только у последнего сообщения серии.
+     */
+    private fun applyBubbleShape(card: MaterialCardView, group: GroupPosition, isSentByMe: Boolean) {
+        val density = card.resources.displayMetrics.density
+        val big = messageCornerRadiusDp * density
+        val mid = big / 2f
+        val small = minOf(BUBBLE_TAIL_CORNER_DP * density, mid)
+
+        val builder = ShapeAppearanceModel.builder()
+        if (isSentByMe) {
+            builder.setTopLeftCornerSize(big)
+                .setTopRightCornerSize(if (group.isFirst) big else mid)
+                .setBottomRightCornerSize(if (group.isLast) small else mid)
+                .setBottomLeftCornerSize(big)
+        } else {
+            builder.setTopLeftCornerSize(if (group.isFirst) big else mid)
+                .setTopRightCornerSize(big)
+                .setBottomRightCornerSize(big)
+                .setBottomLeftCornerSize(if (group.isLast) small else mid)
+        }
+        card.shapeAppearanceModel = builder.build()
+    }
+
+    /** Сообщения внутри серии стоят плотнее, чем соседние серии. */
+    private fun applyGroupSpacing(root: View, group: GroupPosition) {
+        val density = root.resources.displayMetrics.density
+        val spacing = if (group.isLast) BUBBLE_GROUP_GAP_DP else BUBBLE_INNER_GAP_DP
+        root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = (spacing * density).toInt()
         }
     }
 
@@ -263,7 +335,8 @@ class MessageAdapter(
         private var lastTouchRawY: Float = 0f
 
         @android.annotation.SuppressLint("ClickableViewAccessibility")
-        fun bind(item: MessageItem) {
+        fun bind(item: MessageItem, group: GroupPosition) {
+            applyGroupSpacing(binding.root, group)
             // Перехват raw координат касания для позиционирования popup
             binding.root.setOnTouchListener { _, event ->
                 if (event.action == android.view.MotionEvent.ACTION_DOWN) {
@@ -278,7 +351,7 @@ class MessageAdapter(
             }
 
             // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
-            bindQuoteSplit(binding.replyQuote, binding.forwardQuote, item.attachments)
+            bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
 
             // Вложения для основного отображения (без FORWARDED_MESSAGE — он рендерится через quote)
             val displayedAttachments = item.attachments.filter {
@@ -308,9 +381,8 @@ class MessageAdapter(
                 binding.stickerContainer.visibility = View.GONE
                 binding.stickerTimeStatusLayout.visibility = View.GONE
 
-                // Применяем закругление из настроек персонализации
-                val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
-                binding.messageCard.radius = cornerPx
+                // Форма пузыря: базовый радиус — из настроек персонализации
+                applyBubbleShape(binding.messageCard, group, isSentByMe = true)
 
                 if (item.text.isNotBlank()) {
                     MarkdownRenderer.renderMessageInto(
@@ -384,7 +456,10 @@ class MessageAdapter(
                 if (progress != null) {
                     binding.uploadProgressOverlay.visibility = View.VISIBLE
                     binding.uploadProgressBar.progress = progress
-                    binding.uploadProgressLabel.text = "$progress%"
+                    binding.uploadProgressLabel.text = binding.root.context.getString(
+                        R.string.message_upload_progress,
+                        progress
+                    )
                     binding.uploadProgressOverlay.layoutParams = binding.uploadProgressOverlay.layoutParams.also {
                         it.width = if (binding.attachmentsContainer.visibility == View.VISIBLE)
                             binding.attachmentsContainer.layoutParams.width
@@ -407,8 +482,46 @@ class MessageAdapter(
         private var lastTouchRawX: Float = 0f
         private var lastTouchRawY: Float = 0f
 
+        /** Вызывается и из полного bind, и из частичного обновления по PAYLOAD_SENDER_INFO. */
+        fun bindSenderInfo(item: MessageItem) {
+            if (!isGroupChat) {
+                binding.senderInfoLayout.visibility = View.GONE
+                return
+            }
+            binding.senderInfoLayout.visibility = View.VISIBLE
+
+            // Имя и аватар отправителя берём из резолвера (кэш участников чата),
+            // с фолбэком на поля самого сообщения.
+            val resolved = senderInfoProvider?.invoke(item.senderId)
+            val senderName = resolved?.first ?: item.senderName
+            val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
+
+            binding.senderNameTextView.text = senderName
+
+            if (!senderAvatarFileId.isNullOrBlank()) {
+                AvatarLoader.loadByFileId(
+                    imageView = binding.senderAvatarImageView,
+                    placeholderView = binding.senderAvatarPlaceholder,
+                    fileId = senderAvatarFileId,
+                    displayName = senderName ?: "",
+                    userId = item.senderId,
+                    size = 48
+                ) {
+                    getFileUrl(senderAvatarFileId)
+                }
+            } else {
+                binding.senderAvatarImageView.visibility = View.GONE
+                AvatarLoader.showPlaceholder(
+                    binding.senderAvatarPlaceholder,
+                    senderName ?: "",
+                    item.senderId
+                )
+            }
+        }
+
         @android.annotation.SuppressLint("ClickableViewAccessibility")
-        fun bind(item: MessageItem) {
+        fun bind(item: MessageItem, group: GroupPosition) {
+            applyGroupSpacing(binding.root, group)
             binding.root.setOnTouchListener { _, event ->
                 if (event.action == android.view.MotionEvent.ACTION_DOWN) {
                     lastTouchRawX = event.rawX
@@ -421,46 +534,14 @@ class MessageAdapter(
             }
 
             // Цитата reply (выше текста) и forward (ниже текста)
-            bindQuoteSplit(binding.replyQuote, binding.forwardQuote, item.attachments)
+            bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
 
             // Вложения для основного отображения (без FORWARDED_MESSAGE — рендерится через quote)
             val displayedAttachments = item.attachments.filter {
                 it.type != Shared.MessageAttachmentType.FORWARDED_MESSAGE
             }
 
-            if (isGroupChat) {
-                binding.senderInfoLayout.visibility = View.VISIBLE
-
-                // Имя и аватар отправителя берём из резолвера (кэш участников чата),
-                // с фолбэком на поля самого сообщения.
-                val resolved = senderInfoProvider?.invoke(item.senderId)
-                val senderName = resolved?.first ?: item.senderName
-                val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
-
-                binding.senderNameTextView.text = senderName
-
-                if (!senderAvatarFileId.isNullOrBlank()) {
-                    AvatarLoader.loadByFileId(
-                        imageView = binding.senderAvatarImageView,
-                        placeholderView = binding.senderAvatarPlaceholder,
-                        fileId = senderAvatarFileId,
-                        displayName = senderName ?: "",
-                        userId = item.senderId,
-                        size = 48
-                    ) {
-                        getFileUrl(senderAvatarFileId)
-                    }
-                } else {
-                    binding.senderAvatarImageView.visibility = View.GONE
-                    AvatarLoader.showPlaceholder(
-                        binding.senderAvatarPlaceholder,
-                        senderName ?: "",
-                        item.senderId
-                    )
-                }
-            } else {
-                binding.senderInfoLayout.visibility = View.GONE
-            }
+            bindSenderInfo(item)
 
             // Определяем, является ли сообщение «чистым стикером»
             val isPureSticker = item.text.isBlank() &&
@@ -484,9 +565,8 @@ class MessageAdapter(
                 binding.stickerContainer.visibility = View.GONE
                 binding.stickerTimeStatusLayout.visibility = View.GONE
 
-                // Применяем закругление из настроек персонализации
-                val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
-                binding.messageCard.radius = cornerPx
+                // Форма пузыря: базовый радиус — из настроек персонализации
+                applyBubbleShape(binding.messageCard, group, isSentByMe = false)
 
                 if (item.text.isNotBlank()) {
                     MarkdownRenderer.renderMessageInto(
@@ -556,38 +636,46 @@ class MessageAdapter(
     // ─── Forward / Reply Quote ────────────────────────────────────────────────
 
     /**
-     * Биндит цитату в нужный include в зависимости от эвристики:
-     *   - reply: оригинал есть в текущем загруженном списке сообщений (тот же чат)
-     *     → компактный блок в [replyBinding] (выше основного текста), forward скрыт
-     *   - forward: оригинал не найден локально
-     *     → полный блок в [forwardBinding] (ниже основного текста), reply скрыт
+     * Биндит цитату по явным данным сервера, а не по догадке:
+     *   - reply: заполнено [replyTo] → компактный блок в [replyBinding] выше основного текста
+     *   - forward: есть вложения FORWARDED_MESSAGE → блок на каждое пересланное в [forwardContainer] ниже текста
      *
-     * Когда forward-attachment нет вообще — оба контейнера скрыты.
+     * Reply и forward больше не исключают друг друга: можно переслать сообщение, отвечая на
+     * другое. Когда нет ни того, ни другого — оба контейнера скрыты.
      */
     private fun bindQuoteSplit(
         replyBinding: ViewMessageQuoteBinding,
-        forwardBinding: ViewMessageQuoteBinding,
-        attachments: List<Shared.MessageAttachment>
+        forwardContainer: LinearLayout,
+        attachments: List<Shared.MessageAttachment>,
+        replyTo: Shared.ReplyInfo?
     ) {
-        val forwardedAtt = attachments.firstOrNull {
-            it.type == Shared.MessageAttachmentType.FORWARDED_MESSAGE
-        }
-        if (forwardedAtt == null || !forwardedAtt.hasForwardedMessage()) {
+        if (replyTo != null) {
+            renderReply(replyBinding, replyTo)
+        } else {
             hideQuote(replyBinding)
-            hideQuote(forwardBinding)
+        }
+
+        val forwarded = attachments
+            .filter { it.type == Shared.MessageAttachmentType.FORWARDED_MESSAGE && it.hasForwardedMessage() }
+            .map { it.forwardedMessage }
+            .sortedBy { it.order }
+
+        forwardContainer.removeAllViews()
+
+        if (forwarded.isEmpty()) {
+            forwardContainer.visibility = View.GONE
             return
         }
 
-        val data = forwardedAtt.forwardedMessage
-        val isReply = hasMessageInCurrentList(data.originalMessageId)
-
-        if (isReply) {
-            hideQuote(forwardBinding)
-            renderReply(replyBinding, data)
-        } else {
-            hideQuote(replyBinding)
-            renderForward(forwardBinding, data)
+        // Каждое пересланное сообщение — свой блок: пачку нельзя схлопнуть в один,
+        // иначе часть пересланного просто не будет показана.
+        val inflater = LayoutInflater.from(forwardContainer.context)
+        for (data in forwarded) {
+            val quote = ViewMessageQuoteBinding.inflate(inflater, forwardContainer, false)
+            renderForward(quote, data)
+            forwardContainer.addView(quote.root)
         }
+        forwardContainer.visibility = View.VISIBLE
     }
 
     private fun hideQuote(quote: ViewMessageQuoteBinding) {
@@ -596,17 +684,46 @@ class MessageAdapter(
         quote.forwardView.visibility = View.GONE
     }
 
-    private fun renderReply(quote: ViewMessageQuoteBinding, data: Shared.ForwardedMessageAttachment) {
+    private fun renderReply(quote: ViewMessageQuoteBinding, data: Shared.ReplyInfo) {
         quote.quoteContainer.visibility = View.VISIBLE
         quote.replyView.visibility = View.VISIBLE
         quote.forwardView.visibility = View.GONE
-        quote.replyAuthorTextView.text = data.authorName.ifBlank { "Сообщение" }
-        quote.replyPreviewTextView.text = buildPreviewLine(data.text, data.attachmentsList)
+
+        if (data.isDeleted) {
+            // Сервер не отдаёт ни текст, ни автора удалённого оригинала — цитата не должна
+            // оставаться способом прочитать удалённое сообщение.
+            quote.replyAuthorTextView.text = quote.replyView.context.getString(R.string.message_deleted)
+            quote.replyPreviewTextView.text = ""
+            quote.replyView.setOnClickListener(null)
+            quote.replyView.isClickable = false
+            return
+        }
+
+        quote.replyAuthorTextView.text = data.senderName.ifBlank {
+            quote.replyView.context.getString(R.string.message_placeholder)
+        }
+        quote.replyPreviewTextView.text = buildReplyPreviewLine(data, quote.replyView.context)
 
         // Click по reply-блоку — переход к оригиналу
-        val origId = data.originalMessageId
+        val origId = data.messageId
+        quote.replyView.isClickable = true
         quote.replyView.setOnClickListener {
             onReplyQuoteClick?.invoke(origId)
+        }
+    }
+
+    /** Превью для reply: текст оригинала, а если его нет — тип первого вложения. */
+    private fun buildReplyPreviewLine(data: Shared.ReplyInfo, context: Context): String {
+        if (data.textPreview.isNotBlank()) return MarkdownRenderer.strip(data.textPreview)
+
+        return when (data.firstAttachmentType) {
+            Shared.MessageAttachmentType.IMAGE, Shared.MessageAttachmentType.GIF -> context.getString(R.string.reply_photo)
+            Shared.MessageAttachmentType.VIDEO -> context.getString(R.string.reply_video)
+            Shared.MessageAttachmentType.VOICE -> context.getString(R.string.reply_voice)
+            Shared.MessageAttachmentType.AUDIO -> context.getString(R.string.reply_audio)
+            Shared.MessageAttachmentType.STICKER -> context.getString(R.string.reply_sticker)
+            Shared.MessageAttachmentType.DOCUMENT -> context.getString(R.string.reply_file)
+            else -> ""
         }
     }
 
@@ -614,7 +731,9 @@ class MessageAdapter(
         quote.quoteContainer.visibility = View.VISIBLE
         quote.replyView.visibility = View.GONE
         quote.forwardView.visibility = View.VISIBLE
-        quote.forwardAuthorTextView.text = data.authorName.ifBlank { "Пересланное сообщение" }
+        quote.forwardAuthorTextView.text = data.authorName.ifBlank {
+            quote.forwardView.context.getString(R.string.forwarded_message)
+        }
 
         // Медиа-вложения внутри пересланного сообщения (картинки/видео)
         val nestedAtts = data.attachmentsList
@@ -640,41 +759,6 @@ class MessageAdapter(
             quote.forwardTextTextView.visibility = View.VISIBLE
         } else {
             quote.forwardTextTextView.visibility = View.GONE
-        }
-    }
-
-    /** Формирует короткое превью для reply: 1 строка текста ИЛИ "📷 N фото" / "📎 N файлов" если текста нет. */
-    private fun buildPreviewLine(text: String, attachments: List<Shared.MessageAttachment>): String {
-        if (text.isNotBlank()) return MarkdownRenderer.strip(text)
-        if (attachments.isEmpty()) return ""
-        val photos = attachments.count {
-            it.type == Shared.MessageAttachmentType.IMAGE ||
-            it.type == Shared.MessageAttachmentType.GIF
-        }
-        val videos = attachments.count { it.type == Shared.MessageAttachmentType.VIDEO }
-        val docs = attachments.count { it.type == Shared.MessageAttachmentType.DOCUMENT }
-        val audios = attachments.count {
-            it.type == Shared.MessageAttachmentType.AUDIO ||
-            it.type == Shared.MessageAttachmentType.VOICE
-        }
-        val stickers = attachments.count { it.type == Shared.MessageAttachmentType.STICKER }
-        return when {
-            photos > 0 -> "📷 ${photos} ${pluralize(photos, "фото", "фото", "фото")}"
-            videos > 0 -> "🎬 ${videos} ${pluralize(videos, "видео", "видео", "видео")}"
-            audios > 0 -> "🎵 ${audios} ${pluralize(audios, "аудио", "аудио", "аудио")}"
-            docs > 0 -> "📎 ${docs} ${pluralize(docs, "файл", "файла", "файлов")}"
-            stickers > 0 -> "Стикер"
-            else -> ""
-        }
-    }
-
-    private fun pluralize(n: Int, one: String, few: String, many: String): String {
-        val mod10 = n % 10
-        val mod100 = n % 100
-        return when {
-            mod10 == 1 && mod100 != 11 -> one
-            mod10 in 2..4 && mod100 !in 12..14 -> few
-            else -> many
         }
     }
 
@@ -1320,7 +1404,7 @@ class MessageAdapter(
                             saveFileToDownloads(context, cachedFile, fileName)
                         }
                     } else {
-                        Toast.makeText(context, "Сначала скачайте аудио", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, R.string.audio_download_required, Toast.LENGTH_SHORT).show()
                     }
                     true
                 }
@@ -1342,7 +1426,7 @@ class MessageAdapter(
                     binding.playPauseButton.isEnabled = false
                     binding.playPauseButton.alpha = 0.4f
                     binding.durationText.text = "0:00"
-                    Toast.makeText(context, "Аудио удалено из кеша", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.audio_removed_from_cache, Toast.LENGTH_SHORT).show()
                     true
                 }
                 else -> false
@@ -1413,7 +1497,11 @@ class MessageAdapter(
                     } else {
                         binding.audioSeekBar.progress = (progress * 1000).toInt()
                     }
-                    binding.durationText.text = "${formatAudioTime(pos.toLong())} / ${formatAudioTime(dur.toLong())}"
+                    binding.durationText.text = binding.root.context.getString(
+                        R.string.audio_position,
+                        formatAudioTime(pos.toLong()),
+                        formatAudioTime(dur.toLong())
+                    )
                 }
                 handler.postDelayed(this, 250)
             }
@@ -1498,11 +1586,11 @@ class MessageAdapter(
         )
         val context = container.context
         val fileId = attachment.fileId
-        val fileName = attachment.fileName.ifBlank { "file" }
+        val fileName = attachment.fileName.ifBlank { context.getString(R.string.attachment_file) }
         val previewUrl = attachment.previewUrl
 
         binding.docFileName.text = fileName
-        binding.docFileSize.text = formatFileSize(attachment.attachmentSize)
+        binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
         binding.docDownloadProgress.visibility = View.GONE
 
         // Перекраска для отправленных сообщений (контраст на primaryContainer)
@@ -1605,7 +1693,7 @@ class MessageAdapter(
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE
                     binding.docDownloadProgress.visibility = View.GONE
-                    Toast.makeText(context, "Файл удалён из кеша", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.file_removed_from_cache, Toast.LENGTH_SHORT).show()
                     true
                 }
                 else -> false
@@ -1658,10 +1746,10 @@ class MessageAdapter(
                         addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     }
 
-                    val chooser = Intent.createChooser(intent, "Открыть с помощью")
+                    val chooser = Intent.createChooser(intent, context.getString(R.string.open_with))
                     context.startActivity(chooser)
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Не удалось открыть файл", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.file_open_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1709,12 +1797,16 @@ class MessageAdapter(
                     resolver.update(uri, contentValues, null, null)
                 }
 
-                Toast.makeText(context, "Файл сохранён в Downloads/BarkFluff", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.file_saved_to_downloads, Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.file_save_failed, Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Ошибка сохранения: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.file_save_error, e.message.orEmpty()),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -1733,13 +1825,19 @@ class MessageAdapter(
         return "%d:%02d".format(min, sec)
     }
 
-    private fun formatFileSize(bytes: Long): String {
+    private fun formatFileSize(context: android.content.Context, bytes: Long): String {
         return when {
             bytes <= 0 -> ""
-            bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024f)
-            bytes < 1024 * 1024 * 1024 -> "%.1f MB".format(bytes / (1024f * 1024f))
-            else -> "%.1f GB".format(bytes / (1024f * 1024f * 1024f))
+            bytes < 1024 -> context.getString(R.string.file_size_bytes, bytes)
+            bytes < 1024 * 1024 -> context.getString(R.string.file_size_kilobytes, bytes / 1024.0)
+            bytes < 1024 * 1024 * 1024 -> context.getString(
+                R.string.file_size_megabytes,
+                bytes / (1024.0 * 1024.0)
+            )
+            else -> context.getString(
+                R.string.file_size_gigabytes,
+                bytes / (1024.0 * 1024.0 * 1024.0)
+            )
         }
     }
 
@@ -1771,6 +1869,12 @@ data class MessageItem(
     val text: String,
     val timestamp: Long,
     val attachments: List<Shared.MessageAttachment>,
+    /**
+     * Цитируемое сообщение, если это ответ. Приходит с сервера явным полем — раньше reply и
+     * forward различались догадкой «есть ли оригинал в загруженной истории», из-за чего ответ
+     * превращался в пересылку, стоило прокрутить чат.
+     */
+    val replyTo: Shared.ReplyInfo? = null,
     val readStatus: ReadStatus = ReadStatus.NONE,
     val type: MessageType = MessageType.MESSAGE,
     val dateText: String = "",
@@ -1788,10 +1892,10 @@ data class MessageItem(
             attachments = emptyList(), type = MessageType.DATE_SEPARATOR, dateText = dateText
         )
 
-        fun createUnreadSeparator() = MessageItem(
+        fun createUnreadSeparator(label: String) = MessageItem(
             messageId = -2, senderId = 0, text = "", timestamp = 0,
             attachments = emptyList(), type = MessageType.UNREAD_SEPARATOR,
-            dateText = "Непрочитанные сообщения"
+            dateText = label
         )
     }
 }

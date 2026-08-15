@@ -83,10 +83,12 @@ public class MessageQueueSender
         Guid? inviteeUuid,
         string? senderFid,
         DateTimeOffset? lastChangeAt = null,
-        List<FederatedFileRefInfo>? federatedAttachments = null)
+        List<FederatedFileRefInfo>? federatedAttachments = null,
+        Guid? replyToFederatedMessageId = null)
     {
         var newMessageEvent = new NewMessageEvent
         {
+            ReplyToFederatedMessageId = replyToFederatedMessageId,
             ChatId = chatId,
             ChatMembers = localChatMembers,
             Message = message.ToGrpc(filesInfoMap).ToByteArray(),

@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - master
+      - nightly
     paths:
       - 'Backend/BarkFluff.Configuration/**'
       - 'Backend/BarkFluff.Identity/**'
@@ -13,47 +14,13 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
-  request-approval:
-    name: "📲 Запрос подтверждения"
-    runs-on: ubuntu-latest
-    outputs:
-      approved: ${{ steps.result.outputs.approved }}
-    steps:
-      - name: "📲 Собрать BarkFluff.Configuration?"
-        id: approval
-        if: github.ref_name != 'dev'
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Configuration?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка BarkFluff.Configuration одобрена"
-          REJECTED_TEXT: "❌ Сборка BarkFluff.Configuration отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
-      - name: Результат
-        id: result
-        run: |
-          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
-            echo "approved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "approved=false" >> "$GITHUB_OUTPUT"
-          fi
-
   # ═══════════════════════════════════════════════════════════════
   #  2. dotnet publish → Docker build → Push
   # ═══════════════════════════════════════════════════════════════
   build:
     name: "🐳 Сборка и публикация BarkFluff.Configuration"
-    needs: request-approval
-    if: needs.request-approval.outputs.approved == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

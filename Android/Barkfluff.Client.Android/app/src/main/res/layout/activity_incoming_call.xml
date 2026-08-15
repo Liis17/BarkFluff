@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground"
@@ -35,7 +37,8 @@
             android:layout_gravity="center"
             android:background="@drawable/bg_call_avatar"
             android:gravity="center"
-            android:text="AK"
+            android:importantForAccessibility="no"
+            tools:text="AK"
             android:textColor="?attr/colorOnPrimaryContainer"
             android:textSize="48sp"
             android:textStyle="bold" />
@@ -45,6 +48,8 @@
             android:layout_width="148dp"
             android:layout_height="148dp"
             android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:scaleType="centerCrop"
             android:visibility="gone" />
     </FrameLayout>
@@ -62,7 +67,7 @@
             android:id="@+id/callerName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BarkFluff"
+            tools:text="BarkFluff"
             android:textAppearance="?attr/textAppearanceHeadlineSmall"
             android:textColor="?attr/colorOnSurface" />
 
@@ -76,15 +81,17 @@
             <ImageView
                 android:layout_width="18dp"
                 android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_phone"
-                android:tint="?attr/colorPrimary" />
+                app:tint="?attr/colorPrimary" />
 
             <TextView
                 android:id="@+id/callType"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Аудиозвонок"
+                android:text="@string/incoming_call_audio"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
         </LinearLayout>
@@ -112,18 +119,19 @@
                 android:layout_height="68dp"
                 android:background="@drawable/bg_call_reject"
                 android:clickable="true"
+                android:contentDescription="@string/incoming_call_reject"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackgroundBorderless"
                 android:padding="20dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_call_end"
-                android:tint="?attr/colorOnErrorContainer" />
+                app:tint="?attr/colorOnErrorContainer" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Отклонить"
+                android:text="@string/incoming_call_reject"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
@@ -141,18 +149,19 @@
                 android:layout_height="68dp"
                 android:background="@drawable/bg_call_accept"
                 android:clickable="true"
+                android:contentDescription="@string/incoming_call_answer"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackgroundBorderless"
                 android:padding="20dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_phone"
-                android:tint="?attr/colorOnPrimary" />
+                app:tint="?attr/colorOnPrimary" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Ответить"
+                android:text="@string/incoming_call_answer"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>

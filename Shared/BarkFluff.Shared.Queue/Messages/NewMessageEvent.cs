@@ -53,4 +53,11 @@ public class NewMessageEvent
     /// вложений нет. Байты не реплицируются, только метаданные.
     /// </summary>
     public List<FederatedFileRefInfo>? FederatedAttachments { get; set; }
+
+    /// <summary>
+    /// FederatedId сообщения, на которое отвечает это. Локальный ReplyToMessageId через границу
+    /// ноды бессмысленен — у копии на другой ноде свой Messages.Id. Null = не ответ, либо оригинал
+    /// не федеративный (ответ на локальное сообщение в fed-чате не воспроизводим у партнёра).
+    /// </summary>
+    public Guid? ReplyToFederatedMessageId { get; set; }
 }

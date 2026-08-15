@@ -1,11 +1,16 @@
 package com.barkfluff.client
 
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.PathInterpolator
+import androidx.core.animation.doOnEnd
+import androidx.core.view.doOnLayout
+import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
@@ -56,6 +61,12 @@ class ChatsFragment : Fragment() {
     private var titleAnimationGeneration = 0
     private var localDraftStates: Map<String, Boolean> = emptyMap()
 
+    // Сворачивание шапки по направлению прокрутки
+    private var headerCollapsed = false
+    private var headerExpandedHeight = 0
+    private var headerAnimator: ValueAnimator? = null
+    private var searchAnimator: ValueAnimator? = null
+
     // Папки чатов
     private var folders: List<GrpcManager.ChatFolder> = emptyList()
     private var allChats: List<GrpcManager.ChatData> = emptyList()
@@ -75,6 +86,14 @@ class ChatsFragment : Fragment() {
         private const val TOKEN_BUFFER_MINUTES = 5
         private const val TITLE_FADE_OUT_DURATION_MS = 90L
         private const val TITLE_FADE_IN_DURATION_MS = 160L
+        private const val HEADER_COLLAPSE_DURATION_MS = 360L
+        private const val SEARCH_RESIZE_DURATION_MS = 300L
+        private const val SEARCH_HEIGHT_EXPANDED_DP = 52
+        private const val SEARCH_HEIGHT_COLLAPSED_DP = 48
+        /** Порог прокрутки, ниже которого шапка не сворачивается (как в макете). */
+        private const val HEADER_COLLAPSE_TRIGGER_DP = 20
+        /** Минимальный шаг прокрутки, меняющий состояние шапки. */
+        private const val HEADER_SCROLL_THRESHOLD_DP = 6
         const val MAIN_UNREAD_RESULT_KEY = "main_chats_unread"
         const val MAIN_UNREAD_COUNT = "count"
     }
@@ -161,59 +180,124 @@ class ChatsFragment : Fragment() {
     }
 
     private fun setupSearchButton() {
-        binding.searchButton.setOnClickListener {
+        binding.searchField.setOnClickListener {
             val intent = Intent(requireContext(), SearchActivity::class.java)
             startActivity(intent)
         }
     }
 
     private fun setupToolbar() {
-        // Убираем стандартный title toolbar'а, используем свой TextView
-        binding.toolbar.title = null
-        updateToolbarTitle(animate = false)
+        updateHeaderSubtitle(animate = false)
+        binding.headerCollapsible.doOnLayout {
+            if (headerExpandedHeight == 0 && !headerCollapsed) headerExpandedHeight = it.height
+        }
         binding.toolbarRetryButton.setOnClickListener {
             checkTokenAndLoadChats()
         }
     }
 
-    private fun updateToolbarTitle(animate: Boolean = true) {
-        val title = when {
+    /**
+     * Вторая строка шапки: статус синхронизации, если он есть, иначе — счётчик непрочитанных.
+     */
+    private fun updateHeaderSubtitle(animate: Boolean = true) {
+        if (_binding == null) return
+        val subtitle = when {
             isRealtimeReconnecting -> getString(R.string.connecting)
             syncStatus == SyncStatus.UPDATING -> getString(R.string.chats_sync_updating)
             syncStatus == SyncStatus.OFFLINE -> getString(R.string.chats_sync_offline)
             else -> {
-                val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
-                fullName.ifBlank { globalParam.userName }
+                val unread = totalUnread()
+                if (unread == 0) getString(R.string.chats_unread_none)
+                else resources.getQuantityString(R.plurals.chats_unread_summary, unread, unread)
             }
         }
 
-        if (binding.toolbarTitle.text == title) return
+        if (binding.headerSubtitle.text == subtitle) return
 
-        binding.toolbarTitle.animate().cancel()
+        binding.headerSubtitle.animate().cancel()
         if (!animate) {
-            binding.toolbarTitle.alpha = 1f
-            binding.toolbarTitle.translationY = 0f
-            binding.toolbarTitle.text = title
+            binding.headerSubtitle.alpha = 1f
+            binding.headerSubtitle.translationY = 0f
+            binding.headerSubtitle.text = subtitle
             return
         }
 
         val generation = ++titleAnimationGeneration
         val offset = 4 * resources.displayMetrics.density
-        binding.toolbarTitle.animate()
+        binding.headerSubtitle.animate()
             .alpha(0f)
             .translationY(-offset)
             .setDuration(TITLE_FADE_OUT_DURATION_MS)
             .withEndAction {
                 if (_binding == null || generation != titleAnimationGeneration) return@withEndAction
-                binding.toolbarTitle.text = title
-                binding.toolbarTitle.translationY = offset
-                binding.toolbarTitle.animate()
+                binding.headerSubtitle.text = subtitle
+                binding.headerSubtitle.translationY = offset
+                binding.headerSubtitle.animate()
                     .alpha(1f)
                     .translationY(0f)
                     .setDuration(TITLE_FADE_IN_DURATION_MS)
                     .start()
             }
             .start()
+    }
+
+    private fun totalUnread(): Int = allChats.fold(0L) { total, chat ->
+        (total + chat.countUnread).coerceAtMost(Int.MAX_VALUE.toLong())
+    }.toInt()
+
+    /**
+     * Прокрутка вниз сворачивает крупный заголовок и сжимает поле поиска, прокрутка вверх — возвращает.
+     */
+    private fun updateHeaderCollapse(recyclerView: RecyclerView, dy: Int) {
+        val density = resources.displayMetrics.density
+        val threshold = HEADER_SCROLL_THRESHOLD_DP * density
+        when {
+            dy > threshold && recyclerView.computeVerticalScrollOffset() > HEADER_COLLAPSE_TRIGGER_DP * density ->
+                setHeaderCollapsed(true)
+            dy < -threshold -> setHeaderCollapsed(false)
+        }
+    }
+
+    private fun setHeaderCollapsed(collapsed: Boolean) {
+        if (headerCollapsed == collapsed || _binding == null) return
+        val header = binding.headerCollapsible
+        if (headerExpandedHeight == 0) {
+            headerExpandedHeight = header.height
+            if (headerExpandedHeight == 0) return
+        }
+        headerCollapsed = collapsed
+
+        val target = if (collapsed) 0 else headerExpandedHeight
+        headerAnimator?.cancel()
+        headerAnimator = ValueAnimator.ofInt(header.height, target).apply {
+            duration = HEADER_COLLAPSE_DURATION_MS
+            interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+            addUpdateListener { animator ->
+                if (_binding == null) return@addUpdateListener
+                val value = animator.animatedValue as Int
+                header.updateLayoutParams { height = value }
+                header.alpha = value.toFloat() / headerExpandedHeight
+            }
+            doOnEnd {
+                if (_binding == null || collapsed) return@doOnEnd
+                header.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+            }
+            start()
+        }
+
+        val searchField = binding.searchField
+        val searchTarget = ((if (collapsed) SEARCH_HEIGHT_COLLAPSED_DP else SEARCH_HEIGHT_EXPANDED_DP) *
+            resources.displayMetrics.density).toInt()
+        searchAnimator?.cancel()
+        searchAnimator = ValueAnimator.ofInt(searchField.height, searchTarget).apply {
+            duration = SEARCH_RESIZE_DURATION_MS
+            interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+            addUpdateListener { animator ->
+                if (_binding == null) return@addUpdateListener
+                searchField.updateLayoutParams { height = animator.animatedValue as Int }
+            }
+            start()
+        }
     }
 
     private fun loadUserAvatar() {
@@ -293,6 +377,7 @@ class ChatsFragment : Fragment() {
             setHasFixedSize(false)
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    updateHeaderCollapse(recyclerView, dy)
                     if (dy <= 0 || isLoadingNextPage || allChats.size >= totalChatsCount) return
                     val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
                     if (layoutManager.findLastVisibleItemPosition() >= chatAdapter.itemCount - 6) loadNextPage()
@@ -437,7 +522,10 @@ class ChatsFragment : Fragment() {
                 Log.e(TAG, "Ошибка загрузки чатов", chatsResult.exceptionOrNull())
                 Snackbar.make(
                     binding.root,
-                    "Ошибка загрузки чатов: ${chatsResult.exceptionOrNull()?.message}",
+                    getString(
+                        R.string.chat_load_error,
+                        chatsResult.exceptionOrNull()?.message.orEmpty()
+                    ),
                     Snackbar.LENGTH_LONG
                 ).show()
                 showSyncOffline()
@@ -480,7 +568,7 @@ class ChatsFragment : Fragment() {
         val allChatsItem = FolderTabsAdapter.Item(
             id = null,
             icon = "",
-            name = "Все чаты",
+            name = getString(R.string.all_chats),
             unreadCount = computeAllChatsUnread()
         )
         val folderItems = folders.map { folder ->
@@ -537,9 +625,8 @@ class ChatsFragment : Fragment() {
 
     private fun publishMainUnread() {
         if (!isAdded) return
-        val unreadCount = allChats.fold(0L) { total, chat ->
-            (total + chat.countUnread).coerceAtMost(Int.MAX_VALUE.toLong())
-        }.toInt()
+        val unreadCount = totalUnread()
+        updateHeaderSubtitle()
         parentFragmentManager.setFragmentResult(
             MAIN_UNREAD_RESULT_KEY,
             bundleOf(MAIN_UNREAD_COUNT to unreadCount)
@@ -645,7 +732,7 @@ class ChatsFragment : Fragment() {
                         connectionCheckJob?.cancel()
                         connectionCheckJob = null
                         isRealtimeReconnecting = false
-                        updateToolbarTitle()
+                        updateHeaderSubtitle()
                     }
                     RealtimeService.ConnectionState.CONNECTING,
                     RealtimeService.ConnectionState.DISCONNECTED -> {
@@ -654,7 +741,7 @@ class ChatsFragment : Fragment() {
                             connectionCheckJob = launch {
                                 delay(1000) // Ждём 1 секунду
                                 isRealtimeReconnecting = true
-                                updateToolbarTitle()
+                                updateHeaderSubtitle()
                             }
                         }
                     }
@@ -861,7 +948,7 @@ class ChatsFragment : Fragment() {
         Log.d(TAG, "resolveDisplayItem: Групповой чат chatId=${chat.id}, title=${chat.title}, pictureFileId=$chatPictureFileId")
         return ChatAdapter.ChatDisplayItem(
             chatData = chat,
-            displayTitle = chat.title.ifBlank { "Чат" },
+            displayTitle = chat.title.ifBlank { getString(R.string.chat_title_default) },
             displayAvatarFileId = chatPictureFileId.ifBlank { null }
         )
     }
@@ -883,7 +970,7 @@ class ChatsFragment : Fragment() {
 
         val intent = Intent(requireContext(), ChatActivity::class.java).apply {
             putExtra("chat_id", chat.id)
-            putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { "Чат" })
+            putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) })
             putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
             putExtra("is_group_chat", chat.isGroupChat)
             putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
@@ -907,19 +994,19 @@ class ChatsFragment : Fragment() {
     private fun showSyncUpdating() {
         syncStatus = SyncStatus.UPDATING
         binding.toolbarRetryButton.visibility = View.GONE
-        updateToolbarTitle()
+        updateHeaderSubtitle()
     }
 
     private fun showSyncOffline() {
         syncStatus = SyncStatus.OFFLINE
         binding.toolbarRetryButton.visibility = View.VISIBLE
-        updateToolbarTitle()
+        updateHeaderSubtitle()
     }
 
     private fun hideSyncStatus() {
         syncStatus = null
         binding.toolbarRetryButton.visibility = View.GONE
-        updateToolbarTitle()
+        updateHeaderSubtitle()
     }
 
     private fun showEmptyState(show: Boolean) {
@@ -981,6 +1068,10 @@ class ChatsFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        headerAnimator?.cancel()
+        headerAnimator = null
+        searchAnimator?.cancel()
+        searchAnimator = null
         _binding = null
     }
 }

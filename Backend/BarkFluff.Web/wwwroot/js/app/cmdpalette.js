@@ -110,12 +110,11 @@
         activeIndex = 0;
         items = computeItems('');
         render();
-        overlay.classList.add('visible');
-        setTimeout(function () { input.focus(); }, 30);
+        BF.utils.openOverlay(overlay, { focus: input });
     }
 
     function closePalette() {
-        overlay.classList.remove('visible');
+        BF.utils.closeOverlay(overlay);
     }
 
     function onKeydown(e) {

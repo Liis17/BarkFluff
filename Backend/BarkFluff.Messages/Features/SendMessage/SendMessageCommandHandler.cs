@@ -24,6 +24,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 {
     private const int MaxTextLength = 4096;
     private const int MaxAttachmentsPerMessage = 10;
+    private const int MaxForwardedMessages = 20;
 
     private readonly ChatsStorage _chatsStorage;
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
@@ -34,6 +35,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     private readonly MessageQueueSender _messageQueueSender;
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
+    private readonly ReplyPreviewResolver _replyPreviewResolver;
     private readonly ILogger<SendMessageCommandHandler> _logger;
 
     private readonly Dictionary<UploadFileType, Domain.MessageAttachmentType> _attachmentMap =
@@ -51,8 +53,9 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,
         UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage,
         MessageQueueSender messageQueueSender, IConfiguration configuration, MetricsCollector metrics,
-        ILogger<SendMessageCommandHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, ILogger<SendMessageCommandHandler> logger)
     {
+        _replyPreviewResolver = replyPreviewResolver;
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
         _userContext = userContext;
@@ -77,16 +80,29 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             request.UserId
         );
 
+        // Ответ содержимым не является: reply без текста и вложений — пустое сообщение.
+        // Пересылка содержимым является, поэтому учитывается наравне с текстом и файлами.
         if (request.Message is null ||
             request.Message.Text is null &&
             request.Message.FileIds is null &&
-            request.Message.ForwardedMessageId is null)
+            request.Message.ForwardedMessageIds is null)
         {
             _logger.LogWarning(
                 "Попытка отправки пустого сообщения от пользователя {UserId}",
                 senderId
             );
             throw new MessageNotContainContextException();
+        }
+
+        if (request.Message.ForwardedMessageIds is { Count: > MaxForwardedMessages } forwardedIds)
+        {
+            _logger.LogWarning(
+                "Сообщение от пользователя {UserId} пересылает {ForwardCount} сообщений (лимит: {MaxForwarded})",
+                senderId,
+                forwardedIds.Count,
+                MaxForwardedMessages
+            );
+            throw new TooManyForwardedMessagesException();
         }
 
         if (request.Message.Text is { Length: > MaxTextLength })
@@ -295,6 +311,20 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             }
         }
 
+        // Отвечать можно только на сообщение этого же чата — то же правило, что при сохранении
+        // черновика. Проверка идёт после того, как chatId окончательно определён (личный чат мог
+        // быть создан выше), иначе reply в новый чат сравнивался бы с пустым chatId.
+        if (request.Message.ReplyToMessageId is { } replyToMessageId)
+        {
+            await Features.Shared.ReplyTargetValidator.ValidateAsync(_messagesStorage, chatId.Value, replyToMessageId);
+
+            _logger.LogDebug(
+                "Сообщение является ответом на {ReplyToMessageId} в чате {ChatId}",
+                replyToMessageId,
+                chatId.Value
+            );
+        }
+
         List<Domain.MessageAttachment> attachments = new();
         Dictionary<string, UploadFileInfo> filesInfoMap = new();
 
@@ -333,83 +363,77 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             );
         }
 
-        if (request.Message.ForwardedMessageId.HasValue)
+        if (request.Message.ForwardedMessageIds is { Count: > 0 } forwardSourceIds)
         {
             _logger.LogDebug(
-                "Обработка пересланного сообщения {OriginalMessageId} от пользователя {UserId}",
-                request.Message.ForwardedMessageId.Value,
+                "Обработка {ForwardCount} пересланных сообщений от пользователя {UserId}",
+                forwardSourceIds.Count,
                 senderId
             );
 
-            var originalMessages = await _messagesStorage.GetMessagesByIds([request.Message.ForwardedMessageId.Value]);
-            var originalMessage = originalMessages.FirstOrDefault();
+            var originalMessages = await _messagesStorage.GetMessagesByIds(forwardSourceIds);
+            var originalsById = originalMessages.ToDictionary(m => m.Id);
 
-            if (originalMessage is null)
+            if (forwardSourceIds.Any(id => !originalsById.ContainsKey(id)))
             {
                 _logger.LogWarning(
-                    "Оригинальное сообщение {MessageId} для пересылки не найдено",
-                    request.Message.ForwardedMessageId.Value
+                    "Часть оригинальных сообщений для пересылки не найдена (запрошено {RequestedCount}, найдено {FoundCount})",
+                    forwardSourceIds.Count,
+                    originalsById.Count
                 );
                 throw new MessageNotFoundException();
             }
 
-            var hasAccessToOriginal = await _chatsStorage.CheckAccessToChat(originalMessage.ChatId, senderId);
-            if (!hasAccessToOriginal)
+            // Доступ проверяем по уникальным чатам, а не по каждому сообщению: пересылка пачки из
+            // одного чата иначе давала бы N одинаковых запросов.
+            foreach (var sourceChatId in originalMessages.Select(m => m.ChatId).Distinct())
             {
-                _logger.LogWarning(
-                    "Пользователь {UserId} не имеет доступа к чату {ChatId} оригинального сообщения",
-                    senderId,
-                    originalMessage.ChatId
-                );
-                throw new NoAccessToChatException();
-            }
-
-            string authorName;
-            if (originalMessage.SenderId is { } originalSenderId)
-            {
-                var authorResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = originalSenderId });
-                authorName = $"{authorResponse.User.FirstName} {authorResponse.User.LastName}";
-            }
-            else if (originalMessage.SenderUuid.HasValue)
-            {
-                // fed-автор (SenderId = NULL) — профиль в RemoteUsers, явное имя для forward'а
-                // в Фазе 5 (рендер). Здесь используем FID как заглушку, чтобы не падать.
-                var remote = await _usersServerApiClient.GetUsersByUuidAsync(
-                    new GetUsersByUuidRequest { Uuids = { originalMessage.SenderUuid.Value.ToString() } });
-                var p = remote.Users.FirstOrDefault();
-                authorName = p is { Found: true }
-                    ? $"{p.FirstName} {p.LastName}".Trim()
-                    : (p?.Username ?? string.Empty);
-            }
-            else
-            {
-                authorName = string.Empty;
-            }
-
-            var forwardedAttachments = originalMessage.Content?.Attachments?
-                .Where(a => a.Type != Domain.MessageAttachmentType.ForwardedMessage)
-                .Select(a => new Domain.ForwardedMessageAttachment
+                if (!await _chatsStorage.CheckAccessToChat(sourceChatId, senderId))
                 {
-                    Type = a.Type,
-                    FileId = a.FileId ?? string.Empty,
-                    PreviewUrl = a.PreviewUrl,
-                    FileSize = a.FileSize,
-                    // Форвард fed-вложения сохраняет origin: иначе проверка доступа (3.3)
-                    // не сможет точно сопоставить файл с нодой-владельцем.
-                    OriginServer = a.OriginServer
-                })
-                .ToList();
+                    _logger.LogWarning(
+                        "Пользователь {UserId} не имеет доступа к чату {ChatId} оригинального сообщения",
+                        senderId,
+                        sourceChatId
+                    );
+                    throw new NoAccessToChatException();
+                }
+            }
 
-            // Загружаем метаданные файлов из вложений оригинального сообщения
-            var forwardedFileIds = forwardedAttachments?
-                .Where(fa => !string.IsNullOrEmpty(fa.FileId))
-                .Select(fa => fa.FileId)
-                .ToList();
+            var authorNames = await ResolveForwardAuthorNamesAsync(originalMessages);
 
-            if (forwardedFileIds is { Count: > 0 })
+            // Один GetFilesData на вложения всех пересылаемых сообщений разом.
+            var forwardedAttachmentsBySource = new Dictionary<long, List<Domain.ForwardedMessageAttachment>>();
+            var allForwardedFileIds = new List<string>();
+
+            foreach (var original in originalMessages)
+            {
+                var forwardedAttachments = original.Content?.Attachments?
+                    .Where(a => a.Type != Domain.MessageAttachmentType.ForwardedMessage)
+                    .Select(a => new Domain.ForwardedMessageAttachment
+                    {
+                        Type = a.Type,
+                        FileId = a.FileId ?? string.Empty,
+                        PreviewUrl = a.PreviewUrl,
+                        FileSize = a.FileSize,
+                        // Форвард fed-вложения сохраняет origin: иначе проверка доступа (3.3)
+                        // не сможет точно сопоставить файл с нодой-владельцем.
+                        OriginServer = a.OriginServer
+                    })
+                    .ToList();
+
+                if (forwardedAttachments is not null)
+                {
+                    forwardedAttachmentsBySource[original.Id] = forwardedAttachments;
+                    allForwardedFileIds.AddRange(forwardedAttachments
+                        .Where(fa => !string.IsNullOrEmpty(fa.FileId))
+                        .Select(fa => fa.FileId));
+                }
+            }
+
+            if (allForwardedFileIds.Count > 0)
             {
                 var forwardedFilesInfo = await _filesServerApiClient.GetFilesDataAsync(
-                    new GetFilesDataRequest { FileIds = { forwardedFileIds } });
+                    new GetFilesDataRequest { FileIds = { allForwardedFileIds.Distinct() } });
 
                 foreach (var fi in forwardedFilesInfo.FilesInfos)
                 {
@@ -417,22 +441,32 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 }
             }
 
-            attachments.Add(new Domain.MessageAttachment
+            // Порядок задаёт клиент, а не выдача БД: ForwardedOrder — то, в каком виде пользователь
+            // видел пересылку при отправке.
+            for (var order = 0; order < forwardSourceIds.Count; order++)
             {
-                Type = Domain.MessageAttachmentType.ForwardedMessage,
-                FileId = string.Empty,
-                ForwardedAuthorName = authorName,
-                ForwardedOriginalMessageId = originalMessage.Id,
-                ForwardedText = originalMessage.Content?.Text,
-                ForwardedAttachments = forwardedAttachments
-            });
+                var original = originalsById[forwardSourceIds[order]];
 
-            _metrics.Increment("messages_forwarded");
+                attachments.Add(new Domain.MessageAttachment
+                {
+                    Type = Domain.MessageAttachmentType.ForwardedMessage,
+                    FileId = string.Empty,
+                    ForwardedAuthorName = authorNames.GetValueOrDefault(original.Id, string.Empty),
+                    ForwardedOriginalMessageId = original.Id,
+                    ForwardedText = original.Content?.Text,
+                    ForwardedAttachments = forwardedAttachmentsBySource.GetValueOrDefault(original.Id),
+                    ForwardedOriginalChatId = original.ChatId,
+                    ForwardedOriginalSenderId = original.SenderId,
+                    ForwardedOriginalSentAt = original.SentAt,
+                    ForwardedOrder = order
+                });
+            }
+
+            _metrics.Add("messages_forwarded", forwardSourceIds.Count);
 
             _logger.LogInformation(
-                "Добавлено пересланное сообщение {OriginalMessageId} от автора {AuthorName}",
-                originalMessage.Id,
-                authorName
+                "Добавлено {ForwardCount} пересланных сообщений",
+                forwardSourceIds.Count
             );
         }
 
@@ -472,7 +506,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             ReadBy = [senderId],
             SenderId = senderId,
             SentAt = DateTime.UtcNow,
-            Type = MessageContentType.Generic
+            Type = MessageContentType.Generic,
+            ReplyToMessageId = request.Message.ReplyToMessageId
         };
 
         if (isFederated)
@@ -499,6 +534,16 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
         if (isFederated)
         {
+            // Ответ уезжает межнодовым uuid оригинала. Если оригинал не федеративный (например,
+            // сообщение из этого чата, созданное до его федерализации), партнёру ссылаться не на что —
+            // отправляем сообщение без цитаты, а не отказываем в отправке.
+            Guid? replyToFederatedMessageId = null;
+            if (message.ReplyToMessageId is { } replyTargetId)
+            {
+                var replyTarget = await _messagesStorage.GetMessageById(replyTargetId);
+                replyToFederatedMessageId = replyTarget?.FederatedId;
+            }
+
             await _messageQueueSender.SendFederatedMessage(
                 message,
                 chatId.Value,
@@ -517,7 +562,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 federatedAttachments: Features.Federation.FederatedAttachmentMapper.Build(
                     message.Content?.Attachments,
                     filesInfoMap,
-                    _configuration["Federation:ServerName"] ?? string.Empty));
+                    _configuration["Federation:ServerName"] ?? string.Empty),
+                replyToFederatedMessageId: replyToFederatedMessageId);
         }
         else
         {
@@ -541,6 +587,66 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             senderId
         );
 
-        return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap) };
+        // Отправитель должен увидеть свою цитату сразу, не дожидаясь перезагрузки истории.
+        var replyPreviews = await _replyPreviewResolver.ResolveAsync([message]);
+
+        return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap, replyPreviews: replyPreviews) };
+    }
+
+    /// <summary>
+    /// Имена авторов пересылаемых сообщений: два батч-вызова (локальные и remote) вместо запроса
+    /// на каждое сообщение. До пересылки пачками разница была незаметна — с ней это был бы N+1.
+    /// </summary>
+    private async Task<Dictionary<long, string>> ResolveForwardAuthorNamesAsync(List<Message> originals)
+    {
+        var names = new Dictionary<long, string>();
+
+        var localSenderIds = originals
+            .Where(m => m.SenderId.HasValue)
+            .Select(m => m.SenderId!.Value)
+            .Distinct()
+            .ToList();
+
+        var localNamesById = new Dictionary<long, string>();
+        if (localSenderIds.Count > 0)
+        {
+            var usersResponse = await _usersServerApiClient.ListByIdsAsync(
+                new ListByIdsRequest { Ids = { localSenderIds } });
+
+            foreach (var user in usersResponse.Users)
+                localNamesById[user.Id] = $"{user.FirstName} {user.LastName}";
+        }
+
+        // fed-авторы (SenderId = NULL) живут в RemoteUsers — отдельный батч по UUID.
+        var remoteUuids = originals
+            .Where(m => m.SenderId is null && m.SenderUuid.HasValue)
+            .Select(m => m.SenderUuid!.Value.ToString())
+            .Distinct()
+            .ToList();
+
+        var remoteNamesByUuid = new Dictionary<string, string>();
+        if (remoteUuids.Count > 0)
+        {
+            var remoteResponse = await _usersServerApiClient.GetUsersByUuidAsync(
+                new GetUsersByUuidRequest { Uuids = { remoteUuids } });
+
+            foreach (var profile in remoteResponse.Users)
+            {
+                remoteNamesByUuid[profile.Uuid] = profile.Found
+                    ? $"{profile.FirstName} {profile.LastName}".Trim()
+                    : profile.Username ?? string.Empty;
+            }
+        }
+
+        foreach (var original in originals)
+        {
+            names[original.Id] = original.SenderId is { } senderId
+                ? localNamesById.GetValueOrDefault(senderId, string.Empty)
+                : original.SenderUuid is { } uuid
+                    ? remoteNamesByUuid.GetValueOrDefault(uuid.ToString(), string.Empty)
+                    : string.Empty;
+        }
+
+        return names;
     }
 }

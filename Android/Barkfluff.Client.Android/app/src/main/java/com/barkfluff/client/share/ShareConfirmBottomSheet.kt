@@ -126,7 +126,7 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
     private fun bindDocument(uri: Uri, mime: String) {
         val (name, size) = queryNameAndSize(uri)
         binding.previewDocument.visibility = View.VISIBLE
-        binding.previewDocName.text = name ?: uri.lastPathSegment ?: "Файл"
+        binding.previewDocName.text = name ?: uri.lastPathSegment ?: getString(R.string.file_button)
         binding.previewDocMeta.text = buildString {
             append(formatSize(size))
             if (mime.isNotBlank()) {

@@ -24,7 +24,7 @@ class AboutActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAboutBinding
     private lateinit var globalParam: GlobalParam
-    private val servicePingChecker = ServicePingChecker()
+    private val servicePingChecker by lazy { ServicePingChecker(applicationContext) }
     private var pingResults = emptyMap<String, ServicePingResult>()
     private var isChecking = false
 
@@ -59,16 +59,16 @@ class AboutActivity : AppCompatActivity() {
     }
 
     private fun serverServices(): List<ServiceDefinition> = listOf(
-        ServiceDefinition("Beacon", globalParam.socketBeacon),
-        ServiceDefinition("Identity", globalParam.socketIdentity),
-        ServiceDefinition("Users", globalParam.socketUsers),
-        ServiceDefinition("Files", globalParam.socketFiles),
-        ServiceDefinition("Messages", globalParam.socketMessages),
-        ServiceDefinition("Updates", globalParam.socketUpdates),
-        ServiceDefinition("Onliner", globalParam.socketOnliner),
-        ServiceDefinition("FastAuth", globalParam.socketFastAuth),
-        ServiceDefinition("Calls", globalParam.socketCalls),
-        ServiceDefinition("LiveKit", globalParam.livekitUrl, pingable = false)
+        ServiceDefinition(getString(R.string.about_service_beacon), globalParam.socketBeacon),
+        ServiceDefinition(getString(R.string.about_service_identity), globalParam.socketIdentity),
+        ServiceDefinition(getString(R.string.about_service_users), globalParam.socketUsers),
+        ServiceDefinition(getString(R.string.about_service_files), globalParam.socketFiles),
+        ServiceDefinition(getString(R.string.about_service_messages), globalParam.socketMessages),
+        ServiceDefinition(getString(R.string.about_service_updates), globalParam.socketUpdates),
+        ServiceDefinition(getString(R.string.about_service_onliner), globalParam.socketOnliner),
+        ServiceDefinition(getString(R.string.about_service_fast_auth), globalParam.socketFastAuth),
+        ServiceDefinition(getString(R.string.about_service_calls), globalParam.socketCalls),
+        ServiceDefinition(getString(R.string.about_service_livekit), globalParam.livekitUrl, pingable = false)
     )
 
     private fun fillServerInfo() {

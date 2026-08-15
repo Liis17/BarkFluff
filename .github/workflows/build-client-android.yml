@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - master
+      - nightly
     paths:
       - 'Android/Barkfluff.Client.Android/**'
       - 'Android/core/**'
@@ -20,50 +21,13 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
-  # ═══════════════════════════════════════════════════════════════
-  #  Запрос подтверждения сборки через Telegram
-  # ═══════════════════════════════════════════════════════════════
-  request-approval:
-    name: "📲 Запрос подтверждения"
-    runs-on: ubuntu-latest
-    outputs:
-      approved: ${{ steps.result.outputs.approved }}
-    steps:
-      - name: "📲 Собрать Android Client?"
-        id: approval
-        if: github.ref_name != 'dev'
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку Android Client?"
-          APPROVAL_BUTTON: "\u2705 Собрать"
-          REJECT_BUTTON: "\u274C Отменить"
-          APPROVED_TEXT: "\u2705 Сборка Android Client одобрена"
-          REJECTED_TEXT: "\u274C Сборка Android Client отклонена"
-          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
-      - name: Результат
-        id: result
-        run: |
-          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
-            echo "approved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "approved=false" >> "$GITHUB_OUTPUT"
-          fi
-
   # ═══════════════════════════════════════════════════════════════
   #  Сборка APK + загрузка на сервер обновлений
   # ═══════════════════════════════════════════════════════════════
   build:
     name: "📱 Сборка Android Client"
-    needs: request-approval
-    if: needs.request-approval.outputs.approved == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -100,14 +64,43 @@ jobs:
           test -n "$SDK_PATH"
           printf 'sdk.dir=%s\n' "$SDK_PATH" > local.properties
 
+      - name: Проверка локализации и доступности UI
+        run: python3 tools/check_android_ui.py
+
       - name: Восстановление CA-бандла Cloudflare Origin CA
         env:
           CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
         run: echo "$CA_BUNDLE_B64" | base64 -d > cloudflare-origin-ca-bundle.pem
 
+      - name: Канал сборки
+        id: target
+        run: |
+          case "${{ github.ref_name }}" in
+            master)  FLAVOR="Stable";  CHANNEL="release" ;;
+            dev)     FLAVOR="Dev";     CHANNEL="dev" ;;
+            nightly) FLAVOR="Nightly"; CHANNEL="nightly" ;;
+            *)
+              echo "Ветка ${{ github.ref_name }} не привязана к каналу обновлений" >&2
+              exit 1
+              ;;
+          esac
+          echo "flavor=$FLAVOR" >> "$GITHUB_OUTPUT"
+          echo "flavor_dir=$(echo "$FLAVOR" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Ветка ${{ github.ref_name }} → flavor $FLAVOR, канал $CHANNEL"
+
       - name: Автоподнятие версии
         run: |
-          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
+          # Версию поднимает только nightly, dev и master переиздают её как есть,
+          # поэтому источник правды для всех трёх веток — канал nightly.
+          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffkotlin/nightly/version" || echo "")
+
+          if [ -z "$RESPONSE" ]; then
+            # Канал nightly пуст до первой nightly-сборки — подхватываем версию из beta,
+            # чтобы не откатить нумерацию к значению из build.gradle.kts.
+            echo "Канал nightly пуст, пробуем beta"
+            RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
+          fi
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
@@ -115,12 +108,12 @@ jobs:
             SERVER_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' Barkfluff.Client.Android/app/build.gradle.kts || echo "0.0.0")
           fi
 
-          # Стрипаем любой нечисловой суффикс (например " beta")
+          # Стрипаем любой нечисловой суффикс (в beta-канале версии вида "0.0.7 beta")
           SERVER_VERSION=$(echo "$SERVER_VERSION" | grep -oP '^\d+\.\d+\.\d+' || echo "0.0.0")
 
           echo "Server version: $SERVER_VERSION"
 
-          if [ "${{ github.ref_name }}" = "dev" ]; then
+          if [ "${{ github.ref_name }}" = "nightly" ]; then
             MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
             MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
             PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
@@ -133,11 +126,6 @@ jobs:
           echo "New version: $NEW_VERSION"
 
           sed -i "s/versionName\s*=\s*\"[^\"]*\"/versionName = \"${NEW_VERSION}\"/" Barkfluff.Client.Android/app/build.gradle.kts
-
-      - name: Пометка beta-версии
-        if: github.ref_name == 'dev'
-        run: |
-          sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' Barkfluff.Client.Android/app/build.gradle.kts
 
       - name: Восстановление keystore из секрета
         env:
@@ -153,14 +141,10 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :app-v1:assembleRelease --no-daemon
-
-      - name: Поиск APK
-        id: apk
-        run: |
-          APK_PATH=$(find Barkfluff.Client.Android/app/build/outputs/apk/release -name '*.apk' | head -1)
-          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
-          echo "Found APK: $APK_PATH"
+          # CA сервера обновлений — уезжает в APK строкой BuildConfig.STORAGE_CA_PEM_B64,
+          # без него система обновлений не пройдёт TLS до storage.barkfluff.com.
+          STORAGE_CA_PEM_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: ./gradlew :app-v1:assemble${{ steps.target.outputs.flavor }}Release --no-daemon
 
       - name: Get version
         id: meta
@@ -169,14 +153,22 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
+      - name: Поиск APK
+        id: apk
+        run: |
+          BUILT_APK=$(find "Barkfluff.Client.Android/app/build/outputs/apk/${{ steps.target.outputs.flavor_dir }}/release" -name '*.apk' | head -1)
+          test -n "$BUILT_APK"
+
+          # ClientStorage сохраняет имя файла и отдаёт его при скачивании,
+          # поэтому кладём в него канал и версию.
+          APK_PATH="Barkfluff-${{ steps.target.outputs.channel }}-${{ steps.meta.outputs.version }}.apk"
+          cp "$BUILT_APK" "$APK_PATH"
+          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found APK: $BUILT_APK → $APK_PATH"
+
       - name: "📤 Загрузка на сервер обновлений"
         run: |
-          if [ "${{ github.ref_name }}" = "dev" ]; then
-            CHANNEL="beta"
-          else
-            CHANNEL="release"
-          fi
-          curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
+          curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${{ steps.target.outputs.channel }}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
             -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
             -F "file=@${{ steps.apk.outputs.path }}"
@@ -191,6 +183,7 @@ jobs:
             ✅ *Сборка успешна*
 
             📱 *Android Client* v${{ steps.meta.outputs.version }}
+            📦 Канал: `${{ steps.target.outputs.channel }}`
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*

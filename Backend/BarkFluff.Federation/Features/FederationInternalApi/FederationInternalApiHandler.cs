@@ -8,11 +8,14 @@ using BarkFluff.Proto.Federation;
 using BarkFluff.Proto.FederationInternal;
 using BarkFluff.Shared.Exceptions.Federation;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Shared.Queue.Federation;
 
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
 using Grpc.Core;
+
+using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +40,7 @@ public class FederationInternalApiHandler
     private readonly MetricsCollector _metrics;
     private readonly FederatedFileOptions _fileOptions;
     private readonly RemoteFileCircuitBreaker _circuitBreaker;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<FederationInternalApiHandler> _logger;
 
     public FederationInternalApiHandler(
@@ -56,6 +60,7 @@ public class FederationInternalApiHandler
         MetricsCollector metrics,
         FederatedFileOptions fileOptions,
         RemoteFileCircuitBreaker circuitBreaker,
+        IPublishEndpoint publishEndpoint,
         ILogger<FederationInternalApiHandler> logger)
     {
         _fileOptions = fileOptions;
@@ -75,6 +80,7 @@ public class FederationInternalApiHandler
         _serverResolver = serverResolver;
         _s2sChannelFactory = s2sChannelFactory;
         _outboxWriter = outboxWriter;
+        _publishEndpoint = publishEndpoint;
     }
 
     // Интерес инстанса Onliner к remote-presence (этап 4.2/4.3). Набор ПОЛНЫЙ, не дельта:
@@ -304,6 +310,10 @@ public class FederationInternalApiHandler
         // новым активным ключом немедленно.
         await _wellKnownDocumentService.RebuildAsync(context.CancellationToken);
         await _activeSigningKeyCache.RefreshAsync(context.CancellationToken);
+
+        // Fan-out: остальные инстансы перезагружают кэш ключа и well-known (масштабирование,
+        // docs/scaling/federation.md) — иначе подписывают старым ключом до рестарта.
+        await _publishEndpoint.Publish(new SigningKeyRotatedEvent { NewKeyId = newKey.KeyId }, context.CancellationToken);
 
         return new RotateSigningKeyResponse
         {

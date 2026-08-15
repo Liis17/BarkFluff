@@ -2,25 +2,41 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-v5';
+const CACHE_NAME = 'barkfluff-shell-69ed33c0';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
     '/js/vendor/firebase-messaging-compat.bundle.js',
     '/js/i18n/ru.json', '/js/i18n/en.json', '/js/i18n/es.json', '/js/i18n/de.json', '/js/i18n/zh-Hans.json',
-    '/css/icons.css',
+    '/css/icons.css', '/css/messenger.css',
     '/js/app/i18n.js',
-    '/js/app/node.js',
-    '/js/app/icons.js', '/js/app/device.js', '/js/app/tokens.js', '/js/app/metadata.js', '/js/app/clients.js', '/js/app/utils.js',
-    '/js/app/sound.js', '/js/app/api.js', '/js/app/drafts.js', '/js/app/privatechat.js', '/js/app/newchat.js',
-    '/js/app/files.js', '/js/app/messages.js', '/js/app/realtime.js', '/js/app/calls.js', '/js/app/calls-ui.js',
-    '/js/app/personalization.js', '/js/app/health.js', '/js/app/settings.js', '/js/app/attach.js', '/js/app/imageeditor.js',
-    '/js/app/folders.js', '/js/app/pinned.js', '/js/app/push.js', '/js/app/main.js',
+    '/js/app/app-loader.js',
     '/icons/pwa-icon-192.png', '/icons/pwa-icon-512.png'
 ];
 
+function cacheCurrentAppBundle(cache) {
+    return fetch('/js/app/app-manifest.json', { cache: 'no-store' })
+        .then(function (response) {
+            if (!response.ok) throw new Error('Could not load the messenger app manifest');
+            var manifestResponse = response.clone();
+            return response.json().then(function (manifest) {
+                return cache.put('/js/app/app-manifest.json', manifestResponse).then(function () {
+                    return manifest;
+                });
+            });
+        })
+        .then(function (manifest) {
+            if (!manifest || typeof manifest.src !== 'string') throw new Error('Invalid messenger app manifest');
+            return cache.add(manifest.src);
+        });
+}
+
 self.addEventListener('install', function (event) {
-    event.waitUntil(caches.open(CACHE_NAME).then(function (cache) { return cache.addAll(APP_SHELL); }));
+    event.waitUntil(caches.open(CACHE_NAME).then(function (cache) {
+        return cache.addAll(APP_SHELL).then(function () {
+            return cacheCurrentAppBundle(cache);
+        });
+    }));
 });
 
 self.addEventListener('activate', function (event) {
@@ -42,6 +58,21 @@ self.addEventListener('fetch', function (event) {
     if (url.pathname.startsWith('/barkfluff.') || url.pathname.startsWith('/api/') ||
         url.pathname === '/pwa-config.js' || url.pathname === '/node-config.js' ||
         url.pathname.startsWith('/legal/')) return;
+
+    if (url.pathname === '/js/app/app-manifest.json') {
+        event.respondWith(fetch(request).then(function (response) {
+            if (response.ok) {
+                var cachedResponse = response.clone();
+                caches.open(CACHE_NAME).then(function (cache) {
+                    return cache.put('/js/app/app-manifest.json', cachedResponse);
+                });
+            }
+            return response;
+        }).catch(function () {
+            return caches.match('/js/app/app-manifest.json');
+        }));
+        return;
+    }
 
     if (request.mode === 'navigate') {
         event.respondWith(fetch(request).catch(function () { return caches.match('/offline.html'); }));

@@ -5,5 +5,6 @@ public enum ClientType
     Windows = 0,
     Kotlin = 1,
     MacOS = 2,
-    iOS = 3
+    iOS = 3,
+    WinUI = 4
 }

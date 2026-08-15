@@ -36,6 +36,7 @@ public class PinMessageCommandHandlerTests
             _h.CreateUserContext(userId),
             _queueSender,
             _h.Metrics,
+            _h.CreateReplyPreviewResolver(),
             TestHelper.CreateLogger<PinMessageCommandHandler>());
     }
 

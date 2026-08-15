@@ -163,6 +163,16 @@
                     app:iconPadding="10dp"
                     app:iconTint="?attr/colorOnPrimary" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/forgetTrustedCertificateButton"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/tls_forget_certificate"
+                    android:textAllCaps="false" />
+
             </LinearLayout>
 
         </LinearLayout>

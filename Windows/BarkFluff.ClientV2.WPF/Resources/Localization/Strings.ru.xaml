@@ -110,6 +110,7 @@
     <sys:String x:Key="Messenger_ForwardSelected">Выбрано:</sys:String>
     <sys:String x:Key="Messenger_ForwardNoneSelected">Не выбрано чатов</sys:String>
     <sys:String x:Key="Messenger_Attachment">Вложение</sys:String>
+    <sys:String x:Key="Messenger_MessageDeleted">Сообщение удалено</sys:String>
     <sys:String x:Key="Messenger_CopyText">Копировать текст</sys:String>
     <sys:String x:Key="Messenger_CopyImage">Копировать изображение</sys:String>
     <sys:String x:Key="Messenger_Pin">Закрепить</sys:String>

@@ -91,10 +91,11 @@
                         android:id="@+id/messageTextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginHorizontal="14dp"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginBottom="4dp"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="0dp"
+                        android:lineHeight="24sp"
+                        android:textSize="17sp"
                         android:textColor="?attr/colorOnPrimaryContainer"
                         android:visibility="gone"
                         tools:text="Привет! Как дела?"
@@ -102,10 +103,14 @@
 
                 </LinearLayout>
 
-                <!-- Цитата forward (ниже основного текста) -->
-                <include
-                    android:id="@+id/forwardQuote"
-                    layout="@layout/view_message_quote" />
+                <!-- Цитаты forward (ниже основного текста). Контейнер, а не один include:
+                     переслать можно несколько сообщений сразу, и каждое рисуется своим блоком. -->
+                <LinearLayout
+                    android:id="@+id/forwardQuotesContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
 
                 <!-- Время и статус (внутри облачка) -->
                 <LinearLayout
@@ -113,9 +118,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
-                    android:layout_marginHorizontal="14dp"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginBottom="6dp"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="9dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
@@ -135,6 +140,7 @@
                         android:id="@+id/timeTextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textFontWeight="600"
                         android:textAppearance="?attr/textAppearanceLabelSmall"
                         android:textColor="?attr/colorOnPrimaryContainer"
                         android:alpha="0.7"
@@ -170,6 +176,7 @@
                 android:id="@+id/stickerImageView"
                 android:layout_width="160dp"
                 android:layout_height="160dp"
+                android:contentDescription="@string/cd_stickers"
                 android:scaleType="fitCenter"
                 app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker" />
 

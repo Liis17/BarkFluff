@@ -19,6 +19,12 @@ bash Windows/BarkFluff.Client.WinUI/tools/check-localization.sh
 
 Платформы `x86;x64;ARM64`, конфигурации `Any CPU` в solution отображены на `x64`. `PublishTrimmed` и `PublishAot` выключены во всех конфигурациях: WinUI активирует XAML-типы через рантайм-метаданные, gRPC/Protobuf строят дескрипторы рефлексией, а `StoredSession` сериализуется `System.Text.Json` без source-gen — под trimming это ломается в рантайме, а не на сборке.
 
+## CI/CD
+
+Workflow `.github/workflows/build-client-winui.yml` запускается для изменений WinUI-клиента в ветках `master`, `release`, `beta`, `dev` и `nightly`, а также вручную. Он восстанавливает PFX self-signed сертификат из секрета `WINUI_MSIX_CERTIFICATE_B64`, импортирует его в хранилище сертификатов runner-а и подписывает им MSIX. Пароль PFX хранится в `WINUI_MSIX_CERTIFICATE_PASSWORD`; сертификат должен соответствовать `Publisher` в `Package.appxmanifest`.
+
+Ветка `master` или `release` публикуется в канал `release` через `/set/barkfluffwinui`; ветки `beta`, `dev` и `nightly` — через `/set/barkfluffwinui/{channel}`. Папка установщика архивируется в файл `BarkFluffWinUI_{ветка}_{версия}.zip` и загружается в ClientStorage. Для загрузки переиспользуются те же секреты, что и в Android workflow: `CLIENT_STORAGE_URL`, `CLIENT_STORAGE_TOKEN` и `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64`. Новые секреты нужны только для PFX WinUI-сертификата. После завершения workflow отправляет success/failure-уведомление в Telegram через общие `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHANNEL_ID`.
+
 ## Разделение на две сборки
 
 `BarkFluff.Client.Core` — слой без UI-фреймворка: `Models`, `Services`, `Infrastructure/Storage`, `ViewModels`, интерфейсы `ILocalizationService` и `IUiDispatcher`. Ссылается на [[Клиенты/Windows-WebApiCore]].
@@ -26,6 +32,10 @@ bash Windows/BarkFluff.Client.WinUI/tools/check-localization.sh
 `BarkFluff.Client.WinUI` — только представление: `App`, `MainWindow`, `Views`, `Infrastructure/{Appearance,Converters,Dialogs}` и WinUI-реализации `LocalizationService` / `DispatcherQueueUiDispatcher`.
 
 Разделение не косметическое: обращение к любому типу из WinUI-сборки запускает её module initializer (Windows App SDK `DeploymentManager`), который вне пакетной идентичности падает с `REGDB_E_CLASSNOTREG`. Без отдельной Core-сборки юнит-тесты незапускаемы в принципе.
+
+## Metadata gRPC-клиента
+
+`BarkFluff.Client.Core/Services/ClientMetadata.cs` — единый источник metadata для WinUI-подключений. `NodeConnectionService` и `AuthenticationService` передают в `x-os-name` человекочитаемую версию Windows (`Windows 10/11`, редакция, DisplayVersion и номер сборки), а не сырой `Environment.OSVersion.VersionString` (`Microsoft Windows NT ...`). Те же значения используются для FastAuth, повторной авторизации и экрана «О приложении». `x-app-name` и `x-app-version` сохраняют идентичность WinUI-клиента: `BarkFluff` и `2.0`.
 
 ## Ограничения WinUI, определившие архитектуру
 
@@ -108,6 +118,22 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 
 Само падение диагностируется тяжело: `Application.UnhandledException` на такой отказ не срабатывает, `crash.log` остаётся пустым, а Visual Studio без `nativeDebugging` показывает только модалку JIT-отладчика.
 
+## Markdown в пузырях
+
+Бэкенд хранит текст сообщения как есть, разметку интерпретирует клиент. Диалект общий с [[Android]] (`MarkdownRenderer.kt` — эталон) и [[Web]] (`BF.utils.renderMarkdown`): заголовки, списки, цитаты, разделители, блоки кода, inline (`**bold**`, `__bold__`, `*italic*`, `_italic_`, `~~strike~~`, `` `code` ``, `[текст](url)`), автолинковка «голых» адресов, GFM-таблицы с выравниванием и HTML-подмножество (`p`/`h1..h6` с `align`, `strong`, `sub`, `a[href]`, `img[src, alt, width, height]`, `<a><img></a>`). Вложенных списков, escape-последовательностей и подсветки синтаксиса нет ни на одном клиенте.
+
+Своя реализация, а не `Markdig`: библиотека отрендерила бы более полный CommonMark, и одно и то же сообщение выглядело бы на Windows иначе, чем на Android и в вебе.
+
+Разбор живёт в `BarkFluff.Client.Core/Markdown` и не знает про UI: `MarkdownParser` строит AST, `MarkdownSanitizer` держит allowlist (ссылки — `http(s)`/`mailto`, изображения — `http(s)`, размеры 1..2048), `MarkdownText.Strip` возвращает чистый текст. `Strip` нужен и для превью — список чатов и закреп через `ChatItemViewModel.CreatePreview`, плюс цитата пересылки и подсказка композера.
+
+Инлайн-стили держатся диапазонами в `MarkdownInlineBuilder` — аналог `SpannableStringBuilder`: правила удаляют маркеры из текста, а наложенные стили переезжают вместе с ним. Порядок правил повторяет Android; исключение — `**bold**`, где взят веб-паттерн `[\s\S]+?`, потому что андроидный `[^*]+?` теряет вложенный курсив.
+
+`MarkdownTextBlock` (`Controls/`) собирает дерево: строка — свой `RichTextBlock`, поэтому диапазоны `TextHighlighter` для фона inline-кода считаются внутри одного абзаца без сложения смещений между ними. Цитаты, блоки кода, таблицы (`Grid` в горизонтальном `ScrollViewer` — пузырь ограничен 520px) и HTML-изображения получают собственные контейнеры, как отдельные `View` в Android. Сообщение без разметки минует дерево целиком и рисуется одним `TextBlock`: лента виртуализована, и на обычный текст лишние контролы тратить нельзя. Пустой `Text` очищает содержимое — иначе переиспользованный пузырь показал бы предыдущее сообщение.
+
+Производные цвета (фон кода, приглушённая цитата, границы таблицы) считаются от цвета текста пузыря и обновляются по `RegisterPropertyChangedCallback` на `SolidColorBrush.Color`: сервис тем переписывает синглтон-кистям цвет на месте, поэтому снимок цвета устарел бы после смены темы. Подписка живёт от `Loaded` до `Unloaded` — контейнеры ленты переиспользуются.
+
+`SelectionFlyout` у внутренних текстовых элементов снят, иначе правый клик по тексту открывал бы меню копирования вместо меню пузыря. Сплошного выделения через границы блоков нет — блоки суть отдельные `RichTextBlock`, как отдельные `TextView` в Android.
+
 ## Реалтайм
 
 | Стрим | Обёртка `WebApi` | Потребитель |
@@ -188,6 +214,25 @@ DPAPI под MSIX работает без ограничений (`rescap:runFul
 Пересылка, подтверждение удаления и разблокировка приватного чата остались **оверлеями**, а не `ContentDialog`: вьюмодель уже управляет ими флагами (`IsForwardVisible`, `IsDeleteConfirmVisible`, `IsPrivateUnlockVisible`) и командами отмены, а перевод на диалоги потребовал бы абстракции диалогов в Core ради того же поведения. `IDialogService` при этом остаётся зарегистрированным — он нужен для сообщений об ошибках.
 
 `ForwardTargetViewModel` получил `Owner` по образцу `MessageItemViewModel`: в WinUI нет `RelativeSource AncestorType`, и шаблон иначе не дотянется до команды владельца.
+
+## Ответы и пересылка
+
+Reply и forward разделены на бэкенде (см. [[Backend/Messages]]), и клиент больше ничего не угадывает.
+
+- `MessageItemViewModel.Reply` (`ReplyContentViewModel`) — цитата ответа; отдельный тип от
+  `ForwardedContentViewModel`, потому что она не снапшот: сервер резолвит её из живого оригинала,
+  поэтому правка видна, а у удалённого текста нет.
+- `MessageItemViewModel.Forwards` — пересланных может быть несколько; `MessengerPage.xaml`
+  рисует их `ItemsRepeater`'ом по блоку на каждое.
+- `ApplyReplyQuoteState` удалён. Он вычислял `IsReplyQuote` пересечением id цитаты с
+  загруженными сообщениями, из-за чего ответ становился пересылкой после прокрутки истории.
+- Удалённый оригинал: «Сообщение удалено» (`Messenger_MessageDeleted`), без превью,
+  `ScrollToOriginal` по нему не срабатывает.
+- Отправка — `MessengerService.SendMessageAsync(chatId, text, replyToMessageId, forwardedMessageIds)`.
+
+`ClientV2.WPF` **не** ссылается на `Client.Core` (своя копия вьюмодели и сервиса, общий только
+`WebApi.Core`), поэтому ничего из этого его не касается: он продолжает слать устаревшее
+`ForwardingLetter.ForwardedMessageId`, которое сохранено специально ради него.
 
 ## Известные отличия от WPF-версии
 

@@ -32,6 +32,7 @@ public class EditMessageCommandHandlerTests
             _queueSender,
             TestHelper.CreateConfiguration(),
             _h.Metrics,
+            _h.CreateReplyPreviewResolver(),
             TestHelper.CreateLogger<EditMessageCommandHandler>());
     }
 

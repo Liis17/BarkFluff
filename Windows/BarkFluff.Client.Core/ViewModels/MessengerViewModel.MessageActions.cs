@@ -1,3 +1,4 @@
+using BarkFluff.Client.Core.Markdown;
 using BarkFluff.Client.Core.Models;
 using BarkFluff.WebApi.Core;
 
@@ -21,7 +22,7 @@ public sealed partial class MessengerViewModel
 {
     private readonly List<PinnedMessageInfo> _pinnedMessages = [];
 
-    private long _forwardSourceMessageId;
+    private IReadOnlyList<long> _forwardSourceMessageIds = [];
     private int _pinnedBarIndex;
 
     [ObservableProperty]
@@ -58,7 +59,7 @@ public sealed partial class MessengerViewModel
 
     public string ComposerHintTitle => _localization.GetString(IsEditing ? "Messenger_EditingMessage" : "Messenger_ReplyingTo");
 
-    public string ComposerHintPreview => (EditingMessage ?? ReplyTarget)?.Text ?? string.Empty;
+    public string ComposerHintPreview => MarkdownText.Strip((EditingMessage ?? ReplyTarget)?.Text);
 
     public bool CanSubmitForward => ForwardTargets.Any(target => target.IsSelected);
 
@@ -302,9 +303,10 @@ public sealed partial class MessengerViewModel
     [RelayCommand]
     private void ScrollToOriginal(MessageItemViewModel message)
     {
-        if (message.IsReplyQuote && message.Forwarded is not null)
+        // Оригинал удалённого сообщения не показывается, поэтому и прыгать некуда.
+        if (message.Reply is { IsDeleted: false, MessageId: > 0 } reply)
         {
-            RequestScroll(MessageScrollTarget.Message, message.Forwarded.OriginalMessageId);
+            RequestScroll(MessageScrollTarget.Message, reply.MessageId);
         }
     }
 
@@ -317,10 +319,13 @@ public sealed partial class MessengerViewModel
         }
 
         ActionError = null;
-        // Пересылаем оригинал, а не саму пересылку — так же поступает веб-клиент.
-        _forwardSourceMessageId = message.Forwarded is { OriginalMessageId: > 0 } forwarded
-            ? forwarded.OriginalMessageId
-            : message.Id;
+        // Пересылаем оригиналы, а не саму пересылку — так же поступает веб-клиент.
+        // Оригиналов может быть несколько: иначе пересылка пачки потеряла бы всё, кроме первого.
+        var originalIds = message.Forwards
+            .Where(forwarded => forwarded.OriginalMessageId > 0)
+            .Select(forwarded => forwarded.OriginalMessageId)
+            .ToArray();
+        _forwardSourceMessageIds = originalIds.Length > 0 ? originalIds : [message.Id];
 
         ForwardComment = string.Empty;
         ForwardTargets.Clear();
@@ -355,7 +360,7 @@ public sealed partial class MessengerViewModel
     {
         var currentUserId = _messenger.CurrentUserId;
         var targetChatIds = ForwardTargets.Where(target => target.IsSelected).Select(target => target.ChatId).ToArray();
-        if (currentUserId is null || targetChatIds.Length == 0 || _forwardSourceMessageId == 0)
+        if (currentUserId is null || targetChatIds.Length == 0 || _forwardSourceMessageIds.Count == 0)
         {
             return;
         }
@@ -364,7 +369,7 @@ public sealed partial class MessengerViewModel
         IsForwardVisible = false;
         foreach (var chatId in targetChatIds)
         {
-            var (error, message) = await _messenger.SendMessageAsync(chatId, comment, _forwardSourceMessageId);
+            var (error, message) = await _messenger.SendMessageAsync(chatId, comment, forwardedMessageIds: _forwardSourceMessageIds);
             if (!error.IsSuccess)
             {
                 ActionError = DescribeError(error);
@@ -374,7 +379,6 @@ public sealed partial class MessengerViewModel
             if (message is not null && SelectedChat?.Id == chatId)
             {
                 InsertMessageInOrder(await CreateMessageItemAsync(message, currentUserId.Value));
-                ApplyReplyQuoteState();
                 RequestScroll(MessageScrollTarget.Bottom);
             }
         }

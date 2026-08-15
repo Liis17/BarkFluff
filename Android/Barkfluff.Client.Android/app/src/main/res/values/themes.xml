@@ -112,6 +112,15 @@
         <item name="cornerSize">24dp</item>
     </style>
 
+    <!-- Плашки ответа/редактирования/вложений над грядкой ввода (макет M3E) -->
+    <style name="ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">28dp</item>
+        <item name="cornerSizeTopRight">28dp</item>
+        <item name="cornerSizeBottomLeft">12dp</item>
+        <item name="cornerSizeBottomRight">12dp</item>
+    </style>
+
     <style name="ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Top" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSizeTopLeft">28dp</item>

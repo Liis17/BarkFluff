@@ -124,7 +124,7 @@ class BarkFluffApplication : Application() {
         NotificationHelper.createChannels(this)
         chatCacheRepository = ChatCacheRepository(applicationContext)
         CallTelecomManager.registerPhoneAccount(this)
-        grpcManager = GrpcManager()
+        grpcManager = GrpcManager(applicationContext)
         chatDraftRepository = ChatDraftRepository(applicationContext, grpcManager, chatCacheRepository)
         connectivityManager = getSystemService(ConnectivityManager::class.java)
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
@@ -219,7 +219,9 @@ class BarkFluffApplication : Application() {
         } else {
             "audio"
         }
-        val displayName = if (event.chatId.isNotBlank()) "Групповой звонок" else "Входящий звонок"
+        val displayName = getString(
+            if (event.chatId.isNotBlank()) R.string.call_group_title else R.string.call_incoming_title
+        )
 
         CallTelecomManager.reportIncomingCall(
             context = applicationContext,

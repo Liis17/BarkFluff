@@ -12,42 +12,51 @@ using MediatR;
 namespace BarkFluff.FastAuth.Features.ScanFastAuth;
 
 public class ScanFastAuthCommandHandler(
-    FastAuthSessionsManager sessions,
+    IFastAuthSessionStore sessions,
+    IFastAuthEventBus eventBus,
     UserContext userContext,
     MetricsCollector metrics,
     ILogger<ScanFastAuthCommandHandler> logger)
     : IRequestHandler<ScanFastAuthCommand, ScanFastAuthResponse>
 {
-    public Task<ScanFastAuthResponse> Handle(ScanFastAuthCommand request, CancellationToken cancellationToken)
+    public async Task<ScanFastAuthResponse> Handle(ScanFastAuthCommand request, CancellationToken cancellationToken)
     {
-        var session = sessions.TryGet(request.FastAuthId)
+        var session = await sessions.GetAsync(request.FastAuthId, cancellationToken)
             ?? throw new FastAuthSessionNotFoundException();
 
-        var outcome = session.TryScan(userContext.UserId);
+        var confirmationCode = Guid.NewGuid().ToString();
+        var transition = await sessions.TryScanAsync(request.FastAuthId, userContext.UserId,
+            confirmationCode, cancellationToken);
 
-        switch (outcome)
+        switch (transition)
         {
-            case ScanOutcome.Expired:
+            case FastAuthTransition.NotFound:
+                throw new FastAuthSessionNotFoundException();
+            case FastAuthTransition.Expired:
+                metrics.Increment("sessions_expired");
                 throw new FastAuthSessionExpiredException();
-            case ScanOutcome.AlreadyHandled:
+            case FastAuthTransition.InvalidState:
                 throw new FastAuthInvalidStateException();
         }
 
         metrics.Increment("sessions_scanned");
 
+        await eventBus.PublishAsync(session.Id, new FastAuthResult { Status = FastAuthStatus.Scanned },
+            cancellationToken);
+
         logger.LogInformation(
             "FastAuth session {Id} scanned by user {UserId}",
             session.Id[..8], userContext.UserId);
 
-        return Task.FromResult(new ScanFastAuthResponse
+        return new ScanFastAuthResponse
         {
             DeviceName = session.DeviceName,
             OperationSystem = session.OperationSystem,
             AppName = session.AppName,
             AppVersion = session.AppVersion,
             IpAddress = session.IpAddress,
-            ConfirmationCode = session.ConfirmationCode!,
+            ConfirmationCode = confirmationCode,
             ExpiresAt = Timestamp.FromDateTime(session.ExpiresAt)
-        });
+        };
     }
 }

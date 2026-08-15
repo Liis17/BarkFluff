@@ -3,6 +3,7 @@ using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Presence;
 using BarkFluff.Client.Core.Infrastructure.Threading;
+using BarkFluff.Client.Core.Markdown;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
@@ -244,7 +245,6 @@ public sealed partial class MessengerViewModel : ObservableObject
         if (result.error.IsSuccess && result.message is not null)
         {
             InsertMessageInOrder(await CreateMessageItemAsync(result.message, currentUserId.Value));
-            ApplyReplyQuoteState();
             DraftText = string.Empty;
             ReplyTarget = null;
             RequestScroll(MessageScrollTarget.Bottom);
@@ -308,7 +308,6 @@ public sealed partial class MessengerViewModel : ObservableObject
             Messages.Add(await CreateMessageItemAsync(message, currentUserId.Value));
         }
 
-        ApplyReplyQuoteState();
         if (hasUnreadMessages)
         {
             RequestScroll(MessageScrollTarget.Message, chat.FirstUnreadMessageId);
@@ -553,40 +552,54 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
     {
-        // Пересланное сообщение приходит отдельным вложением — оно рисуется цитатой, а не файлом.
-        var forwarded = message.Attachments
-            .FirstOrDefault(attachment => attachment.Type == MessageAttachmentType.ForwardedMessage)?.ForwardedMessage;
+        // Пересланные приходят отдельными вложениями — их может быть несколько, и каждое
+        // рисуется своим блоком: схлопнуть пачку в один значит потерять всё, кроме первого.
+        var forwards = message.Attachments
+            .Where(attachment => attachment.Type == MessageAttachmentType.ForwardedMessage && attachment.ForwardedMessage is not null)
+            .Select(attachment => attachment.ForwardedMessage!)
+            .OrderBy(forwarded => forwarded.Order)
+            .Select(CreateForwardedContent)
+            .ToArray();
         var attachments = await Task.WhenAll(message.Attachments
             .Where(attachment => attachment.Type != MessageAttachmentType.ForwardedMessage)
             .Select(CreateAttachmentItemAsync));
 
-        return new MessageItemViewModel(this, message, message.SenderId == currentUserId, attachments, currentUserId, CreateForwardedContent(forwarded));
+        return new MessageItemViewModel(
+            this,
+            message,
+            message.SenderId == currentUserId,
+            attachments,
+            currentUserId,
+            forwards,
+            CreateReplyContent(message.ReplyTo));
     }
 
-    private ForwardedContentViewModel? CreateForwardedContent(ForwardedMessageModel? forwarded)
+    private ForwardedContentViewModel CreateForwardedContent(ForwardedMessageModel forwarded)
     {
-        if (forwarded is null)
+        var preview = string.IsNullOrWhiteSpace(forwarded.Text)
+            ? _localization.GetString("Messenger_Attachment")
+            : MarkdownText.Strip(forwarded.Text);
+        return new ForwardedContentViewModel(forwarded.AuthorName, forwarded.OriginalMessageId, preview);
+    }
+
+    private ReplyContentViewModel? CreateReplyContent(ReplyPreviewModel? reply)
+    {
+        if (reply is null)
         {
             return null;
         }
 
-        var preview = string.IsNullOrWhiteSpace(forwarded.Text)
-            ? _localization.GetString("Messenger_Attachment")
-            : forwarded.Text;
-        return new ForwardedContentViewModel(forwarded.AuthorName, forwarded.OriginalMessageId, preview);
-    }
-
-    /// <summary>
-    /// Сообщение с ссылкой на уже загруженный оригинал показывается цитатой ответа,
-    /// иначе — блоком пересылки. Так же различает режимы веб-клиент.
-    /// </summary>
-    private void ApplyReplyQuoteState()
-    {
-        var loadedIds = Messages.Select(message => message.Id).ToHashSet();
-        foreach (var message in Messages)
+        // У удалённого оригинала сервер не отдаёт ни текст, ни автора — цитата не должна
+        // оставаться способом его прочитать, и переходить по ней некуда.
+        if (reply.IsDeleted)
         {
-            message.IsReplyQuote = message.Forwarded is not null && loadedIds.Contains(message.Forwarded.OriginalMessageId);
+            return new ReplyContentViewModel(0, _localization.GetString("Messenger_MessageDeleted"), string.Empty, true);
         }
+
+        var preview = string.IsNullOrWhiteSpace(reply.TextPreview)
+            ? _localization.GetString("Messenger_Attachment")
+            : MarkdownText.Strip(reply.TextPreview);
+        return new ReplyContentViewModel(reply.MessageId, reply.SenderName, preview, false);
     }
 
     private MessageItemViewModel CreatePrivateMessageItem(PrivateMessageModel message, long currentUserId)
@@ -711,7 +724,6 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
-        ApplyReplyQuoteState();
         if (_isFeedAtBottom)
         {
             RequestScroll(MessageScrollTarget.Bottom);
@@ -971,11 +983,11 @@ public sealed partial class ChatItemViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Сжимает текст в одну строку и обрезает по числу видимых символов.
+    /// Убирает markdown-разметку, сжимает текст в одну строку и обрезает по числу видимых символов.
     /// </summary>
     internal static string CreatePreview(string text, int maxElements)
     {
-        var normalized = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var normalized = string.Join(' ', MarkdownText.Strip(text).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         var elementStarts = StringInfo.ParseCombiningCharacters(normalized);
         return elementStarts.Length <= maxElements
             ? normalized
@@ -987,10 +999,11 @@ public sealed partial class MessageItemViewModel : ObservableObject
 {
     private readonly long _currentUserId;
 
-    public MessageItemViewModel(MessengerViewModel owner, MessageModel message, bool isMine, IReadOnlyCollection<MessageAttachmentItemViewModel> attachments, long currentUserId, ForwardedContentViewModel? forwarded)
+    public MessageItemViewModel(MessengerViewModel owner, MessageModel message, bool isMine, IReadOnlyCollection<MessageAttachmentItemViewModel> attachments, long currentUserId, IReadOnlyCollection<ForwardedContentViewModel> forwards, ReplyContentViewModel? reply)
     {
         Owner = owner;
-        Forwarded = forwarded;
+        Forwards = forwards;
+        Reply = reply;
         Id = message.MessageId;
         Text = message.Text;
         IsMine = isMine;
@@ -1020,7 +1033,12 @@ public sealed partial class MessageItemViewModel : ObservableObject
     }
 
     public MessengerViewModel Owner { get; }
-    public ForwardedContentViewModel? Forwarded { get; }
+    /// <summary>Пересланные сообщения в порядке отправителя. Пусто, если пересылки нет.</summary>
+    public IReadOnlyCollection<ForwardedContentViewModel> Forwards { get; }
+
+    /// <summary>Цитата ответа. Заполнена => это ответ. Резолвится сервером, не снапшот.</summary>
+    public ReplyContentViewModel? Reply { get; }
+
     public long Id { get; }
     public bool IsMine { get; }
     public bool IsSystem { get; }
@@ -1034,7 +1052,7 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool HasText => !string.IsNullOrWhiteSpace(Text);
     public bool HasMedia => MediaAttachments.Count > 0;
     public bool HasFiles => FileAttachments.Count > 0;
-    public bool HasOnlyMedia => !HasText && HasMedia && !HasFiles && !HasForwarded;
+    public bool HasOnlyMedia => !HasText && HasMedia && !HasFiles && !HasForwards && !HasReply;
     public bool HasMetadataBelowMedia => !HasOnlyMedia;
     public bool IsSingleMedia => MediaAttachments.Count == 1;
     public int MediaColumns => IsSingleMedia ? 1 : 2;
@@ -1047,12 +1065,12 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool CanCopyText => CanUseActions && HasText;
     public bool CanCopyImage => CanUseActions && IsSingleMedia && MediaAttachments.First().IsImageOrGif;
     public string PinMenuHeader => Owner.Localization.GetString(IsPinned ? "Messenger_Unpin" : "Messenger_Pin");
-    public bool HasForwarded => Forwarded is not null;
+    public bool HasReply => Reply is not null;
+    public bool HasForwards => Forwards.Count > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasText), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(CanCopyText))]
     private string _text = string.Empty;
-    [ObservableProperty] private bool _isReplyQuote;
     [ObservableProperty] private bool _isEdited;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PinMenuHeader))]
@@ -1083,6 +1101,18 @@ public sealed class ForwardedContentViewModel(string authorName, long originalMe
     public string AuthorName { get; } = authorName;
     public long OriginalMessageId { get; } = originalMessageId;
     public string Preview { get; } = preview;
+}
+
+/// <summary>
+/// Цитата ответа. Отдельный тип от <see cref="ForwardedContentViewModel"/>, потому что это
+/// не снапшот: содержимое резолвится сервером из живого оригинала, а у удалённого его нет.
+/// </summary>
+public sealed class ReplyContentViewModel(long messageId, string senderName, string preview, bool isDeleted)
+{
+    public long MessageId { get; } = messageId;
+    public string SenderName { get; } = senderName;
+    public string Preview { get; } = preview;
+    public bool IsDeleted { get; } = isDeleted;
 }
 
 public sealed class MessageAttachmentItemViewModel(

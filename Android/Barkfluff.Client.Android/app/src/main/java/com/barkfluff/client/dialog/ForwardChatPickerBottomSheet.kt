@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.R
 import com.barkfluff.client.adapter.ForwardChatPickerAdapter
 import com.barkfluff.client.databinding.BottomSheetForwardChatsBinding
 import com.barkfluff.client.repository.ChatRepository
@@ -21,19 +22,21 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 /**
- * Модалка для пересылки сообщения в один или несколько чатов.
- * Принимает ID исходного сообщения, отправляет в выбранные чаты с тем же forwarded_message_id.
+ * Модалка для пересылки сообщений в один или несколько чатов.
+ * Принимает ID исходных сообщений и отправляет их одним сообщением в каждый выбранный чат.
  */
 class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
         private const val TAG = "ForwardPicker"
-        private const val ARG_MESSAGE_ID = "messageId"
+        private const val ARG_MESSAGE_IDS = "messageIds"
 
-        fun newInstance(messageId: Long): ForwardChatPickerBottomSheet {
+        fun newInstance(messageId: Long): ForwardChatPickerBottomSheet = newInstance(longArrayOf(messageId))
+
+        fun newInstance(messageIds: LongArray): ForwardChatPickerBottomSheet {
             return ForwardChatPickerBottomSheet().apply {
                 arguments = Bundle().apply {
-                    putLong(ARG_MESSAGE_ID, messageId)
+                    putLongArray(ARG_MESSAGE_IDS, messageIds)
                 }
             }
         }
@@ -44,7 +47,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     private lateinit var chatRepository: ChatRepository
     private lateinit var adapter: ForwardChatPickerAdapter
-    private var messageId: Long = 0L
+    private var messageIds: LongArray = longArrayOf()
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState) as BottomSheetDialog
@@ -72,8 +75,8 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        messageId = arguments?.getLong(ARG_MESSAGE_ID, 0L) ?: 0L
-        if (messageId == 0L) {
+        messageIds = arguments?.getLongArray(ARG_MESSAGE_IDS) ?: longArrayOf()
+        if (messageIds.isEmpty()) {
             dismissAllowingStateLoss()
             return
         }
@@ -86,7 +89,11 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
             onSelectionChanged = { count ->
                 binding.sendButton.isEnabled = count > 0
-                binding.sendButton.text = if (count > 0) "Переслать ($count)" else "Переслать"
+                binding.sendButton.text = if (count > 0) {
+                    getString(R.string.forward_button_count, count)
+                } else {
+                    getString(R.string.forward_button)
+                }
             }
         )
 
@@ -114,7 +121,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             } else {
                 Toast.makeText(
                     requireContext(),
-                    "Не удалось загрузить чаты: ${result.exceptionOrNull()?.message}",
+                    getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -128,15 +135,17 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
         val comment = binding.commentEditText.text?.toString()?.trim().orEmpty()
 
         binding.sendButton.isEnabled = false
-        binding.sendButton.text = "Отправка..."
+        binding.sendButton.text = getString(R.string.forward_loading)
 
         lifecycleScope.launch {
             val results = selected.map { chatId ->
                 async {
+                    // Пачка уезжает одним сообщением на чат, а не N сообщениями:
+                    // получатель видит пересылку так же, как её собрал отправитель.
                     chatRepository.sendMessage(
                         chatId = chatId,
                         text = comment,
-                        forwardedMessageId = messageId
+                        forwardedMessageIds = messageIds.toList()
                     )
                 }
             }.awaitAll()
@@ -145,9 +154,12 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             val failCount = results.size - successCount
 
             val msg = when {
-                failCount == 0 -> "Переслано в $successCount ${chatPlural(successCount)}"
-                successCount == 0 -> "Не удалось переслать"
-                else -> "Переслано в $successCount, ошибок: $failCount"
+                failCount == 0 -> getString(
+                    R.string.forward_success,
+                    resources.getQuantityString(R.plurals.forward_chat_count, successCount, successCount)
+                )
+                successCount == 0 -> getString(R.string.forward_failed)
+                else -> getString(R.string.forward_partial, successCount, failCount)
             }
             Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
 
@@ -156,16 +168,6 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             }
 
             dismissAllowingStateLoss()
-        }
-    }
-
-    private fun chatPlural(n: Int): String {
-        val mod10 = n % 10
-        val mod100 = n % 100
-        return when {
-            mod10 == 1 && mod100 != 11 -> "чат"
-            mod10 in 2..4 && mod100 !in 12..14 -> "чата"
-            else -> "чатов"
         }
     }
 

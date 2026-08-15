@@ -2,11 +2,23 @@
   "name": "barkfluff-proto-bundle",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "build:app": "node build-app.js",
+    "build:shell-version": "node build-shell-version.js",
+    "format": "prettier --write ../wwwroot/js/app/**/*.js *.js",
+    "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js app-bundle-entry.js build-app.js",
+    "lint": "cd .. && scripts/node_modules/.bin/eslint --config scripts/eslint.config.cjs wwwroot/js/app/**/*.js scripts/build-app.js scripts/build-shell-version.js scripts/app-bundle-entry.js"
+  },
   "dependencies": {
+    "esbuild": "0.24.0",
+    "firebase": "12.17.0",
     "google-protobuf": "3.21.2",
     "grpc-web": "1.5.0",
-    "esbuild": "0.24.0",
-    "livekit-client": "2.19.2",
-    "firebase": "12.17.0"
+    "livekit-client": "2.19.2"
+  },
+  "devDependencies": {
+    "eslint": "10.8.1",
+    "globals": "17.10.0",
+    "prettier": "3.9.6"
   }
 }

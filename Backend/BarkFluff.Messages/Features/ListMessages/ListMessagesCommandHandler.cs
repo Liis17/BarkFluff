@@ -19,17 +19,19 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
     private readonly MessagesStorage _messagesStorage;
     private readonly FederatedReadStatesStorage _federatedReadStatesStorage;
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
+    private readonly ReplyPreviewResolver _replyPreviewResolver;
     private readonly ILogger<ListMessagesCommandHandler> _logger;
 
     public ListMessagesCommandHandler(UserContext userContext, ChatsStorage chatsStorage, MessagesStorage messagesStorage,
         FederatedReadStatesStorage federatedReadStatesStorage, FilesServerApi.FilesServerApiClient filesServerApiClient,
-        ILogger<ListMessagesCommandHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, ILogger<ListMessagesCommandHandler> logger)
     {
         _userContext = userContext;
         _chatsStorage = chatsStorage;
         _messagesStorage = messagesStorage;
         _federatedReadStatesStorage = federatedReadStatesStorage;
         _filesServerApiClient = filesServerApiClient;
+        _replyPreviewResolver = replyPreviewResolver;
         _logger = logger;
     }
 
@@ -147,9 +149,14 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
                 }
             }
 
+            var replyPreviews = await _replyPreviewResolver.ResolveAsync(messages);
+
             return new ListMessagesResponse()
             {
-                Messages = { messages.Select(x => x.ToGrpc(filesInfoMap, federatedReadByMap?.GetValueOrDefault(x.Id))) }
+                Messages =
+                {
+                    messages.Select(x => x.ToGrpc(filesInfoMap, federatedReadByMap?.GetValueOrDefault(x.Id), replyPreviews))
+                }
             };
         }
         catch (FromMessageNotFoundException ex)

@@ -43,11 +43,7 @@ public class UpsertChatDraftCommandHandler : IRequestHandler<UpsertChatDraftComm
             throw new NoAccessToChatException();
 
         if (request.ReplyToMessageId.HasValue)
-        {
-            var reply = await _messagesStorage.GetMessageById(request.ReplyToMessageId.Value);
-            if (reply is null || reply.ChatId != request.ChatId || reply.IsDeleted)
-                throw new MessageNotFoundException();
-        }
+            await Shared.ReplyTargetValidator.ValidateAsync(_messagesStorage, request.ChatId, request.ReplyToMessageId.Value);
 
         var draft = await _chatDraftsStorage.UpsertAsync(
             request.ChatId,

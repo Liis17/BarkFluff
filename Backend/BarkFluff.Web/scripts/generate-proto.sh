@@ -102,6 +102,7 @@ echo "[3/3] esbuild → $OUT_DIR/barkfluff.bundle.js"
     --global-name=BarkFluffBundle \
     --outfile="$OUT_DIR/barkfluff.bundle.js" \
     --target=es2020 \
+    --minify \
     --log-level=warning
 
 rm -rf "$TEMP_DIR"

@@ -18,6 +18,8 @@
             android:id="@+id/chatAvatar"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:scaleType="centerCrop"
             android:visibility="gone"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.App.CornerSize50Percent" />
@@ -49,9 +51,9 @@
     <ImageButton
         android:id="@+id/removeButton"
         android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@null"
+          android:layout_height="48dp"
+          android:background="?attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/cd_close"
         android:padding="12dp"
         android:src="@drawable/ic_close"
         app:tint="?attr/colorOnSurfaceVariant" />
