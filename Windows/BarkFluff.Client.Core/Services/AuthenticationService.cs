@@ -103,9 +103,9 @@ public sealed class AuthenticationService : IAuthenticationService
         var initialized = _webApi.CreateFastAuthClient(
             connection.ConnectionParameters,
             Environment.MachineName,
-            Environment.OSVersion.VersionString,
-            "BarkFluff",
-            "2.0",
+            ClientMetadata.OperatingSystem,
+            ClientMetadata.AppName,
+            ClientMetadata.AppVersion,
             string.Empty);
         if (!initialized.IsSuccess)
         {
@@ -318,9 +318,9 @@ public sealed class AuthenticationService : IAuthenticationService
     private bool InitializeAuthorizedClient(GlobalParam parameters) => _webApi.CreateAC(
             parameters,
             Environment.MachineName,
-            Environment.OSVersion.VersionString,
-            "BarkFluff",
-            "2.0",
+            ClientMetadata.OperatingSystem,
+            ClientMetadata.AppName,
+            ClientMetadata.AppVersion,
             string.Empty).IsSuccess;
 
     private async Task InitializeProfileAndPersistAsync(CancellationToken cancellationToken)
