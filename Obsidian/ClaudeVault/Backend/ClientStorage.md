@@ -74,7 +74,8 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - При старте контейнера `CacheWarmupService` скачивает последние версии всех клиентов из S3 в `/app/cache/`
 - Файлы именуются: `windows_release`, `windows_beta`, `winui_nightly`, `kotlin_release`, и т.д.
 - При загрузке нового файла (`/set/*`) кеш обновляется асинхронно в фоне
-- Кеш **эфемерный** — очищается при перезапуске контейнера, прогревается снова
+- Кеш персистентный — named volume `clientstorage-cache:/app/cache` в docker-compose
+- Образ non-root (chiseled, UID 1654): каталог `/app/cache` создаётся в CI (`mkdir -p ./publish/cache` в workflow) и попадает в образ с `chown 1654:1654` через `COPY --chown`. Без этого Docker создаёт точку монтирования volume от root → `UnauthorizedAccessException` при записи кеша. existed-том, созданный до фикса, нужно один раз удалить (`docker volume rm`) — при первом монтировании свежего volume владелец наследуется из образа
 
 ### Upload
 - ASP.NET буферирует IFormFile в temp-файл при разборе multipart
