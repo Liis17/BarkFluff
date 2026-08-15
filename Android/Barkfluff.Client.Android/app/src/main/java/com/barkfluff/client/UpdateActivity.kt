@@ -41,8 +41,6 @@ class UpdateActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityUpdateBinding
 
-    private var releaseInfo: ChannelVersionInfo? = null
-    private var betaInfo: ChannelVersionInfo? = null
     private var currentVersion: AppVersion? = null
 
     private var pendingDownloadChannel: String? = null
@@ -57,7 +55,8 @@ class UpdateActivity : AppCompatActivity() {
         private const val DOWNLOAD_BUFFER_BYTES = 64 * 1024
         private const val PROGRESS_INTERVAL_MS = 100L
         private const val CHANNEL_RELEASE = "release"
-        private const val CHANNEL_BETA = "beta"
+        private const val CHANNEL_DEV = "dev"
+        private const val CHANNEL_NIGHTLY = "nightly"
     }
 
     private val installPermissionLauncher = registerForActivityResult(
@@ -93,8 +92,11 @@ class UpdateActivity : AppCompatActivity() {
         currentVersion = AppVersion.parse(versionName)
         binding.textCurrentVersion.text = versionName
         binding.textCurrentChannel.text = getString(
-            if (currentVersion?.isBeta == true) R.string.update_current_beta_channel
-            else R.string.update_current_release_channel
+            when (BuildConfig.UPDATE_CHANNEL) {
+                CHANNEL_DEV -> R.string.update_current_dev_channel
+                CHANNEL_NIGHTLY -> R.string.update_current_nightly_channel
+                else -> R.string.update_current_release_channel
+            }
         )
     }
 
@@ -105,8 +107,11 @@ class UpdateActivity : AppCompatActivity() {
         binding.buttonUpdateRelease.setOnClickListener {
             requestDownload(CHANNEL_RELEASE)
         }
-        binding.buttonUpdateBeta.setOnClickListener {
-            requestDownload(CHANNEL_BETA)
+        binding.buttonUpdateDev.setOnClickListener {
+            requestDownload(CHANNEL_DEV)
+        }
+        binding.buttonUpdateNightly.setOnClickListener {
+            requestDownload(CHANNEL_NIGHTLY)
         }
         binding.buttonOpenWebsite.setOnClickListener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://barkfluff.com"))
@@ -117,47 +122,62 @@ class UpdateActivity : AppCompatActivity() {
     private fun checkUpdates() {
         binding.buttonCheckUpdates.isEnabled = false
         binding.buttonCheckUpdates.text = getString(R.string.update_checking)
-        binding.textReleaseVersion.text = getString(R.string.loading_dots)
-        binding.textBetaVersion.text = getString(R.string.loading_dots)
-        binding.buttonUpdateRelease.visibility = View.GONE
-        binding.buttonUpdateBeta.visibility = View.GONE
-        binding.textReleaseDate.visibility = View.GONE
-        binding.textBetaDate.visibility = View.GONE
-        binding.textReleaseStatus.text = ""
-        binding.textBetaStatus.text = ""
 
-        lifecycleScope.launch {
-            releaseInfo = UpdateChecker.getVersionInfo(CHANNEL_RELEASE)
-            betaInfo = UpdateChecker.getVersionInfo(CHANNEL_BETA)
-
-            updateChannelUI(
-                info = releaseInfo,
+        val channels = listOf(
+            ChannelViews(
+                channel = CHANNEL_RELEASE,
                 textVersion = binding.textReleaseVersion,
                 textDate = binding.textReleaseDate,
                 textStatus = binding.textReleaseStatus,
                 button = binding.buttonUpdateRelease
+            ),
+            ChannelViews(
+                channel = CHANNEL_DEV,
+                textVersion = binding.textDevVersion,
+                textDate = binding.textDevDate,
+                textStatus = binding.textDevStatus,
+                button = binding.buttonUpdateDev
+            ),
+            ChannelViews(
+                channel = CHANNEL_NIGHTLY,
+                textVersion = binding.textNightlyVersion,
+                textDate = binding.textNightlyDate,
+                textStatus = binding.textNightlyStatus,
+                button = binding.buttonUpdateNightly
             )
+        )
 
-            updateChannelUI(
-                info = betaInfo,
-                textVersion = binding.textBetaVersion,
-                textDate = binding.textBetaDate,
-                textStatus = binding.textBetaStatus,
-                button = binding.buttonUpdateBeta
-            )
+        channels.forEach { views ->
+            views.textVersion.text = getString(R.string.loading_dots)
+            views.textDate.visibility = View.GONE
+            views.textStatus.text = ""
+            views.button.visibility = View.GONE
+        }
+
+        lifecycleScope.launch {
+            channels.forEach { views ->
+                updateChannelUI(views, UpdateChecker.getVersionInfo(views.channel))
+            }
 
             binding.buttonCheckUpdates.isEnabled = true
             binding.buttonCheckUpdates.text = getString(R.string.update_check)
         }
     }
 
-    private fun updateChannelUI(
-        info: ChannelVersionInfo?,
-        textVersion: android.widget.TextView,
-        textDate: android.widget.TextView,
-        textStatus: android.widget.TextView,
-        button: com.google.android.material.button.MaterialButton
-    ) {
+    private data class ChannelViews(
+        val channel: String,
+        val textVersion: android.widget.TextView,
+        val textDate: android.widget.TextView,
+        val textStatus: android.widget.TextView,
+        val button: com.google.android.material.button.MaterialButton
+    )
+
+    private fun updateChannelUI(views: ChannelViews, info: ChannelVersionInfo?) {
+        val textVersion = views.textVersion
+        val textDate = views.textDate
+        val textStatus = views.textStatus
+        val button = views.button
+
         if (info == null) {
             textVersion.text = getString(R.string.update_unavailable)
             return
@@ -183,7 +203,11 @@ class UpdateActivity : AppCompatActivity() {
         if (remoteVersion != null && currentVersion != null) {
             when {
                 remoteVersion > currentVersion!! -> {
-                    button.visibility = View.VISIBLE
+                    // Обновляться можно только по своему каналу: у чужих каналов другой
+                    // applicationId, их APK встал бы вторым приложением, а не обновлением.
+                    if (views.channel == BuildConfig.UPDATE_CHANNEL) {
+                        button.visibility = View.VISIBLE
+                    }
                     textStatus.text = getString(R.string.update_available)
                     textStatus.setTextColor(getColor(android.R.color.holo_green_dark))
                 }
@@ -195,6 +219,12 @@ class UpdateActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun setChannelButtonsEnabled(enabled: Boolean) {
+        binding.buttonUpdateRelease.isEnabled = enabled
+        binding.buttonUpdateDev.isEnabled = enabled
+        binding.buttonUpdateNightly.isEnabled = enabled
     }
 
     private fun formatDate(isoDate: String): String? {
@@ -246,8 +276,7 @@ class UpdateActivity : AppCompatActivity() {
         binding.progressDownload.isIndeterminate = false
         binding.progressDownload.progress = 0
         binding.textDownloadPercent.text = getString(R.string.update_percent, 0)
-        binding.buttonUpdateRelease.isEnabled = false
-        binding.buttonUpdateBeta.isEnabled = false
+        setChannelButtonsEnabled(false)
 
         lifecycleScope.launch {
             val result = runCatching { downloadApk(url, destFile) }
@@ -256,8 +285,7 @@ class UpdateActivity : AppCompatActivity() {
             val error = result.exceptionOrNull()
             if (error is CancellationException) throw error
 
-            binding.buttonUpdateRelease.isEnabled = true
-            binding.buttonUpdateBeta.isEnabled = true
+            setChannelButtonsEnabled(true)
 
             result
                 .onSuccess {
