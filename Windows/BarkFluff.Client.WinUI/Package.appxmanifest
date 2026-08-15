@@ -5,8 +5,8 @@
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  xmlns:uap18="http://schemas.microsoft.com/appx/manifest/uap/windows10/18"
-  IgnorableNamespaces="uap rescap uap18">
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  IgnorableNamespaces="uap rescap uap10">
 
   <Identity
     Name="7895OrbitinSpace.Barkfluff"
@@ -22,8 +22,8 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26226.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26226.0" />
   </Dependencies>
 
   <Resources>
@@ -33,7 +33,7 @@
   <Applications>
     <Application Id="App"
       Executable="$targetnametoken$.exe"
-      EntryPoint="$targetentrypoint$" uap18:TrustLevel="mediumIL" uap18:RuntimeBehavior="win32App">
+      uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="packagedClassicApp">
       <uap:VisualElements
         DisplayName="Barkfluff"
         Description="BarkFluff — opensource мессенджер"
