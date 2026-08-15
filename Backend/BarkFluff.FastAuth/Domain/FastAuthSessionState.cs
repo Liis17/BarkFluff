@@ -8,7 +8,7 @@ namespace BarkFluff.FastAuth.Domain;
 /// Неизменяемый снимок состояния QR-сессии. Источник истины — Redis
 /// (любой инстанс видит и продвигает любую сессию, см. docs/scaling/fastauth.md).
 /// </summary>
-public sealed class FastAuthSessionState
+public sealed record FastAuthSessionState
 {
     public required string Id { get; init; }
     public required DateTime CreatedAt { get; init; }

@@ -95,7 +95,13 @@ public class SubscribeFastAuthResultQueryHandler(
         var remaining = latest.ExpiresAt - DateTime.UtcNow;
         if (remaining <= TimeSpan.Zero)
         {
-            remaining = TimeSpan.FromSeconds(1);
+            if (await sessions.TryExpireAsync(request.FastAuthId, CancellationToken.None))
+            {
+                metrics.Increment("sessions_expired");
+            }
+
+            await WriteAsync(request, new FastAuthResult { Status = FastAuthStatus.Expired });
+            return;
         }
 
         // Локальный дедлайн до ExpiresAt вместо sweeper'а: TTL Redis чистит данные,
