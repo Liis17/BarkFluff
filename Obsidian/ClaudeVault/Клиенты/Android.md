@@ -162,6 +162,22 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 
 Следствие: публичный endpoint с неполной TLS-цепочкой теперь корректно отклоняется release-клиентом — владелец ноды обязан развернуть fullchain, см. [[Backend/Nginx]].
 
+## Каналы сборки (stable / dev / nightly)
+
+Три product flavor'а по измерению `channel` в `app/build.gradle.kts` — каждый со своим `applicationId`, поэтому сборки разных каналов стоят на устройстве рядом. Стабильный flavor называется `stable`, а не `release`: Gradle запрещает совпадение имени flavor'а с именем buildType.
+
+| Ветка | Flavor | applicationId | Имя в лаунчере | Канал ClientStorage | Имя APK |
+|---|---|---|---|---|---|
+| `master` | `stable` | `com.barkfluff.client` | Barkfluff | `release` | `Barkfluff-release-X.Y.Z.apk` |
+| `dev` | `dev` | `com.barkfluff.dev` | Barkfluff.dev | `dev` | `Barkfluff-dev-X.Y.Z.apk` |
+| `nightly` | `nightly` | `com.barkfluff.nightly` | Barkfluff.nightly | `nightly` | `Barkfluff-nightly-X.Y.Z.apk` |
+
+- **`BuildConfig.UPDATE_CHANNEL`** — канал сборки. По нему `UpdateChecker.hasUpdate()` следит только за своим каналом, а `UpdateActivity` показывает кнопку обновления лишь в своей карточке: APK чужого канала не обновит приложение, а встанет вторым. Канал больше **не** определяется суффиксом « beta» в версии — `AppVersion.isBeta` для этого не используется.
+- **Ресурсы каналов** — `app/src/dev/res/` и `app/src/nightly/res/` перекрывают `main`: `app_name` во всех пяти локалях и adaptive-иконка. Иконка собрана из двух слоёв (фон-текстура PNG в `drawable-nodpi/`, белый глиф-вектор с обводкой), потому что маска adaptive-иконки показывает только центральные 66% холста и срезала бы готовое изображение по краям.
+- **`google-services.json`** содержит client-записи всех трёх пакетов. Без записи под конкретный `applicationId` плагин `com.google.gms.google-services` роняет сборку флейвора.
+- **Версия.** `versionName` поднимает только сборка ветки `nightly` (patch + 1 от версии в канале `nightly`); `dev` и `master` переиздают ту же версию как есть. В git `versionName` всегда остаётся `0.0.1` — реальное значение `sed`'ом подставляет CI и обратно не коммитит. Следствие: два пуша в `dev` подряд без промежуточной nightly-сборки дают два APK с одинаковой версией, и клиент не увидит второй как обновление.
+- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла.
+
 ## Система обновлений и её TLS
 
 Сервер обновлений [[Backend/ClientStorage|ClientStorage]] (`storage.barkfluff.com`) отдаётся за Cloudflare Origin CA, которого нет в системном хранилище Android. Сертификат едет в APK строкой `BuildConfig.STORAGE_CA_PEM_B64`: `app/build.gradle.kts` заполняет её из переменной окружения `STORAGE_CA_PEM_B64`, а воркфлоу `build-client-android.yml` подставляет туда секрет `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64` — тот же, которым он ходит на storage через `curl --cacert`. Без переменной строка пустая, и локальные сборки просто работают на системном хранилище (обновления в них не проверяются).
@@ -404,9 +420,10 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 
 - `activity_chat.xml`: ConstraintLayout, слои по z-order (снизу вверх):
   1. `chatBackgroundImage` — фоновое изображение (ImageView на весь экран)
-  2. `chatDimOverlay` — оверлей затенения фона (View, `visibility=gone` при dim=0)
-  3. `messagesRecyclerView` + панели кнопок (с elevation)
-  4. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
+  2. `chatHeaderBlurImage` — блюр-копия фона, обрезанная до высоты шапки
+  3. `chatDimOverlay` — оверлей затенения обеих копий фона (View, `visibility=gone` при dim=0)
+  4. `messagesRecyclerView` + панели кнопок (с elevation)
+  5. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
 
 ### Редизайн по макету M3E «Вариант 3»
 
@@ -422,7 +439,7 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 - **Морфинг кнопки отправки** (`applySendButtonShape`): пустой ввод — круг 52dp `colorPrimaryContainer` с микрофоном, есть что отправить — компактная pill 68dp/radius 18dp `colorPrimary` со стрелкой. Фон — программный `GradientDrawable` (анимируются ширина, радиус, цвет; 300 мс). Голосовой режим и drag-to-cancel не менялись, но тинт иконки при записи теперь `colorOnPrimaryContainer` / `colorError`.
 - Плашки `replyPreviewBar` / `editPreviewBar` / `attachmentPreviewBar` выровнены по грядке (отступ 14dp) и получили форму 28dp сверху / 12dp снизу (`ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar`).
 - Реакции на сообщения из макета не переносились — на бэкенде их нет.
-- **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
+- **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. `chatDimOverlay` расположен после `chatHeaderBlurImage`, поэтому затемнение покрывает фон и область шапки; корневой layout остаётся edge-to-edge, а inset’ы вручную резервируются для контента. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
 
 ## Markdown в сообщениях
