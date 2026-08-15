@@ -20,8 +20,9 @@
 <p align="center">
   <a href="../../../LICENSE"><img src="https://img.shields.io/github/license/Liis17/BarkFluff?style=flat-square&color=8A2BE2" alt="Лицензия MIT"></a>
   <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=dev" alt="Android CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml/badge.svg?branch=dev" alt="Windows CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml/badge.svg?branch=dev" alt="WinUI CI"></a>
   <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=dev" alt="macOS CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml/badge.svg?branch=dev" alt="Web CI"></a>
 </p>
 
 ---
@@ -52,14 +53,14 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 **Реальное время по умолчанию.** Сервис Updates использует постоянные gRPC-стримы для событий продукта, а RabbitMQ переносит асинхронную работу между сервисами.
 
-**Готовность к эксплуатации.** PostgreSQL хранит состояние, Redis обслуживает горячие данные, MinIO отвечает за объекты, а Docker запускает стек. Нативные и web-клиенты сделаны на Kotlin, WPF, SwiftUI, Qt и web-технологиях.
+**Готовность к эксплуатации.** PostgreSQL хранит состояние, Redis обслуживает горячие данные, MinIO отвечает за объекты, а Docker запускает стек. Нативные и web-клиенты сделаны на Kotlin, WinUI, SwiftUI, Qt и web-технологиях.
 
 В [гайде по архитектуре](../../../Obsidian/ClaudeVault/Архитектура.md) описаны порты, аутентификация, доставка событий и соглашения сервисов.
 
 ## Клиенты
 
 - **Android** — Kotlin и gRPC-OkHttp · [инструкция по сборке](../../clients/android.md)
-- **Windows** — WPF и .NET · [инструкция по сборке](../../clients/windows.md)
+- **Windows** — WinUI 3 и .NET · [инструкция по сборке](../../clients/windows.md) · устаревший WPF-клиент
 - **macOS** — SwiftUI и gRPC-Swift · [инструкция по сборке](../../clients/macos.md)
 - **iOS** — SwiftUI и gRPC-Swift · [инструкция по сборке](../../clients/ios.md)
 - **Linux** — Qt 6, C++20 и gRPC · [инструкция по сборке](../../clients/linux.md)

@@ -53,14 +53,14 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 
 **Real-time by default.** The Updates service uses persistent gRPC streams for live product events, while RabbitMQ carries asynchronous work between services.
 
-**Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WPF, SwiftUI, Qt, and web technologies.
+**Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WinUI, SwiftUI, Qt, and web technologies.
 
 Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) for ports, authentication, event delivery, and service conventions.
 
 ## Clients
 
 - **Android** — Kotlin and gRPC-OkHttp · [build guide](.readme/clients/android.md)
-- **Windows** — WPF and .NET · [build guide](.readme/clients/windows.md)
+- **Windows** — WinUI 3 and .NET · [build guide](.readme/clients/windows.md) · WPF client (legacy)
 - **macOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/macos.md)
 - **iOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/ios.md)
 - **Linux** — Qt 6, C++20, and gRPC · [build guide](.readme/clients/linux.md)
