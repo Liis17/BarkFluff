@@ -636,6 +636,8 @@
     let editingServerId = null;
     let containerServerId = null;
     let consoleSocket = null;
+    const consoleReadyMessage = '\u0000barkfluff:console-ready\u0000';
+    const consoleErrorPrefix = '\u0000barkfluff:console-error:';
 
     function switchTab(id) {
         activeTab = id;
@@ -824,12 +826,22 @@
                 socket.close(1000, 'Консоль закрыта');
                 return;
             }
-            setConsoleStatus('Подключено', 'md-status-success');
-            setConsoleInputEnabled(true);
-            document.getElementById('consoleInput').focus();
+            setConsoleStatus('SSH-сессия запускается…', 'md-status-info');
         };
         socket.onmessage = event => {
             if (consoleSocket !== socket) return;
+            if (event.data === consoleReadyMessage) {
+                setConsoleStatus('Подключено', 'md-status-success');
+                setConsoleInputEnabled(true);
+                document.getElementById('consoleInput').focus();
+                return;
+            }
+            if (typeof event.data === 'string' && event.data.startsWith(consoleErrorPrefix)) {
+                setConsoleStatus('Ошибка SSH', 'md-status-error');
+                setConsoleInputEnabled(false);
+                appendConsoleOutput(`\n[${event.data.slice(consoleErrorPrefix.length, -1)}]\n`);
+                return;
+            }
             appendConsoleOutput(event.data);
         };
         socket.onerror = () => {
@@ -838,12 +850,13 @@
             setConsoleInputEnabled(false);
             appendConsoleOutput('\n[Не удалось подключиться к SSH-серверу]\n');
         };
-        socket.onclose = () => {
+        socket.onclose = event => {
             if (consoleSocket !== socket) return;
             consoleSocket = null;
             setConsoleStatus('Соединение закрыто', 'md-status-neutral');
             setConsoleInputEnabled(false);
-            appendConsoleOutput('\n[SSH-соединение закрыто]\n');
+            const reason = event.reason ? `: ${event.reason}` : '';
+            appendConsoleOutput(`\n[SSH-соединение закрыто, код ${event.code}${reason}]\n`);
         };
     }
 
