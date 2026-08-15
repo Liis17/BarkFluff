@@ -78,9 +78,9 @@ public sealed class NodeConnectionService : INodeConnectionService
         var initialized = _webApi.CreateAC(
             connection.ConnectionParameters,
             Environment.MachineName,
-            Environment.OSVersion.VersionString,
-            "BarkFluff",
-            "2.0",
+            ClientMetadata.OperatingSystem,
+            ClientMetadata.AppName,
+            ClientMetadata.AppVersion,
             string.Empty);
         if (!initialized.IsSuccess)
         {

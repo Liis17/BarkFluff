@@ -1,0 +1,6 @@
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_bg_nightly" />
+    <foreground android:drawable="@drawable/ic_launcher_fg_nightly" />
+    <!-- Монохромный слой берёт только альфу, поэтому переиспользуем глиф из main. -->
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

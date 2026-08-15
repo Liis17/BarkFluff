@@ -800,7 +800,8 @@
     <string name="calls_filter_all">Alle</string>
     <string name="calls_filter_missed">Verpasst</string>
     <string name="update_release_channel">Release</string>
-    <string name="update_beta_channel">Beta</string>
+    <string name="update_dev_channel">Dev</string>
+    <string name="update_nightly_channel">Nightly</string>
 
     <!-- Calls and notifications -->
     <string name="call_title_default">Anruf</string>
@@ -1174,7 +1175,8 @@
     <string name="pinned_unpinned_count">Gelöst: %1$d</string>
     <string name="pinned_unpin_all_failed">Nachrichten konnten nicht gelöst werden</string>
     <string name="update_current_release_channel">Release-Kanal</string>
-    <string name="update_current_beta_channel">Beta-Kanal</string>
+    <string name="update_current_dev_channel">Dev-Kanal</string>
+    <string name="update_current_nightly_channel">Nightly-Kanal</string>
     <string name="update_install_permission_denied">Installationsberechtigung wurde nicht erteilt</string>
     <string name="update_checking">Wird geprüft…</string>
     <string name="update_unavailable">Nicht verfügbar</string>

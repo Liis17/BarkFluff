@@ -794,7 +794,8 @@
     <string name="calls_filter_all">全部</string>
     <string name="calls_filter_missed">未接</string>
     <string name="update_release_channel">Release</string>
-    <string name="update_beta_channel">Beta</string>
+    <string name="update_dev_channel">Dev</string>
+    <string name="update_nightly_channel">Nightly</string>
 
     <!-- Calls and notifications -->
     <string name="call_title_default">通话</string>
@@ -1166,7 +1167,8 @@
     <string name="pinned_unpinned_count">已取消置顶：%1$d</string>
     <string name="pinned_unpin_all_failed">无法取消消息置顶</string>
     <string name="update_current_release_channel">正式版频道</string>
-    <string name="update_current_beta_channel">测试版频道</string>
+    <string name="update_current_dev_channel">开发版频道</string>
+    <string name="update_current_nightly_channel">每夜版频道</string>
     <string name="update_install_permission_denied">未授予安装权限</string>
     <string name="update_checking">正在检查…</string>
     <string name="update_unavailable">不可用</string>

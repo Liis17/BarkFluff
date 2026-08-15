@@ -29,4 +29,11 @@ GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffios
 ### Скачать Windows клиент (beta)
 GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffwindows/beta
 
+### Получить версию WinUI клиента (nightly)
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffwinui/nightly/version
+Accept: application/json
+
+### Скачать WinUI клиент (dev)
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffwinui/dev
+
 ###

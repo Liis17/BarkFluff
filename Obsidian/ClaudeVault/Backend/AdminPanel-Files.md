@@ -45,7 +45,7 @@
 | `LogsExportEndpoints.cs` | `/api/seq/export` | Запуск, статус и скачивание ZIP-архива экспорта логов. |
 | `LogsCompressionEndpoints.cs` | `/api/seq/compress-metrics` | Ручной запуск ежедневного сжатия логов-метрик за конкретную дату, история прогонов. |
 | `NotificationsEndpoints.cs` | `/api/notifications` | Публикация push-рассылок (всем устройствам / по списку deviceId) через MassTransit. |
-| `RemoteDockerEndpoints.cs` | `/api/remote/servers` | CRUD сохранённых SSH-серверов, discovery контейнеров, список и действия над отслеживаемыми контейнерами. |
+| `RemoteDockerEndpoints.cs` | `/api/remote/servers` | CRUD сохранённых SSH-серверов, discovery контейнеров, список и действия над отслеживаемыми контейнерами; WebSocket-консоль принимает upgrade до открытия SSH, возвращает ready/error-сигналы и передаёт вывод PTY binary-фреймами. |
 | `ConfigurationEndpoints.cs` | `/api/configuration` | Чтение и обновление S3-конфигурации бакетов через gRPC Configuration. |
 | `S3BrowserEndpoints.cs` | `/api/s3` | Список бакетов, листинг объектов, получение presigned URL. |
 | `ReservedNamesEndpoints.cs` | `/api/reserved-names` | CRUD зарезервированных имён пользователей через gRPC Configuration. |
@@ -97,8 +97,8 @@
 | `S3BrowserService.cs` | AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из gRPC Configuration. Методы: листинг бакетов/объектов, presigned URL (5 мин). |
 | `MetricsCollectorService.cs` | `IHostedService`. Запускается при старте + каждый час. Собирает события Seq за 24ч, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет устаревшие данные (Stats >24ч, ServiceMetrics >12ч). |
 | `MailService.cs` | `IAsyncDisposable`. IMAP/SMTP клиент (MailKit) для служебных ящиков: по одному `ImapClient`+`SemaphoreSlim` на аккаунт. Список писем, письмо, вложения (включая inline по Content-ID), пометка прочитанным, отправка через SMTP. |
-| `RemoteDockerService.cs` | Управление Docker на сохранённых в LiteDB SSH-серверах: проверка подключения, discovery, статусы, start/stop/restart и Compose-only pull + recreate. |
-| `IRemoteSshClient.cs`, `SshNetRemoteSshClient.cs` | Тестируемая граница SSH-команд и SSH.NET-реализация с password/keyboard-interactive auth. |
+| `RemoteDockerService.cs` | Управление Docker и интерактивной консолью на сохранённых в LiteDB SSH-серверах: проверка подключения, discovery, статусы, start/stop/restart, Compose-only pull + recreate. |
+| `IRemoteSshClient.cs`, `SshNetRemoteSshClient.cs` | Тестируемая граница SSH-команд и интерактивного PTY; SSH.NET-реализация с password/keyboard-interactive auth и flush каждой записи ввода. |
 
 ---
 
@@ -110,7 +110,7 @@
 |------|---------|-----------|
 | `Login.html` | `/` (без токена) | Форма входа: поле nickname → polling статуса Telegram-подтверждения |
 | `dashboard.html` | `/` | Главная: KPI, трафик, метрики сервисов из Seq-кеша |
-| `services.html` | `/services` | Управление Docker-контейнерами: статус, start/stop/restart/update |
+| `services.html` | `/services` | Управление Docker-контейнерами: статус, start/stop/restart/update; интерактивная SSH-консоль для дополнительных серверов |
 | `logs.html` | `/logs` | Просмотр логов Seq с фильтрацией по сервису, уровню, тексту |
 | `badges.html` | `/badges` | CRUD бейджей: создание с картинкой, редактирование, удаление |
 | `stickers.html` | `/stickers` | Управление стикерпаками: создание пака, загрузка стикеров. Встроенный редактор изображения (Cropper.js через CDN, `aspectRatio:1`): кроп, масштаб (слайдер + колесо), поворот картинки внутри макета, закругление углов (alpha-маска). Закрытие только с подтверждением (X/Esc/клик по фону → confirm; «Отмена» — явно). Финальный canvas 512×512 подменяет файл в `input.files`; сервер конвертирует в WebP. Точки входа: «Новый стикер», обложка пака (создание и смена). |
