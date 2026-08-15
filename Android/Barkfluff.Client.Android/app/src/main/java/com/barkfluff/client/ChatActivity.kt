@@ -246,10 +246,10 @@ class ChatActivity : AppCompatActivity() {
         private const val VOICE_HINT_DRAG_RATIO = 0.35f
         private const val HEADER_MORPH_DURATION_MS = 280L
         private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
-        private const val SEND_BUTTON_NARROW_DP = 60f
-        private const val SEND_BUTTON_WIDE_DP = 96f
-        private const val SEND_BUTTON_NARROW_CORNER_DP = 30f
-        private const val SEND_BUTTON_WIDE_CORNER_DP = 20f
+        private const val SEND_BUTTON_NARROW_DP = 52f
+        private const val SEND_BUTTON_WIDE_DP = 68f
+        private const val SEND_BUTTON_NARROW_CORNER_DP = 26f
+        private const val SEND_BUTTON_WIDE_CORNER_DP = 18f
         private const val HEADER_SHADOW_DURATION_MS = 250L
         private const val HEADER_SHADOW_ELEVATION_DP = 4f
         /** Минимальный шаг прокрутки, меняющий состояние шапки. */
@@ -439,28 +439,43 @@ class ChatActivity : AppCompatActivity() {
         val inputBaseMargin = (binding.inputBar.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val recyclerBasePaddingTop = binding.messagesRecyclerView.paddingTop
         val recyclerBasePaddingBottom = binding.messagesRecyclerView.paddingBottom
-        // Высота полосы, зарезервированной под кнопки ввода (inputRowBottom, фикс. 64dp) —
-        // именно на столько лента должна не доходить контентом до нижнего края экрана.
-        val inputRowBandPx = binding.inputRowBottom.layoutParams.height
+        // Базовая высота полосы ввода. При многострочном тексте inputBar становится выше,
+        // поэтому нижний отступ ленты пересчитывается по фактической высоте контейнера.
+        val inputRowBandBasePx = binding.inputRowBottom.layoutParams.height
+        var lastBottomInset = 0
+
+        fun updateRecyclerBottomPadding() {
+            val inputContentHeight = maxOf(
+                binding.inputBar.height + inputBaseMargin,
+                binding.sendButton.height + sendBaseMargin
+            )
+            val inputRowBandPx = maxOf(inputRowBandBasePx, inputContentHeight)
+            binding.messagesRecyclerView.updatePadding(
+                bottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
+            )
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val bottomInset = maxOf(bars.bottom, ime.bottom)
+            lastBottomInset = bottomInset
 
             // Статус-бар резервирует сама шапка — лента начинается уже под ней.
             binding.chatHeaderBar.updatePadding(top = headerBasePaddingTop + bars.top)
             // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
             // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
-            binding.messagesRecyclerView.updatePadding(
-                top = recyclerBasePaddingTop,
-                bottom = recyclerBasePaddingBottom + inputRowBandPx + bottomInset
-            )
+            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop)
+            updateRecyclerBottomPadding()
 
             binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
             binding.inputBar.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
 
             insets
+        }
+
+        binding.inputBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateRecyclerBottomPadding()
         }
 
         // Лента edge-to-edge уходит под шапку и статус-бар: верхний отступ ленты
@@ -1338,8 +1353,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     /**
-     * Морфинг кнопки отправки по макету: пустой ввод — круг 60dp в тоне primaryContainer,
-     * есть что отправить — вытянутая pill 96dp в primary.
+     * Морфинг кнопки отправки: пустой ввод — круг 52dp в тоне primaryContainer,
+     * есть что отправить — компактная pill 68dp в primary.
      */
     private fun applySendButtonShape(canSend: Boolean, animate: Boolean = true) {
         // Форма меняется только на переходе — иначе анимация перезапускалась бы на каждый символ
