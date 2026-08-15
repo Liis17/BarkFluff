@@ -572,7 +572,8 @@
     <LinearLayout
         android:id="@+id/inputBar"
         android:layout_width="0dp"
-        android:layout_height="60dp"
+        android:layout_height="wrap_content"
+        android:minHeight="52dp"
         android:layout_marginStart="14dp"
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="8dp"
@@ -581,6 +582,7 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
         app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/sendButton">
@@ -606,6 +608,7 @@
             android:hint="@string/chat_message_hint"
             android:importantForAutofill="no"
             android:inputType="textMultiLine|textCapSentences"
+            android:minHeight="44dp"
             android:maxLines="4"
             android:paddingHorizontal="6dp"
             android:textColor="?attr/colorOnSurface"
@@ -678,14 +681,14 @@
          анимируются в ChatActivity.updateSendButtonMode() -->
     <ImageButton
         android:id="@+id/sendButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
         android:layout_marginEnd="14dp"
         android:layout_marginBottom="8dp"
         android:contentDescription="@string/cd_send"
         android:elevation="4dp"
         android:foreground="?attr/selectableItemBackgroundBorderless"
-        android:padding="16dp"
+        android:padding="14dp"
         android:src="@drawable/ic_send_filled"
         app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -694,7 +697,7 @@
     <View
         android:id="@+id/inputRowBottom"
         android:layout_width="0dp"
-        android:layout_height="76dp"
+        android:layout_height="68dp"
         android:visibility="invisible"
         android:elevation="4dp"
         app:layout_constraintBottom_toTopOf="@id/stickerPanelContainer"
