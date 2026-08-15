@@ -274,7 +274,7 @@ public static class RemoteDockerEndpoints
         }
     }
 
-    private static async Task ForwardShellOutputAsync(WebSocket socket, IRemoteSshShell shell, CancellationToken cancellationToken)
+    internal static async Task ForwardShellOutputAsync(WebSocket socket, IRemoteSshShell shell, CancellationToken cancellationToken)
     {
         var buffer = new byte[16 * 1024];
         while (!cancellationToken.IsCancellationRequested && socket.State == WebSocketState.Open)
@@ -283,7 +283,9 @@ public static class RemoteDockerEndpoints
             if (count <= 0)
                 return;
 
-            await socket.SendAsync(new ArraySegment<byte>(buffer, 0, count), WebSocketMessageType.Text, true, cancellationToken);
+            // SSH output is an arbitrary byte stream. Sending each read as a complete
+            // text message can split a UTF-8 code point and make the browser abort the socket.
+            await socket.SendAsync(new ArraySegment<byte>(buffer, 0, count), WebSocketMessageType.Binary, true, cancellationToken);
         }
     }
 }
