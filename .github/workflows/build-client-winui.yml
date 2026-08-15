@@ -239,7 +239,6 @@ jobs:
         env:
           CLIENT_STORAGE_URL: ${{ secrets.CLIENT_STORAGE_URL }}
           CLIENT_STORAGE_TOKEN: ${{ secrets.CLIENT_STORAGE_TOKEN }}
-          CA_BUNDLE_PATH: ${{ github.workspace }}\cloudflare-origin-ca-bundle.pem
           UPLOAD_PATH: ${{ steps.target.outputs.upload_path }}
           VERSION: ${{ steps.package.outputs.version }}
           ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
@@ -250,34 +249,23 @@ jobs:
             }
           }
 
-          if (-not (Test-Path -LiteralPath $env:CA_BUNDLE_PATH -PathType Leaf)) {
-            throw "CA-бандл не найден: $env:CA_BUNDLE_PATH"
+          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
+          if (-not (Test-Path -LiteralPath $caBundlePath -PathType Leaf)) {
+            throw "CA-бандл не найден: $caBundlePath"
           }
           if (-not (Test-Path -LiteralPath $env:ARCHIVE_PATH -PathType Leaf)) {
             throw "Архив не найден: $env:ARCHIVE_PATH"
           }
 
           $url = "$($env:CLIENT_STORAGE_URL.TrimEnd('/'))/$($env:UPLOAD_PATH)"
-          $curlArguments = @(
-            '--fail'
-            '--silent'
-            '--show-error'
-            '--retry'
-            '3'
-            '--cacert'
-            $env:CA_BUNDLE_PATH
-            '--request'
-            'POST'
-            $url
-            '--header'
-            "Authorization: Bearer $($env:CLIENT_STORAGE_TOKEN)"
-            '--header'
-            "X-App-Version: $($env:VERSION)"
-            '--form'
-            "file=@$($env:ARCHIVE_PATH)"
-          )
-
-          & curl.exe @curlArguments
+          & curl.exe `
+            --fail `
+            --cacert $caBundlePath `
+            --request POST `
+            $url `
+            --header "Authorization: Bearer $($env:CLIENT_STORAGE_TOKEN)" `
+            --header "X-App-Version: $($env:VERSION)" `
+            --form "file=@$($env:ARCHIVE_PATH)"
           if ($LASTEXITCODE -ne 0) {
             throw "Загрузка архива завершилась с кодом $LASTEXITCODE"
           }
@@ -290,7 +278,6 @@ jobs:
         env:
           CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
           CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
-          CA_BUNDLE_PATH: ${{ github.workspace }}\cloudflare-origin-ca-bundle.pem
         run: |
           if (-not [string]::IsNullOrWhiteSpace($env:CERTIFICATE_THUMBPRINT)) {
             Get-ChildItem -Path 'Cert:\CurrentUser\My' |
@@ -298,7 +285,8 @@ jobs:
               Remove-Item -Force -ErrorAction SilentlyContinue
           }
 
-          foreach ($path in @($env:CERTIFICATE_PATH, $env:CA_BUNDLE_PATH)) {
+          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
+          foreach ($path in @($env:CERTIFICATE_PATH, $caBundlePath)) {
             if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
               Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
             }
