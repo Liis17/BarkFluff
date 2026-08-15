@@ -819,6 +819,8 @@
 
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
         const socket = new WebSocket(`${protocol}//${location.host}/api/remote/servers/${serverId}/console`);
+        const consoleDecoder = new TextDecoder();
+        socket.binaryType = 'arraybuffer';
         consoleSocket = socket;
 
         socket.onopen = () => {
@@ -828,7 +830,7 @@
             }
             setConsoleStatus('SSH-сессия запускается…', 'md-status-info');
         };
-        socket.onmessage = event => {
+        socket.onmessage = async event => {
             if (consoleSocket !== socket) return;
             if (event.data === consoleReadyMessage) {
                 setConsoleStatus('Подключено', 'md-status-success');
@@ -840,6 +842,16 @@
                 setConsoleStatus('Ошибка SSH', 'md-status-error');
                 setConsoleInputEnabled(false);
                 appendConsoleOutput(`\n[${event.data.slice(consoleErrorPrefix.length, -1)}]\n`);
+                return;
+            }
+            if (event.data instanceof ArrayBuffer) {
+                appendConsoleOutput(consoleDecoder.decode(new Uint8Array(event.data), { stream: true }));
+                return;
+            }
+            if (event.data instanceof Blob) {
+                const bytes = new Uint8Array(await event.data.arrayBuffer());
+                if (consoleSocket !== socket) return;
+                appendConsoleOutput(consoleDecoder.decode(bytes, { stream: true }));
                 return;
             }
             appendConsoleOutput(event.data);
@@ -855,6 +867,8 @@
             consoleSocket = null;
             setConsoleStatus('Соединение закрыто', 'md-status-neutral');
             setConsoleInputEnabled(false);
+            const decoderTail = consoleDecoder.decode();
+            if (decoderTail) appendConsoleOutput(decoderTail);
             const reason = event.reason ? `: ${event.reason}` : '';
             appendConsoleOutput(`\n[SSH-соединение закрыто, код ${event.code}${reason}]\n`);
         };
