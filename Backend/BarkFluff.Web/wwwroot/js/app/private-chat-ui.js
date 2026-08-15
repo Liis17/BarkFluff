@@ -35,7 +35,7 @@
     }
 
     function closePassphraseModal() {
-        privatePassOverlay.classList.remove('visible');
+        BF.utils.closeOverlay(privatePassOverlay);
         privatePassActive = null;
     }
 
@@ -47,10 +47,7 @@
         privatePassRemember.checked = true;
         privatePassError.textContent = '';
         privatePassOk.disabled = false;
-        privatePassOverlay.classList.add('visible');
-        setTimeout(function () {
-            privatePassInput.focus();
-        }, 50);
+        BF.utils.openOverlay(privatePassOverlay, { focus: privatePassInput });
     }
 
     function submitPassphrase() {

@@ -64,14 +64,11 @@
         createBtn.disabled = false;
         createBtn.textContent = BF.i18n.t('common.create');
         renderChips();
-        overlay.classList.add('visible');
-        setTimeout(function () {
-            (mode === 'group' ? groupTitleInput : searchInput).focus();
-        }, 50);
+        BF.utils.openOverlay(overlay, { focus: mode === 'group' ? groupTitleInput : searchInput });
     }
 
     function closeOverlay() {
-        overlay.classList.remove('visible');
+        BF.utils.closeOverlay(overlay);
         mode = null;
     }
 

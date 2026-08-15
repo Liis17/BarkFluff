@@ -795,12 +795,12 @@
     function open() {
         resetState();
         goToStep(1);
-        overlay.classList.add('visible');
+        BF.utils.openOverlay(overlay);
         document.body.style.overflow = 'hidden';
     }
 
     function close() {
-        overlay.classList.remove('visible');
+        BF.utils.closeOverlay(overlay);
         document.body.style.overflow = '';
     }
 

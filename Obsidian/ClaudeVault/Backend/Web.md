@@ -99,7 +99,7 @@ origin вызывающего заранее неизвестен, вести с
 
 **Мессенджер** (messenger.html):
 - `clients.js` — gRPC-Web клиенты, authCall с auto-refresh
-- `utils.js` — форматирование, escapeHtml, parseJwt и безопасный Markdown-рендер (`renderMarkdown`) для текста сообщений и forward-блоков: заголовки, цитаты, списки, code blocks, ссылки, акцентирование и GFM-таблицы. Таблица определяется строкой заголовков и валидной строкой-разделителем (`-` / `:---:` / `---:`); в ячейках сохраняется inline Markdown. На узком экране контейнер `.md-table-wrap` прокручивается по горизонтали.
+- `utils.js` — форматирование, escapeHtml, parseJwt и безопасный Markdown-рендер (`renderMarkdown`) для текста сообщений и forward-блоков: заголовки, цитаты, списки, code blocks, ссылки, акцентирование и GFM-таблицы. Таблица определяется строкой заголовков и валидной строкой-разделителем (`-` / `:---:` / `---:`); в ячейках сохраняется inline Markdown. На узком экране контейнер `.md-table-wrap` прокручивается по горизонтали. Плюс a11y-хелперы оверлеев `openOverlay`/`closeOverlay` (см. [[#Клавиатурная доступность (a11y)]]).
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`. **Компоновка вложений** (`buildMessageElement`): флаги `hasImages`/`imageOnly`/`docsOnly` (по типам вложений, независимо от направления) → классы пузыря `has-images`/`image-only`/`docs-only`. `image-only` (только картинки без текста/forward) — медиа на всю площадь пузыря (`padding:0`), время+галочки полупрозрачным бейджем поверх картинки (`.msg-meta.msg-img-overlay-meta`); с текстом — сетка сверху без полей, время снизу. `docs-only` — компактный padding без двойной рамки. CSS — в `messenger.html` рядом с `.msg-bubble`.
@@ -121,6 +121,14 @@ origin вызывающего заранее неизвестен, вести с
 
 **Proto bundle** (`wwwroot/js/proto/barkfluff.bundle.js`):
 Генерируется через `scripts/generate-proto.ps1` (или `.sh`). Требует: protoc, protoc-gen-grpc-web, Node.js (esbuild).
+
+## Клавиатурная доступность (a11y)
+
+- **`:focus-visible`** (в `messenger.css` после `body`): кнопки/ссылки/`[tabindex]`/чекбоксы/range → `outline: 2px solid var(--primary)` + `outline-offset: 2px`; текстовые инпуты/textarea/select → ring `box-shadow: 0 0 0 3px var(--input-focus)` + `border-color: var(--primary)`. Мышь не задета (`:focus-visible` не срабатывает на клик). Все `outline: none` в файле скомпенсированы `:focus`-правилами.
+- **Focus-trap** — `BF.utils.openOverlay(el, {focus})` / `BF.utils.closeOverlay(el)` (стек в `utils.js`): ставит `inert` на детей `body` кроме оверлея и его предков (поэтому дропдауны внутри `.app` работают), вешает document-keydown Tab-цикл только по верхнему оверлею стека, ставит `role="dialog"` + `aria-modal="true"`, фокусирует первый focusable (или `opts.focus`) через 30мс, при закрытии снимает `inert` (с учётом вложенных оверлеев), восстанавливает `role`/`aria-modal` и возвращает фокус на триггер. Вложенные модалки (confirm поверх настроек) поддержаны: нижний уровень пере-инертится корректно.
+- **Обёрнуты** все модалки: settings, poster-crop, confirm, attach, imageeditor, register, cmdpalette, newchat, legal, profile/group overlays, chat-background-selector, delete-confirm, forward, folder-edit, pinned-list, private-pass, media-viewer. Не обёрнуты намеренно: `calls-ui` (звонковые оверлеи) и контекстные меню (`#msgContextMenu`/`#chatContextMenu`).
+- **`.chat-item`** — `div` с `tabIndex=0` + `role="button"` + `aria-label`, Enter/Space открывают чат (main.js `renderChatList`).
+- Escape-закрытие остаётся на модулях (хелпер его не дублирует).
 
 > `wwwroot/` содержит только `index.html`, `messenger.html`, `favicon.ico`, каталог `js/` и генерируемый при сборке `legal/` (см. [[#Согласие с документами (legal.js)]]). Отдельной мобильной страницы (`mobile.html`) нет — мобильный режим реализуется адаптивной вёрсткой основных страниц.
 

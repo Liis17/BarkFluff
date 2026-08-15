@@ -236,6 +236,9 @@
             var el = document.createElement('div');
             el.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
             el.dataset.chatId = chat.id;
+            el.tabIndex = 0;
+            el.setAttribute('role', 'button');
+            el.setAttribute('aria-label', chat.title || BF.i18n.t('common.chat'));
 
             var avatarInitial = (chat.title || '?')[0].toUpperCase();
             var avatarHtml = chat.picture
@@ -297,6 +300,12 @@
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
 
             el.addEventListener('click', function () { openChat(chat.id); });
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openChat(chat.id);
+                }
+            });
             chatListEl.appendChild(el);
         });
     }
@@ -1903,7 +1912,7 @@
             }
 
             loadProfileMedia('media');
-            profileOverlay.classList.add('visible');
+            BF.utils.openOverlay(profileOverlay);
         });
     }
 
@@ -2210,13 +2219,13 @@
     if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
     if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
 
-    profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
-    profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
+    profileClose.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
+    profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) BF.utils.closeOverlay(profileOverlay); });
 
     var _profileMsgBtn = $('#profileMsgBtn');
     var _profileCallAudioBtn = $('#profileCallAudioBtn');
     var _profileCallVideoBtn = $('#profileCallVideoBtn');
-    if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
+    if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
 
     function openChatBackgroundSelector(chatId, title) {
         if (!chatId) return;
@@ -2225,7 +2234,7 @@
         var grid = $('#chatBackgroundSelectorGrid');
         selectorTitle.textContent = BF.i18n.t('chat.background.for', { title: title || BF.i18n.t('common.chat').toLowerCase() });
         grid.innerHTML = '<div class="sd-hint">' + u.escapeHtml(BF.i18n.t('common.loadingShort')) + '</div>';
-        overlay.classList.add('visible');
+        BF.utils.openOverlay(overlay);
 
         BF.api.getPersonalization().then(function (data) {
             var ids = ((data && data.personalization) || {}).chatBackgroundFileIds || [];
@@ -2249,7 +2258,7 @@
                 card.addEventListener('click', function () {
                     card.disabled = true;
                     BF.personalization.setChatBackgroundFileId(chatId, fileId).then(function () {
-                        overlay.classList.remove('visible');
+                        BF.utils.closeOverlay(overlay);
                     }).catch(function () { card.disabled = false; });
                 });
                 grid.appendChild(card);
@@ -2262,10 +2271,10 @@
     var _chatBackgroundSelector = $('#chatBackgroundSelector');
     var _chatBackgroundSelectorClose = $('#chatBackgroundSelectorClose');
     if (_chatBackgroundSelectorClose) _chatBackgroundSelectorClose.addEventListener('click', function () {
-        _chatBackgroundSelector.classList.remove('visible');
+        BF.utils.closeOverlay(_chatBackgroundSelector);
     });
     if (_chatBackgroundSelector) _chatBackgroundSelector.addEventListener('click', function (e) {
-        if (e.target === _chatBackgroundSelector) _chatBackgroundSelector.classList.remove('visible');
+        if (e.target === _chatBackgroundSelector) BF.utils.closeOverlay(_chatBackgroundSelector);
     });
 
     var _profileBackgroundBtn = $('#profileBackgroundButton');
@@ -2552,7 +2561,7 @@
 
     function requestDelete(messageId) {
         if (!deleteMsgConfirmOverlay || !messageId) return;
-        deleteMsgConfirmOverlay.classList.add('visible');
+        BF.utils.openOverlay(deleteMsgConfirmOverlay);
         deleteMsgOk.onclick = function () {
             deleteMsgOk.disabled = true;
             BF.api.deleteMessage(messageId).then(function () {
@@ -2560,7 +2569,7 @@
             }).catch(function () {})
             .finally(function () {
                 deleteMsgOk.disabled = false;
-                deleteMsgConfirmOverlay.classList.remove('visible');
+                BF.utils.closeOverlay(deleteMsgConfirmOverlay);
                 deleteMsgOk.onclick = null;
             });
         };
@@ -2782,13 +2791,13 @@
         });
         updateForwardCounter();
 
-        forwardOverlay.classList.add('visible');
+        BF.utils.openOverlay(forwardOverlay);
         forwardSendBtn.onclick = function () { forwardSubmit(sourceMessageIds); };
     }
 
     function closeForwardModal() {
         if (!forwardOverlay) return;
-        forwardOverlay.classList.remove('visible');
+        BF.utils.closeOverlay(forwardOverlay);
         forwardSelection = new Set();
         if (forwardSendBtn) forwardSendBtn.onclick = null;
     }
@@ -2865,14 +2874,14 @@
     // --- Delete confirm cancel ---
     if (deleteMsgCancel) {
         deleteMsgCancel.addEventListener('click', function () {
-            if (deleteMsgConfirmOverlay) deleteMsgConfirmOverlay.classList.remove('visible');
+            if (deleteMsgConfirmOverlay) BF.utils.closeOverlay(deleteMsgConfirmOverlay);
             if (deleteMsgOk) deleteMsgOk.onclick = null;
         });
     }
     if (deleteMsgConfirmOverlay) {
         deleteMsgConfirmOverlay.addEventListener('click', function (e) {
             if (e.target === deleteMsgConfirmOverlay) {
-                deleteMsgConfirmOverlay.classList.remove('visible');
+                BF.utils.closeOverlay(deleteMsgConfirmOverlay);
                 if (deleteMsgOk) deleteMsgOk.onclick = null;
             }
         });
