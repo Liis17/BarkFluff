@@ -1,0 +1,4 @@
+<resources>
+    <!-- Имя канала в лаунчере: сборки stable/dev/nightly стоят рядом и должны различаться. -->
+    <string name="app_name">Barkfluff.dev</string>
+</resources>
