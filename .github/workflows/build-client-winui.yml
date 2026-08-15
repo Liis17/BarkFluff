@@ -15,6 +15,7 @@ on:
       - 'Shared/**'
       - 'Windows/client-rebuild.trigger'
       - 'global.json'
+      - '.github/scripts/send-telegram.sh'
       - '.github/workflows/build-client-winui.yml'
   workflow_dispatch:
 
