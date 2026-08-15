@@ -3,6 +3,7 @@ using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
 
 using System.Net.WebSockets;
+using System.Text;
 
 namespace Barkfluff.AdminPanel.Endpoints;
 
@@ -115,36 +116,12 @@ public static class RemoteDockerEndpoints
                 return;
             }
 
-            IRemoteSshShell? shell = null;
-            try
-            {
-                shell = await service.OpenShellAsync(serverId, cancellationToken);
-                using var socket = await context.WebSockets.AcceptWebSocketAsync();
-                await RunConsoleAsync(socket, shell, cancellationToken);
-            }
-            catch (KeyNotFoundException)
-            {
-                if (!context.Response.HasStarted)
-                    context.Response.StatusCode = StatusCodes.Status404NotFound;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The browser or the request disconnected.
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Ошибка открытия SSH-консоли на удалённом сервере {ServerId}", serverId);
-                if (!context.Response.HasStarted)
-                {
-                    context.Response.StatusCode = StatusCodes.Status502BadGateway;
-                    await context.Response.WriteAsJsonAsync(new { message = "Не удалось открыть SSH-консоль" });
-                }
-            }
-            finally
-            {
-                if (shell is not null)
-                    await shell.DisposeAsync();
-            }
+            await HandleConsoleAsync(
+                context,
+                serverId,
+                token => service.OpenShellAsync(serverId, token),
+                logger,
+                cancellationToken);
         });
 
         group.MapPost("/servers/{serverId:guid}/containers/{containerId:guid}/{action}", async (
@@ -181,6 +158,73 @@ public static class RemoteDockerEndpoints
 
         return string.Equals(originUri.Host, requestHost.Host, StringComparison.OrdinalIgnoreCase)
             && originPort == requestPort;
+    }
+
+    internal static async Task HandleConsoleAsync(HttpContext context,
+        Guid serverId,
+        Func<CancellationToken, Task<IRemoteSshShell>> openShell,
+        ILogger<RemoteDockerService> logger,
+        CancellationToken cancellationToken)
+    {
+        WebSocket? socket = null;
+        IRemoteSshShell? shell = null;
+        try
+        {
+            socket = await context.WebSockets.AcceptWebSocketAsync();
+            shell = await openShell(cancellationToken);
+            await SendConsoleControlAsync(socket, "\u0000barkfluff:console-ready\u0000", cancellationToken);
+            await RunConsoleAsync(socket, shell, cancellationToken);
+        }
+        catch (KeyNotFoundException)
+        {
+            if (socket is null || !context.Response.HasStarted)
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            else
+                await CloseConsoleWithErrorAsync(socket, "Сервер не найден", WebSocketCloseStatus.EndpointUnavailable);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The browser or the request disconnected.
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Ошибка открытия SSH-консоли на удалённом сервере {ServerId}", serverId);
+            if (socket is null || !context.Response.HasStarted)
+            {
+                context.Response.StatusCode = StatusCodes.Status502BadGateway;
+                await context.Response.WriteAsJsonAsync(new { message = "Не удалось открыть SSH-консоль" });
+            }
+            else
+                await CloseConsoleWithErrorAsync(socket, "Не удалось открыть SSH-консоль", WebSocketCloseStatus.InternalServerError);
+        }
+        finally
+        {
+            if (shell is not null)
+                await shell.DisposeAsync();
+            socket?.Dispose();
+        }
+    }
+
+    private static async Task SendConsoleControlAsync(WebSocket socket, string message, CancellationToken cancellationToken)
+    {
+        var bytes = Encoding.UTF8.GetBytes(message);
+        await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken);
+    }
+
+    private static async Task CloseConsoleWithErrorAsync(WebSocket socket, string message, WebSocketCloseStatus closeStatus)
+    {
+        try
+        {
+            if (socket.State == WebSocketState.Open)
+            {
+                await SendConsoleControlAsync(socket, $"\u0000barkfluff:console-error:{message}\u0000", CancellationToken.None);
+                await socket.CloseAsync(closeStatus, message, CancellationToken.None);
+            }
+        }
+        catch (Exception ex) when (ex is WebSocketException or InvalidOperationException)
+        {
+            // The browser may have already closed the connection.
+        }
     }
 
     private static async Task RunConsoleAsync(WebSocket socket, IRemoteSshShell shell, CancellationToken cancellationToken)
