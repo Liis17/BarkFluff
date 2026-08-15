@@ -1,0 +1,14 @@
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50200
+  use_external_ip: true
+
+keys:
+  barkfluffkeys: your_key
+webhook:
+  api_key: barkfluffkeys
+  urls:
+    - http://calls:7026/livekit/webhook
