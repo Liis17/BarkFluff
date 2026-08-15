@@ -6,8 +6,24 @@ set -euo pipefail
 : "${TG_MESSAGE:?TG_MESSAGE is required}"
 : "${TG_ACTION_URL:?TG_ACTION_URL is required}"
 
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT
+
+message_file="$tmp_dir/message.txt"
+reply_markup_file="$tmp_dir/reply_markup.json"
+
+printf '%s' "$TG_MESSAGE" > "$message_file"
+printf '%s' '{"inline_keyboard":[[{"text":"Открыть GitHub Action","url":"'"$TG_ACTION_URL"'"}]]}' > "$reply_markup_file"
+
+curl_message_file="$message_file"
+curl_reply_markup_file="$reply_markup_file"
+if command -v cygpath >/dev/null 2>&1; then
+  curl_message_file=$(cygpath -w "$message_file")
+  curl_reply_markup_file=$(cygpath -w "$reply_markup_file")
+fi
+
 curl -sS -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
   --data-urlencode "chat_id=${TG_CHAT}" \
   --data-urlencode "parse_mode=Markdown" \
-  --data-urlencode "text=${TG_MESSAGE}" \
-  --data-urlencode "reply_markup={\"inline_keyboard\":[[{\"text\":\"Открыть GitHub Action\",\"url\":\"${TG_ACTION_URL}\"}]]}"
+  --data-urlencode "text@${curl_message_file}" \
+  --data-urlencode "reply_markup@${curl_reply_markup_file}"

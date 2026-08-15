@@ -5,7 +5,8 @@
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  IgnorableNamespaces="uap rescap uap10">
 
   <Identity
     Name="7895OrbitinSpace.Barkfluff"
@@ -17,12 +18,12 @@
   <Properties>
     <DisplayName>Barkfluff</DisplayName>
     <PublisherDisplayName>Orbit in Space</PublisherDisplayName>
-    <Logo>Assets\StoreLogo.png</Logo>
+    <Logo>Assets\master\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26226.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26226.0" />
   </Dependencies>
 
   <Resources>
@@ -32,15 +33,16 @@
   <Applications>
     <Application Id="App"
       Executable="$targetnametoken$.exe"
-      EntryPoint="$targetentrypoint$">
+      uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="packagedClassicApp">
       <uap:VisualElements
         DisplayName="Barkfluff"
-        Description="BarkFluff — распределённый мессенджер"
+        Description="BarkFluff — opensource мессенджер"
         BackgroundColor="transparent"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
-        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+        Square150x150Logo="Assets\master\Square150x150Logo.png"
+        Square44x44Logo="Assets\master\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\master\Wide310x150Logo.png"  ShortName="barkfluff" Square71x71Logo="Assets\master\SmallTile.png" Square310x310Logo="Assets\master\LargeTile.png"/>
+        <uap:SplashScreen Image="Assets\master\SplashScreen.png" />
+        <uap:LockScreen Notification="badge" BadgeLogo="Assets\master\BadgeLogo.png"/>
       </uap:VisualElements>
     </Application>
   </Applications>

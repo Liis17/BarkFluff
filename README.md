@@ -20,8 +20,9 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Liis17/BarkFluff?style=flat-square&color=8A2BE2" alt="MIT License"></a>
   <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=dev" alt="Android CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-wpf.yml/badge.svg?branch=dev" alt="Windows CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml/badge.svg?branch=dev" alt="WinUI CI"></a>
   <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=dev" alt="macOS CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml/badge.svg?branch=dev" alt="Web CI"></a>
 </p>
 
 ---
@@ -35,9 +36,9 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 ## Download
 
 <p align="center">
-  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="docs/images/readme/download-windows.svg" alt="Download BarkFluff for Windows" height="88"></a>
-  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="docs/images/readme/download-android.svg" alt="Download BarkFluff for Android" height="88"></a>
-  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="docs/images/readme/download-macos.svg" alt="Download BarkFluff for macOS" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/b80bc730dcb440049d4ad185932b5fca.png" alt="Download BarkFluff for Windows" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/193a7581c86a4c9baaa074e75c82465f.png" alt="Download BarkFluff for Android" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/a2b538ab6c204981b7c0f58293a4a1f8.png" alt="Download BarkFluff for macOS" height="88"></a>
 </p>
 
 <p align="center">
@@ -52,14 +53,14 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 
 **Real-time by default.** The Updates service uses persistent gRPC streams for live product events, while RabbitMQ carries asynchronous work between services.
 
-**Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WPF, SwiftUI, Qt, and web technologies.
+**Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WinUI, SwiftUI, Qt, and web technologies.
 
 Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) for ports, authentication, event delivery, and service conventions.
 
 ## Clients
 
 - **Android** — Kotlin and gRPC-OkHttp · [build guide](.readme/clients/android.md)
-- **Windows** — WPF and .NET · [build guide](.readme/clients/windows.md)
+- **Windows** — WinUI 3 and .NET · [build guide](.readme/clients/windows.md) · WPF client (legacy)
 - **macOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/macos.md)
 - **iOS** — SwiftUI and gRPC-Swift · [build guide](.readme/clients/ios.md)
 - **Linux** — Qt 6, C++20, and gRPC · [build guide](.readme/clients/linux.md)

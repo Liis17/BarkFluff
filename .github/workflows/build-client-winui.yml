@@ -1,0 +1,329 @@
+name: "🪟 WinUI Client CI/CD"
+
+on:
+  push:
+    branches:
+      - master
+      - release
+      - beta
+      - dev
+      - nightly
+    paths:
+      - 'Windows/BarkFluff.Client.WinUI/**'
+      - 'Windows/BarkFluff.Client.Core/**'
+      - 'Windows/BarkFluff.WebApi.Core/**'
+      - 'Shared/**'
+      - 'Windows/client-rebuild.trigger'
+      - 'global.json'
+      - '.github/scripts/send-telegram.sh'
+      - '.github/workflows/build-client-winui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: "🪟 Сборка WinUI Client"
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Настройка .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Восстановление CA-бандла Cloudflare Origin CA
+        shell: pwsh
+        env:
+          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CA_BUNDLE_B64)) {
+            throw 'Не задан секрет CLOUDFLARE_ORIGIN_CA_BUNDLE_B64'
+          }
+
+          $caPath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
+          [System.IO.File]::WriteAllBytes(
+            $caPath,
+            [Convert]::FromBase64String($env:CA_BUNDLE_B64))
+
+          if (-not (Test-Path -LiteralPath $caPath -PathType Leaf)) {
+            throw "Не удалось восстановить CA-бандл: $caPath"
+          }
+
+      - name: Определение канала обновлений
+        id: target
+        shell: pwsh
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          switch ($env:BRANCH_NAME) {
+            'master'  { $channel = 'release' }
+            'release' { $channel = 'release' }
+            'beta'    { $channel = 'beta' }
+            'dev'     { $channel = 'dev' }
+            'nightly' { $channel = 'nightly' }
+            default {
+              throw "Ветка '$($env:BRANCH_NAME)' не привязана к каналу обновлений"
+            }
+          }
+
+          $uploadPath = if ($channel -eq 'release') {
+            'set/barkfluffwinui'
+          } else {
+            "set/barkfluffwinui/$channel"
+          }
+
+          @(
+            "branch=$($env:BRANCH_NAME)"
+            "channel=$channel"
+            "upload_path=$uploadPath"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Ветка $($env:BRANCH_NAME) → канал $channel → /$uploadPath"
+
+      - name: Восстановление self-signed сертификата MSIX
+        id: certificate
+        shell: pwsh
+        env:
+          CERTIFICATE_B64: ${{ secrets.WINUI_MSIX_CERTIFICATE_B64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.WINUI_MSIX_CERTIFICATE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE_B64)) {
+            throw 'Не задан секрет WINUI_MSIX_CERTIFICATE_B64'
+          }
+
+          $certificatePath = Join-Path $env:RUNNER_TEMP 'BarkFluffWinUI-signing.pfx'
+          [System.IO.File]::WriteAllBytes(
+            $certificatePath,
+            [Convert]::FromBase64String($env:CERTIFICATE_B64))
+
+          if (-not (Test-Path -LiteralPath $certificatePath -PathType Leaf)) {
+            throw "Не удалось восстановить сертификат: $certificatePath"
+          }
+
+          $password = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
+          $certificates = Import-PfxCertificate `
+            -FilePath $certificatePath `
+            -CertStoreLocation 'Cert:\CurrentUser\My' `
+            -Password $password
+          $certificate = $certificates |
+            Where-Object HasPrivateKey |
+            Select-Object -First 1
+
+          if ($null -eq $certificate) {
+            throw 'В PFX не найден сертификат с приватным ключом'
+          }
+
+          @(
+            "path=$certificatePath"
+            "thumbprint=$($certificate.Thumbprint)"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Сертификат восстановлен: thumbprint=$($certificate.Thumbprint)"
+
+      - name: Восстановление зависимостей
+        run: dotnet restore Windows/BarkFluff.Client.WinUI/BarkFluff.Client.WinUI.csproj -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64 -p:PublishReadyToRun=true
+
+      - name: Сборка и упаковка MSIX
+        id: package
+        shell: pwsh
+        env:
+          CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
+        run: |
+          $projectPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\BarkFluff.Client.WinUI.csproj'
+          $outputDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+
+          if (Test-Path -LiteralPath $outputDirectory) {
+            Remove-Item -LiteralPath $outputDirectory -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+
+          $arguments = @(
+            'publish'
+            $projectPath
+            '--configuration'
+            'Release'
+            '--no-restore'
+            '-p:Platform=x64'
+            '-p:PublishProfile='
+            '-p:PublishAppxPackage=true'
+            '-p:AppxBundle=Never'
+            '-p:GenerateAppInstallerFile=false'
+            '-p:GenerateTemporaryStoreCertificate=false'
+            '-p:AppxPackageSigningEnabled=true'
+            "-p:PackageCertificateThumbprint=$env:CERTIFICATE_THUMBPRINT"
+            '-p:PackageCertificateKeyFile='
+            '-p:PackageCertificatePassword='
+            "-p:AppxPackageDir=$outputDirectory"
+          )
+
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "dotnet publish завершился с кодом $LASTEXITCODE"
+          }
+
+          $msix = Get-ChildItem `
+            -LiteralPath $outputDirectory `
+            -Recurse `
+            -File `
+            -Filter 'BarkFluff.Client.WinUI_*.msix' |
+            Select-Object -First 1
+
+          if ($null -eq $msix) {
+            throw "MSIX-файл BarkFluff.Client.WinUI не найден в $outputDirectory"
+          }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $package = [System.IO.Compression.ZipFile]::OpenRead($msix.FullName)
+          try {
+            $manifestEntry = $package.GetEntry('AppxManifest.xml')
+            if ($null -eq $manifestEntry) {
+              throw 'В MSIX отсутствует AppxManifest.xml'
+            }
+
+            $reader = [System.IO.StreamReader]::new($manifestEntry.Open())
+            try {
+              [xml]$manifest = $reader.ReadToEnd()
+            } finally {
+              $reader.Dispose()
+            }
+          } finally {
+            $package.Dispose()
+          }
+
+          $identity = $manifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
+          $version = [string]$identity.Version
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw 'Не удалось определить версию MSIX из AppxManifest.xml'
+          }
+
+          @(
+            "package_dir=$($msix.Directory.FullName)"
+            "msix_path=$($msix.FullName)"
+            "version=$version"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "MSIX: $($msix.FullName)"
+          Write-Host "Версия: $version"
+
+      - name: Архивирование папки установщика
+        id: archive
+        shell: pwsh
+        env:
+          PACKAGE_DIRECTORY: ${{ steps.package.outputs.package_dir }}
+          VERSION: ${{ steps.package.outputs.version }}
+          BRANCH_NAME: ${{ steps.target.outputs.branch }}
+        run: |
+          $applicationName = 'BarkFluffWinUI'
+          $safeBranchName = $env:BRANCH_NAME -replace '[^A-Za-z0-9._-]', '-'
+          $archiveName = "${applicationName}_${safeBranchName}_$($env:VERSION).zip"
+          $archivePath = Join-Path $env:GITHUB_WORKSPACE $archiveName
+
+          Compress-Archive `
+            -Path $env:PACKAGE_DIRECTORY `
+            -DestinationPath $archivePath `
+            -CompressionLevel Optimal `
+            -Force
+
+          if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
+            throw "Архив не создан: $archivePath"
+          }
+
+          "path=$archivePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "name=$archiveName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Архив: $archiveName"
+
+      - name: Загрузка на сервер обновлений
+        shell: pwsh
+        env:
+          CLIENT_STORAGE_URL: ${{ secrets.CLIENT_STORAGE_URL }}
+          CLIENT_STORAGE_TOKEN: ${{ secrets.CLIENT_STORAGE_TOKEN }}
+          UPLOAD_PATH: ${{ steps.target.outputs.upload_path }}
+          VERSION: ${{ steps.package.outputs.version }}
+          ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
+        run: |
+          foreach ($name in @('CLIENT_STORAGE_URL', 'CLIENT_STORAGE_TOKEN', 'UPLOAD_PATH', 'VERSION', 'ARCHIVE_PATH')) {
+            if ([string]::IsNullOrWhiteSpace((Get-Item "Env:$name").Value)) {
+              throw "Не задано обязательное значение $name"
+            }
+          }
+
+          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
+          if (-not (Test-Path -LiteralPath $caBundlePath -PathType Leaf)) {
+            throw "CA-бандл не найден: $caBundlePath"
+          }
+          if (-not (Test-Path -LiteralPath $env:ARCHIVE_PATH -PathType Leaf)) {
+            throw "Архив не найден: $env:ARCHIVE_PATH"
+          }
+
+          $url = "$($env:CLIENT_STORAGE_URL.TrimEnd('/'))/$($env:UPLOAD_PATH)"
+          & curl.exe `
+            --fail `
+            --cacert $caBundlePath `
+            --request POST `
+            $url `
+            --header "Authorization: Bearer $($env:CLIENT_STORAGE_TOKEN)" `
+            --header "X-App-Version: $($env:VERSION)" `
+            --form "file=@$($env:ARCHIVE_PATH)"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Загрузка архива завершилась с кодом $LASTEXITCODE"
+          }
+
+          Write-Host "Архив $($env:ARCHIVE_PATH) загружен на $url"
+
+      - name: Очистка временных секретов
+        if: always()
+        shell: pwsh
+        env:
+          CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
+          CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
+        run: |
+          if (-not [string]::IsNullOrWhiteSpace($env:CERTIFICATE_THUMBPRINT)) {
+            Get-ChildItem -Path 'Cert:\CurrentUser\My' |
+              Where-Object Thumbprint -eq $env:CERTIFICATE_THUMBPRINT |
+              Remove-Item -Force -ErrorAction SilentlyContinue
+          }
+
+          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
+          foreach ($path in @($env:CERTIFICATE_PATH, $caBundlePath)) {
+            if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
+              Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+      - name: "✅ Уведомление об успехе"
+        if: success()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            🪟 *WinUI Client* v${{ steps.package.outputs.version }}
+            📦 Канал: `${{ steps.target.outputs.channel }}`
+            📁 Архив: `${{ steps.archive.outputs.name }}`
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          bash .github/scripts/send-telegram.sh
+
+      - name: "❌ Уведомление об ошибке"
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            🪟 *WinUI Client*
+            📦 Канал: `${{ steps.target.outputs.channel }}`
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          bash .github/scripts/send-telegram.sh
