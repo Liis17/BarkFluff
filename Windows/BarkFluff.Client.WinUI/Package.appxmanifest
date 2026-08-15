@@ -18,7 +18,7 @@
   <Properties>
     <DisplayName>Barkfluff</DisplayName>
     <PublisherDisplayName>Orbit in Space</PublisherDisplayName>
-    <Logo>Assets\dev\StoreLogo.png</Logo>
+    <Logo>Assets\master\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
@@ -38,11 +38,11 @@
         DisplayName="Barkfluff"
         Description="BarkFluff — opensource мессенджер"
         BackgroundColor="transparent"
-        Square150x150Logo="Assets\dev\Square150x150Logo.png"
-        Square44x44Logo="Assets\dev\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\dev\Wide310x150Logo.png"  ShortName="barkfluff" Square71x71Logo="Assets\dev\SmallTile.png" Square310x310Logo="Assets\dev\LargeTile.png"/>
-        <uap:SplashScreen Image="Assets\dev\SplashScreen.png" />
-        <uap:LockScreen Notification="badge" BadgeLogo="Assets\dev\BadgeLogo.png"/>
+        Square150x150Logo="Assets\master\Square150x150Logo.png"
+        Square44x44Logo="Assets\master\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\master\Wide310x150Logo.png"  ShortName="barkfluff" Square71x71Logo="Assets\master\SmallTile.png" Square310x310Logo="Assets\master\LargeTile.png"/>
+        <uap:SplashScreen Image="Assets\master\SplashScreen.png" />
+        <uap:LockScreen Notification="badge" BadgeLogo="Assets\master\BadgeLogo.png"/>
       </uap:VisualElements>
     </Application>
   </Applications>
