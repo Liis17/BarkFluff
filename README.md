@@ -36,9 +36,9 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 ## Download
 
 <p align="center">
-  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="docs/images/readme/download-windows.svg" alt="Download BarkFluff for Windows" height="88"></a>
-  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="docs/images/readme/download-android.svg" alt="Download BarkFluff for Android" height="88"></a>
-  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="docs/images/readme/download-macos.svg" alt="Download BarkFluff for macOS" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/b80bc730dcb440049d4ad185932b5fca.png" alt="Download BarkFluff for Windows" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/193a7581c86a4c9baaa074e75c82465f.png" alt="Download BarkFluff for Android" height="88"></a>
+  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/a2b538ab6c204981b7c0f58293a4a1f8.png" alt="Download BarkFluff for macOS" height="88"></a>
 </p>
 
 <p align="center">
