@@ -27,6 +27,10 @@ bash Windows/BarkFluff.Client.WinUI/tools/check-localization.sh
 
 Разделение не косметическое: обращение к любому типу из WinUI-сборки запускает её module initializer (Windows App SDK `DeploymentManager`), который вне пакетной идентичности падает с `REGDB_E_CLASSNOTREG`. Без отдельной Core-сборки юнит-тесты незапускаемы в принципе.
 
+## Metadata gRPC-клиента
+
+`BarkFluff.Client.Core/Services/ClientMetadata.cs` — единый источник metadata для WinUI-подключений. `NodeConnectionService` и `AuthenticationService` передают в `x-os-name` человекочитаемую версию Windows (`Windows 10/11`, редакция, DisplayVersion и номер сборки), а не сырой `Environment.OSVersion.VersionString` (`Microsoft Windows NT ...`). Те же значения используются для FastAuth, повторной авторизации и экрана «О приложении». `x-app-name` и `x-app-version` сохраняют идентичность WinUI-клиента: `BarkFluff` и `2.0`.
+
 ## Ограничения WinUI, определившие архитектуру
 
 - **`DynamicResource` не существует.** `StaticResource` не перевычисляется, `ThemeResource` — только при смене `ElementTheme`.
