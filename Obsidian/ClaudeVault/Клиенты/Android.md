@@ -420,9 +420,10 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 
 - `activity_chat.xml`: ConstraintLayout, слои по z-order (снизу вверх):
   1. `chatBackgroundImage` — фоновое изображение (ImageView на весь экран)
-  2. `chatDimOverlay` — оверлей затенения фона (View, `visibility=gone` при dim=0)
-  3. `messagesRecyclerView` + панели кнопок (с elevation)
-  4. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
+  2. `chatHeaderBlurImage` — блюр-копия фона, обрезанная до высоты шапки
+  3. `chatDimOverlay` — оверлей затенения обеих копий фона (View, `visibility=gone` при dim=0)
+  4. `messagesRecyclerView` + панели кнопок (с elevation)
+  5. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
 
 ### Редизайн по макету M3E «Вариант 3»
 
@@ -438,7 +439,7 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 - **Морфинг кнопки отправки** (`applySendButtonShape`): пустой ввод — круг 52dp `colorPrimaryContainer` с микрофоном, есть что отправить — компактная pill 68dp/radius 18dp `colorPrimary` со стрелкой. Фон — программный `GradientDrawable` (анимируются ширина, радиус, цвет; 300 мс). Голосовой режим и drag-to-cancel не менялись, но тинт иконки при записи теперь `colorOnPrimaryContainer` / `colorError`.
 - Плашки `replyPreviewBar` / `editPreviewBar` / `attachmentPreviewBar` выровнены по грядке (отступ 14dp) и получили форму 28dp сверху / 12dp снизу (`ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar`).
 - Реакции на сообщения из макета не переносились — на бэкенде их нет.
-- **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
+- **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. `chatDimOverlay` расположен после `chatHeaderBlurImage`, поэтому затемнение покрывает фон и область шапки; корневой layout остаётся edge-to-edge, а inset’ы вручную резервируются для контента. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
 
 ## Markdown в сообщениях
