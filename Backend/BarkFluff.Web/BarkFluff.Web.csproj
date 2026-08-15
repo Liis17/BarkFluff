@@ -85,4 +85,14 @@
     <Exec Command="npm --prefix scripts run build:app" />
   </Target>
 
+  <!-- Бампит CACHE_NAME в service-worker.js хешем от файлов APP_SHELL, чтобы
+       любое изменение шелл-ассетов автоматически инвалидировало SW-кэш.
+       Идемпотентен: при отсутствии изменений файл не переписывается. -->
+  <Target Name="BuildShellVersion"
+          BeforeTargets="Build;Publish"
+          DependsOnTargets="RestoreWebTooling"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm --prefix scripts run build:shell-version" />
+  </Target>
+
 </Project>

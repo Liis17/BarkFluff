@@ -110,6 +110,7 @@ public class Program
             x.AddConsumer<LoginNotificationConsumer>();
             x.AddConsumer<BotUpdateSignalConsumer>();
             x.AddConsumer<BotRegistryChangedConsumer>();
+            x.AddConsumer<SessionRevokedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -143,6 +144,15 @@ public class Program
                     e.AutoDelete = true;
                     e.Durable = false;
                     e.ConfigureConsumer<BotRegistryChangedConsumer>(context);
+                });
+
+                // Fan-out: каждый инстанс получает копию отзыва сессии в свой TokenRevocationCache
+                // (см. _shared-token-revocation.md).
+                cfg.ReceiveEndpoint($"session-revoked-bots-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });
         });

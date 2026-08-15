@@ -129,7 +129,7 @@
             state.drawCtx = state.drawCanvas.getContext('2d');
             state.pixelatedCanvas = null;
 
-            overlay.classList.add('visible');
+            BF.utils.openOverlay(overlay);
             requestAnimationFrame(function () {
                 recomputeView();
                 setTool('crop');
@@ -139,7 +139,7 @@
     }
 
     function close(result) {
-        overlay.classList.remove('visible');
+        BF.utils.closeOverlay(overlay);
         drawing = false; lastPt = null; cropDragging = null;
         if (state.objUrl) { URL.revokeObjectURL(state.objUrl); state.objUrl = null; }
         if (state.imgIsBitmap && state.img && state.img.close) {

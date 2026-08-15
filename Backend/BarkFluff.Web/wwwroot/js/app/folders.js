@@ -432,8 +432,7 @@
         if (folderNameInput) { folderNameInput.value = ''; folderNameInput.disabled = false; }
         selectIcon('');
         if (folderEditDeleteBtn) folderEditDeleteBtn.style.display = 'none';
-        if (folderEditOverlay) folderEditOverlay.classList.add('visible');
-        setTimeout(function () { try { folderNameInput.focus(); } catch (e) {} }, 0);
+        if (folderEditOverlay) BF.utils.openOverlay(folderEditOverlay, { focus: folderNameInput });
     }
 
     function openEditModal(folderId) {
@@ -444,12 +443,12 @@
         if (folderNameInput) { folderNameInput.value = f.folderName || ''; folderNameInput.disabled = false; }
         selectIcon(f.folderIcon || '');
         if (folderEditDeleteBtn) folderEditDeleteBtn.style.display = '';
-        if (folderEditOverlay) folderEditOverlay.classList.add('visible');
-        setTimeout(function () { try { folderNameInput.focus(); folderNameInput.select(); } catch (e) {} }, 0);
+        if (folderEditOverlay) BF.utils.openOverlay(folderEditOverlay, { focus: folderNameInput });
+        setTimeout(function () { try { folderNameInput.select(); } catch (e) {} }, 0);
     }
 
     function closeEditModal() {
-        if (folderEditOverlay) folderEditOverlay.classList.remove('visible');
+        if (folderEditOverlay) BF.utils.closeOverlay(folderEditOverlay);
         editingFolderId = null;
     }
 

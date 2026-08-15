@@ -121,7 +121,7 @@
             t.classList.toggle('active', t.getAttribute('data-doc') === doc);
         });
         body.textContent = BF.i18n.t('common.loadingShort');
-        overlay.classList.add('visible');
+        BF.utils.openOverlay(overlay);
 
         load(doc).then(function (text) {
             body.innerHTML = BF.utils.renderMarkdown(text);
@@ -133,7 +133,7 @@
 
     function close() {
         cacheNodes();
-        overlay.classList.remove('visible');
+        BF.utils.closeOverlay(overlay);
     }
 
     function bindOverlay() {

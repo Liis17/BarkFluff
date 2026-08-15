@@ -1,57 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Layout для разделителя дат между сообщениями -->
+<!-- Разделитель дат между сообщениями — pill-чип по центру (макет M3E, вариант 3) -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingVertical="12dp"
-    android:paddingHorizontal="16dp">
+    android:paddingHorizontal="16dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="10dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal">
+        android:layout_gravity="center_horizontal"
+        app:cardBackgroundColor="?attr/colorPrimaryContainer"
+        app:cardCornerRadius="@dimen/shape_corner_full"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
 
-        <!-- Линия слева -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1"
-            android:background="?attr/colorOutline"
-            android:alpha="0.3" />
-
-        <!-- Текст с датой -->
-        <com.google.android.material.card.MaterialCardView
+        <TextView
+            android:id="@+id/dateTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="12dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp">
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="7dp"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textFontWeight="600"
+            android:textSize="13sp"
+            tools:text="Сегодня" />
 
-            <TextView
-                android:id="@+id/dateTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="6dp"
-                android:textAppearance="?attr/textAppearanceLabelMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="Сегодня" />
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Линия справа -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1"
-            android:background="?attr/colorOutline"
-            android:alpha="0.3" />
-
-    </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </FrameLayout>

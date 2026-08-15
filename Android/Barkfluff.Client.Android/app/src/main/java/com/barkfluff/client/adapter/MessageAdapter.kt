@@ -20,6 +20,7 @@ import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -29,6 +30,7 @@ import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.shape.CornerFamily
 import com.google.android.material.shape.ShapeAppearanceModel
@@ -70,7 +72,7 @@ class MessageAdapter(
     private val downloadToCache: suspend (fileId: String, onProgress: (Int) -> Unit) -> java.io.File? = { _, _ -> null },
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     /** Закругление облачков сообщений в dp (0..30). */
-    var messageCornerRadiusDp: Int = 20,
+    var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
     /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
@@ -96,6 +98,20 @@ class MessageAdapter(
         private const val VIEW_TYPE_FOOTER = 5
         private const val VIEW_TYPE_SYSTEM = 6
         private const val VOICE_AUTO_DOWNLOAD_LIMIT_BYTES = 2L * 1024L * 1024L
+
+        /**
+         * Payload для случая, когда подгрузился кэш участников группы: меняются только
+         * имя и мини-аватар отправителя, полный ребинд (с перезапуском загрузки вложений)
+         * не нужен.
+         */
+        const val PAYLOAD_SENDER_INFO = "sender_info"
+
+        /** «Хвостик» последнего пузыря в серии. */
+        private const val BUBBLE_TAIL_CORNER_DP = 8f
+        /** Отступ между сериями сообщений. */
+        private const val BUBBLE_GROUP_GAP_DP = 10
+        /** Отступ между сообщениями внутри одной серии. */
+        private const val BUBBLE_INNER_GAP_DP = 3
 
         private val voiceAutoDownloads = mutableSetOf<String>()
         private val voiceWaveformCache = mutableMapOf<String, FloatArray>()
@@ -230,12 +246,73 @@ class MessageAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = getItem(position)
         when (holder) {
-            is SentMessageViewHolder -> holder.bind(item)
-            is ReceivedMessageViewHolder -> holder.bind(item)
+            is SentMessageViewHolder -> holder.bind(item, groupPositionOf(position))
+            is ReceivedMessageViewHolder -> holder.bind(item, groupPositionOf(position))
             is DateSeparatorViewHolder -> holder.bind(item)
             is UnreadSeparatorViewHolder -> holder.bind(item)
             is SystemMessageViewHolder -> holder.bind(item)
             is FooterViewHolder -> { /* спейсер, биндинг не нужен */ }
+        }
+    }
+
+    override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int,
+        payloads: MutableList<Any>
+    ) {
+        // Незнакомый payload или пустой список — обычный полный бинд.
+        if (payloads.isEmpty() || payloads.any { it != PAYLOAD_SENDER_INFO }) {
+            super.onBindViewHolder(holder, position, payloads)
+            return
+        }
+        if (holder is ReceivedMessageViewHolder) {
+            holder.bindSenderInfo(getItem(position))
+        }
+    }
+
+    /** Место сообщения в серии подряд идущих сообщений одного отправителя. */
+    data class GroupPosition(val isFirst: Boolean, val isLast: Boolean)
+
+    private fun groupPositionOf(position: Int): GroupPosition {
+        val item = getItem(position)
+        val previous = if (position > 0) getItem(position - 1) else null
+        val next = if (position < itemCount - 1) getItem(position + 1) else null
+        fun continues(neighbour: MessageItem?) =
+            neighbour != null && neighbour.type == MessageType.MESSAGE && neighbour.senderId == item.senderId
+        return GroupPosition(isFirst = !continues(previous), isLast = !continues(next))
+    }
+
+    /**
+     * Форма пузыря по макету M3E: серия сообщений одного отправителя срастается,
+     * «хвостик» (маленький угол) остаётся только у последнего сообщения серии.
+     */
+    private fun applyBubbleShape(card: MaterialCardView, group: GroupPosition, isSentByMe: Boolean) {
+        val density = card.resources.displayMetrics.density
+        val big = messageCornerRadiusDp * density
+        val mid = big / 2f
+        val small = minOf(BUBBLE_TAIL_CORNER_DP * density, mid)
+
+        val builder = ShapeAppearanceModel.builder()
+        if (isSentByMe) {
+            builder.setTopLeftCornerSize(big)
+                .setTopRightCornerSize(if (group.isFirst) big else mid)
+                .setBottomRightCornerSize(if (group.isLast) small else mid)
+                .setBottomLeftCornerSize(big)
+        } else {
+            builder.setTopLeftCornerSize(if (group.isFirst) big else mid)
+                .setTopRightCornerSize(big)
+                .setBottomRightCornerSize(big)
+                .setBottomLeftCornerSize(if (group.isLast) small else mid)
+        }
+        card.shapeAppearanceModel = builder.build()
+    }
+
+    /** Сообщения внутри серии стоят плотнее, чем соседние серии. */
+    private fun applyGroupSpacing(root: View, group: GroupPosition) {
+        val density = root.resources.displayMetrics.density
+        val spacing = if (group.isLast) BUBBLE_GROUP_GAP_DP else BUBBLE_INNER_GAP_DP
+        root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = (spacing * density).toInt()
         }
     }
 
@@ -258,7 +335,8 @@ class MessageAdapter(
         private var lastTouchRawY: Float = 0f
 
         @android.annotation.SuppressLint("ClickableViewAccessibility")
-        fun bind(item: MessageItem) {
+        fun bind(item: MessageItem, group: GroupPosition) {
+            applyGroupSpacing(binding.root, group)
             // Перехват raw координат касания для позиционирования popup
             binding.root.setOnTouchListener { _, event ->
                 if (event.action == android.view.MotionEvent.ACTION_DOWN) {
@@ -303,9 +381,8 @@ class MessageAdapter(
                 binding.stickerContainer.visibility = View.GONE
                 binding.stickerTimeStatusLayout.visibility = View.GONE
 
-                // Применяем закругление из настроек персонализации
-                val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
-                binding.messageCard.radius = cornerPx
+                // Форма пузыря: базовый радиус — из настроек персонализации
+                applyBubbleShape(binding.messageCard, group, isSentByMe = true)
 
                 if (item.text.isNotBlank()) {
                     MarkdownRenderer.renderMessageInto(
@@ -405,8 +482,46 @@ class MessageAdapter(
         private var lastTouchRawX: Float = 0f
         private var lastTouchRawY: Float = 0f
 
+        /** Вызывается и из полного bind, и из частичного обновления по PAYLOAD_SENDER_INFO. */
+        fun bindSenderInfo(item: MessageItem) {
+            if (!isGroupChat) {
+                binding.senderInfoLayout.visibility = View.GONE
+                return
+            }
+            binding.senderInfoLayout.visibility = View.VISIBLE
+
+            // Имя и аватар отправителя берём из резолвера (кэш участников чата),
+            // с фолбэком на поля самого сообщения.
+            val resolved = senderInfoProvider?.invoke(item.senderId)
+            val senderName = resolved?.first ?: item.senderName
+            val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
+
+            binding.senderNameTextView.text = senderName
+
+            if (!senderAvatarFileId.isNullOrBlank()) {
+                AvatarLoader.loadByFileId(
+                    imageView = binding.senderAvatarImageView,
+                    placeholderView = binding.senderAvatarPlaceholder,
+                    fileId = senderAvatarFileId,
+                    displayName = senderName ?: "",
+                    userId = item.senderId,
+                    size = 48
+                ) {
+                    getFileUrl(senderAvatarFileId)
+                }
+            } else {
+                binding.senderAvatarImageView.visibility = View.GONE
+                AvatarLoader.showPlaceholder(
+                    binding.senderAvatarPlaceholder,
+                    senderName ?: "",
+                    item.senderId
+                )
+            }
+        }
+
         @android.annotation.SuppressLint("ClickableViewAccessibility")
-        fun bind(item: MessageItem) {
+        fun bind(item: MessageItem, group: GroupPosition) {
+            applyGroupSpacing(binding.root, group)
             binding.root.setOnTouchListener { _, event ->
                 if (event.action == android.view.MotionEvent.ACTION_DOWN) {
                     lastTouchRawX = event.rawX
@@ -426,39 +541,7 @@ class MessageAdapter(
                 it.type != Shared.MessageAttachmentType.FORWARDED_MESSAGE
             }
 
-            if (isGroupChat) {
-                binding.senderInfoLayout.visibility = View.VISIBLE
-
-                // Имя и аватар отправителя берём из резолвера (кэш участников чата),
-                // с фолбэком на поля самого сообщения.
-                val resolved = senderInfoProvider?.invoke(item.senderId)
-                val senderName = resolved?.first ?: item.senderName
-                val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
-
-                binding.senderNameTextView.text = senderName
-
-                if (!senderAvatarFileId.isNullOrBlank()) {
-                    AvatarLoader.loadByFileId(
-                        imageView = binding.senderAvatarImageView,
-                        placeholderView = binding.senderAvatarPlaceholder,
-                        fileId = senderAvatarFileId,
-                        displayName = senderName ?: "",
-                        userId = item.senderId,
-                        size = 48
-                    ) {
-                        getFileUrl(senderAvatarFileId)
-                    }
-                } else {
-                    binding.senderAvatarImageView.visibility = View.GONE
-                    AvatarLoader.showPlaceholder(
-                        binding.senderAvatarPlaceholder,
-                        senderName ?: "",
-                        item.senderId
-                    )
-                }
-            } else {
-                binding.senderInfoLayout.visibility = View.GONE
-            }
+            bindSenderInfo(item)
 
             // Определяем, является ли сообщение «чистым стикером»
             val isPureSticker = item.text.isBlank() &&
@@ -482,9 +565,8 @@ class MessageAdapter(
                 binding.stickerContainer.visibility = View.GONE
                 binding.stickerTimeStatusLayout.visibility = View.GONE
 
-                // Применяем закругление из настроек персонализации
-                val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
-                binding.messageCard.radius = cornerPx
+                // Форма пузыря: базовый радиус — из настроек персонализации
+                applyBubbleShape(binding.messageCard, group, isSentByMe = false)
 
                 if (item.text.isNotBlank()) {
                     MarkdownRenderer.renderMessageInto(

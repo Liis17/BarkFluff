@@ -64,7 +64,9 @@ public class OutboxDispatcherTests
         string destination,
         Guid? chatId = null,
         byte[]? payload = null,
-        Guid? eventId = null)
+        Guid? eventId = null,
+        OutboxStatus status = OutboxStatus.Pending,
+        TimeSpan? nextAttemptOffset = null)
     {
         await using var context = TestHelpers.CreateContext(db);
         var id = eventId ?? Guid.NewGuid();
@@ -76,8 +78,8 @@ public class OutboxDispatcherTests
             EventType = "NewMessage",
             PayloadBytes = payload ?? EventPayload(id),
             CreatedAt = DateTime.UtcNow,
-            NextAttemptAt = DateTime.UtcNow,
-            Status = OutboxStatus.Pending,
+            NextAttemptAt = DateTime.UtcNow + (nextAttemptOffset ?? TimeSpan.Zero),
+            Status = status,
         };
         context.Outbox.Add(row);
         await context.SaveChangesAsync();
@@ -321,6 +323,48 @@ public class OutboxDispatcherTests
             var noResultRow = await ReloadAsync(db, noResult.Id);
             noResultRow.Attempts.Should().Be(1);
             noResultRow.LastError.Should().Be("no_result");
+        }
+    }
+
+    [Fact]
+    public async Task Dispatch_StuckProcessingRow_IsReclaimedAndRetried()
+    {
+        // Крэш инстанса в момент отправки: строка застряла в Processing с истёкшим lease —
+        // reclaim должен вернуть её в Pending и диспетчеры продолжат доставку (docs/scaling/federation.md).
+        var (db, provider, dispatcher) = await CreateDispatcherAsync();
+        using (provider)
+        {
+            var row = await SeedRowAsync(db, "ghost.test", status: OutboxStatus.Processing, nextAttemptOffset: TimeSpan.FromMinutes(-1));
+
+            await dispatcher.StartAsync(CancellationToken.None);
+            await TestHelpers.WaitUntilAsync(
+                async () => (await ReloadAsync(db, row.Id)).Attempts == 1,
+                "reclaim должен вернуть строку в оборот и дать попытку доставки");
+            await dispatcher.StopAsync(CancellationToken.None);
+
+            var reloaded = await ReloadAsync(db, row.Id);
+            reloaded.Status.Should().Be(OutboxStatus.Pending);
+            reloaded.LastError.Should().Be("peer_unresolved");
+        }
+    }
+
+    [Fact]
+    public async Task Dispatch_ProcessingHeadOfChat_BlocksLaterEvents()
+    {
+        // Голова чата в полёте на другом инстансе (Processing, lease не истёк): следующее событие
+        // того же чата не должно быть отправлено, пока голова не завершится.
+        var (db, provider, dispatcher) = await CreateDispatcherAsync();
+        using (provider)
+        {
+            var chatX = Guid.NewGuid();
+            await SeedRowAsync(db, "ghost.test", chatX, status: OutboxStatus.Processing, nextAttemptOffset: TimeSpan.FromMinutes(1));
+            var later = await SeedRowAsync(db, "ghost.test", chatX);
+
+            await dispatcher.StartAsync(CancellationToken.None);
+            await Task.Delay(300); // негативный кейс: ждём фиксированно, отправки быть не должно
+            await dispatcher.StopAsync(CancellationToken.None);
+
+            (await ReloadAsync(db, later.Id)).Attempts.Should().Be(0, "событие за Processing-головой ждёт своей очереди");
         }
     }
 

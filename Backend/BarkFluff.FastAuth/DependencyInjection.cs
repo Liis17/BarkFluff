@@ -1,3 +1,4 @@
+using BarkFluff.FastAuth.Domain;
 using BarkFluff.FastAuth.Features.SubscribeFastAuthResult;
 using BarkFluff.FastAuth.Infrastructure;
 
@@ -7,9 +8,12 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddFastAuthServices(this IServiceCollection services)
     {
-        services.AddSingleton<FastAuthSessionsManager>();
+        services.AddSingleton<IFastAuthSessionStore, RedisFastAuthSessionStore>();
+        services.AddSingleton<FastAuthEventBus>();
+        services.AddSingleton<IFastAuthEventBus>(sp => sp.GetRequiredService<FastAuthEventBus>());
+        services.AddHostedService(sp => sp.GetRequiredService<FastAuthEventBus>());
+
         services.AddSingleton<QrCodeGenerator>();
-        services.AddHostedService<FastAuthExpirationService>();
 
         services.AddScoped<SubscribeFastAuthResultQueryHandler>();
 

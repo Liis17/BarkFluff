@@ -1,3 +1,4 @@
+using BarkFluff.FastAuth.Domain;
 using BarkFluff.FastAuth.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
@@ -10,7 +11,8 @@ using MediatR;
 namespace BarkFluff.FastAuth.Features.AcceptFastAuth;
 
 public class AcceptFastAuthCommandHandler(
-    FastAuthSessionsManager sessions,
+    IFastAuthSessionStore sessions,
+    IFastAuthEventBus eventBus,
     IdentityServerApi.IdentityServerApiClient identityClient,
     UserContext userContext,
     MetricsCollector metrics,
@@ -19,15 +21,15 @@ public class AcceptFastAuthCommandHandler(
 {
     public async Task<AcceptFastAuthResponse> Handle(AcceptFastAuthCommand request, CancellationToken cancellationToken)
     {
-        var session = sessions.TryGet(request.FastAuthId)
+        var session = await sessions.GetAsync(request.FastAuthId, cancellationToken)
             ?? throw new FastAuthSessionNotFoundException();
 
-        if (session.Status == Proto.FastAuth.FastAuthStatus.Expired || DateTime.UtcNow >= session.ExpiresAt)
+        if (session.Status == FastAuthStatus.Expired || DateTime.UtcNow >= session.ExpiresAt)
         {
             throw new FastAuthSessionExpiredException();
         }
 
-        if (session.Status != Proto.FastAuth.FastAuthStatus.Scanned)
+        if (session.Status != FastAuthStatus.Scanned)
         {
             throw new FastAuthInvalidStateException();
         }
@@ -51,25 +53,35 @@ public class AcceptFastAuthCommandHandler(
             IpAddress = session.IpAddress
         }, cancellationToken: cancellationToken);
 
-        var acceptedResult = new FastAuthResult
-        {
-            Status = Proto.FastAuth.FastAuthStatus.Accepted,
-            AccessToken = sessionResponse.AccessToken.Value,
-            AccessTokenExpiresAt = sessionResponse.AccessToken.ExpirationDate,
-            RefreshToken = sessionResponse.RefreshToken.Value,
-            RefreshTokenExpiresAt = sessionResponse.RefreshToken.ExpirationDate
-        };
+        var acceptedResult = new FastAuthSessionResult(
+            FastAuthStatus.Accepted,
+            sessionResponse.AccessToken.Value,
+            sessionResponse.AccessToken.ExpirationDate.ToDateTime(),
+            sessionResponse.RefreshToken.Value,
+            sessionResponse.RefreshToken.ExpirationDate.ToDateTime());
 
-        if (!session.TryAccept(request.ConfirmationCode, userContext.UserId, acceptedResult))
+        var transition = await sessions.TryAcceptAsync(request.FastAuthId, request.ConfirmationCode,
+            userContext.UserId, acceptedResult, cancellationToken);
+
+        if (transition != FastAuthTransition.Ok)
         {
+            // Проиграли гонку (параллельный Accept/Reject/истечение) — откатываем выпущенную сессию.
             await identityClient.RemoveActiveSessionServerAsync(
                 new Proto.Identity.RemoveActiveSessionServerRequest
                 {
                     UserId = userContext.UserId,
                     DeviceId = newDeviceId
                 }, cancellationToken: cancellationToken);
-            throw new FastAuthInvalidStateException();
+
+            throw transition switch
+            {
+                FastAuthTransition.NotFound => new FastAuthSessionNotFoundException(),
+                FastAuthTransition.Expired => new FastAuthSessionExpiredException(),
+                _ => new FastAuthInvalidStateException()
+            };
         }
+
+        await eventBus.PublishAsync(session.Id, acceptedResult.ToProto(), cancellationToken);
 
         metrics.Increment("sessions_accepted");
 

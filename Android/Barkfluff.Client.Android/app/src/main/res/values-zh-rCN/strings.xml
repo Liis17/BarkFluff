@@ -245,6 +245,8 @@
     <string name="voice_record_start_failed">无法开始录音</string>
     <string name="voice_record_cancelled">录音已取消</string>
     <string name="voice_record_too_short">语音消息太短</string>
+    <string name="voice_record_slide_to_cancel">向左滑动取消</string>
+    <string name="voice_record_release_to_cancel">松开取消</string>
     <string name="cd_sticker_preview">贴纸预览</string>
     <string name="cd_close">关闭</string>
     <string name="cd_refresh">刷新</string>
@@ -634,6 +636,10 @@
     <string name="chats_sync_updating">正在更新…</string>
     <string name="chats_sync_offline">无网络连接 / 数据可能不是最新</string>
     <string name="chats_sync_retry">重试</string>
+    <string name="chats_unread_none">没有未读消息</string>
+    <plurals name="chats_unread_summary">
+        <item quantity="other">%1$d 条未读消息</item>
+    </plurals>
     <string name="storage_cache_size_with_chats">图片缓存：%1$.1f MB\\n聊天缓存：%2$d 个聊天 · %3$d 条消息 · %4$s</string>
     <string name="create_chat_sheet_title">新聊天</string>
     <string name="create_chat_regular">普通聊天</string>

@@ -92,6 +92,8 @@
     var fileInput = $('#fileInput');
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
+    var scrollBadge = scrollToBottomBtn ? scrollToBottomBtn.querySelector('.scroll-badge') : null;
+    var newMessagesBelowCount = 0;
 
     // Reply / Forward / Context menu DOM refs
     var msgContextMenu = $('#msgContextMenu');
@@ -238,6 +240,9 @@
             var el = document.createElement('div');
             el.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
             el.dataset.chatId = chat.id;
+            el.tabIndex = 0;
+            el.setAttribute('role', 'button');
+            el.setAttribute('aria-label', chat.title || BF.i18n.t('common.chat'));
 
             var avatarInitial = (chat.title || '?')[0].toUpperCase();
             var avatarHtml = chat.picture
@@ -299,6 +304,12 @@
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
 
             el.addEventListener('click', function () { openChat(chat.id); });
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openChat(chat.id);
+                }
+            });
             chatListEl.appendChild(el);
         });
     }
@@ -412,6 +423,8 @@
         clearPendingEdit();
         closeContextMenu();
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
+        newMessagesBelowCount = 0;
+        updateScrollBadge();
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
         messagesArea.parentElement.classList.add('visible');
@@ -590,12 +603,19 @@
         return prefetchAttachmentUrls(messages).then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
+            var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
             messages.forEach(function (msg, index) {
                 chain = chain.then(function () {
                     var msgDate = u.formatDate(msg.sentAt);
                     if (msgDate !== lastDate) {
                         lastDate = msgDate;
                         messagesInner.appendChild(makeDateSeparator(msgDate));
+                    }
+                    if (unreadId && Number(msg.id) === Number(unreadId)) {
+                        var usep = document.createElement('div');
+                        usep.className = 'msg-unread-separator';
+                        usep.innerHTML = '<span>' + u.escapeHtml(BF.i18n.t('chat.unreadMessages')) + '</span>';
+                        messagesInner.appendChild(usep);
                     }
                     return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
                         el.dataset.date = msgDate;
@@ -697,6 +717,12 @@
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             });
         }).finally(function () { isJumpingToTail = false; });
+    }
+
+    function updateScrollBadge() {
+        if (!scrollBadge) return;
+        scrollBadge.textContent = newMessagesBelowCount > 0 ? String(newMessagesBelowCount) : '';
+        scrollBadge.style.display = newMessagesBelowCount > 0 ? 'flex' : 'none';
     }
 
     function buildMessageViewElement(msg) {
@@ -1641,7 +1667,10 @@
         // Показываем/скрываем кнопку прокрутки вниз
         var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
-        if (distFromBottom < 100) loadNewerMessages();
+        if (distFromBottom <= 300 && newMessagesBelowCount > 0) {
+            newMessagesBelowCount = 0;
+            updateScrollBadge();
+        }
 
         if (_markReadScrollTimer) return;
         _markReadScrollTimer = setTimeout(function () {
@@ -1750,6 +1779,8 @@
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
                 } else {
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
+                    newMessagesBelowCount++;
+                    updateScrollBadge();
                 }
                 // Auto-mark as read if message is visible (user is at bottom)
                 if (isAtBottom && msg.senderId !== myUserId) {
@@ -1886,17 +1917,44 @@
     // ========== SEARCH ==========
 
     var searchTimer = null;
+    var searchToken = 0;
     searchInput.addEventListener('input', function () {
         clearTimeout(searchTimer);
         var query = searchInput.value.trim();
+        var qLower = query.toLowerCase();
         if (!query) { searchResults.classList.remove('visible'); searchResults.innerHTML = ''; return; }
 
-        searchTimer = setTimeout(function () {
-            BF.api.searchUsers(query, 0, 20).then(function (data) {
-                if (!data || !data.users) return;
-                searchResults.classList.add('visible');
-                searchResults.innerHTML = '';
-                data.users.forEach(function (user) {
+        // Локальный фильтр по уже загруженным чатам (синхронно, как в cmdpalette).
+        var matchedChats = chats.filter(function (c) {
+            return (c.title || '').toLowerCase().indexOf(qLower) >= 0;
+        });
+
+        function render(users) {
+            searchResults.classList.add('visible');
+            searchResults.innerHTML = '';
+            if (matchedChats.length === 0 && (!users || users.length === 0)) {
+                searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">' + u.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
+                return;
+            }
+            matchedChats.forEach(function (chat) {
+                var el = document.createElement('div');
+                el.className = 'search-result-item';
+                var initial = (chat.title || '?')[0].toUpperCase();
+                var avHtml = chat.picture
+                    ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">'
+                    : initial;
+                el.innerHTML = '<div class="chat-avatar">' + avHtml + '</div>' +
+                    '<div class="search-result-info"><div class="user-name">' + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + '</div></div>';
+                el.addEventListener('click', function () {
+                    searchInput.value = '';
+                    searchResults.classList.remove('visible');
+                    searchResults.innerHTML = '';
+                    openChat(chat.id);
+                });
+                searchResults.appendChild(el);
+            });
+            if (users) {
+                users.forEach(function (user) {
                     var el = document.createElement('div');
                     el.className = 'search-result-item';
                     var initial = (user.firstName || user.username || '?')[0].toUpperCase();
@@ -1916,9 +1974,16 @@
                     });
                     searchResults.appendChild(el);
                 });
-                if (data.users.length === 0) {
-                    searchResults.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">' + u.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
-                }
+            }
+        }
+
+        render(null);
+
+        var token = ++searchToken;
+        searchTimer = setTimeout(function () {
+            BF.api.searchUsers(query, 0, 20).then(function (data) {
+                if (token !== searchToken) return;
+                render(data && data.users ? data.users : []);
             });
         }, 300);
     });
@@ -1987,7 +2052,7 @@
             }
 
             loadProfileMedia('media');
-            profileOverlay.classList.add('visible');
+            BF.utils.openOverlay(profileOverlay);
         });
     }
 
@@ -2294,13 +2359,13 @@
     if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
     if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
 
-    profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
-    profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
+    profileClose.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
+    profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) BF.utils.closeOverlay(profileOverlay); });
 
     var _profileMsgBtn = $('#profileMsgBtn');
     var _profileCallAudioBtn = $('#profileCallAudioBtn');
     var _profileCallVideoBtn = $('#profileCallVideoBtn');
-    if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
+    if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
 
     function openChatBackgroundSelector(chatId, title) {
         if (!chatId) return;
@@ -2309,7 +2374,7 @@
         var grid = $('#chatBackgroundSelectorGrid');
         selectorTitle.textContent = BF.i18n.t('chat.background.for', { title: title || BF.i18n.t('common.chat').toLowerCase() });
         grid.innerHTML = '<div class="sd-hint">' + u.escapeHtml(BF.i18n.t('common.loadingShort')) + '</div>';
-        overlay.classList.add('visible');
+        BF.utils.openOverlay(overlay);
 
         BF.api.getPersonalization().then(function (data) {
             var ids = ((data && data.personalization) || {}).chatBackgroundFileIds || [];
@@ -2333,7 +2398,7 @@
                 card.addEventListener('click', function () {
                     card.disabled = true;
                     BF.personalization.setChatBackgroundFileId(chatId, fileId).then(function () {
-                        overlay.classList.remove('visible');
+                        BF.utils.closeOverlay(overlay);
                     }).catch(function () { card.disabled = false; });
                 });
                 grid.appendChild(card);
@@ -2346,10 +2411,10 @@
     var _chatBackgroundSelector = $('#chatBackgroundSelector');
     var _chatBackgroundSelectorClose = $('#chatBackgroundSelectorClose');
     if (_chatBackgroundSelectorClose) _chatBackgroundSelectorClose.addEventListener('click', function () {
-        _chatBackgroundSelector.classList.remove('visible');
+        BF.utils.closeOverlay(_chatBackgroundSelector);
     });
     if (_chatBackgroundSelector) _chatBackgroundSelector.addEventListener('click', function (e) {
-        if (e.target === _chatBackgroundSelector) _chatBackgroundSelector.classList.remove('visible');
+        if (e.target === _chatBackgroundSelector) BF.utils.closeOverlay(_chatBackgroundSelector);
     });
 
     var _profileBackgroundBtn = $('#profileBackgroundButton');
@@ -2392,6 +2457,8 @@
         scrollToBottomBtn.addEventListener('click', function () {
             scrollToBottom();
             scrollToBottomBtn.classList.remove('visible');
+            newMessagesBelowCount = 0;
+            updateScrollBadge();
         });
     }
 
@@ -2634,7 +2701,7 @@
 
     function requestDelete(messageId) {
         if (!deleteMsgConfirmOverlay || !messageId) return;
-        deleteMsgConfirmOverlay.classList.add('visible');
+        BF.utils.openOverlay(deleteMsgConfirmOverlay);
         deleteMsgOk.onclick = function () {
             deleteMsgOk.disabled = true;
             BF.api.deleteMessage(messageId).then(function () {
@@ -2642,7 +2709,7 @@
             }).catch(function () {})
             .finally(function () {
                 deleteMsgOk.disabled = false;
-                deleteMsgConfirmOverlay.classList.remove('visible');
+                BF.utils.closeOverlay(deleteMsgConfirmOverlay);
                 deleteMsgOk.onclick = null;
             });
         };
@@ -2864,13 +2931,13 @@
         });
         updateForwardCounter();
 
-        forwardOverlay.classList.add('visible');
+        BF.utils.openOverlay(forwardOverlay);
         forwardSendBtn.onclick = function () { forwardSubmit(sourceMessageIds); };
     }
 
     function closeForwardModal() {
         if (!forwardOverlay) return;
-        forwardOverlay.classList.remove('visible');
+        BF.utils.closeOverlay(forwardOverlay);
         forwardSelection = new Set();
         if (forwardSendBtn) forwardSendBtn.onclick = null;
     }
@@ -2947,14 +3014,14 @@
     // --- Delete confirm cancel ---
     if (deleteMsgCancel) {
         deleteMsgCancel.addEventListener('click', function () {
-            if (deleteMsgConfirmOverlay) deleteMsgConfirmOverlay.classList.remove('visible');
+            if (deleteMsgConfirmOverlay) BF.utils.closeOverlay(deleteMsgConfirmOverlay);
             if (deleteMsgOk) deleteMsgOk.onclick = null;
         });
     }
     if (deleteMsgConfirmOverlay) {
         deleteMsgConfirmOverlay.addEventListener('click', function (e) {
             if (e.target === deleteMsgConfirmOverlay) {
-                deleteMsgConfirmOverlay.classList.remove('visible');
+                BF.utils.closeOverlay(deleteMsgConfirmOverlay);
                 if (deleteMsgOk) deleteMsgOk.onclick = null;
             }
         });

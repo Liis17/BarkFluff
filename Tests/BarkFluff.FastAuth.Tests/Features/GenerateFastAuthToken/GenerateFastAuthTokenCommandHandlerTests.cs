@@ -12,11 +12,10 @@ public class GenerateFastAuthTokenCommandHandlerTests
 
     private GenerateFastAuthTokenCommandHandler CreateHandler(
         RequestContext? requestContext = null,
-        FastAuthSessionsManager? sessions = null,
         QrCodeGenerator? qr = null)
     {
         return new GenerateFastAuthTokenCommandHandler(
-            sessions ?? _h.SessionsManager,
+            _h.Store,
             qr ?? new QrCodeGenerator(),
             requestContext ?? _h.CreateRequestContext(),
             _h.Metrics,
@@ -109,14 +108,15 @@ public class GenerateFastAuthTokenCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidRequest_CreatesSessionInManager()
+    public async Task Handle_ValidRequest_CreatesSessionInStore()
     {
         var handler = CreateHandler();
         var result = await handler.Handle(
             new GenerateFastAuthTokenCommand { Format = TokenFormat.Text },
             CancellationToken.None);
 
-        _h.SessionsManager.TryGet(result.FastAuthId).Should().NotBeNull();
+        var session = await _h.Store.GetAsync(result.FastAuthId);
+        session.Should().NotBeNull();
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class GenerateFastAuthTokenCommandHandlerTests
             new GenerateFastAuthTokenCommand { Format = TokenFormat.Text },
             CancellationToken.None);
 
-        var session = _h.SessionsManager.TryGet(result.FastAuthId);
+        var session = await _h.Store.GetAsync(result.FastAuthId);
         session.Should().NotBeNull();
         session!.DeviceName.Should().Be("MyPhone");
         session.OperationSystem.Should().Be("iOS");
@@ -159,7 +159,7 @@ public class GenerateFastAuthTokenCommandHandlerTests
             new GenerateFastAuthTokenCommand { Format = TokenFormat.Text },
             CancellationToken.None);
 
-        var session = _h.SessionsManager.TryGet(result.FastAuthId);
+        var session = await _h.Store.GetAsync(result.FastAuthId);
         session!.IpAddress.Should().BeEmpty();
     }
 
@@ -286,7 +286,7 @@ public class GenerateFastAuthTokenCommandHandlerTests
         }
         catch (XDeviceNameIsRequiredException) { }
 
-        _h.SessionsManager.Snapshot().Should().BeEmpty();
+        _h.Store.Count.Should().Be(0);
     }
 
     [Fact]

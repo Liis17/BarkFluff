@@ -70,7 +70,7 @@
         applyOverlaySrc(type, url);
         overlayOpenFrame = requestAnimationFrame(function () {
             overlayOpenFrame = null;
-            if (token === overlayFileToken) imageOverlay.classList.add('visible');
+            if (token === overlayFileToken) BF.utils.openOverlay(imageOverlay);
         });
         if (fileId) {
             BF.files.refreshFileUrl(fileId).then(function (file) {
@@ -106,7 +106,7 @@
             cancelAnimationFrame(overlayOpenFrame);
             overlayOpenFrame = null;
         }
-        imageOverlay.classList.remove('visible');
+        BF.utils.closeOverlay(imageOverlay);
         if (overlayCloseTimer) clearTimeout(overlayCloseTimer);
         overlayCloseTimer = setTimeout(cleanup, 120);
     }

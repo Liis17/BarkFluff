@@ -244,6 +244,8 @@
     <string name="voice_record_start_failed">Could not start recording</string>
     <string name="voice_record_cancelled">Recording cancelled</string>
     <string name="voice_record_too_short">Voice message is too short</string>
+    <string name="voice_record_slide_to_cancel">Swipe left to cancel</string>
+    <string name="voice_record_release_to_cancel">Release to cancel</string>
     <string name="cd_sticker_preview">Sticker preview</string>
     <string name="cd_close">Close</string>
     <string name="cd_refresh">Refresh</string>
@@ -643,6 +645,11 @@
     <string name="chats_sync_updating">Updating…</string>
     <string name="chats_sync_offline">No connection / data may be outdated</string>
     <string name="chats_sync_retry">Retry</string>
+    <string name="chats_unread_none">No unread messages</string>
+    <plurals name="chats_unread_summary">
+        <item quantity="one">%1$d unread message</item>
+        <item quantity="other">%1$d unread messages</item>
+    </plurals>
     <string name="storage_cache_size_with_chats">Image cache: %1$.1f MB\\nChat cache: %2$d chats · %3$d messages · %4$s</string>
     <string name="create_chat_sheet_title">New chat</string>
     <string name="create_chat_regular">Regular chat</string>
