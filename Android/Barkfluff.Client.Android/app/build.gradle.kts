@@ -78,7 +78,6 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.barkfluff.client"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
@@ -92,6 +91,32 @@ android {
             // Только arm64-v8a. minSdk = 31 (Android 12, 2021+) — все такие устройства уже 64-bit ARM.
             // armeabi-v7a добавил бы ~70 МБ libsignal_jni.so без какого-либо охвата реальных пользователей.
             abiFilters += "arm64-v8a"
+        }
+    }
+
+    /**
+     * Каналы обновлений. Каждый — отдельный applicationId, поэтому сборки разных каналов
+     * ставятся на устройство рядом. Стабильный канал называется stable, а не release:
+     * имя release занято buildType, и Gradle не разрешает их совпадение.
+     * UPDATE_CHANNEL — имя канала в ClientStorage, по нему UpdateChecker выбирает,
+     * за какой веткой обновлений следить.
+     */
+    flavorDimensions += "channel"
+    productFlavors {
+        create("stable") {
+            dimension = "channel"
+            applicationId = "com.barkfluff.client"
+            buildConfigField("String", "UPDATE_CHANNEL", "\"release\"")
+        }
+        create("dev") {
+            dimension = "channel"
+            applicationId = "com.barkfluff.dev"
+            buildConfigField("String", "UPDATE_CHANNEL", "\"dev\"")
+        }
+        create("nightly") {
+            dimension = "channel"
+            applicationId = "com.barkfluff.nightly"
+            buildConfigField("String", "UPDATE_CHANNEL", "\"nightly\"")
         }
     }
 
