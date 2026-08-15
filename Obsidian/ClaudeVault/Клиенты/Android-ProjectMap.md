@@ -267,7 +267,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - Read receipts (при входе в чат отмечает сообщения прочитанными)
 - Профиль чата открывается как отдельный экран **`UserProfileActivity`** (кнопка назад), больше НЕ диалог
 - Контекстное меню сообщения (copy, save, forward)
-- **Фон чата**: загружает по `GlobalParam.chatBackgroundFileId` из `FileCache` или Files API. На API 31+ blur через `RenderEffect`, на API 26–30 через `ScriptIntrinsicBlur` (deprecated). Фон кешируется в `FileCache`.
+- **Фон чата**: загружает по `GlobalParam.chatBackgroundFileId` из `FileCache` или Files API. На API 31+ blur через `RenderEffect`, на API 26–30 через `ScriptIntrinsicBlur` (deprecated). `chatHeaderBlurImage` — отдельная blur-копия, обрезанная до высоты шапки; `chatDimOverlay` находится поверх обеих копий фона. Корневой layout edge-to-edge, системные inset’ы вручную применяются к контенту. Фон кешируется в `FileCache`.
 - **Закругление пузырей**: передаёт `GlobalParam.chatMessageCornerRadius` в `MessageAdapter`
 
 Хранит состояние:
