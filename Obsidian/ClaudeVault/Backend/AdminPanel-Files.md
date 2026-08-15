@@ -45,7 +45,7 @@
 | `LogsExportEndpoints.cs` | `/api/seq/export` | Запуск, статус и скачивание ZIP-архива экспорта логов. |
 | `LogsCompressionEndpoints.cs` | `/api/seq/compress-metrics` | Ручной запуск ежедневного сжатия логов-метрик за конкретную дату, история прогонов. |
 | `NotificationsEndpoints.cs` | `/api/notifications` | Публикация push-рассылок (всем устройствам / по списку deviceId) через MassTransit. |
-| `RemoteDockerEndpoints.cs` | `/api/remote/servers` | CRUD сохранённых SSH-серверов, discovery контейнеров, список и действия над отслеживаемыми контейнерами. |
+| `RemoteDockerEndpoints.cs` | `/api/remote/servers` | CRUD сохранённых SSH-серверов, discovery контейнеров, список и действия над отслеживаемыми контейнерами; WebSocket-консоль принимает upgrade до открытия SSH и возвращает ready/error-сигналы. |
 | `ConfigurationEndpoints.cs` | `/api/configuration` | Чтение и обновление S3-конфигурации бакетов через gRPC Configuration. |
 | `S3BrowserEndpoints.cs` | `/api/s3` | Список бакетов, листинг объектов, получение presigned URL. |
 | `ReservedNamesEndpoints.cs` | `/api/reserved-names` | CRUD зарезервированных имён пользователей через gRPC Configuration. |
