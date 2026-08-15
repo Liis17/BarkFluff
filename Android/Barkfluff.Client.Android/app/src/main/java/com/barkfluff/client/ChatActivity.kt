@@ -11,16 +11,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Typeface
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.PathInterpolator
+import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
@@ -130,6 +134,19 @@ class ChatActivity : AppCompatActivity() {
     private var lastStatusText: CharSequence? = null
     private var lastIndicatorVisible = false
 
+    // Сжатие шапки при прокрутке в историю сообщений
+    private var headerCompact = false
+    private var statusExpandedHeight = 0
+    private var headerNameAnimator: ValueAnimator? = null
+    private var headerStatusAnimator: ValueAnimator? = null
+
+    // Морфинг кнопки отправки (круг с микрофоном ↔ pill со стрелкой)
+    private val sendButtonBackground = android.graphics.drawable.GradientDrawable().apply {
+        shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+    }
+    private var sendButtonMorphAnimator: ValueAnimator? = null
+    private var sendButtonWide: Boolean? = null
+
     // Пагинация сообщений
     private var isLoadingMessages = false
     private var hasMoreMessagesUp = true
@@ -155,6 +172,8 @@ class ChatActivity : AppCompatActivity() {
     private var voiceRecordingStartedAtMs = 0L
     private var voiceDownRawX = 0f
     private var voiceCancelPending = false
+    private var voiceTimerJob: Job? = null
+    private var voiceDotAnimator: ValueAnimator? = null
 
     // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
     // 0 = нет активного ответа.
@@ -220,6 +239,21 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
         private const val MIN_VOICE_RECORDING_MS = 500L
+        private const val VOICE_BAR_FADE_DURATION_MS = 160L
+        private const val VOICE_DOT_BLINK_DURATION_MS = 700L
+        private const val VOICE_TIMER_TICK_MS = 200L
+        /** Доля смещения пальца, на которую уезжает подсказка отмены. */
+        private const val VOICE_HINT_DRAG_RATIO = 0.35f
+        private const val HEADER_MORPH_DURATION_MS = 280L
+        private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
+        private const val SEND_BUTTON_NARROW_DP = 60f
+        private const val SEND_BUTTON_WIDE_DP = 96f
+        private const val SEND_BUTTON_NARROW_CORNER_DP = 30f
+        private const val SEND_BUTTON_WIDE_CORNER_DP = 20f
+        private const val HEADER_SHADOW_DURATION_MS = 250L
+        private const val HEADER_SHADOW_ELEVATION_DP = 4f
+        /** Минимальный шаг прокрутки, меняющий состояние шапки. */
+        private const val HEADER_SCROLL_THRESHOLD_DP = 6
 
         // Тип чата, отображаемого в этом Activity.
         const val KIND_REGULAR = 0
@@ -399,14 +433,10 @@ class ChatActivity : AppCompatActivity() {
     private fun setupWindowInsets() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val backBaseMargin = (binding.btnBack.layoutParams as ViewGroup.MarginLayoutParams).topMargin
-        val moreBaseMargin = (binding.btnMore.layoutParams as ViewGroup.MarginLayoutParams).topMargin
-        val infoCardBaseMargin = (binding.chatInfoCard.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        val headerBasePaddingTop = binding.chatHeaderBar.paddingTop
 
-        val attachBaseMargin = (binding.attachButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val stickerBaseMargin = (binding.stickerButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val sendBaseMargin = (binding.sendButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val inputBaseMargin = (binding.messageInputLayout.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val inputBaseMargin = (binding.inputBar.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val recyclerBasePaddingTop = binding.messagesRecyclerView.paddingTop
         val recyclerBasePaddingBottom = binding.messagesRecyclerView.paddingBottom
         // Высота полосы, зарезервированной под кнопки ввода (inputRowBottom, фикс. 64dp) —
@@ -418,24 +448,90 @@ class ChatActivity : AppCompatActivity() {
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val bottomInset = maxOf(bars.bottom, ime.bottom)
 
-            binding.btnBack.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = backBaseMargin + bars.top }
-            binding.btnMore.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = moreBaseMargin + bars.top }
-            binding.chatInfoCard.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = infoCardBaseMargin + bars.top }
-            // Recyclerview остаётся edge-to-edge (constraint на true parent bottom, как и сверху) —
-            // фон/обои ленты уходят под панель ввода и жестовую навигацию, а контент просто
-            // не долистывается ниже paddingBottom.
+            // Статус-бар резервирует сама шапка — лента начинается уже под ней.
+            binding.chatHeaderBar.updatePadding(top = headerBasePaddingTop + bars.top)
+            // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
+            // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
             binding.messagesRecyclerView.updatePadding(
-                top = recyclerBasePaddingTop + bars.top,
+                top = recyclerBasePaddingTop,
                 bottom = recyclerBasePaddingBottom + inputRowBandPx + bottomInset
             )
 
-            binding.attachButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = attachBaseMargin + bottomInset }
-            binding.stickerButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = stickerBaseMargin + bottomInset }
             binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
-            binding.messageInputLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
+            binding.inputBar.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = inputBaseMargin + bottomInset }
 
             insets
         }
+
+        // Лента edge-to-edge уходит под шапку и статус-бар: верхний отступ ленты
+        // и область блюр-копии обоев следуют за текущей высотой шапки
+        // (инсеты статус-бара, сжатие шапки в компакт-режиме при прокрутке).
+        binding.chatHeaderBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            val headerBottom = binding.chatHeaderBar.bottom
+            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop + headerBottom)
+            binding.chatHeaderBlurImage.clipBounds =
+                android.graphics.Rect(0, 0, binding.chatHeaderBlurImage.width, headerBottom)
+        }
+    }
+
+    /**
+     * В отличие от списка чатов, шапка чата сжимается при прокрутке **вверх** (в историю):
+     * имя уменьшается, строка статуса схлопывается, под шапкой появляется тень.
+     */
+    private fun updateHeaderCompact(dy: Int) {
+        val threshold = HEADER_SCROLL_THRESHOLD_DP * resources.displayMetrics.density
+        when {
+            dy < -threshold -> setHeaderCompact(true)
+            dy > threshold -> setHeaderCompact(false)
+        }
+    }
+
+    private fun setHeaderCompact(compact: Boolean) {
+        if (headerCompact == compact) return
+        headerCompact = compact
+        val density = resources.displayMetrics.density
+        val easing = PathInterpolator(0.2f, 0f, 0f, 1f)
+
+        val nameView = binding.chatNameTextView
+        val nameFrom = nameView.textSize / resources.displayMetrics.scaledDensity
+        headerNameAnimator?.cancel()
+        headerNameAnimator = ValueAnimator.ofFloat(nameFrom, if (compact) 17f else 22f).apply {
+            duration = HEADER_MORPH_DURATION_MS
+            interpolator = easing
+            addUpdateListener {
+                nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.animatedValue as Float)
+            }
+            start()
+        }
+        nameView.typeface = Typeface.create(Typeface.SANS_SERIF, if (compact) 500 else 600, false)
+
+        val statusContainer = binding.chatStatusContainer
+        if (statusExpandedHeight == 0) statusExpandedHeight = statusContainer.height
+        if (statusExpandedHeight > 0) {
+            headerStatusAnimator?.cancel()
+            headerStatusAnimator = ValueAnimator.ofInt(
+                statusContainer.height,
+                if (compact) 0 else statusExpandedHeight
+            ).apply {
+                duration = HEADER_MORPH_DURATION_MS
+                interpolator = easing
+                addUpdateListener { animator ->
+                    val value = animator.animatedValue as Int
+                    statusContainer.updateLayoutParams { height = value }
+                    statusContainer.alpha = value.toFloat() / statusExpandedHeight
+                }
+                doOnEnd {
+                    if (compact) return@doOnEnd
+                    statusContainer.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+                }
+                start()
+            }
+        }
+
+        binding.chatHeaderBar.animate()
+            .translationZ(if (compact) HEADER_SHADOW_ELEVATION_DP * density else 0f)
+            .setDuration(HEADER_SHADOW_DURATION_MS)
+            .start()
     }
 
     private fun setupToolbar() {
@@ -589,16 +685,51 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /** Скруглённый чип-фон для блоков шапки (back / инфо / действия) — радиус больше половины
+     *  высоты любого блока, поэтому GradientDrawable сам клэмпит его до pill/circle формы. */
+    private fun headerChipDrawable(color: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 999f * resources.displayMetrics.density
+            setColor(color)
+        }
+
     private fun setupChatBackground() {
         val loadVersion = ++chatBackgroundLoadVersion
         val fileId = globalParam.chatBackgroundFileIdFor(chatId)
         applyDimOverlay()
         if (fileId.isBlank()) {
             binding.chatBackgroundImage.visibility = View.GONE
+            binding.chatHeaderBlurImage.visibility = View.GONE
+            binding.chatHeaderBar.setBackgroundColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.chatHeaderBar, com.google.android.material.R.attr.colorSurface
+                )
+            )
+            binding.btnBack.background = null
+            binding.chatInfoCard.background = null
+            binding.headerActionsCluster.background = null
             return
         }
 
         binding.chatBackgroundImage.visibility = View.VISIBLE
+        // Обои просвечивают через блюр-копию (chatHeaderBlurImage) во всех зазорах шапки —
+        // сама шапка прозрачна, а имя/время читаются за счёт отдельных чипов-подложек
+        // на каждом блоке (back / инфо / действия), как в Telegram.
+        binding.chatHeaderBar.background = null
+        val surfaceColor = com.google.android.material.color.MaterialColors.getColor(
+            binding.chatHeaderBar, com.google.android.material.R.attr.colorSurface
+        )
+        val chipColor = android.graphics.Color.argb(
+            (255 * 0.7f).toInt(),
+            android.graphics.Color.red(surfaceColor),
+            android.graphics.Color.green(surfaceColor),
+            android.graphics.Color.blue(surfaceColor)
+        )
+        binding.btnBack.background = headerChipDrawable(chipColor)
+        binding.chatInfoCard.background = headerChipDrawable(chipColor)
+        binding.headerActionsCluster.background = headerChipDrawable(chipColor)
+        binding.chatHeaderBlurImage.visibility = View.VISIBLE
         val applyBlur = globalParam.chatBackgroundBlur
 
         lifecycleScope.launch {
@@ -607,6 +738,7 @@ class ChatActivity : AppCompatActivity() {
             if (cachedFile != null && cachedFile.exists()) {
                 if (loadVersion == chatBackgroundLoadVersion) {
                     applyBackgroundFromFile(cachedFile, applyBlur, loadVersion)
+                    applyHeaderBlur(cachedFile, loadVersion)
                 }
                 return@launch
             }
@@ -616,6 +748,8 @@ class ChatActivity : AppCompatActivity() {
             } ?: return@launch
 
             if (loadVersion != chatBackgroundLoadVersion) return@launch
+
+            applyHeaderBlur(url, loadVersion)
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 // API 31+: загружаем через Coil, blur через RenderEffect
@@ -682,6 +816,41 @@ class ChatActivity : AppCompatActivity() {
                 20f, 20f, android.graphics.Shader.TileMode.CLAMP
             ) else null
         )
+    }
+
+    /**
+     * Блюр-копия обоев для подложки шапки (chatHeaderBlurImage), обрезаемая
+     * clipBounds'ом до высоты шапки. Блюрится всегда — независимо от настройки
+     * chatBackgroundBlur основного фона: на API 31+ через RenderEffect,
+     * на старых устройствах через ScriptIntrinsicBlur по bitmap.
+     */
+    private fun applyHeaderBlur(source: Any, loadVersion: Int) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            binding.chatHeaderBlurImage.load(source, AvatarLoader.getImageLoader(this)) {
+                listener(onSuccess = { _, _ ->
+                    if (loadVersion == chatBackgroundLoadVersion) {
+                        binding.chatHeaderBlurImage.setRenderEffect(
+                            android.graphics.RenderEffect.createBlurEffect(
+                                20f, 20f, android.graphics.Shader.TileMode.CLAMP
+                            )
+                        )
+                    }
+                })
+            }
+        } else {
+            lifecycleScope.launch {
+                val bitmap = withContext(Dispatchers.IO) {
+                    when (source) {
+                        is java.io.File -> android.graphics.BitmapFactory.decodeFile(source.absolutePath)
+                        is String -> loadBitmapFromUrl(source)
+                        else -> null
+                    }
+                }
+                if (bitmap != null && loadVersion == chatBackgroundLoadVersion) {
+                    binding.chatHeaderBlurImage.setImageBitmap(blurBitmapLegacy(bitmap))
+                }
+            }
+        }
     }
 
     private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
@@ -783,6 +952,9 @@ class ChatActivity : AppCompatActivity() {
                     // Показ/скрытие кнопки прокрутки вниз
                     updateScrollToBottomButton()
 
+                    // Шапка сжимается при уходе в историю сообщений
+                    updateHeaderCompact(dy)
+
                     // Safety-net: долистали до самого низа и подгружать больше нечего —
                     // помечаем прочитанными все загруженные чужие сообщения (страхует от
                     // случаев, когда прогрессивная пометка при пагинации что-то не зацепила).
@@ -819,7 +991,12 @@ class ChatActivity : AppCompatActivity() {
                 groupMemberInfoCache[member.userId] = name to avatarSource
             }
 
-            messageAdapter.notifyDataSetChanged()
+            // Изменились только имя и мини-аватар отправителя — полный ребинд не нужен.
+            messageAdapter.notifyItemRangeChanged(
+                0,
+                messageAdapter.itemCount,
+                MessageAdapter.PAYLOAD_SENDER_INFO
+            )
         }
     }
 
@@ -1025,6 +1202,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessageInput() {
+        binding.sendButton.background = sendButtonBackground
+        applySendButtonShape(canSend = false, animate = false)
         binding.sendButton.applySpringPress()
         binding.sendButton.setOnClickListener {
             when {
@@ -1148,7 +1327,58 @@ class ChatActivity : AppCompatActivity() {
         binding.sendButton.contentDescription = getString(
             if (sendButtonVoiceMode) R.string.cd_record_voice else R.string.cd_send
         )
-        tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+        applySendButtonShape(canSend = !sendButtonVoiceMode)
+        tintSendButton(
+            if (sendButtonVoiceMode) {
+                com.google.android.material.R.attr.colorOnPrimaryContainer
+            } else {
+                com.google.android.material.R.attr.colorOnPrimary
+            }
+        )
+    }
+
+    /**
+     * Морфинг кнопки отправки по макету: пустой ввод — круг 60dp в тоне primaryContainer,
+     * есть что отправить — вытянутая pill 96dp в primary.
+     */
+    private fun applySendButtonShape(canSend: Boolean, animate: Boolean = true) {
+        // Форма меняется только на переходе — иначе анимация перезапускалась бы на каждый символ
+        if (sendButtonWide == canSend) return
+        sendButtonWide = canSend
+        val density = resources.displayMetrics.density
+        val targetWidth = ((if (canSend) SEND_BUTTON_WIDE_DP else SEND_BUTTON_NARROW_DP) * density).toInt()
+        val targetRadius = (if (canSend) SEND_BUTTON_WIDE_CORNER_DP else SEND_BUTTON_NARROW_CORNER_DP) * density
+        val targetColor = MaterialColors.getColor(
+            binding.sendButton,
+            if (canSend) {
+                androidx.appcompat.R.attr.colorPrimary
+            } else {
+                com.google.android.material.R.attr.colorPrimaryContainer
+            }
+        )
+
+        sendButtonBackground.setColor(targetColor)
+        if (!animate) {
+            sendButtonBackground.cornerRadius = targetRadius
+            binding.sendButton.updateLayoutParams { width = targetWidth }
+            return
+        }
+
+        sendButtonMorphAnimator?.cancel()
+        val startWidth = binding.sendButton.width.takeIf { it > 0 } ?: targetWidth
+        val startRadius = sendButtonBackground.cornerRadius
+        sendButtonMorphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = SEND_BUTTON_MORPH_DURATION_MS
+            interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+            addUpdateListener { animator ->
+                val fraction = animator.animatedFraction
+                sendButtonBackground.cornerRadius = startRadius + (targetRadius - startRadius) * fraction
+                binding.sendButton.updateLayoutParams {
+                    width = (startWidth + (targetWidth - startWidth) * fraction).toInt()
+                }
+            }
+            start()
+        }
     }
 
     private fun tintSendButton(attr: Int) {
@@ -1219,15 +1449,17 @@ class ChatActivity : AppCompatActivity() {
                 if (voiceRecorder == null) return true
 
                 val cancelDistancePx = resources.displayMetrics.widthPixels * 0.5f
-                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f)
-                binding.sendButton.translationX = dx.coerceAtLeast(-cancelDistancePx)
+                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f).coerceAtLeast(-cancelDistancePx)
+                binding.sendButton.translationX = dx
+                binding.voiceRecordHint.translationX = dx * VOICE_HINT_DRAG_RATIO
 
                 val cancelNow = -dx >= cancelDistancePx
                 if (cancelNow != voiceCancelPending) {
                     voiceCancelPending = cancelNow
+                    updateVoiceRecordHint(cancelNow)
                     tintSendButton(
                         if (cancelNow) androidx.appcompat.R.attr.colorError
-                        else androidx.appcompat.R.attr.colorPrimary
+                        else com.google.android.material.R.attr.colorOnPrimaryContainer
                     )
                 }
                 true
@@ -1267,7 +1499,8 @@ class ChatActivity : AppCompatActivity() {
             voiceRecorder = recorder
             voiceRecordingFile = file
             voiceRecordingStartedAtMs = System.currentTimeMillis()
-            tintSendButton(androidx.appcompat.R.attr.colorPrimary)
+            tintSendButton(com.google.android.material.R.attr.colorOnPrimaryContainer)
+            showVoiceRecordingBar()
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start voice recording", e)
@@ -1298,6 +1531,7 @@ class ChatActivity : AppCompatActivity() {
             voiceRecorder = null
             voiceRecordingFile = null
             voiceRecordingStartedAtMs = 0L
+            hideVoiceRecordingBar()
             resetVoiceButtonDrag()
         }
 
@@ -1316,6 +1550,93 @@ class ChatActivity : AppCompatActivity() {
         }
 
         sendVoiceMessage(file)
+    }
+
+    /**
+     * На время записи прячет грядку ввода и показывает поверх неё индикатор:
+     * мигающая точка, счётчик длительности и подсказка отмены.
+     */
+    private fun showVoiceRecordingBar() {
+        updateVoiceRecordTimer()
+        updateVoiceRecordHint(cancelPending = false)
+        binding.voiceRecordHint.translationX = 0f
+        binding.voiceRecordDot.alpha = 1f
+
+        binding.voiceRecordBar.alpha = 0f
+        binding.voiceRecordBar.visibility = View.VISIBLE
+        binding.voiceRecordBar.animate()
+            .alpha(1f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .start()
+        binding.inputBar.animate()
+            .alpha(0f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .withEndAction { binding.inputBar.visibility = View.INVISIBLE }
+            .start()
+
+        voiceDotAnimator?.cancel()
+        voiceDotAnimator = ValueAnimator.ofFloat(1f, 0.25f).apply {
+            duration = VOICE_DOT_BLINK_DURATION_MS
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            addUpdateListener { binding.voiceRecordDot.alpha = it.animatedValue as Float }
+            start()
+        }
+
+        voiceTimerJob?.cancel()
+        voiceTimerJob = lifecycleScope.launch {
+            while (isActive) {
+                updateVoiceRecordTimer()
+                delay(VOICE_TIMER_TICK_MS)
+            }
+        }
+    }
+
+    private fun hideVoiceRecordingBar() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = null
+        voiceDotAnimator?.cancel()
+        voiceDotAnimator = null
+
+        if (binding.voiceRecordBar.visibility != View.VISIBLE) return
+
+        binding.voiceRecordBar.animate()
+            .alpha(0f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .withEndAction {
+                binding.voiceRecordBar.visibility = View.GONE
+                binding.voiceRecordHint.translationX = 0f
+            }
+            .start()
+        binding.inputBar.visibility = View.VISIBLE
+        binding.inputBar.animate()
+            .alpha(1f)
+            .setDuration(VOICE_BAR_FADE_DURATION_MS)
+            .start()
+    }
+
+    private fun updateVoiceRecordTimer() {
+        val elapsedSec = ((System.currentTimeMillis() - voiceRecordingStartedAtMs) / 1000L)
+            .coerceAtLeast(0L)
+        binding.voiceRecordTimer.text = getString(
+            R.string.voice_record_timer_format,
+            elapsedSec / 60,
+            elapsedSec % 60
+        )
+    }
+
+    private fun updateVoiceRecordHint(cancelPending: Boolean) {
+        binding.voiceRecordHint.setText(
+            if (cancelPending) R.string.voice_record_release_to_cancel
+            else R.string.voice_record_slide_to_cancel
+        )
+        binding.voiceRecordHint.setTextColor(
+            MaterialColors.getColor(
+                binding.voiceRecordHint,
+                if (cancelPending) androidx.appcompat.R.attr.colorError
+                else com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+        )
     }
 
     private fun resetVoiceButtonDrag() {
@@ -3543,7 +3864,10 @@ class ChatActivity : AppCompatActivity() {
         if (::messageAdapter.isInitialized) {
             messageAdapter.messageCornerRadiusDp = globalParam.chatMessageCornerRadius
             messageAdapter.stickerSizeDp = globalParam.chatStickerSizeDp
-            messageAdapter.notifyDataSetChanged()
+            // notifyItemRangeChanged вместо notifyDataSetChanged: содержимое перерисовывается
+            // так же, но структура списка остаётся валидной — сохраняются пул холдеров,
+            // позиция скролла и анимации.
+            messageAdapter.notifyItemRangeChanged(0, messageAdapter.itemCount)
         }
     }
 
@@ -3576,5 +3900,10 @@ class ChatActivity : AppCompatActivity() {
         onlineStatusSubscription?.cancel()
         stopTypingHeartbeat(sendCancel = true)
         realtimeService.changeTypingSubscription(emptyList())
+        headerNameAnimator?.cancel()
+        headerStatusAnimator?.cancel()
+        sendButtonMorphAnimator?.cancel()
+        voiceTimerJob?.cancel()
+        voiceDotAnimator?.cancel()
     }
 }

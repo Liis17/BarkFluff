@@ -1,6 +1,4 @@
 using BarkFluff.FastAuth.Features.ScanFastAuth;
-using BarkFluff.FastAuth.Infrastructure;
-using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.FastAuth;
 using BarkFluff.Shared.Exceptions.FastAuth;
 
@@ -13,7 +11,8 @@ public class ScanFastAuthCommandHandlerTests
     private ScanFastAuthCommandHandler CreateHandler(long userId = 42)
     {
         return new ScanFastAuthCommandHandler(
-            _h.SessionsManager,
+            _h.Store,
+            _h.EventBus,
             _h.CreateUserContext(userId),
             _h.Metrics,
             TestHelper.CreateLogger<ScanFastAuthCommandHandler>());
@@ -24,7 +23,7 @@ public class ScanFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_ReturnsResponse()
     {
-        var session = _h.SessionsManager.Create("MyPhone", "Android", "BF", "2.0", "10.0.0.1");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         var result = await handler.Handle(
@@ -37,24 +36,24 @@ public class ScanFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_ReturnsDeviceMetadata()
     {
-        var session = _h.SessionsManager.Create("MyPhone", "Android", "BF", "2.0", "10.0.0.1");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         var result = await handler.Handle(
             new ScanFastAuthCommand { FastAuthId = session.Id },
             CancellationToken.None);
 
-        result.DeviceName.Should().Be("MyPhone");
-        result.OperationSystem.Should().Be("Android");
-        result.AppName.Should().Be("BF");
-        result.AppVersion.Should().Be("2.0");
-        result.IpAddress.Should().Be("10.0.0.1");
+        result.DeviceName.Should().Be("TestDevice");
+        result.OperationSystem.Should().Be("Windows");
+        result.AppName.Should().Be("BarkFluff");
+        result.AppVersion.Should().Be("1.0");
+        result.IpAddress.Should().Be("127.0.0.1");
     }
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsConfirmationCode()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         var result = await handler.Handle(
@@ -68,7 +67,7 @@ public class ScanFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_ReturnsExpiresAt()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         var result = await handler.Handle(
@@ -81,33 +80,50 @@ public class ScanFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_SetsSessionStatusToScanned()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         await handler.Handle(
             new ScanFastAuthCommand { FastAuthId = session.Id },
             CancellationToken.None);
 
-        session.Status.Should().Be(FastAuthStatus.Scanned);
+        var stored = await _h.Store.GetAsync(session.Id);
+        stored!.Status.Should().Be(FastAuthStatus.Scanned);
     }
 
     [Fact]
     public async Task Handle_ValidRequest_SetsUserIdOnSession()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
+        var session = _h.CreateSession();
         var handler = CreateHandler(userId: 42);
 
         await handler.Handle(
             new ScanFastAuthCommand { FastAuthId = session.Id },
             CancellationToken.None);
 
-        session.UserId.Should().Be(42);
+        var stored = await _h.Store.GetAsync(session.Id);
+        stored!.UserId.Should().Be(42);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_PublishesScannedEvent()
+    {
+        var session = _h.CreateSession();
+        var handler = CreateHandler();
+
+        var reader = _h.EventBus.Attach(session.Id);
+        await handler.Handle(
+            new ScanFastAuthCommand { FastAuthId = session.Id },
+            CancellationToken.None);
+
+        reader.TryRead(out var evt).Should().BeTrue();
+        evt.Status.Should().Be(FastAuthStatus.Scanned);
     }
 
     [Fact]
     public async Task Handle_ValidRequest_IncrementsSessionsScannedMetric()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         await handler.Handle(
@@ -157,7 +173,7 @@ public class ScanFastAuthCommandHandlerTests
     [Fact]
     public async Task Handle_AlreadyScannedSession_ThrowsFastAuthInvalidStateException()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
+        var session = _h.CreateSession();
         var handler = CreateHandler();
 
         await handler.Handle(
@@ -175,13 +191,24 @@ public class ScanFastAuthCommandHandlerTests
 
     #region Expired Session
 
-    // Сессия, помеченная Expired через TryExpire(), уже IsFinal → TryScan возвращает
-    // AlreadyHandled, поэтому хендлер бросает FastAuthInvalidStateException, а не ...Expired.
     [Fact]
-    public async Task Handle_ExpiredSession_ThrowsFastAuthInvalidStateException()
+    public async Task Handle_ExpiredSession_ThrowsFastAuthSessionExpiredException()
     {
-        var session = _h.SessionsManager.Create("D", "OS", "A", "V", "IP");
-        session.TryExpire();
+        var session = _h.CreateSession(expiresAt: DateTime.UtcNow - TimeSpan.FromSeconds(1));
+        var handler = CreateHandler();
+
+        var act = () => handler.Handle(
+            new ScanFastAuthCommand { FastAuthId = session.Id },
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<FastAuthSessionExpiredException>();
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyFinalSession_ThrowsFastAuthInvalidStateException()
+    {
+        var session = _h.CreateSession();
+        await _h.Store.TryExpireAsync(session.Id);
         var handler = CreateHandler();
 
         var act = () => handler.Handle(

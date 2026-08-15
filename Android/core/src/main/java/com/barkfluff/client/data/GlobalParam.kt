@@ -203,9 +203,9 @@ class GlobalParam(private val context: Context) {
 
     // --- Персонализация (локальные параметры) ---
 
-    /** Закругление пузырей сообщений, 0..30 (dp). По умолчанию 20. */
+    /** Закругление пузырей сообщений, 0..30 (dp). По умолчанию 28 (макет M3E). */
     var chatMessageCornerRadius: Int
-        get() = sharedPreferences.getInt(KEY_CHAT_CORNER_RADIUS, 20)
+        get() = sharedPreferences.getInt(KEY_CHAT_CORNER_RADIUS, 28)
         set(value) = sharedPreferences.edit().putInt(KEY_CHAT_CORNER_RADIUS, value).apply()
 
     /** Кэш синхронизируемого глобального фона чатов (пусто = нет фона). */

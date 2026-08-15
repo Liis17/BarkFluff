@@ -1,3 +1,4 @@
+using BarkFluff.FastAuth.Domain;
 using BarkFluff.FastAuth.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
@@ -11,14 +12,14 @@ using MediatR;
 namespace BarkFluff.FastAuth.Features.GenerateFastAuthToken;
 
 public class GenerateFastAuthTokenCommandHandler(
-    FastAuthSessionsManager sessions,
+    IFastAuthSessionStore sessions,
     QrCodeGenerator qrGenerator,
     RequestContext requestContext,
     MetricsCollector metrics,
     ILogger<GenerateFastAuthTokenCommandHandler> logger)
     : IRequestHandler<GenerateFastAuthTokenCommand, GenerateFastAuthTokenResponse>
 {
-    public Task<GenerateFastAuthTokenResponse> Handle(GenerateFastAuthTokenCommand request, CancellationToken cancellationToken)
+    public async Task<GenerateFastAuthTokenResponse> Handle(GenerateFastAuthTokenCommand request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(requestContext.DeviceName))
         {
@@ -35,12 +36,13 @@ public class GenerateFastAuthTokenCommandHandler(
             throw new XAppInfoIsRequiedException();
         }
 
-        var session = sessions.Create(
+        var session = await sessions.CreateAsync(
             deviceName: requestContext.DeviceName!,
             operationSystem: requestContext.OperationSystem!,
             appName: requestContext.AppName!,
             appVersion: requestContext.AppVersion!,
-            ipAddress: requestContext.IpAddress ?? string.Empty);
+            ipAddress: requestContext.IpAddress ?? string.Empty,
+            cancellationToken);
 
         metrics.Increment("sessions_generated");
 
@@ -56,7 +58,7 @@ public class GenerateFastAuthTokenCommandHandler(
             _ => session.Id
         };
 
-        return Task.FromResult(new GenerateFastAuthTokenResponse
+        return new GenerateFastAuthTokenResponse
         {
             FastAuthId = session.Id,
             ExpiresAt = Timestamp.FromDateTime(session.ExpiresAt),
@@ -65,6 +67,6 @@ public class GenerateFastAuthTokenCommandHandler(
                 Format = format,
                 Value = tokenValue
             }
-        });
+        };
     }
 }

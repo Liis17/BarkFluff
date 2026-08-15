@@ -13,6 +13,16 @@ Package: `com.barkfluff.client`
 
 - Kotlin 2.2.20, AGP 8.9.1
 - gRPC-OkHttp 1.60.0 (NOT grpc-netty)
+
+## Иконка приложения (adaptive, вектор)
+
+Иконка полностью векторная (adaptive icon, минимально доступный API 26; minSdk 31 — растровые фолбэки не нужны).
+
+- `drawable/ic_launcher_background.xml` — full-bleed радиальный градиент `#FFF→#F3F3F3→#EDEDED` (центр 50%/48%, r 72%) на viewport 1536×1536 через `aapt:attr`/`<gradient>`. Без скругления — форму накладывает маска лаунчера.
+- `drawable/ic_launcher_foreground.xml` — глиф лого `#111116`; путь из исходной SVG (`app_icon_vector.svg`) обёрнут в `<group>` с pivot (768,768) и scale 0.76: максимальный радиус глифа 616 юнитов × 0.76 = 468 < 469.3 (safe zone 66dp).
+- `mipmap-anydpi-v26/ic_launcher.xml` / `ic_launcher_round.xml` — `<adaptive-icon>` со слоями `background` + `foreground` + `monochrome` (тот же foreground; даёт MD3 themed-иконку на Android 13+, tint системный, на API <33 слой игнорируется).
+- Растровые WebP `ic_launcher*.webp` из `mipmap-*hdpi` удалены.
+- ⚠️ In-app использование (`activity_splash`, `activity_login`, `activity_welcome`, `activity_register`, `step_register_07_bio`, `activity_about` → `@mipmap/ic_launcher(_round)`) пока не менялось: `AdaptiveIconDrawable` в `ImageView` рисуется без маски (полный квадрат с градиентом и уменьшенным глифом). Замена на отдельный in-app drawable — отдельная будущая задача.
 - ViewBinding, без Hilt/MVVM
 
 ## Архитектура
@@ -78,6 +88,18 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 
 - `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`). В phone-варианте `floatingNavContainer` центрирует над ним группу вкладок и FAB с отступом 20dp от нижнего inset; старый невидимый `bottomNavigation` оставлен только для общей ViewBinding-совместимости с `layout-w600dp`.
 - `fragment_chats.xml`: `RecyclerView` (`chatRecyclerView`) занимает всё пространство фрагмента.
+
+### Редизайн по макету M3E «Вариант 3»
+
+Экран приведён к макету `Мессенджер M3E - Вариант 3.dc.html`. Палитра макета (тёплая оранжевая) намеренно **не** зашита в ресурсы: значения смаплены на роли темы (`#FEF8F6`→`colorSurface`, `#FF6B35`→`colorPrimary`, `#FFDAD0`→`colorPrimaryContainer`, `#F0E2DC`/`#F6EAE5`→`colorSurfaceContainerHigh`), поэтому Material You и тёмная тема продолжают работать. Форма, размеры, типографика и анимации перенесены из макета точно. Нижние вкладки и FAB (`MainActivity`) редизайн **не затрагивает**.
+
+- `AppBarLayout` + `MaterialToolbar` удалены. Вместо них `headerContainer` (LinearLayout): сворачиваемый блок `headerCollapsible` (заголовок «Чаты» 36sp/44 weight 600 + `headerSubtitle` + аватар пользователя 48dp справа), лента папок `foldersRecyclerView`, строка поиска.
+- `headerSubtitle` — одна строка на два назначения: статус синхронизации (`chats_sync_updating` / `chats_sync_offline` / `connecting`), иначе счётчик непрочитанных (`plurals/chats_unread_summary`, при нуле `chats_unread_none`). Обновляется из `publishMainUnread()`, анимация смены текста — прежняя fade/slide (`updateHeaderSubtitle`).
+- `searchField` — pill-поле (`bg_chats_search_field`, ripple) с иконкой и подписью «Поиск чатов»; тап открывает существующий `SearchActivity`. Инлайн-фильтрации списка нет.
+- **Сворачивание по направлению прокрутки** (`ChatsFragment.updateHeaderCollapse` / `setHeaderCollapsed`): прокрутка вниз при offset > 20dp схлопывает `headerCollapsible` (высота → 0 + alpha, 360 мс, `PathInterpolator(0.2,0,0,1)`) и сжимает поле поиска 52→48dp (300 мс); прокрутка вверх возвращает. Порог реакции — 6dp, чтобы состояние не дребезжало. По окончании разворачивания высота возвращается в `WRAP_CONTENT` — иначе блок «залипает» на пиксельном значении при смене контента.
+- `item_chat.xml` — один layout на два состояния, всё различие выставляет `ChatAdapter.applyUnreadStyle(isUnread)`: корневая `MaterialCardView` `chatCard` (радиус 20→28dp, фон transparent→`colorPrimaryContainer`, нижний отступ 0→8dp), паддинг строки 12→16dp, `avatarContainer` 50→58dp, заголовок 16sp/w400→17sp/w600, превью w400→w500, вторичный цвет `colorOnSurfaceVariant`→`colorOnPrimaryContainer`, бейдж непрочитанных 26dp pill. Вес шрифта задаётся `Typeface.create(SANS_SERIF, weight, false)` (API 28+).
+- `item_chat_skeleton.xml` синхронизирован с новой геометрией строки (74dp, аватар 50dp, паддинг 18dp).
+- Перенесены **только** визуал и анимации. Лента закреплённых чатов, свайп-архив, мультивыбор строк и реакции из макета не переносились: это отдельные фичи с серверной частью.
 - `ChatAdapter` добавляет прозрачный **footer-спейсер** (126dp = 1.5 × высота элемента чата ≈ 84dp) в конец списка:
   - `VIEW_TYPE_FOOTER` / `FooterViewHolder` — не требует биндинга.
   - `submitList()` переопределён: `ensureFooter()` удаляет все footer-элементы из списка и добавляет один в конец перед каждой отправкой в DiffUtil.
@@ -283,8 +305,9 @@ Backend заполняет эти поля при доставке сообще�
 В `ChatActivity` правая кнопка ввода переключается между `ic_send_filled` и `ic_mic`: микрофон показывается только когда текст пустой, нет pending-вложений, reply и edit-режимов. При первом удержании запрашивается `RECORD_AUDIO`; после выдачи разрешения пользователь удерживает кнопку ещё раз.
 
 - Запись: `MediaRecorder` пишет OGG/Opus (`OutputFormat.OGG`, `AudioEncoder.OPUS`) во временный файл `cacheDir`.
+- Индикация записи (`showVoiceRecordingBar` / `hideVoiceRecordingBar`): на время записи `inputBar` уходит в `INVISIBLE` (кросс-фейд 160 мс), а поверх него, по тем же констрейнтам и с тем же фоном `bg_chat_input_bar`, показывается `voiceRecordBar` — мигающая точка `colorError` (`ValueAnimator` alpha 1↔0.25, REVERSE INFINITE), счётчик `M:SS` (корутина с тиком 200 мс) и подсказка отмены. Поле ввода не остаётся видимым, поэтому состояние записи нельзя спутать с обычным вводом.
 - Отправка: отпускание кнопки создаёт оптимистичный `MessageItem` с `uploadProgress=0` и ставит `SendJob(AttachmentSpec.Voice)` в `MediaSendService`; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
-- Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, при отпускании запись удаляется и сообщение не отправляется.
+- Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, подсказка едет за пальцем (0.35 смещения) и меняет текст на «Отпустите для отмены», при отпускании запись удаляется и сообщение не отправляется.
 - Cleanup: `onStop()` отменяет активную запись и удаляет временный файл. Слишком короткая запись (`<500ms`) не отправляется.
 - Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые вложения размером `1..2 МБ` автоматически скачиваются в `FileCache`; более крупные остаются с ручной кнопкой загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
 
@@ -358,6 +381,13 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 - **Edit-режим**: `setPendingEdit(item)` подставляет текст в `messageEditText`, фокусирует поле, открывает клавиатуру. Сохраняет существующие `file_id` (без FORWARDED_MESSAGE) в `pendingEditFileIds` — backend сохраняет их при правке без изменений. Edit и reply — взаимоисключающие, при входе в edit активный reply сбрасывается.
 - **Delete-режим**: `confirmAndDelete(item)` показывает `MaterialAlertDialogBuilder` («Удалить сообщение?» / «Удалить» / «Отмена»). При подтверждении — `chatRepository.deleteMessage()`, при успехе сразу `removeMessageById(messageId)` (UI-обновление до прихода стрима).
 - **Применение событий**: `applyEditedMessage(msg)` и `removeMessageById(id)` модифицируют `messageAdapter.currentList` через `submitList`. Вызываются и из обработчика ответа на gRPC (для своих изменений), и из подписок на стримы (для изменений других участников).
+
+#### Перерисовка списка: почему не `notifyDataSetChanged`
+
+`notifyDataSetChanged()` помечает всю структуру невалидной: `RecyclerView` теряет пул холдеров, отбрасывает анимации `MessageItemAnimator` и не гарантирует позицию скролла. Для чата со `stackFromEnd = true` и пагинацией в обе стороны это заметно, поэтому по `messageAdapter` он не используется вовсе.
+
+- `loadGroupMemberInfo()` (подгрузка `groupMemberInfoCache`) меняет только имя и мини-аватар отправителя, поэтому шлёт `notifyItemRangeChanged(0, itemCount, MessageAdapter.PAYLOAD_SENDER_INFO)`. В `MessageAdapter` есть перегрузка `onBindViewHolder(holder, position, payloads)`: при этом payload вызывается только `ReceivedMessageViewHolder.bindSenderInfo(item)` (тот же метод, что и из полного `bind`), при пустом или незнакомом payload — делегирование в `super`, иначе частичные обновления от `ListAdapter`/`ItemAnimator` потеряли бы биндинг. Без этого каждое открытие группового чата давало полный ребинд с перезапуском загрузки вложений.
+- `onResume()` отражает изменения настроек (`messageCornerRadiusDp`, `stickerSizeDp`) и состояния `FileCache`. Состояние кэша читается из четырёх разных мест бинда, отдельный payload потребовал бы переработки биндов — поэтому здесь просто `notifyItemRangeChanged(0, itemCount)`: содержимое перерисовывается так же, но структура списка остаётся валидной.
 - **Метка «изменено»**: `MessageItem.isEdited: Boolean` пробрасывается в три места создания (`messagesWithDateSeparators`, `appendMessages`, `addNewMessage`). В layouts `item_message_sent.xml` / `item_message_received.xml` рядом со временем — `editedLabelTextView` (italic, alpha 0.6, `?attr/colorOnPrimaryContainer` или `?attr/colorOnSurfaceVariant`). Привязка в обоих ViewHolder: `editedLabelTextView.visibility = if (item.isEdited) VISIBLE else GONE`.
 - **Proto**: добавлены `EditMessage` / `DeleteMessage` rpc в `messages_api.proto`, `SubscribeMessagesEdited` / `SubscribeMessagesDeleted` в `updates_api.proto`, `is_edited` (field 7) и `edited_at` (field 8) в `shared.proto:Message`.
 
@@ -377,6 +407,21 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
   2. `chatDimOverlay` — оверлей затенения фона (View, `visibility=gone` при dim=0)
   3. `messagesRecyclerView` + панели кнопок (с elevation)
   4. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
+
+### Редизайн по макету M3E «Вариант 3»
+
+Цвета так же смаплены на роли темы, а не зашиты (см. одноимённый раздел экрана списка чатов).
+
+- **Шапка `chatHeaderBar`** заменила плавающую карточку `chatInfoCard` + отдельные круглые кнопки: плоская панель на `colorSurface` — `[←] [имя + статус] [☎] [⋯] [аватар 44dp]`. `chatInfoCard` остался id кликабельной области «имя + статус» (теперь LinearLayout), поэтому переходы в `UserProfileActivity` / `GroupInfoActivity` не менялись.
+- **Порядок в XML важен**: блок шапки объявлен *после* `messagesRecyclerView`, иначе фон чата и лента рисовались бы поверх неё. Лента привязана к шапке через forward reference `@+id/chatHeaderBar`, а сама шапка резервирует верхний inset своим `paddingTop` (раньше это делали три отдельных `topMargin`).
+- Когда у чата есть обои (`setupChatBackground`), фон шапки переключается на `TRANSPARENT`, чтобы изображение продолжалось под ней; без обоев возвращается `colorSurface`.
+- **Схлопывание инвертировано относительно списка чатов**: прокрутка **вверх** (в историю) уменьшает имя 22→17sp, схлопывает `chatStatusContainer` и поднимает `translationZ` шапки до 4dp; прокрутка вниз возвращает (`updateHeaderCompact` / `setHeaderCompact`, 280 мс). Поле ввода не скрывается никогда.
+- **Пузыри группируются по сериям одного отправителя** (`MessageAdapter.groupPositionOf` по соседям в списке; любой не-`MESSAGE` элемент прерывает серию). Форма — `applyBubbleShape` через `ShapeAppearanceModel`: base = `chatMessageCornerRadius` (дефолт поднят 20→**28dp**), середина серии = base/2, «хвостик» последнего сообщения = 8dp. Отступ между сериями 10dp, внутри серии 3dp (`applyGroupSpacing`). Настройка радиуса из персонализации продолжает работать — она задаёт base.
+- Текст сообщения 17sp/24, время в пузыре — weight 600. Разделитель дат (`item_message_date_separator.xml`, используется и для разделителя непрочитанных) — pill-чип `colorPrimaryContainer` без линий по бокам.
+- **Грядка ввода**: `TextInputLayout` + четыре отдельные круглые кнопки заменены на `inputBar` — pill 60dp (`bg_chat_input_bar`) со скрепкой, `EditText` (`messageEditText`, уже не `TextInputEditText`) и стикерами внутри. `inputRowBarrier` теперь ссылается на `inputBar` и `sendButton`.
+- **Морфинг кнопки отправки** (`applySendButtonShape`): пустой ввод — круг 60dp `colorPrimaryContainer` с микрофоном, есть что отправить — pill 96dp/radius 20dp `colorPrimary` со стрелкой. Фон — программный `GradientDrawable` (анимируются ширина, радиус, цвет; 300 мс). Голосовой режим и drag-to-cancel не менялись, но тинт иконки при записи теперь `colorOnPrimaryContainer` / `colorError`.
+- Плашки `replyPreviewBar` / `editPreviewBar` / `attachmentPreviewBar` выровнены по грядке (отступ 14dp) и получили форму 28dp сверху / 12dp снизу (`ShapeAppearanceOverlay.Barkfluff.Chat.InputPreviewBar`).
+- Реакции на сообщения из макета не переносились — на бэкенде их нет.
 - **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
 
@@ -539,15 +584,25 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 - `WidgetConfig.kt` — data class `{ name: String, chatIds: List<String> }`, константа `MAX_CHATS = 3`.
 - `WidgetRepository.kt` — singleton поверх `SharedPreferences("barkfluff_widgets")`. Ключ `widget_<appWidgetId>` → JSON. Методы: `getConfig`, `saveConfig`, `deleteConfig`, `listAllConfigs`, `findAppWidgetIdsForChat(chatId)`, `placedAppWidgetIds(context)`.
-- `WidgetRenderer.kt` — строит `RemoteViews` по конфигу + снимку `List<ChatData>`. Аватары грузит синхронно через `AvatarLoader.getImageLoader(context).execute()` → `Bitmap` → круглая маска через `BitmapShader` → `setImageViewBitmap`. При отсутствии fileId или ошибке — placeholder-Bitmap с цветным кругом и инициалами (палитра из `AvatarLoader.PLACEHOLDER_COLORS`). **Важно**: include одного и того же layout трижды внутри RemoteViews не работает (RemoteViews адресует view по id и находит только первое вхождение), поэтому строки собираются через `views.removeAllViews(R.id.widgetRowsContainer)` + `views.addView(..., rowViews)` с отдельным `RemoteViews(R.layout.widget_chat_row)` на каждую строку.
+- `WidgetRenderer.kt` — строит `RemoteViews` по конфигу + снимку `List<ChatData>`. Аватары грузит через `AvatarLoader.getImageLoader(context).execute()` → `Bitmap` → круглая маска через `BitmapShader` → `setImageViewBitmap`. При отсутствии fileId или ошибке — placeholder-Bitmap с цветным кругом и инициалами (палитра из `AvatarLoader.PLACEHOLDER_COLORS`). **Важно**: include одного и того же layout трижды внутри RemoteViews не работает (RemoteViews адресует view по id и находит только первое вхождение), поэтому строки собираются через `views.removeAllViews(R.id.widgetRowsContainer)` + `views.addView(..., rowViews)` с отдельным `RemoteViews(R.layout.widget_chat_row)` на каждую строку.
 - `WidgetUpdater.kt` — единая точка обновления:
-  - `refreshWidget(context, appWidgetId)` — synchronous suspend под mutex.
+  - `refreshWidget(context, appWidgetId)` — synchronous suspend под mutex, ограничен бюджетом `REFRESH_BUDGET_MS = 8_000` (`withTimeout` **внутри** `withLock`, чтобы ожидание мьютекса не съедало бюджет).
   - `refreshAllWidgets(context)` — для всех размещённых.
   - `scheduleRefreshForChat(context, chatId)` — дебаунсит 500мс через `ConcurrentHashMap<Int, Job>`, ранний return если ни один виджет не содержит `chatId`. Используется из realtime-стримов.
   - In-memory кеш `getChats()` на 10 секунд (`CACHE_TTL_MS`) — чтобы шторм real-time событий не дёргал gRPC по разу на каждый виджет.
   - Если `messagesClient == null` (виджет работает в фоне без активного приложения) — переинициализирует через `grpcManager.createMessagesClient(globalParam.socketMessages, …)`.
   - Если `accessToken` пуст — виджет рендерится в режиме «Войдите в приложение».
-- `PinnedChatsWidgetProvider.kt` — `AppWidgetProvider`. `onUpdate` → корутинами вызывает `refreshWidget` для каждого id. `onDeleted` → `WidgetRepository.deleteConfig` для каждого id. `onReceive` ловит кастомный `ACTION_REFRESH = "com.barkfluff.client.widget.ACTION_REFRESH"` (от кнопки refresh в виджете), использует `goAsync()` чтобы не убить процесс пока корутина грузит данные.
+- `PinnedChatsWidgetProvider.kt` — `AppWidgetProvider`. `onUpdate` → под одним `goAsync()` последовательно обходит все id, общий бюджет `ON_UPDATE_BUDGET_MS = 9_000` (виджеты обновляются под мьютексом, поэтому бюджета одного виджета на цикл не хватает). `onDeleted` → `WidgetRepository.deleteConfig` для каждого id. `onReceive` ловит кастомный `ACTION_REFRESH = "com.barkfluff.client.widget.ACTION_REFRESH"` (от кнопки refresh в виджете), тоже через `goAsync()`.
+  - Двойного `goAsync()` не возникает: `super.onReceive` при `ACTION_APPWIDGET_UPDATE` вызывает `onUpdate` (один вызов), а кастомный `ACTION_REFRESH` `AppWidgetProvider` игнорирует.
+
+### Бюджет времени и деградация рендера
+
+Окно `goAsync()` для foreground-broadcast — ~10 с, а таймауты OkHttp в `AvatarLoader.getImageLoader` втрое больше (30 с на connect/read/write). Без ограничения сверху обновление виджета в это окно не укладывалось, а `onUpdate` вдобавок вообще не удерживал broadcast — процесс мог быть убит до отрисовки, и виджет молча оставался старым.
+
+- Аватары грузятся **параллельно** (`coroutineScope` + `async`/`awaitAll` до сборки строк), а не цепочкой по одному.
+- Каждая загрузка под `withTimeout(AVATAR_TIMEOUT_MS = 3_000)`, охватывающим и резолв ссылки через gRPC (`getFileDownloadUrl`), и сам `imageLoader.execute`. При таймауте — тот же placeholder с инициалами, что и при ошибке, поэтому `render` всегда возвращает готовые `RemoteViews`.
+- `TimeoutCancellationException` логируется как `Log.w` (не ошибка), обычная `CancellationException` пробрасывается — иначе глоталась бы штатная отмена дебаунса из `scheduleRefreshForChat`.
+- При исчерпании бюджета `refreshWidget` `updateAppWidget` не вызывается, и виджет остаётся с прежним содержимым — это лучше пустого.
 - `WidgetRefreshWorker.kt` — `CoroutineWorker`. Periodic WorkManager job `widget-refresh` раз в 30 минут с `NetworkType.CONNECTED`. Регистрируется в `BarkFluffApplication.onCreate()` через `enqueueUniquePeriodicWork(... KEEP ...)`. Fallback на случай killed-app (когда `RealtimeService` не работает).
 - `WidgetConfigureActivity.kt` — Activity с `ACTION_APPWIDGET_CONFIGURE` в манifest'е. Поля: `nameInput` (max 48 символов, дефолт «Закреплённые чаты»), `pickChatsButton` (переиспользует `FolderChatPickerActivity` с `EXTRA_INITIAL_SELECTED`, обрезает результат до 3 + Toast при переборе), `selectedChatsRecyclerView` (показывает выбранные + крестик «удалить»). По умолчанию `setResult(RESULT_CANCELED)` — Android удаляет widget если пользователь не дошёл до «Сохранить». При сохранении: `WidgetRepository.saveConfig` → `WidgetUpdater.refreshWidget` → `setResult(RESULT_OK, intentWithAppWidgetId)` + `finish()`. В edit-mode (флаг `EXTRA_EDIT_MODE=true` от `WidgetsSettingsActivity`) `setResult` пропускается.
 

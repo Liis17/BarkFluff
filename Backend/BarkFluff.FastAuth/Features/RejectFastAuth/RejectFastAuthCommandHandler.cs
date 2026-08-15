@@ -1,3 +1,4 @@
+using BarkFluff.FastAuth.Domain;
 using BarkFluff.FastAuth.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
@@ -9,23 +10,24 @@ using MediatR;
 namespace BarkFluff.FastAuth.Features.RejectFastAuth;
 
 public class RejectFastAuthCommandHandler(
-    FastAuthSessionsManager sessions,
+    IFastAuthSessionStore sessions,
+    IFastAuthEventBus eventBus,
     UserContext userContext,
     MetricsCollector metrics,
     ILogger<RejectFastAuthCommandHandler> logger)
     : IRequestHandler<RejectFastAuthCommand, RejectFastAuthResponse>
 {
-    public Task<RejectFastAuthResponse> Handle(RejectFastAuthCommand request, CancellationToken cancellationToken)
+    public async Task<RejectFastAuthResponse> Handle(RejectFastAuthCommand request, CancellationToken cancellationToken)
     {
-        var session = sessions.TryGet(request.FastAuthId)
+        var session = await sessions.GetAsync(request.FastAuthId, cancellationToken)
             ?? throw new FastAuthSessionNotFoundException();
 
-        if (session.Status == Proto.FastAuth.FastAuthStatus.Expired || DateTime.UtcNow >= session.ExpiresAt)
+        if (session.Status == FastAuthStatus.Expired || DateTime.UtcNow >= session.ExpiresAt)
         {
             throw new FastAuthSessionExpiredException();
         }
 
-        if (session.Status != Proto.FastAuth.FastAuthStatus.Scanned)
+        if (session.Status != FastAuthStatus.Scanned)
         {
             throw new FastAuthInvalidStateException();
         }
@@ -37,10 +39,22 @@ public class RejectFastAuthCommandHandler(
             throw new FastAuthInvalidConfirmationCodeException();
         }
 
-        if (!session.TryReject(request.ConfirmationCode, userContext.UserId))
+        var transition = await sessions.TryRejectAsync(request.FastAuthId, request.ConfirmationCode,
+            userContext.UserId, cancellationToken);
+
+        switch (transition)
         {
-            throw new FastAuthInvalidStateException();
+            case FastAuthTransition.NotFound:
+                throw new FastAuthSessionNotFoundException();
+            case FastAuthTransition.Expired:
+                metrics.Increment("sessions_expired");
+                throw new FastAuthSessionExpiredException();
+            case FastAuthTransition.InvalidState:
+                throw new FastAuthInvalidStateException();
         }
+
+        await eventBus.PublishAsync(session.Id, new FastAuthResult { Status = FastAuthStatus.Rejected },
+            cancellationToken);
 
         metrics.Increment("sessions_rejected");
 
@@ -48,6 +62,6 @@ public class RejectFastAuthCommandHandler(
             "FastAuth session {Id} rejected by user {UserId}",
             session.Id, userContext.UserId);
 
-        return Task.FromResult(new RejectFastAuthResponse());
+        return new RejectFastAuthResponse();
     }
 }

@@ -64,7 +64,7 @@
         });
 
         document.querySelector('#confirmCancel').addEventListener('click', function () {
-            confirmOverlay.classList.remove('visible');
+            BF.utils.closeOverlay(confirmOverlay);
         });
         document.querySelector('#confirmOk').addEventListener('click', function () {
             var finishLogout = function () {
@@ -94,11 +94,11 @@
         viewStack = target === 'main' ? [] : ['main'];
         currentUser = null;
         showView(target);
-        overlay.classList.add('visible');
+        BF.utils.openOverlay(overlay);
     }
 
     function close() {
-        overlay.classList.remove('visible');
+        BF.utils.closeOverlay(overlay);
         viewStack = [];
     }
 
@@ -416,7 +416,7 @@
             '</svg>' +
             '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.logout')) + '</span>';
         logoutBtn.addEventListener('click', function () {
-            confirmOverlay.classList.add('visible');
+            BF.utils.openOverlay(confirmOverlay);
         });
         body.appendChild(logoutBtn);
     }
@@ -1497,13 +1497,13 @@
 
         var url = URL.createObjectURL(file);
         imgEl.onload = function () {
-            overlay.classList.add('visible');
+            BF.utils.openOverlay(overlay);
             initCrop();
         };
         imgEl.src = url;
 
         function cleanup() {
-            overlay.classList.remove('visible');
+            BF.utils.closeOverlay(overlay);
             URL.revokeObjectURL(url);
             imgEl.src = '';
             btnCancel.onclick = null;

@@ -87,7 +87,7 @@ public class Program
         builder.Services.AddSingleton<IWellKnownClient, WellKnownClient>();
         builder.Services.AddScoped<INavigatorClient, NavigatorClient>();
         builder.Services.AddScoped<ServerResolver>();
-        builder.Services.AddSingleton<DiscoveryTriggerRateLimiter>();
+        builder.Services.AddSingleton<IDiscoveryTriggerRateLimiter, RedisDiscoveryTriggerRateLimiter>();
         builder.Services.AddHostedService<PeerRefreshBackgroundService>();
 
         // Redis (этап 2.5) — квота ChatCreated per-origin (ChatCreatedQuotaLimiter).
@@ -95,6 +95,8 @@ public class Program
             ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
                 ?? throw new InvalidOperationException("Redis configuration is missing")));
         builder.Services.AddSingleton<IChatCreatedQuotaLimiter, ChatCreatedQuotaLimiter>();
+        // Single-runner для фоновых задач (масштабирование, docs/scaling/federation.md).
+        builder.Services.AddSingleton<ISingleRunner, RedisSingleRunner>();
 
         // Outbox (этап 2.2): writer + диспетчер + janitor.
         builder.Services.AddScoped<OutboxWriter>();
@@ -165,6 +167,7 @@ public class Program
             x.AddConsumer<MessageDeletedFederationConsumer>();
             x.AddConsumer<MessageReadFederationConsumer>();
             x.AddConsumer<SessionRevokedConsumer>();
+            x.AddConsumer<SigningKeyRotatedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -192,6 +195,14 @@ public class Program
                     e.AutoDelete = true;
                     e.Durable = false;
                     e.ConfigureConsumer<PresenceStatusChangedConsumer>(context);
+                });
+
+                // Fan-out: каждый инстанс перезагружает кэш активного ключа и well-known при ротации.
+                cfg.ReceiveEndpoint($"signing-key-rotated-federation-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<SigningKeyRotatedConsumer>(context);
                 });
             });
         });

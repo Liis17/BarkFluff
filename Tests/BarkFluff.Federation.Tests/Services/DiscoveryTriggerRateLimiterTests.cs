@@ -1,33 +1,80 @@
 using BarkFluff.Federation.Services;
 
+using Moq;
+
+using StackExchange.Redis;
+
 namespace BarkFluff.Federation.Tests.Services;
 
 public class DiscoveryTriggerRateLimiterTests
 {
-    [Fact]
-    public void TryTrigger_FirstCallForServer_ReturnsTrue()
-    {
-        var limiter = new DiscoveryTriggerRateLimiter();
+    private readonly Mock<IConnectionMultiplexer> _redis = new();
+    private readonly Mock<IDatabase> _db = new();
 
-        limiter.TryTrigger("peer.test").Should().BeTrue();
+    public DiscoveryTriggerRateLimiterTests()
+    {
+        _redis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(_db.Object);
+    }
+
+    private RedisDiscoveryTriggerRateLimiter CreateLimiter() => new(_redis.Object);
+
+    [Fact]
+    public async Task TryTriggerAsync_FirstCallForServer_ReturnsTrue()
+    {
+        // Ключа ещё нет — SET NX успешен, discovery разрешён.
+        _db.Setup(d => d.StringSetAsync(
+                It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>()))
+            .ReturnsAsync(true);
+
+        (await CreateLimiter().TryTriggerAsync("peer.test")).Should().BeTrue();
     }
 
     [Fact]
-    public void TryTrigger_RepeatWithinCooldown_ReturnsFalse()
+    public async Task TryTriggerAsync_RepeatWithinCooldown_ReturnsFalse()
     {
-        var limiter = new DiscoveryTriggerRateLimiter();
+        // Ключ существует (cooldown активен на любом инстансе) — SET NX вернул false.
+        _db.Setup(d => d.StringSetAsync(
+                It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>()))
+            .ReturnsAsync(false);
 
-        limiter.TryTrigger("peer.test").Should().BeTrue();
-        limiter.TryTrigger("peer.test").Should().BeFalse();
+        (await CreateLimiter().TryTriggerAsync("peer.test")).Should().BeFalse();
     }
 
     [Fact]
-    public void TryTrigger_DifferentServers_AreIndependent()
+    public async Task TryTriggerAsync_DifferentServers_UseDifferentKeys()
     {
-        var limiter = new DiscoveryTriggerRateLimiter();
+        _db.Setup(d => d.StringSetAsync(
+                It.Is<RedisKey>(k => k.ToString() == "fed:discovery:peer-a.test"),
+                It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>()))
+            .ReturnsAsync(true);
+        _db.Setup(d => d.StringSetAsync(
+                It.Is<RedisKey>(k => k.ToString() == "fed:discovery:peer-b.test"),
+                It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>()))
+            .ReturnsAsync(true);
 
-        limiter.TryTrigger("peer-a.test").Should().BeTrue();
-        limiter.TryTrigger("peer-b.test").Should().BeTrue();
-        limiter.TryTrigger("peer-a.test").Should().BeFalse();
+        var limiter = CreateLimiter();
+
+        (await limiter.TryTriggerAsync("peer-a.test")).Should().BeTrue();
+        (await limiter.TryTriggerAsync("peer-b.test")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TryTriggerAsync_UsesNxWithCooldownTtl()
+    {
+        TimeSpan? capturedTtl = null;
+        When capturedWhen = default;
+        _db.Setup(d => d.StringSetAsync(
+                It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>()))
+            .Callback<RedisKey, RedisValue, TimeSpan?, When>((_, _, ttl, when) =>
+            {
+                capturedTtl = ttl;
+                capturedWhen = when;
+            })
+            .ReturnsAsync(true);
+
+        await CreateLimiter().TryTriggerAsync("peer.test");
+
+        capturedTtl.Should().Be(TimeSpan.FromMinutes(5), "cooldown из плана — SET NX EX 300");
+        capturedWhen.Should().Be(When.NotExists);
     }
 }

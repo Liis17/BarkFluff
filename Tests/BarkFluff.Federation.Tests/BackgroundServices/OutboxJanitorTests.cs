@@ -70,9 +70,10 @@ public class OutboxJanitorTests
         }
     }
 
-    private static OutboxJanitor CreateJanitor(SqliteFixture fixture)
+    private static OutboxJanitor CreateJanitor(SqliteFixture fixture, FakeSingleRunner? singleRunner = null)
         => new(
             fixture.Provider.GetRequiredService<IServiceScopeFactory>(),
+            singleRunner ?? new FakeSingleRunner(),
             NullLogger<OutboxJanitor>.Instance);
 
     private static async Task SeedOutboxAsync(SqliteFixture fixture, OutboxStatus status, DateTime createdAt)
@@ -174,6 +175,26 @@ public class OutboxJanitorTests
             },
             "записи старше часа должны быть удалены при TTL=1ч");
         await janitor.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Cleanup_NotLeader_SkipsTick()
+    {
+        // Single-runner (docs/scaling/federation.md): инстанс без лидерства не чистит —
+        // чистку выполняет только инстанс-лидер.
+        using var fixture = new SqliteFixture();
+        var janitor = CreateJanitor(fixture, new FakeSingleRunner { Leader = false });
+
+        await SeedOutboxAsync(fixture, OutboxStatus.Delivered, DateTime.UtcNow.AddDays(-8));
+        await SeedProcessedAsync(fixture, DateTime.UtcNow.AddDays(-15));
+
+        await janitor.StartAsync(CancellationToken.None);
+        await Task.Delay(200); // негативный кейс: ждём фиксированно, чистки быть не должно
+        await janitor.StopAsync(CancellationToken.None);
+
+        await using var verify = fixture.CreateContext();
+        (await verify.Outbox.CountAsync()).Should().Be(1, "не-лидер не должен чистить outbox");
+        (await verify.ProcessedEvents.CountAsync()).Should().Be(1, "не-лидер не должен чистить ProcessedEvents");
     }
 
     [Fact]

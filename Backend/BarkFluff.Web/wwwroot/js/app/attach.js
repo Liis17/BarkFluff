@@ -59,12 +59,11 @@
         captionInput.value = prefillText || '';
         autosizeCaption();
         render();
-        overlay.classList.add('visible');
-        setTimeout(function () { captionInput.focus(); }, 50);
+        BF.utils.openOverlay(overlay, { focus: captionInput });
     }
 
     function close() {
-        overlay.classList.remove('visible');
+        BF.utils.closeOverlay(overlay);
         currentFiles.forEach(function (f) { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl); });
         currentFiles = [];
         captionInput.value = '';

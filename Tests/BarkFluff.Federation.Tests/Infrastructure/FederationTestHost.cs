@@ -87,7 +87,7 @@ public sealed class FederationTestHost : IAsyncDisposable
                     services.AddSingleton<INavigatorClient>(new FakeNavigatorClient());
                     services.AddSingleton(Mock.Of<IS2SChannelInvalidator>());
                     services.AddScoped<ServerResolver>();
-                    services.AddSingleton<DiscoveryTriggerRateLimiter>();
+                    services.AddSingleton<IDiscoveryTriggerRateLimiter>(new FakeDiscoveryTriggerRateLimiter());
 
                     // Users-клиент для FederationS2SApiService.GetUserProfile (этап 2.1) — в интеграционных
                     // тестах S2S Ping/GetServerKeys он не вызывается, но активация сервиса требует регистрации.

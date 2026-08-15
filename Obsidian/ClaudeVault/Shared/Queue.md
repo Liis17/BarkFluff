@@ -9,6 +9,7 @@
 - `FederatedParticipant` — `{ Guid Uuid, string ServerName }` (этап 2.2). Используется расширенными полями message-events (см. ниже) для построения FederationOutbox-строк.
 - `FederatedFileRefInfo` — снапшот метаданных вложения fed-сообщения (этап 3.1): `{ OriginServer, FileId, FileName?, SizeBytes, AttachmentType, PreviewFileId?, ImageWidth?, ImageHeight? }`. **Байты не реплицируются** — уезжают только метаданные, чтобы принимающая нода отрисовала сообщение без похода на origin. Заполняет [[Backend/Messages]] только для fed-чатов; консюмеры [[Backend/Federation]] маппят это в `FederatedFileRef` S2S-события.
 - `FederatedChatRejectedEvent` — `{ Guid ChatId, string Reason }` (этап 2.5). Publisher — [[Backend/Federation]] (`OutboxDispatcher`, DeadLetter с `ErrorCode="FederatedDmRejected"`); consumer — [[Backend/Messages]] (`FederatedChatRejectedConsumer`, очередь `federated-chat-rejected-messages`) → `Chat.FederatedStatus = Rejected`.
+- `SigningKeyRotatedEvent` — `{ string NewKeyId }`. Publisher — [[Backend/Federation]] (`RotateSigningKey`); consumer — сам Federation на каждом инстансе (fan-out-очередь `signing-key-rotated-federation-{InstanceId}`, autodelete): перезагрузка `ActiveSigningKeyCache` + well-known после ротации ключа подписи (масштабирование, docs/scaling/federation.md).
 
 ## Расширенные федеративные поля message-событий (этап 2.2)
 
@@ -62,7 +63,7 @@
 
 ## Namespace: `BarkFluff.Shared.Queue.Identity`
 
-- `SessionRevokedEvent` — отзыв сессии: `UserId`, `DeviceId`, `AccessTokenExpiresAt`. Публикуется [[Backend/Identity]] при revoke сессии, потребляется всеми сервисами с XAuth ([[Backend/Onliner]], [[Backend/Messages]], ...) для invalidation `TokenRevocationCache`.
+- `SessionRevokedEvent` — отзыв сессии: `UserId`, `DeviceId`, `AccessTokenExpiresAt`. Публикуется [[Backend/Identity]] при revoke сессии, потребляется всеми сервисами с XAuth ([[Backend/Onliner]], [[Backend/Messages]], [[Backend/Bots]], ...) для invalidation `TokenRevocationCache`. Очередь fan-out: `session-revoked-{service}-{InstanceId}` на каждый экземпляр (autodelete) — каждый инстанс получает копию события.
 
 ## Namespace: `BarkFluff.Shared.Queue.Users`
 

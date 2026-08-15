@@ -19,17 +19,18 @@
 
 `BackgroundService` с циклом 5 секунд:
 
+- **claim-then-send (масштабирование, docs/scaling/federation.md)**: в начале прохода reclaim возвращает застрявшие после крэша строки в Pending (`Processing` с истёкшим lease), затем батч атомарно «застолблен» статусом `Processing` (lease 2 мин в `NextAttemptAt`) — на PostgreSQL raw-SQL `SELECT … ORDER BY … LIMIT … FOR UPDATE SKIP LOCKED` в короткой транзакции (LINQ-расширения `ForUpdate()/SkipLocked()` в EFCore.PG 10 отсутствуют; precedent — `PrekeyStorage`), отправка — вне блокировки строк. Несколько инстансов делят работу без дублей забора;
 - выбирает `Pending` с `NextAttemptAt <= now`, группирует по `Destination`;
-- **упорядочивание per-chat**: событие чата попадает в батч только если у `(Destination, ChatId)` нет более раннего (меньший `Id`) недоставленного Pending-события; `ChatId = NULL` (профильные, 2.9) — без ограничений; между чатами — независимо (без head-of-line blocking);
+- **упорядочивание per-chat**: событие чата попадает в батч только если у `(Destination, ChatId)` нет более раннего (меньший `Id`) недоставленного события — Pending **или** Processing (голова в полёте на другом инстансе тоже блокирует очередь чата); `ChatId = NULL` (профильные, 2.9) — без ограничений; между чатами — независимо (без head-of-line blocking);
 - батч ≤ 100 событий и ≤ 1 МБ на вызов `DeliverEvents`;
-- вызов S2S `DeliverEvents` подписанным клиентом (1.3) через `ServerResolver` (1.4) и `S2SChannelFactory`;
+- вызов S2C `DeliverEvents` подписанным клиентом (1.3) через `ServerResolver` (1.4) и `S2SChannelFactory`;
 - per-event классификация ответа: `OK`/`ALREADY_PROCESSED` → Delivered; `REJECTED` → DeadLetter немедленно (`LastError = error_code`), очередь чата продолжает ехать; `RETRY` или транспортная ошибка → backoff всем событиям батча;
 - backoff: 30s → 2m → 10m → 1h → 6h (далее кап 6h); `MaxAttempts` (дефолт 20 ≈ 7 суток окна, конфиг `Federation:OutboxMaxAttempts`) → DeadLetter;
-- gauge `outbox_pending` после цикла.
+- gauge `outbox_pending` после цикла; метрика `outbox_reclaimed` на reclaim.
 
 ### Janitor (`BackgroundServices/OutboxJanitor.cs`)
 
-Раз в час: `Delivered` старше 7 дней (конфиг `Federation:OutboxDeliveredTtlHours`) и `ProcessedEvents` старше 14 дней (конфиг `Federation:ProcessedEventsTtlHours`) — удаляются.
+Раз в час: `Delivered` старше 7 дней (конфиг `Federation:OutboxDeliveredTtlHours`) и `ProcessedEvents` старше 14 дней (конфиг `Federation:ProcessedEventsTtlHours`) — удаляются. **Single-runner** (масштабирование): чистку выполняет один инстанс под Redis-локом `federation:lock:outbox-janitor` (`ISingleRunner`/`RedisSingleRunner`, TTL 2 ч с продлением лидером); DELETE идемпотентен, best-effort-лок достаточен.
 
 ### EventSigner (`Services/EventSigner.cs`)
 
@@ -50,7 +51,8 @@
 | `messages-deleted-federation-handler` | `MessageDeletedEvent` | `MessageDeleted` в outbox |
 | `read-receipts-federation-handler` | `MessageReadEvent` | `MessagesRead` в outbox |
 | `federated-chat-rejected-messages` (Messages, не Federation) | `FederatedChatRejectedEvent` | См. «Квота и privacy-отказ (этап 2.5)» ниже — публикуется этой нодой, потребляется [[Backend/Messages]] |
-| `session-revoked-federation` | [[Shared/Queue#SessionRevokedEvent]] | Стандартная инвалидация `TokenRevocationCache` (по образцу Users/Messages/Updates) |
+| `session-revoked-federation-{InstanceId}` (fan-out, autodelete) | [[Shared/Queue#SessionRevokedEvent]] | Стандартная инвалидация `TokenRevocationCache` (по образцу Users/Messages/Updates) |
+| `signing-key-rotated-federation-{InstanceId}` (fan-out, autodelete) | [[Shared/Queue#SigningKeyRotatedEvent]] | Перезагрузка `ActiveSigningKeyCache` + well-known на каждом инстансе после ротации — иначе подписи старым ключом до рестарта |
 
 Консюмеры игнорируют события при `Federation:Enabled=false` или `IsFederated=false` — нефедеративные чаты не порождают outbox-записей.
 
@@ -169,7 +171,7 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - Библиотека — `BouncyCastle.Cryptography` 2.6.2 (managed, снимает chiseled-риск конструктивно; выбор и бенчмарки — [[../../../docs/rearch/phase-0/step-0.5-report|docs/rearch/phase-0/step-0.5-report.md]]).
 - Таблица `SigningKeys` в `FederationDb`: `KeyId` (PK, `"ed25519:N"`), `PublicKey`/`PrivateKeySeed` (raw 32 байта), `CreatedAt`, `ExpiredAt`, `RevokedAt`. Приватный ключ хранится без шифрования (MVP, тот же уровень доверия, что у прочих секретов в конфиг-БД соседей) — **отличие от исходной рекомендации дока 02**: не Configuration-сервис, а `FederationDb` (см. правки доков ниже).
 - При старте: если нет ключа с `ExpiredAt IS NULL AND RevokedAt IS NULL` — генерируется `ed25519:1`. Идемпотентно (рестарт не плодит ключи).
-- `RotateSigningKey` (internal RPC, `TokenType.Service`): новый ключ `ed25519:{N+1}` становится активным, у старого `ExpiredAt = now + Federation:KeyRotationOverlapDays` (дефолт 30 дней в коде). Well-known после ротации публикует оба ключа, подписан новым.
+- `RotateSigningKey` (internal RPC, `TokenType.Service`): новый ключ `ed25519:{N+1}` становится активным, у старого `ExpiredAt = now + Federation:KeyRotationOverlapDays` (дефолт 30 дней в коде). Well-known после ротации публикует оба ключа, подписан новым. Публикуется `SigningKeyRotatedEvent` → fan-out-очередь на каждый инстанс → каждый перезагружает `ActiveSigningKeyCache` и well-known (масштабирование, docs/scaling/federation.md — иначе остальные инстансы подписывают исходящие старым ключом до рестарта).
 
 ## Well-known-документ
 
@@ -198,7 +200,7 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - `Services/WellKnownClient.cs` — источник 1: `GET https://{servername}/.well-known/barkfluff` по CA-валидному HTTPS (без trust-all — bootstrap-канал), лимит 64 КБ/10с, проверка `server_name` + JCS-канонизация + Ed25519-verify ключом из самого документа (self-certifying). Dev-флаг `Federation:Insecure:AllowUntrustedWellKnownTls` отключает CA-валидацию — читается только при `ASPNETCORE_ENVIRONMENT=Development`.
 - `Services/NavigatorClient.cs` — источник 2: `NavigatorApi.GetServerByName` (публичный, без XAuth, как у Beacon). Реализация RPC на стороне Navigator — [[Backend/Navigator]], этап 1.5 (готово).
 - `Services/ServerResolver.cs` — алгоritm резолва дословно по [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]]: KnownServers свежий(<24ч)/Manual → как есть; иначе well-known → фолбэк Navigator → `null` (ServerNotFound). Кросс-сверка ключей обязательна при первом контакте, если оба источника отвечают (расхождение → отказ, метрика `crosscheck_mismatches`). Смена ключей у известной ноды принимается, только если новый документ всё ещё содержит хотя бы один ранее доверенный ключ (`HasTrustedContinuity`) — иначе запись не трогаем.
-- Discovery-на-лету — в `XFedServerInterceptor`: неизвестный `(origin, key_id)` → `ServerResolver.ResolveAsync` → повторная проверка один раз. `Services/DiscoveryTriggerRateLimiter.cs` — не чаще раза в 5 минут per-server (in-memory), иначе флуд случайными key_id заставляет ноду долбить чужой well-known.
+- Discovery-на-лету — в `XFedServerInterceptor`: неизвестный `(origin, key_id)` → `ServerResolver.ResolveAsync` → повторная проверка один раз. `Services/RedisDiscoveryTriggerRateLimiter.cs` (`IDiscoveryTriggerRateLimiter`) — не чаще раза в 5 минут per-server, cooldown глобальный через Redis `SET NX EX 300` на ключе `fed:discovery:{server}` (масштабирование: in-memory вариант позволял запустить discovery с каждого инстанса), иначе флуд случайными key_id заставляет ноду долбить чужой well-known.
 - `BackgroundServices/PeerRefreshBackgroundService.cs` — раз в час проверяет due-пиров (не-Manual, Active/Unreachable): рефреш раз в сутки; после 3 неудач подряд → `Unreachable`, дальше экспоненциальный backoff (2^N часов, кап 24ч); успех возвращает `Active`. Счётчик неудач — in-memory (как троттлинг регистрации в Navigator), потеря при рестарте безвредна. Кандидаты грузятся с `Include(s => s.Keys)` — иначе `HasTrustedContinuity` в `RefreshManualPeerAsync` видит пустую коллекцию и manual-рефреш ключей молча никогда не применяется (баг, найден юнит-тестом `Refresh_ManualPeerDue_RefreshesKeysWithTrustedContinuity`).
 - Internal-RPC (`FederationInternalApiService`): `GetKnownServers`, `UpsertManualPeer` (валидация только синтаксиса, без проверки диапазонов), `SetServerBlocked`, `GetFederationStatus` (outbox-счётчики — честные нули до Фазы 2).
 
