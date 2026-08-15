@@ -799,7 +799,8 @@
     <string name="calls_filter_all">All</string>
     <string name="calls_filter_missed">Missed</string>
     <string name="update_release_channel">Release</string>
-    <string name="update_beta_channel">Beta</string>
+    <string name="update_dev_channel">Dev</string>
+    <string name="update_nightly_channel">Nightly</string>
 
     <!-- Calls and notifications -->
     <string name="call_title_default">Call</string>
@@ -1173,7 +1174,8 @@
     <string name="pinned_unpinned_count">Unpinned: %1$d</string>
      <string name="pinned_unpin_all_failed">Couldn\'t unpin messages</string>
     <string name="update_current_release_channel">Release channel</string>
-    <string name="update_current_beta_channel">Beta channel</string>
+    <string name="update_current_dev_channel">Dev channel</string>
+    <string name="update_current_nightly_channel">Nightly channel</string>
     <string name="update_install_permission_denied">Install permission was not granted</string>
     <string name="update_checking">Checking…</string>
     <string name="update_unavailable">Unavailable</string>
