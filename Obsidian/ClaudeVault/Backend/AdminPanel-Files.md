@@ -98,7 +98,7 @@
 | `MetricsCollectorService.cs` | `IHostedService`. Запускается при старте + каждый час. Собирает события Seq за 24ч, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет устаревшие данные (Stats >24ч, ServiceMetrics >12ч). |
 | `MailService.cs` | `IAsyncDisposable`. IMAP/SMTP клиент (MailKit) для служебных ящиков: по одному `ImapClient`+`SemaphoreSlim` на аккаунт. Список писем, письмо, вложения (включая inline по Content-ID), пометка прочитанным, отправка через SMTP. |
 | `RemoteDockerService.cs` | Управление Docker и интерактивной консолью на сохранённых в LiteDB SSH-серверах: проверка подключения, discovery, статусы, start/stop/restart, Compose-only pull + recreate. |
-| `IRemoteSshClient.cs`, `SshNetRemoteSshClient.cs` | Тестируемая граница SSH-команд и интерактивного PTY; SSH.NET-реализация с password/keyboard-interactive auth. |
+| `IRemoteSshClient.cs`, `SshNetRemoteSshClient.cs` | Тестируемая граница SSH-команд и интерактивного PTY; SSH.NET-реализация с password/keyboard-interactive auth и flush каждой записи ввода. |
 
 ---
 
