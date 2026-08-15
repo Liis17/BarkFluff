@@ -7,7 +7,7 @@
 <h1 align="center">Windows</h1>
 
 <p align="center">
-  <strong>Build the primary WPF client for the BarkFluff platform.</strong>
+  <strong>Build the primary WinUI 3 client for the BarkFluff platform.</strong>
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 ---
 
-The primary Windows client is a WPF application targeting `net10.0-windows10.0.26100.0` on x64.
+The primary Windows client is a WinUI 3 application using Windows App SDK, targeting `net10.0-windows10.0.26100.0` on x64. The former WPF client is legacy and is no longer the primary Windows client.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ The primary Windows client is a WPF application targeting `net10.0-windows10.0.2
 ## Build
 
 ```powershell
-dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
+dotnet build Windows/BarkFluff.Client.WinUI/BarkFluff.Client.WinUI.csproj -p:Platform=x64
 ```
 
 To open the complete solution:
@@ -38,6 +38,6 @@ To open the complete solution:
 start BarkFluff.sln
 ```
 
-The solution also includes the DB editor, updater CLI, and a separate V2 WPF project. The command above builds the supported primary client only.
+The solution also includes the legacy WPF client, the DB editor, and the updater CLI. The command above builds the supported primary client only.
 
-For internal structure and runtime behaviour, see [Windows WPF in the knowledge base](../../Obsidian/ClaudeVault/Клиенты/Windows-WPF.md).
+For internal structure and runtime behaviour, see [Windows WinUI in the knowledge base](../../Obsidian/ClaudeVault/Клиенты/Windows-WinUI.md). The legacy [Windows WPF client](../../Obsidian/ClaudeVault/Клиенты/Windows-WPF.md) is retained as a predecessor reference.
