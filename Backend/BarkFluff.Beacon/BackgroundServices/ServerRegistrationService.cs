@@ -53,9 +53,14 @@ public class ServerRegistrationService : BackgroundService
                 // он не задан, нода просто не попадёт в список выбора веб-клиента.
                 var webEndpoint = await GetWebEndpointAsync(configurationApiClient, stoppingToken);
 
+                // Отдельный адрес файлового HTTP в обход CDN. Пустой — нода отдаёт файлы
+                // только по основному адресу Files, как было до появления этого поля.
+                var filesMediaEndpoint = await GetFilesMediaEndpointAsync(configurationApiClient, stoppingToken);
+
                 var serverInfo = new ServerInfo
                 {
                     WebEndpoint = webEndpoint,
+                    FilesMediaEndpoint = filesMediaEndpoint,
                     Name = serverProps.Name,
                     Description = serverProps.Description,
                     ServerPublicName = serverProps.PublicName ?? string.Empty,
@@ -121,6 +126,34 @@ public class ServerRegistrationService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Не удалось получить ExternalEndpoint:Host для Web — регистрируемся без web_endpoint");
+            return string.Empty;
+        }
+    }
+
+    private async Task<string> GetFilesMediaEndpointAsync(
+        BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient client,
+        CancellationToken ct)
+    {
+        try
+        {
+            var response = await client.GetConfigurationAsync(
+                new BarkFluff.Proto.Configuration.GetConfigurationRequest { ServiceId = (int)BarkFluff.Shared.Identity.ServiceId.Files },
+                cancellationToken: ct);
+
+            var host = response.Configurations
+                .FirstOrDefault(c => c.Section == "ExternalEndpoint" && c.Key == "MediaHost")?.Value;
+
+            if (string.IsNullOrWhiteSpace(host))
+                return string.Empty;
+
+            // Navigator ждёт абсолютный origin; в конфиге может лежать как голый хост, так и полный URL.
+            return host.Contains("://", StringComparison.Ordinal)
+                ? host.TrimEnd('/')
+                : $"https://{NormalizeHost(host)}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось получить ExternalEndpoint:MediaHost для Files — регистрируемся без files_media_endpoint");
             return string.Empty;
         }
     }
