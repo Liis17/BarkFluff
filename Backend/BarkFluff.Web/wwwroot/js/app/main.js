@@ -3551,6 +3551,10 @@
     BF.realtime.startAll();
     if (BF.calls && BF.calls.start) BF.calls.start();
 
+    // Метаданные ноды (в т.ч. отдельный файловый адрес): на самой ноде экрана выбора
+    // не было, а адрес мог и поменяться. Промах не мешает — файлы пойдут по адресам Files.
+    BF.node.refreshMeta();
+
     if (BF.personalization && BF.personalization.init) BF.personalization.init();
 
 })();
