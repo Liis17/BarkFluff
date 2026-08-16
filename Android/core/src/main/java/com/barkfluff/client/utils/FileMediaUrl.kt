@@ -1,6 +1,8 @@
 package com.barkfluff.client.utils
 
+import android.content.Context
 import android.util.Log
+import com.barkfluff.client.data.GlobalParam
 import java.net.URI
 
 /**
@@ -14,6 +16,17 @@ import java.net.URI
 object FileMediaUrl {
 
     private const val TAG = "FileMediaUrl"
+
+    /**
+     * Chat/Users/Messages встраивают готовые ссылки на Files прямо в свои ответы
+     * (Chat.picture, MessageAttachment.previewUrl…), в обход GrpcManager.getFileDownloadUrl —
+     * адаптеры и активити читают их напрямую из proto. Тот же rewrite, без прокидывания
+     * GrpcManager через конструкторы: адрес ноды берётся прямо из GlobalParam.
+     */
+    fun rewrite(context: Context, url: String): String {
+        if (url.isBlank()) return url
+        return rewrite(url, GlobalParam(context).socketFilesMedia)
+    }
 
     fun rewrite(url: String, mediaOrigin: String): String {
         if (url.isBlank() || mediaOrigin.isBlank()) {

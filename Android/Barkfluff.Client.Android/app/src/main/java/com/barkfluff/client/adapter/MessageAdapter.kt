@@ -44,6 +44,7 @@ import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
@@ -766,7 +767,7 @@ class MessageAdapter(
 
     private fun loadStickerImage(imageView: ImageView, attachment: Shared.MessageAttachment) {
         val fileId = if (attachment.previewFileId.isNotBlank()) attachment.previewFileId else attachment.fileId
-        val previewUrl = attachment.previewUrl
+        val previewUrl = FileMediaUrl.rewrite(imageView.context, attachment.previewUrl)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
@@ -1091,7 +1092,7 @@ class MessageAdapter(
 
         // Загружаем превью (previewFileId → fileId как fallback)
         val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
-        val previewUrl    = attachment.previewUrl
+        val previewUrl    = FileMediaUrl.rewrite(thumbnail.context, attachment.previewUrl)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
@@ -1129,7 +1130,7 @@ class MessageAdapter(
                 }
                 val clickedIndex = imageItems.indexOf(attachment).coerceAtLeast(0)
                 val allFileIds    = imageItems.map { it.fileId }
-                val allPreviewUrls = imageItems.map { it.previewUrl }
+                val allPreviewUrls = imageItems.map { FileMediaUrl.rewrite(ctx, it.previewUrl) }
                 ctx.startActivity(
                     ImageViewerActivity.createIntent(
                         ctx,
@@ -1519,7 +1520,7 @@ class MessageAdapter(
 
         // Load thumbnail
         val thumbnailFileId = attachment.previewFileId.ifBlank { "" }
-        val thumbnailUrl = attachment.previewUrl
+        val thumbnailUrl = FileMediaUrl.rewrite(binding.root.context, attachment.previewUrl)
 
         if (thumbnailUrl.isNotBlank()) {
             ImageLoadHelper.loadByFileId(
@@ -1587,7 +1588,7 @@ class MessageAdapter(
         val context = container.context
         val fileId = attachment.fileId
         val fileName = attachment.fileName.ifBlank { context.getString(R.string.attachment_file) }
-        val previewUrl = attachment.previewUrl
+        val previewUrl = FileMediaUrl.rewrite(context, attachment.previewUrl)
 
         binding.docFileName.text = fileName
         binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
