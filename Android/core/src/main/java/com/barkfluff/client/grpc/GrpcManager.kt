@@ -26,6 +26,7 @@ import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.security.TlsTransportFactory
+import com.barkfluff.client.utils.FileMediaUrl
 import io.grpc.*
 import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
@@ -62,7 +63,8 @@ class GrpcManager(context: Context) {
     // CallEventsService, виджет, 401-retry) рефрешат через него, чтобы параллельные
     // обновления не аннулировали refresh-токен друг друга (сервер ротирует refresh-токен).
     private val tokenRefreshMutex = Mutex()
-    private val tlsTransport = TlsTransportFactory(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val tlsTransport = TlsTransportFactory(appContext)
 
     // Адреса, использованные при создании каналов (для идемпотентности)
     private var navigatorAddress: String? = null
@@ -128,6 +130,13 @@ class GrpcManager(context: Context) {
     }
 
     fun normalizeEndpointAddress(address: String): String = tlsTransport.normalizeGrpcAddress(address)
+
+    /**
+     * Files выдаёт ссылки на свой основной адрес (за CDN с лимитом на размер файла).
+     * Если нода объявила отдельный файловый origin — качаем и грузим через него.
+     */
+    fun toMediaUrl(url: String): String =
+        FileMediaUrl.rewrite(url, GlobalParam(appContext).socketFilesMedia)
 
     /**
      * Инициализирует все клиенты по адресам из GlobalParam.
@@ -794,7 +803,8 @@ class GrpcManager(context: Context) {
                 onlinerEndpoint = buildEndpointUrl(response.onliner.endpoint.host, response.onliner.endpoint.port, response.onliner.tlsEnabled),
                 fastAuthEndpoint = buildEndpointUrl(response.fastAuth.endpoint.host, response.fastAuth.endpoint.port, response.fastAuth.tlsEnabled),
                 callsEndpoint = if (response.hasCalls()) buildEndpointUrl(response.calls.endpoint.host, response.calls.endpoint.port, response.calls.tlsEnabled) else "",
-                livekitUrl = normalizeLivekitUrl(response.livekitUrl)
+                livekitUrl = normalizeLivekitUrl(response.livekitUrl),
+                filesMediaEndpoint = response.filesMediaEndpoint
             )
 
             Log.d(TAG, "Получена информация о сервере: ${serverInfo.name}")
@@ -1536,7 +1546,7 @@ class GrpcManager(context: Context) {
                 .build()
 
             val response = filesClient!!.getTempDownloadUrl(request)
-            val urlMap = response.fileUrlsList.associate { it.fileId to it.url }
+            val urlMap = response.fileUrlsList.associate { it.fileId to toMediaUrl(it.url) }
 
             Result.success(urlMap)
         } catch (e: Exception) {
@@ -1580,7 +1590,7 @@ class GrpcManager(context: Context) {
             }
 
             Log.d(TAG, "getFileDownloadUrl: Успешно получен URL для fileId=$fileId")
-            Result.success(url)
+            Result.success(toMediaUrl(url))
         } catch (e: Exception) {
             Log.e(TAG, "getFileDownloadUrl: Исключение", e)
             Result.failure(Exception("Ошибка получения URL: ${e.message}"))
@@ -1817,7 +1827,7 @@ class GrpcManager(context: Context) {
 
             Result.success(
                 UploadUrlResult(
-                    url = response.url,
+                    url = toMediaUrl(response.url),
                     fileId = response.fileId
                 )
             )
@@ -2249,7 +2259,8 @@ class GrpcManager(context: Context) {
         val onlinerEndpoint: String,
         val fastAuthEndpoint: String,
         val callsEndpoint: String,
-        val livekitUrl: String
+        val livekitUrl: String,
+        val filesMediaEndpoint: String = ""
     )
 
     data class ChatData(

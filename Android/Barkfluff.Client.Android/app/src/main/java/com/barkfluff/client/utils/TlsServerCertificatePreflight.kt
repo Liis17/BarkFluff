@@ -44,6 +44,9 @@ class TlsServerCertificatePreflight(
         identityEndpoint,
         usersEndpoint,
         filesEndpoint,
+        // Отдельный файловый адрес — самостоятельный TLS-хост, его серт тоже надо
+        // предъявить пользователю до первой загрузки/скачивания.
+        filesMediaEndpoint,
         messagesEndpoint,
         updatesEndpoint,
         onlinerEndpoint,
