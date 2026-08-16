@@ -18,6 +18,7 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
 
     public func subscribeNewMessages() async throws -> AsyncThrowingStream<NewMessageEvent, Error> {
         let req = Barkfluff_Updates_SubscribeNewMessagesRequest()
+        let mediaOrigin = await self.connectionManager.filesMediaOrigin
 
         return AsyncThrowingStream { continuation in
             Task {
@@ -38,7 +39,7 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
                                 } else {
                                     sentAt = Date()
                                 }
-                                let attachments = msg.content.attachments.map { self.mapAttachment($0) }
+                                let attachments = msg.content.attachments.map { self.mapAttachment($0, mediaOrigin: mediaOrigin) }
                                 let messageInfo = MessageInfo(
                                     id: msg.id,
                                     chatID: chatID,
@@ -90,6 +91,7 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
 
     public func subscribeMessagesEdited() async throws -> AsyncThrowingStream<MessageEditedEventDTO, Error> {
         let req = Barkfluff_Updates_SubscribeMessagesEditedRequest()
+        let mediaOrigin = await self.connectionManager.filesMediaOrigin
 
         return AsyncThrowingStream { continuation in
             Task {
@@ -119,7 +121,7 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
                                 } else {
                                     editedAt = nil
                                 }
-                                let attachments = msg.content.attachments.map { self.mapAttachment($0) }
+                                let attachments = msg.content.attachments.map { self.mapAttachment($0, mediaOrigin: mediaOrigin) }
                                 let messageInfo = MessageInfo(
                                     id: msg.id,
                                     chatID: chatID,
@@ -186,7 +188,7 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
         }
     }
 
-    private nonisolated func mapAttachment(_ att: Barkfluff_Shared_MessageAttachment) -> MessageAttachmentInfo {
+    private nonisolated func mapAttachment(_ att: Barkfluff_Shared_MessageAttachment, mediaOrigin: String?) -> MessageAttachmentInfo {
         let forwarded: ForwardedMessageDTO?
         if att.hasForwardedMessage {
             let fwd = att.forwardedMessage
@@ -194,7 +196,7 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
                 authorName: fwd.authorName,
                 originalMessageID: fwd.originalMessageID,
                 text: fwd.text,
-                attachments: fwd.attachments.map { mapInnerAttachment($0) }
+                attachments: fwd.attachments.map { mapInnerAttachment($0, mediaOrigin: mediaOrigin) }
             )
         } else {
             forwarded = nil
@@ -203,19 +205,19 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
             id: att.id,
             type: mapAttachmentType(att.type),
             fileID: att.fileID,
-            previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
+            previewURL: att.previewURL.isEmpty ? nil : ConnectionManager.rewriteHost(att.previewURL, mediaOrigin: mediaOrigin),
             fileName: att.fileName,
             fileSize: att.attachmentSize,
             forwarded: forwarded
         )
     }
 
-    private nonisolated func mapInnerAttachment(_ att: Barkfluff_Shared_MessageAttachment) -> MessageAttachmentInfo {
+    private nonisolated func mapInnerAttachment(_ att: Barkfluff_Shared_MessageAttachment, mediaOrigin: String?) -> MessageAttachmentInfo {
         MessageAttachmentInfo(
             id: att.id,
             type: mapAttachmentType(att.type),
             fileID: att.fileID,
-            previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
+            previewURL: att.previewURL.isEmpty ? nil : ConnectionManager.rewriteHost(att.previewURL, mediaOrigin: mediaOrigin),
             fileName: att.fileName,
             fileSize: att.attachmentSize,
             forwarded: nil

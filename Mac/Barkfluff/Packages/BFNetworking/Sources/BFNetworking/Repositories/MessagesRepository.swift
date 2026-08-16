@@ -24,6 +24,8 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         request.pagination = pagination
         let req = request
 
+        let mediaOrigin = await connectionManager.filesMediaOrigin
+
         do {
             return try await connectionManager.withAuthorizedClient(for: .messages) { client in
                 let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
@@ -33,9 +35,9 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
                     ChatInfo(
                         id: chat.id,
                         title: chat.title,
-                        pictureURL: chat.picture.isEmpty ? nil : chat.picture,
+                        pictureURL: chat.picture.isEmpty ? nil : ConnectionManager.rewriteHost(chat.picture, mediaOrigin: mediaOrigin),
                         isGroupChat: chat.isGroupChat,
-                        lastMessage: chat.hasLastMessage ? self.mapMessage(chat.lastMessage, chatID: chat.id) : nil,
+                        lastMessage: chat.hasLastMessage ? self.mapMessage(chat.lastMessage, chatID: chat.id, mediaOrigin: mediaOrigin) : nil,
                         unreadCount: chat.countUnread,
                         members: chat.members.map { self.mapChatMember($0) }
                     )
@@ -55,11 +57,13 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         request.offsetAfter = offsetAfter
         let req = request
 
+        let mediaOrigin = await connectionManager.filesMediaOrigin
+
         do {
             return try await connectionManager.withAuthorizedClient(for: .messages) { client in
                 let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
                 let response = try await messagesClient.listMessages(req)
-                return response.messages.map { self.mapMessage($0, chatID: chatID) }
+                return response.messages.map { self.mapMessage($0, chatID: chatID, mediaOrigin: mediaOrigin) }
             }
         } catch let error as RPCError {
             throw GRPCErrorMapper.map(error)
@@ -82,12 +86,14 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         request.message = outgoing
         let req = request
 
+        let mediaOrigin = await connectionManager.filesMediaOrigin
+
         do {
             return try await connectionManager.withAuthorizedClient(for: .messages) { client in
                 let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
                 let response = try await messagesClient.sendMessage(req)
                 let resolvedChatID = chatID ?? ""
-                return self.mapMessage(response.message, chatID: resolvedChatID)
+                return self.mapMessage(response.message, chatID: resolvedChatID, mediaOrigin: mediaOrigin)
             }
         } catch let error as RPCError {
             throw GRPCErrorMapper.map(error)
@@ -101,6 +107,8 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         request.pictureFileID = pictureFileID ?? ""
         let req = request
 
+        let mediaOrigin = await connectionManager.filesMediaOrigin
+
         do {
             return try await connectionManager.withAuthorizedClient(for: .messages) { client in
                 let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
@@ -109,9 +117,9 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
                 return ChatInfo(
                     id: chat.id,
                     title: chat.title,
-                    pictureURL: chat.picture.isEmpty ? nil : chat.picture,
+                    pictureURL: chat.picture.isEmpty ? nil : ConnectionManager.rewriteHost(chat.picture, mediaOrigin: mediaOrigin),
                     isGroupChat: chat.isGroupChat,
-                    lastMessage: chat.hasLastMessage ? self.mapMessage(chat.lastMessage, chatID: chat.id) : nil,
+                    lastMessage: chat.hasLastMessage ? self.mapMessage(chat.lastMessage, chatID: chat.id, mediaOrigin: mediaOrigin) : nil,
                     unreadCount: chat.countUnread,
                     members: chat.members.map { self.mapChatMember($0) }
                 )
@@ -202,6 +210,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         request.sortDescending = sortDescending
 
         let req = request
+        let mediaOrigin = await connectionManager.filesMediaOrigin
 
         do {
             return try await connectionManager.withAuthorizedClient(for: .messages) { client in
@@ -231,7 +240,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
                         messageID: info.messageID,
                         type: type!,
                         fileID: att.fileID,
-                        previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
+                        previewURL: att.previewURL.isEmpty ? nil : ConnectionManager.rewriteHost(att.previewURL, mediaOrigin: mediaOrigin),
                         previewFileID: att.previewFileID.isEmpty ? nil : att.previewFileID,
                         fileName: att.fileName,
                         fileSize: att.attachmentSize,
@@ -253,13 +262,14 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         request.text = text
         request.filesIds = fileIDs
         let req = request
+        let mediaOrigin = await connectionManager.filesMediaOrigin
 
         do {
             return try await connectionManager.withAuthorizedClient(for: .messages) { client in
                 let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
                 let response = try await messagesClient.editMessage(req)
                 // chatID не возвращается в shared.Message — пробрасывает вызывающий слой.
-                return self.mapMessage(response.message, chatID: "")
+                return self.mapMessage(response.message, chatID: "", mediaOrigin: mediaOrigin)
             }
         } catch let error as RPCError {
             throw GRPCErrorMapper.map(error)
@@ -332,7 +342,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
 
     // MARK: - Mapping Helpers
 
-    private nonisolated func mapMessage(_ msg: Barkfluff_Shared_Message, chatID: String) -> MessageInfo {
+    private nonisolated func mapMessage(_ msg: Barkfluff_Shared_Message, chatID: String, mediaOrigin: String?) -> MessageInfo {
         let sentAt: Date
         if msg.hasSentAt {
             sentAt = Date(timeIntervalSince1970: TimeInterval(msg.sentAt.seconds) + TimeInterval(msg.sentAt.nanos) / 1_000_000_000)
@@ -340,7 +350,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
             sentAt = Date()
         }
 
-        let attachments = msg.content.attachments.map { mapAttachment($0) }
+        let attachments = msg.content.attachments.map { mapAttachment($0, mediaOrigin: mediaOrigin) }
 
         let editedAt: Date?
         if msg.hasEditedAt {
@@ -367,7 +377,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         )
     }
 
-    private nonisolated func mapAttachment(_ att: Barkfluff_Shared_MessageAttachment) -> MessageAttachmentInfo {
+    private nonisolated func mapAttachment(_ att: Barkfluff_Shared_MessageAttachment, mediaOrigin: String?) -> MessageAttachmentInfo {
         let forwarded: ForwardedMessageDTO?
         if att.hasForwardedMessage {
             let fwd = att.forwardedMessage
@@ -375,7 +385,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
                 authorName: fwd.authorName,
                 originalMessageID: fwd.originalMessageID,
                 text: fwd.text,
-                attachments: fwd.attachments.map { mapInnerAttachment($0) }
+                attachments: fwd.attachments.map { mapInnerAttachment($0, mediaOrigin: mediaOrigin) }
             )
         } else {
             forwarded = nil
@@ -384,7 +394,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
             id: att.id,
             type: mapAttachmentType(att.type),
             fileID: att.fileID,
-            previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
+            previewURL: att.previewURL.isEmpty ? nil : ConnectionManager.rewriteHost(att.previewURL, mediaOrigin: mediaOrigin),
             fileName: att.fileName,
             fileSize: att.attachmentSize,
             forwarded: forwarded
@@ -393,12 +403,12 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
 
     /// Маппинг attachment внутри ForwardedMessage — рекурсия запрещена контрактом backend,
     /// поэтому никогда не читаем `hasForwardedMessage` повторно.
-    private nonisolated func mapInnerAttachment(_ att: Barkfluff_Shared_MessageAttachment) -> MessageAttachmentInfo {
+    private nonisolated func mapInnerAttachment(_ att: Barkfluff_Shared_MessageAttachment, mediaOrigin: String?) -> MessageAttachmentInfo {
         MessageAttachmentInfo(
             id: att.id,
             type: mapAttachmentType(att.type),
             fileID: att.fileID,
-            previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
+            previewURL: att.previewURL.isEmpty ? nil : ConnectionManager.rewriteHost(att.previewURL, mediaOrigin: mediaOrigin),
             fileName: att.fileName,
             fileSize: att.attachmentSize,
             forwarded: nil

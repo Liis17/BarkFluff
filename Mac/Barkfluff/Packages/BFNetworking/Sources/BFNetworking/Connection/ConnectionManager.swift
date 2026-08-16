@@ -281,7 +281,16 @@ public actor ConnectionManager {
     /// на размер файла; если нода объявила отдельный файловый origin — грузим через него.
     /// Путь ссылки не меняется, поэтому старые ноды (origin пуст) работают как раньше.
     public func rewriteToMediaOrigin(_ urlString: String) -> String {
-        guard let origin = filesMediaOrigin,
+        Self.rewriteHost(urlString, mediaOrigin: filesMediaOrigin)
+    }
+
+    /// Чистая версия `rewriteToMediaOrigin` без обращения к состоянию актора: Chat/Users/Messages
+    /// кладут готовые ссылки на Files прямо в свои ответы (picture, profilePicture, previewURL…),
+    /// и их маппинг в других репозиториях — синхронные nonisolated-функции. Актор читается один
+    /// раз в начале вызова (`await connectionManager.filesMediaOrigin`), а дальше это значение
+    /// пробрасывается сюда без новых пересечений актора на каждое поле.
+    public nonisolated static func rewriteHost(_ urlString: String, mediaOrigin: String?) -> String {
+        guard let origin = mediaOrigin,
               let mediaComponents = URLComponents(string: origin),
               let mediaHost = mediaComponents.host,
               var components = URLComponents(string: urlString),
