@@ -49,6 +49,14 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 - Через nginx: `ExternalEndpoint:Host` + `/web`
 - Локально: `RunSettings.Host:Http1Port`
 
+> **Отдельный файловый адрес (мимо CDN).** Ссылки Files всегда указывают на `ExternalEndpoint:Host`,
+> который в проде стоит за Cloudflare с лимитом 100 МБ на файл. Ключ `ExternalEndpoint:MediaHost`
+> (миграция `20260816120000_AddFilesMediaExternalEndpoint`, по умолчанию пустой) задаёт второй
+> публичный адрес того же HTTP-порта, направленный на origin напрямую
+> (`files2.barkfluff.com`, [[Backend/Nginx]]). **Сам сервис его не использует** — адрес уходит
+> клиентам через [[Backend/Beacon]] (`files_media_endpoint`), и хост подменяет клиент, сохраняя
+> путь `/web/...`. Так старые клиенты продолжают работать через прежний адрес.
+
 ### S3-инфраструктура
 
 - **S3BucketRegistry** (singleton) — реестр бакетов, маппинг `UploadFileType → bucketId`, S3-клиенты с кешированием

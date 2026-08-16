@@ -333,6 +333,23 @@ Backend заполняет эти поля при доставке сообще�
 
 Во вкладке «Файлы» есть debounce 300 мс по имени документа. `ChatRepository.getChatAttachments(..., fileNameQuery)` передаёт `file_name_query` в `MessagesApi.ListChatAttachments`; при непустом поиске Android запрашивает первые 30 совпадений, без запроса — обычную первую страницу документов. Поле proto синхронизировано с [[Shared/Proto]], а поиск по полной истории и legacy-документам выполняет [[Backend/Messages]].
 
+## Отдельный файловый адрес ноды (мимо CDN)
+
+Beacon отдаёт `files_media_endpoint` — второй публичный origin файлового HTTP ноды
+(`files2.barkfluff.com`, [[Backend/Nginx]]), не проходящий через CDN с его лимитом на размер файла.
+
+- Хранится в `GlobalParam.socketFilesMedia` (prefs-ключ `socket_files_media`, переживает
+  `clearUserData` наравне с остальными адресами), заполняется в `ServerInfoPrefs.applyServerInfo`
+  из `GrpcManager.ServerInfo.filesMediaEndpoint`.
+- `FileMediaUrl.rewrite(url, origin)` (`core/utils/`) меняет в ссылке только схему/хост/порт — путь
+  `/web/...` тот же; обёртка `GrpcManager.toMediaUrl(url)` подставляет текущий адрес.
+- Применяется в `GrpcManager.getUploadUrl` / `getFileDownloadUrl` / `getFileDownloadUrls` и в
+  `ChatRepository.getUploadUrl` / `uploadFile` (там свой прямой вызов `filesClient`). Аватары из
+  профилей остаются на основном адресе Files.
+- `TlsServerCertificatePreflight` проверяет серт нового хоста наравне с остальными эндпоинтами —
+  иначе self-signed нода упала бы на первой же загрузке без внятного диалога.
+- Пустое значение (нода не объявила адрес) = поведение как раньше.
+
 ## Система кеширования
 
 Четыре слоя кеша:
