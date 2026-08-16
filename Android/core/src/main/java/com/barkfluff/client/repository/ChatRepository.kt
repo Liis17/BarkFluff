@@ -203,7 +203,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 ChatInfo(
                     chatId = chatId,
                     title = response.title,
-                    pictureFileId = response.picture,
+                    pictureFileId = grpcManager.extractGuidFromUrl(response.picture),
                     isGroupChat = response.isGroupChat,
                     lastMessageId = response.lastMessageId,
                     firstUnreadMessageId = response.firstUnreadMessageId,

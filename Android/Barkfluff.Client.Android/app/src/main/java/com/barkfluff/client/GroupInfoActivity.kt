@@ -30,6 +30,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.color.MaterialColors
@@ -278,7 +279,7 @@ class GroupInfoActivity : AppCompatActivity() {
             barkfluff.shared.Shared.MessageAttachmentType.IMAGE,
             barkfluff.shared.Shared.MessageAttachmentType.GIF -> {
                 val allFileIds = adapter.currentList.map { it.attachment.fileId }
-                val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
+                val allPreviewUrls = adapter.currentList.map { FileMediaUrl.rewrite(this, it.attachment.previewUrl) }
                 val position = adapter.currentList.indexOf(info).coerceAtLeast(0)
                 startActivity(ImageViewerActivity.createIntent(this, allFileIds, allPreviewUrls, position))
             }

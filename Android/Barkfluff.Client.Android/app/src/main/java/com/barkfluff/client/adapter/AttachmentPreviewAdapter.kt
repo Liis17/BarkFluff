@@ -15,6 +15,7 @@ import com.barkfluff.client.databinding.ItemAttachmentPreviewBinding
 import com.barkfluff.client.databinding.ItemProfileVoiceBinding
 import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioPlayerHelper
+import com.barkfluff.client.utils.FileMediaUrl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -102,7 +103,7 @@ class AttachmentPreviewAdapter(
 
                     // Используем previewUrl напрямую если он уже есть в ответе сервера,
                     // иначе запрашиваем через previewFileId (или fileId как фолбек)
-                    val directUrl = attachment.previewUrl
+                    val directUrl = FileMediaUrl.rewrite(binding.root.context, attachment.previewUrl)
                     val fallbackFileId = if (attachment.previewFileId.isNotBlank())
                         attachment.previewFileId else attachment.fileId
 
@@ -124,7 +125,7 @@ class AttachmentPreviewAdapter(
                 }
 
                 Shared.MessageAttachmentType.VIDEO -> {
-                    val directUrl = attachment.previewUrl
+                    val directUrl = FileMediaUrl.rewrite(binding.root.context, attachment.previewUrl)
                     val hasPreview = directUrl.isNotBlank() || attachment.previewFileId.isNotBlank()
 
                     if (hasPreview) {

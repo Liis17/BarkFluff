@@ -10,6 +10,7 @@ import com.barkfluff.client.ImageViewerActivity
 import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.ImageLoadHelper
 
 /**
@@ -56,7 +57,7 @@ class ImageGridAdapter(
 
             // Загружаем превью (previewFileId → fileId как fallback)
             val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
-            val previewUrl    = attachment.previewUrl
+            val previewUrl    = FileMediaUrl.rewrite(thumbnail.context, attachment.previewUrl)
 
             val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
                 { previewUrl }
@@ -95,7 +96,7 @@ class ImageGridAdapter(
                     }
                     val clickedIndex = imageItems.indexOf(attachment).coerceAtLeast(0)
                     val allFileIds    = imageItems.map { it.fileId }
-                    val allPreviewUrls = imageItems.map { it.previewUrl }
+                    val allPreviewUrls = imageItems.map { FileMediaUrl.rewrite(ctx, it.previewUrl) }
                     ctx.startActivity(
                         ImageViewerActivity.createIntent(ctx, allFileIds, allPreviewUrls, clickedIndex)
                     )

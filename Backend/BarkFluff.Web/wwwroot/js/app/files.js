@@ -352,6 +352,10 @@
         bindResilientMedia: bindResilientMedia,
         bindResilientLink: bindResilientLink,
         loadResilientBackground: loadResilientBackground,
+        // Chat/Users/Messages встраивают в свои ответы уже готовые ссылки на Files
+        // (picture, profilePicture, previewUrl…) — эти поля идут мимо getTempDownloadUrl,
+        // поэтому api.js подменяет в них хост тем же способом отдельно.
+        mediaUrl: mediaUrl,
         clearCache: function () { urlCache.clear(); }
     };
 })();
