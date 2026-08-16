@@ -124,6 +124,10 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             // Публичный wss://-адрес LiveKit (отдельно от внутреннего LiveKit:Url для Calls -> LiveKit).
             LivekitUrl = GetPublicLivekitUrl(callsSettings.Configurations),
 
+            // Отдельный адрес файлового HTTP в обход CDN; пусто — клиент работает
+            // по адресу из files (обратная совместимость со старыми нодами и клиентами).
+            FilesMediaEndpoint = GetFilesMediaEndpoint(filesSettings.Configurations),
+
             // Федерация (Фаза 0 rearch): пустая строка/false, пока Federation:ServerName/Enabled не заполнены оператором.
             ServerName = federationSettings.Configurations
                 .FirstOrDefault(x => x.Section == "Federation" && x.Key == "ServerName")?.Value ?? string.Empty,
@@ -182,6 +186,20 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
         }
 
         return publicUrl;
+    }
+
+    private string GetFilesMediaEndpoint(IEnumerable<ConfigurationItem> filesSettings)
+    {
+        var mediaHost = filesSettings
+            .FirstOrDefault(x => x.Section == "ExternalEndpoint" && x.Key == "MediaHost")?.Value;
+
+        if (string.IsNullOrWhiteSpace(mediaHost))
+            return string.Empty;
+
+        // Клиенту нужен абсолютный origin; в конфиге может лежать как голый хост, так и полный URL.
+        return mediaHost.Contains("://", StringComparison.Ordinal)
+            ? mediaHost.TrimEnd('/')
+            : $"https://{NormalizeHost(mediaHost)}";
     }
 
     private static string NormalizeHost(string value)

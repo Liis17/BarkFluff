@@ -49,6 +49,11 @@ message GetServerInfoResponse {
   string server_name = 16; // DNS-домен этой ноды (пусто, если федерация не настроена)
 
   bool federation_enabled = 17; // Включена ли федерация на ноде
+
+  // Отдельный публичный origin для файлового HTTP ('https://files2.example.com'):
+  // загрузка и скачивание в обход CDN и его лимита на размер файла. Клиент подменяет
+  // им хост в ссылках, которые выдал Files. Пусто — работать по адресу из files.
+  string files_media_endpoint = 18;
 }
 
 message ServerColor {

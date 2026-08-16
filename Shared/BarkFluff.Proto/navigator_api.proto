@@ -43,6 +43,7 @@ message ServerInfo {
   repeated string tls_spki_sha256 = 11;        // SPKI-отпечатки TLS-серта (для self-signed)
   repeated int32 federation_protocol_versions = 12;
   string web_endpoint = 13;                    // gRPC-Web шлюз ноды для браузера ('https://gw.node.example'); пусто = веб-клиент не поддерживается
+  string files_media_endpoint = 14;            // отдельный origin файлового HTTP в обход CDN ('https://files2.node.example'); пусто = файлы только по адресу Files
 }
 
 message NavigatorSigningKey {
