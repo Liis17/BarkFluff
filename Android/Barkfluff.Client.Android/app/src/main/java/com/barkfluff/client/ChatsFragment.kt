@@ -308,7 +308,7 @@ class ChatsFragment : Fragment() {
         Log.d(TAG, "loadUserAvatar: fullName='$fullName', avatarFileId='$avatarFileId', avatarPreviewFileId='$avatarPreviewFileId', userId=${globalParam.userId}")
 
         // Пробуем загрузить из URL напрямую если он есть
-        val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
+        val urlToUse = globalParam.profilePictureUrl.ifBlank { globalParam.picturePreviewUrl }
 
         if (urlToUse.isNotBlank()) {
             Log.d(TAG, "loadUserAvatar: Loading from URL")
@@ -326,7 +326,7 @@ class ChatsFragment : Fragment() {
             return
         }
 
-        val useFileId = avatarPreviewFileId.ifBlank { avatarFileId }
+        val useFileId = avatarFileId.ifBlank { avatarPreviewFileId }
 
         if (useFileId.isBlank()) {
             Log.d(TAG, "loadUserAvatar: No fileId, showing placeholder")
