@@ -19,6 +19,7 @@ public static class NodeConnectionMapper
             SocketIdentity = GetEndpointUrl(serverInfo.Identity),
             SocketUsers = GetEndpointUrl(serverInfo.Users),
             SocketFiles = GetEndpointUrl(serverInfo.Files),
+            SocketFilesMedia = serverInfo.FilesMediaEndpoint,
             SocketMessages = GetEndpointUrl(serverInfo.Messages),
             SocketUpdates = GetEndpointUrl(serverInfo.Updates),
             SocketOnliner = GetEndpointUrl(serverInfo.Onliner),

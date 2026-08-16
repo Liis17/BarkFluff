@@ -44,6 +44,14 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string SocketUsers { get; set; } = string.Empty;
         public string SocketIdentity { get; set; } = string.Empty;
         public string SocketFiles { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Отдельный публичный адрес файлового HTTP ноды ('https://files2.example.com') —
+        /// загрузка и скачивание в обход CDN с его лимитом на размер файла.
+        /// Пусто — файлы качаются по ссылкам Files как есть.
+        /// </summary>
+        public string SocketFilesMedia { get; set; } = string.Empty;
+
         public string SocketMessages { get; set; } = string.Empty;
         public string SocketUpdates { get; set; } = string.Empty;
         public string SocketOnliner { get; set; } = string.Empty;
