@@ -68,6 +68,20 @@ Workflow `.github/workflows/build-client-winui.yml` запускается дл�
 
 DPAPI под MSIX работает без ограничений (`rescap:runFullTrust`). Строки entropy в `DpapiSecureSessionStore` и `DpapiPrivateChatKeyStore` намеренно сохранили значения WPF-клиента (`BarkFluff.ClientV2.WPF.*`): они входят в блоб, и переименование клиента сделало бы импортированную сессию нерасшифровываемой.
 
+## Отдельный файловый адрес ноды (мимо CDN)
+
+Beacon отдаёт `files_media_endpoint` — второй публичный origin файлового HTTP ноды
+(`files2.barkfluff.com`, [[Backend/Nginx]]), не проходящий через CDN с его лимитом на размер файла.
+
+- `NodeConnectionMapper` кладёт значение в `GlobalParam.SocketFilesMedia`
+  ([[Клиенты/Windows-WebApiCore]]), `NodeServiceConfiguration.FilesMediaEndpoint` его сохраняет и
+  восстанавливает. Параметр record'а объявлен со значением по умолчанию — у сохранённых ранее
+  сессий поля нет, и они читаются как «адрес не задан».
+- Подменяет хост `WebApiFileManager.ToMediaUrl(globalParam, url)` (только схема/хост/порт, путь
+  `/web/...` прежний) в загрузке файла и аватара и в `GetFile`/`GetFiles`.
+- WPF-клиент ([[Клиенты/Windows-WPF]]) использует тот же менеджер, но `SocketFilesMedia` не
+  заполняет — поэтому его поведение не меняется.
+
 ## Shell
 
 `MainWindow` — контрол `TitleBar` (`ExtendsContentIntoTitleBar` + `SetTitleBar`), под ним `NavigationView` с `Frame` внутри, плюс `TaskbarIcon` из `H.NotifyIcon.WinUI`. WinUI-версия H.NotifyIcon не даёт событий клика, только команды, поэтому двойной клик по значку привязан к `DoubleClickCommand` из code-behind.

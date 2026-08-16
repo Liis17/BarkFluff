@@ -281,6 +281,20 @@ Sandbox: добавлен entitlement `com.apple.security.files.downloads.read-w
 
 Регенерация proto: `make generate` в `Packages/BFProto/` (источник — `Mac/Barkfluff/Protos/`, синхронизируется с `Shared/BarkFluff.Proto/`).
 
+## Отдельный файловый адрес ноды (мимо CDN)
+
+Beacon отдаёт `files_media_endpoint` — второй публичный origin файлового HTTP ноды
+(`files2.barkfluff.com`, [[Backend/Nginx]]), не проходящий через CDN с его лимитом на размер файла.
+
+- `ConnectionManager.filesMediaOrigin` заполняется в `bootstrap` (сбрасывается в `shutdown`),
+  `rewriteToMediaOrigin(_:)` подменяет в ссылке **только** схему/хост/порт — путь `/web/...` тот же.
+- Применяется в `FilesRepository`: `getUploadURL`, `getTempDownloadURL(s)`. Этого достаточно, потому
+  что все загрузки и скачивания (включая `MediaCacheManager` и `FileDownloadHelper`) берут URL
+  оттуда. Аватары из профилей (`presignedURLHint`) намеренно остаются на основном адресе Files —
+  они мелкие, и CDN для них полезен.
+- Пустое значение (нода не объявила адрес) = поведение как раньше. Изменения лежат в общих пакетах,
+  поэтому распространяются и на [[Клиенты/iOS]].
+
 ## Отправка изображений (клиентская оптимизация)
 
 Перед загрузкой на сервер вложения с `uploadFileType == .messageAttachmentImage` (PNG/JPEG/WebP/HEIC/BMP по расширению) проходят пайплайн в `ConversationViewModel.optimizeImage(_:)` в соответствии с разделом «Изображения» из [[Клиенты/DesignDocument]]:

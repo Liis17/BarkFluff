@@ -42,6 +42,7 @@ public class GetServerByNameQueryHandler : IRequestHandler<GetServerByNameQuery,
             ServerName = server.ServerName ?? string.Empty,
             FederationEndpoint = server.FederationEndpoint ?? string.Empty,
             WebEndpoint = server.WebEndpoint ?? string.Empty,
+            FilesMediaEndpoint = server.FilesMediaEndpoint ?? string.Empty,
         };
 
         if (server.TlsSpkiSha256 != null)

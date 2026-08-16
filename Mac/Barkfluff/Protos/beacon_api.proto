@@ -43,6 +43,14 @@ message GetServerInfoResponse {
   string livekit_url = 13; // WSS-адрес LiveKit SFU для звонков (пусто, если звонки не настроены)
 
   Service calls = 14; // Микросервис calls (gRPC-сигнализация звонков)
+
+  // Поля 15-17 (bots, server_name, federation_enabled) этому клиенту не нужны —
+  // копия контракта намеренно неполная, номера совпадают с Shared/BarkFluff.Proto.
+
+  // Отдельный публичный origin для файлового HTTP ('https://files2.example.com'):
+  // загрузка и скачивание в обход CDN и его лимита на размер файла. Клиент подменяет
+  // им хост в ссылках, которые выдал Files. Пусто — работать по адресу из files.
+  string files_media_endpoint = 18;
 }
 
 message ServerColor {

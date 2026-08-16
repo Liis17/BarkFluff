@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Keep the complete source artwork inside the 66dp adaptive-icon safe zone. -->
+    <item
+        android:width="66dp"
+        android:height="66dp"
+        android:gravity="center">
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/ic_launcher_art_dev" />
+    </item>
+</layer-list>

@@ -11,6 +11,39 @@
     var urlCache = new Map();
 
     /**
+     * Отдельный публичный адрес файлового HTTP ноды (Beacon `files_media_endpoint`):
+     * загрузка и скачивание в обход CDN с его лимитом на размер файла.
+     * Пусто — работаем по адресам, которые выдал сервер, как раньше.
+     */
+    function mediaOrigin() {
+        var meta = BF.node.meta();
+        return (meta && meta.filesMediaEndpoint) || '';
+    }
+
+    /** Подменяет хост в ссылке Files на отдельный файловый адрес ноды; путь сохраняется. */
+    function mediaUrl(url) {
+        var origin = mediaOrigin();
+        if (!url || !origin) return url;
+        try {
+            var source = new URL(url);
+            var target = new URL(origin);
+            source.protocol = target.protocol;
+            source.host = target.host;
+            return source.toString();
+        } catch (e) {
+            return url;
+        }
+    }
+
+    function cacheFile(f) {
+        urlCache.set(f.fileId, {
+            fileId: f.fileId,
+            url: mediaUrl(f.url),
+            previewUrl: mediaUrl(f.previewUrl)
+        });
+    }
+
+    /**
      * Get download URLs for file IDs, using cache.
      * @param {string[]} fileIds
      * @returns {Promise<Object[]>} — array of {fileId, url, previewUrl}
@@ -20,7 +53,7 @@
         var p = missing.length > 0
             ? BF.api.getTempDownloadUrl(missing).then(function (data) {
                 if (data && data.files) {
-                    data.files.forEach(function (f) { urlCache.set(f.fileId, f); });
+                    data.files.forEach(cacheFile);
                 }
             })
             : Promise.resolve();
@@ -35,6 +68,17 @@
      */
     function getCachedFileUrl(fileId) {
         return urlCache.get(fileId) || null;
+    }
+
+    /**
+     * Куда слать multipart: на отдельный файловый адрес ноды, если он объявлен
+     * (там тот же путь, что у Files за nginx), иначе — через шлюз своей ноды.
+     */
+    function uploadEndpoint(fileId) {
+        var origin = mediaOrigin();
+        return origin
+            ? origin + '/web/upload/' + fileId
+            : BF.node.origin() + '/api/files/upload/' + fileId;
     }
 
     /**
@@ -54,7 +98,7 @@
 
             return new Promise(function (resolve, reject) {
                 var xhr = new XMLHttpRequest();
-                xhr.open('POST', BF.node.origin() + '/api/files/upload/' + data.fileId);
+                xhr.open('POST', uploadEndpoint(data.fileId));
 
                 xhr.upload.addEventListener('progress', function (event) {
                     if (!event.lengthComputable || typeof onProgress !== 'function') return;
@@ -136,7 +180,7 @@
         return BF.api.getTempDownloadUrl([fileId]).then(function (data) {
             var fd = null;
             if (data && data.files) {
-                data.files.forEach(function (f) { urlCache.set(f.fileId, f); });
+                data.files.forEach(cacheFile);
                 fd = urlCache.get(fileId) || null;
             }
             return fd;

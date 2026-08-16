@@ -17,7 +17,10 @@ public sealed record NodeServiceConfiguration(
     bool FederationEnabled,
     string ColorLight,
     string ColorMain,
-    string ColorDark)
+    string ColorDark,
+    // Необязательное поле: у сохранённых ранее конфигураций его нет, и файлы тогда
+    // качаются по ссылкам Files как раньше.
+    string FilesMediaEndpoint = "")
 {
     public static NodeServiceConfiguration From(NodeConnection connection)
     {
@@ -37,7 +40,8 @@ public sealed record NodeServiceConfiguration(
             parameters.FederationEnabled,
             parameters.Colors.LiteHex,
             parameters.Colors.MainHex,
-            parameters.Colors.HardHex);
+            parameters.Colors.HardHex,
+            parameters.SocketFilesMedia);
     }
 
     public NodeConnection ToConnection() => new(
@@ -50,6 +54,7 @@ public sealed record NodeServiceConfiguration(
             SocketIdentity = IdentityEndpoint,
             SocketUsers = UsersEndpoint,
             SocketFiles = FilesEndpoint,
+            SocketFilesMedia = FilesMediaEndpoint,
             SocketMessages = MessagesEndpoint,
             SocketUpdates = UpdatesEndpoint,
             SocketOnliner = OnlinerEndpoint,

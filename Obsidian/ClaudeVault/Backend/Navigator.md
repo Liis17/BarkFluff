@@ -61,7 +61,7 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 
 ## Domain/ServerInfo
 
-Поля: `Id` (long, ключ), `CreatedAt`, `AddedBy`, `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex/MainHex/HardHex` + этап 1.5: `LastSeenAt`, `ServerName?`, `FederationEndpoint?`, `TlsSpkiSha256?`, `FederationProtocolVersions?`, `SigningKeys? : List<NavigatorSigningKeyInfo>` + `WebEndpoint?`. **`AccountsCount` в доменной модели нет** — существует только в proto-ответе, всегда `0`.
+Поля: `Id` (long, ключ), `CreatedAt`, `AddedBy`, `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex/MainHex/HardHex` + этап 1.5: `LastSeenAt`, `ServerName?`, `FederationEndpoint?`, `TlsSpkiSha256?`, `FederationProtocolVersions?`, `SigningKeys? : List<NavigatorSigningKeyInfo>` + `WebEndpoint?` + `FilesMediaEndpoint?`. **`AccountsCount` в доменной модели нет** — существует только в proto-ответе, всегда `0`.
 
 ### `web_endpoint` — адрес веб-клиента ноды
 
@@ -81,6 +81,19 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
   идемпотентный `ALTER TABLE "Servers" ADD COLUMN` (`EnsureServersColumn`, проверка через
   `pragma_table_info`). Следующие поля добавлять так же, иначе запрос упадёт с
   «no such column» у всех клиентов.
+
+### `files_media_endpoint` — отдельный файловый адрес ноды
+
+`ServerInfo.files_media_endpoint` (proto-поле 14) — абсолютный origin файлового HTTP ноды
+(`https://files2.node.example`), направленный мимо CDN с его лимитом на размер файла
+([[Backend/Nginx]]). Пустое значение = файлы качаются по адресу [[Backend/Files]], как раньше.
+
+- Заполняет [[Backend/Beacon]] (`ServerRegistrationService`) из `ExternalEndpoint:MediaHost`
+  сервиса Files; недоступная конфигурация оставляет поле пустым.
+- Валидация в `RegisterServerCommandHandler` — та же, что у `web_endpoint` (`IsValidPublicEndpoint`,
+  длина ≤ 2048), иначе `InvalidFilesMediaEndpointException`. Поле необязательное.
+- Отдаётся в `ListServers` и `GetServerByName`, показывается в админке.
+- Колонка добавляется тем же идемпотентным `EnsureServersColumn` в `Program.cs` (миграций нет).
 
 В proto `ServerInfo` адрес маяка передаётся как `beacon_uri: ServiceEndpoint` (а не отдельные host/port).
 

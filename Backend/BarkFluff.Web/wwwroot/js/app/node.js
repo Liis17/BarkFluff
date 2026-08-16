@@ -176,6 +176,36 @@
     }
 
     /**
+     * Обновляет метаданные текущей ноды из её Beacon. На самой ноде (pinned) экрана
+     * выбора не было, поэтому meta пустая — а из неё берётся, в частности, отдельный
+     * файловый адрес. Недоступный Beacon просто оставляет прежние метаданные.
+     */
+    function refreshMeta() {
+        var client = beaconClient();
+        if (!client || !window.proto) return Promise.resolve(null);
+
+        return new Promise(function (resolve) {
+            var req = new window.proto.barkfluff.beacon.GetServerInfoRequest();
+            var metadata = (window.BF.metadata && window.BF.metadata.build()) || {};
+            client.getServerInfo(req, metadata, function (err, resp) {
+                if (err || !resp) { resolve(null); return; }
+                var color = resp.getColor();
+                var data = {
+                    name: resp.getPublicName() || resp.getName(),
+                    description: resp.getDescription(),
+                    location: resp.getLocation(),
+                    livekitUrl: resp.getLivekitUrl(),
+                    serverName: resp.getServerName(),
+                    filesMediaEndpoint: resp.getFilesMediaEndpoint(),
+                    color: color ? color.getMainHex() : ''
+                };
+                setMeta(data);
+                resolve(data);
+            });
+        });
+    }
+
+    /**
      * Клиент Navigator — всегда same-origin: каталог нод проксирует тот хост,
      * который отдал страницу (шелл), а не выбранная нода.
      */
@@ -198,6 +228,7 @@
         forget: forget,
         meta: meta,
         setMeta: setMeta,
+        refreshMeta: refreshMeta,
         list: list,
         beaconClient: beaconClient,
         navigatorClient: navigatorClient

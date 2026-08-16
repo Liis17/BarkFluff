@@ -157,7 +157,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
                     progress?.Report(0.5);
 
-                    var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
+                    var response = await _httpClient.PostAsync(ToMediaUrl(globalParam, getLinkUpload.Url), formData);
                     if (!response.IsSuccessStatusCode)
                     {
                         System.Diagnostics.Debug.WriteLine($"WebApi: Upload failed with status {response.StatusCode}");
@@ -216,7 +216,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
                     formData.Add(fileContent, "file", "avatar.jpg");
 
-                    var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
+                    var response = await _httpClient.PostAsync(ToMediaUrl(globalParam, getLinkUpload.Url), formData);
                     response.EnsureSuccessStatusCode();
 
                     try
@@ -254,7 +254,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     var response = await FilesAC!.GetTempDownloadUrlAsync(new Proto.Files.GetTempDownloadUrlRequest { FileIds = { fileId } });
                     if (!HasValidFileUrls(response.FileUrls))
                         return (new ErrorReturner(false, "Файл не найден"), string.Empty);
-                    return (new ErrorReturner(true), response.FileUrls[0].Url);
+                    return (new ErrorReturner(true), ToMediaUrl(globalParam, response.FileUrls[0].Url));
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
@@ -276,7 +276,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     var response = await FilesAC!.GetTempDownloadUrlAsync(new Proto.Files.GetTempDownloadUrlRequest { FileIds = { fileId } });
                     if (!HasValidFileUrls(response.FileUrls))
                         return (new ErrorReturner(false, "Файлы не найдены"), null);
-                    var urls = response.FileUrls.Select(f => f.Url).ToList();
+                    var urls = response.FileUrls.Select(f => ToMediaUrl(globalParam, f.Url)).ToList();
                     return (new ErrorReturner(true), urls);
                 }, globalParam);
             }
@@ -284,6 +284,30 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Ошибка получения файлов"), null);
             }
+        }
+
+        /// <summary>
+        /// Files выдаёт ссылки на свой основной адрес, который может стоять за CDN с лимитом
+        /// на размер файла. Если нода объявила отдельный файловый адрес (Beacon
+        /// files_media_endpoint) — подменяем в ссылке хост, путь остаётся прежним.
+        /// </summary>
+        private static string ToMediaUrl(GlobalParam globalParam, string url)
+        {
+            if (string.IsNullOrWhiteSpace(globalParam.SocketFilesMedia) || string.IsNullOrWhiteSpace(url))
+                return url;
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var source)
+                || !Uri.TryCreate(globalParam.SocketFilesMedia, UriKind.Absolute, out var media))
+                return url;
+
+            var builder = new UriBuilder(source)
+            {
+                Scheme = media.Scheme,
+                Host = media.Host,
+                Port = media.IsDefaultPort ? -1 : media.Port
+            };
+
+            return builder.Uri.ToString();
         }
 
         /// <summary>
