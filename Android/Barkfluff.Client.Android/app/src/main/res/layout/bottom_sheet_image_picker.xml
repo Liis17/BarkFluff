@@ -177,7 +177,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
+            android:paddingVertical="8dp"
             android:gravity="center_vertical">
 
             <EditText
@@ -185,11 +185,15 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:minHeight="48dp"
+                android:background="@drawable/bg_chat_input_bar"
+                android:gravity="center_vertical"
                 android:hint="@string/add_caption_hint"
                 android:inputType="textMultiLine"
                 android:maxLines="3"
-                android:background="@android:color/transparent"
-                android:paddingVertical="8dp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurface"
                 android:textColorHint="?attr/colorOnSurfaceVariant" />
@@ -198,13 +202,13 @@
                 android:id="@+id/sendButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/bg_send_button_circle"
                 android:contentDescription="@string/send"
                 android:padding="12dp"
                 android:src="@drawable/ic_send_filled"
                 android:enabled="false"
                 android:alpha="0.5"
-                app:tint="?attr/colorPrimary" />
+                app:tint="?attr/colorOnPrimary" />
 
         </LinearLayout>
 
