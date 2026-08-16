@@ -14,15 +14,15 @@ Package: `com.barkfluff.client`
 - Kotlin 2.2.20, AGP 8.9.1
 - gRPC-OkHttp 1.60.0 (NOT grpc-netty)
 
-## Иконка приложения (adaptive, вектор)
+## Иконка приложения (adaptive, по каналу сборки)
 
-Иконка полностью векторная (adaptive icon, минимально доступный API 26; minSdk 31 — растровые фолбэки не нужны).
+Иконка выбирается product flavor’ом, который CI сопоставляет с веткой (`master → stable`, `dev → dev`, `nightly → nightly`). Каждый flavor использует цельный исходный арт, а не отдельную полноразмерную текстуру и глиф: иначе лаунчер накладывает свою маску и форма иконки расходится с исходником.
 
-- `drawable/ic_launcher_background.xml` — full-bleed радиальный градиент `#FFF→#F3F3F3→#EDEDED` (центр 50%/48%, r 72%) на viewport 1536×1536 через `aapt:attr`/`<gradient>`. Без скругления — форму накладывает маска лаунчера.
-- `drawable/ic_launcher_foreground.xml` — глиф лого `#111116`; путь из исходной SVG (`app_icon_vector.svg`) обёрнут в `<group>` с pivot (768,768) и scale 0.76: максимальный радиус глифа 616 юнитов × 0.76 = 468 < 469.3 (safe zone 66dp).
-- `mipmap-anydpi-v26/ic_launcher.xml` / `ic_launcher_round.xml` — `<adaptive-icon>` со слоями `background` + `foreground` + `monochrome` (тот же foreground; даёт MD3 themed-иконку на Android 13+, tint системный, на API <33 слой игнорируется).
+- Источник арта — `Windows/BarkFluff.Client.WinUI/Assets/{master,dev,nightly}/StoreLogo.scale-400.png`; копии лежат в `app/src/{main,dev,nightly}/res/drawable-nodpi/ic_launcher_art_*.png`.
+- `drawable/ic_launcher_layer_{master,dev,nightly}.xml` помещает соответствующий PNG в квадрат 66dp — безопасную зону adaptive-иконки. Прозрачные углы исходного скруглённого квадрата сохраняются.
+- `mipmap-anydpi-v26/ic_launcher.xml` / `ic_launcher_round.xml` используют прозрачный `background` и flavor-specific `foreground`; `ic_launcher_foreground.xml` оставлен только для monochrome-слоя Android 13+.
 - Растровые WebP `ic_launcher*.webp` из `mipmap-*hdpi` удалены.
-- ⚠️ In-app использование (`activity_splash`, `activity_login`, `activity_welcome`, `activity_register`, `step_register_07_bio`, `activity_about` → `@mipmap/ic_launcher(_round)`) пока не менялось: `AdaptiveIconDrawable` в `ImageView` рисуется без маски (полный квадрат с градиентом и уменьшенным глифом). Замена на отдельный in-app drawable — отдельная будущая задача.
+- ⚠️ In-app использование (`activity_splash`, `activity_login`, `activity_welcome`, `activity_register`, `step_register_07_bio`, `activity_about` → `@mipmap/ic_launcher(_round)`) всё ещё рисует `AdaptiveIconDrawable` без launcher-маски, поэтому арт находится в 66dp safe zone и может выглядеть меньше, чем в лаунчере. Отдельный in-app drawable — отдельная будущая задача.
 - ViewBinding, без Hilt/MVVM
 
 ## Архитектура
@@ -173,7 +173,7 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 | `nightly` | `nightly` | `com.barkfluff.nightly` | Barkfluff.nightly | `nightly` | `Barkfluff-nightly-X.Y.Z.apk` |
 
 - **`BuildConfig.UPDATE_CHANNEL`** — канал сборки. По нему `UpdateChecker.hasUpdate()` следит только за своим каналом, а `UpdateActivity` показывает кнопку обновления лишь в своей карточке: APK чужого канала не обновит приложение, а встанет вторым. Канал больше **не** определяется суффиксом « beta» в версии — `AppVersion.isBeta` для этого не используется.
-- **Ресурсы каналов** — `app/src/dev/res/` и `app/src/nightly/res/` перекрывают `main`: `app_name` во всех пяти локалях и adaptive-иконка. Иконка собрана из двух слоёв (фон-текстура PNG в `drawable-nodpi/`, белый глиф-вектор с обводкой), потому что маска adaptive-иконки показывает только центральные 66% холста и срезала бы готовое изображение по краям.
+- **Ресурсы каналов** — `app/src/dev/res/` и `app/src/nightly/res/` перекрывают `main`: `app_name` во всех пяти локалях и adaptive-иконка. Для иконки используется цельный `StoreLogo`-арт канала из `Windows/BarkFluff.Client.WinUI/Assets/{branch}/`, скопированный в `drawable-nodpi/` и помещённый в `layer-list` размером 66dp — в безопасную зону adaptive-иконки. Внешний слой прозрачен, поэтому лаунчер сохраняет исходные скруглённые углы и фактуру вместо собственной маски поверх полноразмерной текстуры.
 - **`google-services.json`** содержит client-записи всех трёх пакетов. Без записи под конкретный `applicationId` плагин `com.google.gms.google-services` роняет сборку флейвора.
 - **Версия.** `versionName` поднимает только сборка ветки `nightly` (patch + 1 от версии в канале `nightly`); `dev` и `master` переиздают ту же версию как есть. В git `versionName` всегда остаётся `0.0.1` — реальное значение `sed`'ом подставляет CI и обратно не коммитит. Следствие: два пуша в `dev` подряд без промежуточной nightly-сборки дают два APK с одинаковой версией, и клиент не увидит второй как обновление.
 - **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла.
