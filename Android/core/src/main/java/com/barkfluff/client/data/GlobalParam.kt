@@ -46,6 +46,14 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_SOCKET_FILES, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SOCKET_FILES, value).apply()
 
+    /**
+     * Отдельный публичный origin файлового HTTP ноды ('https://files2.example.com').
+     * Пусто — нода такого адреса не объявила, файлы качаются по ссылкам как есть.
+     */
+    var socketFilesMedia: String
+        get() = sharedPreferences.getString(KEY_SOCKET_FILES_MEDIA, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_SOCKET_FILES_MEDIA, value).apply()
+
     var socketMessages: String
         get() = sharedPreferences.getString(KEY_SOCKET_MESSAGES, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SOCKET_MESSAGES, value).apply()
@@ -373,6 +381,7 @@ class GlobalParam(private val context: Context) {
         val users = socketUsers
         val identity = socketIdentity
         val files = socketFiles
+        val filesMedia = socketFilesMedia
         val messages = socketMessages
         val updates = socketUpdates
         val onliner = socketOnliner
@@ -392,6 +401,7 @@ class GlobalParam(private val context: Context) {
             if (users.isNotBlank()) putString(KEY_SOCKET_USERS, users)
             if (identity.isNotBlank()) putString(KEY_SOCKET_IDENTITY, identity)
             if (files.isNotBlank()) putString(KEY_SOCKET_FILES, files)
+            if (filesMedia.isNotBlank()) putString(KEY_SOCKET_FILES_MEDIA, filesMedia)
             if (messages.isNotBlank()) putString(KEY_SOCKET_MESSAGES, messages)
             if (updates.isNotBlank()) putString(KEY_SOCKET_UPDATES, updates)
             if (onliner.isNotBlank()) putString(KEY_SOCKET_ONLINER, onliner)
@@ -412,6 +422,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_SOCKET_USERS = "socket_users"
         private const val KEY_SOCKET_IDENTITY = "socket_identity"
         private const val KEY_SOCKET_FILES = "socket_files"
+        private const val KEY_SOCKET_FILES_MEDIA = "socket_files_media"
         private const val KEY_SOCKET_MESSAGES = "socket_messages"
         private const val KEY_SOCKET_UPDATES = "socket_updates"
         private const val KEY_SOCKET_ONLINER = "socket_onliner"

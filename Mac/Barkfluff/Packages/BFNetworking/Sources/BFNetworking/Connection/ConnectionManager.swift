@@ -49,6 +49,10 @@ public actor ConnectionManager {
     public private(set) var serverInfo: ServerInfoDTO?
     public private(set) var isBootstrapped = false
 
+    /// Отдельный публичный origin файлового HTTP ноды ('https://files2.example.com').
+    /// nil — нода такого адреса не имеет, файлы идут по адресу из ссылок Files.
+    public private(set) var filesMediaOrigin: String?
+
     /// Снимок известных эндпоинтов сервисов. Возвращается копией, чтобы не делиться внутренним состоянием.
     public func endpoints() -> [ServiceKind: ServiceEndpoint] {
         serviceEndpoints
@@ -128,6 +132,7 @@ public actor ConnectionManager {
 
         // Маппинг сервисов из ответа Beacon
         mapServiceEndpoints(from: response)
+        filesMediaOrigin = response.filesMediaEndpoint.isEmpty ? nil : response.filesMediaEndpoint
 
         // Создаём ServerInfoDTO
         let info = ServerInfoDTO(
@@ -271,9 +276,30 @@ public actor ConnectionManager {
         serviceEndpoints[kind] = endpoint
     }
 
+    /// Подменяет хост в файловой ссылке на отдельный медиа-адрес ноды.
+    /// Files выдаёт ссылки на свой основной адрес, который может стоять за CDN с лимитом
+    /// на размер файла; если нода объявила отдельный файловый origin — грузим через него.
+    /// Путь ссылки не меняется, поэтому старые ноды (origin пуст) работают как раньше.
+    public func rewriteToMediaOrigin(_ urlString: String) -> String {
+        guard let origin = filesMediaOrigin,
+              let mediaComponents = URLComponents(string: origin),
+              let mediaHost = mediaComponents.host,
+              var components = URLComponents(string: urlString),
+              components.host != nil
+        else {
+            return urlString
+        }
+
+        components.scheme = mediaComponents.scheme ?? components.scheme
+        components.host = mediaHost
+        components.port = mediaComponents.port
+        return components.string ?? urlString
+    }
+
     public func shutdown() async {
         isBootstrapped = false
         serviceEndpoints.removeAll()
         serverInfo = nil
+        filesMediaOrigin = nil
     }
 }

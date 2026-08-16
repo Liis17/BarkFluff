@@ -14,6 +14,12 @@ fun GlobalParam.applyServerInfo(serverInfo: GrpcManager.ServerInfo) {
     socketIdentity = ensureHttpPrefix(serverInfo.identityEndpoint)
     socketUsers = ensureHttpPrefix(serverInfo.usersEndpoint)
     socketFiles = ensureHttpPrefix(serverInfo.filesEndpoint)
+    // Отдельный файловый адрес ноды: пустой — качаем и грузим по ссылкам Files как есть.
+    socketFilesMedia = if (serverInfo.filesMediaEndpoint.isBlank()) {
+        ""
+    } else {
+        ensureHttpPrefix(serverInfo.filesMediaEndpoint)
+    }
     socketMessages = ensureHttpPrefix(serverInfo.messagesEndpoint)
     socketUpdates = ensureHttpPrefix(serverInfo.updatesEndpoint)
     socketOnliner = ensureHttpPrefix(serverInfo.onlinerEndpoint)
