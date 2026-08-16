@@ -29,7 +29,7 @@ public actor FilesRepository: FilesRepositoryProtocol {
         let req = request
 
         do {
-            return try await connectionManager.withAuthorizedClient(for: .files) { client in
+            let info = try await connectionManager.withAuthorizedClient(for: .files) { client in
                 let filesClient = Barkfluff_Files_FilesApi.Client(wrapping: client)
                 let response = try await filesClient.getUploadUrl(req)
                 return FileUploadInfo(
@@ -38,6 +38,11 @@ public actor FilesRepository: FilesRepositoryProtocol {
                     expiresIn: 3600 // Default 1 hour expiration
                 )
             }
+            return FileUploadInfo(
+                fileID: info.fileID,
+                uploadURL: await connectionManager.rewriteToMediaOrigin(info.uploadURL),
+                expiresIn: info.expiresIn
+            )
         } catch let error as RPCError {
             throw GRPCErrorMapper.map(error)
         }
@@ -132,7 +137,7 @@ public actor FilesRepository: FilesRepositoryProtocol {
         let req = request
 
         do {
-            return try await connectionManager.withAuthorizedClient(for: .files) { client in
+            let url = try await connectionManager.withAuthorizedClient(for: .files) { client in
                 let filesClient = Barkfluff_Files_FilesApi.Client(wrapping: client)
                 let response = try await filesClient.getTempDownloadUrl(req)
                 guard let fileData = response.fileUrls.first else {
@@ -140,6 +145,7 @@ public actor FilesRepository: FilesRepositoryProtocol {
                 }
                 return fileData.url
             }
+            return await connectionManager.rewriteToMediaOrigin(url)
         } catch let error as RPCError {
             throw GRPCErrorMapper.map(error)
         }
@@ -155,7 +161,7 @@ public actor FilesRepository: FilesRepositoryProtocol {
         let req = request
 
         do {
-            return try await connectionManager.withAuthorizedClient(for: .files) { client in
+            let files = try await connectionManager.withAuthorizedClient(for: .files) { client in
                 let filesClient = Barkfluff_Files_FilesApi.Client(wrapping: client)
                 let response = try await filesClient.getTempDownloadUrl(req)
 
@@ -167,6 +173,23 @@ public actor FilesRepository: FilesRepositoryProtocol {
                     )
                 }
             }
+
+            var rewritten: [FileDownloadInfo] = []
+            rewritten.reserveCapacity(files.count)
+            for file in files {
+                var previewURL: String? = nil
+                if let preview = file.previewURL {
+                    previewURL = await connectionManager.rewriteToMediaOrigin(preview)
+                }
+                rewritten.append(
+                    FileDownloadInfo(
+                        fileID: file.fileID,
+                        url: await connectionManager.rewriteToMediaOrigin(file.url),
+                        previewURL: previewURL
+                    )
+                )
+            }
+            return rewritten
         } catch let error as RPCError {
             throw GRPCErrorMapper.map(error)
         }

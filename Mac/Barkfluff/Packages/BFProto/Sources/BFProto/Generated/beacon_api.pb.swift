@@ -209,6 +209,14 @@ public struct Barkfluff_Beacon_GetServerInfoResponse: @unchecked Sendable {
   /// Clears the value of `calls`. Subsequent reads from it will return its default value.
   public mutating func clearCalls() {_uniqueStorage()._calls = nil}
 
+  /// Отдельный публичный origin для файлового HTTP ('https://files2.example.com'):
+  /// загрузка и скачивание в обход CDN и его лимита на размер файла. Клиент подменяет
+  /// им хост в ссылках, которые выдал Files. Пусто — работать по адресу из files.
+  public var filesMediaEndpoint: String {
+    get {_storage._filesMediaEndpoint}
+    set {_uniqueStorage()._filesMediaEndpoint = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -311,7 +319,7 @@ extension Barkfluff_Beacon_GetServerInfoRequest: SwiftProtobuf.Message, SwiftPro
 
 extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetServerInfoResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}color\0\u{1}identity\0\u{1}users\0\u{1}files\0\u{1}messages\0\u{1}updates\0\u{1}onliner\0\u{3}fast_auth\0\u{3}public_name\0\u{1}location\0\u{3}livekit_url\0\u{1}calls\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}color\0\u{1}identity\0\u{1}users\0\u{1}files\0\u{1}messages\0\u{1}updates\0\u{1}onliner\0\u{3}fast_auth\0\u{3}public_name\0\u{1}location\0\u{3}livekit_url\0\u{1}calls\0\u{4}\u{4}files_media_endpoint\0")
 
   fileprivate class _StorageClass {
     var _name: String = String()
@@ -328,6 +336,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
     var _location: String = String()
     var _livekitURL: String = String()
     var _calls: Barkfluff_Beacon_Service? = nil
+    var _filesMediaEndpoint: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -352,6 +361,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
       _location = source._location
       _livekitURL = source._livekitURL
       _calls = source._calls
+      _filesMediaEndpoint = source._filesMediaEndpoint
     }
   }
 
@@ -384,6 +394,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
         case 12: try { try decoder.decodeSingularStringField(value: &_storage._location) }()
         case 13: try { try decoder.decodeSingularStringField(value: &_storage._livekitURL) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._calls) }()
+        case 18: try { try decoder.decodeSingularStringField(value: &_storage._filesMediaEndpoint) }()
         default: break
         }
       }
@@ -438,6 +449,9 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
       try { if let v = _storage._calls {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
       } }()
+      if !_storage._filesMediaEndpoint.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filesMediaEndpoint, fieldNumber: 18)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -461,6 +475,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
         if _storage._location != rhs_storage._location {return false}
         if _storage._livekitURL != rhs_storage._livekitURL {return false}
         if _storage._calls != rhs_storage._calls {return false}
+        if _storage._filesMediaEndpoint != rhs_storage._filesMediaEndpoint {return false}
         return true
       }
       if !storagesAreEqual {return false}
