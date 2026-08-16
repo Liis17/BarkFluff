@@ -22,7 +22,9 @@ dotnet build Backend/BarkFluff.Beacon/BarkFluff.Beacon.csproj
 Сервис **не имеет БД**. Вся логика — две операции:
 
 1. **GetServerInfo** (gRPC endpoint) — **параллельно** (`Task.WhenAll`) запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner, FastAuth, **Calls**, **Bots**, **Federation** (10 сервисов) из Configuration service и собирает ответ с внешними эндпоинтами (`ExternalEndpoint:Host`; если host не задан — сервис помечается `Offline`, иначе `Healthy` + TLS + порт 443). Ответ кешируется в `IMemoryCache` на 5 минут. В `GetServerInfoResponse` отдаёт `public_name`, `location` и `livekit_url` (публичный wss://-адрес LiveKit SFU из секции `LiveKit`/`PublicUrl` конфигурации `Calls`; отдельно от внутреннего `LiveKit:Url`; пусто, если не задан или не является абсолютным `wss://`). Этап 0.4 rearch: также отдаёт `server_name`/`federation_enabled` (fields 16-17) — читает `Federation:ServerName`/`Federation:Enabled` из Configuration; пустая строка/`false`, пока оператор ноды их не задал.
-2. **ServerRegistrationService** (BackgroundService) — каждые 5 минут отправляет `RegisterServerRequest` в Navigator.
+
+   Поле `files_media_endpoint` (field 18) — отдельный публичный origin файлового HTTP ноды (`ExternalEndpoint:MediaHost` конфигурации [[Backend/Files]], нормализуется до `https://host`). Нужен, чтобы загрузка и скачивание шли мимо CDN с его лимитом на размер файла ([[Backend/Nginx]], `files2.barkfluff.com`); клиент подменяет им **только хост** в ссылках, которые выдал Files. Пусто (значение по умолчанию) — клиент работает по старому адресу, поэтому старые клиенты и ноды без этого адреса не ломаются.
+2. **ServerRegistrationService** (BackgroundService) — каждые 5 минут отправляет `RegisterServerRequest` в Navigator. Кроме `web_endpoint` передаёт `files_media_endpoint` (тот же `ExternalEndpoint:MediaHost` из конфигурации [[Backend/Files]]); недоступная конфигурация регистрацию не ломает — поле уходит пустым.
 
 CQRS через MediatR: `GetServerInfoCommand` → `GetServerInfoCommandHandler`.
 
