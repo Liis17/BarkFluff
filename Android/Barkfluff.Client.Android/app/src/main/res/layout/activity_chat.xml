@@ -74,7 +74,7 @@
         tools:listitem="@layout/item_message_sent" />
 
     <!-- ═══════════════════════════════════════════
-         ВЕРХНЯЯ ПАНЕЛЬ: [←] [Имя | статус] [☎] [⋯] [Аватар]
+         ВЕРХНЯЯ ПАНЕЛЬ: [←] [Аватар + имя | статус] [☎] [⋯]
          Имя уменьшается, а статус скрывается при прокрутке в историю сообщений.
          Сама панель прозрачна — вместо сплошной подложки на всю ширину
          каждый блок (back, инфо, действия) получает свой скруглённый чип-фон
@@ -106,7 +106,7 @@
             android:src="@drawable/ic_arrow_back"
             app:tint="?attr/colorOnSurface" />
 
-        <!-- Имя + статус: тап открывает профиль собеседника или карточку группы -->
+        <!-- Аватар + имя + статус: тап открывает профиль собеседника или карточку группы -->
         <LinearLayout
             android:id="@+id/chatInfoCard"
             android:layout_width="0dp"
@@ -118,44 +118,91 @@
             android:foreground="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
-            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             android:paddingHorizontal="12dp"
             android:paddingVertical="2dp">
 
-            <TextView
-                android:id="@+id/chatNameTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:lineHeight="28sp"
-                android:maxLines="1"
-                android:textColor="?attr/colorOnSurface"
-                android:textFontWeight="600"
-                android:textSize="22sp"
-                tools:text="Имя пользователя" />
-
-            <!-- Обёртка нужна, чтобы схлопывать строку статуса по высоте -->
             <FrameLayout
-                android:id="@+id/chatStatusContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="8dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/chatAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
                 <TextView
-                    android:id="@+id/onlineStatusTextView"
+                    android:id="@+id/chatAvatarPlaceholder"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:lineHeight="16sp"
-                    android:maxLines="1"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    tools:text="в сети" />
+                    android:layout_height="match_parent"
+                    android:background="@drawable/background_color_indicator"
+                    android:contentDescription="@null"
+                    android:gravity="center"
+                    android:importantForAccessibility="no"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="visible" />
+
+                <!-- Индикатор онлайн -->
+                <View
+                    android:id="@+id/onlineIndicator"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="bottom|end"
+                    android:background="@drawable/online_indicator"
+                    android:visibility="gone" />
 
             </FrameLayout>
 
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/chatNameTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:lineHeight="28sp"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textFontWeight="600"
+                    android:textSize="22sp"
+                    tools:text="Имя пользователя" />
+
+                <!-- Обёртка нужна, чтобы схлопывать строку статуса по высоте -->
+                <FrameLayout
+                    android:id="@+id/chatStatusContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:id="@+id/onlineStatusTextView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:lineHeight="16sp"
+                        android:maxLines="1"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                        tools:text="в сети" />
+
+                </FrameLayout>
+
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- Кластер действий (звонок, меню, аватар) — отдельный чип-блок -->
+        <!-- Кластер действий (звонок, меню) — отдельный чип-блок -->
         <LinearLayout
             android:id="@+id/headerActionsCluster"
             android:layout_width="wrap_content"
@@ -184,43 +231,6 @@
                 android:rotation="90"
                 android:src="@drawable/ic_more_vert"
                 app:tint="?attr/colorOnSurfaceVariant" />
-
-            <FrameLayout
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_marginStart="2dp">
-
-                <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/chatAvatar"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@null"
-                    android:importantForAccessibility="no"
-                    android:scaleType="centerCrop"
-                    android:visibility="gone"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
-
-                <TextView
-                    android:id="@+id/chatAvatarPlaceholder"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/background_color_indicator"
-                    android:gravity="center"
-                    android:textColor="@android:color/white"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:visibility="visible" />
-
-                <!-- Индикатор онлайн -->
-                <View
-                    android:id="@+id/onlineIndicator"
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:layout_gravity="bottom|end"
-                    android:background="@drawable/online_indicator"
-                    android:visibility="gone" />
-
-            </FrameLayout>
 
         </LinearLayout>
 
