@@ -120,7 +120,8 @@
             android:focusable="true"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="12dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="12dp"
             android:paddingVertical="2dp">
 
             <FrameLayout
