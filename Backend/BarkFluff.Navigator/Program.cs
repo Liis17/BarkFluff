@@ -74,6 +74,7 @@ using (var scope = app.Services.CreateScope())
     var ctx = scope.ServiceProvider.GetRequiredService<NavigatorContext>();
     ctx.Database.EnsureCreated();
     EnsureServersColumn(ctx, "WebEndpoint", "TEXT NULL");
+    EnsureServersColumn(ctx, "FilesMediaEndpoint", "TEXT NULL");
 }
 
 // EnsureCreated() создаёт схему только для новой БД, миграций в проекте нет —
@@ -149,6 +150,7 @@ app.MapGet("/admin/api/servers", async (ServersStorage serversStorage, Cancellat
             beaconHost = server.BeaconHost,
             beaconPort = server.BeaconPort,
             webEndpoint = server.WebEndpoint ?? string.Empty,
+            filesMediaEndpoint = server.FilesMediaEndpoint ?? string.Empty,
             server.LastSeenAt,
             color = server.ColorMainHex
         }));

@@ -64,6 +64,7 @@ public class ServersStorage
             existing.FederationProtocolVersions = server.FederationProtocolVersions;
             existing.SigningKeys = server.SigningKeys;
             existing.WebEndpoint = server.WebEndpoint;
+            existing.FilesMediaEndpoint = server.FilesMediaEndpoint;
         }
 
         await _context.SaveChangesAsync(ct);
