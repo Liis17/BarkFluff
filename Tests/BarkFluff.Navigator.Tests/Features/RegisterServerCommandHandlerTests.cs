@@ -282,4 +282,41 @@ public class RegisterServerCommandHandlerTests
         var stored = await _storage.GetServersAsync();
         stored.Should().ContainSingle(s => s.WebEndpoint == "https://gw.example.com");
     }
+
+    [Theory]
+    [InlineData("files2.example.com")]        // без схемы — клиенту нужен absolute origin
+    [InlineData("ftp://files2.example.com")]
+    [InlineData("https://")]
+    public async Task Handle_InvalidFilesMediaEndpoint_ThrowsInvalidFilesMediaEndpoint(string endpoint)
+    {
+        var server = ValidServer();
+        server.FilesMediaEndpoint = endpoint;
+
+        await FluentActions.Awaiting(() => Invoke(server))
+            .Should().ThrowAsync<InvalidFilesMediaEndpointException>();
+    }
+
+    [Theory]
+    [InlineData("https://files2.example.com")]
+    [InlineData(null)]                        // необязательное поле: файлы идут по адресу Files
+    [InlineData("")]
+    public async Task Handle_ValidOrEmptyFilesMediaEndpoint_Succeeds(string? endpoint)
+    {
+        var server = ValidServer();
+        server.FilesMediaEndpoint = endpoint;
+
+        await FluentActions.Awaiting(() => Invoke(server)).Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ValidFilesMediaEndpoint_IsPersisted()
+    {
+        var server = ValidServer();
+        server.FilesMediaEndpoint = "https://files2.example.com";
+
+        await Invoke(server);
+
+        var stored = await _storage.GetServersAsync();
+        stored.Should().ContainSingle(s => s.FilesMediaEndpoint == "https://files2.example.com");
+    }
 }
