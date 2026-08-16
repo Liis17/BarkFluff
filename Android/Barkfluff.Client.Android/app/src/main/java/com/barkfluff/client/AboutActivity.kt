@@ -223,7 +223,9 @@ class AboutActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        servicePingChecker.close()
+        // ConnectionPool.evictAll() закрывает TLS-сокеты синхронно (сетевой I/O),
+        // поэтому с главного потока это падает с NetworkOnMainThreadException.
+        Thread { servicePingChecker.close() }.start()
         super.onDestroy()
     }
 
