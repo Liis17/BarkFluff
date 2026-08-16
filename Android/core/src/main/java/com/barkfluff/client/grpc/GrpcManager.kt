@@ -2311,7 +2311,7 @@ class GrpcManager(context: Context) {
      * Извлекает GUID (fileId) из URL файла.
      * Сервер файлов возвращает URL вида: https://files.barkfluff.com/web/download/{fileId}
      */
-    private fun extractGuidFromUrl(urlOrGuid: String): String {
+    internal fun extractGuidFromUrl(urlOrGuid: String): String {
         if (urlOrGuid.isBlank()) return urlOrGuid
 
         // Если это URL (начинается с http), извлекаем GUID из конца
