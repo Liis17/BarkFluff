@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
   <g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="7" y="2" width="10" height="20" rx="2"/>
-    <path d="M10 19h4"/>
+    <rect x="6" y="2" width="12" height="20" rx="3"></rect>
+    <path d="M9 19.5h6"></path>
   </g>
-  <circle cx="12" cy="5" r="0.6" fill="currentColor"/>
+  <circle cx="12" cy="5" r="0.6" fill="currentColor"></circle>
 </svg>
