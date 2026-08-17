@@ -36,7 +36,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:contentDescription="@string/cd_back"
-            app:icon="@drawable/ic_arrow_back"
+            app:icon="@drawable/ic_arrow_back_rounded"
             app:iconTint="@android:color/white" />
 
         <View
@@ -50,7 +50,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:contentDescription="@string/cd_more"
-            app:icon="@drawable/ic_more_vert"
+            app:icon="@drawable/ic_more_vert_rounded"
             app:iconTint="@android:color/white" />
 
     </LinearLayout>
@@ -78,7 +78,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/cd_play_pause"
-                app:icon="@drawable/ic_play_arrow" />
+                app:icon="@drawable/ic_play_arrow_rounded" />
 
             <SeekBar
                 android:id="@+id/videoSeekBar"
@@ -112,7 +112,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/cd_download_video"
-                app:icon="@drawable/ic_download" />
+                app:icon="@drawable/ic_download_rounded" />
 
         </LinearLayout>
 

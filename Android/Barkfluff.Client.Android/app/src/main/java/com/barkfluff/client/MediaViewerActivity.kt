@@ -130,7 +130,7 @@ class MediaViewerActivity : AppCompatActivity() {
                         startProgressUpdates()
                     }
                     if (state == Player.STATE_ENDED) {
-                        binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow)
+                        binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow_rounded)
                         binding.videoSeekBar.progress = 0
                         binding.timeText.text = getString(R.string.media_time_position, formatTime(0), formatTime(exo.duration))
                         exo.seekTo(0)
@@ -148,7 +148,7 @@ class MediaViewerActivity : AppCompatActivity() {
     private fun updatePlayPauseIcon() {
         val isPlaying = player?.isPlaying == true
         binding.playPauseButton.setIconResource(
-            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+            if (isPlaying) R.drawable.ic_pause_rounded else R.drawable.ic_play_arrow_rounded
         )
         binding.playPauseButton.contentDescription = getString(
             if (isPlaying) R.string.cd_pause else R.string.cd_play

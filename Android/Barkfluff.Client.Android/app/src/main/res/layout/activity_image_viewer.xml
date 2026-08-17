@@ -33,7 +33,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:contentDescription="@string/cd_close"
-            app:icon="@drawable/ic_close"
+            app:icon="@drawable/ic_arrow_back_rounded"
             app:iconTint="@android:color/white" />
 
         <View
@@ -83,7 +83,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/msg_action_save_image"
-                app:icon="@drawable/ic_save" />
+                app:icon="@drawable/ic_save_rounded" />
 
             <View
                 android:layout_width="1dp"
@@ -97,7 +97,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/msg_action_copy_image"
-                app:icon="@drawable/ic_copy_content" />
+                app:icon="@drawable/ic_copy_content_rounded" />
 
             <View
                 android:layout_width="1dp"
@@ -111,7 +111,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/msg_action_forward"
-                app:icon="@drawable/ic_forward" />
+                app:icon="@drawable/ic_forward_rounded" />
 
         </LinearLayout>
 
