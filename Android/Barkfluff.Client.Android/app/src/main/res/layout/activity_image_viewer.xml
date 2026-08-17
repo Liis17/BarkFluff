@@ -61,36 +61,29 @@
     </LinearLayout>
 
     <!-- M3 Expressive Floating Toolbar — контекстные действия с изображением -->
-    <com.google.android.material.card.MaterialCardView
+    <com.google.android.material.floatingtoolbar.FloatingToolbarLayout
         android:id="@+id/actionsToolbarCard"
+        style="@style/Widget.Material3.FloatingToolbar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:layout_marginBottom="16dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="@dimen/shape_corner_full"
-        app:cardElevation="6dp"
-        app:strokeColor="?attr/colorOutlineVariant"
-        app:strokeWidth="1dp">
+        android:layout_marginBottom="16dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:orientation="horizontal"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="6dp">
+            android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/saveButton"
-                style="@style/Widget.Material3.Button.IconButton"
+                style="@style/Widget.Material3.FloatingToolbar.IconButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/msg_action_save_image"
-                app:icon="@drawable/ic_save"
-                app:iconTint="?attr/colorOnSurface" />
+                app:icon="@drawable/ic_save" />
 
             <View
                 android:layout_width="1dp"
@@ -100,12 +93,11 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/copyButton"
-                style="@style/Widget.Material3.Button.IconButton"
+                style="@style/Widget.Material3.FloatingToolbar.IconButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/msg_action_copy_image"
-                app:icon="@drawable/ic_copy_content"
-                app:iconTint="?attr/colorOnSurface" />
+                app:icon="@drawable/ic_copy_content" />
 
             <View
                 android:layout_width="1dp"
@@ -115,16 +107,15 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/forwardButton"
-                style="@style/Widget.Material3.Button.IconButton"
+                style="@style/Widget.Material3.FloatingToolbar.IconButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/msg_action_forward"
-                app:icon="@drawable/ic_forward"
-                app:iconTint="?attr/colorOnSurface" />
+                app:icon="@drawable/ic_forward" />
 
         </LinearLayout>
 
-    </com.google.android.material.card.MaterialCardView>
+    </com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
 
     <!-- Индикатор загрузки (по центру) -->
     <com.google.android.material.progressindicator.CircularProgressIndicator
