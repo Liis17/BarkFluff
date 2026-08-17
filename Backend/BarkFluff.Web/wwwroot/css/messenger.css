@@ -4635,6 +4635,9 @@
             transform: translateX(-50%) translateY(0);
             transition-duration: 160ms;
         }
+        .soon-toast.error {
+            background: var(--danger, #d14343);
+        }
 
         @media (max-width: 768px) {
             .forward-modal {
