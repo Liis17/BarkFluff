@@ -206,6 +206,9 @@ class ChatActivity : AppCompatActivity() {
     // Оверлей меню действий над сообщением (Telegram-стиль)
     private lateinit var messageActionsOverlay: MessageActionsOverlay
 
+    // Режим множественного выделения сообщений
+    private val selectedMessageIds = mutableSetOf<Long>()
+
     private val pasteUCropLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -439,6 +442,7 @@ class ChatActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         val headerBasePaddingTop = binding.chatHeaderBar.paddingTop
+        val selectionBasePaddingTop = binding.selectionToolbar.paddingTop
 
         val sendBaseMargin = (binding.sendButton.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
         val inputBaseMargin = (binding.inputBar.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
@@ -468,6 +472,8 @@ class ChatActivity : AppCompatActivity() {
 
             // Статус-бар резервирует сама шапка — лента начинается уже под ней.
             binding.chatHeaderBar.updatePadding(top = headerBasePaddingTop + bars.top)
+            // Панель режима выделения подменяет шапку и должна так же не залезать под статус-бар.
+            binding.selectionToolbar.updatePadding(top = selectionBasePaddingTop + bars.top)
             // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
             // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
             binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop)
@@ -578,6 +584,12 @@ class ChatActivity : AppCompatActivity() {
 
         binding.btnAudioCall.applySpringPress()
         binding.btnAudioCall.setOnClickListener { startCall(video = false) }
+
+        // Панель режима выделения сообщений
+        binding.btnExitSelection.setOnClickListener { exitSelectionMode() }
+        binding.btnSelectionCopy.setOnClickListener { copySelectedMessages() }
+        binding.btnSelectionForward.setOnClickListener { forwardSelectedMessages() }
+        binding.btnSelectionDelete.setOnClickListener { confirmAndDeleteSelected() }
 
         // Клик на карточку с информацией о чате (аватар + имя):
         // для групп — управление группой, для ЛС — профиль пользователя.
@@ -921,7 +933,8 @@ class ChatActivity : AppCompatActivity() {
             onReplyQuoteClick = { originalMessageId ->
                 scrollToAndHighlightMessage(originalMessageId)
             },
-            senderInfoProvider = { senderId -> groupMemberInfoCache[senderId] }
+            senderInfoProvider = { senderId -> groupMemberInfoCache[senderId] },
+            onSelectionToggle = { messageId -> toggleSelection(messageId) }
         )
 
         if (isGroupChat) {
@@ -1775,6 +1788,7 @@ class ChatActivity : AppCompatActivity() {
         backCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
                 when {
+                    messageAdapter.selectionMode -> exitSelectionMode()
                     messageActionsOverlay.isShowing -> messageActionsOverlay.dismiss()
                     binding.stickerPreviewOverlay.visibility == View.VISIBLE -> hideStickerPreview()
                     inputPanelState == InputPanelState.STICKER_PANEL -> hideStickerPanel()
@@ -2657,6 +2671,7 @@ class ChatActivity : AppCompatActivity() {
         const val PIN = 9
         const val COPY_MARKDOWN = 10
         const val PROPERTIES = 11
+        const val SELECT = 12
     }
 
     private fun showMessageActionMenu(bubble: View, item: MessageItem) {
@@ -2700,6 +2715,7 @@ class ChatActivity : AppCompatActivity() {
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
             add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
+            add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.ic_action_select, getString(R.string.msg_action_select)))
         }
 
         messageActionsOverlay.show(
@@ -2707,8 +2723,12 @@ class ChatActivity : AppCompatActivity() {
             actions = actions,
             alignEnd = isOwnMessage,
             onDismiss = {
-                backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
-                    inputPanelState == InputPanelState.STICKER_PANEL
+                // Закрытие анимированное (~180мс) — за это время действие могло уже включить
+                // режим выделения (SELECT), который сам управляет backCallback. Не перетираем.
+                if (!messageAdapter.selectionMode) {
+                    backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
+                        inputPanelState == InputPanelState.STICKER_PANEL
+                }
             }
         ) { actionId ->
             when (actionId) {
@@ -2736,6 +2756,7 @@ class ChatActivity : AppCompatActivity() {
                 }
                 MessageActionId.PIN -> togglePinForMessage(item)
                 MessageActionId.PROPERTIES -> showMessageProperties(item)
+                MessageActionId.SELECT -> enterSelectionMode(item)
             }
         }
         backCallback.isEnabled = true
@@ -2781,6 +2802,97 @@ class ChatActivity : AppCompatActivity() {
             .setTitle(R.string.msg_action_properties)
             .setMessage(lines.joinToString("\n"))
             .setPositiveButton(R.string.btn_close, null)
+            .show()
+    }
+
+    private fun enterSelectionMode(item: MessageItem) {
+        selectedMessageIds.clear()
+        selectedMessageIds.add(item.messageId)
+        messageAdapter.setSelectionMode(true, selectedMessageIds.toSet())
+        updateSelectionToolbar()
+        // INVISIBLE, не GONE: pinnedMessageBar и e2eBanner привязаны к нижнему краю
+        // chatHeaderBar constraint-цепочкой — GONE обнулил бы её высоту, и они уехали
+        // бы под статус-бар. selectionToolbar просто перекрывает её сверху.
+        binding.chatHeaderBar.visibility = View.INVISIBLE
+        binding.selectionToolbar.visibility = View.VISIBLE
+        backCallback.isEnabled = true
+    }
+
+    private fun exitSelectionMode() {
+        selectedMessageIds.clear()
+        messageAdapter.setSelectionMode(false)
+        binding.selectionToolbar.visibility = View.GONE
+        binding.chatHeaderBar.visibility = View.VISIBLE
+        backCallback.isEnabled = messageActionsOverlay.isShowing ||
+            binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
+            inputPanelState == InputPanelState.STICKER_PANEL
+    }
+
+    private fun toggleSelection(messageId: Long) {
+        if (!messageAdapter.selectionMode) return
+        if (selectedMessageIds.contains(messageId)) {
+            selectedMessageIds.remove(messageId)
+        } else {
+            selectedMessageIds.add(messageId)
+        }
+        if (selectedMessageIds.isEmpty()) {
+            exitSelectionMode()
+        } else {
+            messageAdapter.setSelected(messageId, selectedMessageIds.toSet())
+            updateSelectionToolbar()
+        }
+    }
+
+    private fun updateSelectionToolbar() {
+        binding.selectionCountText.text = getString(R.string.create_group_members_count, selectedMessageIds.size)
+    }
+
+    /** Сообщения из выбранных ID в порядке их следования в текущем списке чата. */
+    private fun selectedMessagesInOrder(): List<MessageItem> =
+        messageAdapter.currentList.filter { it.type == MessageType.MESSAGE && it.messageId in selectedMessageIds }
+
+    private fun copySelectedMessages() {
+        val texts = selectedMessagesInOrder().map { MarkdownRenderer.strip(it.text) }.filter { it.isNotBlank() }
+        exitSelectionMode()
+        if (texts.isEmpty()) return
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("BarkFluff messages", texts.joinToString("\n\n")))
+        Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun forwardSelectedMessages() {
+        val ids = selectedMessagesInOrder().map { it.messageId }
+        exitSelectionMode()
+        if (ids.isEmpty()) return
+        com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
+            .newInstance(ids.toLongArray())
+            .show(supportFragmentManager, "forward_picker")
+    }
+
+    private fun confirmAndDeleteSelected() {
+        val ownIds = selectedMessagesInOrder().filter { it.senderId == currentUserId }.map { it.messageId }
+        exitSelectionMode()
+        if (ownIds.isEmpty()) return
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.delete_message_title)
+            .setMessage(R.string.delete_message_message)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .setPositiveButton(R.string.btn_delete) { _, _ ->
+                lifecycleScope.launch {
+                    var failed = 0
+                    for (id in ownIds) {
+                        val result = chatRepository.deleteMessage(id)
+                        if (result.isSuccess) removeMessageById(id) else failed++
+                    }
+                    if (failed > 0) {
+                        Toast.makeText(
+                            this@ChatActivity,
+                            getString(R.string.message_delete_batch_failed, failed),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
             .show()
     }
 

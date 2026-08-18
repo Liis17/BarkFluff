@@ -264,6 +264,7 @@
     <string name="cd_play_video">Reproducir vídeo</string>
     <string name="cd_download_video">Descargar vídeo</string>
     <string name="cd_read_status">Estado de lectura</string>
+    <string name="cd_select_message">Seleccionar mensaje</string>
     <string name="cd_media_preview_photo">Abrir foto: %1$s</string>
     <string name="cd_media_preview_video">Abrir vídeo: %1$s</string>
     <string name="cd_media_select">Seleccionar: %1$s</string>
@@ -920,6 +921,7 @@
     <string name="delete_message_title">¿Eliminar mensaje?</string>
     <string name="delete_message_message">Esta acción no se puede deshacer.</string>
     <string name="message_delete_error">Error al eliminar: %1$s</string>
+    <string name="message_delete_batch_failed">No se pudieron eliminar mensajes: %1$d</string>
     <string name="message_not_loaded">Mensaje no cargado</string>
     <string name="message_save_image">Guardar imagen</string>
     <string name="message_save_images">Guardar imágenes</string>

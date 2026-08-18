@@ -264,6 +264,7 @@
     <string name="cd_play_video">播放视频</string>
     <string name="cd_download_video">下载视频</string>
     <string name="cd_read_status">已读状态</string>
+    <string name="cd_select_message">选择消息</string>
     <string name="cd_media_preview_photo">打开照片：%1$s</string>
     <string name="cd_media_preview_video">打开视频：%1$s</string>
     <string name="cd_media_select">选择：%1$s</string>
@@ -914,6 +915,7 @@
     <string name="delete_message_title">删除消息？</string>
     <string name="delete_message_message">此操作无法撤销。</string>
     <string name="message_delete_error">删除错误：%1$s</string>
+    <string name="message_delete_batch_failed">删除失败的消息数：%1$d</string>
     <string name="message_not_loaded">消息未加载</string>
     <string name="message_save_image">保存图片</string>
     <string name="message_save_images">保存图片</string>

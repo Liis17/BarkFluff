@@ -318,6 +318,7 @@
     <string name="cd_play_video">Воспроизвести видео</string>
     <string name="cd_download_video">Скачать видео</string>
     <string name="cd_read_status">Статус прочтения</string>
+    <string name="cd_select_message">Выделить сообщение</string>
     <string name="cd_media_preview_photo">Открыть фото: %1$s</string>
     <string name="cd_media_preview_video">Открыть видео: %1$s</string>
     <string name="cd_media_select">Выбрать: %1$s</string>
@@ -932,6 +933,7 @@
     <string name="delete_message_title">Удалить сообщение?</string>
     <string name="delete_message_message">Это действие нельзя отменить.</string>
     <string name="message_delete_error">Ошибка удаления: %1$s</string>
+    <string name="message_delete_batch_failed">Не удалось удалить сообщений: %1$d</string>
     <string name="message_not_loaded">Сообщение не загружено</string>
     <string name="message_save_image">Сохранить изображение</string>
     <string name="message_save_images">Сохранить изображения</string>
