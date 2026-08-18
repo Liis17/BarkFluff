@@ -28,7 +28,6 @@ import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
-import androidx.core.view.isVisible
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -67,6 +66,7 @@ import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.barkfluff.client.utils.applySpringPress
+import com.barkfluff.client.view.MessageActionsOverlay
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
@@ -202,6 +202,9 @@ class ChatActivity : AppCompatActivity() {
     // Callback назад — включён только когда стикер-панель или оверлей открыты
     private lateinit var backCallback: OnBackPressedCallback
 
+    // Оверлей меню действий над сообщением (Telegram-стиль)
+    private lateinit var messageActionsOverlay: MessageActionsOverlay
+
     private val pasteUCropLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -301,6 +304,7 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        messageActionsOverlay = MessageActionsOverlay(binding.chatRootLayout)
 
         val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
@@ -910,8 +914,8 @@ class ChatActivity : AppCompatActivity() {
             scope = scope,
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
             stickerSizeDp = globalParam.chatStickerSizeDp,
-            onMessageActionRequested = { anchor, item, rawX, rawY ->
-                showMessageActionMenu(anchor, item, rawX, rawY)
+            onMessageActionRequested = { bubble, item ->
+                showMessageActionMenu(bubble, item)
             },
             onReplyQuoteClick = { originalMessageId ->
                 scrollToAndHighlightMessage(originalMessageId)
@@ -1770,6 +1774,7 @@ class ChatActivity : AppCompatActivity() {
         backCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
                 when {
+                    messageActionsOverlay.isShowing -> messageActionsOverlay.dismiss()
                     binding.stickerPreviewOverlay.visibility == View.VISIBLE -> hideStickerPreview()
                     inputPanelState == InputPanelState.STICKER_PANEL -> hideStickerPanel()
                 }
@@ -2638,42 +2643,78 @@ class ChatActivity : AppCompatActivity() {
         animator.start()
     }
 
-    private fun showMessageActionMenu(anchor: View, item: MessageItem, rawX: Float, rawY: Float) {
-        val inflater = layoutInflater
-        val popupView = inflater.inflate(R.layout.popup_message_actions, null, false)
+    /** Идентификаторы пунктов оверлея действий — только для маршрутизации внутри showMessageActionMenu. */
+    private object MessageActionId {
+        const val REPLY = 1
+        const val COPY_TEXT = 2
+        const val COPY_IMAGE = 3
+        const val SAVE_IMAGES = 4
+        const val SAVE_DOCS = 5
+        const val EDIT = 6
+        const val DELETE = 7
+        const val FORWARD = 8
+        const val PIN = 9
+    }
 
-        val popup = android.widget.PopupWindow(
-            popupView,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            false
-        ).apply {
-            isOutsideTouchable = true
-            // focusable=false — чтобы открытие меню не сбрасывало фокус с поля ввода и не скрывало клавиатуру.
-            // Закрытие по тапу вне меню обеспечивается isOutsideTouchable=true + ненулевым фоном ниже.
-            isFocusable = false
-            elevation = 12f * resources.displayMetrics.density
-            // Прозрачный фон, чтобы скругления MaterialCardView были видны
-            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+    private fun showMessageActionMenu(bubble: View, item: MessageItem) {
+        val isOwnMessage = item.senderId == currentUserId
+        val imageAtts = item.attachments.filter {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE ||
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.GIF
+        }
+        val docAtts = item.attachments.filter {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT
+        }
+        val hasText = item.text.isNotBlank()
+        val isPinned = pinnedById.containsKey(item.messageId)
+
+        val actions = buildList {
+            add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.ic_action_reply, getString(R.string.msg_action_reply)))
+            if (hasText) {
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_TEXT, R.drawable.ic_action_copy_text, getString(R.string.msg_action_copy_text)))
+            }
+            if (imageAtts.size == 1) {
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_IMAGE, R.drawable.ic_action_copy_image, getString(R.string.msg_action_copy_image)))
+            }
+            if (imageAtts.isNotEmpty()) {
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save,
+                    getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images)
+                ))
+            }
+            if (docAtts.isNotEmpty()) {
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.ic_action_download, getString(R.string.msg_action_save_to_downloads)))
+            }
+            if (isOwnMessage) {
+                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
+                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
+            }
+            add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward)))
+            add(MessageActionsOverlay.Action(
+                MessageActionId.PIN,
+                if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
+                getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
+            ))
         }
 
-        // Подсветка пузыря сообщения, для которого открыто меню
-        val bubble = anchor.findViewById<View>(R.id.messageCard)
-        val originalForeground = bubble?.foreground
-        if (bubble != null) {
-            val tv = android.util.TypedValue()
-            theme.resolveAttribute(androidx.appcompat.R.attr.colorPrimary, tv, true)
-            val highlightColor = (tv.data and 0x00FFFFFF) or (60 shl 24)
-            bubble.foreground = android.graphics.drawable.ColorDrawable(highlightColor)
-        }
-        popup.setOnDismissListener { bubble?.foreground = originalForeground }
-
-        val dismiss = { popup.dismiss() }
-
-        val onClickWithDismiss: (Int) -> Unit = { actionId ->
+        messageActionsOverlay.show(
+            bubble = bubble,
+            actions = actions,
+            alignEnd = isOwnMessage,
+            onDismiss = {
+                backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
+                    inputPanelState == InputPanelState.STICKER_PANEL
+            }
+        ) { actionId ->
             when (actionId) {
-                R.id.actionReply -> setPendingReply(item)
-                R.id.actionForward -> {
+                MessageActionId.REPLY -> setPendingReply(item)
+                MessageActionId.COPY_TEXT -> copyMessageText(item)
+                MessageActionId.COPY_IMAGE -> copyMessageImage(imageAtts.first())
+                MessageActionId.SAVE_IMAGES -> saveMessageImages(imageAtts)
+                MessageActionId.SAVE_DOCS -> saveMessageDocuments(docAtts)
+                MessageActionId.EDIT -> setPendingEdit(item)
+                MessageActionId.DELETE -> confirmAndDelete(item)
+                MessageActionId.FORWARD -> {
                     // Если сообщение само является пересланным — пересылаем оригиналы, а не snapshot.
                     // Пересланных может быть несколько, поэтому берём все, а не первый: иначе
                     // пересылка пачки потеряла бы всё, кроме одного сообщения.
@@ -2687,90 +2728,10 @@ class ChatActivity : AppCompatActivity() {
                         .newInstance(sourceIds.toLongArray())
                         .show(supportFragmentManager, "forward_picker")
                 }
-                R.id.actionEdit -> setPendingEdit(item)
-                R.id.actionDelete -> confirmAndDelete(item)
-                R.id.actionPin -> togglePinForMessage(item)
+                MessageActionId.PIN -> togglePinForMessage(item)
             }
-            dismiss()
         }
-
-        // Edit и Delete — только для своих сообщений
-        val isOwnMessage = item.senderId == currentUserId
-        val editView = popupView.findViewById<View>(R.id.actionEdit)
-        val deleteView = popupView.findViewById<View>(R.id.actionDelete)
-        editView.visibility = if (isOwnMessage) View.VISIBLE else View.GONE
-        deleteView.visibility = if (isOwnMessage) View.VISIBLE else View.GONE
-
-        // Контекстные пункты по содержимому сообщения
-        val imageAtts = item.attachments.filter {
-            it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE ||
-            it.type == barkfluff.shared.Shared.MessageAttachmentType.GIF
-        }
-        val docAtts = item.attachments.filter {
-            it.type == barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT
-        }
-        val hasText = item.text.isNotBlank()
-
-        val copyTextView = popupView.findViewById<TextView>(R.id.actionCopyText)
-        val copyImageView = popupView.findViewById<TextView>(R.id.actionCopyImage)
-        val saveImagesView = popupView.findViewById<TextView>(R.id.actionSaveImages)
-        val saveDocsView = popupView.findViewById<TextView>(R.id.actionSaveDocs)
-
-        copyTextView.isVisible = hasText
-        copyImageView.isVisible = imageAtts.size == 1
-        saveImagesView.isVisible = imageAtts.isNotEmpty()
-        saveDocsView.isVisible = docAtts.isNotEmpty()
-
-        if (saveImagesView.isVisible) {
-            saveImagesView.text = getString(
-                if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images
-            )
-        }
-
-        copyTextView.setOnClickListener { copyMessageText(item); dismiss() }
-        copyImageView.setOnClickListener { copyMessageImage(imageAtts.first()); dismiss() }
-        saveImagesView.setOnClickListener { saveMessageImages(imageAtts); dismiss() }
-        saveDocsView.setOnClickListener { saveMessageDocuments(docAtts); dismiss() }
-
-        // Пункт «Закрепить» / «Открепить» — переключается по состоянию
-        val pinView = popupView.findViewById<TextView>(R.id.actionPin)
-        val isPinned = pinnedById.containsKey(item.messageId)
-        pinView.text = getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
-
-        popupView.findViewById<View>(R.id.actionReply).setOnClickListener { onClickWithDismiss(R.id.actionReply) }
-        editView.setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
-        deleteView.setOnClickListener { onClickWithDismiss(R.id.actionDelete) }
-        popupView.findViewById<View>(R.id.actionForward).setOnClickListener { onClickWithDismiss(R.id.actionForward) }
-        pinView.setOnClickListener { onClickWithDismiss(R.id.actionPin) }
-
-        // Измеряем popup чтобы аккуратно расположить относительно точки касания и краёв экрана
-        popupView.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        val popupW = popupView.measuredWidth
-        val popupH = popupView.measuredHeight
-
-        val dm = resources.displayMetrics
-        val margin = (8 * dm.density).toInt()
-
-        // X: открываем правее точки касания, если не помещается — левее
-        val proposedX = rawX.toInt() + margin
-        val x = if (proposedX + popupW + margin > dm.widthPixels) {
-            (rawX.toInt() - popupW - margin).coerceAtLeast(margin)
-        } else {
-            proposedX
-        }
-
-        // Y: ниже точки касания, если не помещается — выше
-        val proposedY = rawY.toInt() + margin
-        val y = if (proposedY + popupH + margin > dm.heightPixels) {
-            (rawY.toInt() - popupH - margin).coerceAtLeast(margin)
-        } else {
-            proposedY
-        }
-
-        popup.showAtLocation(anchor, android.view.Gravity.NO_GRAVITY or android.view.Gravity.START or android.view.Gravity.TOP, x, y)
+        backCallback.isEnabled = true
     }
 
     private fun copyMessageText(item: MessageItem) {
@@ -3902,6 +3863,7 @@ class ChatActivity : AppCompatActivity() {
         scheduleDraftSave(immediate = true)
         finishVoiceRecording(shouldSend = false)
         stopTypingHeartbeat(sendCancel = true)
+        if (messageActionsOverlay.isShowing) messageActionsOverlay.dismiss(animate = false)
         super.onStop()
     }
 
