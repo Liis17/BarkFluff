@@ -90,6 +90,7 @@
 | `PendingAuthService.cs` | In-memory словарь pending-запросов. Таймер каждые 60 сек удаляет истёкшие (> `PendingRequestTimeoutMinutes`). |
 | `TelegramBotService.cs` | `IHostedService` + Singleton. Инициализирует `TelegramBotClient` (optional proxy). Отправляет запрос подтверждения с кнопками Approve/Reject. Обрабатывает callback-кнопки и команды `/start`, `/tokens`, `/kill`, `/rename`, `/pending`. |
 | `DockerService.cs` | Запускает `docker` и `docker compose` через `Process` с `ArgumentList` (защита от shell injection). Self-управление через ephemeral helper-контейнер с docker.sock. |
+| `ComposeImageService.cs` | Разбор и правка строк `image:` в `docker-compose.yml`: определение текущей ветки сервиса, переключение суффикса репозитория, бэкап в `/app/db/compose-backups`, откат. Запись в тот же inode (bind mount одного файла). |
 | `SeqService.cs` | `HttpClient` к Seq REST API: получение событий, SQL-запросы, постраничная загрузка, список сигналов, удаление по фильтру (через пакет `Seq.Api`), запись событий в CLEF-формате (`POST /api/events/raw?clef`). |
 | `LogsClearService.cs` | Singleton + Timer cleanup. Управляет job'ами удаления логов из Seq: подсчёт через SQL, удаление через `Seq.Api`. TTL 30 минут после завершения. |
 | `LogsExportService.cs` | Singleton + Timer cleanup. Управляет job'ами экспорта: постраничная выгрузка событий в JSON-страницы, упаковка в ZIP в `/tmp/logs-export/`. |

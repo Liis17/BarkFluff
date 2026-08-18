@@ -1,4 +1,5 @@
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
 
 namespace Barkfluff.AdminPanel.Endpoints;
@@ -146,6 +147,151 @@ public static class DockerEndpoints
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("UpdateAdminPanel")
+        .WithOpenApi();
+
+        // Ветки обновлений сервисов из docker-compose.yml
+        group.MapGet("/branches", async (
+            DockerService dockerService,
+            ComposeImageService composeImageService,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            IReadOnlyDictionary<string, ComposeImageInfo> images;
+            try
+            {
+                images = await composeImageService.GetImagesAsync();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // compose-файл не смонтирован — страница просто не покажет выбор ветки
+                return Results.Ok(Array.Empty<object>());
+            }
+
+            var runningImages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                foreach (var container in await dockerService.GetContainersAsync())
+                    runningImages[container.Name.TrimStart('/')] = container.Image;
+            }
+            catch
+            {
+                // Docker недоступен — покажем только то, что записано в compose
+            }
+
+            var result = images.Values
+                .OrderBy(image => image.Service, StringComparer.Ordinal)
+                .Select(image => new
+                {
+                    service = image.Service,
+                    container = image.Service,
+                    branch = image.Branch,
+                    runningBranch = runningImages.TryGetValue(image.Service, out var runningImage)
+                        ? ComposeImageService.BranchFromImage(runningImage)
+                        : null,
+                    branches = ComposeImageService.Branches
+                });
+
+            return Results.Ok(result);
+        })
+        .WithName("GetContainerBranches")
+        .WithOpenApi();
+
+        // Переключить сервис на другую ветку обновлений и сразу обновить образ
+        group.MapPost("/containers/{name}/branch", async (
+            DockerService dockerService,
+            ComposeImageService composeImageService,
+            DockerRegistryService dockerRegistryService,
+            HttpContext context,
+            string name,
+            ContainerBranchRequestDto request) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var branch = request.Branch?.Trim() ?? string.Empty;
+            if (!ComposeImageService.IsKnownBranch(branch))
+                return Results.BadRequest(new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = $"Неизвестная ветка {branch}"
+                });
+
+            var serviceName = DockerService.ConvertContainerNameToServiceName(name);
+
+            IReadOnlyDictionary<string, ComposeImageInfo> images;
+            try
+            {
+                images = await composeImageService.GetImagesAsync();
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = "Не удалось прочитать docker-compose.yml",
+                    ErrorDetails = ex.Message
+                });
+            }
+
+            if (!images.TryGetValue(serviceName, out var image))
+                return Results.NotFound(new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = $"Сервис {serviceName} не найден в docker-compose.yml или его образ не из реестра BarkFluff"
+                });
+
+            var status = await dockerService.GetContainerStatusAsync(name);
+            var runningBranch = ComposeImageService.BranchFromImage(status?.Image);
+            if (image.Branch == branch && runningBranch == branch)
+                return Results.Ok(new ContainerActionResponseDto
+                {
+                    Success = true,
+                    Message = $"{name} уже работает на ветке {branch}"
+                });
+
+            var repository = ComposeImageService.Repository(image.BaseRepository, branch);
+            if (!await dockerRegistryService.RepositoryExistsAsync(repository))
+                return Results.BadRequest(new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = $"Образ {repository} не найден в реестре (или реестр недоступен)"
+                });
+
+            string previousCompose;
+            try
+            {
+                previousCompose = await composeImageService.SetBranchAsync(serviceName, branch);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = "Не удалось изменить docker-compose.yml",
+                    ErrorDetails = ex.Message
+                });
+            }
+
+            var isAdminPanel = string.Equals(name, "admin-panel", StringComparison.OrdinalIgnoreCase);
+            var result = isAdminPanel
+                ? await dockerService.UpdateAdminPanelAsync()
+                : await dockerService.PullImageAndRecreateContainerAsync(name);
+
+            if (!result.Success)
+            {
+                await composeImageService.RestoreAsync(previousCompose);
+                result.Message = $"{result.Message}. Ветка в docker-compose.yml возвращена на {image.Branch}";
+                return Results.BadRequest(result);
+            }
+
+            result.Message = isAdminPanel
+                ? $"Админ-панель переключается на ветку {branch}"
+                : $"{name} переключён на ветку {branch}, контейнер пересоздан";
+            return Results.Ok(result);
+        })
+        .WithName("SetContainerBranch")
         .WithOpenApi();
 
         // Перезапустить все сервисы BarkFluff
