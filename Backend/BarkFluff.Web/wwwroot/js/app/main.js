@@ -478,7 +478,10 @@
                                 handleOnlineStatus(s.userId, s.status, s.lastSeen);
                             }
                         }).catch(function () {});
-                    }).catch(function () {});
+                    }).catch(function () {
+                        loadingMessages.classList.remove('visible');
+                        showToast(BF.i18n.t('common.loadError'), true);
+                    });
                 }
             } else {
                 chatHeaderStatus.textContent = BF.i18n.tp('group.memberCount', info.membersId ? info.membersId.length : 0);
@@ -1286,7 +1289,9 @@
         if (markReadPending.size === 0) return;
         var ids = Array.from(markReadPending);
         markReadPending.clear();
-        BF.api.markAsRead(ids).catch(function () {});
+        BF.api.markAsRead(ids).catch(function () {
+            showToast(BF.i18n.t('error.markRead'), true);
+        });
     }
 
     // ========== TITLE UNREAD BADGE ==========
@@ -2429,7 +2434,9 @@
         navigator.clipboard.writeText(String(text)).then(function () {
             BF.sound.play('success');
             groupToast(BF.i18n.t('common.copied'));
-        }).catch(function () {});
+        }).catch(function () {
+            showToast(BF.i18n.t('error.copy'), true);
+        });
     }
     document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -2440,15 +2447,21 @@
 
     // ========== GROUP INFO PANEL ==========
 
-    function groupToast(text) {
+    function showToast(text, isError) {
         if (!soonToastEl) return;
+        if (showToast._t) clearTimeout(showToast._t);
         soonToastEl.textContent = text;
+        soonToastEl.classList.toggle('error', !!isError);
         soonToastEl.classList.add('visible');
-        if (groupToast._t) clearTimeout(groupToast._t);
-        groupToast._t = setTimeout(function () {
+        showToast._t = setTimeout(function () {
             soonToastEl.classList.remove('visible');
+            soonToastEl.classList.remove('error');
             soonToastEl.textContent = BF.i18n.t('common.comingSoon');
         }, 1800);
+    }
+
+    function groupToast(text) {
+        showToast(text, false);
     }
 
     // ========== SCROLL TO BOTTOM BUTTON ==========
@@ -2611,18 +2624,15 @@
                     renderChatList();
                 }
             }
-        }).catch(function () {});
+        }).catch(function () {
+            showToast(BF.i18n.t('error.sendMessage'), true);
+        });
     }
 
     // ========== REPLY / FORWARD / CONTEXT MENU ==========
 
     function showSoonToast() {
-        if (!soonToastEl) return;
-        soonToastEl.classList.add('visible');
-        if (showSoonToast._t) clearTimeout(showSoonToast._t);
-        showSoonToast._t = setTimeout(function () {
-            soonToastEl.classList.remove('visible');
-        }, 1800);
+        showToast(BF.i18n.t('common.comingSoon'), false);
     }
 
     function buildReplyPreviewText(msg) {
@@ -2706,7 +2716,9 @@
             deleteMsgOk.disabled = true;
             BF.api.deleteMessage(messageId).then(function () {
                 applyMessageDelete(currentChatId, messageId);
-            }).catch(function () {})
+            }).catch(function () {
+                showToast(BF.i18n.t('error.deleteMessage'), true);
+            })
             .finally(function () {
                 deleteMsgOk.disabled = false;
                 BF.utils.closeOverlay(deleteMsgConfirmOverlay);
@@ -2865,7 +2877,9 @@
             });
         }).then(function (png) {
             return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-        }).catch(function () {});
+        }).catch(function () {
+            showToast(BF.i18n.t('error.copy'), true);
+        });
     }
 
     function chatAvatarMarkup(chat) {
@@ -2964,14 +2978,7 @@
             forwardSendBtn.disabled = false;
             forwardSendBtn.textContent = originalLabel;
             closeForwardModal();
-            if (soonToastEl) {
-                soonToastEl.textContent = BF.i18n.tp('forward.done', ids.length);
-                soonToastEl.classList.add('visible');
-                setTimeout(function () {
-                    soonToastEl.classList.remove('visible');
-                    soonToastEl.textContent = BF.i18n.t('common.comingSoon');
-                }, 1800);
-            }
+            showToast(BF.i18n.tp('forward.done', ids.length), false);
         });
     }
 
@@ -3052,7 +3059,9 @@
                 openForwardModal(resolveForwardSourceIds(msg, msgId));
             } else if (act === 'copy-text') {
                 var t = msg && msg.content && msg.content.text;
-                if (t) navigator.clipboard.writeText(t).catch(function () {});
+                if (t) navigator.clipboard.writeText(t).catch(function () {
+                    showToast(BF.i18n.t('error.copy'), true);
+                });
             } else if (act === 'copy-image') {
                 copyImageToClipboard(image);
             } else if (act === 'edit') {

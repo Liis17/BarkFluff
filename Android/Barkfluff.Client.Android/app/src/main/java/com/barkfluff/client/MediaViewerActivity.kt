@@ -18,6 +18,7 @@ import com.barkfluff.client.databinding.ActivityMediaViewerBinding
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
+import com.barkfluff.client.utils.SwipeToDismissHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -28,7 +29,7 @@ import java.io.File
 /**
  * Активити для просмотра видеофайлов с ExoPlayer.
  * Не полноэкранный — статус-бар остаётся видимым.
- * Поддерживает свайп вниз для закрытия с анимацией.
+ * Поддерживает свайп вверх/вниз для закрытия с анимацией.
  */
 class MediaViewerActivity : AppCompatActivity() {
 
@@ -43,8 +44,7 @@ class MediaViewerActivity : AppCompatActivity() {
     private var isSeeking = false
     private var controlsVisible = true
 
-    private var swipeTouchStartY = 0f
-    private var swipeTouchStartTranslation = 0f
+    private lateinit var swipeHelper: SwipeToDismissHelper
 
     companion object {
         const val RESULT_CACHE_DELETED = 100
@@ -77,8 +77,9 @@ class MediaViewerActivity : AppCompatActivity() {
 
         if (fileId.isEmpty()) { finish(); return }
 
+        swipeHelper = SwipeToDismissHelper(this, binding.rootLayout) { finish() }
+
         setupButtons()
-        setupSwipeDismiss()
 
         val existingCache = cachedPath?.let { File(it) }?.takeIf { it.exists() }
             ?: FileCache.getFile(fileId)
@@ -88,6 +89,11 @@ class MediaViewerActivity : AppCompatActivity() {
         } else {
             downloadAndPlay()
         }
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (swipeHelper.onDispatchTouchEvent(ev)) return true
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun setupPlayerWithFile(file: File) {
@@ -130,7 +136,7 @@ class MediaViewerActivity : AppCompatActivity() {
                         startProgressUpdates()
                     }
                     if (state == Player.STATE_ENDED) {
-                        binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow)
+                        binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow_rounded)
                         binding.videoSeekBar.progress = 0
                         binding.timeText.text = getString(R.string.media_time_position, formatTime(0), formatTime(exo.duration))
                         exo.seekTo(0)
@@ -148,7 +154,7 @@ class MediaViewerActivity : AppCompatActivity() {
     private fun updatePlayPauseIcon() {
         val isPlaying = player?.isPlaying == true
         binding.playPauseButton.setIconResource(
-            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+            if (isPlaying) R.drawable.ic_pause_rounded else R.drawable.ic_play_arrow_rounded
         )
         binding.playPauseButton.contentDescription = getString(
             if (isPlaying) R.string.cd_pause else R.string.cd_play
@@ -175,7 +181,7 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun setupButtons() {
-        binding.backButton.setOnClickListener { finishWithAnimation() }
+        binding.backButton.setOnClickListener { swipeHelper.dismiss() }
         binding.playerView.setOnClickListener { toggleControls() }
 
         binding.playPauseButton.setOnClickListener {
@@ -266,48 +272,6 @@ class MediaViewerActivity : AppCompatActivity() {
         Toast.makeText(this, R.string.file_removed_from_cache, Toast.LENGTH_SHORT).show()
         setResult(RESULT_CACHE_DELETED)
         finish()
-    }
-
-    private fun setupSwipeDismiss() {
-        binding.rootLayout.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    swipeTouchStartY = event.rawY
-                    swipeTouchStartTranslation = v.translationY
-                    false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val delta = event.rawY - swipeTouchStartY
-                    if (delta > 0) {
-                        v.translationY = delta
-                        val screenH = resources.displayMetrics.heightPixels.toFloat()
-                        v.alpha = 1f - (delta / (screenH * 0.5f)).coerceIn(0f, 1f)
-                        true
-                    } else false
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val delta = event.rawY - swipeTouchStartY
-                    val screenH = resources.displayMetrics.heightPixels.toFloat()
-                    if (delta > screenH * 0.25f) {
-                        finishWithAnimation()
-                    } else {
-                        v.animate().translationY(0f).alpha(1f).setDuration(200).start()
-                    }
-                    false
-                }
-                else -> false
-            }
-        }
-    }
-
-    private fun finishWithAnimation() {
-        val screenH = resources.displayMetrics.heightPixels.toFloat()
-        binding.rootLayout.animate()
-            .translationY(screenH)
-            .alpha(0f)
-            .setDuration(250)
-            .withEndAction { finish() }
-            .start()
     }
 
     private fun saveToDownloads() {

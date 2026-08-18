@@ -192,13 +192,13 @@
         <activity
             android:name=".ImageViewerActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Viewer"
             android:screenOrientation="unspecified" />
 
         <activity
             android:name=".MediaViewerActivity"
             android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Viewer"
             android:screenOrientation="unspecified" />
 
         <activity

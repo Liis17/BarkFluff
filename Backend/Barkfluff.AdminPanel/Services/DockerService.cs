@@ -252,7 +252,7 @@ public class DockerService
     /// <summary>
     /// Преобразовать имя контейнера в имя сервиса docker compose
     /// </summary>
-    private string ConvertContainerNameToServiceName(string containerName)
+    internal static string ConvertContainerNameToServiceName(string containerName)
     {
         // Маппинг имен контейнеров на имена сервисов
         var containerToServiceMap = new Dictionary<string, string>

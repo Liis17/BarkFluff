@@ -266,7 +266,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./admindata:/app/db
-      - ./docker-compose.yml:/docker-compose.yml:ro
+      - ./docker-compose.yml:/docker-compose.yml:rw
       - ./.env:/.env:ro
     networks:
       - barkfluff-network

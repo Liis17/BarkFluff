@@ -54,6 +54,7 @@ Barkfluff.AdminPanel/
 │   ├── PendingAuthService.cs          ← in-memory очередь запросов
 │   ├── TelegramBotService.cs          ← Telegram-бот (IHostedService)
 │   ├── DockerService.cs               ← управление Docker
+│   ├── ComposeImageService.cs         ← ветки обновлений: правка image: в docker-compose.yml
 │   ├── SeqService.cs                  ← HTTP-клиент Seq
 │   ├── LogsExportService.cs           ← async job: pull Seq → JSON → ZIP, TTL-cleanup
 │   ├── LogsClearService.cs            ← async job: count → DELETE Seq events, TTL-cleanup
@@ -318,6 +319,20 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 
 Конфиг: `Mail:ImapHost/ImapPort/ImapSecurity`, `Mail:SmtpHost/SmtpPort/SmtpSecurity` (`SslOnConnect`/`StartTls`/`StartTlsWhenAvailable`/`None`/`Auto`), `Mail:AcceptInvalidCertificates`, `Mail:Accounts[]`.
 
+### ComposeImageService
+
+Читает `/docker-compose.yml` (путь настраивается `Docker:ComposeFile`) и переключает сервис на другую ветку обновлений.
+
+| Метод | Назначение |
+|-------|-----------|
+| `Parse(yaml)` | Чистая функция: `{ compose-сервис → (BaseRepository, Branch, Tag, LineIndex) }` только для образов `docker.barkfluff.com/barkfluff-*` |
+| `TryRewrite(yaml, service, branch, out result, out error)` | Чистая функция замены суффикса ветки в одной строке `image:`; сохраняет тег, отступ, CRLF и весь остальной текст |
+| `BranchFromImage(image)` | Ветка запущенного контейнера по имени образа |
+| `SetBranchAsync(service, branch)` | Бэкап + запись в тот же inode под `SemaphoreSlim`; возвращает прежнее содержимое для отката |
+| `RestoreAsync(previous)` | Откат правки, если pull/recreate не удался |
+
+Тесты: `Tests/BarkFluff.AdminPanel.Tests/Services/ComposeImageServiceTests.cs`.
+
 ### RemoteDockerService
 Управляет сохранёнными LiteDB SSH-серверами через `IRemoteSshClient`; адреса и пароли не поступают из `.env` или Docker Compose. Создание и изменение сервера сперва проверяют SSH-подключение. При discovery берутся все `docker ps -a`; Compose-метки контейнера сохраняются при добавлении.
 
@@ -356,6 +371,8 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | POST | `/api/docker/containers/{name}/pull` | Обновить образ |
 | POST | `/api/docker/containers/admin-panel/restart-own` | Перезагрузить саму панель |
 | POST | `/api/docker/containers/admin-panel/update-own` | Обновить панель |
+| GET | `/api/docker/branches` | Ветки обновлений сервисов: `branch` из `docker-compose.yml`, `runningBranch` из образа контейнера |
+| POST | `/api/docker/containers/{name}/branch` | `{ branch }` — правка `image:` в compose + pull/recreate (для `admin-panel` — helper-контейнер); при неудаче правка откатывается |
 | POST | `/api/docker/containers/restart-all` | Рестарт всех BarkFluff-сервисов |
 | POST | `/api/docker/containers/update-all` | Обновить все сервисы |
 

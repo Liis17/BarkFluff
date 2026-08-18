@@ -244,6 +244,15 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
+    <!-- Просвечивающая тема для полноэкранных вьюеров фото/видео —
+         чат виден под контентом во время свайпа-закрытия -->
+    <style name="Theme.BarkfluffClientAndroid.Viewer" parent="Theme.BarkfluffClientAndroid">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <!-- Диалог без отступов для профиля чата -->
     <style name="Theme.BarkfluffClientAndroid.Dialog.NoPadding" parent="Theme.Material3.DayNight.Dialog.Alert">
         <item name="android:windowNoTitle">true</item>
