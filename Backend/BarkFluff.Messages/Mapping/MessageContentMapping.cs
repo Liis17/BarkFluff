@@ -94,6 +94,8 @@ public static class MessageContentMapping
                 var fileInfo = filesInfoMap?.GetValueOrDefault(attachment.FileId ?? string.Empty);
                 protoAttachment.PreviewFileId = fileInfo?.PreviewFileId ?? string.Empty;
                 protoAttachment.FileName = fileInfo?.FileName ?? string.Empty;
+                protoAttachment.ImageWidth = fileInfo?.ImageWidth ?? 0;
+                protoAttachment.ImageHeight = fileInfo?.ImageHeight ?? 0;
             }
 
             content.Attachments.Add(protoAttachment);
