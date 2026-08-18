@@ -45,6 +45,7 @@ import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
+import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
@@ -1120,6 +1121,12 @@ class MessageAdapter(
         val capped = uris.take(10)
         val layout = determineLayout(capped.size)
         val isSingle = capped.size == 1
+        val singleRatio: Float? = if (isSingle) {
+            val uri = capped[0]
+            val isVideo = context.contentResolver.getType(uri)?.startsWith("video/") == true
+            val dims = if (isVideo) getVideoDimensions(uri, context) else ImageCompressor.getImageDimensions(uri, context)
+            dims?.takeIf { it.first > 0 && it.second > 0 }?.let { (w, h) -> w.toFloat() / h.toFloat() }
+        } else null
 
         val column = android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.VERTICAL
@@ -1133,7 +1140,11 @@ class MessageAdapter(
         for ((rowIdx, itemsInRow) in layout.withIndex()) {
             val totalSpacing = spacingPx * (itemsInRow - 1)
             val cellWidth = (maxWidth - totalSpacing) / itemsInRow
-            val cellHeight = if (isSingle) (cellWidth * 0.75f).toInt() else cellWidth
+            val cellHeight = when {
+                isSingle && singleRatio != null -> (cellWidth / singleRatio).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
+                isSingle -> (cellWidth * 0.75f).toInt()
+                else -> cellWidth
+            }
 
             val row = android.widget.LinearLayout(context).apply {
                 orientation = android.widget.LinearLayout.HORIZONTAL
@@ -1552,6 +1563,21 @@ class MessageAdapter(
             duration
         } catch (e: Exception) {
             0
+        }
+    }
+
+    private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(context, uri)
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            retriever.release()
+            if (width <= 0 || height <= 0) null
+            else if (rotation == 90 || rotation == 270) Pair(height, width) else Pair(width, height)
+        } catch (e: Exception) {
+            null
         }
     }
 
