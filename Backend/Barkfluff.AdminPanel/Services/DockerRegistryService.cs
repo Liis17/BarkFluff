@@ -143,6 +143,32 @@ public class DockerRegistryService
         }
     }
 
+    /// <summary>
+    /// Есть ли такой репозиторий в реестре. Используется перед переключением ветки в docker-compose.yml,
+    /// чтобы не записать в файл образ, которого CI ещё не собрал.
+    /// </summary>
+    public async Task<bool> RepositoryExistsAsync(string repository, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"docker-registry:exists:{repository}";
+        if (_cache.TryGetValue(cacheKey, out bool cached))
+            return cached;
+
+        bool exists;
+        try
+        {
+            using var response = await _httpClient.GetAsync($"/v2/{repository}/tags/list", cancellationToken);
+            exists = response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось проверить репозиторий {Repository} в реестре", repository);
+            return false;
+        }
+
+        _cache.Set(cacheKey, exists, exists ? TimeSpan.FromMinutes(10) : TimeSpan.FromMinutes(1));
+        return exists;
+    }
+
     private static bool TryParseImageReference(string image, out string repository, out string? currentVersion)
     {
         repository = string.Empty;

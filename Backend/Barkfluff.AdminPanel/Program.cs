@@ -90,6 +90,9 @@ public class Program
         // Register DockerService as Singleton
         builder.Services.AddSingleton<DockerService>();
 
+        // Register ComposeImageService as Singleton
+        builder.Services.AddSingleton<ComposeImageService>();
+
         // Register Remote Docker management services
         builder.Services.AddSingleton<IRemoteSshClient, SshNetRemoteSshClient>();
         builder.Services.AddSingleton<RemoteDockerService>();

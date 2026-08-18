@@ -149,6 +149,7 @@
                     <span class="bf-icon size-16" data-bf-icon="admin/update-available"></span>
                     Обновление
                 </span>
+                <span id="adminPanelBranch" title="Ветка обновлений админ-панели"></span>
                 <button onclick="restartAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
                     <span class="bf-icon size-18" data-bf-icon="admin/restart"></span>
                     Перезапустить
@@ -204,6 +205,7 @@
                                 <tr>
                                     <th>Сервис</th>
                                     <th>Статус</th>
+                                    <th>Ветка</th>
                                     <th>Текущая версия</th>
                                     <th>Последняя версия</th>
                                     <th>Последний лог</th>
@@ -213,7 +215,7 @@
                                 </tr>
                             </thead>
                             <tbody id="servicesTableBody">
-                                <tr><td colspan="8" class="empty-cell">
+                                <tr><td colspan="9" class="empty-cell">
                                     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
                                         <div class="md-loader-expressive" style="width:24px;height:24px;"></div>
                                         Загрузка сервисов...
@@ -318,6 +320,7 @@
 <script src="assets/command-palette.js"></script>
 <script>
     let servicesData = [];
+    let branchesByContainer = {};
     let refreshInterval = null;
 
     async function checkAuth() {
@@ -427,9 +430,10 @@
             const res = await fetch('/api/seq/services/status');
             if (!res.ok) throw new Error(res.status);
             servicesData = await res.json();
+            await loadBranches();
             renderServicesTable();
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="8" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
         }
     }
 
@@ -448,7 +452,7 @@
     function renderServicesTable() {
         const tbody = document.getElementById('servicesTableBody');
         if (!servicesData.length) {
-            tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">Сервисы не найдены</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-cell">Сервисы не найдены</td></tr>`;
             return;
         }
         tbody.innerHTML = servicesData.map(svc => {
@@ -473,6 +477,7 @@
                     </div>
                 </td>
                 <td>${statusBadgeHtml(svc.dockerState)}</td>
+                <td>${branchSelectHtml(containerName, `handleBranchChange(event, '${containerName}')`)}</td>
                 <td>${currentVersion}</td>
                 <td>${latestVersion}</td>
                 <td style="color:var(--md-on-surface-variant);font-size:12px;font-family:'Roboto Mono',monospace;">${svc.lastSeen ? formatRelativeTime(svc.lastSeen) : '<span style="color:var(--md-outline);">Нет данных</span>'}</td>
@@ -496,6 +501,77 @@
                 </td>
             </tr>`;
         }).join('');
+    }
+
+    // ---- Ветки обновлений (image: в docker-compose.yml) ----
+    async function loadBranches() {
+        try {
+            const res = await fetch('/api/docker/branches');
+            if (!res.ok) throw new Error(res.status);
+            const branches = await res.json();
+            branchesByContainer = {};
+            branches.forEach(b => { branchesByContainer[b.container] = b; });
+        } catch {
+            branchesByContainer = {};
+        }
+        renderAdminPanelBranch();
+    }
+
+    function branchSelectHtml(container, onChange) {
+        const info = branchesByContainer[container];
+        if (!info) return '<span style="color:var(--md-outline);">—</span>';
+        const options = info.branches
+            .map(b => `<option value="${b}" ${b === info.branch ? 'selected' : ''}>${b}</option>`)
+            .join('');
+        const pending = info.runningBranch && info.runningBranch !== info.branch
+            ? `<span class="md-status md-status-warn" title="Запущен образ ветки ${escapeHtml(info.runningBranch)}">не применена</span>`
+            : '';
+        return `<div style="display:flex;align-items:center;gap:6px;">
+                    <select class="md-input-outlined" data-branch-select="${container}" style="height:32px;padding:4px 8px;font-size:13px;width:auto;"
+                        onchange="${onChange}">${options}</select>
+                    ${pending}
+                </div>`;
+    }
+
+    async function handleBranchChange(event, container) {
+        const select = event.currentTarget;
+        const branch = select.value;
+        const previous = (branchesByContainer[container] || {}).branch;
+        if (branch === previous) return;
+
+        if (!confirm(`Переключить "${container}" на ветку ${branch}? Строка image: в docker-compose.yml будет изменена, образ загружен, контейнер пересоздан.\n\nВнимание: смешивание веток может нарушить совместимость контрактов между сервисами.`)) {
+            select.value = previous;
+            return;
+        }
+
+        select.disabled = true;
+        try {
+            const r = await fetch(`/api/docker/containers/${container}/branch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ branch })
+            });
+            const result = await r.json();
+            if (result.success) {
+                showNotification('success', result.message);
+                if (container === 'admin-panel') { window.location.href = '/updating'; return; }
+                setTimeout(loadServices, 2000);
+            } else {
+                showNotification('error', result.message || 'Ошибка');
+                select.value = previous;
+            }
+        } catch (e) {
+            showNotification('error', 'Ошибка: ' + e.message);
+            select.value = previous;
+        } finally {
+            select.disabled = false;
+        }
+    }
+
+    function renderAdminPanelBranch() {
+        const holder = document.getElementById('adminPanelBranch');
+        if (!holder) return;
+        holder.innerHTML = branchSelectHtml('admin-panel', "handleBranchChange(event, 'admin-panel')");
     }
 
     function getContainerNameFromServiceName(name) {
