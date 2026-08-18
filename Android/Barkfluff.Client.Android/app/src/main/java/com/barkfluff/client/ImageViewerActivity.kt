@@ -19,6 +19,7 @@ import com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
+import com.barkfluff.client.utils.SwipeToDismissHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,7 +27,7 @@ import java.io.File
 
 /**
  * Просмотрщик изображений с поддержкой масштабирования (pinch-to-zoom),
- * свайпа между изображениями и свайпа вниз для закрытия.
+ * свайпа между изображениями и свайпа вверх/вниз для закрытия.
  * Не полноэкранный — статус-бар остаётся видимым.
  */
 class ImageViewerActivity : AppCompatActivity() {
@@ -40,7 +41,7 @@ class ImageViewerActivity : AppCompatActivity() {
     private var sourceMessageIds: List<Long> = emptyList()
     private var startPosition: Int = 0
 
-    private var swipeTouchStartY = 0f
+    private lateinit var swipeHelper: SwipeToDismissHelper
 
     companion object {
 
@@ -86,9 +87,15 @@ class ImageViewerActivity : AppCompatActivity() {
             return
         }
 
+        swipeHelper = SwipeToDismissHelper(this, binding.root) { finish() }
+
         setupViewPager()
         setupButtons()
-        setupSwipeDismiss()
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (swipeHelper.onDispatchTouchEvent(ev)) return true
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun setupViewPager() {
@@ -119,7 +126,7 @@ class ImageViewerActivity : AppCompatActivity() {
     }
 
     private fun setupButtons() {
-        binding.closeButton.setOnClickListener { finishWithAnimation() }
+        binding.closeButton.setOnClickListener { swipeHelper.dismiss() }
         binding.saveButton.setOnClickListener { saveCurrentImage() }
         binding.copyButton.setOnClickListener { copyCurrentImageToClipboard() }
         binding.forwardButton.setOnClickListener { forwardCurrentImage() }
@@ -163,57 +170,6 @@ class ImageViewerActivity : AppCompatActivity() {
                 Toast.makeText(this@ImageViewerActivity, R.string.message_copy_failed, Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun setupSwipeDismiss() {
-        var isSwipingDown = false
-
-        binding.root.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    swipeTouchStartY = event.rawY
-                    isSwipingDown = false
-                    false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val deltaY = event.rawY - swipeTouchStartY
-                    val deltaX = event.x  // approximate, just to check direction
-
-                    if (!isSwipingDown && deltaY > 20f) {
-                        isSwipingDown = true
-                    }
-
-                    if (isSwipingDown && deltaY > 0) {
-                        v.translationY = deltaY
-                        val screenH = resources.displayMetrics.heightPixels.toFloat()
-                        v.alpha = 1f - (deltaY / (screenH * 0.5f)).coerceIn(0f, 1f)
-                        true
-                    } else false
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val deltaY = event.rawY - swipeTouchStartY
-                    val screenH = resources.displayMetrics.heightPixels.toFloat()
-                    if (isSwipingDown && deltaY > screenH * 0.25f) {
-                        finishWithAnimation()
-                    } else {
-                        v.animate().translationY(0f).alpha(1f).setDuration(200).start()
-                        isSwipingDown = false
-                    }
-                    false
-                }
-                else -> false
-            }
-        }
-    }
-
-    private fun finishWithAnimation() {
-        val screenH = resources.displayMetrics.heightPixels.toFloat()
-        binding.root.animate()
-            .translationY(screenH)
-            .alpha(0f)
-            .setDuration(250)
-            .withEndAction { finish() }
-            .start()
     }
 
     private fun saveCurrentImage() {
