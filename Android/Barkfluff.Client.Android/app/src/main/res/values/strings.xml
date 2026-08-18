@@ -751,6 +751,18 @@
     <string name="msg_action_delete">Удалить</string>
     <string name="msg_action_forward">Переслать</string>
     <string name="msg_action_pin">Закрепить</string>
+    <string name="msg_action_copy_markdown">Копировать как Markdown</string>
+    <string name="msg_action_properties">Свойства</string>
+    <string name="msg_action_select">Выделить</string>
+    <string name="msg_properties_id">ID сообщения: %1$d</string>
+    <string name="msg_properties_sender">Отправитель: %1$s</string>
+    <string name="msg_properties_sent_at">Отправлено: %1$s</string>
+    <string name="msg_properties_edited_yes">Изменено: да</string>
+    <string name="msg_properties_edited_no">Изменено: нет</string>
+    <string name="msg_properties_read_yes">Прочитано: да</string>
+    <string name="msg_properties_read_no">Прочитано: нет</string>
+    <string name="msg_properties_attachments_header">Вложения:</string>
+    <string name="msg_properties_no_attachments">Без вложений</string>
 
     <!-- Language Settings -->
     <string name="language_settings_title">Язык</string>

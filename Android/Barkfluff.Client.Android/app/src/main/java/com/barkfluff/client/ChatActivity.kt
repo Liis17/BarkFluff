@@ -62,6 +62,7 @@ import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.KeyboardHeightTracker
 import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.OnlineTimeFormatter
@@ -2654,6 +2655,8 @@ class ChatActivity : AppCompatActivity() {
         const val DELETE = 7
         const val FORWARD = 8
         const val PIN = 9
+        const val COPY_MARKDOWN = 10
+        const val PROPERTIES = 11
     }
 
     private fun showMessageActionMenu(bubble: View, item: MessageItem) {
@@ -2672,6 +2675,7 @@ class ChatActivity : AppCompatActivity() {
             add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.ic_action_reply, getString(R.string.msg_action_reply)))
             if (hasText) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_TEXT, R.drawable.ic_action_copy_text, getString(R.string.msg_action_copy_text)))
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
             }
             if (imageAtts.size == 1) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_IMAGE, R.drawable.ic_action_copy_image, getString(R.string.msg_action_copy_image)))
@@ -2695,6 +2699,7 @@ class ChatActivity : AppCompatActivity() {
                 if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
+            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
         }
 
         messageActionsOverlay.show(
@@ -2709,6 +2714,7 @@ class ChatActivity : AppCompatActivity() {
             when (actionId) {
                 MessageActionId.REPLY -> setPendingReply(item)
                 MessageActionId.COPY_TEXT -> copyMessageText(item)
+                MessageActionId.COPY_MARKDOWN -> copyMessageMarkdown(item)
                 MessageActionId.COPY_IMAGE -> copyMessageImage(imageAtts.first())
                 MessageActionId.SAVE_IMAGES -> saveMessageImages(imageAtts)
                 MessageActionId.SAVE_DOCS -> saveMessageDocuments(docAtts)
@@ -2729,6 +2735,7 @@ class ChatActivity : AppCompatActivity() {
                         .show(supportFragmentManager, "forward_picker")
                 }
                 MessageActionId.PIN -> togglePinForMessage(item)
+                MessageActionId.PROPERTIES -> showMessageProperties(item)
             }
         }
         backCallback.isEnabled = true
@@ -2736,8 +2743,45 @@ class ChatActivity : AppCompatActivity() {
 
     private fun copyMessageText(item: MessageItem) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("BarkFluff message", MarkdownRenderer.strip(item.text)))
+        Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun copyMessageMarkdown(item: MessageItem) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("BarkFluff message", item.text))
         Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showMessageProperties(item: MessageItem) {
+        val isOwnMessage = item.senderId == currentUserId
+        val senderLabel = if (isOwnMessage) getString(R.string.current_user) else (item.senderName ?: chatTitle)
+        val sentAt = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault()).format(Date(item.timestamp))
+
+        val lines = buildList {
+            add(getString(R.string.msg_properties_id, item.messageId))
+            add(getString(R.string.msg_properties_sender, senderLabel))
+            add(getString(R.string.msg_properties_sent_at, sentAt))
+            add(getString(if (item.isEdited) R.string.msg_properties_edited_yes else R.string.msg_properties_edited_no))
+            if (isOwnMessage) {
+                add(getString(if (item.readStatus == ReadStatus.READ) R.string.msg_properties_read_yes else R.string.msg_properties_read_no))
+            }
+            add("")
+            if (item.attachments.isEmpty()) {
+                add(getString(R.string.msg_properties_no_attachments))
+            } else {
+                add(getString(R.string.msg_properties_attachments_header))
+                item.attachments.forEach { att ->
+                    add("• ${att.type.name} — ${att.fileName.ifBlank { att.fileId }}")
+                }
+            }
+        }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.msg_action_properties)
+            .setMessage(lines.joinToString("\n"))
+            .setPositiveButton(R.string.btn_close, null)
+            .show()
     }
 
     private fun copyMessageImage(att: barkfluff.shared.Shared.MessageAttachment) {
