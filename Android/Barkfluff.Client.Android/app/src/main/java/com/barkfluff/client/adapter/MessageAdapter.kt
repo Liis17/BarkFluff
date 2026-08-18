@@ -77,8 +77,8 @@ class MessageAdapter(
     var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
-    /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
-    private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
+    /** Вызывается при клике на пузырь сообщения — открыть меню действий. bubble = messageCard/stickerContainer, для позиционирования оверлея. */
+    private val onMessageActionRequested: ((bubble: View, item: MessageItem) -> Unit)? = null,
     /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
     private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
     /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
@@ -387,24 +387,13 @@ class MessageAdapter(
         private val binding: ItemMessageSentBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private var lastTouchRawX: Float = 0f
-        private var lastTouchRawY: Float = 0f
-
-        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
-            // Перехват raw координат касания для позиционирования popup
-            binding.root.setOnTouchListener { _, event ->
-                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
-                    lastTouchRawX = event.rawX
-                    lastTouchRawY = event.rawY
-                }
-                false
-            }
-            // Click по корневому FrameLayout (вне bubble) — открывает action menu в точке касания
-            binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
-            }
+            // Клик открывает меню действий только по самому пузырю — тап в пустое
+            // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
+            val bubbleClickListener = View.OnClickListener { v -> onMessageActionRequested?.invoke(v, item) }
+            binding.messageCard.setOnClickListener(bubbleClickListener)
+            binding.stickerContainer.setOnClickListener(bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
@@ -547,9 +536,6 @@ class MessageAdapter(
         private val binding: ItemMessageReceivedBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private var lastTouchRawX: Float = 0f
-        private var lastTouchRawY: Float = 0f
-
         /** Вызывается и из полного bind, и из частичного обновления по PAYLOAD_SENDER_INFO. */
         fun bindSenderInfo(item: MessageItem) {
             if (!isGroupChat) {
@@ -587,19 +573,13 @@ class MessageAdapter(
             }
         }
 
-        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
-            binding.root.setOnTouchListener { _, event ->
-                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
-                    lastTouchRawX = event.rawX
-                    lastTouchRawY = event.rawY
-                }
-                false
-            }
-            binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
-            }
+            // Клик открывает меню действий только по самому пузырю — тап в пустое
+            // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
+            val bubbleClickListener = View.OnClickListener { v -> onMessageActionRequested?.invoke(v, item) }
+            binding.messageCard.setOnClickListener(bubbleClickListener)
+            binding.stickerContainer.setOnClickListener(bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста)
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
