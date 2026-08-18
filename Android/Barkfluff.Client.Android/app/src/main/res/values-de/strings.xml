@@ -264,6 +264,7 @@
     <string name="cd_play_video">Video abspielen</string>
     <string name="cd_download_video">Video herunterladen</string>
     <string name="cd_read_status">Lesestatus</string>
+    <string name="cd_select_message">Nachricht auswählen</string>
     <string name="cd_media_preview_photo">Foto öffnen: %1$s</string>
     <string name="cd_media_preview_video">Video öffnen: %1$s</string>
     <string name="cd_media_select">Auswählen: %1$s</string>
@@ -920,6 +921,7 @@
     <string name="delete_message_title">Nachricht löschen?</string>
     <string name="delete_message_message">Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="message_delete_error">Fehler beim Löschen: %1$s</string>
+    <string name="message_delete_batch_failed">Nachrichten konnten nicht gelöscht werden: %1$d</string>
     <string name="message_not_loaded">Nachricht nicht geladen</string>
     <string name="message_save_image">Bild speichern</string>
     <string name="message_save_images">Bilder speichern</string>

@@ -263,6 +263,7 @@
     <string name="cd_play_video">Play video</string>
     <string name="cd_download_video">Download video</string>
     <string name="cd_read_status">Read status</string>
+    <string name="cd_select_message">Select message</string>
     <string name="cd_media_preview_photo">Open photo: %1$s</string>
     <string name="cd_media_preview_video">Open video: %1$s</string>
     <string name="cd_media_select">Select: %1$s</string>
@@ -919,6 +920,7 @@
     <string name="delete_message_title">Delete message?</string>
      <string name="delete_message_message">This action can\'t be undone.</string>
     <string name="message_delete_error">Delete error: %1$s</string>
+    <string name="message_delete_batch_failed">Failed to delete messages: %1$d</string>
     <string name="message_not_loaded">Message not loaded</string>
     <string name="message_save_image">Save image</string>
     <string name="message_save_images">Save images</string>
