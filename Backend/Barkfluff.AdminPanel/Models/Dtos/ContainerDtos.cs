@@ -68,6 +68,17 @@ public class ContainerActionRequestDto
 }
 
 /// <summary>
+/// Запрос на переключение ветки обновлений сервиса
+/// </summary>
+public class ContainerBranchRequestDto
+{
+    /// <summary>
+    /// Ветка обновлений: master, nightly или dev
+    /// </summary>
+    public string Branch { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// Результат выполнения действия с контейнером
 /// </summary>
 public class ContainerActionResponseDto
