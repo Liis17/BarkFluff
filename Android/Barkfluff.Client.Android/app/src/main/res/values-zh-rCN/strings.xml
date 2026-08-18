@@ -616,6 +616,18 @@
     <string name="msg_action_delete">删除</string>
     <string name="msg_action_forward">转发</string>
     <string name="msg_action_pin">置顶</string>
+    <string name="msg_action_copy_markdown">复制为 Markdown</string>
+    <string name="msg_action_properties">属性</string>
+    <string name="msg_action_select">选择</string>
+    <string name="msg_properties_id">消息 ID：%1$d</string>
+    <string name="msg_properties_sender">发送者：%1$s</string>
+    <string name="msg_properties_sent_at">发送时间：%1$s</string>
+    <string name="msg_properties_edited_yes">已编辑：是</string>
+    <string name="msg_properties_edited_no">已编辑：否</string>
+    <string name="msg_properties_read_yes">已读：是</string>
+    <string name="msg_properties_read_no">已读：否</string>
+    <string name="msg_properties_attachments_header">附件：</string>
+    <string name="msg_properties_no_attachments">无附件</string>
 
     <!-- Language Settings -->
     <string name="language_settings_title">语言</string>

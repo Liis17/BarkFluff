@@ -620,6 +620,18 @@
     <string name="msg_action_delete">Eliminar</string>
     <string name="msg_action_forward">Reenviar</string>
     <string name="msg_action_pin">Fijar</string>
+    <string name="msg_action_copy_markdown">Copiar como Markdown</string>
+    <string name="msg_action_properties">Propiedades</string>
+    <string name="msg_action_select">Seleccionar</string>
+    <string name="msg_properties_id">ID del mensaje: %1$d</string>
+    <string name="msg_properties_sender">Remitente: %1$s</string>
+    <string name="msg_properties_sent_at">Enviado: %1$s</string>
+    <string name="msg_properties_edited_yes">Editado: sí</string>
+    <string name="msg_properties_edited_no">Editado: no</string>
+    <string name="msg_properties_read_yes">Leído: sí</string>
+    <string name="msg_properties_read_no">Leído: no</string>
+    <string name="msg_properties_attachments_header">Adjuntos:</string>
+    <string name="msg_properties_no_attachments">Sin adjuntos</string>
 
     <!-- Language Settings -->
     <string name="language_settings_title">Idioma</string>

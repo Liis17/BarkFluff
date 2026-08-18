@@ -625,6 +625,18 @@
     <string name="msg_action_delete">Delete</string>
     <string name="msg_action_forward">Forward</string>
     <string name="msg_action_pin">Pin</string>
+    <string name="msg_action_copy_markdown">Copy as Markdown</string>
+    <string name="msg_action_properties">Properties</string>
+    <string name="msg_action_select">Select</string>
+    <string name="msg_properties_id">Message ID: %1$d</string>
+    <string name="msg_properties_sender">Sender: %1$s</string>
+    <string name="msg_properties_sent_at">Sent: %1$s</string>
+    <string name="msg_properties_edited_yes">Edited: yes</string>
+    <string name="msg_properties_edited_no">Edited: no</string>
+    <string name="msg_properties_read_yes">Read: yes</string>
+    <string name="msg_properties_read_no">Read: no</string>
+    <string name="msg_properties_attachments_header">Attachments:</string>
+    <string name="msg_properties_no_attachments">No attachments</string>
 
     <!-- Language Settings -->
     <string name="language_settings_title">Language</string>
