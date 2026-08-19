@@ -108,6 +108,8 @@
   "chat.background.hint": "Wähle ein Bild oder kehre zum globalen Hintergrund zurück",
   "chat.background.useGlobal": "Globalen verwenden",
   "chat.empty.hint": "Wähle links einen Chat aus, um ein Gespräch zu beginnen",
+  "chat.messageNotFound": "Nachricht nicht gefunden",
+  "chat.newMessages": "Neue Nachrichten",
   "chat.scrollToLatest": "Zur neuesten Nachricht",
   "chat.unreadMessages": "Ungelesene Nachrichten",
   "chatlist.draft": "Entwurf",
