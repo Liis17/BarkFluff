@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     id("com.google.gms.google-services")
 }
 
@@ -261,6 +262,10 @@ dependencies {
 
     // androidx.dynamicanimation — spring physics (SpringAnimation) для M3 Expressive motion (SpringPress).
     implementation(libs.androidx.dynamic.animation)
+
+    // DI: Hilt (KSP2) — composition root вместо ручной сборки в BarkFluffApplication.
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
 

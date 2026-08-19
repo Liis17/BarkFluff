@@ -24,7 +24,6 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
-import com.barkfluff.client.notifications.RealtimeSideEffectsImpl
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
@@ -38,7 +37,9 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import dagger.hilt.android.HiltAndroidApp
 import java.io.File
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,37 +49,32 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
+/**
+ * Зависимости приходят из Hilt ([AppModule]) — свойства ниже делегируют к синглтонам графа,
+ * поэтому существующие касты (application as BarkFluffApplication).* не меняются.
+ */
+@HiltAndroidApp
 class BarkFluffApplication : Application() {
 
-    lateinit var grpcManager: GrpcManager
-        private set
+    @Inject lateinit var grpcManager: GrpcManager
 
-    lateinit var chatCacheRepository: ChatCacheRepository
-        private set
+    @Inject lateinit var chatCacheRepository: ChatCacheRepository
 
-    lateinit var chatDraftRepository: ChatDraftRepository
-        private set
+    @Inject lateinit var chatDraftRepository: ChatDraftRepository
 
-    lateinit var realtimeService: RealtimeService
-        private set
+    @Inject lateinit var realtimeService: RealtimeService
 
-    lateinit var signalStore: BarkFluffSignalStore
-        private set
+    @Inject lateinit var signalStore: BarkFluffSignalStore
 
-    lateinit var prekeyManager: PrekeyManager
-        private set
+    @Inject lateinit var prekeyManager: PrekeyManager
 
-    lateinit var privateChatRepository: PrivateChatRepository
-        private set
+    @Inject lateinit var privateChatRepository: PrivateChatRepository
 
-    lateinit var secretChatRepository: SecretChatRepository
-        private set
+    @Inject lateinit var secretChatRepository: SecretChatRepository
 
-    lateinit var callRepository: CallRepository
-        private set
+    @Inject lateinit var callRepository: CallRepository
 
-    lateinit var callEventsService: CallEventsService
-        private set
+    @Inject lateinit var callEventsService: CallEventsService
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var callEventsUiJob: Job? = null
@@ -122,25 +118,11 @@ class BarkFluffApplication : Application() {
         // Apply Material You dynamic colors system-wide (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
         NotificationHelper.createChannels(this)
-        chatCacheRepository = ChatCacheRepository(applicationContext)
         CallTelecomManager.registerPhoneAccount(this)
-        grpcManager = GrpcManager(applicationContext)
-        chatDraftRepository = ChatDraftRepository(applicationContext, grpcManager, chatCacheRepository)
         connectivityManager = getSystemService(ConnectivityManager::class.java)
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
-        realtimeService = RealtimeService(
-            applicationContext,
-            grpcManager,
-            RealtimeSideEffectsImpl(applicationContext, grpcManager)
-        )
 
-        // E2E-инфраструктура (приватные + секретные чаты)
-        signalStore = BarkFluffSignalStore(applicationContext)
-        prekeyManager = PrekeyManager(applicationContext, signalStore)
-        privateChatRepository = PrivateChatRepository(applicationContext, grpcManager)
-        secretChatRepository = SecretChatRepository(applicationContext, grpcManager, signalStore)
-        callRepository = CallRepository(grpcManager)
-        callEventsService = CallEventsService(applicationContext, grpcManager, callRepository)
+        // E2E-инфраструктура (приватные + секретные чаты) приходит из Hilt (AppModule).
 
         // Инициализируем персистентный кэш URL файлов
         AvatarLoader.initializeCache(this)
