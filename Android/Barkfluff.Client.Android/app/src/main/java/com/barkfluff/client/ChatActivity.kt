@@ -244,6 +244,9 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INVITE_STATE = "invite_state"
         private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
+        /** Метка ClipData — техническая, пользователю не показывается. */
+        private const val CLIP_LABEL = "BarkFluff message"
+        private const val CLIP_LABEL_MULTIPLE = "BarkFluff messages"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
         private const val MIN_VOICE_RECORDING_MS = 500L
         private const val VOICE_BAR_FADE_DURATION_MS = 160L
@@ -2764,13 +2767,13 @@ class ChatActivity : AppCompatActivity() {
 
     private fun copyMessageText(item: MessageItem) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(ClipData.newPlainText("BarkFluff message", MarkdownRenderer.strip(item.text)))
+        cm.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL, MarkdownRenderer.strip(item.text)))
         Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun copyMessageMarkdown(item: MessageItem) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(ClipData.newPlainText("BarkFluff message", item.text))
+        cm.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL, item.text))
         Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
     }
 
@@ -2798,9 +2801,10 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
+        val propertiesText = lines.joinToString("\n")
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.msg_action_properties)
-            .setMessage(lines.joinToString("\n"))
+            .setMessage(propertiesText)
             .setPositiveButton(R.string.btn_close, null)
             .show()
     }
@@ -2856,7 +2860,7 @@ class ChatActivity : AppCompatActivity() {
         exitSelectionMode()
         if (texts.isEmpty()) return
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(ClipData.newPlainText("BarkFluff messages", texts.joinToString("\n\n")))
+        cm.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL_MULTIPLE, texts.joinToString("\n\n")))
         Toast.makeText(this, R.string.message_text_copied, Toast.LENGTH_SHORT).show()
     }
 
