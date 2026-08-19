@@ -29,6 +29,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -43,10 +44,7 @@ import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.cache.CacheScope
-import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.OpenChatManager
-import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
@@ -77,7 +75,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.GridLayoutManager
-import kotlinx.coroutines.async
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -85,13 +83,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import coil.load
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
 /**
  * Activity для отображения чата и переписки.
@@ -101,18 +98,20 @@ import java.util.Locale
  * - Отображение статуса онлайна собеседника
  * - Профиль чата по клику на кнопку информации
  */
+@AndroidEntryPoint
 class ChatActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityChatBinding
+    private val viewModel: ChatViewModel by viewModels()
+
     private lateinit var globalParam: GlobalParam
     private lateinit var grpcManager: GrpcManager
     private lateinit var realtimeService: RealtimeService
-    private lateinit var chatRepository: ChatRepository
-    private lateinit var messageAdapter: MessageAdapter
-    private lateinit var chatCacheRepository: ChatCacheRepository
-    private lateinit var chatDraftRepository: ChatDraftRepository
-    private var cacheScope: CacheScope? = null
 
+    @Inject lateinit var chatRepository: ChatRepository
+    private lateinit var messageAdapter: MessageAdapter
+
+    // Кэш рендера из ChatViewModel.uiState: шапка/звонки/меню читают эти значения синхронно.
     private var chatId: String = ""
     private var chatTitle: String = ""
     private var isChatMuted: Boolean = false
@@ -148,18 +147,6 @@ class ChatActivity : AppCompatActivity() {
     private var sendButtonMorphAnimator: ValueAnimator? = null
     private var sendButtonWide: Boolean? = null
 
-    // Пагинация сообщений
-    private var isLoadingMessages = false
-    private var hasMoreMessagesUp = true
-    private var hasMoreMessagesDown = true
-    private var firstVisibleMessageId: Long = 0L
-    private var lastVisibleMessageId: Long = 0L
-    private var loadMessagesJob: Job? = null
-
-    // Непрочитанные сообщения
-    private var firstUnreadMessageId: Long = 0L
-    private var lastBottomReadTriggerId: Long = -1L
-
     // Вставленные из буфера обмена изображения
     private val pendingPastedImages = mutableListOf<Uri>()
     private val pendingStickerUris = mutableListOf<Uri>()
@@ -176,21 +163,8 @@ class ChatActivity : AppCompatActivity() {
     private var voiceTimerJob: Job? = null
     private var voiceDotAnimator: ValueAnimator? = null
 
-    // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
-    // 0 = нет активного ответа.
-    private var pendingReplyMessageId: Long = 0L
-    private var isRestoringDraft = false
-    private var draftSaveJob: Job? = null
-
-    // Активное редактирование: ID редактируемого сообщения (0 = режим обычной отправки).
-    // pendingEditFileIds — file_id существующих вложений (передаются в EditMessage без изменений).
-    private var pendingEditMessageId: Long = 0L
-    private var pendingEditFileIds: List<String> = emptyList()
-
-    // Закреплённые сообщения
-    private val pinnedById = mutableMapOf<Long, barkfluff.shared.Shared.PinnedMessageInfo>()
-    private val pinnedSorted = mutableListOf<barkfluff.shared.Shared.PinnedMessageInfo>()
-    private var pinnedTotalCount: Int = 0
+    // Программное изменение поля ввода не должно триггерить сохранение черновика
+    private var suppressDraftSave = false
 
     // Inline стикер-панель
     private enum class InputPanelState { NONE, KEYBOARD, STICKER_PANEL }
@@ -301,8 +275,11 @@ class ChatActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         val newChatId = intent.getStringExtra(EXTRA_CHAT_ID)
         if (newChatId != null && newChatId != chatId) {
-            // Другой чат — пересоздаём activity с новым intent
+            // Другой чат — пересоздаём activity с новым intent. ViewModelStore переживает
+            // recreate(), поэтому очищаем его явно: иначе новый чат получит VM со состоянием
+            // и подписками старого (realtime-коллекторы, оптимистика, пагинация).
             setIntent(intent)
+            viewModelStore.clear()
             recreate()
         }
     }
@@ -317,9 +294,6 @@ class ChatActivity : AppCompatActivity() {
         globalParam = GlobalParam(this)
         grpcManager = app.grpcManager
         realtimeService = app.realtimeService
-        chatRepository = ChatRepository(this, grpcManager)
-        chatCacheRepository = app.chatCacheRepository
-        chatDraftRepository = app.chatDraftRepository
 
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
@@ -331,7 +305,6 @@ class ChatActivity : AppCompatActivity() {
         isGroupChat = intent.getBooleanExtra(EXTRA_IS_GROUP_CHAT, false)
         otherUserId = intent.getLongExtra(EXTRA_OTHER_USER_ID, 0L)
         currentUserId = globalParam.userId
-        cacheScope = CacheScope.from(globalParam)
 
         // E2E-чаты (приватный/секретный) рендерятся в облегчённом shell того же Activity.
         val chatKind = intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR)
@@ -351,9 +324,15 @@ class ChatActivity : AppCompatActivity() {
         setupKeyboardTracking()
         setupChatBackground()
         setupPinnedBar()
-        loadChatInfoAndMessages()
-        restoreChatDraft()
-        loadPinnedMessages()
+        viewModel.initialize(
+            chatId = chatId,
+            title = chatTitle,
+            avatarFileId = chatAvatarFileId,
+            isGroupChat = isGroupChat,
+            otherUserId = otherUserId,
+            supportsDrafts = supportsDrafts,
+        )
+        observeViewModel()
 
         // Устанавливаем этот чат как открытый
         OpenChatManager.setOpenChat(chatId)
@@ -361,17 +340,195 @@ class ChatActivity : AppCompatActivity() {
         // Убираем уведомление этого чата из шторки если оно висит
         NotificationHelper.dismissForChat(applicationContext, chatId)
 
-        // Подписываемся на обновления в реальном времени
-        subscribeToRealtimeEvents()
-
-        // Обновляем подписку на онлайн-статус собеседника и сразу запрашиваем текущий статус
+        // Подписка на индикатор набора текста в этом чате (online-статус и typing — UI-слой)
+        realtimeService.changeTypingSubscription(listOf(chatId))
+        subscribeToTypingEvents()
         if (!isGroupChat && otherUserId > 0) {
             realtimeService.changeOnlineSubscription(listOf(otherUserId))
             loadOnlineStatus(otherUserId)
         }
+    }
 
-        // Подписка на индикатор набора текста в этом чате
-        realtimeService.changeTypingSubscription(listOf(chatId))
+    /** Индикатор «печатает…»: realtime typing-события → анимация шапки (UI-слой). */
+    private fun subscribeToTypingEvents() {
+        lifecycleScope.launch {
+            realtimeService.typingEvents.collect { event ->
+                if (!event.chatId.equals(chatId, ignoreCase = true)) return@collect
+                if (event.userId == currentUserId) return@collect
+                if (event.action == barkfluff.onliner.OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED) {
+                    typingUsers.remove(event.userId)?.cancel()
+                } else {
+                    typingUsers.remove(event.userId)?.cancel()
+                    typingUsers[event.userId] = lifecycleScope.launch {
+                        delay(6_000)
+                        typingUsers.remove(event.userId)
+                        renderTypingIndicator()
+                    }
+                }
+                renderTypingIndicator()
+            }
+        }
+    }
+
+    /**
+     * Рендер состояния ChatViewModel: список сообщений, шапка, закрепы, режимы reply/edit,
+     * прогресс загрузки. Список подаётся в MessageAdapter через DiffUtil; появление
+     * разделителя непрочитанных или рост хвоста своими сообщениями управляет прокруткой.
+     */
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            var previousItems: List<MessageItem> = emptyList()
+            var previousState: ChatUiState? = null
+            var previousTitle: String? = null
+            var previousAvatarFileId: String? = null
+            var previousPinnedCount = -1
+            var previousPinnedPreview: String? = null
+            var observedOnlineUserId = 0L
+            viewModel.uiState.collect { state ->
+                // Кэш значений для синхронных читателей (шапка, звонки, меню, forward)
+                chatTitle = state.chatTitle
+                chatAvatarFileId = state.chatAvatarFileId
+                isGroupChat = state.isGroupChat
+                isChatMuted = state.isChatMuted
+                otherUserId = state.otherUserId
+
+                if (previousTitle != state.chatTitle) {
+                    previousTitle = state.chatTitle
+                    binding.chatNameTextView.text = state.chatTitle.ifBlank { getString(R.string.chat_default_title) }
+                }
+                if (previousAvatarFileId != state.chatAvatarFileId) {
+                    previousAvatarFileId = state.chatAvatarFileId
+                    loadChatAvatar()
+                }
+
+                // otherUserId выяснился из chatInfo — подписываемся на онлайн-статус
+                if (!state.isGroupChat && state.otherUserId > 0 && state.otherUserId != observedOnlineUserId) {
+                    observedOnlineUserId = state.otherUserId
+                    realtimeService.changeOnlineSubscription(listOf(state.otherUserId))
+                    loadOnlineStatus(state.otherUserId)
+                    binding.onlineStatusTextView.visibility = View.VISIBLE
+                }
+
+                // Сообщения
+                val wasAtBottom = isRecyclerViewAtBottom()
+                val unreadAppeared = state.items.any { it.type == MessageType.UNREAD_SEPARATOR } &&
+                    previousItems.none { it.type == MessageType.UNREAD_SEPARATOR }
+                val grewAtTail = state.items.size > previousItems.size
+                val lastMessage = state.items.lastOrNull { it.type == MessageType.MESSAGE }
+                val ownAtTail = lastMessage?.senderId == currentUserId
+
+                if (state.items != previousItems) {
+                    messageAdapter.submitList(state.items) {
+                        if (unreadAppeared) {
+                            val idx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.UNREAD_SEPARATOR }
+                            if (idx >= 0) {
+                                (binding.messagesRecyclerView.layoutManager as LinearLayoutManager)
+                                    .scrollToPositionWithOffset(idx, 0)
+                            }
+                        } else if (grewAtTail && (ownAtTail || wasAtBottom)) {
+                            val lastIdx = messageAdapter.itemCount - 1
+                            if (lastIdx >= 0) binding.messagesRecyclerView.scrollToPosition(lastIdx)
+                        }
+                        updateScrollToBottomButton()
+                    }
+                    previousItems = state.items
+                } else {
+                    updateScrollToBottomButton()
+                }
+
+                binding.loadingProgress.visibility = if (state.isLoading) View.VISIBLE else View.GONE
+
+                // Reply / Edit
+                if (previousState?.pendingReply != state.pendingReply) {
+                    renderPendingReply(state.pendingReply)
+                }
+                if (previousState?.pendingEdit != state.pendingEdit) {
+                    renderPendingEdit(previousState?.pendingEdit, state.pendingEdit)
+                }
+
+                // Закрепы
+                if (previousPinnedCount != state.pinnedCount || previousPinnedPreview != state.pinnedPreview) {
+                    previousPinnedCount = state.pinnedCount
+                    previousPinnedPreview = state.pinnedPreview
+                    updatePinnedBar(state.pinnedCount, state.pinnedPreview)
+                }
+
+                previousState = state
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.events.collect { event ->
+                when (event) {
+                    is ChatEvent.ToastRes -> {
+                        val text = if (event.formatArg != null) {
+                            getString(event.resId, event.formatArg)
+                        } else {
+                            getString(event.resId)
+                        }
+                        Toast.makeText(this@ChatActivity, text, Toast.LENGTH_SHORT).show()
+                    }
+                    is ChatEvent.DraftRestored -> {
+                        suppressDraftSave = true
+                        suppressTypingInput = true
+                        binding.messageEditText.setText(event.text)
+                        suppressTypingInput = false
+                        suppressDraftSave = false
+                        updateSendButtonMode()
+                    }
+                    ChatEvent.FinishActivity -> finish()
+                }
+            }
+        }
+    }
+
+    private fun renderPendingReply(reply: PendingReply?) {
+        if (reply == null) {
+            binding.replyPreviewBar.visibility = View.GONE
+        } else {
+            val author = reply.senderName?.takeIf { it.isNotBlank() }
+                ?: if (reply.senderId == currentUserId) getString(R.string.current_user) else getString(R.string.message_placeholder)
+            val preview = if (reply.text.isNotBlank()) {
+                reply.text
+            } else {
+                buildAttachmentSummary(reply.attachments)
+            }
+            binding.replyPreviewAuthorText.text = getString(R.string.reply_to_author, author)
+            binding.replyPreviewContentText.text = preview
+            binding.replyPreviewBar.visibility = View.VISIBLE
+        }
+        updateSendButtonMode()
+    }
+
+    private fun renderPendingEdit(previous: PendingEdit?, current: PendingEdit?) {
+        if (current != null) {
+            binding.editPreviewContentText.text =
+                if (current.text.isNotBlank()) current.text else buildAttachmentSummaryFromIds(current)
+            binding.editPreviewBar.visibility = View.VISIBLE
+            // Синхронизируем поле ввода с редактируемым текстом (и при restore после process death)
+            suppressDraftSave = true
+            suppressTypingInput = true
+            binding.messageEditText.setText(current.text)
+            suppressTypingInput = false
+            suppressDraftSave = false
+            binding.messageEditText.setSelection(binding.messageEditText.text?.length ?: 0)
+            binding.messageEditText.requestFocus()
+            WindowInsetsControllerCompat(window, binding.chatRootLayout).show(WindowInsetsCompat.Type.ime())
+        } else {
+            binding.editPreviewBar.visibility = View.GONE
+            if (previous != null) {
+                // Правка отправлена — очищаем поле ввода (паритет со старым sendEdit)
+                suppressDraftSave = true
+                binding.messageEditText.text?.clear()
+                suppressDraftSave = false
+            }
+        }
+        updateSendButtonMode()
+    }
+
+    /** Краткое описание вложений для edit-превью, когда fileIds есть, а attachments нет. */
+    private fun buildAttachmentSummaryFromIds(edit: PendingEdit): String {
+        return if (edit.fileIds.isEmpty()) "" else getString(R.string.attachment_preview)
     }
 
     /**
@@ -976,13 +1133,13 @@ class ChatActivity : AppCompatActivity() {
                     val totalItemCount = layoutManager.itemCount
 
                     // Подгрузка вверх (история)
-                    if (firstVisibleItem < 10 && !isLoadingMessages && hasMoreMessagesUp) {
-                        loadMessagesUp()
+                    if (firstVisibleItem < 10) {
+                        viewModel.loadMessagesUp()
                     }
 
                     // Подгрузка вниз (новые сообщения)
-                    if (lastVisibleItem >= totalItemCount - 10 && !isLoadingMessages && hasMoreMessagesDown) {
-                        loadMessagesDown()
+                    if (lastVisibleItem >= totalItemCount - 10) {
+                        viewModel.loadMessagesDown()
                     }
 
                     // Показ/скрытие кнопки прокрутки вниз
@@ -994,10 +1151,7 @@ class ChatActivity : AppCompatActivity() {
                     // Safety-net: долистали до самого низа и подгружать больше нечего —
                     // помечаем прочитанными все загруженные чужие сообщения (страхует от
                     // случаев, когда прогрессивная пометка при пагинации что-то не зацепила).
-                    if (!hasMoreMessagesDown && isRecyclerViewAtBottom() && lastVisibleMessageId != lastBottomReadTriggerId) {
-                        lastBottomReadTriggerId = lastVisibleMessageId
-                        markAllLoadedMessagesAsRead()
-                    }
+                    viewModel.onReachedBottom()
                 }
             })
         }
@@ -1113,7 +1267,7 @@ class ChatActivity : AppCompatActivity() {
      * Если расстояние до конца > 500px: рывок на 120dp выше финала → плавное торможение по кривой.
      */
     private fun scrollToLatestMessages() {
-        if (isLoadingMessages) return
+        if (viewModel.uiState.value.isLoading) return
         lifecycleScope.launch {
             val lm = binding.messagesRecyclerView.layoutManager as? LinearLayoutManager
 
@@ -1128,41 +1282,12 @@ class ChatActivity : AppCompatActivity() {
                 lm.startSmoothScroll(fastScroller)
             }
 
-            // Параллельно запрашиваем актуальное состояние чата
-            val chatInfoDeferred = async { chatRepository.getChatInfo(chatId) }
-
-            // Ждём 300 мс — за это время список успевает «полететь» вниз
+            // Ждём 300 мс — за это время список успевает «полететь» вниз,
+            // параллельно VM подтягивает актуальное состояние с сервера.
             delay(300)
 
             try {
-                val serverLastMessageId = chatInfoDeferred.await().getOrNull()?.lastMessageId ?: 0L
-
-                if (serverLastMessageId > 0L && serverLastMessageId != lastVisibleMessageId) {
-                    // Есть незагруженные сообщения — подгружаем последние
-                    isLoadingMessages = true
-                    hasMoreMessagesDown = false
-                    val result = chatRepository.loadMessages(
-                        chatId = chatId,
-                        fromMessageId = 0L,
-                        offsetBefore = 0,
-                        offsetAfter = 0,
-                        count = 30
-                    )
-                    isLoadingMessages = false
-
-                    if (result.isSuccess) {
-                        val messages = result.getOrNull()!!
-                        displayMessages(messages)
-                        if (messages.isNotEmpty()) {
-                            val sorted = messages.sortedBy { it.sentAt.seconds }
-                            firstVisibleMessageId = sorted.first().id
-                            lastVisibleMessageId = sorted.last().id
-                        }
-                        hasMoreMessagesUp = messages.size >= 15
-                        hasMoreMessagesDown = false
-                        markVisibleMessagesAsRead(messages)
-                    }
-                }
+                viewModel.refreshLatestMessages()
 
                 // Рывок в конец с эффектом плавного торможения если расстояние большое
                 snapToBottom()
@@ -1347,10 +1472,11 @@ class ChatActivity : AppCompatActivity() {
 
     private fun shouldShowVoiceButton(): Boolean {
         val text = binding.messageEditText.text?.toString().orEmpty()
+        val state = viewModel.uiState.value
         return text.isBlank() &&
             !hasPendingAttachments() &&
-            pendingReplyMessageId == 0L &&
-            pendingEditMessageId == 0L
+            state.pendingReply == null &&
+            state.pendingEdit == null
     }
 
     private fun updateSendButtonMode() {
@@ -1688,7 +1814,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendVoiceMessage(file: File) {
         val localId = java.util.UUID.randomUUID().toString()
-        addOptimisticMessage(
+        viewModel.addOptimisticMessage(
             MessageItem(
                 messageId = -System.nanoTime(),
                 senderId = currentUserId,
@@ -1993,7 +2119,7 @@ class ChatActivity : AppCompatActivity() {
         if (result.sendSeparately) {
             attachments.forEachIndexed { idx, _ ->
                 val captionForFirst = if (idx == 0) result.captionText else ""
-                addOptimisticMessage(
+                viewModel.addOptimisticMessage(
                     MessageItem(
                         messageId = -(System.nanoTime() + idx),
                         senderId = currentUserId,
@@ -2009,7 +2135,7 @@ class ChatActivity : AppCompatActivity() {
                 )
             }
         } else {
-            addOptimisticMessage(
+            viewModel.addOptimisticMessage(
                 MessageItem(
                     messageId = -System.nanoTime(),
                     senderId = currentUserId,
@@ -2030,7 +2156,7 @@ class ChatActivity : AppCompatActivity() {
             chatTitle = chatTitle,
             text = result.captionText,
             attachments = attachments,
-            replyId = pendingReplyMessageId,
+            replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L,
             sendSeparately = result.sendSeparately,
             sendAsFile = result.sendAsFile,
             localIds = localIds
@@ -2172,9 +2298,9 @@ class ChatActivity : AppCompatActivity() {
         pendingStickerUris.clear()
         pendingDocumentUris.clear()
         updateAttachmentPreview()
-        isRestoringDraft = true
+        suppressDraftSave = true
         binding.messageEditText.text?.clear()
-        isRestoringDraft = false
+        suppressDraftSave = false
 
         lifecycleScope.launch {
             val fileIds = mutableListOf<String>()
@@ -2250,274 +2376,59 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
         val messageText = text.trim()
+        val state = viewModel.uiState.value
 
         // Если активен режим редактирования — редактируем существующее сообщение.
-        // fileIds игнорируем (вложения не меняются), используем сохранённые pendingEditFileIds.
-        val editId = pendingEditMessageId
-        if (editId != 0L) {
-            sendEdit(editId, messageText)
+        // fileIds игнорируем (вложения не меняются), VM использует сохранённые fileIds.
+        if (state.pendingEdit != null) {
+            viewModel.sendMessage(messageText)
             return
         }
 
         // Reply без текста и без файлов — отправляем сам факт пересылки
-        val replyId = pendingReplyMessageId
-        if (messageText.isBlank() && fileIds.isEmpty() && replyId == 0L) return
+        if (messageText.isBlank() && fileIds.isEmpty() && state.pendingReply == null) return
 
-        Log.d(TAG, "sendMessage: textLength=${messageText.length}, fileIds=$fileIds, replyId=$replyId")
-
-        // Оптимистично добавляем сообщение в чат сразу со статусом SENDING (M3 Expressive feedback).
-        // Освобождаем поле ввода и reply-bar моментально — пользователь не ждёт сетевого ответа.
-        val localId = java.util.UUID.randomUUID().toString()
-        val optimisticItem = MessageItem(
-            messageId = -System.nanoTime(),
-            senderId = currentUserId,
-            text = messageText,
-            timestamp = System.currentTimeMillis(),
-            attachments = emptyList(),
-            readStatus = ReadStatus.SENDING,
-            type = MessageType.MESSAGE,
-            localId = localId
-        )
-        addOptimisticMessage(optimisticItem)
-        isRestoringDraft = true
+        // Освобождаем поле ввода и reply-bar моментально — оптимистичный SENDING-item
+        // добавит VM, пользователь не ждёт сетевого ответа.
+        suppressDraftSave = true
         binding.messageEditText.text?.clear()
+        suppressDraftSave = false
         clearPendingReply(saveDraft = false)
-        isRestoringDraft = false
 
-        lifecycleScope.launch {
-            try {
-                // Фиксируем именно отправленную версию до вызова SendMessage: более новая
-                // правка пользователя получит следующее generation и не будет удалена.
-                val sentDraft = chatDraftRepository.edit(chatId, messageText, replyId)
-                val result = chatRepository.sendMessage(
-                    chatId = chatId,
-                    text = messageText,
-                    fileIds = fileIds,
-                    replyToMessageId = replyId
-                )
-
-                if (result.isSuccess) {
-                    val real = result.getOrNull()
-                    if (real != null) {
-                        replaceOptimisticByLocalId(localId, toMessageItem(real).copy(readStatus = ReadStatus.SENT))
-                    } else {
-                        updateOptimisticStatus(localId, ReadStatus.SENT)
-                    }
-                    sentDraft?.let { chatDraftRepository.clearAfterSent(chatId, it.generation) }
-                } else {
-                    updateOptimisticStatus(localId, ReadStatus.FAILED)
-                    Toast.makeText(
-                        this@ChatActivity,
-                        getString(R.string.message_send_error, result.exceptionOrNull()?.message.orEmpty()),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending message", e)
-                updateOptimisticStatus(localId, ReadStatus.FAILED)
-                Toast.makeText(
-                    this@ChatActivity,
-                    getString(R.string.message_send_error, e.message.orEmpty()),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
-
-    /** Добавляет оптимистичный item (со статусом SENDING) в конец списка и скроллит вниз. */
-    private fun addOptimisticMessage(item: MessageItem) {
-        val currentList = messageAdapter.currentList
-            .filter { it.type != MessageType.FOOTER }
-            .toMutableList()
-        currentList.removeAll { it.type == MessageType.UNREAD_SEPARATOR }
-
-        val msgDate = startOfDay(item.timestamp)
-        val lastItem = currentList.lastOrNull()
-        if (lastItem == null || (lastItem.type != MessageType.MESSAGE && lastItem.type != MessageType.SYSTEM) || startOfDay(lastItem.timestamp) != msgDate) {
-            currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-        }
-        currentList.add(item)
-        messageAdapter.submitList(currentList) {
-            val lastIdx = messageAdapter.itemCount - 1
-            if (lastIdx >= 0) binding.messagesRecyclerView.scrollToPosition(lastIdx)
-        }
-    }
-
-    /** Заменяет оптимистичный item (по localId) на серверный с указанным статусом. */
-    private fun replaceOptimisticByLocalId(localId: String, replacement: MessageItem) {
-        val currentList = messageAdapter.currentList.toMutableList()
-        val idx = currentList.indexOfFirst { it.localId == localId }
-        if (idx >= 0) {
-            currentList[idx] = replacement.copy(localId = localId)
-            messageAdapter.submitList(currentList)
-        }
-    }
-
-    /** Обновляет статус оптимистичного item (SENDING→SENT/FAILED), не подменяя сам item. */
-    private fun updateOptimisticStatus(localId: String, status: ReadStatus) {
-        val currentList = messageAdapter.currentList.toMutableList()
-        val idx = currentList.indexOfFirst { it.localId == localId }
-        if (idx >= 0) {
-            currentList[idx] = currentList[idx].copy(readStatus = status)
-            messageAdapter.submitList(currentList)
-        }
-    }
-
-    /** Обновляет inline-прогресс аплоада медиа на оптимистичном сообщении (0..100). */
-    private fun updateOptimisticUploadProgress(localId: String, progress: Int) {
-        val currentList = messageAdapter.currentList.toMutableList()
-        val idx = currentList.indexOfFirst { it.localId == localId }
-        if (idx >= 0) {
-            currentList[idx] = currentList[idx].copy(uploadProgress = progress.coerceIn(0, 100))
-            messageAdapter.submitList(currentList)
-        }
-    }
-
-    /** Сбрасывает uploadProgress (аплоад завершён). Если serverMessageId != 0 — заменяет messageId оптимистичного item. */
-    private fun clearOptimisticUploadProgress(localId: String, serverMessageId: Long) {
-        val currentList = messageAdapter.currentList.toMutableList()
-        val idx = currentList.indexOfFirst { it.localId == localId }
-        if (idx >= 0) {
-            val item = currentList[idx]
-            currentList[idx] = item.copy(
-                uploadProgress = null,
-                messageId = if (serverMessageId != 0L) serverMessageId else item.messageId,
-                readStatus = if (item.readStatus == ReadStatus.SENDING || item.readStatus == ReadStatus.FAILED) ReadStatus.SENT else item.readStatus
-            )
-            messageAdapter.submitList(currentList)
-        }
-    }
-
-    private fun sendEdit(messageId: Long, text: String) {
-        val fileIds = pendingEditFileIds
-        if (text.isBlank() && fileIds.isEmpty()) {
-            Toast.makeText(this, R.string.message_empty, Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        lifecycleScope.launch {
-            val result = chatRepository.editMessage(messageId, text, fileIds)
-            if (result.isSuccess) {
-                binding.messageEditText.text?.clear()
-                clearPendingEdit()
-                // Применяем сразу, чтобы не ждать стрим
-                applyEditedMessage(result.getOrNull()!!)
-            } else {
-                Toast.makeText(
-                    this@ChatActivity,
-                    getString(R.string.message_edit_error, result.exceptionOrNull()?.message.orEmpty()),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
+        viewModel.sendMessage(messageText, fileIds)
     }
 
     // ─── Reply / Forward UX ────────────────────────────────────────────────────
 
     private fun setPendingReply(item: MessageItem) {
-        pendingReplyMessageId = item.messageId
-
-        val author = item.senderName?.takeIf { it.isNotBlank() }
-            ?: if (item.senderId == currentUserId) getString(R.string.current_user) else getString(R.string.message_placeholder)
-        val preview = if (item.text.isNotBlank()) {
-            item.text
-        } else {
-            buildAttachmentSummary(item.attachments)
-        }
-
-        binding.replyPreviewAuthorText.text = getString(R.string.reply_to_author, author)
-        binding.replyPreviewContentText.text = preview
-        binding.replyPreviewBar.visibility = View.VISIBLE
+        viewModel.setPendingReply(item)
         binding.messageEditText.requestFocus()
-        updateSendButtonMode()
         scheduleDraftSave()
     }
 
     private fun clearPendingReply(saveDraft: Boolean = true) {
-        pendingReplyMessageId = 0L
-        binding.replyPreviewBar.visibility = View.GONE
-        updateSendButtonMode()
+        viewModel.clearPendingReply()
         if (saveDraft) scheduleDraftSave()
     }
 
     private fun scheduleDraftSave(immediate: Boolean = false) {
-        if (!supportsDrafts || isRestoringDraft || pendingEditMessageId != 0L) return
-        draftSaveJob?.cancel()
-        draftSaveJob = lifecycleScope.launch {
-            val text = binding.messageEditText.text?.toString().orEmpty()
-            val replyId = pendingReplyMessageId
-            chatDraftRepository.edit(chatId, text, replyId)
-            if (immediate) chatDraftRepository.flush(chatId) else {
-                delay(2_000)
-                chatDraftRepository.flush(chatId)
-            }
-        }
-    }
-
-    private fun restoreChatDraft() {
-        if (!supportsDrafts) return
-        lifecycleScope.launch {
-            val draft = chatDraftRepository.restore(chatId) ?: return@launch
-            isRestoringDraft = true
-            suppressTypingInput = true
-            binding.messageEditText.setText(draft.text)
-            suppressTypingInput = false
-            isRestoringDraft = false
-            if (draft.replyToMessageId == 0L) return@launch
-
-            val item = messageAdapter.currentList.firstOrNull { it.messageId == draft.replyToMessageId }
-                ?: chatRepository.loadMessages(
-                    chatId = chatId,
-                    fromMessageId = draft.replyToMessageId,
-                    offsetBefore = 1,
-                    offsetAfter = 1
-                ).getOrNull()?.firstOrNull { it.id == draft.replyToMessageId }?.let(::toMessageItem)
-            if (item != null) {
-                isRestoringDraft = true
-                setPendingReply(item)
-                isRestoringDraft = false
-            } else {
-                chatDraftRepository.edit(chatId, draft.text, 0L)
-                chatDraftRepository.flush(chatId)
-            }
-        }
+        if (!supportsDrafts || suppressDraftSave) return
+        viewModel.saveDraft(binding.messageEditText.text?.toString().orEmpty(), immediate)
     }
 
     // ─── Edit / Delete UX ─────────────────────────────────────────────────────
 
     private fun setPendingEdit(item: MessageItem) {
-        // Edit и reply — взаимоисключающие режимы
-        if (pendingReplyMessageId != 0L) {
-            clearPendingReply(saveDraft = false)
-        }
-
-        pendingEditMessageId = item.messageId
-        // Сохраняем существующие вложения — backend перезаписывает по files_ids,
-        // forwarded-вложения он не трогает в любом случае
-        pendingEditFileIds = item.attachments
-            .filter { it.type != barkfluff.shared.Shared.MessageAttachmentType.FORWARDED_MESSAGE }
-            .map { it.fileId }
-            .filter { it.isNotBlank() }
-
-        val preview = if (item.text.isNotBlank()) item.text else buildAttachmentSummary(item.attachments)
-        binding.editPreviewContentText.text = preview
-        binding.editPreviewBar.visibility = View.VISIBLE
-
-        // Программная установка текста не должна запускать typing-heartbeat
-        suppressTypingInput = true
-        binding.messageEditText.setText(item.text)
-        suppressTypingInput = false
-        binding.messageEditText.setSelection(binding.messageEditText.text?.length ?: 0)
-        binding.messageEditText.requestFocus()
-        WindowInsetsControllerCompat(window, binding.chatRootLayout).show(WindowInsetsCompat.Type.ime())
-        updateSendButtonMode()
+        // Edit и reply — взаимоисключающие режимы (VM чистит reply сам).
+        // Поле ввода синхронизирует renderPendingEdit по смене состояния.
+        viewModel.setPendingEdit(item)
     }
 
     private fun clearPendingEdit() {
-        pendingEditMessageId = 0L
-        pendingEditFileIds = emptyList()
-        binding.editPreviewBar.visibility = View.GONE
+        viewModel.clearPendingEdit()
+        suppressDraftSave = true
         binding.messageEditText.text?.clear()
+        suppressDraftSave = false
         updateSendButtonMode()
     }
 
@@ -2527,48 +2438,9 @@ class ChatActivity : AppCompatActivity() {
             .setMessage(R.string.delete_message_message)
             .setNegativeButton(R.string.btn_cancel, null)
             .setPositiveButton(R.string.btn_delete) { _, _ ->
-                lifecycleScope.launch {
-                    val result = chatRepository.deleteMessage(item.messageId)
-                    if (result.isSuccess) {
-                        // Применяем сразу, не дожидаясь стрима
-                        removeMessageById(item.messageId)
-                    } else {
-                        Toast.makeText(
-                            this@ChatActivity,
-                            getString(R.string.message_delete_error, result.exceptionOrNull()?.message.orEmpty()),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+                viewModel.deleteMessage(item.messageId)
             }
             .show()
-    }
-
-    private fun applyEditedMessage(msg: barkfluff.shared.Shared.Message) {
-        val currentList = messageAdapter.currentList.toMutableList()
-        val index = currentList.indexOfFirst {
-            it.type == MessageType.MESSAGE && it.messageId == msg.id
-        }
-        if (index < 0) return
-
-        val old = currentList[index]
-        val updated = old.copy(
-            text = msg.content?.text ?: "",
-            attachments = msg.content?.attachmentsList ?: emptyList(),
-            isEdited = msg.isEdited
-        )
-        currentList[index] = updated
-        messageAdapter.submitList(currentList)
-    }
-
-    private fun removeMessageById(messageId: Long) {
-        val currentList = messageAdapter.currentList.toMutableList()
-        val removed = currentList.removeAll {
-            it.type == MessageType.MESSAGE && it.messageId == messageId
-        }
-        if (removed) {
-            messageAdapter.submitList(currentList)
-        }
     }
 
     /** Краткое описание вложений для reply preview (когда текста нет). */
@@ -2687,7 +2559,7 @@ class ChatActivity : AppCompatActivity() {
             it.type == barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT
         }
         val hasText = item.text.isNotBlank()
-        val isPinned = pinnedById.containsKey(item.messageId)
+        val isPinned = viewModel.isMessagePinned(item.messageId)
 
         val actions = buildList {
             add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.ic_action_reply, getString(R.string.msg_action_reply)))
@@ -2757,7 +2629,7 @@ class ChatActivity : AppCompatActivity() {
                         .newInstance(sourceIds.toLongArray())
                         .show(supportFragmentManager, "forward_picker")
                 }
-                MessageActionId.PIN -> togglePinForMessage(item)
+                MessageActionId.PIN -> viewModel.togglePinForMessage(item)
                 MessageActionId.PROPERTIES -> showMessageProperties(item)
                 MessageActionId.SELECT -> enterSelectionMode(item)
             }
@@ -2886,7 +2758,7 @@ class ChatActivity : AppCompatActivity() {
                     var failed = 0
                     for (id in ownIds) {
                         val result = chatRepository.deleteMessage(id)
-                        if (result.isSuccess) removeMessageById(id) else failed++
+                        if (result.isSuccess) viewModel.removeMessageById(id) else failed++
                     }
                     if (failed > 0) {
                         Toast.makeText(
@@ -2983,70 +2855,6 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadCachedMessages() {
-        val scope = cacheScope ?: return
-        lifecycleScope.launch {
-            val messages = runCatching {
-                chatCacheRepository.latestMessages(scope, chatId, limit = 30)
-            }.getOrNull().orEmpty()
-            if (messages.isEmpty()) return@launch
-
-            displayMessages(messages)
-            val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-            firstVisibleMessageId = sortedMessages.first().id
-            lastVisibleMessageId = sortedMessages.last().id
-            hasMoreMessagesUp = messages.size >= 30
-            hasMoreMessagesDown = false
-            binding.loadingProgress.visibility = View.GONE
-        }
-    }
-    private fun loadChatInfoAndMessages() {
-        loadCachedMessages()
-        isLoadingMessages = true
-        binding.loadingProgress.visibility = View.VISIBLE
-
-        lifecycleScope.launch {
-            try {
-                // Сначала получаем информацию о чате (включая firstUnreadMessageId)
-                val chatInfoResult = chatRepository.getChatInfo(chatId)
-                if (chatInfoResult.isSuccess) {
-                    val chatInfo = chatInfoResult.getOrNull()!!
-                    if (chatInfo.title.isNotBlank()) {
-                        chatTitle = chatInfo.title
-                        binding.chatNameTextView.text = chatInfo.title
-                    }
-                    if (chatInfo.pictureFileId.isNotBlank()) {
-                        chatAvatarFileId = chatInfo.pictureFileId
-                    }
-                    isGroupChat = chatInfo.isGroupChat
-                    firstUnreadMessageId = chatInfo.firstUnreadMessageId
-
-                    // Синхронизируем состояние mute (для меню и локального guard уведомлений)
-                    isChatMuted = chatInfo.muted
-                    GlobalParam(this@ChatActivity).setChatMutedLocal(chatId, chatInfo.muted)
-
-                    // Определяем otherUserId из участников чата (если не был передан через intent)
-                    if (!isGroupChat && otherUserId == 0L && chatInfo.memberIds.isNotEmpty()) {
-                        otherUserId = chatInfo.memberIds.firstOrNull { it != currentUserId } ?: 0L
-                        if (otherUserId > 0) {
-                            realtimeService.changeOnlineSubscription(listOf(otherUserId))
-                            loadOnlineStatus(otherUserId)
-                        }
-                    }
-                    loadChatAvatar()
-                    if (!isGroupChat && otherUserId > 0) {
-                        binding.onlineStatusTextView.visibility = View.VISIBLE
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading chat info", e)
-            }
-
-            // Загружаем сообщения (вокруг первого непрочитанного, если есть)
-            loadMessages()
-        }
-    }
-
     /** Контекстное меню чата (кнопка «три точки»): переключение уведомлений. */
     private fun showChatMenu(anchor: View) {
         val popup = android.widget.PopupMenu(this, anchor)
@@ -3064,12 +2872,13 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun toggleChatMute() {
-        val newMuted = !isChatMuted
+        val newMuted = !viewModel.uiState.value.isChatMuted
         lifecycleScope.launch {
             val result = grpcManager.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
+                viewModel.setChatMuted(newMuted)
                 isChatMuted = newMuted
-                GlobalParam(this@ChatActivity).setChatMutedLocal(chatId, newMuted)
+                globalParam.setChatMutedLocal(chatId, newMuted)
                 val msg = if (newMuted) getString(R.string.chat_muted) else getString(R.string.chat_unmuted)
                 android.widget.Toast.makeText(this@ChatActivity, msg, android.widget.Toast.LENGTH_SHORT).show()
             } else {
@@ -3166,361 +2975,6 @@ class ChatActivity : AppCompatActivity() {
         return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
     }
 
-    private fun loadMessages(isRetry: Boolean = false) {
-        loadMessagesJob = lifecycleScope.launch {
-            try {
-                val result = if (firstUnreadMessageId > 0) {
-                    // Загружаем сообщения вокруг первого непрочитанного
-                    chatRepository.loadMessages(
-                        chatId = chatId,
-                        fromMessageId = firstUnreadMessageId,
-                        offsetBefore = 15,
-                        offsetAfter = 30
-                    )
-                } else {
-                    // Нет непрочитанных — загружаем последние сообщения
-                    chatRepository.loadMessages(
-                        chatId = chatId,
-                        fromMessageId = 0L,
-                        offsetBefore = 0,
-                        offsetAfter = 0,
-                        count = 30
-                    )
-                }
-
-                if (result.isSuccess) {
-                    val messages = result.getOrNull()!!
-                    cacheScope?.let { scope ->
-                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
-                            .onFailure { Log.w(TAG, "Не удалось сохранить сообщения в кеш", it) }
-                    }
-                    displayMessages(messages)
-
-                    if (messages.isNotEmpty()) {
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-                        firstVisibleMessageId = sortedMessages.first().id
-                        lastVisibleMessageId = sortedMessages.last().id
-                    }
-
-                    hasMoreMessagesUp = messages.size >= 15
-                    hasMoreMessagesDown = true // Попробуем подгрузить, остановимся если нет новых
-
-                    // Отмечаем сообщения как прочитанные
-                    markVisibleMessagesAsRead(messages)
-                } else {
-                    if (!isRetry) {
-                        // Первая попытка не удалась — каналы могли протухнуть после фона, retry
-                        Log.w(TAG, "Message load failed, retrying after channel refresh...")
-                        delay(300)
-                        loadMessages(isRetry = true)
-                        return@launch
-                    }
-                    Toast.makeText(
-                        this@ChatActivity,
-                        getString(R.string.messages_load_failed),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading messages", e)
-                if (!isRetry) {
-                    Log.w(TAG, "Message load exception, retrying after channel refresh...")
-                    delay(300)
-                    loadMessages(isRetry = true)
-                    return@launch
-                }
-            } finally {
-                isLoadingMessages = false
-                binding.loadingProgress.visibility = View.GONE
-            }
-        }
-    }
-
-    /**
-     * Отмечает непрочитанные сообщения от других пользователей как прочитанные.
-     */
-    private fun markVisibleMessagesAsRead(messages: List<barkfluff.shared.Shared.Message>) {
-        val unreadMessageIds = messages
-            .filter { it.senderId != currentUserId && !it.readByList.contains(currentUserId) }
-            .map { it.id }
-
-        if (unreadMessageIds.isNotEmpty()) {
-            lifecycleScope.launch {
-                try {
-                    chatRepository.markAsRead(unreadMessageIds)
-                    Log.d(TAG, "Marked ${unreadMessageIds.size} messages as read")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error marking messages as read", e)
-                }
-            }
-        }
-    }
-
-    /**
-     * Помечает прочитанными все чужие сообщения, уже загруженные в адаптер. Вызывается
-     * при достижении самого низа списка — сервер идемпотентен, повторная пометка безопасна.
-     */
-    private fun markAllLoadedMessagesAsRead() {
-        val unreadMessageIds = messageAdapter.currentList
-            .filter { it.type == MessageType.MESSAGE && it.senderId != currentUserId }
-            .map { it.messageId }
-
-        if (unreadMessageIds.isNotEmpty()) {
-            lifecycleScope.launch {
-                try {
-                    chatRepository.markAsRead(unreadMessageIds)
-                    Log.d(TAG, "Marked all ${unreadMessageIds.size} loaded messages as read (reached bottom)")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error marking all messages as read on scroll to bottom", e)
-                }
-            }
-        }
-    }
-
-    private fun loadMessagesUp() {
-        if (isLoadingMessages || !hasMoreMessagesUp) return
-
-        isLoadingMessages = true
-        Log.d(TAG, "Loading messages up from $firstVisibleMessageId")
-
-        loadMessagesJob = lifecycleScope.launch {
-            try {
-                cacheScope?.let { scope ->
-                    val cached = chatCacheRepository.messagesBefore(
-                        scope,
-                        chatId,
-                        firstVisibleMessageId,
-                        limit = 30
-                    )
-                    if (cached.isNotEmpty()) {
-                        prependMessages(cached)
-                        firstVisibleMessageId = cached.minBy { it.sentAt.seconds }.id
-                        hasMoreMessagesUp = cached.size >= 30
-                        return@launch
-                    }
-                }
-                val result = chatRepository.loadMessages(
-                    chatId = chatId,
-                    fromMessageId = firstVisibleMessageId,
-                    offsetBefore = 30,
-                    offsetAfter = 0
-                )
-
-                if (result.isSuccess) {
-                    val messages = result.getOrNull()!!
-                    cacheScope?.let { scope ->
-                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
-                    }
-                    if (messages.isNotEmpty()) {
-                        prependMessages(messages)
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-                        firstVisibleMessageId = sortedMessages.first().id
-                        hasMoreMessagesUp = messages.size >= 30
-                    } else {
-                        hasMoreMessagesUp = false
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading messages up", e)
-            } finally {
-                isLoadingMessages = false
-            }
-        }
-    }
-
-    private fun loadMessagesDown() {
-        if (isLoadingMessages || !hasMoreMessagesDown) return
-
-        isLoadingMessages = true
-        Log.d(TAG, "Loading messages down from $lastVisibleMessageId")
-
-        loadMessagesJob = lifecycleScope.launch {
-            try {
-                val result = chatRepository.loadMessages(
-                    chatId = chatId,
-                    fromMessageId = lastVisibleMessageId,
-                    offsetBefore = 0,
-                    offsetAfter = 30
-                )
-
-                if (result.isSuccess) {
-                    val messages = result.getOrNull()!!
-                    cacheScope?.let { scope ->
-                        runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
-                    }
-                    if (messages.isNotEmpty()) {
-                        appendMessages(messages)
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-                        lastVisibleMessageId = sortedMessages.last().id
-                        hasMoreMessagesDown = messages.size >= 30
-                        markVisibleMessagesAsRead(messages)
-                    } else {
-                        hasMoreMessagesDown = false
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading messages down", e)
-            } finally {
-                isLoadingMessages = false
-            }
-        }
-    }
-
-    private fun displayMessages(messages: List<barkfluff.shared.Shared.Message>) {
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-        val messageItems = messagesWithDateSeparators(sortedMessages).toMutableList()
-
-        // Вставляем разделитель непрочитанных сообщений
-        var scrollToPosition = messageItems.size - 1
-        if (firstUnreadMessageId > 0) {
-            val unreadIndex = messageItems.indexOfFirst {
-                it.type == MessageType.MESSAGE && it.messageId == firstUnreadMessageId
-            }
-            if (unreadIndex >= 0) {
-                messageItems.add(unreadIndex, MessageItem.createUnreadSeparator(getString(R.string.unread_messages)))
-                scrollToPosition = unreadIndex // Скроллим к разделителю
-            }
-        }
-
-        messageAdapter.submitList(messageItems) {
-            if (scrollToPosition >= 0) {
-                // Используем scrollToPositionWithOffset чтобы разделитель непрочитанных
-                // появился в верхней части экрана, а не где-то в видимой области
-                val layoutManager = binding.messagesRecyclerView.layoutManager as LinearLayoutManager
-                layoutManager.scrollToPositionWithOffset(scrollToPosition, 0)
-            }
-            updateScrollToBottomButton()
-        }
-    }
-
-    /**
-     * Добавляет разделители дат между сообщениями.
-     */
-    private fun messagesWithDateSeparators(messages: List<barkfluff.shared.Shared.Message>): List<MessageItem> {
-        val result = mutableListOf<MessageItem>()
-        var lastDate: Long = -1
-
-        for (msg in messages) {
-            val msgDate = startOfDay(msg.sentAt.seconds * 1000)
-
-            // Если дата изменилась — добавляем разделитель
-            if (msgDate != lastDate) {
-                result.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-                lastDate = msgDate
-            }
-
-            result.add(toMessageItem(msg))
-        }
-
-        return result
-    }
-
-    private fun toMessageItem(msg: barkfluff.shared.Shared.Message): MessageItem {
-        val isSystem = msg.type == barkfluff.shared.Shared.MessageContentType.SYSTEM
-        return MessageItem(
-            messageId = msg.id,
-            senderId = msg.senderId,
-            text = msg.content?.text ?: "",
-            timestamp = msg.sentAt.seconds * 1000,
-            attachments = msg.content?.attachmentsList ?: emptyList(),
-            readStatus = if (!isSystem && msg.senderId == currentUserId) {
-                if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-            } else {
-                ReadStatus.NONE
-            },
-            type = if (isSystem) MessageType.SYSTEM else MessageType.MESSAGE,
-            isEdited = msg.isEdited,
-            replyTo = if (msg.hasReplyTo()) msg.replyTo else null
-        )
-    }
-
-    private fun startOfDay(timestampMillis: Long): Long {
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = timestampMillis
-        }
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis
-    }
-
-    private fun formatDateSeparator(timestampMillis: Long): String {
-        val today = startOfDay(System.currentTimeMillis())
-        val yesterday = today - 24 * 60 * 60 * 1000
-        val messageDate = startOfDay(timestampMillis)
-
-        return when {
-            messageDate == today -> getString(R.string.date_today)
-            messageDate == yesterday -> getString(R.string.date_yesterday)
-            else -> SimpleDateFormat("dd MMMM yyyy", resources.configuration.locales[0]).format(Date(timestampMillis))
-        }
-    }
-
-    private fun prependMessages(messages: List<barkfluff.shared.Shared.Message>) {
-        val currentList = messageAdapter.currentList
-            .filter { it.type != MessageType.FOOTER }
-            .toMutableList()
-
-        // Фильтруем дубликаты
-        val existingIds = currentList
-            .filter { it.type == MessageType.MESSAGE }
-            .map { it.messageId }
-            .toSet()
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-            .filter { it.id !in existingIds }
-
-        if (sortedMessages.isEmpty()) {
-            hasMoreMessagesUp = false
-            return
-        }
-
-        // Удаляем первый разделитель если он есть (будет заменен)
-        if (currentList.isNotEmpty() && currentList.first().type == MessageType.DATE_SEPARATOR) {
-            currentList.removeAt(0)
-        }
-
-        val newItems = messagesWithDateSeparators(sortedMessages)
-
-        // Вставляем новые элементы в начало
-        currentList.addAll(0, newItems)
-        messageAdapter.submitList(currentList)
-    }
-
-    private fun appendMessages(messages: List<barkfluff.shared.Shared.Message>) {
-        val currentList = messageAdapter.currentList
-            .filter { it.type != MessageType.FOOTER }
-            .toMutableList()
-
-        // Фильтруем дубликаты
-        val existingIds = currentList
-            .filter { it.type == MessageType.MESSAGE }
-            .map { it.messageId }
-            .toSet()
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-            .filter { it.id !in existingIds }
-
-        if (sortedMessages.isEmpty()) {
-            hasMoreMessagesDown = false
-            return
-        }
-
-        // Определяем дату последнего сообщения в текущем списке
-        val lastMsgItem = currentList.lastOrNull { it.type == MessageType.MESSAGE }
-        var lastDate = if (lastMsgItem != null) startOfDay(lastMsgItem.timestamp) else -1L
-
-        for (msg in sortedMessages) {
-            val msgDate = startOfDay(msg.sentAt.seconds * 1000)
-            if (msgDate != lastDate) {
-                currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-                lastDate = msgDate
-            }
-            currentList.add(toMessageItem(msg))
-        }
-
-        messageAdapter.submitList(currentList)
-    }
-
     /**
      * Возвращает true если RecyclerView прокручен до самого низа
      * (последнее сообщение полностью видно или мы у нижней границы).
@@ -3532,134 +2986,14 @@ class ChatActivity : AppCompatActivity() {
         return total == 0 || lastVisible >= total - 1
     }
 
-    private fun subscribeToRealtimeEvents() {
-        lifecycleScope.launch {
-            realtimeService.newMessages.collect { event ->
-                if (event.chatId == chatId) {
-                    val msg = event.message
-                    cacheScope?.let { scope ->
-                        chatCacheRepository.saveMessages(scope, chatId, listOf(msg))
-                    }
-                    addNewMessage(msg)
-                }
-            }
-        }
-
-        // Подписка на прогресс аплоада медиа — обновляем uploadProgress и статус
-        // оптимистичных сообщений в реальном времени.
-        lifecycleScope.launch {
-            com.barkfluff.client.send.MediaSendService.uploadEvents.collect { event ->
-                if (event.chatId != chatId) return@collect
-                when (event.state) {
-                    com.barkfluff.client.send.UploadState.PREPARING -> {
-                        updateOptimisticUploadProgress(event.localId, event.progress)
-                    }
-                    com.barkfluff.client.send.UploadState.UPLOADING -> {
-                        updateOptimisticUploadProgress(event.localId, event.progress)
-                    }
-                    com.barkfluff.client.send.UploadState.SENDING -> {
-                        updateOptimisticUploadProgress(event.localId, 100)
-                    }
-                    com.barkfluff.client.send.UploadState.SENT -> {
-                        // Снимаем прогресс — финальный item придёт через realtime newMessages
-                        // (либо оптимистичный заменится по messageId, либо останется как SENT).
-                        clearOptimisticUploadProgress(event.localId, event.serverMessageId)
-                    }
-                    com.barkfluff.client.send.UploadState.FAILED -> {
-                        updateOptimisticStatus(event.localId, ReadStatus.FAILED)
-                        clearOptimisticUploadProgress(event.localId, 0L)
-                    }
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            realtimeService.messagesRead.collect { event ->
-                if (event.chatId == chatId) {
-                    updateMessageReadStatus(event.messageId, event.newReadByList)
-                    cacheScope?.let { scope ->
-                        chatCacheRepository.updateReadBy(scope, chatId, event.messageId, event.newReadByList)
-                    }
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            realtimeService.messageEdited.collect { event ->
-                if (event.chatId.equals(chatId, ignoreCase = true)) {
-                    applyEditedMessage(event.message)
-                    cacheScope?.let { scope ->
-                        chatCacheRepository.saveMessages(scope, chatId, listOf(event.message))
-                    }
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            realtimeService.messageDeleted.collect { event ->
-                if (event.chatId.equals(chatId, ignoreCase = true)) {
-                    removeMessageById(event.messageId)
-                    cacheScope?.let { scope ->
-                        chatCacheRepository.deleteMessage(scope, chatId, event.messageId)
-                    }
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            realtimeService.messagePinned.collect { event ->
-                if (event.chatId.equals(chatId, ignoreCase = true)) {
-                    onMessagePinnedRemote(event.messageId, event.pinnerUserId, event.pinnedAt.seconds * 1000)
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            realtimeService.messageUnpinned.collect { event ->
-                if (event.chatId.equals(chatId, ignoreCase = true)) {
-                    onMessageUnpinnedRemote(event.messageId)
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            realtimeService.allMessagesUnpinned.collect { event ->
-                if (event.chatId.equals(chatId, ignoreCase = true)) {
-                    onAllMessagesUnpinnedRemote()
-                }
-            }
-        }
-
-        // Подписка на онлайн-статусы обрабатывается в loadOnlineStatus()
-
-        // Индикатор "печатает..."
-        lifecycleScope.launch {
-            realtimeService.typingEvents.collect { event ->
-                if (!event.chatId.equals(chatId, ignoreCase = true)) return@collect
-                if (event.userId == currentUserId) return@collect
-                if (event.action == barkfluff.onliner.OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED) {
-                    typingUsers.remove(event.userId)?.cancel()
-                } else {
-                    typingUsers.remove(event.userId)?.cancel()
-                    typingUsers[event.userId] = lifecycleScope.launch {
-                        delay(6_000)
-                        typingUsers.remove(event.userId)
-                        renderTypingIndicator()
-                    }
-                }
-                renderTypingIndicator()
-            }
-        }
-    }
-
     // ═══════════════════════════════════════════════════════════════
     // Закреплённые сообщения
     // ═══════════════════════════════════════════════════════════════
 
     private fun setupPinnedBar() {
         binding.pinnedMessageBar.setOnClickListener {
-            val first = pinnedSorted.firstOrNull() ?: return@setOnClickListener
-            scrollToMessageId(first.message.id)
+            val first = viewModel.uiState.value.firstPinnedMessageId
+            if (first > 0L) scrollToMessageId(first)
         }
         binding.pinnedListButton.setOnClickListener {
             val intent = Intent(this, PinnedMessagesActivity::class.java)
@@ -3677,66 +3011,18 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadPinnedMessages() {
-        lifecycleScope.launch {
-            val result = grpcManager.listPinnedMessages(chatId)
-            if (result.isSuccess) {
-                val (list, total) = result.getOrNull() ?: (emptyList<barkfluff.shared.Shared.PinnedMessageInfo>() to 0)
-                pinnedById.clear()
-                pinnedSorted.clear()
-                pinnedById.putAll(list.associateBy { it.message.id })
-                pinnedSorted.addAll(list)
-                pinnedTotalCount = total
-                updatePinnedBar()
-            }
-        }
-    }
-
-    private fun onMessagePinnedRemote(messageId: Long, pinnerUserId: Long, pinnedAtMs: Long) {
-        if (pinnedById.containsKey(messageId)) return
-        // Чтобы получить полный Message — перезагружаем последнюю страницу закрепов.
-        lifecycleScope.launch {
-            val result = grpcManager.listPinnedMessages(chatId)
-            if (result.isSuccess) {
-                val (list, total) = result.getOrNull() ?: return@launch
-                pinnedById.clear()
-                pinnedSorted.clear()
-                pinnedById.putAll(list.associateBy { it.message.id })
-                pinnedSorted.addAll(list)
-                pinnedTotalCount = total
-                updatePinnedBar()
-            }
-        }
-    }
-
-    private fun onMessageUnpinnedRemote(messageId: Long) {
-        val removed = pinnedById.remove(messageId) ?: return
-        pinnedSorted.remove(removed)
-        pinnedTotalCount = (pinnedTotalCount - 1).coerceAtLeast(0)
-        updatePinnedBar()
-    }
-
-    private fun onAllMessagesUnpinnedRemote() {
-        pinnedById.clear()
-        pinnedSorted.clear()
-        pinnedTotalCount = 0
-        updatePinnedBar()
-    }
-
-    private fun updatePinnedBar() {
-        val first = pinnedSorted.firstOrNull()
-        if (first == null) {
+    private fun updatePinnedBar(pinnedCount: Int, pinnedPreview: String) {
+        if (pinnedCount <= 0) {
             binding.pinnedMessageBar.visibility = View.GONE
             return
         }
         binding.pinnedMessageBar.visibility = View.VISIBLE
-        binding.pinnedTitle.text = if (pinnedTotalCount > 1) {
-            getString(R.string.pinned_message_count, pinnedTotalCount)
+        binding.pinnedTitle.text = if (pinnedCount > 1) {
+            getString(R.string.pinned_message_count, pinnedCount)
         } else {
             getString(R.string.pinned_message)
         }
-        val text = first.message.content?.text ?: ""
-        binding.pinnedPreview.text = if (text.isBlank()) getString(R.string.attachment_preview) else text
+        binding.pinnedPreview.text = if (pinnedPreview.isBlank()) getString(R.string.attachment_preview) else pinnedPreview
     }
 
     private fun scrollToMessageId(messageId: Long) {
@@ -3745,11 +3031,9 @@ class ChatActivity : AppCompatActivity() {
         if (idx >= 0) {
             binding.messagesRecyclerView.smoothScrollToPosition(idx)
         } else {
-            // Сообщение не загружено — подгружаем окно вокруг него.
+            // Сообщение не загружено — VM подгружает окно вокруг него.
             lifecycleScope.launch {
-                val result = chatRepository.loadMessages(chatId, fromMessageId = messageId, offsetBefore = 20, offsetAfter = 20)
-                if (result.isSuccess) {
-                    rebuildMessagesFromList(result.getOrNull() ?: emptyList())
+                if (viewModel.ensureMessageLoaded(messageId)) {
                     val newIdx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
                     if (newIdx >= 0) binding.messagesRecyclerView.scrollToPosition(newIdx)
                 }
@@ -3757,239 +3041,11 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun togglePinForMessage(item: MessageItem) {
-        val isPinned = pinnedById.containsKey(item.messageId)
-        lifecycleScope.launch {
-            if (isPinned) {
-                val result = grpcManager.unpinMessage(chatId, item.messageId)
-                if (result.isFailure) {
-                    Toast.makeText(this@ChatActivity, R.string.message_unpin_failed, Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                val result = grpcManager.pinMessage(chatId, item.messageId)
-                if (result.isFailure) {
-                    val cause = result.exceptionOrNull()
-                    val msg = if (cause is GrpcManager.PinErrorException && cause.isTooManyPinned) {
-                        getString(R.string.pin_limit_reached)
-                    } else {
-                        getString(R.string.message_pin_failed)
-                    }
-                    Toast.makeText(this@ChatActivity, msg, Toast.LENGTH_LONG).show()
-                } else {
-                    // Оптимистичное обновление до прихода realtime-события
-                    val pinned = result.getOrNull() ?: return@launch
-                    if (!pinnedById.containsKey(pinned.message.id)) {
-                        pinnedById[pinned.message.id] = pinned
-                        pinnedSorted.add(0, pinned)
-                        pinnedTotalCount++
-                        updatePinnedBar()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun rebuildMessagesFromList(messages: List<barkfluff.shared.Shared.Message>) {
-        messageAdapter.submitList(messages.map { toMessageItem(it) })
-    }
-
-    private fun addNewMessage(msg: barkfluff.shared.Shared.Message) {
-        val currentList = messageAdapter.currentList
-            .filter { it.type != MessageType.FOOTER }
-            .toMutableList()
-
-        // Реконсиляция своего оптимистичного сообщения. Realtime-эхо и ответ sendMessage
-        // (который проставляет messageId через clearOptimisticUploadProgress) могут прийти в
-        // любом порядке — поэтому ищем плейсхолдер ДО проверки дубликата:
-        //  • уже усыновлённый по messageId (SENT пришёл раньше эха) — иначе дубль-чек ниже
-        //    отбросил бы эхо, и плейсхолдер остался бы с пустыми вложениями (пустой bubble);
-        //  • либо ещё SENDING с совпадающим контентом (эхо раньше ответа sendMessage).
-        // Для медиа вложения у плейсхолдера пустые (есть только localPreviewUris), поэтому
-        // размер вложений не сверяем, если идёт upload.
-        if (msg.senderId == currentUserId) {
-            val optIdx = currentList.indexOfFirst {
-                it.type == MessageType.MESSAGE && it.localId != null && (
-                    it.messageId == msg.id ||
-                    (it.readStatus == ReadStatus.SENDING &&
-                     it.text == (msg.content?.text ?: "") &&
-                     (it.uploadProgress != null || it.localPreviewUris.isNotEmpty() ||
-                      it.attachments.size == (msg.content?.attachmentsList?.size ?: 0)))
-                )
-            }
-            if (optIdx >= 0) {
-                currentList[optIdx] = toMessageItem(msg).copy(localId = currentList[optIdx].localId)
-                messageAdapter.submitList(currentList)
-                return
-            }
-        }
-
-        // Проверка дубликата
-        if (currentList.any { (it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM) && it.messageId == msg.id }) {
-            return
-        }
-
-        val messageItem = toMessageItem(msg)
-
-        // Убираем разделитель непрочитанных если он ещё есть
-        currentList.removeAll { it.type == MessageType.UNREAD_SEPARATOR }
-
-        // Проверяем, нужно ли добавить разделитель даты
-        val msgDate = startOfDay(msg.sentAt.seconds * 1000)
-        val lastItem = currentList.lastOrNull()
-        if (lastItem != null && (lastItem.type == MessageType.MESSAGE || lastItem.type == MessageType.SYSTEM)) {
-            val lastMsgDate = startOfDay(lastItem.timestamp)
-            if (msgDate != lastMsgDate) {
-                currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-            }
-        } else if (currentList.isEmpty()) {
-            currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-        }
-
-        val isOwnMessage = msg.senderId == currentUserId
-        val wasAtBottom = isRecyclerViewAtBottom()
-
-        currentList.add(messageItem)
-        messageAdapter.submitList(currentList) {
-            // Своё сообщение — всегда скроллим вниз
-            // Чужое сообщение — скроллим только если уже были внизу
-            // size-1 = footer, size-2 = последнее сообщение
-            if (isOwnMessage || wasAtBottom) {
-                val lastIdx = messageAdapter.itemCount - 1
-                if (lastIdx >= 0) binding.messagesRecyclerView.scrollToPosition(lastIdx)
-            }
-            updateScrollToBottomButton()
-        }
-
-        lastVisibleMessageId = msg.id
-
-        // Если сообщение от другого пользователя — сразу отмечаем как прочитанное
-        if (msg.senderId != currentUserId) {
-            lifecycleScope.launch {
-                try {
-                    chatRepository.markAsRead(listOf(msg.id))
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error marking new message as read", e)
-                }
-            }
-        }
-    }
-
-    private fun updateMessageReadStatus(messageId: Long, newReadBy: List<Long>) {
-        val currentList = messageAdapter.currentList
-            .filter { it.type != MessageType.FOOTER }
-            .toMutableList()
-        val index = currentList.indexOfFirst { it.messageId == messageId }
-        if (index < 0) return
-
-        val item = currentList[index]
-        val updatedItem = item.copy(
-            readStatus = if (item.senderId == currentUserId && newReadBy.any { it != currentUserId }) {
-                ReadStatus.READ
-            } else {
-                item.readStatus
-            }
-        )
-        currentList[index] = updatedItem
-        messageAdapter.submitList(currentList)
-    }
-
-
     override fun onStart() {
         super.onStart()
-        // При возврате из фона — подгружаем сообщения, пришедшие пока приложение было свёрнуто.
-        // Ждём пока RealtimeService переподключится (каналы пересоздаются в ProcessLifecycleOwner.onStart).
-        if (lastVisibleMessageId > 0L && !isLoadingMessages) {
-            lifecycleScope.launch {
-                // Сначала проверяем и обновляем токен при необходимости
-                val tokenValid = grpcManager.ensureTokenValid(this@ChatActivity)
-                if (!tokenValid) {
-                    Log.w(TAG, "onStart: Token refresh failed, finishing activity")
-                    finish()
-                    return@launch
-                }
-
-                waitForConnection()
-                if (lastVisibleMessageId > 0L && !isLoadingMessages) {
-                    Log.d(TAG, "onStart: loading missed messages from lastVisibleMessageId=$lastVisibleMessageId")
-                    hasMoreMessagesDown = true
-                    loadMessagesDown()
-
-                    // Догоняем edit/delete события, пропущенные пока стримы были оффлайн
-                    syncRecentMessages()
-                }
-            }
-        }
-    }
-
-    /**
-     * Подтягивает свежее состояние уже загруженных сообщений и применяет diff:
-     *  — сообщения, которых больше нет на сервере, удаляются из адаптера (другое устройство удалило);
-     *  — сообщения с обновлённым текстом/вложениями/isEdited обновляются.
-     * Нужен после возвращения из фона: события стримов, эмитнутые во время паузы, теряются.
-     */
-    private suspend fun syncRecentMessages() {
-        val visibleMessages = messageAdapter.currentList
-            .filter { it.type == MessageType.MESSAGE }
-        if (visibleMessages.isEmpty()) return
-
-        val earliestId = visibleMessages.minOf { it.messageId }
-        val latestId = visibleMessages.maxOf { it.messageId }
-
-        // Запрашиваем окно от самого раннего видимого сообщения и до конца
-        val result = chatRepository.loadMessages(
-            chatId = chatId,
-            fromMessageId = earliestId,
-            offsetBefore = 0,
-            offsetAfter = 50
-        )
-        if (result.isFailure) {
-            Log.w(TAG, "syncRecentMessages: load failed: ${result.exceptionOrNull()?.message}")
-            return
-        }
-
-        val serverMessages = result.getOrNull().orEmpty()
-        val serverById = serverMessages.associateBy { it.id }
-        val serverIds = serverById.keys
-
-        // Граница "проверенного" диапазона: если сервер вернул максимум (50) — за пределы заглядывать не можем.
-        // Если меньше — значит больше сообщений в этом окне нет, можно безопасно удалять отсутствующие.
-        val checkedUpperBound = if (serverMessages.size < 50) Long.MAX_VALUE else serverMessages.maxOfOrNull { it.id } ?: earliestId
-
-        // Удаляем локальные сообщения, которых нет на сервере, но только в проверенном диапазоне
-        val deletedIds = visibleMessages
-            .filter { it.messageId in earliestId..checkedUpperBound && it.messageId !in serverIds }
-            .map { it.messageId }
-        for (id in deletedIds) {
-            Log.d(TAG, "syncRecentMessages: removing locally known but server-missing messageId=$id")
-            removeMessageById(id)
-        }
-
-        // Обновляем сообщения, у которых на сервере другой текст/isEdited/состав вложений
-        for (item in visibleMessages) {
-            val server = serverById[item.messageId] ?: continue
-            val serverText = server.content?.text ?: ""
-            val serverEdited = server.isEdited
-            val serverAttachmentIds = server.content?.attachmentsList?.map { it.id }.orEmpty()
-            val localAttachmentIds = item.attachments.map { it.id }
-            if (item.text != serverText || item.isEdited != serverEdited || localAttachmentIds != serverAttachmentIds) {
-                Log.d(TAG, "syncRecentMessages: applying server-side update to messageId=${item.messageId}")
-                applyEditedMessage(server)
-            }
-        }
-    }
-
-    /**
-     * Ждёт пока RealtimeService переподключится (CONNECTED) или таймаут 5 секунд.
-     */
-    private suspend fun waitForConnection() {
-        if (realtimeService.connectionState.value == RealtimeService.ConnectionState.CONNECTED) return
-        try {
-            withTimeout(5000) {
-                realtimeService.connectionState.first { it == RealtimeService.ConnectionState.CONNECTED }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "waitForConnection timed out, proceeding anyway")
-        }
+        // При возврате из фона — подгружаем пропущенное и синхронизируем edit/delete
+        // (токен, ожидание переподключения стримов и догрузка — в ChatViewModel).
+        viewModel.onStartCatchUp()
     }
 
     override fun onResume() {
@@ -4031,8 +3087,6 @@ class ChatActivity : AppCompatActivity() {
         super.onDestroy()
         // Сбрасываем открытый чат
         OpenChatManager.closeChat()
-        chatRepository.close()
-        loadMessagesJob?.cancel()
         onlineStatusJob?.cancel()
         onlineStatusSubscription?.cancel()
         stopTypingHeartbeat(sendCancel = true)

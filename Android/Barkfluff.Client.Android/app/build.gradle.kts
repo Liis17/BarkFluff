@@ -214,6 +214,9 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // ProcessLifecycleOwner — foreground/background tracking + RealtimeService resume/pause.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    // ViewModel + viewModelScope (ChatViewModel/ChatsViewModel) и by viewModels().
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.activity:activity-ktx:1.9.3")
 
     // WorkManager — периодическое обновление App Widget'ов.
     implementation("androidx.work:work-runtime-ktx:2.9.1")
