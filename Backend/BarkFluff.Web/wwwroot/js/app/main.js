@@ -47,6 +47,7 @@
     var hasNewerGap = false;      // хвост буфера обрезан — окно не доходит до конца чата
     var isJumpingToTail = false;
     var isJumpingToMessage = false;
+    var resyncSeparatorId = null; // id первого сообщения после resync-пропуска (разделитель «Новые сообщения»)
     var markReadTimer = null;
     var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
@@ -420,6 +421,7 @@
         hasNewerGap = false;
         isLoadingNewer = false;
         isJumpingToTail = false;
+        resyncSeparatorId = null;
         clearPendingReply(false);
         clearPendingEdit();
         closeContextMenu();
@@ -608,6 +610,14 @@
         return sep;
     }
 
+    function makeUnreadSeparator(i18nKey) {
+        var usep = document.createElement('div');
+        usep.className = 'msg-unread-separator';
+        usep.dataset.sepKey = i18nKey;
+        usep.innerHTML = '<span>' + u.escapeHtml(BF.i18n.t(i18nKey)) + '</span>';
+        return usep;
+    }
+
     function prefetchAttachmentUrls(list) {
         var fileIds = [];
         list.forEach(function (msg) {
@@ -626,7 +636,12 @@
         return prefetchAttachmentUrls(messages).then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
-            var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
+            // Разделитель непрочитанных: якорь resync-догрузки («Новые сообщения»)
+            // важнее первого непрочитанного из chat info. Приватные чаты якорь не
+            // ставят (их resync идёт мимо resyncCurrentChatTail) — игнорируем.
+            var sepId = currentChatType !== 1 && resyncSeparatorId ? resyncSeparatorId
+                : (currentChatInfo && currentChatInfo.firstUnreadMessageId);
+            var sepKey = currentChatType !== 1 && resyncSeparatorId ? 'chat.newMessages' : 'chat.unreadMessages';
             messages.forEach(function (msg, index) {
                 chain = chain.then(function () {
                     var msgDate = u.formatDate(msg.sentAt);
@@ -634,11 +649,8 @@
                         lastDate = msgDate;
                         messagesInner.appendChild(makeDateSeparator(msgDate));
                     }
-                    if (unreadId && Number(msg.id) === Number(unreadId)) {
-                        var usep = document.createElement('div');
-                        usep.className = 'msg-unread-separator';
-                        usep.innerHTML = '<span>' + u.escapeHtml(BF.i18n.t('chat.unreadMessages')) + '</span>';
-                        messagesInner.appendChild(usep);
+                    if (sepId && Number(msg.id) === Number(sepId)) {
+                        messagesInner.appendChild(makeUnreadSeparator(sepKey));
                     }
                     return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
                         el.dataset.date = msgDate;
@@ -713,9 +725,12 @@
     }
 
     function removeOrphanSeparators() {
-        Array.prototype.slice.call(messagesInner.querySelectorAll('.msg-date-separator')).forEach(function (sep) {
+        Array.prototype.slice.call(messagesInner.querySelectorAll('.msg-date-separator, .msg-unread-separator')).forEach(function (sep) {
             var next = sep.nextElementSibling;
-            if (!next || next.classList.contains('msg-date-separator')) sep.remove();
+            if (!next || next.classList.contains('msg-date-separator')) {
+                if (sep.dataset.sepKey === 'chat.newMessages') resyncSeparatorId = null;
+                sep.remove();
+            }
         });
     }
 
@@ -736,6 +751,7 @@
             mergePendingUploadsIntoMessages(chatId);
             hasNewerGap = false;
             noMoreOlder = false;
+            resyncSeparatorId = null; // окно снова на живом хвосте — границы «нового» нет
             return renderMessages().then(function () {
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             });
@@ -785,7 +801,7 @@
         };
     }
 
-    function appendMessageToView(msg) {
+    function appendMessageToView(msg, separatorKey) {
         // Хвост буфера обрезан — сообщение лежит за пределами загруженного окна. Не рисуем его
         // и убираем из массива, чтобы тот остался непрерывным: пользователь увидит сообщение,
         // когда вернётся к живому хвосту (кнопка «вниз» или прокрутка).
@@ -794,10 +810,10 @@
             if (gapIdx >= 0) messages.splice(gapIdx, 1);
             return Promise.resolve();
         }
-        return appendMessageElement(msg);
+        return appendMessageElement(msg, separatorKey);
     }
 
-    function appendMessageElement(msg) {
+    function appendMessageElement(msg, separatorKey) {
         var previous = messages.length > 1 ? messages[messages.length - 2] : null;
         var refreshPrevious = previous && currentChatInfo && currentChatInfo.isGroupChat &&
             previous.senderId !== myUserId && canGroupMessages(previous, msg)
@@ -817,6 +833,7 @@
                     if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
                 }
                 if (msgDate !== lastMsgDate) messagesInner.appendChild(makeDateSeparator(msgDate));
+                if (separatorKey) messagesInner.appendChild(makeUnreadSeparator(separatorKey));
                 el.dataset.date = msgDate;
                 messagesInner.appendChild(el);
             });
@@ -970,7 +987,10 @@
             fresh.forEach(function (msg) {
                 chain = chain.then(function () {
                     messages.push(msg);
-                    return appendMessageElement(msg);
+                    // resync-пропуск мог прийти именно этой страницей (окно было в
+                    // середине истории) — перед якорным сообщением ставим разделитель.
+                    var sepKey = resyncSeparatorId && Number(msg.id) === Number(resyncSeparatorId) ? 'chat.newMessages' : null;
+                    return appendMessageElement(msg, sepKey);
                 });
             });
             return chain.then(function () { trimMessages('head'); });
@@ -1607,6 +1627,9 @@
                 ? Math.max.apply(null, numericMessageIds)
                 : -Infinity;
             var tailOnly = numericMessageIds.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
+            // Якорь разделителя «Новые сообщения»: первое пропущенное. Не ставим, когда
+            // пользователь был у нижнего края — там догруженное сразу помечается прочитанным.
+            resyncSeparatorId = !wasAtBottom && diff.news.length > 0 ? diff.news[0].id : null;
             if (!tailOnly) {
                 messages = fetched;
                 mergePendingUploadsIntoMessages(chatId);
@@ -1623,12 +1646,16 @@
             diff.readUpdates.forEach(applyReadByUpdate);
 
             var chain = Promise.resolve();
+            var firstNewsAppended = false;
             diff.news.forEach(function (m) {
                 chain = chain.then(function () {
                     if (chatId !== currentChatId) return;
                     if (reconcilePendingUpload(chatId, m)) return;
                     messages.push(m);
-                    return appendMessageToView(m);
+                    // Перед первым дописанным — разделитель «Новые сообщения».
+                    var sepKey = resyncSeparatorId && !firstNewsAppended ? 'chat.newMessages' : null;
+                    firstNewsAppended = true;
+                    return appendMessageToView(m, sepKey);
                 });
             });
             return chain.then(function () {
@@ -1696,6 +1723,16 @@
         if (distFromBottom <= 300 && newMessagesBelowCount > 0) {
             newMessagesBelowCount = 0;
             updateScrollBadge();
+        }
+
+        // Разделитель «Новые сообщения» полностью ушёл выше видимой области —
+        // пользователь его прошёл: убираем и элемент, и якорь.
+        if (resyncSeparatorId) {
+            var newMsgSep = messagesInner.querySelector('.msg-unread-separator[data-sep-key="chat.newMessages"]');
+            if (newMsgSep && newMsgSep.getBoundingClientRect().bottom < messagesArea.getBoundingClientRect().top) {
+                newMsgSep.remove();
+                resyncSeparatorId = null;
+            }
         }
 
         if (_markReadScrollTimer) return;
@@ -3032,6 +3069,7 @@
 
             messages = fetched;
             mergePendingUploadsIntoMessages(chatId);
+            resyncSeparatorId = null; // окно перенесено к цели прыжка — прежняя граница «нового» неактуальна
 
             // Края чата определяем по числу сообщений старее/новее цели: api.js
             // подменяет offsetBefore=0 на 30, поэтому размер ответа не показатель.
