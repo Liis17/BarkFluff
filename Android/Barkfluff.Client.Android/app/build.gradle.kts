@@ -217,6 +217,7 @@ dependencies {
     // ViewModel + viewModelScope (ChatViewModel/ChatsViewModel) и by viewModels().
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
 
     // WorkManager — периодическое обновление App Widget'ов.
     implementation("androidx.work:work-runtime-ktx:2.9.1")
