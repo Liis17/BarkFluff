@@ -108,6 +108,8 @@
   "chat.background.hint": "选择图片，或恢复为全局背景",
   "chat.background.useGlobal": "使用全局背景",
   "chat.empty.hint": "从左侧列表中选择聊天以开始对话",
+  "chat.messageNotFound": "未找到消息",
+  "chat.newMessages": "新消息",
   "chat.scrollToLatest": "跳到最新消息",
   "chat.unreadMessages": "未读消息",
   "chatlist.draft": "草稿",

@@ -46,6 +46,7 @@
     var isLoadingNewer = false;
     var hasNewerGap = false;      // хвост буфера обрезан — окно не доходит до конца чата
     var isJumpingToTail = false;
+    var isJumpingToMessage = false;
     var markReadTimer = null;
     var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
@@ -537,9 +538,7 @@
         renderChatList();
     }
 
-    // Скроллит к первому непрочитанному (если есть) либо в самый низ чата,
-    // и повторяет попытку после того как догрузятся картинки сообщений —
-    // без этого reflow от догрузки картинок сбивает позицию скролла.
+    // Скроллит к первому непрочитанному (если есть) либо в самый низ чата.
     function settleScroll(unreadId) {
         function anchor() {
             var el = unreadId && messagesInner.querySelector('[data-msg-id="' + unreadId + '"]');
@@ -547,6 +546,27 @@
             else scrollToBottom();
         }
         anchor();
+        resettleAfterImages(anchor);
+    }
+
+    // Скроллит цель прыжка в центр вьюпорта и подсвечивает её (animation msgHighlight).
+    function settleHighlight(id) {
+        function anchor() {
+            var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
+            if (el) el.scrollIntoView({ block: 'center' });
+        }
+        anchor();
+        var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
+        if (el) {
+            el.classList.add('highlight');
+            setTimeout(function () { el.classList.remove('highlight'); }, 1500);
+        }
+        resettleAfterImages(anchor);
+    }
+
+    // Повторяет anchor, когда догрузятся картинки сообщений — без этого reflow
+    // от картинок сбивает позицию скролла после открытия чата или прыжка к сообщению.
+    function resettleAfterImages(anchor) {
         var pending = Array.prototype.filter.call(messagesInner.querySelectorAll('img'), function (im) { return !im.complete; });
         if (pending.length === 0) return;
         var settled = false;
@@ -706,7 +726,7 @@
 
     // Возврат к живому хвосту, когда скользящее окно обрезало последние сообщения.
     function jumpToLiveTail() {
-        if (isJumpingToTail || !currentChatId) return;
+        if (isJumpingToTail || isJumpingToMessage || !currentChatId) return;
         isJumpingToTail = true;
         var chatId = currentChatId;
 
@@ -932,7 +952,7 @@
 
     // Подгрузка новых сообщений, когда скользящее окно обрезало хвост ленты.
     function loadNewerMessages() {
-        if (!hasNewerGap || isLoadingNewer || isJumpingToTail || !currentChatId || messages.length === 0) return;
+        if (!hasNewerGap || isLoadingNewer || isJumpingToTail || isJumpingToMessage || !currentChatId || messages.length === 0) return;
         isLoadingNewer = true;
         var pagedChatId = currentChatId;
         var newestId = messages[messages.length - 1].id || 0;
@@ -959,7 +979,7 @@
 
     // Lazy-load older messages
     messagesArea.addEventListener('scroll', function () {
-        if (messagesArea.scrollTop < 100 && !isLoadingOlder && !noMoreOlder && currentChatId && messages.length > 0) {
+        if (messagesArea.scrollTop < 100 && !isLoadingOlder && !isJumpingToMessage && !noMoreOlder && currentChatId && messages.length > 0) {
             isLoadingOlder = true;
             loadingMessages.classList.add('visible');
             var oldestId = messages[0].id || 0;
@@ -1672,6 +1692,7 @@
         // Показываем/скрываем кнопку прокрутки вниз
         var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
+        if (distFromBottom < 100) loadNewerMessages();
         if (distFromBottom <= 300 && newMessagesBelowCount > 0) {
             newMessagesBelowCount = 0;
             updateScrollBadge();
@@ -2982,6 +3003,11 @@
         });
     }
 
+    // Прыжок к сообщению (reply-цитата, закреплённые): цель уже в DOM — плавный
+    // скролл с подсветкой; иначе грузим окно ±30 вокруг цели и заменяем буфер
+    // целиком. Идём через loadMessagesPage — работает и в приватных (E2E) чатах.
+    // Прежний merge старого буфера с загруженным участком оставлял дыру в истории
+    // без флага hasNewerGap, из-за чего хвост «смешивался» с прыжком.
     function scrollToMessage(id) {
         if (!id) return;
         var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
@@ -2991,25 +3017,33 @@
             setTimeout(function () { el.classList.remove('highlight'); }, 1500);
             return;
         }
-        if (!currentChatId) return;
-        BF.api.listMessages(currentChatId, id, 25, 25).then(function (data) {
-            if (!data || !data.messages || data.messages.length === 0) return;
-            var existingIds = new Set(messages.map(function (m) { return m.id; }));
-            var merged = messages.slice();
-            data.messages.forEach(function (m) {
-                if (!existingIds.has(m.id)) merged.push(m);
-            });
-            merged.sort(function (a, b) { return (a.sentAt || 0) - (b.sentAt || 0); });
-            messages = merged;
-            renderMessages().then(function () {
-                var el2 = messagesInner.querySelector('[data-msg-id="' + id + '"]');
-                if (el2) {
-                    el2.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    el2.classList.add('highlight');
-                    setTimeout(function () { el2.classList.remove('highlight'); }, 1500);
-                }
-            });
-        });
+        if (!currentChatId || isJumpingToMessage || isJumpingToTail || isLoadingOlder || isLoadingNewer) return;
+        isJumpingToMessage = true;
+        var chatId = currentChatId;
+
+        loadMessagesPage(chatId, id, 30, 30).then(function (data) {
+            if (chatId !== currentChatId) return;
+            var fetched = (data && data.messages) || [];
+            var target = fetched.find(function (m) { return Number(m.id) === Number(id); });
+            if (!target) {
+                showToast(BF.i18n.t('chat.messageNotFound'), true);
+                return;
+            }
+
+            messages = fetched;
+            mergePendingUploadsIntoMessages(chatId);
+
+            // Края чата определяем по числу сообщений старее/новее цели: api.js
+            // подменяет offsetBefore=0 на 30, поэтому размер ответа не показатель.
+            // При ровно 30 оставляем «зазор» — следующая догрузка его закроет.
+            var targetId = Number(id);
+            var olderCount = fetched.filter(function (m) { return Number(m.id) < targetId; }).length;
+            var newerCount = fetched.filter(function (m) { return Number(m.id) > targetId; }).length;
+            noMoreOlder = olderCount < 30;
+            hasNewerGap = newerCount >= 30; // хвост за окном: живые сообщения не рисуются (guard appendMessageToView)
+
+            return renderMessages().then(function () { settleHighlight(id); });
+        }).finally(function () { isJumpingToMessage = false; });
     }
 
     // --- Reply preview close handler ---
