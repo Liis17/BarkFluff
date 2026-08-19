@@ -11,6 +11,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.notifications.RealtimeSideEffectsImpl
+import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import dagger.Module
@@ -74,6 +75,13 @@ object AppModule {
         @ApplicationContext context: Context,
         signalStore: BarkFluffSignalStore
     ): PrekeyManager = PrekeyManager(context, signalStore)
+
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        @ApplicationContext context: Context,
+        grpcManager: GrpcManager
+    ): ChatRepository = ChatRepository(context, grpcManager)
 
     @Provides
     @Singleton
