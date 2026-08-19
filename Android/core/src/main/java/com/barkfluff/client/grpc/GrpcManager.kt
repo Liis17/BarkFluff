@@ -66,6 +66,13 @@ class GrpcManager(context: Context) {
     private val appContext = context.applicationContext
     private val tlsTransport = TlsTransportFactory(appContext)
 
+    /**
+     * True после [shutdown]: ленивый подъём клиентов отключён, чтобы терминальная очистка
+     * не «оживляла» каналы повторным чтением свойства.
+     */
+    @Volatile
+    private var shutdownRequested = false
+
     // Адреса, использованные при создании каналов (для идемпотентности)
     private var navigatorAddress: String? = null
     private var beaconAddress: String? = null
@@ -100,27 +107,102 @@ class GrpcManager(context: Context) {
     var callsChannel: Channel? = null
         private set
 
-    // gRPC клиенты
+    // gRPC клиенты. Navigator/Beacon создаются явно (SelectServerActivity/ServerInfoPrefs),
+    // их生命周期 не меняется. Остальные восемь лениво самоподнимаются по адресам из
+    // GlobalParam: процесс, поднятый FCM/виджетом, не проходит через Splash/Login/Main,
+    // и раньше чтение возвращало null («Users клиент не создан» и т.п.).
     var navigatorClient: NavigatorApiGrpcKt.NavigatorApiCoroutineStub? = null
         private set
     var beaconClient: BeaconApiGrpcKt.BeaconApiCoroutineStub? = null
         private set
-    var identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub? = null
-        private set
-    var usersClient: UsersApiGrpcKt.UsersApiCoroutineStub? = null
-        private set
-    var filesClient: FilesApiGrpcKt.FilesApiCoroutineStub? = null
-        private set
-    var messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub? = null
-        private set
-    var updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub? = null
-        private set
-    var onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub? = null
-        private set
-    var fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub? = null
-        private set
-    var callsClient: CallsApiGrpcKt.CallsApiCoroutineStub? = null
-        private set
+
+    private var _identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub? = null
+    var identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub?
+        @Synchronized get() {
+            _identityClient?.let { return it }
+            val address = GlobalParam(appContext).socketIdentity
+            if (address.isBlank() || shutdownRequested) return null
+            createIdentityClient(address, appContext, includeDeviceInfo = true)
+            return _identityClient
+        }
+        private set(value) { _identityClient = value }
+
+    private var _usersClient: UsersApiGrpcKt.UsersApiCoroutineStub? = null
+    var usersClient: UsersApiGrpcKt.UsersApiCoroutineStub?
+        @Synchronized get() {
+            _usersClient?.let { return it }
+            val address = GlobalParam(appContext).socketUsers
+            if (address.isBlank() || shutdownRequested) return null
+            createUsersClient(address, appContext, includeDeviceInfo = true)
+            return _usersClient
+        }
+        private set(value) { _usersClient = value }
+
+    private var _filesClient: FilesApiGrpcKt.FilesApiCoroutineStub? = null
+    var filesClient: FilesApiGrpcKt.FilesApiCoroutineStub?
+        @Synchronized get() {
+            _filesClient?.let { return it }
+            val address = GlobalParam(appContext).socketFiles
+            if (address.isBlank() || shutdownRequested) return null
+            createFilesClient(address, appContext, includeDeviceInfo = true)
+            return _filesClient
+        }
+        private set(value) { _filesClient = value }
+
+    private var _messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub? = null
+    var messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub?
+        @Synchronized get() {
+            _messagesClient?.let { return it }
+            val address = GlobalParam(appContext).socketMessages
+            if (address.isBlank() || shutdownRequested) return null
+            createMessagesClient(address, appContext, includeDeviceInfo = true)
+            return _messagesClient
+        }
+        private set(value) { _messagesClient = value }
+
+    private var _updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub? = null
+    var updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub?
+        @Synchronized get() {
+            _updatesClient?.let { return it }
+            val address = GlobalParam(appContext).socketUpdates
+            if (address.isBlank() || shutdownRequested) return null
+            createUpdatesClient(address, appContext, includeDeviceInfo = true)
+            return _updatesClient
+        }
+        private set(value) { _updatesClient = value }
+
+    private var _onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub? = null
+    var onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub?
+        @Synchronized get() {
+            _onlinerClient?.let { return it }
+            val address = GlobalParam(appContext).socketOnliner
+            if (address.isBlank() || shutdownRequested) return null
+            createOnlinerClient(address, appContext, includeDeviceInfo = true)
+            return _onlinerClient
+        }
+        private set(value) { _onlinerClient = value }
+
+    private var _fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub? = null
+    var fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub?
+        @Synchronized get() {
+            _fastAuthClient?.let { return it }
+            val address = GlobalParam(appContext).socketFastAuth
+            if (address.isBlank() || shutdownRequested) return null
+            createFastAuthClient(address, appContext, includeDeviceInfo = true)
+            return _fastAuthClient
+        }
+        private set(value) { _fastAuthClient = value }
+
+    private var _callsClient: CallsApiGrpcKt.CallsApiCoroutineStub? = null
+    var callsClient: CallsApiGrpcKt.CallsApiCoroutineStub?
+        @Synchronized get() {
+            _callsClient?.let { return it }
+            val address = GlobalParam(appContext).socketCalls
+            if (address.isBlank() || shutdownRequested) return null
+            createCallsClient(address, appContext, includeDeviceInfo = true)
+            return _callsClient
+        }
+        private set(value) { _callsClient = value }
 
     /**
      * Проверяет, инициализированы ли основные клиенты (identity, users, files, messages).
@@ -221,7 +303,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(identityAddress)
-        if (this.identityAddress == normalized && identityClient != null) return Result.success(Unit)
+        if (this.identityAddress == normalized && _identityClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
@@ -261,7 +343,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(usersAddress)
-        if (this.usersAddress == normalized && usersClient != null) return Result.success(Unit)
+        if (this.usersAddress == normalized && _usersClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
@@ -902,6 +984,7 @@ class GrpcManager(context: Context) {
      * Аналог Dispose в WPF
      */
     fun shutdown() {
+        shutdownRequested = true
         shutdownChannel(navigatorChannel)
         shutdownChannel(beaconChannel)
         shutdownChannel(identityChannel)
@@ -976,7 +1059,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(filesAddress)
-        if (this.filesAddress == normalized && filesClient != null) return Result.success(Unit)
+        if (this.filesAddress == normalized && _filesClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
@@ -1015,7 +1098,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(messagesAddress)
-        if (this.messagesAddress == normalized && messagesClient != null) return Result.success(Unit)
+        if (this.messagesAddress == normalized && _messagesClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
@@ -1054,7 +1137,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(updatesAddress)
-        if (this.updatesAddress == normalized && updatesClient != null) return Result.success(Unit)
+        if (this.updatesAddress == normalized && _updatesClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
@@ -1093,7 +1176,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(onlinerAddress)
-        if (this.onlinerAddress == normalized && onlinerClient != null) return Result.success(Unit)
+        if (this.onlinerAddress == normalized && _onlinerClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
@@ -1129,7 +1212,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(address)
-        if (this.fastAuthAddress == normalized && fastAuthClient != null) return Result.success(Unit)
+        if (this.fastAuthAddress == normalized && _fastAuthClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
@@ -1165,7 +1248,7 @@ class GrpcManager(context: Context) {
         }
 
         val normalized = tlsTransport.normalizeGrpcAddress(address)
-        if (this.callsAddress == normalized && callsClient != null) return Result.success(Unit)
+        if (this.callsAddress == normalized && _callsClient != null) return Result.success(Unit)
 
         return try {
             val channel = createChannel(normalized)
