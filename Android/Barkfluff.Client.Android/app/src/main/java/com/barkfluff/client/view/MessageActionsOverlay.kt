@@ -195,7 +195,7 @@ class MessageActionsOverlay(private val root: ConstraintLayout) {
             if (action.danger && index > 0) {
                 rowsContainer.addView(buildDivider(context))
             }
-            rowsContainer.addView(buildActionRow(context, action, errorColor) {
+            rowsContainer.addView(buildActionRow(context, rowsContainer, action, errorColor) {
                 onAction(action.id)
                 dismiss()
             })
@@ -204,16 +204,16 @@ class MessageActionsOverlay(private val root: ConstraintLayout) {
         cardView.alpha = 0f
         cardView.scaleX = CARD_INITIAL_SCALE
         cardView.scaleY = CARD_INITIAL_SCALE
-        overlayContainer.addView(
-            cardView,
-            FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT)
-        )
+        // LayoutParams из overlay_message_actions.xml (фиксированная ширина карточки)
+        // сохраняем: с WRAP_CONTENT ширина зависела бы от leftMargin и карточку
+        // прижимало к правому краю экрана.
+        overlayContainer.addView(cardView)
 
         // Синхронный measure (без layout-паса) — как в оригинальном showMessageActionMenu,
         // чтобы сразу знать итоговые размеры карточки для позиционирования.
         cardView.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            View.MeasureSpec.makeMeasureSpec(cardView.layoutParams.width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(root.height, View.MeasureSpec.AT_MOST)
         )
         positionMenuCard(cardView, bubbleImage, bubbleLeft, bubbleTop, bubbleWidth, bubbleHeight, alignEnd)
 
@@ -243,12 +243,15 @@ class MessageActionsOverlay(private val root: ConstraintLayout) {
 
     private fun buildActionRow(
         context: android.content.Context,
+        parent: LinearLayout,
         action: Action,
         errorColor: Int,
         onClick: () -> Unit
     ): TextView {
+        // parent обязателен: без него inflate не создаёт LayoutParams и высота
+        // строки из стиля MessageActionItem теряется — пункты слипаются.
         val row = LayoutInflater.from(context)
-            .inflate(R.layout.item_message_action_row, null, false) as TextView
+            .inflate(R.layout.item_message_action_row, parent, false) as TextView
         row.text = action.title
         row.setCompoundDrawablesRelativeWithIntrinsicBounds(action.icon, 0, 0, 0)
         if (action.danger) {
