@@ -5,18 +5,18 @@
 
 (function () {
   const NAV_ITEMS = [
-    { id: 'dashboard',     href: '/',              label: 'Дашборд',    icon: 'admin/dashboard' },
-    { id: 'services',      href: '/services',      label: 'Сервисы',    icon: 'admin/server' },
-    { id: 'logs',          href: '/logs',          label: 'Логи',       icon: 'admin/terminal' },
-    { id: 'badges',        href: '/badges',        label: 'Бейджи',     icon: 'admin/badge' },
-    { id: 'stickers',      href: '/stickers',      label: 'Стикеры',    icon: 'admin/sticker' },
-    { id: 'users',         href: '/users',         label: 'Юзеры',      icon: 'admin/users' },
-    { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'services/bots' },
-    { id: 'federation',    href: '/federation',    label: 'Федерация',  icon: 'services/federation' },
-    { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'settings/notifications' },
-    { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'admin/mail' },
-    { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'admin/tune' },
-    { id: 's3',            href: '/s3-storage',    label: 'Хранилище S3', icon: 'settings/cloud', expandable: true }
+    { id: 'dashboard',     href: '/',              label: 'Дашборд',    icon: 'dashboard' },
+    { id: 'services',      href: '/services',      label: 'Сервисы',    icon: 'server' },
+    { id: 'logs',          href: '/logs',          label: 'Логи',       icon: 'terminal' },
+    { id: 'badges',        href: '/badges',        label: 'Бейджи',     icon: 'badge' },
+    { id: 'stickers',      href: '/stickers',      label: 'Стикеры',    icon: 'sticker' },
+    { id: 'users',         href: '/users',         label: 'Юзеры',      icon: 'users' },
+    { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'bots' },
+    { id: 'federation',    href: '/federation',    label: 'Федерация',  icon: 'federation' },
+    { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications' },
+    { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail' },
+    { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'tune' },
+    { id: 's3',            href: '/s3-storage',    label: 'Хранилище S3', icon: 'cloud', expandable: true }
   ];
 
   const icon = (path, className = '') => window.bfIcon(path, className);
@@ -40,7 +40,7 @@
             <span>${item.label}</span>
           </a>
           <button class="md-nav-expander" id="s3-chevron-btn" onclick="window.__toggleS3Menu && window.__toggleS3Menu()" aria-label="Развернуть">
-            <span id="s3-chevron-icon">${icon('admin/chevron-down')}</span>
+            <span id="s3-chevron-icon">${icon('chevron-down')}</span>
           </button>
         </div>
         <div id="s3-submenu" class="md-nav-submenu" style="display:none;"></div>
@@ -63,7 +63,7 @@
     rootEl.innerHTML = `
       <aside class="md-nav-drawer">
         <div class="md-nav-header">
-          <span class="md-nav-logo">${icon('admin/forum')}</span>
+          <span class="md-nav-logo">${icon('forum')}</span>
           <div class="md-nav-brand">
             BarkFluff
             <small>Admin Console</small>
@@ -98,7 +98,7 @@
       const buckets = await res.json();
       submenu.innerHTML = buckets.map(b => `
         <a class="md-nav-subitem" href="/s3-browser?bucket=${encodeURIComponent(b.id)}">
-          ${icon('admin/folder', 'size-18')}
+          ${icon('folder', 'size-18')}
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.displayName}</span>
         </a>
       `).join('');
@@ -175,7 +175,7 @@
 
     let toggle = appBar.querySelector('.md-nav-toggle');
     if (!toggle) {
-      toggle = el(`<button class="md-nav-toggle md-icon-btn" aria-label="Меню">${icon('admin/menu')}</button>`);
+      toggle = el(`<button class="md-nav-toggle md-icon-btn" aria-label="Меню">${icon('menu')}</button>`);
       appBar.insertBefore(toggle, appBar.firstChild);
     }
 
