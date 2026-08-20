@@ -134,7 +134,7 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 
 ## Тесты
 
-`Tests/BarkFluff.Navigator.Tests/` — 60 тестов (EF InMemory, без Docker/Postgres): легаси-валидация регистрации (не изменилась), `FederationServernameGuardTests` (IP/localhost/punycode), `RegisterServerCommandHandlerTests` — федеративная регистрация (well-known подтвердил/отклонил, невалидный `server_name`) через тестовый двойник `FederationWellKnownValidator` (виртуальный `ValidateAsync`, переопределён в тесте — без реальной сети), `GetServerByNameQueryHandlerTests` (найдено/не найдено/протухло), `ServersStorageManualTests` — ручные записи (видимость после TTL, upsert сохраняет `IsManual`, delete-guard).
+`Tests/BarkFluff.Navigator.Tests/` — 57 тестов (EF InMemory, без Docker/Postgres): легаси-валидация регистрации (не изменилась), `FederationServernameGuardTests` (IP/localhost/punycode), `RegisterServerCommandHandlerTests` — федеративная регистрация (well-known подтвердил/отклонил, невалидный `server_name`) через тестовый двойник `FederationWellKnownValidator` (виртуальный `ValidateAsync`, переопределён в тесте — без реальной сети), `GetServerByNameQueryHandlerTests` (найдено/не найдено/протухло), `ServersStorageManualTests` — ручные записи (видимость после TTL, upsert сохраняет `IsManual`, delete-guard).
 
 ## Добавление нового поля в ServerInfo
 
