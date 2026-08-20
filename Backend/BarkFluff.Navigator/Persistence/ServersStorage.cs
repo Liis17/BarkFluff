@@ -20,7 +20,8 @@ public class ServersStorage
     public async Task<List<ServerInfo>> GetServersAsync(CancellationToken ct = default)
     {
         var threshold = DateTime.UtcNow - _serverActivePeriod;
-        return await _context.Servers.Where(s => s.LastSeenAt >= threshold).ToListAsync(ct);
+        // Ручные записи (IsManual) закреплены навсегда, авто-регистрации — только внутри TTL.
+        return await _context.Servers.Where(s => s.IsManual || s.LastSeenAt >= threshold).ToListAsync(ct);
     }
 
     // Ключ идентичности: ServerName, если задан; иначе легаси Name+BeaconHost+BeaconPort (текущее поведение).
@@ -68,6 +69,35 @@ public class ServersStorage
         }
 
         await _context.SaveChangesAsync(ct);
+    }
+
+    // Ручная запись админа: закреплена в каталоге навсегда (вне TTL). ServerName пуст —
+    // федеративная well-known валидация не применяется. Если позже реальная нода зарегистрируется
+    // с тем же ключом идентичности (Name+BeaconHost+BeaconPort), upsert обновит эту же строку,
+    // а IsManual сохранится — сервер останется закреплённым.
+    public async Task AddManualServerAsync(ServerInfo server, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+
+        server.IsManual = true;
+        server.CreatedAt = now;
+        server.LastSeenAt = now;
+        server.ServerName = null;
+        _context.Servers.Add(server);
+
+        await _context.SaveChangesAsync(ct);
+    }
+
+    // Удалять можно только ручные записи: авто-регистрации не трогаем.
+    public async Task<bool> DeleteManualServerAsync(long id, CancellationToken ct = default)
+    {
+        var server = await _context.Servers.FirstOrDefaultAsync(s => s.Id == id && s.IsManual, ct);
+        if (server == null)
+            return false;
+
+        _context.Servers.Remove(server);
+        await _context.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task<ServerInfo?> GetByServerNameAsync(string serverName, CancellationToken ct = default)
