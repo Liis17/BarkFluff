@@ -62,7 +62,7 @@
             <div class="chat-list" id="chatList"></div>
 
             <button class="newchat-fab" id="newChatFab" data-i18n-title="newchat.fab" data-i18n-aria-label="newchat.fab" title="Новый чат" aria-label="Новый чат">
-                <span class="bf-icon" data-bf-icon="message-actions/edit" aria-hidden="true"></span>
+                <span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span>
             </button>
             <div class="newchat-menu" id="newChatMenu">
                 <button data-mode="message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span data-i18n="newchat.mode.message">Новое сообщение</span></button>
@@ -73,13 +73,13 @@
             <div class="sidebar-nav" id="sidebarNav">
                 <button class="nav-btn active" id="navChats">
                     <span class="nav-icon">
-                        <span class="bf-icon" data-bf-icon="folders/all-chats" aria-hidden="true"></span>
+                        <span class="bf-icon" data-bf-icon="all-chats" aria-hidden="true"></span>
                     </span>
                     <span data-i18n="nav.chats">Чаты</span>
                 </button>
                 <button class="nav-btn" id="navSettings">
                     <span class="nav-icon">
-                        <span class="bf-icon" data-bf-icon="settings/general" aria-hidden="true"></span>
+                        <span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span>
                     </span>
                     <span data-i18n="nav.settings">Настройки</span>
                 </button>
@@ -107,8 +107,8 @@
                     <div class="chat-header-status" id="chatHeaderStatus"></div>
                 </div>
                 <div class="chat-header-actions">
-                    <button class="btn-call" id="btnCallAudio" data-i18n-title="call.audio" title="Аудиозвонок"><span class="bf-icon" data-bf-icon="services/calls" aria-hidden="true"></span></button>
-                    <button class="btn-call" id="btnCallVideo" data-i18n-title="call.video" title="Видеозвонок"><span class="bf-icon" data-bf-icon="chat/video" aria-hidden="true"></span></button>
+                    <button class="btn-call" id="btnCallAudio" data-i18n-title="call.audio" title="Аудиозвонок"><span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span></button>
+                    <button class="btn-call" id="btnCallVideo" data-i18n-title="call.video" title="Видеозвонок"><span class="bf-icon" data-bf-icon="video" aria-hidden="true"></span></button>
                 </div>
             </div>
 
@@ -158,15 +158,15 @@
                             <div class="sticker-grid" id="stickerGrid"></div>
                         </div>
                         <button class="btn-attach" id="attachBtn" data-i18n-title="composer.attach" data-i18n-aria-label="composer.attach" title="Прикрепить файл" aria-label="Прикрепить файл">
-                            <span class="bf-icon" data-bf-icon="chat/attach-file" aria-hidden="true"></span>
+                            <span class="bf-icon" data-bf-icon="attach-file" aria-hidden="true"></span>
                         </button>
                         <input type="file" id="fileInput" multiple style="display:none">
                         <button class="btn-sticker" id="stickerBtn" data-i18n-title="composer.stickers" data-i18n-aria-label="composer.stickers" title="Стикеры" aria-label="Стикеры">
-                            <span class="bf-icon" data-bf-icon="chat/stickers" aria-hidden="true"></span>
+                            <span class="bf-icon" data-bf-icon="stickers" aria-hidden="true"></span>
                         </button>
                         <textarea class="input-text" id="messageInput" data-i18n-placeholder="composer.placeholder" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
                         <button class="btn-send" id="sendBtn" data-i18n-title="common.send" data-i18n-aria-label="common.send" title="Отправить" aria-label="Отправить">
-                            <span class="bf-icon" data-bf-icon="chat/send" aria-hidden="true"></span>
+                            <span class="bf-icon" data-bf-icon="send" aria-hidden="true"></span>
                         </button>
                     </div>
                 </div>
@@ -179,7 +179,7 @@
         <div class="settings-dialog" id="settingsDialog">
             <div class="sd-header">
                 <button class="sd-back" id="sdBack">&#8592;</button>
-                <div class="sd-title" id="sdTitle"><span class="bf-icon" data-bf-icon="settings/general" aria-hidden="true"></span><span data-i18n="settings.title">Настройки</span></div>
+                <div class="sd-title" id="sdTitle"><span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span><span data-i18n="settings.title">Настройки</span></div>
                 <button class="sd-close" id="sdClose">&times;</button>
             </div>
             <div class="sd-body" id="sdBody"></div>
@@ -526,13 +526,13 @@
 
     <!-- Message context menu -->
     <div class="msg-context-menu" id="msgContextMenu">
-        <button data-act="reply"><span class="cm-icon"><span class="bf-icon" data-bf-icon="message-actions/reply" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.reply">Ответить</span></button>
-        <button data-act="forward"><span class="cm-icon"><span class="bf-icon" data-bf-icon="message-actions/forward" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.forward">Переслать</span></button>
-        <button data-act="copy-text"><span class="cm-icon"><span class="bf-icon" data-bf-icon="message-actions/copy-plain" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyText">Копировать текст</span></button>
-        <button data-act="copy-image"><span class="cm-icon"><span class="bf-icon" data-bf-icon="message-actions/copy-image" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyImage">Копировать изображение</span></button>
-        <button data-act="pin"><span class="cm-icon"><span class="bf-icon" data-bf-icon="message-actions/pin" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.pin">Закрепить</span></button>
-        <button data-act="edit"><span class="cm-icon"><span class="bf-icon" data-bf-icon="message-actions/edit" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.edit">Изменить</span></button>
-        <button data-act="delete" class="cm-danger"><span class="cm-icon"><span class="bf-icon" data-bf-icon="message-actions/delete" aria-hidden="true"></span></span><span class="cm-label" data-i18n="common.delete">Удалить</span></button>
+        <button data-act="reply"><span class="cm-icon"><span class="bf-icon" data-bf-icon="reply" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.reply">Ответить</span></button>
+        <button data-act="forward"><span class="cm-icon"><span class="bf-icon" data-bf-icon="forward" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.forward">Переслать</span></button>
+        <button data-act="copy-text"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyText">Копировать текст</span></button>
+        <button data-act="copy-image"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-image" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyImage">Копировать изображение</span></button>
+        <button data-act="pin"><span class="cm-icon"><span class="bf-icon" data-bf-icon="pin" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.pin">Закрепить</span></button>
+        <button data-act="edit"><span class="cm-icon"><span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.edit">Изменить</span></button>
+        <button data-act="delete" class="cm-danger"><span class="cm-icon"><span class="bf-icon" data-bf-icon="delete" aria-hidden="true"></span></span><span class="cm-label" data-i18n="common.delete">Удалить</span></button>
     </div>
 
     <!-- Chat context menu (PCM на чате в сайдбаре) -->

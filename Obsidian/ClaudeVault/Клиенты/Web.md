@@ -159,8 +159,8 @@ origin, сопоставить ключ нечем — вход потребуе
 ### Общий пакет иконок
 Веб-клиент использует общий каталог `icons/`, чтобы визуальные идентификаторы совпадали с остальными клиентами:
 
-- MSBuild подключает `../../icons/**/*.svg` в `wwwroot/icons/`, поэтому и нода, и web-shell раздают файлы по `/icons/{category}/{name}.svg`.
-- `wwwroot/js/app/icons.js` предоставляет `BF.icons` (`html`, `element`, `url`), а `wwwroot/css/icons.css` окрашивает монохромные SVG через CSS mask и `currentColor`.
+- MSBuild подключает `../../icons/**/*.svg` в `wwwroot/icons/` (пак плоский, без категорий), поэтому и нода, и web-shell раздают файлы по `/icons/{name}.svg`.
+- `wwwroot/js/app/icons.js` предоставляет `BF.icons` (`html`, `element`, `url`) с одиночным именем иконки (`BF.icons.html('send')`), а `wwwroot/css/icons.css` окрашивает монохромные SVG через CSS mask и `currentColor`.
 - Общий пакет уже используется в навигации, composer, настройках, меню действий сообщения, превью вложений, папках чатов и кнопках звонка. Динамические элементы создаются через `BF.icons`, статические — через `data-bf-icon`.
 - Новые папки сохраняют ключи иконок в `folderIcon` (например, `favorites`, `work`); старые значения-эмодзи продолжают отображаться до редактирования папки.
 - Service worker включает helper и его CSS в shell-cache, а запрошенные файлы `/icons/` кэширует во время работы.

@@ -432,17 +432,17 @@
 
     // Общие SVG-иконки для превью списка чатов (24×24, currentColor).
     var PREVIEW_ICONS = {
-        image: BF.icons.html('chat', 'image', 'preview-icon'),
-        video: BF.icons.html('chat', 'video', 'preview-icon'),
-        gif: BF.icons.html('chat', 'gif', 'preview-icon'),
-        audio: BF.icons.html('chat', 'audio', 'preview-icon'),
-        voice: BF.icons.html('chat', 'voice', 'preview-icon'),
-        document: BF.icons.html('chat', 'document', 'preview-icon'),
-        sticker: BF.icons.html('chat', 'sticker', 'preview-icon'),
-        forwarded: BF.icons.html('chat', 'forwarded-message', 'preview-icon'),
-        unknown: BF.icons.html('chat', 'unknown-attachment', 'preview-icon'),
-        callIn: BF.icons.html('services', 'calls', 'preview-icon'),
-        callOut: BF.icons.html('services', 'calls', 'preview-icon')
+        image: BF.icons.html('image', 'preview-icon'),
+        video: BF.icons.html('video', 'preview-icon'),
+        gif: BF.icons.html('gif', 'preview-icon'),
+        audio: BF.icons.html('audio', 'preview-icon'),
+        voice: BF.icons.html('voice', 'preview-icon'),
+        document: BF.icons.html('document', 'preview-icon'),
+        sticker: BF.icons.html('sticker', 'preview-icon'),
+        forwarded: BF.icons.html('forwarded-message', 'preview-icon'),
+        unknown: BF.icons.html('unknown-attachment', 'preview-icon'),
+        callIn: BF.icons.html('calls', 'preview-icon'),
+        callOut: BF.icons.html('calls', 'preview-icon')
     };
 
     // HTML превью вложения: SVG-иконка + текстовая подпись.
@@ -475,7 +475,7 @@
     }
 
     function docIcon() {
-        return BF.icons.html('chat', 'document', 'document-icon');
+        return BF.icons.html('document', 'document-icon');
     }
 
     function parseJwtPayload(token) {
