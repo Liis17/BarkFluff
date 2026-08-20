@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     id("com.google.gms.google-services")
 }
 
@@ -213,6 +214,10 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // ProcessLifecycleOwner — foreground/background tracking + RealtimeService resume/pause.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    // ViewModel + viewModelScope (ChatViewModel/ChatsViewModel) и by viewModels().
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
 
     // WorkManager — периодическое обновление App Widget'ов.
     implementation("androidx.work:work-runtime-ktx:2.9.1")
@@ -261,6 +266,10 @@ dependencies {
 
     // androidx.dynamicanimation — spring physics (SpringAnimation) для M3 Expressive motion (SpringPress).
     implementation(libs.androidx.dynamic.animation)
+
+    // DI: Hilt (KSP2) — composition root вместо ручной сборки в BarkFluffApplication.
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
 

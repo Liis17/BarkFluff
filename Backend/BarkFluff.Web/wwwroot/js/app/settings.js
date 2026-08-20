@@ -38,16 +38,16 @@
     var ERR_WRONG_OLD_PASSWORD = 'A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04';
 
     var ICONS = {
-        settings: BF.icons.html('settings', 'general'),
-        edit: BF.icons.html('settings', 'edit-profile'),
-        fileText: BF.icons.html('chat', 'document'),
-        privacy: BF.icons.html('settings', 'privacy'),
-        security: BF.icons.html('settings', 'security'),
-        palette: BF.icons.html('settings', 'personalization'),
-        smartphone: BF.icons.html('settings', 'active-sessions'),
-        info: BF.icons.html('settings', 'about-app'),
-        server: BF.icons.html('settings', 'about-server'),
-        globe: BF.icons.html('settings', 'language')
+        settings: BF.icons.html('general'),
+        edit: BF.icons.html('edit-profile'),
+        fileText: BF.icons.html('document'),
+        privacy: BF.icons.html('privacy'),
+        security: BF.icons.html('security'),
+        palette: BF.icons.html('personalization'),
+        smartphone: BF.icons.html('active-sessions'),
+        info: BF.icons.html('about-app'),
+        server: BF.icons.html('about-server'),
+        globe: BF.icons.html('language')
     };
     function init(opts) {
         myUserId = opts.myUserId;
@@ -1696,7 +1696,7 @@
             var check = document.createElement('span');
             check.className = 'sd-item-icon';
             if (lang.code === current) {
-                check.innerHTML = BF.icons.html('message-actions', 'select');
+                check.innerHTML = BF.icons.html('select');
             }
 
             row.appendChild(label);

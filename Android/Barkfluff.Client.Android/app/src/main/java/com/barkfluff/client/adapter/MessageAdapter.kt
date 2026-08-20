@@ -77,12 +77,14 @@ class MessageAdapter(
     var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
-    /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
-    private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
+    /** Вызывается при клике на пузырь сообщения — открыть меню действий. bubble = messageCard/stickerContainer, для позиционирования оверлея. */
+    private val onMessageActionRequested: ((bubble: View, item: MessageItem) -> Unit)? = null,
     /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
     private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
     /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
-    private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null
+    private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null,
+    /** Вызывается при тапе по пузырю/индикатору в режиме выделения — переключить выбор сообщения. */
+    private val onSelectionToggle: ((messageId: Long) -> Unit)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
@@ -90,6 +92,47 @@ class MessageAdapter(
         if (position < 0 || position >= itemCount) return null
         val item = getItem(position)
         return if (item.type == MessageType.MESSAGE) item else null
+    }
+
+    /** Режим множественного выделения сообщений — состоянием владеет ChatActivity. */
+    var selectionMode: Boolean = false
+        private set
+    private var selectedIds: Set<Long> = emptySet()
+
+    /** Включает/выключает режим выделения — меняется видимость индикатора у всех строк. */
+    fun setSelectionMode(enabled: Boolean, selected: Set<Long> = emptySet()) {
+        selectionMode = enabled
+        selectedIds = selected
+        notifyDataSetChanged()
+    }
+
+    /** Обновляет набор выбранных ID после переключения одного сообщения — точечный ребинд. */
+    fun setSelected(messageId: Long, allSelected: Set<Long>) {
+        selectedIds = allSelected
+        val position = currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
+        if (position >= 0) notifyItemChanged(position)
+    }
+
+    /**
+     * Показывает/скрывает индикатор выделения и переключает его иконку по состоянию выбора.
+     * Для [contentColumn] (только у входящих — у исходящих под индикатор уже есть готовый
+     * отступ) сдвигает содержимое вправо через translationX, освобождая место слева.
+     */
+    private fun bindSelectionIndicator(indicator: ImageView, contentColumn: View?, item: MessageItem) {
+        val isSelectable = selectionMode && item.type == MessageType.MESSAGE
+        indicator.visibility = if (isSelectable) View.VISIBLE else View.GONE
+        if (isSelectable) {
+            indicator.setImageResource(
+                if (item.messageId in selectedIds) R.drawable.ic_action_select else R.drawable.ic_circle_outline
+            )
+            indicator.setOnClickListener { onSelectionToggle?.invoke(item.messageId) }
+        } else {
+            indicator.setOnClickListener(null)
+        }
+        if (contentColumn != null) {
+            val density = contentColumn.resources.displayMetrics.density
+            contentColumn.translationX = if (isSelectable) SELECTION_SHIFT_DP * density else 0f
+        }
     }
 
     companion object {
@@ -116,6 +159,8 @@ class MessageAdapter(
         private const val BUBBLE_INNER_GAP_DP = 3
         /** Без скругления (для мест, где форма пузыря не пробрасывается, напр. вложения в forward-цитате). */
         private val ZERO_CORNERS = floatArrayOf(0f, 0f, 0f, 0f)
+        /** Сдвиг contentColumn у входящих в режиме выделения: 24dp индикатор + 8dp зазор. */
+        private const val SELECTION_SHIFT_DP = 32f
 
         private val voiceAutoDownloads = mutableSetOf<String>()
         private val voiceWaveformCache = mutableMapOf<String, FloatArray>()
@@ -387,24 +432,19 @@ class MessageAdapter(
         private val binding: ItemMessageSentBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private var lastTouchRawX: Float = 0f
-        private var lastTouchRawY: Float = 0f
-
-        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
-            // Перехват raw координат касания для позиционирования popup
-            binding.root.setOnTouchListener { _, event ->
-                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
-                    lastTouchRawX = event.rawX
-                    lastTouchRawY = event.rawY
-                }
-                false
+            // Индикатор выделения уже попадает в существующий отступ слева — сдвигать нечего.
+            bindSelectionIndicator(binding.selectionIndicator, contentColumn = null, item)
+
+            // Клик открывает меню действий только по самому пузырю — тап в пустое
+            // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
+            // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
+            val bubbleClickListener = View.OnClickListener { v ->
+                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
             }
-            // Click по корневому FrameLayout (вне bubble) — открывает action menu в точке касания
-            binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
-            }
+            binding.messageCard.setOnClickListener(bubbleClickListener)
+            binding.stickerContainer.setOnClickListener(bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
@@ -547,9 +587,6 @@ class MessageAdapter(
         private val binding: ItemMessageReceivedBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private var lastTouchRawX: Float = 0f
-        private var lastTouchRawY: Float = 0f
-
         /** Вызывается и из полного bind, и из частичного обновления по PAYLOAD_SENDER_INFO. */
         fun bindSenderInfo(item: MessageItem) {
             if (!isGroupChat) {
@@ -587,19 +624,20 @@ class MessageAdapter(
             }
         }
 
-        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
-            binding.root.setOnTouchListener { _, event ->
-                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
-                    lastTouchRawX = event.rawX
-                    lastTouchRawY = event.rawY
-                }
-                false
+            // У входящих своего отступа под индикатор нет — в режиме выделения сдвигаем
+            // весь контент вправо, освобождая место индикатору у левого края.
+            bindSelectionIndicator(binding.selectionIndicator, binding.contentColumn, item)
+
+            // Клик открывает меню действий только по самому пузырю — тап в пустое
+            // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
+            // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
+            val bubbleClickListener = View.OnClickListener { v ->
+                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
             }
-            binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
-            }
+            binding.messageCard.setOnClickListener(bubbleClickListener)
+            binding.stickerContainer.setOnClickListener(bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста)
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
