@@ -181,7 +181,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
         return new RegisterServerResponse();
     }
 
-    private static bool IsValidBeaconHost(string host)
+    internal static bool IsValidBeaconHost(string host)
     {
         if (host.Contains("://", StringComparison.Ordinal))
         {
@@ -194,7 +194,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
 
     // Клиент получит этот адрес как origin (gRPC-Web шлюз, файловый HTTP), поэтому
     // требуем абсолютный http/https-URI без пути.
-    private static bool IsValidPublicEndpoint(string endpoint)
+    internal static bool IsValidPublicEndpoint(string endpoint)
     {
         return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
@@ -208,5 +208,10 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
 
         if (!HexColorRegex().IsMatch(color))
             throw new InvalidHexColorException();
+    }
+
+    internal static bool IsValidHexColor(string color)
+    {
+        return string.IsNullOrEmpty(color) || HexColorRegex().IsMatch(color);
     }
 }

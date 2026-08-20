@@ -31,6 +31,10 @@ public class ServerInfo
 
     // Отдельный origin файлового HTTP в обход CDN. Пусто — файлы отдаются только по адресу Files.
     public string? FilesMediaEndpoint { get; set; }
+
+    // Ручная запись администратора: всегда видна в каталоге (ListServers, админка, публичная страница),
+    // вне TTL активной регистрации. Добавляется через админку Navigator.
+    public bool IsManual { get; set; }
 }
 
 public class NavigatorSigningKeyInfo
