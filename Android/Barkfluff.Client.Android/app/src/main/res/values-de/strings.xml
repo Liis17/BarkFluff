@@ -264,6 +264,7 @@
     <string name="cd_play_video">Video abspielen</string>
     <string name="cd_download_video">Video herunterladen</string>
     <string name="cd_read_status">Lesestatus</string>
+    <string name="cd_select_message">Nachricht auswählen</string>
     <string name="cd_media_preview_photo">Foto öffnen: %1$s</string>
     <string name="cd_media_preview_video">Video öffnen: %1$s</string>
     <string name="cd_media_select">Auswählen: %1$s</string>
@@ -620,6 +621,18 @@
     <string name="msg_action_delete">Löschen</string>
     <string name="msg_action_forward">Weiterleiten</string>
     <string name="msg_action_pin">Anheften</string>
+    <string name="msg_action_copy_markdown">Als Markdown kopieren</string>
+    <string name="msg_action_properties">Eigenschaften</string>
+    <string name="msg_action_select">Auswählen</string>
+    <string name="msg_properties_id">Nachrichten-ID: %1$d</string>
+    <string name="msg_properties_sender">Absender: %1$s</string>
+    <string name="msg_properties_sent_at">Gesendet: %1$s</string>
+    <string name="msg_properties_edited_yes">Bearbeitet: ja</string>
+    <string name="msg_properties_edited_no">Bearbeitet: nein</string>
+    <string name="msg_properties_read_yes">Gelesen: ja</string>
+    <string name="msg_properties_read_no">Gelesen: nein</string>
+    <string name="msg_properties_attachments_header">Anhänge:</string>
+    <string name="msg_properties_no_attachments">Keine Anhänge</string>
 
     <!-- Language Settings -->
     <string name="language_settings_title">Sprache</string>
@@ -908,6 +921,7 @@
     <string name="delete_message_title">Nachricht löschen?</string>
     <string name="delete_message_message">Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="message_delete_error">Fehler beim Löschen: %1$s</string>
+    <string name="message_delete_batch_failed">Nachrichten konnten nicht gelöscht werden: %1$d</string>
     <string name="message_not_loaded">Nachricht nicht geladen</string>
     <string name="message_save_image">Bild speichern</string>
     <string name="message_save_images">Bilder speichern</string>

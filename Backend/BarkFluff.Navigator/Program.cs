@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Navigator.Admin;
+using BarkFluff.Navigator.Domain;
 using BarkFluff.Navigator.Features.RegisterServer;
 using BarkFluff.Navigator.Host;
 using BarkFluff.Navigator.Persistence;
@@ -75,6 +76,7 @@ using (var scope = app.Services.CreateScope())
     ctx.Database.EnsureCreated();
     EnsureServersColumn(ctx, "WebEndpoint", "TEXT NULL");
     EnsureServersColumn(ctx, "FilesMediaEndpoint", "TEXT NULL");
+    EnsureServersColumn(ctx, "IsManual", "INTEGER NOT NULL DEFAULT 0");
 }
 
 // EnsureCreated() создаёт схему только для новой БД, миграций в проекте нет —
@@ -102,6 +104,8 @@ app.MapGrpcReflectionService();
 app.UseRouting();
 app.UseXAuth();
 app.MapPingEndpoint();
+// Главная страница / (wwwroot/index.html) — публичный каталог серверов.
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapGrpcService<NavigatorApiService>();
@@ -143,6 +147,7 @@ app.MapGet("/admin/api/servers", async (ServersStorage serversStorage, Cancellat
         .OrderBy(server => server.Name)
         .Select(server => new
         {
+            server.Id,
             server.Name,
             server.ServerPublicName,
             server.Description,
@@ -152,8 +157,65 @@ app.MapGet("/admin/api/servers", async (ServersStorage serversStorage, Cancellat
             webEndpoint = server.WebEndpoint ?? string.Empty,
             filesMediaEndpoint = server.FilesMediaEndpoint ?? string.Empty,
             server.LastSeenAt,
+            isManual = server.IsManual,
             color = server.ColorMainHex
         }));
+}).RequireAuthorization(adminPolicy);
+
+// Публичный список серверов для главной страницы / (без авторизации).
+app.MapGet("/api/servers", async (ServersStorage serversStorage, CancellationToken cancellationToken) =>
+{
+    var servers = await serversStorage.GetServersAsync(cancellationToken);
+
+    return Results.Ok(servers
+        .OrderBy(server => server.Name)
+        .Select(server => new
+        {
+            server.Name,
+            server.ServerPublicName,
+            server.Description,
+            server.Location,
+            webEndpoint = server.WebEndpoint ?? string.Empty,
+            isManual = server.IsManual,
+            color = server.ColorMainHex
+        }));
+});
+
+app.MapPost("/admin/api/servers", async (
+    ManualServerRequest request,
+    ClaimsPrincipal user,
+    ServersStorage serversStorage,
+    CancellationToken cancellationToken) =>
+{
+    var error = ManualServerValidation.Validate(request);
+    if (error != null)
+        return Results.BadRequest(new { error });
+
+    var color = request.Color?.Trim() ?? string.Empty;
+
+    await serversStorage.AddManualServerAsync(new ServerInfo
+    {
+        BeaconHost = (request.BeaconHost ?? string.Empty).Trim(),
+        BeaconPort = request.BeaconPort ?? 0,
+        Name = request.Name!.Trim(),
+        Description = request.Description!.Trim(),
+        ServerPublicName = request.ServerPublicName!.Trim(),
+        Location = (request.Location ?? string.Empty).Trim(),
+        ColorLiteHex = color,
+        ColorMainHex = color,
+        ColorHardHex = color,
+        WebEndpoint = string.IsNullOrWhiteSpace(request.WebEndpoint) ? null : request.WebEndpoint.Trim(),
+        FilesMediaEndpoint = string.IsNullOrWhiteSpace(request.FilesMediaEndpoint) ? null : request.FilesMediaEndpoint.Trim(),
+        AddedBy = user.Identity?.Name ?? "admin"
+    }, cancellationToken);
+
+    return Results.NoContent();
+}).RequireAuthorization(adminPolicy);
+
+app.MapDelete("/admin/api/servers/{id}", async (long id, ServersStorage serversStorage, CancellationToken cancellationToken) =>
+{
+    var deleted = await serversStorage.DeleteManualServerAsync(id, cancellationToken);
+    return deleted ? Results.NoContent() : Results.NotFound();
 }).RequireAuthorization(adminPolicy);
 
 app.MapFallbackToFile("/admin/{*path:nonfile}", "admin/index.html");
@@ -172,3 +234,74 @@ file static class NavigatorAdminAuthentication
 }
 
 file sealed record AdminLoginRequest(string? Username, string? Password);
+
+file sealed record ManualServerRequest(
+    string? Name,
+    string? ServerPublicName,
+    string? Description,
+    string? Location,
+    string? Color,
+    string? BeaconHost,
+    int? BeaconPort,
+    string? WebEndpoint,
+    string? FilesMediaEndpoint);
+
+// Правила те же, что у gRPC-регистрации (RegisterServerCommandHandler), но ошибки — 400 с текстом.
+file static class ManualServerValidation
+{
+    private const int MaxNameLength = 64;
+    private const int MaxPublicNameLength = 64;
+    private const int MaxDescriptionLength = 512;
+    private const int MaxLocationLength = 128;
+    private const int MaxBeaconHostLength = 2048;
+    private const int MaxPublicEndpointLength = 2048;
+
+    public static string? Validate(ManualServerRequest request)
+    {
+        var name = request.Name?.Trim() ?? string.Empty;
+        if (name.Length == 0)
+            return "Имя сервера не может быть пустым";
+        if (name.Length > MaxNameLength)
+            return $"Имя сервера не должно превышать {MaxNameLength} символов";
+
+        var publicName = request.ServerPublicName?.Trim() ?? string.Empty;
+        if (publicName.Length == 0)
+            return "Публичное имя сервера не может быть пустым";
+        if (publicName.Length > MaxPublicNameLength)
+            return $"Публичное имя не должно превышать {MaxPublicNameLength} символов";
+
+        var description = request.Description?.Trim() ?? string.Empty;
+        if (description.Length == 0)
+            return "Описание сервера не может быть пустым";
+        if (description.Length > MaxDescriptionLength)
+            return $"Описание не должно превышать {MaxDescriptionLength} символов";
+
+        if ((request.Location?.Trim() ?? string.Empty).Length > MaxLocationLength)
+            return $"Локация не должна превышать {MaxLocationLength} символов";
+
+        var beaconHost = request.BeaconHost?.Trim() ?? string.Empty;
+        if (beaconHost.Length > 0)
+        {
+            if (beaconHost.Length > MaxBeaconHostLength || !RegisterServerCommandHandler.IsValidBeaconHost(beaconHost))
+                return "Некорректный адрес Beacon";
+
+            if (request.BeaconPort is not (> 0 and <= 65535))
+                return "Порт Beacon должен быть в диапазоне от 1 до 65535";
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.WebEndpoint)
+            && (request.WebEndpoint.Trim().Length > MaxPublicEndpointLength
+                || !RegisterServerCommandHandler.IsValidPublicEndpoint(request.WebEndpoint.Trim())))
+            return "Некорректный адрес веб-клиента (нужен абсолютный http/https-URI)";
+
+        if (!string.IsNullOrWhiteSpace(request.FilesMediaEndpoint)
+            && (request.FilesMediaEndpoint.Trim().Length > MaxPublicEndpointLength
+                || !RegisterServerCommandHandler.IsValidPublicEndpoint(request.FilesMediaEndpoint.Trim())))
+            return "Некорректный файловый адрес (нужен абсолютный http/https-URI)";
+
+        if (!RegisterServerCommandHandler.IsValidHexColor(request.Color?.Trim() ?? string.Empty))
+            return "Цвет должен быть HEX-значением (например, #8c351c)";
+
+        return null;
+    }
+}

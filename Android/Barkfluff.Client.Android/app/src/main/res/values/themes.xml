@@ -263,9 +263,13 @@
     <!-- Пункт в кастомном popup действий над сообщением -->
     <style name="MessageActionItem">
         <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">44dp</item>
+        <!-- minHeight, а не фиксированная высота: пункты в две строки
+             ("Сохранить изображения") не должны обрезаться. -->
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">52dp</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:paddingHorizontal">14dp</item>
+        <item name="android:paddingVertical">8dp</item>
         <item name="android:drawablePadding">14dp</item>
         <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
         <item name="android:textColor">?attr/colorOnSurface</item>

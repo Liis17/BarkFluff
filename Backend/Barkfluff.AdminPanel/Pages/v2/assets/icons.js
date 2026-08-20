@@ -1,6 +1,6 @@
 /* =============================================================
    BarkFluff — shared SVG icon pack helper
-   Usage: bfIcon('admin/restart', 'size-20')
+   Usage: bfIcon('restart', 'size-20')
    ============================================================= */
 
 (function () {

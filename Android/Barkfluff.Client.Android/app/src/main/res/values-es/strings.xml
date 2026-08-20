@@ -264,6 +264,7 @@
     <string name="cd_play_video">Reproducir vídeo</string>
     <string name="cd_download_video">Descargar vídeo</string>
     <string name="cd_read_status">Estado de lectura</string>
+    <string name="cd_select_message">Seleccionar mensaje</string>
     <string name="cd_media_preview_photo">Abrir foto: %1$s</string>
     <string name="cd_media_preview_video">Abrir vídeo: %1$s</string>
     <string name="cd_media_select">Seleccionar: %1$s</string>
@@ -620,6 +621,18 @@
     <string name="msg_action_delete">Eliminar</string>
     <string name="msg_action_forward">Reenviar</string>
     <string name="msg_action_pin">Fijar</string>
+    <string name="msg_action_copy_markdown">Copiar como Markdown</string>
+    <string name="msg_action_properties">Propiedades</string>
+    <string name="msg_action_select">Seleccionar</string>
+    <string name="msg_properties_id">ID del mensaje: %1$d</string>
+    <string name="msg_properties_sender">Remitente: %1$s</string>
+    <string name="msg_properties_sent_at">Enviado: %1$s</string>
+    <string name="msg_properties_edited_yes">Editado: sí</string>
+    <string name="msg_properties_edited_no">Editado: no</string>
+    <string name="msg_properties_read_yes">Leído: sí</string>
+    <string name="msg_properties_read_no">Leído: no</string>
+    <string name="msg_properties_attachments_header">Adjuntos:</string>
+    <string name="msg_properties_no_attachments">Sin adjuntos</string>
 
     <!-- Language Settings -->
     <string name="language_settings_title">Idioma</string>
@@ -908,6 +921,7 @@
     <string name="delete_message_title">¿Eliminar mensaje?</string>
     <string name="delete_message_message">Esta acción no se puede deshacer.</string>
     <string name="message_delete_error">Error al eliminar: %1$s</string>
+    <string name="message_delete_batch_failed">No se pudieron eliminar mensajes: %1$d</string>
     <string name="message_not_loaded">Mensaje no cargado</string>
     <string name="message_save_image">Guardar imagen</string>
     <string name="message_save_images">Guardar imágenes</string>

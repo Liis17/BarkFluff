@@ -11,15 +11,13 @@
     var ROOT = '/icons/';
     var NAME_PATTERN = /^[a-z0-9-]+$/;
 
-    function iconPath(category, name) {
-        category = String(category || '');
+    function iconPath(name) {
         name = String(name || '');
-        if (!NAME_PATTERN.test(category) || !NAME_PATTERN.test(name)) return null;
-        return category + '/' + name;
+        return NAME_PATTERN.test(name) ? name : null;
     }
 
-    function iconUrl(category, name) {
-        var path = iconPath(category, name);
+    function iconUrl(name) {
+        var path = iconPath(name);
         return path ? ROOT + path + '.svg' : '';
     }
 
@@ -29,31 +27,31 @@
         }).join(' ');
     }
 
-    function apply(element, category, name) {
-        var url = iconUrl(category, name);
+    function apply(element, name) {
+        var url = iconUrl(name);
         if (!url || !element) return element;
 
         element.classList.add('bf-icon');
-        element.dataset.bfIcon = iconPath(category, name);
+        element.dataset.bfIcon = iconPath(name);
         element.setAttribute('aria-hidden', 'true');
         element.style.setProperty('--bf-icon-url', 'url("' + url + '")');
         return element;
     }
 
-    function html(category, name, className) {
-        var path = iconPath(category, name);
-        var url = iconUrl(category, name);
+    function html(name, className) {
+        var path = iconPath(name);
+        var url = iconUrl(name);
         if (!path) return '';
         var classes = ('bf-icon ' + safeClassName(className)).trim();
         return '<span class="' + classes + '" data-bf-icon="' + path + '" aria-hidden="true"' +
             ' style="--bf-icon-url:url(\'' + url + '\')"></span>';
     }
 
-    function element(category, name, className) {
+    function element(name, className) {
         var result = document.createElement('span');
         var extraClasses = safeClassName(className);
         if (extraClasses) result.className = extraClasses;
-        return apply(result, category, name);
+        return apply(result, name);
     }
 
     function hydrate(root) {
@@ -64,8 +62,7 @@
             elements = elements.concat(Array.prototype.slice.call(root.querySelectorAll('[data-bf-icon]')));
         }
         elements.forEach(function (el) {
-            var value = (el.dataset.bfIcon || '').split('/');
-            if (value.length === 2) apply(el, value[0], value[1]);
+            apply(el, el.dataset.bfIcon);
         });
     }
 

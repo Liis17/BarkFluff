@@ -147,7 +147,7 @@
                 row.className = 'attach-doc-row';
                 var icon = document.createElement('div');
                 icon.className = 'attach-doc-icon';
-                icon.appendChild(BF.icons.element('chat', 'document'));
+                icon.appendChild(BF.icons.element('document'));
                 var info = document.createElement('div');
                 info.className = 'attach-doc-info';
                 var nm = document.createElement('div');

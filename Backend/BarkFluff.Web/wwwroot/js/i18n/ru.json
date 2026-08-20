@@ -108,6 +108,8 @@
   "chat.background.hint": "Выберите изображение или вернитесь к глобальному фону",
   "chat.background.useGlobal": "Использовать глобальный",
   "chat.empty.hint": "Чтобы начать диалог выберите чат из списка слева",
+  "chat.messageNotFound": "Сообщение не найдено",
+  "chat.newMessages": "Новые сообщения",
   "chat.scrollToLatest": "К последнему сообщению",
   "chat.unreadMessages": "Непрочитанные сообщения",
   "chatlist.draft": "Черновик",
