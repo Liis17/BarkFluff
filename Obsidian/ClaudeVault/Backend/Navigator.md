@@ -1,7 +1,7 @@
 # BarkFluff.Navigator
 
-Управляет реестром доступных серверов BarkFluff. Порты по умолчанию: **7010** (внутренний gRPC/HTTP2) и **7011** (внутренний HTTP/1.1 для админки).
-Публичный эндпоинт: `navigator.barkfluff.com:443` (TLS завершается в [[Backend/Nginx]]).
+Управляет реестром доступных серверов BarkFluff. Порты по умолчанию: **7010** (внутренний gRPC/HTTP2) и **7011** (внутренний HTTP/1.1 для админки и публичной страницы).
+Публичный эндпоинт: `navigator.barkfluff.com:443` (TLS завершается в nginx; конфиг — `docker/navigator/nginx/navigator.conf`, источник истины для выделенного хоста: `/`, `/assets/`, `/api/`, `/ping`, `/admin/` → HTTP-порт, остальное — gRPC).
 
 Анонимный liveness endpoint: `GET /ping` → `pong`.
 
@@ -37,14 +37,27 @@ React-сборка находится в `Backend/BarkFluff.Navigator/Admin/`; �
 
 GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish` запускает `npm ci` и `npm run build` в `Admin/`, поэтому runner всегда пересобирает React-ассеты из исходников.
 
+**Дизайн админки — MD3** в стиле [[Backend/AdminPanel]] (светлая терракотовая тема, копия `md3.css` в `Admin/src/md3.css`): login-карточка с expressive-blobs, `.md-field-outlined`/`.md-btn`/`.msr`-иконки.
+
+### Публичная главная страница `/`
+
+`wwwroot/index.html` (+ `wwwroot/assets/md3.css`) — статический каталог серверов без авторизации, отдаётся через `UseDefaultFiles` на `/`. Тот же MD3-стиль админ-панели: карточки серверов (color-dot, публичное имя, описание, локация), чип «Закреплён» у ручных записей, кнопка «Открыть веб-клиент» при наличии `web_endpoint`, состояния empty/error/loading, автообновление каждые 30 с. Данные берёт из анонимного `GET /api/servers`. В шапке — ссылка на `/admin/`.
+
+⚠️ md3.css существует в **трёх копиях** (AdminPanel `Pages/v2/assets/`, Navigator `wwwroot/assets/` и `Admin/src/`) — при смене темы синхронизировать вручную.
+
+### Ручные («закреплённые») серверы
+
+`IsManual` в `Domain/ServerInfo` — запись, добавленная админом через админку. Всегда видна в каталоге (gRPC `ListServers`, `GetServersAsync`, админка, публичная страница) вне TTL активной регистрации — контракт `ListServers` при этом не меняется (полей больше не становится, ручные серверы просто попадают в выдачу). Добавление — `POST /admin/api/servers` (полный набор полей: имя, публичное имя, описание, локация, цвет, Beacon host/port, web/files endpoint; валидация та же, что у gRPC-регистрации, ошибки — 400 с текстом), удаление — `DELETE /admin/api/servers/{id}` (только `IsManual`-строки, иначе 404). `AddedBy` = логин из сессии. `ServerName` у ручных пуст — well-known валидация не применяется. Если реальная нода позже зарегистрируется с тем же легаси-ключом `Name+BeaconHost+BeaconPort` — upsert обновит ту же строку, `IsManual` сохранится. Анонимный `GET /api/servers` отдаёт подмножество полей для публичной страницы (без beacon/файлового адреса).
+
 ## Персистентность (этап 1.5)
 
 `Persistence/NavigatorContext.cs` — SQLite (было **in-memory**, `ConcurrentDictionary`, терялось при рестарте; этапом 1.5 был PostgreSQL, затем переведён на локальную SQLite ради экономии RAM на выделенном хосте). Таблица `Servers`: все прежние поля + `LastSeenAt` (заменяет in-memory `lastSeen`) + federation-поля (`ServerName` — уникальный частичный индекс `WHERE ServerName IS NOT NULL`, `FederationEndpoint`, `TlsSpkiSha256`, `FederationProtocolVersions`, `SigningKeys` — все три хранятся как `TEXT`/JSON: массивы через primitive-collections EF Core, `SigningKeys` через явный JSON-конвертер, список `{key_id, public_key_base64, expired_at}`, `NavigatorSigningKeyInfo`).
 
 `ServersStorage` теперь **Scoped** (использует `NavigatorContext`), а не Singleton — троттлинг регистраций вынесен в отдельный синглтон `RegistrationThrottle` (тот же in-memory `ConcurrentDictionary`, потеря состояния при рестарте безвредна, как и раньше).
 
-- `GetServersAsync()` — как раньше, только `LastSeenAt` в пределах `ServerRegistration:ActivePeriodMinutes` (дефолт 10 мин)
-- `RegisterServerAsync()` — upsert. Ключ идентичности: `ServerName`, если задан; иначе легаси `Name+BeaconHost+BeaconPort`
+- `GetServersAsync()` — `IsManual || LastSeenAt в пределах ServerRegistration:ActivePeriodMinutes` (дефолт 10 мин); ручные записи закреплены навсегда
+- `RegisterServerAsync()` — upsert. Ключ идентичности: `ServerName`, если задан; иначе легаси `Name+BeaconHost+BeaconPort`. `IsManual` существующей строки сохраняется
+- `AddManualServerAsync()` / `DeleteManualServerAsync(id)` — добавление/удаление ручных записей (guard: только `IsManual`)
 - `GetByServerNameAsync()` — lowercase-сравнение, `found=false` если протухло (тот же TTL, что у `GetServers`)
 
 **Деплой**: Navigator живёт в отдельном compose-файле `docker/navigator/docker-compose-dev.yml`, отдельно от основного стека ноды. SQLite-файл лежит в bind-mount `./db:/app/db` (папка `db/` рядом с compose-файлом на хосте), `NAVIGATOR_DB=Data Source=/app/db/navigator.db`; сервис запущен с `user: root`, чтобы писать в bind-каталог (образ `Dockerfile.slim` остаётся chiseled/non-root). Отдельного контейнера БД больше нет. `NAVIGATOR_PORT` задаёт gRPC-порт, `NAVIGATOR_HTTP_PORT` — внутренний HTTP-порт админки; наружу к нему обращается только [[Backend/Nginx]].
@@ -61,7 +74,7 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 
 ## Domain/ServerInfo
 
-Поля: `Id` (long, ключ), `CreatedAt`, `AddedBy`, `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex/MainHex/HardHex` + этап 1.5: `LastSeenAt`, `ServerName?`, `FederationEndpoint?`, `TlsSpkiSha256?`, `FederationProtocolVersions?`, `SigningKeys? : List<NavigatorSigningKeyInfo>` + `WebEndpoint?` + `FilesMediaEndpoint?`. **`AccountsCount` в доменной модели нет** — существует только в proto-ответе, всегда `0`.
+Поля: `Id` (long, ключ), `CreatedAt`, `AddedBy`, `Name`, `BeaconHost`, `BeaconPort`, `Description`, `ServerPublicName`, `Location`, `ColorLiteHex/MainHex/HardHex` + этап 1.5: `LastSeenAt`, `ServerName?`, `FederationEndpoint?`, `TlsSpkiSha256?`, `FederationProtocolVersions?`, `SigningKeys? : List<NavigatorSigningKeyInfo>` + `WebEndpoint?` + `FilesMediaEndpoint?` + `IsManual` (ручная запись админа). **`AccountsCount` в доменной модели нет** — существует только в proto-ответе, всегда `0`.
 
 ### `web_endpoint` — адрес веб-клиента ноды
 
@@ -121,7 +134,7 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 
 ## Тесты
 
-`Tests/BarkFluff.Navigator.Tests/` — 37 тестов (EF InMemory, без Docker/Postgres): легаси-валидация регистрации (не изменилась), `FederationServernameGuardTests` (IP/localhost/punycode), `RegisterServerCommandHandlerTests` — федеративная регистрация (well-known подтвердил/отклонил, невалидный `server_name`) через тестовый двойник `FederationWellKnownValidator` (виртуальный `ValidateAsync`, переопределён в тесте — без реальной сети), `GetServerByNameQueryHandlerTests` (найдено/не найдено/протухло).
+`Tests/BarkFluff.Navigator.Tests/` — 60 тестов (EF InMemory, без Docker/Postgres): легаси-валидация регистрации (не изменилась), `FederationServernameGuardTests` (IP/localhost/punycode), `RegisterServerCommandHandlerTests` — федеративная регистрация (well-known подтвердил/отклонил, невалидный `server_name`) через тестовый двойник `FederationWellKnownValidator` (виртуальный `ValidateAsync`, переопределён в тесте — без реальной сети), `GetServerByNameQueryHandlerTests` (найдено/не найдено/протухло), `ServersStorageManualTests` — ручные записи (видимость после TTL, upsert сохраняет `IsManual`, delete-guard).
 
 ## Добавление нового поля в ServerInfo
 
