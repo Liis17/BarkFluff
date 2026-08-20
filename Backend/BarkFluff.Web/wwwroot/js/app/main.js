@@ -149,7 +149,7 @@
     function botBadgeMarkup() {
         var label = u.escapeHtml(BF.i18n.t('common.bot'));
         return '<span class="bot-badge" role="img" aria-label="' + label + '" title="' + label + '">' +
-            BF.icons.html('services', 'bots') + '</span>';
+            BF.icons.html('bots') + '</span>';
     }
 
     function setChatCallButtonsVisible(visible) {
@@ -300,7 +300,7 @@
                 '<div class="chat-avatar">' + avatarHtml +
                 onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">' + BF.icons.html('settings', 'security') + '</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
+                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">' + BF.icons.html('security') + '</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -3315,7 +3315,7 @@
     var chatCmShownAt = 0;
 
     function contextMenuIcon() {
-        return '<span class="cm-icon">' + BF.icons.html('settings', 'chat-folders') + '</span>';
+        return '<span class="cm-icon">' + BF.icons.html('chat-folders') + '</span>';
     }
 
     function buildChatContextMenu(chatId) {
