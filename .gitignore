@@ -424,7 +424,4 @@ default.profraw
 # оригинал — Backend/Barkfluff.WebServer/html/legal
 /Backend/BarkFluff.Web/wwwroot/legal/
 
-# Локальные секреты docker-стеков (в репозитории только sample-*.env)
-.env
-**/.env
 /Android/.idea/caches
