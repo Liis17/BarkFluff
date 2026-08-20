@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FFF8F6">
+    <title>BarkFluff Navigator — Серверы сети</title>
+    <link rel="stylesheet" href="/assets/md3.css">
+    <style>
+        html, body {
+            min-height: 100vh;
+            background: var(--md-surface-container-low);
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 48px 24px 64px;
+        }
+
+        /* Decorative expressive shapes in the background */
+        .bg-deco {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-deco span {
+            position: absolute;
+            opacity: .55;
+            filter: blur(60px);
+            animation: shape-float 18s var(--md-easing-emphasized) infinite alternate;
+        }
+        .bg-deco span:nth-child(1) {
+            width: 460px; height: 460px;
+            top: -120px; left: -120px;
+            background: var(--md-primary-container);
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+        }
+        .bg-deco span:nth-child(2) {
+            width: 380px; height: 380px;
+            bottom: -100px; right: -80px;
+            background: var(--md-tertiary-container);
+            border-radius: 40% 60% 60% 40% / 40% 60% 60% 40%;
+            animation-delay: -6s;
+        }
+        .bg-deco span:nth-child(3) {
+            width: 320px; height: 320px;
+            top: 60%; left: 12%;
+            background: var(--md-secondary-container);
+            border-radius: 50% 50% 70% 30% / 30% 60% 40% 70%;
+            animation-delay: -3s;
+        }
+        @keyframes shape-float {
+            0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50%  { transform: translate(40px, -30px) rotate(20deg) scale(1.08); }
+            100%  { transform: translate(-30px, 40px) rotate(-15deg) scale(.95); }
+        }
+
+        .hero {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 640px;
+            margin-bottom: 40px;
+        }
+        .hero-icon-wrap {
+            width: 72px; height: 72px;
+            margin: 0 auto 20px;
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            background: var(--md-primary);
+            color: var(--md-on-primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            animation: md-shape-morph 6s var(--md-easing-emphasized) infinite;
+        }
+        .hero-icon-wrap .msr {
+            font-size: 36px;
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 40;
+        }
+        .hero h1 {
+            font-size: 32px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            margin: 0 0 8px;
+        }
+        .hero .subtitle {
+            font-size: 14px;
+            color: var(--md-on-surface-variant);
+            margin: 0 0 20px;
+            line-height: 1.5;
+        }
+        .hero .admin-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--md-primary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: var(--md-shape-full);
+            border: 1px solid var(--md-outline-variant);
+            background: var(--md-surface-container-lowest);
+            transition: background var(--md-dur-2) var(--md-easing-standard);
+        }
+        .hero .admin-link:hover { background: var(--md-surface-container-low); }
+
+        .catalog {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1080px;
+        }
+        .catalog-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .catalog-head h2 {
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            margin: 0;
+        }
+
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .server-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 20px;
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-lg);
+            box-shadow: var(--md-elev-1);
+        }
+        .color-dot {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: var(--md-primary);
+        }
+        .server-card h3 {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            margin: 0;
+            padding-right: 24px;
+        }
+        .server-card .description {
+            font-size: 13px;
+            color: var(--md-on-surface-variant);
+            line-height: 1.5;
+            margin: 0;
+            flex: 1;
+        }
+        .server-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+        }
+        .server-meta .msr { font-size: 16px; }
+        .server-card .md-chip {
+            align-self: flex-start;
+            font-size: 11px;
+            padding: 4px 10px;
+            gap: 4px;
+        }
+        .server-card .md-chip .msr { font-size: 14px; }
+        .server-card .md-btn { text-decoration: none; align-self: flex-start; margin-top: 4px; }
+
+        .state-block {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1080px;
+            display: flex;
+            justify-content: center;
+            padding: 48px 0;
+        }
+
+        footer {
+            position: relative;
+            z-index: 1;
+            margin-top: 48px;
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 32px 16px 48px; }
+            .hero h1 { font-size: 26px; }
+            .server-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-deco" aria-hidden="true"><span></span><span></span><span></span></div>
+
+    <header class="hero">
+        <div class="hero-icon-wrap" aria-hidden="true"><span class="msr">travel_explore</span></div>
+        <h1>BarkFluff Navigator</h1>
+        <p class="subtitle">Публичный каталог серверов сети BarkFluff. Выберите сервер, чтобы начать общение — веб-клиент откроется в новой вкладке.</p>
+        <a class="admin-link" href="/admin/">
+            <span class="msr" style="font-size:16px;">admin_panel_settings</span>
+            Администрирование
+        </a>
+    </header>
+
+    <section class="catalog" aria-live="polite">
+        <div class="catalog-head">
+            <h2>Серверы сети</h2>
+            <span class="md-status md-status-info" id="server-count" hidden><span class="dot"></span><span id="server-count-text"></span></span>
+        </div>
+
+        <div class="server-grid" id="server-grid"></div>
+
+        <div class="state-block" id="state-loading">
+            <div class="md-loader-expressive" aria-label="Загрузка"></div>
+        </div>
+        <div class="state-block" id="state-empty" hidden>
+            <div class="md-empty">
+                <span class="msr">dns</span>
+                <h3>Серверов пока нет</h3>
+                <p>Активные серверы появятся здесь автоматически после регистрации в сети.</p>
+            </div>
+        </div>
+        <div class="state-block" id="state-error" hidden>
+            <div class="md-empty">
+                <span class="msr">cloud_off</span>
+                <h3>Не удалось загрузить список</h3>
+                <p>Navigator недоступен. Повторим попытку автоматически.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>BarkFluff — распределённая платформа обмена сообщениями</footer>
+
+    <script>
+        const REFRESH_INTERVAL_MS = 30000;
+
+        const grid = document.getElementById('server-grid');
+        const stateLoading = document.getElementById('state-loading');
+        const stateEmpty = document.getElementById('state-empty');
+        const stateError = document.getElementById('state-error');
+        const countBadge = document.getElementById('server-count');
+        const countText = document.getElementById('server-count-text');
+
+        function showState(state) {
+            for (const el of [stateLoading, stateEmpty, stateError]) el.hidden = el !== state;
+            grid.hidden = state !== null;
+        }
+
+        function pluralize(count, one, few, many) {
+            const mod10 = count % 10;
+            const mod100 = count % 100;
+            if (mod10 === 1 && mod100 !== 11) return one;
+            if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+            return many;
+        }
+
+        function esc(value) {
+            const div = document.createElement('div');
+            div.textContent = value ?? '';
+            return div.innerHTML;
+        }
+
+        function renderServer(server) {
+            const card = document.createElement('article');
+            card.className = 'server-card';
+
+            const color = /^#?[0-9A-Fa-f]{6}$/.test(server.color || '') ? server.color : '';
+
+            let html = '';
+            if (color) {
+                html += `<span class="color-dot" style="background:${esc(color)}"></span>`;
+            }
+            html += `<h3>${esc(server.serverPublicName || server.name)}</h3>`;
+            if (server.description) {
+                html += `<p class="description">${esc(server.description)}</p>`;
+            }
+            if (server.location) {
+                html += `<div class="server-meta"><span class="msr">location_on</span>${esc(server.location)}</div>`;
+            }
+            if (server.isManual) {
+                html += `<span class="md-chip md-chip-elevated"><span class="msr">push_pin</span>Закреплён</span>`;
+            }
+            if (server.webEndpoint) {
+                html += `<a class="md-btn md-btn-filled" href="${esc(server.webEndpoint)}" target="_blank" rel="noopener noreferrer">`
+                      + `<span class="msr size-18">open_in_new</span>Открыть веб-клиент</a>`;
+            }
+            card.innerHTML = html;
+            return card;
+        }
+
+        async function loadServers() {
+            try {
+                const response = await fetch('/api/servers');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const servers = await response.json();
+
+                grid.replaceChildren(...servers.map(renderServer));
+
+                if (servers.length === 0) {
+                    showState(stateEmpty);
+                    countBadge.hidden = true;
+                } else {
+                    showState(null);
+                    countText.textContent = `${servers.length} ${pluralize(servers.length, 'сервер', 'сервера', 'серверов')}`;
+                    countBadge.hidden = false;
+                }
+            } catch {
+                grid.replaceChildren();
+                showState(stateError);
+                countBadge.hidden = true;
+            }
+        }
+
+        loadServers();
+        setInterval(loadServers, REFRESH_INTERVAL_MS);
+    </script>
+</body>
+</html>

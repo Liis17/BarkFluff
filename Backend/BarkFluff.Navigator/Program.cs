@@ -104,6 +104,8 @@ app.MapGrpcReflectionService();
 app.UseRouting();
 app.UseXAuth();
 app.MapPingEndpoint();
+// Главная страница / (wwwroot/index.html) — публичный каталог серверов.
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapGrpcService<NavigatorApiService>();
