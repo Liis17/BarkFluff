@@ -4204,6 +4204,11 @@
                 padding: 10px 12px;
             }
 
+            .pinned-bar {
+                width: calc(100% - 24px);
+                margin-top: 6px;
+            }
+
             .input-bar {
                 padding: 8px 12px 12px;
             }
@@ -4724,6 +4729,9 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            width: calc(100% - 40px);
+            max-width: var(--chat-content-width);
+            margin: 8px auto 0;
             padding: 8px 14px;
             background: var(--dialog-bg);
             border-bottom: 1px solid rgba(0, 0, 0, 0.06);
