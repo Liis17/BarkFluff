@@ -109,6 +109,14 @@ origin, сопоставить ключ нечем — вход потребуе
 - ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `js/app/media-viewer.js` (`BF.mediaViewer`) при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
 - `js/app/imageeditor.js` (`BF.imageEditor`) — редактор изображения перед отправкой (crop/rotate/flip/кисть/пикселизация/ластик). Инициализируется в `main.js` (`BF.imageEditor.init()`), открывается из `attach.js` (`BF.imageEditor.open(...)`).
 
+### Стикеры
+Пикер у композера (`main.js`, секция STICKER PICKER): табы паков с обложками + **«Недавние»** (иконка `history`, появляются только при непустом списке; дефолтная вкладка при открытии — как на iOS) и **поиск по emoji** (`#stickerSearch`, фильтр `contains` по стикерам текущей вкладки).
+
+- «Недавние» — localStorage `bf_recent_stickers_{userId}` (через `BF.node.key`, т.е. per-user + per-node), лимит 32, самые свежие сверху; id резолвятся против кеша паков (стикер, удалённый из пака, исчезает — паттерн `RecentStickersStore` macOS/iOS).
+- Отправка: `sendSticker` → `SendMessage(file_ids=[stickerFileId])`, тип вложения `Sticker` определяет бэкенд по `UploadFileType.MessageAttachmentSticker` ([[Backend/Messages]]).
+- Ссылки стикеров идут через `BF.files` с resilient-refresh (`bindResilientMedia`).
+- i18n: `sticker.recent` / `sticker.searchPlaceholder` / `sticker.empty` (+ существующие `sticker.noPacks` / `sticker.packEmpty`).
+
 ### Markdown в облачках
 
 Текст сообщения клиент интерпретирует как markdown (бэкенд хранит сырой текст). Парсер — `BF.utils.renderMarkdown(text)` в `js/app/utils.js` (рядом с `escapeHtml`): возвращает безопасную HTML-строку. Применяется в `messages.js` для основного текста (`.msg-text.md`) и текста пересланного блока (`.fwd-text.md`) через `innerHTML`. Reply-цитата, системные плашки и превью списка чатов остаются plain (`textContent`).
