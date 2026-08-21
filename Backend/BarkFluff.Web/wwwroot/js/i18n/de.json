@@ -504,6 +504,7 @@
   "status.typing.named": "{names} schreibt…",
   "sticker.noPacks": "Keine Sticker-Packs gefunden",
   "sticker.packEmpty": "Dieses Pack enthält keine Sticker",
+  "sticker.packNotFound": "Sticker-Pack nicht gefunden",
   "sticker.recent": "Zuletzt benutzt",
   "sticker.searchPlaceholder": "Nach Emoji suchen…",
   "sticker.empty": "Keine Sticker",

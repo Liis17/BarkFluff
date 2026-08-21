@@ -117,6 +117,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - Ссылки стикеров идут через `BF.files` с resilient-refresh (`bindResilientMedia`).
 - i18n: `sticker.recent` / `sticker.searchPlaceholder` / `sticker.empty` (+ существующие `sticker.noPacks` / `sticker.packEmpty`).
 - **Размер стикеров** — слайдер 96–240px (шаг 1, дефолт 160) в настройках персонализации, рядом с «Закруглением пузырей». Хранение `bf_pers_sticker_size` (общий ключ без суффикса ноды, как остальные `bf_pers_*`), применение через CSS-переменную `--sticker-size` в `personalization.js::applyAll` → `.msg-attachments img.attach-sticker`. Паритет с [[Клиенты/Android]] (`chatStickerSizeDp`).
+- **Модалка стикерпака по клику на стикер** (`js/app/stickerpack.js`, `BF.stickerPack`): клик на `.attach-sticker` в ленте → `FilesApi.GetStickerPackByFile(file_id)` → оверлей `#stickerPackOverlay` (`.profile-overlay`-паттерн, focus-trap через `BF.utils.openOverlay`) с обложкой, названием, описанием и сеткой стикеров; клик по стикеру в модалке отправляет его в текущий чат (колбэк `onStickerSend` из `main.js`). Пак не найден → статус `sticker.packNotFound`. Ссылки — через `BF.files` + `bindResilientMedia`.
 
 ### Markdown в облачках
 

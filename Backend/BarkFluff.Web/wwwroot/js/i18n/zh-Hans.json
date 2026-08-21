@@ -504,6 +504,7 @@
   "status.typing.named": "{names} 正在输入…",
   "sticker.noPacks": "未找到贴纸包",
   "sticker.packEmpty": "此贴纸包中没有贴纸",
+  "sticker.packNotFound": "未找到贴纸包",
   "sticker.recent": "最近",
   "sticker.searchPlaceholder": "按表情符号搜索…",
   "sticker.empty": "没有贴纸",

@@ -1,5 +1,6 @@
 using BarkFluff.Files.Features.CheckFileHash;
 using BarkFluff.Files.Features.GetStickerPack;
+using BarkFluff.Files.Features.GetStickerPackByFile;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfo;
@@ -110,6 +111,19 @@ public class FilesApiService : FilesApi.FilesApiBase
         var command = new GetStickerPackCommand
         {
             PackId = Guid.Parse(request.PackId)
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetStickerPackResponse> GetStickerPackByFile(GetStickerPackByFileRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.FileId, out var fileId))
+            throw new Exception("Стикер не найден");
+
+        var command = new GetStickerPackByFileCommand
+        {
+            FileId = fileId
         };
 
         return _mediator.Send(command);

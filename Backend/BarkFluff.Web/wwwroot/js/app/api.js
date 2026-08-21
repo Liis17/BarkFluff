@@ -483,6 +483,25 @@
         });
     }
 
+    function getStickerPackByFile(fileId) {
+        var req = new (filePb().GetStickerPackByFileRequest)();
+        req.setFileId(fileId);
+        return c().authCall(files().getStickerPackByFile.bind(files()), req).then(function (resp) {
+            var pack = resp.getPack();
+            return {
+                pack: pack ? { id: pack.getId(), name: pack.getName(), description: pack.getDescription() } : null,
+                stickers: resp.getStickersList().map(function (s) {
+                    return {
+                        id: s.getId(),
+                        fileId: s.getFileId(),
+                        previewFileId: s.getPreviewFileId(),
+                        emoji: s.getEmoji()
+                    };
+                })
+            };
+        });
+    }
+
     // --- Users API ---
 
     function changeName(firstName, lastName) {
@@ -965,6 +984,7 @@
         getTempDownloadUrl: getTempDownloadUrl,
         listStickerPacks: listStickerPacks,
         getStickerPack: getStickerPack,
+        getStickerPackByFile: getStickerPackByFile,
         setOnlineStatus: setOnlineStatus,
         getOnlineStatus: getOnlineStatus,
         setTypingStatus: setTypingStatus,
