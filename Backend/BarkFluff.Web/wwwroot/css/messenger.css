@@ -3999,6 +3999,35 @@
 
         .sticker-picker.visible { display: flex; }
 
+        .sticker-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 12px 2px;
+            padding: 7px 10px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+        }
+
+        .sticker-search .bf-icon {
+            width: 15px;
+            height: 15px;
+            color: var(--text-sub);
+        }
+
+        .sticker-search input {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text-main);
+            font-size: 13px;
+            font-family: inherit;
+            padding: 0;
+        }
+
         .sticker-packs-bar {
             display: flex;
             gap: 6px;
@@ -4036,6 +4065,14 @@
             height: 100%;
             object-fit: cover;
         }
+
+        .sticker-pack-tab .bf-icon {
+            width: 20px;
+            height: 20px;
+            color: var(--text-sub);
+        }
+
+        .sticker-pack-tab.active .bf-icon { color: var(--primary); }
 
         .sticker-pack-empty {
             padding: 24px;
