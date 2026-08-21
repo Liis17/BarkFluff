@@ -1996,6 +1996,54 @@
 
         .profile-status-line.online { color: var(--online-color); }
 
+        /* === STICKER PACK OVERLAY === */
+
+        .sp-cover {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .sp-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .sp-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            overflow-y: auto;
+            flex: 1;
+            margin-top: 12px;
+            padding: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--scrollbar) transparent;
+        }
+
+        .sp-grid img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            cursor: pointer;
+            border-radius: 12px;
+            padding: 4px;
+            transition: background 0.15s;
+        }
+
+        .sp-grid img:hover { background: rgba(0, 0, 0, 0.06); }
+
+        .sp-status {
+            grid-column: 1 / -1;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 14px;
+        }
+
         .profile-bio {
             font-size: 14px;
             color: var(--text-main);
@@ -4201,6 +4249,11 @@
             /* Sticker grid: fewer columns on mobile */
             .sticker-grid {
                 grid-template-columns: repeat(6, 1fr);
+            }
+
+            /* Sticker pack overlay grid: fewer columns on mobile */
+            .sp-grid {
+                grid-template-columns: repeat(3, 1fr);
             }
 
             /* Attach dialog full width */

@@ -504,6 +504,7 @@
   "status.typing.named": "{names} печатает…",
   "sticker.noPacks": "Стикерпаки не найдены",
   "sticker.packEmpty": "В этом паке нет стикеров",
+  "sticker.packNotFound": "Стикерпак не найден",
   "sticker.recent": "Недавние",
   "sticker.searchPlaceholder": "Поиск по emoji…",
   "sticker.empty": "Стикеров нет",

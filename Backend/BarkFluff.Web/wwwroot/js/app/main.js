@@ -3699,6 +3699,10 @@
         });
     }
 
+    if (BF.stickerPack && BF.stickerPack.init) {
+        BF.stickerPack.init({ onStickerSend: sendSticker });
+    }
+
     BF.realtime.startAll();
     if (BF.calls && BF.calls.start) BF.calls.start();
 

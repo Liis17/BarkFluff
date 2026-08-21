@@ -504,6 +504,7 @@
   "status.typing.named": "{names} is typing…",
   "sticker.noPacks": "No sticker packs found",
   "sticker.packEmpty": "This pack has no stickers",
+  "sticker.packNotFound": "Sticker pack not found",
   "sticker.recent": "Recent",
   "sticker.searchPlaceholder": "Search by emoji…",
   "sticker.empty": "No stickers",

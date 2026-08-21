@@ -194,6 +194,7 @@
 | `CheckFileHash` | Проверить дедупликацию по хешу |
 | `GetUserStorageInfo` | Информация о хранилище текущего пользователя |
 | `ListStickerPacks` / `GetStickerPack` | Список стикерпаков и их содержимое |
+| `GetStickerPackByFile` | Стикерпак по `file_id` стикера (клик по стикеру в чате) |
 
 #### `FilesServerApi` (внутренний, Service token)
 | RPC | Описание |
