@@ -4258,8 +4258,8 @@
         /* === STICKER IN CHAT (fix) === */
 
         .msg-attachments img.attach-sticker {
-            width: 180px;
-            height: 180px;
+            width: var(--sticker-size, 160px);
+            height: var(--sticker-size, 160px);
             object-fit: contain;
             border-radius: 18px;
             display: block;
