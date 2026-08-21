@@ -13,14 +13,16 @@
         radius: 'bf_pers_bubble_radius',
         blurOn: 'bf_pers_bg_blur_enabled',
         blurR:  'bf_pers_bg_blur_radius',
-        dim:    'bf_pers_bg_dim'
+        dim:    'bf_pers_bg_dim',
+        stickerSize: 'bf_pers_sticker_size'
     };
 
     var DEFAULTS = {
         radius: 16,
         blurOn: false,
         blurR:  8,
-        dim:    30
+        dim:    30,
+        stickerSize: 160
     };
 
     var listeners = [];
@@ -57,6 +59,7 @@
         var dim    = readInt(KEYS.dim,    DEFAULTS.dim);
 
         setCss('--msg-bubble-radius', radius + 'px');
+        setCss('--sticker-size', readInt(KEYS.stickerSize, DEFAULTS.stickerSize) + 'px');
         setCss('--chat-bg-blur', (blurOn ? blurR : 0) + 'px');
         // Затемнение нужно только поверх фоновой картинки; без неё — 0, иначе фон чата темнеет зря.
         var dimAlpha = resolvedBgUrl ? (Math.max(0, Math.min(100, dim)) / 100) : 0;
@@ -116,6 +119,11 @@
     function getDim() { return readInt(KEYS.dim, DEFAULTS.dim); }
     function setDim(v) {
         localStorage.setItem(KEYS.dim, String(v));
+        applyAll();
+    }
+    function getStickerSize() { return readInt(KEYS.stickerSize, DEFAULTS.stickerSize); }
+    function setStickerSize(v) {
+        localStorage.setItem(KEYS.stickerSize, String(v));
         applyAll();
     }
     function applyForChat(chatId) {
@@ -182,6 +190,7 @@
         getBlurEnabled: getBlurEnabled, setBlurEnabled: setBlurEnabled,
         getBlurRadius: getBlurRadius, setBlurRadius: setBlurRadius,
         getDim: getDim, setDim: setDim,
+        getStickerSize: getStickerSize, setStickerSize: setStickerSize,
         getBackgroundFileId: getBackgroundFileId,
         setBackgroundFileId: setBackgroundFileId,
         getChatBackgroundFileId: getChatBackgroundFileId,

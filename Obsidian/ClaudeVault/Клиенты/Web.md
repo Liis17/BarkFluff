@@ -116,6 +116,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - Отправка: `sendSticker` → `SendMessage(file_ids=[stickerFileId])`, тип вложения `Sticker` определяет бэкенд по `UploadFileType.MessageAttachmentSticker` ([[Backend/Messages]]).
 - Ссылки стикеров идут через `BF.files` с resilient-refresh (`bindResilientMedia`).
 - i18n: `sticker.recent` / `sticker.searchPlaceholder` / `sticker.empty` (+ существующие `sticker.noPacks` / `sticker.packEmpty`).
+- **Размер стикеров** — слайдер 96–240px (шаг 1, дефолт 160) в настройках персонализации, рядом с «Закруглением пузырей». Хранение `bf_pers_sticker_size` (общий ключ без суффикса ноды, как остальные `bf_pers_*`), применение через CSS-переменную `--sticker-size` в `personalization.js::applyAll` → `.msg-attachments img.attach-sticker`. Паритет с [[Клиенты/Android]] (`chatStickerSizeDp`).
 
 ### Markdown в облачках
 
