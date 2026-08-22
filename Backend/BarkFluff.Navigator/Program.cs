@@ -68,6 +68,8 @@ builder.Services.AddScoped<ServersStorage>();
 builder.Services.AddSingleton<RegistrationThrottle>();
 builder.Services.AddScoped<FederationWellKnownValidator>();
 
+builder.Services.AddBarkFluffHealth();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -103,7 +105,7 @@ static void EnsureServersColumn(NavigatorContext ctx, string column, string defi
 app.MapGrpcReflectionService();
 app.UseRouting();
 app.UseXAuth();
-app.MapPingEndpoint();
+app.MapHealthEndpoints();
 // Главная страница / (wwwroot/index.html) — публичный каталог серверов.
 app.UseDefaultFiles();
 app.UseStaticFiles();

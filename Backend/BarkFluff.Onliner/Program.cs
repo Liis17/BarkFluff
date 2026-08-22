@@ -128,6 +128,8 @@ public class Program
             });
         });
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
@@ -145,7 +147,7 @@ public class Program
         app.UseRouting();
 
         app.UseXAuth();
-        app.MapPingEndpoint();
+        app.MapHealthEndpoints();
 
         // Регистрируем gRPC сервисы
         app.MapGrpcService<OnlinerApiService>();

@@ -44,6 +44,8 @@ public class Program
 
         builder.Services.AddFastAuthServices();
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         if (app.Environment.IsDevelopment())
@@ -52,7 +54,7 @@ public class Program
         app.UseRouting();
 
         app.UseXAuth();
-        app.MapPingEndpoint();
+        app.MapHealthEndpoints();
 
         app.MapGrpcService<FastAuthApiService>();
         app.MapGrpcService<FastAuthServerApiService>();

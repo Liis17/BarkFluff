@@ -209,6 +209,8 @@ public class Program
 
         builder.Services.AddXAuth(builder.Configuration);
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         using (var scope = app.Services.CreateScope())
@@ -237,6 +239,7 @@ public class Program
 
         app.MapGrpcService<FederationS2SApiService>();
         app.MapGrpcService<FederationInternalApiService>();
+        app.MapHealthEndpoints();
 
         app.MapGet("/.well-known/barkfluff", (WellKnownDocumentService wellKnownDocumentService, FederationSwitch federationSwitch) =>
         {
