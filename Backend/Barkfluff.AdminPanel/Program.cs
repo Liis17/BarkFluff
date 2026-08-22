@@ -44,6 +44,7 @@ public class Program
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
+        builder.Services.Configure<AuditDbSettings>(builder.Configuration.GetSection(AuditDbSettings.SectionName));
         builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
         builder.Services.Configure<LogsCompressionSettings>(builder.Configuration.GetSection(LogsCompressionSettings.SectionName));
         builder.Services.Configure<MailSettings>(builder.Configuration.GetSection(MailSettings.SectionName));
@@ -62,6 +63,7 @@ public class Program
         builder.Services.AddSingleton(metricsCacheSettings);
         builder.Services.AddSingleton<MetricsCacheDbContext>();
         builder.Services.AddSingleton<RemoteDockerDbContext>();
+        builder.Services.AddSingleton<AuditDbContext>();
 
         // Register Services
         builder.Services.AddSingleton<PendingAuthService>();
@@ -69,6 +71,7 @@ public class Program
         builder.Services.AddSingleton<AuthService>();
         builder.Services.AddSingleton<AdminService>();
         builder.Services.AddSingleton<StepUpService>();
+        builder.Services.AddSingleton<AuditService>();
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
@@ -250,6 +253,9 @@ public class Program
 
         // Map Admins Endpoints (управление ролями)
         app.MapAdminsEndpoints();
+
+        // Map Audit Endpoints (аудит-лог критических действий)
+        app.MapAuditEndpoints();
 
         // Map Seq Endpoints
         app.MapSeqEndpoints();

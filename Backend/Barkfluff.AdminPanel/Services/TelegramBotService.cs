@@ -20,6 +20,7 @@ public class TelegramBotService : IHostedService, IStepUpSender
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
     private readonly StepUpService _stepUpService;
+    private readonly AuditService _auditService;
     private readonly IOptions<AuthSettings> _authSettings;
     private readonly ILogger<TelegramBotService> _logger;
     private readonly CancellationTokenSource _cts = new();
@@ -29,6 +30,7 @@ public class TelegramBotService : IHostedService, IStepUpSender
         PendingAuthService pendingAuthService,
         TokenService tokenService,
         StepUpService stepUpService,
+        AuditService auditService,
         IOptions<AuthSettings> authSettings,
         ILogger<TelegramBotService> logger)
     {
@@ -36,6 +38,7 @@ public class TelegramBotService : IHostedService, IStepUpSender
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
         _stepUpService = stepUpService;
+        _auditService = auditService;
         _authSettings = authSettings;
         _logger = logger;
 
@@ -114,6 +117,7 @@ public class TelegramBotService : IHostedService, IStepUpSender
             _pendingAuthService,
             _tokenService,
             _stepUpService,
+            _auditService,
             _authSettings,
             _logger);
 
@@ -387,6 +391,7 @@ public class UpdateHandler : IUpdateHandler
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
     private readonly StepUpService _stepUpService;
+    private readonly AuditService _auditService;
     private readonly IOptions<AuthSettings> _authSettings;
     private readonly ILogger _logger;
 
@@ -396,6 +401,7 @@ public class UpdateHandler : IUpdateHandler
         PendingAuthService pendingAuthService,
         TokenService tokenService,
         StepUpService stepUpService,
+        AuditService auditService,
         IOptions<AuthSettings> authSettings,
         ILogger logger)
     {
@@ -404,6 +410,7 @@ public class UpdateHandler : IUpdateHandler
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
         _stepUpService = stepUpService;
+        _auditService = auditService;
         _authSettings = authSettings;
         _logger = logger;
     }
@@ -493,6 +500,16 @@ public class UpdateHandler : IUpdateHandler
                     tokenId,
                     userId);
 
+                _auditService.Log(new AuditLogEntry
+                {
+                    AdminUsername = adminUsername,
+                    TelegramUserId = userId,
+                    Action = "auth.login.approve",
+                    Details = $"Вход подтверждён для {nickname}",
+                    IpAddress = request.IpAddress,
+                    Outcome = "ok"
+                });
+
                 // Update original message
                 var approvedMsg = $"✅ <b>Вход выполнен</b>\n\n" +
                                   $"👤 {nickname} вошёл в панель управления\n" +
@@ -517,6 +534,16 @@ public class UpdateHandler : IUpdateHandler
                     requestId,
                     AuthRequestStatus.Rejected,
                     approvedBy: userId);
+
+                _auditService.Log(new AuditLogEntry
+                {
+                    AdminUsername = adminUsername,
+                    TelegramUserId = userId,
+                    Action = "auth.login.reject",
+                    Details = $"Вход отклонён для {nickname}",
+                    IpAddress = request.IpAddress,
+                    Outcome = "ok"
+                });
 
                 var rejectedMsg = $"❌ <b>Вход отклонён</b>\n\n" +
                                   $"👤 {nickname} — запрос отклонён\n" +
