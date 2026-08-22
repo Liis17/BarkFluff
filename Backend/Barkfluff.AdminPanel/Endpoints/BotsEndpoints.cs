@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 
 using BarkFluff.Proto.Bots;
@@ -19,7 +20,8 @@ public static class BotsEndpoints
     public static void MapBotsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/bots")
-            .WithTags("Bots");
+            .WithTags("Bots")
+            .RequirePermission(AdminPermissions.BotsManage);
 
         // GET /api/bots — все боты с preview аватарки
         group.MapGet("/", async (
@@ -27,9 +29,6 @@ public static class BotsEndpoints
             UsersServerApi.UsersServerApiClient usersClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await botsClient.ListBotsAsync(new ListBotsRequest(),
@@ -71,9 +70,6 @@ public static class BotsEndpoints
             UsersServerApi.UsersServerApiClient usersClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var botsTask = botsClient.ListBotsAsync(
@@ -121,9 +117,6 @@ public static class BotsEndpoints
             BotsServerApi.BotsServerApiClient botsClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (string.IsNullOrWhiteSpace(body.Username) || string.IsNullOrWhiteSpace(body.Name))
                 return Results.BadRequest("Username and name are required");
 
@@ -151,9 +144,6 @@ public static class BotsEndpoints
             BotsServerApi.BotsServerApiClient botsClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (body is null)
                 return Results.BadRequest("Invalid request body");
 
@@ -184,9 +174,6 @@ public static class BotsEndpoints
             UsersServerApi.UsersServerApiClient usersClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -241,9 +228,6 @@ public static class BotsEndpoints
             UsersServerApi.UsersServerApiClient usersClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -296,9 +280,6 @@ public static class BotsEndpoints
             BotsServerApi.BotsServerApiClient botsClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             context.Response.Headers.CacheControl = "no-store";
 
             try
@@ -321,9 +302,6 @@ public static class BotsEndpoints
             BotsServerApi.BotsServerApiClient botsClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await botsClient.RegenerateTokenAsync(
@@ -345,9 +323,6 @@ public static class BotsEndpoints
             BotsServerApi.BotsServerApiClient botsClient,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 await botsClient.DeleteBotAsync(

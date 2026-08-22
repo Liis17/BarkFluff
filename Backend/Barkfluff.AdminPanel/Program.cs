@@ -315,23 +315,38 @@ public class Program
                 await ServeHtmlFile(context, Path.Combine("v2", "Login.html"));
         });
 
-        // Page routes — serve the MD3 (v2) pages
+        // Page routes — serve the MD3 (v2) pages.
+        // Pages with restricted access redirect to the dashboard when the admin lacks the permission.
         app.MapGet("/services", async context => await ServeHtmlFile(context, Path.Combine("v2", "services.html")));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, Path.Combine("v2", "logs.html")));
-        app.MapGet("/badges", async context => await ServeHtmlFile(context, Path.Combine("v2", "badges.html")));
-        app.MapGet("/stickers", async context => await ServeHtmlFile(context, Path.Combine("v2", "stickers.html")));
-        app.MapGet("/bots", async context => await ServeHtmlFile(context, Path.Combine("v2", "bots.html")));
-        app.MapGet("/federation", async context => await ServeHtmlFile(context, Path.Combine("v2", "federation.html")));
-        app.MapGet("/users", async context => await ServeHtmlFile(context, Path.Combine("v2", "users.html")));
-        app.MapGet("/notifications", async context => await ServeHtmlFile(context, Path.Combine("v2", "notifications.html")));
-        app.MapGet("/mail", async context => await ServeHtmlFile(context, Path.Combine("v2", "mail.html")));
-        app.MapGet("/configuration", async context => await ServeHtmlFile(context, Path.Combine("v2", "configuration.html")));
-        app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-storage.html")));
-        app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-browser.html")));
+        app.MapGet("/badges", RequirePagePermission(AdminPermissions.BadgesManage, "badges.html"));
+        app.MapGet("/stickers", RequirePagePermission(AdminPermissions.StickersManage, "stickers.html"));
+        app.MapGet("/bots", RequirePagePermission(AdminPermissions.BotsManage, "bots.html"));
+        app.MapGet("/federation", RequirePagePermission(AdminPermissions.FederationManage, "federation.html"));
+        app.MapGet("/users", RequirePagePermission(AdminPermissions.UsersRead, "users.html"));
+        app.MapGet("/notifications", RequirePagePermission(AdminPermissions.NotificationsManage, "notifications.html"));
+        app.MapGet("/mail", RequirePagePermission(AdminPermissions.MailManage, "mail.html"));
+        app.MapGet("/configuration", RequirePagePermission(AdminPermissions.ConfigRead, "configuration.html"));
+        app.MapGet("/s3-storage", RequirePagePermission(AdminPermissions.ConfigRead, "s3-storage.html"));
+        app.MapGet("/s3-browser", RequirePagePermission(AdminPermissions.S3Browse, "s3-browser.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, Path.Combine("v2", "restarting.html")));
         app.MapGet("/updating", async context => await ServeHtmlFile(context, Path.Combine("v2", "updating.html")));
 
         app.Run();
+    }
+
+    private static Func<HttpContext, Task> RequirePagePermission(string permission, string page)
+    {
+        return async context =>
+        {
+            if (!context.HasPermission(permission))
+            {
+                context.Response.Redirect("/");
+                return;
+            }
+
+            await ServeHtmlFile(context, Path.Combine("v2", page));
+        };
     }
 
     // Helper function to serve HTML files

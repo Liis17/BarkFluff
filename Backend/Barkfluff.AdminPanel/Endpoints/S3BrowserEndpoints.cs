@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Services;
 
@@ -8,15 +9,12 @@ public static class S3BrowserEndpoints
     public static void MapS3BrowserEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/s3")
-            .WithTags("S3 Browser");
+            .WithTags("S3 Browser")
+            .RequirePermission(AdminPermissions.S3Browse);
 
         group.MapGet("/buckets", async (
-            S3BrowserService s3Service,
-            HttpContext context) =>
+            S3BrowserService s3Service) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var buckets = await s3Service.GetBucketNamesAsync();
@@ -31,14 +29,10 @@ public static class S3BrowserEndpoints
         group.MapGet("/buckets/{bucketId}/objects", async (
             string bucketId,
             S3BrowserService s3Service,
-            HttpContext context,
             string? prefix,
             string? continuationToken,
             int? maxKeys) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var result = await s3Service.ListObjectsAsync(
@@ -62,12 +56,8 @@ public static class S3BrowserEndpoints
         group.MapGet("/buckets/{bucketId}/presign", async (
             string bucketId,
             S3BrowserService s3Service,
-            HttpContext context,
             string key) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var url = await s3Service.GetPresignedUrlAsync(bucketId, key);

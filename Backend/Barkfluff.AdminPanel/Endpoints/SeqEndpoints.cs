@@ -69,7 +69,6 @@ public static class SeqEndpoints
 
         group.MapGet("/events", async (
             SeqService seqService,
-            HttpContext context,
             string? application,
             int count = 50,
             string? fromUtc = null,
@@ -77,9 +76,6 @@ public static class SeqEndpoints
             string? search = null,
             string? afterId = null) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var filterParts = new List<string>();
 
             if (!string.IsNullOrEmpty(application))
@@ -119,11 +115,8 @@ public static class SeqEndpoints
         .WithName("GetSeqEvents")
         .WithOpenApi();
 
-        group.MapGet("/services", (HttpContext context) =>
+        group.MapGet("/services", () =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             // Только микросервисы BarkFluff — инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL)
             // логи в Seq не отдаёт, поэтому в фильтре логов её не показываем.
             var logServices = KnownServices
@@ -139,12 +132,8 @@ public static class SeqEndpoints
         group.MapGet("/dashboard/kpis", async (
             MetricsCacheDbContext cache,
             SeqService seqService,
-            HttpContext context,
             int hours = 24) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var cutoff = TruncateToHour(DateTime.UtcNow).AddHours(-hours);
             var stats = cache.HourlyStats.Find(x => x.HourUtc >= cutoff).ToList();
 
@@ -203,13 +192,9 @@ public static class SeqEndpoints
         group.MapGet("/dashboard/traffic", async (
             MetricsCacheDbContext cache,
             SeqService seqService,
-            HttpContext context,
             int hours = 24,
             string interval = "1h") =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var now = DateTime.UtcNow;
             var currentHour = TruncateToHour(now);
             var cutoff = currentHour.AddHours(-hours);
@@ -285,11 +270,8 @@ public static class SeqEndpoints
         .WithName("GetDashboardTraffic")
         .WithOpenApi();
 
-        group.MapGet("/dashboard/metric-groups", (HttpContext context) =>
+        group.MapGet("/dashboard/metric-groups", () =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             return Results.Ok(new
             {
                 groups = MetricsCatalog.Services.Select(service => new
@@ -312,13 +294,9 @@ public static class SeqEndpoints
 
         group.MapGet("/dashboard/metric-groups/{serviceName}", (
             MetricsCacheDbContext cache,
-            HttpContext context,
             string serviceName,
             int hours = 72) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var service = MetricsCatalog.Find(serviceName);
             if (service is null) return Results.NotFound();
 
@@ -362,12 +340,8 @@ public static class SeqEndpoints
             SeqService seqService,
             DockerService dockerService,
             DockerRegistryService dockerRegistryService,
-            HttpContext context,
             int hours = 24) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
 
             var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000);
