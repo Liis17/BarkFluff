@@ -2552,6 +2552,7 @@
     var RECENT_STICKER_LIMIT = 32;
     var recentStickerIds = [];
     var stickerSearchQuery = '';
+    var stickerGridRenderVersion = 0;
 
     function recentStickersKey() { return BF.node.key('bf_recent_stickers_' + myUserId); }
     try { recentStickerIds = JSON.parse(localStorage.getItem(recentStickersKey()) || '[]') || []; } catch (_) { recentStickerIds = []; }
@@ -2660,7 +2661,10 @@
             recentTab.className = 'sticker-pack-tab recent' + (currentStickerPackId === RECENT_TAB ? ' active' : '');
             recentTab.title = BF.i18n.t('sticker.recent');
             recentTab.appendChild(BF.icons.element('history'));
-            recentTab.addEventListener('click', function () { loadStickerPackContent(RECENT_TAB); });
+            recentTab.addEventListener('click', function (event) {
+                event.stopPropagation();
+                loadStickerPackContent(RECENT_TAB);
+            });
             stickerPacksBar.appendChild(recentTab);
         }
         stickerPacksCache.forEach(function (pack) {
@@ -2680,7 +2684,10 @@
             } else {
                 tab.textContent = (pack.name || '?')[0].toUpperCase();
             }
-            tab.addEventListener('click', function () { loadStickerPackContent(pack.id); });
+            tab.addEventListener('click', function (event) {
+                event.stopPropagation();
+                loadStickerPackContent(pack.id);
+            });
             stickerPacksBar.appendChild(tab);
         });
     }
@@ -2693,6 +2700,8 @@
 
     function renderStickerGrid() {
         if (!stickerGrid) return;
+        var renderVersion = ++stickerGridRenderVersion;
+        stickerGrid.innerHTML = '';
         var stickers = currentTabStickers();
         if (stickers.length === 0) {
             stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t(currentStickerPackId === RECENT_TAB ? 'sticker.empty' : 'sticker.packEmpty')) + '</div>';
@@ -2708,6 +2717,7 @@
         // Показываем full-версии стикеров (fileId, не preview)
         var fileIds = stickers.map(function (s) { return s.fileId; }).filter(Boolean);
         BF.files.getFileUrls(fileIds).then(function () {
+            if (renderVersion !== stickerGridRenderVersion) return;
             stickers.forEach(function (s) {
                 var fd = BF.files.getCachedFileUrl(s.fileId);
                 var url = fd && fd.url;
