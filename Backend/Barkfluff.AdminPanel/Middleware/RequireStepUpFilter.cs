@@ -38,10 +38,34 @@ public class RequireStepUpFilter : IEndpointFilter
             http.Request.Headers[HeaderName].FirstOrDefault() ??
             http.Request.Query[QueryParameter].FirstOrDefault();
 
-        if (!string.IsNullOrEmpty(confirmationId) &&
-            stepUpService.TryConsume(confirmationId, token.Id, _actionKey, parameters))
+        if (!string.IsNullOrEmpty(confirmationId))
         {
-            return await next(context);
+            if (stepUpService.TryConsume(confirmationId, token.Id, _actionKey, parameters))
+            {
+                http.RequestServices.GetRequiredService<AuditService>().Log(new AuditLogEntry
+                {
+                    AdminUsername = token.AdminUsername,
+                    TelegramUserId = token.ApprovedByTelegramUserId,
+                    Action = _actionKey,
+                    Details = StepUpActions.Title(_actionKey),
+                    IpAddress = http.Connection.RemoteIpAddress?.ToString(),
+                    ConfirmationId = confirmationId,
+                    Outcome = "confirmed"
+                });
+
+                return await next(context);
+            }
+
+            http.RequestServices.GetRequiredService<AuditService>().Log(new AuditLogEntry
+            {
+                AdminUsername = token.AdminUsername,
+                TelegramUserId = token.ApprovedByTelegramUserId,
+                Action = _actionKey,
+                Details = StepUpActions.Title(_actionKey),
+                IpAddress = http.Connection.RemoteIpAddress?.ToString(),
+                ConfirmationId = confirmationId,
+                Outcome = "invalid_confirmation"
+            });
         }
 
         return Results.Json(

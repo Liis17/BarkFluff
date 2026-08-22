@@ -36,15 +36,28 @@ public static class AdminsEndpoints
             long telegramUserId,
             [FromBody] AdminRolesUpdateRequest request,
             HttpContext context,
-            AdminService adminService) =>
+            AdminService adminService,
+            AuditService auditService) =>
         {
             var roles = AdminRoles.ParseNames(request.Roles ?? Array.Empty<string>());
             var updatedBy = context.GetAuthToken()!.AdminUsername ?? "unknown";
+            var previousRoles = adminService.GetRecord(telegramUserId)?.RoleSet.Select(AdminRoles.DisplayName).ToList() ?? new List<string>();
 
             if (!adminService.UpdateRoles(telegramUserId, roles, updatedBy))
                 return Results.BadRequest(new { message = "Админ не найден в Telegram:Admins или изменение оставит панель без SecurityAdmin" });
 
             var record = adminService.GetRecord(telegramUserId)!;
+
+            auditService.Log(new AuditLogEntry
+            {
+                AdminUsername = updatedBy,
+                TelegramUserId = telegramUserId,
+                Action = "admins.roles.update",
+                Details = $"{record.Username}: [{string.Join(", ", previousRoles)}] → [{string.Join(", ", record.RoleSet.Select(AdminRoles.DisplayName))}]",
+                IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                Outcome = "ok"
+            });
+
             return Results.Ok(new
             {
                 telegramUserId,

@@ -21,6 +21,7 @@ namespace Barkfluff.AdminPanel.Tests.Middleware;
 public sealed class RequireStepUpFilterTests : IDisposable
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"adminpanel-stepup-{Guid.NewGuid():N}.db");
+    private readonly string _auditDbPath = Path.Combine(Path.GetTempPath(), $"adminpanel-stepup-audit-{Guid.NewGuid():N}.db");
     private readonly WebApplication _app;
     private readonly HttpClient _client;
     private readonly TokenService _tokenService;
@@ -37,6 +38,8 @@ public sealed class RequireStepUpFilterTests : IDisposable
         builder.Services.AddSingleton<TokenService>();
         builder.Services.AddSingleton<AdminService>();
         builder.Services.AddSingleton<StepUpService>();
+        builder.Services.AddSingleton(_ => new AuditDbContext(Options.Create(new AuditDbSettings { Path = _auditDbPath })));
+        builder.Services.AddSingleton<AuditService>();
         builder.Services.AddSingleton<IStepUpSender>(new NoopStepUpSender());
         builder.Services.Configure<TelegramSettings>(settings =>
         {
@@ -83,6 +86,7 @@ public sealed class RequireStepUpFilterTests : IDisposable
         _client.Dispose();
         _app.DisposeAsync().AsTask().GetAwaiter().GetResult();
         try { File.Delete(_dbPath); } catch (IOException) { }
+        try { File.Delete(_auditDbPath); } catch (IOException) { }
     }
 
     private string Approve(string actionKey, string parameters)
