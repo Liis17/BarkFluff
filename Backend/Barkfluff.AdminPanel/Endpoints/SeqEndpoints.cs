@@ -9,59 +9,6 @@ namespace Barkfluff.AdminPanel.Endpoints;
 
 public static class SeqEndpoints
 {
-    private static readonly string[] KnownServices =
-    [
-        // Микросервисы BarkFluff
-        "BarkFluff.Identity",
-        "BarkFluff.Users",
-        "BarkFluff.Messages",
-        "BarkFluff.Files",
-        "BarkFluff.Updates",
-        "BarkFluff.Notification",
-        "BarkFluff.Beacon",
-        "BarkFluff.FastAuth",
-        "BarkFluff.Onliner",
-        "BarkFluff.Federation",
-        "BarkFluff.CloudMessaging",
-        "BarkFluff.Web",
-        "BarkFluff.Configuration",
-        "BarkFluff.Developers",
-        "BarkFluff.Calls",
-        "BarkFluff.Bots",
-        // Инфраструктурные сервисы
-        "Seq",
-        "Minio",
-        "RabbitMQ",
-        "Redis",
-        "PostgreSQL"
-    ];
-
-    private static readonly Dictionary<string, string> ServiceToContainerMap =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            { "BarkFluff.Beacon",        "beacon" },
-            { "BarkFluff.Configuration", "configuration" },
-            { "BarkFluff.Files",         "files" },
-            { "BarkFluff.Identity",      "identity" },
-            { "BarkFluff.Messages",      "messages" },
-            { "BarkFluff.Notification",  "notification" },
-            { "BarkFluff.Users",         "users" },
-            { "BarkFluff.FastAuth",      "fast-auth" },
-            { "BarkFluff.Updates",       "updates" },
-            { "BarkFluff.Onliner",       "onliner" },
-            { "BarkFluff.Federation",    "federation" },
-            { "BarkFluff.CloudMessaging","cloud-messaging" },
-            { "BarkFluff.Web",           "web" },
-            { "BarkFluff.Developers",    "developers" },
-            { "BarkFluff.Calls",         "calls" },
-            { "BarkFluff.Bots",          "bots" },
-            { "Seq",                     "seq" },
-            { "Minio",                   "minio" },
-            { "RabbitMQ",                "rabbitmq" },
-            { "Redis",                   "redis" },
-            { "PostgreSQL",              "postgres_barkfluff" },
-        };
-
     public static void MapSeqEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/seq")
@@ -119,8 +66,8 @@ public static class SeqEndpoints
         {
             // Только микросервисы BarkFluff — инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL)
             // логи в Seq не отдаёт, поэтому в фильтре логов её не показываем.
-            var logServices = KnownServices
-                .Where(s => s.StartsWith("BarkFluff.", StringComparison.Ordinal))
+            var logServices = PlatformServiceRegistry.BarkFluff
+                .Select(s => s.Name)
                 .ToArray();
             return Results.Ok(logServices);
         })
@@ -421,7 +368,7 @@ public static class SeqEndpoints
                 // Динамически: показываем только реально присутствующие контейнеры известных сервисов.
                 // Так на проде не светятся сервисы, которых нет в развёрнутом compose (например Minio,
                 // если используется арендованный S3).
-                var containerToService = ServiceToContainerMap
+                var containerToService = PlatformServiceRegistry.ServiceToContainer
                     .ToDictionary(kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
 
                 result = (await Task.WhenAll(containersByName
@@ -434,7 +381,9 @@ public static class SeqEndpoints
             else
             {
                 // Docker недоступен — fallback на данные Seq.
-                result = (await Task.WhenAll(KnownServices.Concat(serviceData.Keys).Distinct()
+                result = (await Task.WhenAll(PlatformServiceRegistry.All
+                    .Select(s => s.Name)
+                    .Concat(serviceData.Keys).Distinct()
                     .Select(name => BuildEntryAsync(name, null))))
                     .Cast<object>()
                     .ToList();
