@@ -21,6 +21,7 @@
 - **`/health`**: HealthChecks
 - **`/messenger`**: возвращает `messenger.html`
 - **YARP `MapReverseProxy()`**: форвардит gRPC и HTTP-запросы в бэкенд-сервисы
+- **Режим `Web:Mode=Proxy`**: пропуск `LoadConfiguration`, gRPC-Web конвертация не выполняется (pass-through `grpc-web-text` на кластер `remote`), fail-fast валидация `Web:Proxy:Target`, эндпоинт `/media/{host}/{**path}` (media-relay c allowlist `Web:Proxy:MediaHosts`, Range/If-Range, стриминг, named HttpClient `media-relay` без таймаута)
 - **SPA Fallback**: все URL кроме `/api/*` и `/health` → `index.html`
 
 **`BuildRoutes()`** — YARP маршруты:
@@ -36,6 +37,7 @@
 | `grpc-fast-auth` | `/barkfluff.fast.auth.FastAuthApi/{**catchall}` | fast-auth |
 | `grpc-calls` | `/barkfluff.calls.CallsApi/{**catchall}` | calls |
 | `files-http-upload` | `POST /api/files/upload/{uploadId}` | files-http |
+| `remote-catchall` (только Proxy) | `/{**catchall}` | remote |
 
 **`BuildClusters()`** — YARP кластеры:
 
@@ -50,6 +52,7 @@
 | fast-auth | `FastAuthService:Host` | http://fast-auth:7008 | HTTP/2 | **24 ч** (streaming) |
 | calls | `CallsService:Host` | http://calls:7025 | HTTP/2 | **24 ч** (streaming) |
 | files-http | `FilesService:HttpHost` | http://files:7006 | HTTP/1.1 | 100 с |
+| remote (только Proxy) | `Web:Proxy:Target` | — | HTTP/1.1 | **24 ч** |
 
 **`GrpcWebResponseStream`** (вложенный класс) — потоковый враппер `Stream`:
 - Кодирует данные в base64 на лету (режим `grpc-web-text`) — каждый `WriteAsync` кодирует свой чанк независимо (без буферизации неполных триплетов между вызовами)
