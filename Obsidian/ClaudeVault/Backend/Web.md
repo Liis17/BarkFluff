@@ -376,7 +376,11 @@ HttpClient — без таймаута (время ответа = время с�
 
 **Деплой** — `docker/proxy/` (compose + nginx + `sample.env`): web в Proxy-режиме + nginx
 (TLS, upload 512m, streaming 86400s, `/media/` без буферизации). Домен должен обходить
-Cloudflare (серое облако в DNS). Обновление клиента — тот же образ, что и на ноде.
+Cloudflare (серое облако в DNS). `WEB_IMAGE` обязан указывать на тот же branch-specific
+образ, что и Web-шлюз ноды (`barkfluff-web-nightly:latest` для nightly или
+`barkfluff-web:latest` для stable). Compose не использует fallback на stable и всегда
+подтягивает указанный образ: иначе отдельный proxy-инстанс может запуститься на старом
+бинарнике до добавления `Web:Mode=Proxy` и снова попытаться подключиться к `Configuration`.
 
 ⚠️ **Ограничение — звонки:** сигналинг (gRPC) идёт через прокси, но WebRTC-медиа LiveKit
 подключается напрямую на `livekit_url` ноды — из РФ может не работать. FCM push в РФ и так
