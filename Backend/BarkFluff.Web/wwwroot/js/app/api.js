@@ -470,7 +470,10 @@
         return c().authCall(files().getStickerPack.bind(files()), req).then(function (resp) {
             var pack = resp.getPack();
             return {
-                pack: pack ? { id: pack.getId(), name: pack.getName(), description: pack.getDescription() } : null,
+                pack: pack ? {
+                    id: pack.getId(), name: pack.getName(), description: pack.getDescription(),
+                    coverStickerId: pack.getCoverStickerId()
+                } : null,
                 stickers: resp.getStickersList().map(function (s) {
                     return {
                         id: s.getId(),
@@ -489,7 +492,10 @@
         return c().authCall(files().getStickerPackByFile.bind(files()), req).then(function (resp) {
             var pack = resp.getPack();
             return {
-                pack: pack ? { id: pack.getId(), name: pack.getName(), description: pack.getDescription() } : null,
+                pack: pack ? {
+                    id: pack.getId(), name: pack.getName(), description: pack.getDescription(),
+                    coverStickerId: pack.getCoverStickerId()
+                } : null,
                 stickers: resp.getStickersList().map(function (s) {
                     return {
                         id: s.getId(),
