@@ -98,6 +98,10 @@ public class Program
         // Register ComposeImageService as Singleton
         builder.Services.AddSingleton<ComposeImageService>();
 
+        // Register DeployJobService — серверная очередь деплой-операций (один потребитель: задачи сериализованы)
+        builder.Services.AddSingleton<DeployJobService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<DeployJobService>());
+
         // Register Remote Docker management services
         builder.Services.AddSingleton<IRemoteSshClient, SshNetRemoteSshClient>();
         builder.Services.AddSingleton<RemoteDockerService>();

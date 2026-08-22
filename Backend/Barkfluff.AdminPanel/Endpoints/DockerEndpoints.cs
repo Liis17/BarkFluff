@@ -86,13 +86,18 @@ public static class DockerEndpoints
         .WithOpenApi()
         .RequirePermission(AdminPermissions.DockerControl);
 
-        // Обновить образ и пересоздать контейнер
-        group.MapPost("/containers/{name}/pull", async (
-            DockerService dockerService,
+        // Обновить образ и пересоздать контейнер (задача в очереди деплоя)
+        group.MapPost("/containers/{name}/pull", (
+            DeployJobService deployJobs,
             string name) =>
         {
-            var result = await dockerService.PullImageAndRecreateContainerAsync(name);
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+            var service = DockerService.ConvertContainerNameToServiceName(name);
+            var job = deployJobs.EnqueueUpdate([service]);
+            return Results.Ok(new DeployJobStartDto
+            {
+                JobId = job.Id,
+                Message = $"Обновление {name} поставлено в очередь"
+            });
         })
         .WithName("PullImageAndRecreateContainer")
         .WithOpenApi()
@@ -172,6 +177,7 @@ public static class DockerEndpoints
             DockerService dockerService,
             ComposeImageService composeImageService,
             DockerRegistryService dockerRegistryService,
+            DeployJobService deployJobs,
             string name,
             ContainerBranchRequestDto request) =>
         {
@@ -224,65 +230,121 @@ public static class DockerEndpoints
                     Message = $"Образ {repository} не найден в реестре (или реестр недоступен)"
                 });
 
-            string previousCompose;
-            try
-            {
-                previousCompose = await composeImageService.SetBranchAsync(serviceName, branch);
-            }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new ContainerActionResponseDto
-                {
-                    Success = false,
-                    Message = "Не удалось изменить docker-compose.yml",
-                    ErrorDetails = ex.Message
-                });
-            }
-
             var isAdminPanel = string.Equals(name, "admin-panel", StringComparison.OrdinalIgnoreCase);
-            var result = isAdminPanel
-                ? await dockerService.UpdateAdminPanelAsync()
-                : await dockerService.PullImageAndRecreateContainerAsync(name);
+            var job = deployJobs.EnqueueBranchSwitch(serviceName, branch);
 
-            if (!result.Success)
+            return Results.Ok(new DeployJobStartDto
             {
-                await composeImageService.RestoreAsync(previousCompose);
-                result.Message = $"{result.Message}. Ветка в docker-compose.yml возвращена на {image.Branch}";
-                return Results.BadRequest(result);
-            }
-
-            result.Message = isAdminPanel
-                ? $"Админ-панель переключается на ветку {branch}"
-                : $"{name} переключён на ветку {branch}, контейнер пересоздан";
-            return Results.Ok(result);
+                JobId = job.Id,
+                Message = isAdminPanel
+                    ? $"Админ-панель переключается на ветку {branch}"
+                    : $"{name} переключается на ветку {branch} (задача в очереди)"
+            });
         })
         .WithName("SetContainerBranch")
         .WithOpenApi()
         .RequirePermission(AdminPermissions.DockerDeploy)
         .RequireStepUp(StepUpActions.DockerBranch, context => $"container={context.Request.RouteValues["name"]}");
 
-        // Перезапустить все сервисы BarkFluff
-        group.MapPost("/containers/restart-all", async (
-            DockerService dockerService) =>
+        // Перезапустить все сервисы BarkFluff (задача в очереди деплоя)
+        group.MapPost("/containers/restart-all", (
+            DeployJobService deployJobs) =>
         {
-            var result = await dockerService.RestartAllServicesAsync();
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+            var job = deployJobs.EnqueueRestart(DeployJobService.DeployOrder);
+            return Results.Ok(new DeployJobStartDto
+            {
+                JobId = job.Id,
+                Message = "Перезапуск всех сервисов поставлен в очередь"
+            });
         })
         .WithName("RestartAllContainers")
         .WithOpenApi()
         .RequirePermission(AdminPermissions.DockerDeploy)
         .RequireStepUp(StepUpActions.DockerRestartAll);
 
-        // Обновить все сервисы BarkFluff
-        group.MapPost("/containers/update-all", async (
-            DockerService dockerService) =>
+        // Обновить все сервисы BarkFluff (задача в очереди деплоя)
+        group.MapPost("/containers/update-all", (
+            DeployJobService deployJobs) =>
         {
-            var result = await dockerService.UpdateAllServicesAsync();
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+            var job = deployJobs.EnqueueUpdate(DeployJobService.DeployOrder);
+            return Results.Ok(new DeployJobStartDto
+            {
+                JobId = job.Id,
+                Message = "Обновление всех сервисов поставлено в очередь"
+            });
         })
         .WithName("UpdateAllContainers")
         .WithOpenApi()
         .RequirePermission(AdminPermissions.DockerDeploy)
         .RequireStepUp(StepUpActions.DockerUpdateAll);
+
+        // Обновить перечисленные контейнеры (задача в очереди деплоя; заменяет браузерный цикл)
+        group.MapPost("/containers/update-many", (
+            DeployJobService deployJobs,
+            UpdateContainersRequestDto request) =>
+        {
+            var services = (request.Containers ?? [])
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Select(c => DockerService.ConvertContainerNameToServiceName(c.Trim()))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (services.Count == 0)
+                return Results.BadRequest(new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = "Список сервисов пуст"
+                });
+
+            var job = deployJobs.EnqueueUpdate(services);
+            return Results.Ok(new DeployJobStartDto
+            {
+                JobId = job.Id,
+                Message = $"Обновление {services.Count} сервисов поставлено в очередь"
+            });
+        })
+        .WithName("UpdateContainers")
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerControl);
+
+        // Задачи деплоя: активные и недавние
+        group.MapGet("/deploy/jobs", (
+            DeployJobService deployJobs) =>
+        {
+            return Results.Ok(deployJobs.GetRecentJobs().Select(ToDto));
+        })
+        .WithName("GetDeployJobs")
+        .WithOpenApi();
+
+        // Статус задачи деплоя
+        group.MapGet("/deploy/jobs/{id:guid}", (
+            DeployJobService deployJobs,
+            Guid id) =>
+        {
+            var job = deployJobs.GetJob(id);
+            return job is not null ? Results.Ok(ToDto(job)) : Results.NotFound($"Задача {id} не найдена");
+        })
+        .WithName("GetDeployJob")
+        .WithOpenApi();
     }
+
+    /// <summary>Проекция задачи в JSON-ответ со строковыми состояниями</summary>
+    private static object ToDto(DeployJob job) => new
+    {
+        id = job.Id,
+        kind = job.Kind.ToString(),
+        state = job.State.ToString(),
+        error = job.Error,
+        createdAtUtc = job.CreatedAtUtc,
+        startedAtUtc = job.StartedAtUtc,
+        finishedAtUtc = job.FinishedAtUtc,
+        steps = job.Steps.Select(step => new
+        {
+            service = step.Service,
+            branch = step.Branch,
+            state = step.State.ToString(),
+            message = step.Message,
+            rolledBack = step.RolledBack
+        })
+    };
 }
