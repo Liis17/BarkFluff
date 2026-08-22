@@ -4,6 +4,7 @@ using BarkFluff.Identity.Features.CreateSessionForUserServer;
 using BarkFluff.Identity.Features.DisableOtpVerificationServer;
 using BarkFluff.Identity.Features.ForceSetPasswordServer;
 using BarkFluff.Identity.Features.GetActiveSessionsServer;
+using BarkFluff.Identity.Features.GetBotTokenServer;
 using BarkFluff.Identity.Features.ListOtpVerificationServer;
 using BarkFluff.Identity.Features.RemoveActiveSessionServer;
 using BarkFluff.Proto.Identity;
@@ -114,6 +115,17 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
         return _mediator.Send(new CreateBotTokenServerCommand
         {
             BotUserId = request.BotUserId
+        });
+    }
+
+    public override Task<GetBotTokenServerResponse> GetBotTokenServer(
+        GetBotTokenServerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("server_bot_token_reads");
+        return _mediator.Send(new GetBotTokenServerCommand
+        {
+            BotUserId = request.BotUserId,
+            TokenId = request.TokenId
         });
     }
 }

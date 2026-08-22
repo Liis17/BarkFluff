@@ -92,6 +92,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `CreateSessionForUserServer` | `UserId`, `DeviceId`, `DeviceName`, `OperationSystem`, `AppName`, `IpAddress` | Выпустить пару `access_token`+`refresh_token` для пользователя из другого сервиса (например [[Backend/FastAuth]] после Accept). Регистрирует устройство в Users + отправляет email-уведомление `SuccessfulLogin`. |
 | `ForceSetPasswordServer` | `UserId`, `NewPassword` | Принудительная смена пароля администратором (без OldPassword). Хеширует BCrypt, обновляет `UserPassword`, отправляет уведомление `PasswordChangedByAdmin`. Вызывается из AdminPanel. |
 | `CreateBotTokenServer` | `BotUserId` | Выпустить долгоживущий bot-JWT (`TokenType.Bot`, exp 9999, claims `x-user-id`, `x-token-type=Bot`, `x-bot-token-id`). `token_id` генерирует Identity, возвращает `{token, token_id}`. Вызывается сервисом [[Backend/Bots]]; отзыв — сверка `token_id` на стороне Bots. |
+| `GetBotTokenServer` | `BotUserId`, существующий `TokenId` | Повторно выпустить долгоживущий bot-JWT с тем же `x-bot-token-id`, не меняя и не отзывая текущий идентификатор. Plaintext-токен не хранится. |
 
 ## Обязательные заголовки (XAuth) для большинства эндпоинтов
 
@@ -204,7 +205,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - **Сброс пароля**: `password_reset_requests`, `password_reset_user_not_found`, `password_reset_initiated_email`/`_authenticator`, `password_resets_confirmed`, `password_reset_confirmation_failed[_not_found|_already_used|_expired]`
 - **Изменение пароля**: `password_changes`, `password_changes_initial`, `password_change_failed_invalid_old`
 - **Сессии/logout**: `session_removal_attempts`, `sessions_removed`, `session_removal_failed_not_found`, `logouts`, `sessions_created`, `sessions_revoked`, `session_revocations_received`
-- **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`, `server_force_password_changes` (ForceSetPasswordServer), `server_bot_token_creations` (CreateBotTokenServer)
+- **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`, `server_force_password_changes` (ForceSetPasswordServer), `server_bot_token_creations` (CreateBotTokenServer), `server_bot_token_reads` (GetBotTokenServer)
 - **RabbitMQ**: `rabbitmq_events_consumed` (инкрементируется `SessionRevokedConsumer`)
 - **LocationClient**: `geolocation_requests`, `geolocation_success`, `geolocation_errors`
 - **Gauge**: `service_started_unix` (для uptime)
