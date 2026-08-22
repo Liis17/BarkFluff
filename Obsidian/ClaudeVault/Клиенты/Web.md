@@ -44,12 +44,15 @@ Proto-бандл собирается с `--minify` (1.7 МБ вместо 2.9 �
 - `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Импортируется entry-point'ом **до**
   `device.js`/`clients.js`: клиенты gRPC-Web создаются синхронно при загрузке скрипта и
   захватывают origin, поэтому адрес обязан резолвиться из localStorage, без сети.
-  - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`.
-  - `key(name)` — ключ хранилища с суффиксом `@{origin}`; `set/clear/meta/list/normalize`.
+  - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`
+    (нода и прокси-зеркало ноды — [[Backend/Web]] режим Proxy).
+  - `key(name)` — ключ хранилища с суффиксом `@{origin}`; `set/clear/meta/list/normalize`;
+    `proxied()` — страница отдана прокси-зеркалом ноды.
   - `beaconClient()` / `navigatorClient()` — Beacon смотрит на выбранную ноду, Navigator
     всегда same-origin (каталог проксирует тот хост, что отдал страницу).
 - **Режим хоста** — `/node-config.js` (эндпоинт [[Backend/Web]], `no-store`):
-  `{pinned: true}` у ноды, `{pinned: false, navigatorProxy: true}` у шелла. Переключатель
+  `{pinned: true}` у ноды, `{pinned: false, navigatorProxy: true}` у шелла,
+  `{pinned: true, proxied: true}` у прокси-зеркала. Переключатель
   сервера показывается только при `pinned: false`.
 - `js/app/nodepicker.js` (`BF.nodePicker`) — экран выбора в `index.html` (`#nodeSection`):
   каталог `NavigatorApi.ListServers`, история ранее использованных нод и ручной ввод.
@@ -102,6 +105,7 @@ origin, сопоставить ключ нечем — вход потребуе
 ### Файлы и медиа
 - `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).
 - **Отдельный файловый адрес ноды.** Если Beacon отдал `files_media_endpoint` (`BF.node.meta().filesMediaEndpoint`, см. [[Backend/Nginx]] `files2.barkfluff.com`), `files.js` шлёт multipart прямо туда (`{origin}/web/upload/{fileId}` вместо `/api/files/upload/{fileId}` через шлюз ноды) и подменяет хост во всех ссылках из `GetTempDownloadUrl` (`cacheFile`/`mediaUrl`, путь сохраняется). Так загрузка и скачивание идут мимо CDN с его лимитом на размер файла; пустое поле = прежнее поведение. Метаданные ноды на pinned-хосте берутся из `BF.node.refreshMeta()` (вызов Beacon при старте `main.js`) — экрана выбора ноды там не было.
+  - **Прокси-зеркало ноды** (`proxied: true`): файловый адрес ноды недоступен из РФ напрямую, поэтому `mediaOrigin()` всегда пуст (upload — same-origin `/api/files/upload/` через прокси), а `mediaUrl()` оборачивает **любую** файловую ссылку в `{origin}/media/{host}/{path}?{query}` — relay прокси ([[Backend/Web]], режим Proxy) ходит до хоста сам. `api.js` пропускает аватары/превью/бейджи через ту же `mediaUrl`, поэтому они покрываются автоматически; хост не из allowlist прокси получит 403 → сработает плейсхолдер resilient-media.
   - ⚠️ **Не только `GetTempDownloadUrl`.** Chat/Users/Messages встраивают готовые ссылки на Files прямо в свои ответы — `Chat.picture`, `User.profile_picture(_preview)`, `MessageAttachment.preview_url`, `Badge.image_url` — эти поля идут мимо `getFileUrls`, их сервис формирует сам через `ExternalEndpoint:Host` (всегда старый `files.barkfluff.com`). `api.js` подменяет хост и в них — та же `mediaUrl()` из `files.js` (экспортирована как `BF.files.mediaUrl`), вызывается прямо в `mapChat`/`mapUser`/`mapAttachment`/`getChatInfo`/`updateGroupChat` при маппинге ответа. Забыть это место и чинить только `getTempDownloadUrl` — типичная ошибка: аватары и превью в списке чатов продолжат идти на `files.barkfluff.com`, хотя полноразмерное скачивание уже уйдёт на `files2`.
 - `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
 - Видеосообщение без текстовой подписи выводится без полей облачка: время и статус накладываются на превью. При подписи между превью и текстом остаётся только нижний отступ.
