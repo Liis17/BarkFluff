@@ -168,9 +168,9 @@
         <header class="md-app-bar">
             <div style="display:flex;align-items:center;gap:12px;">
                 <h1>Обзор системы</h1>
-                <span class="md-status md-status-success" id="system-status-badge">
+                <span class="md-status md-status-neutral" id="system-status-badge">
                     <span class="dot"></span>
-                    Система активна
+                    Статус проверяется
                 </span>
             </div>
             <div style="display:flex;gap:8px;">
@@ -217,7 +217,7 @@
                         <span class="kpi-icon icon-success"><span class="msr">dns</span></span>
                     </div>
                     <div class="kpi-value" id="kpi-services">—</div>
-                    <div class="kpi-foot">С логами за 24ч</div>
+                    <div class="kpi-foot">Liveness-проверка каждые 30 с</div>
                 </div>
 
                 <div class="kpi-card">
@@ -296,10 +296,26 @@
 
     // ---- Dashboard data ----
     let trafficChart = null;
+
+    const SYSTEM_BADGE = {
+        healthy:  { cls: 'md-status-success', label: 'Система активна' },
+        degraded: { cls: 'md-status-warn',    label: 'Деградация сервиса' },
+        down:     { cls: 'md-status-error',   label: 'Сбой критичного сервиса' },
+        unknown:  { cls: 'md-status-neutral', label: 'Статус неизвестен' }
+    };
+    function updateSystemBadge(status) {
+        const el = document.getElementById('system-status-badge');
+        if (!el) return;
+        const info = SYSTEM_BADGE[status] || SYSTEM_BADGE.unknown;
+        el.className = 'md-status ' + info.cls;
+        el.innerHTML = '<span class="dot"></span>' + info.label;
+    }
+
     async function loadDashboardData() {
-        const [kpisRes, trafficRes] = await Promise.allSettled([
+        const [kpisRes, trafficRes, healthRes] = await Promise.allSettled([
             fetch('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-            fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status))
+            fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status)),
+            fetch('/api/health/overview').then(r => r.ok ? r.json() : Promise.reject(r.status))
         ]);
 
         if (kpisRes.status === 'fulfilled') {
@@ -307,9 +323,19 @@
             document.getElementById('kpi-total').textContent = formatNumber(k.totalEvents);
             document.getElementById('kpi-errors').textContent = formatNumber(k.errorCount);
             document.getElementById('kpi-warnings').textContent = formatNumber(k.warningCount);
-            document.getElementById('kpi-services').textContent = formatNumber(k.perService ? Object.keys(k.perService).length : 0);
         } else {
-            ['kpi-total','kpi-errors','kpi-warnings','kpi-services'].forEach(id => document.getElementById(id).textContent = '—');
+            ['kpi-total','kpi-errors','kpi-warnings'].forEach(id => document.getElementById(id).textContent = '—');
+        }
+
+        if (healthRes.status === 'fulfilled') {
+            const h = healthRes.value;
+            const up = (h.summary?.healthy ?? 0) + (h.summary?.degraded ?? 0);
+            const total = h.summary?.total ?? 0;
+            document.getElementById('kpi-services').textContent = total ? up + '/' + total : '—';
+            updateSystemBadge(h.systemStatus);
+        } else {
+            document.getElementById('kpi-services').textContent = '—';
+            updateSystemBadge(null);
         }
 
         if (trafficRes.status === 'fulfilled') {

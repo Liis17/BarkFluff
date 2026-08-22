@@ -87,6 +87,7 @@ SSH-параметры больше не передаются через `.env` 
 - `S3BrowserService` — браузер S3/Minio (AWSSDK.S3)
 - `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из структурированных `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. Текущий и предыдущий час пересчитываются всегда; отсутствующие часы последних 72 часов догоняются по шесть за цикл. `MetricRollupHours` отмечает только полностью прочитанные часы, поэтому ошибка или лимит Seq не заменяют витрину частичным результатом. История — 30 дней. Для [[Backend/Files]] также показывает одну карточку последней загрузки: полный pipeline и этапы буферизации, SHA-256, обработки и S3 (ms); это не почасовые графики.
 - `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет `MetricRollupHours` для каждого исходного часа; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
+- `HealthCollectorService` — фоновый сбор liveness-статусов сервисов платформы (цикл 30 c): анонимный `GET /ping` на основные listener'ы (h2c prior-knowledge для gRPC-портов; HTTP/1.1 для `Web` — его `Http1AndHttp2` listener без ALPN не принимает h2c), статусы Docker-контейнеров через `DockerService`, свежесть логов в Seq (fallback для сервисов без `/ping`, когда Docker недоступен). Снимок хранится в памяти singleton'а — API отвечает мгновенно. Статусы per-service: `healthy | degraded | down | unknown` (`degraded` = контейнер restarting/paused; readiness-деградация появится с `/health/ready` в сервисах). Общий `systemStatus`: `down` если упал критичный сервис ([[Backend/Beacon|Beacon]], [[Backend/Identity|Identity]], [[Backend/Updates|Updates]]), иначе `degraded` при любом не-healthy, иначе `healthy`
 - `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
 
 ### MassTransit (RabbitMQ publisher)
@@ -96,6 +97,12 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 ### Endpoint Groups
 
 Каждый файл в `Endpoints/` — extension method `Map{Name}Endpoints()`. Добавление: создать метод в существующем файле или новый файл + вызов в `Program.cs`.
+
+### Health / Liveness
+
+`Endpoints/HealthEndpoints.cs` — `GET /api/health/overview` отдаёт снимок из кэша `HealthCollectorService` (пока первый цикл не собран — 503). Канонический список сервисов платформы — `Models/PlatformServiceRegistry.cs` (16 сервисов BarkFluff + 5 инфраструктурных контейнеров; Seq-имя ↔ Docker-контейнер ↔ адрес `/ping`-пробы) — единый источник для health-обзора и Seq-статусов, приватные копии в `SeqEndpoints` убраны. JSON: `{ generatedAtUtc, services: [{ name, container, status, hasProbe, probeUp, probeLatencyMs, dockerState, lastSeenUtc }], summary: { total, healthy, degraded, down, unknown }, systemStatus }`. Доступен baseline Viewer (auth через TokenAuthMiddleware, отдельной роли нет).
+
+Карточка «Активных сервисов» на `Pages/v2/dashboard.html` показывает `up/total` (up = healthy + degraded) из этого endpoint'а, бейдж «Система активна» в шапке — реальный статус `systemStatus` (success/warn/error/neutral), а не статичная картинка.
 
 `BotsEndpoints` зарегистрирован через `app.MapBotsEndpoints()`. `GET /api/bots` получает `ListBots`, затем одним batch-вызовом `UsersServerApi.ListByIds` добавляет в список только `profilePicturePreview` (без fallback на оригинал). `GET /api/bots/{id}` отдаёт профиль, полный аватар, preview, постер и метаданные; `PUT /profile` обновляет имя/username через Bots, а `/avatar` и `/poster` используют серверные загрузчики Files + Users. Текущий JWT получается лениво через `POST /token`, отдаётся с `Cache-Control: no-store`; `POST /regenerate-token` по-прежнему отзывает старый токен. Ошибки валидации/конфликта/отсутствия бота преобразуются в 400/409/404. Сервис `BarkFluff.Bots` также входит в списки статусов контейнеров и метрик Seq на актуальных страницах `Pages/v2/services.html` и `Pages/v2/dashboard.html`.
 
@@ -111,7 +118,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 | Файл | Назначение |
 |------|-----------|
 | `Login.html` | Форма входа: nickname → polling статуса |
-| `dashboard.html` | KPI, трафик, метрики сервисов из Seq |
+| `dashboard.html` | KPI (включая liveness «X/Y» из `/api/health/overview`), бейдж системного статуса, трафик, метрики сервисов из Seq |
 | `services.html` | Управление Docker-контейнерами |
 | `logs.html` | Просмотр логов Seq с фильтрацией |
 | `badges.html` | CRUD бейджей |

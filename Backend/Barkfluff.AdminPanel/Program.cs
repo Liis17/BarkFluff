@@ -83,6 +83,20 @@ public class Program
             client.Timeout = TimeSpan.FromSeconds(5);
         });
 
+        // Liveness-пробы /ping: основные listener'ы сервисов — HTTP/2 без TLS (h2c, prior knowledge)
+        builder.Services.AddHttpClient("health-probes", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(3);
+            client.DefaultRequestVersion = System.Net.HttpVersion.Version20;
+            client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
+        });
+
+        // Пробы по HTTP/1.1 — для listener'ов с несколькими протоколами без ALPN (Web-шлюз)
+        builder.Services.AddHttpClient("health-probes-http1", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(3);
+        });
+
         // Register LogsExportService as Singleton (in-memory job dictionary)
         builder.Services.AddSingleton<LogsExportService>();
 
@@ -108,6 +122,10 @@ public class Program
 
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
+
+        // Register HealthCollectorService — фоновый сбор liveness-статусов (/ping + Docker + Seq)
+        builder.Services.AddSingleton<HealthCollectorService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<HealthCollectorService>());
 
 
         // Register MetricsLogCompressorService — ежедневное сжатие логов-метрик в Seq в 03:00 UTC
@@ -263,6 +281,9 @@ public class Program
 
         // Map Seq Endpoints
         app.MapSeqEndpoints();
+
+        // Map Health Endpoints (liveness-обзор платформы из кэша HealthCollectorService)
+        app.MapHealthEndpoints();
 
         // Map Logs Export Endpoints
         app.MapLogsExportEndpoints();
