@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Юзеры</title>
-    <link rel="stylesheet" href="assets/md3.css?v=2">
+    <link rel="stylesheet" href="assets/md3.css?v=3">
     <style>
         .users-list { display: flex; flex-direction: column; gap: 6px; }
         .user-row {
@@ -426,7 +426,9 @@
         try {
             const r = await fetch('/api/auth/me');
             if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
+            const me = await r.json();
+            if (window.BF && Array.isArray(me.roles)) window.BF.roles = me.roles;
+            return me;
         } catch { window.location.href = '/'; return null; }
     }
 
@@ -604,8 +606,11 @@
         if (data.storage) html += renderStorageSection(data.storage, p);
 
         document.getElementById('modalContent').innerHTML = html;
-        if (window.BF && !BF.hasRole('SecurityAdmin')) {
+        if (window.BF && !BF.can('users.2fa.disable')) {
             document.querySelectorAll('.tfa-disable-btn').forEach(b => b.style.display = 'none');
+        }
+        if (window.BF && !BF.can('badges.manage')) {
+            document.querySelectorAll('.badge-tile-add, .badge-tile-remove').forEach(b => b.style.display = 'none');
         }
         renderSessionList(p.id, data.sessions || []);
     }
@@ -664,13 +669,14 @@
                         <div style="font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(session.operationSystem || '')} • ${escapeHtml(session.appName || '')} ${session.location ? '• ' + escapeHtml(session.location) : ''}</div>
                     </div>
                     <span style="font-size:12px;color:var(--md-on-surface-variant);">${session.createdAt ? formatDate(session.createdAt) : ''}</span>
-                    <button type="button" class="md-btn md-btn-text session-end" style="color:var(--md-error);">Завершить</button>
+                    ${window.BF && BF.can('users.sessions.revoke') ? '<button type="button" class="md-btn md-btn-text session-end" style="color:var(--md-error);">Завершить</button>' : ''}
                 </div>`).join('');
 
             list.querySelectorAll('.session-row').forEach((row, index) => {
                 const session = visibleSessions[index];
                 row.addEventListener('click', () => showDeviceDetails(session));
-                row.querySelector('.session-end').addEventListener('click', event => {
+                const endButton = row.querySelector('.session-end');
+                if (endButton) endButton.addEventListener('click', event => {
                     event.stopPropagation();
                     removeSession(uid, session.deviceId);
                 });
@@ -768,6 +774,7 @@
     }
 
     window.openBadgeAddModal = async function (uid) {
+        if (window.BF && !BF.can('badges.manage')) return;
         badgeAddUserId = uid;
         document.getElementById('badgeAddScrim').classList.add('open');
         const select = document.getElementById('badgeAddSelect');
@@ -803,6 +810,7 @@
     }
 
     window.addUserBadge = async function (uid = badgeAddUserId) {
+        if (window.BF && !BF.can('badges.manage')) return;
         const select = document.getElementById('badgeAddSelect');
         const submit = document.getElementById('addBadgeSubmit');
         const id = parseInt(select?.value);
@@ -823,10 +831,12 @@
         }
     };
     window.removeUserBadge = async function (uid, bid) {
+        if (window.BF && !BF.can('badges.manage')) return;
         if (!confirm('Удалить бейдж?')) return;
         try { await fetch(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
     };
     window.removeSession = async function (uid, did) {
+        if (window.BF && !BF.can('users.sessions.revoke')) return;
         if (!confirm('Завершить сессию?')) return;
         try { await fetch(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
     };
@@ -844,9 +854,14 @@
     };
     window.closeDeviceModal = function () { document.getElementById('deviceScrim').classList.remove('open'); };
     window.disableOtp = async function (uid, otpType) {
+        if (window.BF && !BF.can('users.2fa.disable')) return;
         const name = otpType === 1 ? 'Authenticator' : 'Email';
         if (!confirm(`Отключить ${name} 2FA?`)) return;
-        try { await BF.api(`/api/users/${uid}/2fa/disable`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otpType}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try {
+            const response = await BF.api(`/api/users/${uid}/2fa/disable`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otpType}) });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await openUserModal(uid);
+        } catch (e) { alert(e.message); }
     };
     window.updateStorageLimit = async function (uid) {
         const v = parseInt(document.getElementById('storageLimitSlider').value);
@@ -860,11 +875,17 @@
         try { await fetch(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
     };
     window.changeUserPassword = async function (uid) {
+        if (window.BF && !BF.can('users.password.set')) return;
         const input = document.getElementById('newPasswordInput');
         const p = input.value.trim();
         if (!p || p.length < 6) { alert('Пароль должен быть не менее 6 символов'); return; }
         if (!confirm('Сменить пароль пользователю?')) return;
-        try { await BF.api(`/api/users/${uid}/password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({newPassword:p}) }); input.value = ''; alert('Пароль изменён'); } catch (e) { alert(e.message); }
+        try {
+            const response = await BF.api(`/api/users/${uid}/password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({newPassword:p}) });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            input.value = '';
+            alert('Пароль изменён');
+        } catch (e) { alert(e.message); }
     };
     window.handleAvatarUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;

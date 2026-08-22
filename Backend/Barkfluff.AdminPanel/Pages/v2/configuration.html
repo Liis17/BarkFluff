@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Конфигурация</title>
-    <link rel="stylesheet" href="assets/md3.css?v=2">
+    <link rel="stylesheet" href="assets/md3.css?v=3">
     <style>
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
         .toolbar input { flex: 1; max-width: 420px; }
@@ -129,6 +129,7 @@
     const revealed = new Set();      // индексы строк с раскрытым секретом
     let editingIdx = null;           // индекс редактируемой строки
     let searchQuery = '';
+    let canWriteConfig = false;
 
     const SECRET_RE = /token|secret|password|accesskey/i;
 
@@ -136,7 +137,12 @@
         try {
             const r = await fetch('/api/auth/me');
             if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
+            const me = await r.json();
+            if (window.BF && Array.isArray(me.roles)) {
+                window.BF.roles = me.roles;
+                canWriteConfig = BF.can('config.write');
+            }
+            return me;
         } catch { window.location.href = '/'; return null; }
     }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
@@ -253,7 +259,7 @@
                 : `<span class="value-text">${escapeHtml(item.value)}</span>`;
             actionsCell = `
                 ${secret ? `<button class="md-icon-btn" title="${masked ? 'Показать' : 'Скрыть'}" onclick="toggleReveal(${idx})"><span class="msr size-20">${masked ? 'visibility' : 'visibility_off'}</span></button>` : ''}
-                <button class="md-icon-btn" title="Изменить" onclick="startEdit(${idx})"><span class="msr size-20">edit</span></button>
+                ${canWriteConfig ? `<button class="md-icon-btn" title="Изменить" onclick="startEdit(${idx})"><span class="msr size-20">edit</span></button>` : ''}
             `;
         }
 
@@ -280,6 +286,7 @@
     };
 
     window.startEdit = function (idx) {
+        if (!canWriteConfig) return;
         editingIdx = idx;
         render();
         const input = document.getElementById(`edit-input-${idx}`);
@@ -297,6 +304,7 @@
     };
 
     window.saveValue = async function (idx) {
+        if (!canWriteConfig) return;
         const item = allItems[idx];
         const input = document.getElementById(`edit-input-${idx}`);
         if (!input) return;
