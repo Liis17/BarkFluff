@@ -1,6 +1,8 @@
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
+using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Proto.Shared;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 namespace BarkFluff.Client.WinUI.Tests;
 
@@ -166,6 +168,88 @@ public sealed class MessengerRealtimeTests
 
         viewModel.SearchText = string.Empty;
         Assert.Equal(2, viewModel.VisibleChats.Count);
+    }
+
+    [Fact]
+    public async Task SearchText_FiltersDirectChatsByUsername()
+    {
+        var messenger = new FakeMessengerService
+        {
+            UserData = new UserData
+            {
+                FirstName = "Alice",
+                Username = "li_is"
+            }
+        };
+        messenger.Chats.Add(MessengerTestDoubles.CreateChat("a", "Alice", peerUserId: 2));
+        var viewModel = MessengerTestDoubles.CreateViewModel(messenger);
+
+        await viewModel.LoadAsync();
+        viewModel.SearchText = "li_is";
+
+        Assert.Single(viewModel.VisibleChats);
+    }
+
+    [Fact]
+    public async Task SearchText_LoadsServerUsersFromThreeCharacters()
+    {
+        var messenger = new FakeMessengerService();
+        messenger.SearchUsers.Add(new UserData
+        {
+            Id = 7,
+            FirstName = "Alice",
+            Username = "li_is"
+        });
+        var viewModel = MessengerTestDoubles.CreateViewModel(messenger);
+
+        await viewModel.LoadAsync();
+        viewModel.SearchText = "li_";
+
+        Assert.Equal(["li_"], messenger.SearchQueries);
+        var result = Assert.Single(viewModel.SearchResults);
+        Assert.Equal(7, result.UserId);
+        Assert.Equal("@li_is", result.UsernameLabel);
+    }
+
+    [Fact]
+    public async Task OpenSearchResult_SelectsExistingChat()
+    {
+        var messenger = new FakeMessengerService();
+        messenger.Chats.Add(MessengerTestDoubles.CreateChat("a", "Alice", peerUserId: 7));
+        var viewModel = MessengerTestDoubles.CreateViewModel(messenger);
+
+        await viewModel.LoadAsync();
+        viewModel.SearchText = "ali";
+        var result = new UserSearchResultViewModel(new UserData { Id = 7, FirstName = "Alice", Username = "li_is" });
+        await viewModel.OpenSearchResultAsync(result);
+
+        Assert.Same(viewModel.Chats.Single(), viewModel.SelectedChat);
+        Assert.Empty(viewModel.SearchText);
+    }
+
+    [Fact]
+    public async Task OpenSearchResult_AddsChatReturnedByServer()
+    {
+        var messenger = new FakeMessengerService
+        {
+            UserData = new UserData
+            {
+                Id = 7,
+                FirstName = "Alice",
+                Username = "li_is"
+            },
+            PersonChatId = "new"
+        };
+        var viewModel = MessengerTestDoubles.CreateViewModel(messenger);
+
+        await viewModel.LoadAsync();
+        messenger.Chats.Add(MessengerTestDoubles.CreateChat("new", "Alice", peerUserId: 7));
+
+        await viewModel.OpenSearchResultAsync(new UserSearchResultViewModel(messenger.UserData!));
+
+        var chat = Assert.Single(viewModel.Chats);
+        Assert.Equal("new", chat.Id);
+        Assert.Same(chat, viewModel.SelectedChat);
     }
 
     private static async Task<(BarkFluff.Client.Core.ViewModels.MessengerViewModel ViewModel, FakeMessengerService Messenger, FakeRealtimeMessengerService Realtime)> CreateLoadedAsync()

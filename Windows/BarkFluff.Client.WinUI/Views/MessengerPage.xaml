@@ -64,6 +64,33 @@
             </Grid>
         </DataTemplate>
 
+        <DataTemplate x:Key="UserSearchResultTemplate" x:DataType="vm:UserSearchResultViewModel">
+            <Grid Margin="0,4" MinHeight="56">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="52" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <PersonPicture Width="44"
+                               Height="44"
+                               DisplayName="{x:Bind DisplayName}"
+                               ProfilePicture="{x:Bind AvatarUrl, Converter={StaticResource StringToImageSourceConverter}}" />
+
+                <StackPanel Grid.Column="1" Margin="0,1,0,0">
+                    <TextBlock FontWeight="SemiBold"
+                               Text="{x:Bind DisplayName}"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap" />
+                    <TextBlock Margin="0,3,0,0"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="{x:Bind UsernameLabel}"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap"
+                               Visibility="{x:Bind UsernameLabel, Converter={StaticResource StringToVisibilityConverter}}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
         <!--
             Плитка медиа внутри пузыря: превью всегда, плеер раскрывается кнопкой. Адрес плееру
             передаёт Tag кнопки — без него PlayVideoBehavior молча ничего не сделает.
@@ -389,8 +416,35 @@
             <TextBox Grid.Row="1" PlaceholderText="{StaticResource Messenger_Search}" Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
             <Grid Grid.Row="2" Margin="0,12,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Margin="0,0,0,4"
+                           Style="{StaticResource MutedText}"
+                           Text="{StaticResource Messenger_SearchResults}"
+                           Visibility="{x:Bind ViewModel.IsSearchResultsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <ListView Grid.Row="1"
+                          MaxHeight="220"
+                          Padding="0"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          IsItemClickEnabled="True"
+                          ItemClick="OnSearchResultItemClick"
+                          ItemTemplate="{StaticResource UserSearchResultTemplate}"
+                          ItemsSource="{x:Bind ViewModel.SearchResults}"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          SelectionMode="None"
+                          Visibility="{x:Bind ViewModel.IsSearchResultsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
                 <!--  Свойства списка заданы прямо на контроле: WinUI не публикует базовый стиль ListView.  -->
-                <ListView Padding="0"
+                <ListView Grid.Row="2"
+                          Padding="0"
                           Background="Transparent"
                           BorderThickness="0"
                           ItemTemplate="{StaticResource ChatListItemTemplate}"
@@ -399,7 +453,8 @@
                           ScrollViewer.VerticalScrollBarVisibility="Auto"
                           SelectedItem="{x:Bind ViewModel.SelectedChat, Mode=TwoWay}" />
 
-                <ProgressRing HorizontalAlignment="Center"
+                <ProgressRing Grid.RowSpan="3"
+                              HorizontalAlignment="Center"
                               VerticalAlignment="Top"
                               IsActive="True"
                               Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />

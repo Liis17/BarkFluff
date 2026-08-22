@@ -43,6 +43,8 @@ public interface IMessengerService
 
     Task<(ErrorReturner Error, UserData? Data)> GetUserDataAsync(long userId, CancellationToken cancellationToken = default);
 
+    Task<(ErrorReturner error, List<UserData>? users)> SearchUsersAsync(string query, CancellationToken cancellationToken = default);
+
     Task<string> ResolveFileUrlAsync(string fileId, CancellationToken cancellationToken = default);
 
     Task<(ErrorReturner error, string chatId)> GetPersonChatIdAsync(long userId, CancellationToken cancellationToken = default);
