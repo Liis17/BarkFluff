@@ -150,11 +150,11 @@
                     Обновление
                 </span>
                 <span id="adminPanelBranch" title="Ветка обновлений админ-панели"></span>
-                <button onclick="restartAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
+                <button onclick="restartAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press" data-perm="docker.deploy">
                     <span class="bf-icon size-18" data-bf-icon="restart"></span>
                     Перезапустить
                 </button>
-                <button onclick="updateAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
+                <button onclick="updateAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press" data-perm="docker.deploy">
                     <span class="bf-icon size-18" data-bf-icon="download"></span>
                     Обновить
                 </button>
@@ -180,15 +180,15 @@
                 <!-- BarkFluff panel -->
                 <div id="panel-barkfluff" class="server-panel">
                     <div class="actions-row">
-                        <button onclick="restartAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
+                        <button onclick="restartAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.control">
                             <span class="bf-icon size-18" data-bf-icon="restart"></span>
                             Перезапустить все
                         </button>
-                        <button onclick="updateAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
+                        <button onclick="updateAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.control">
                             <span class="bf-icon size-18" data-bf-icon="download"></span>
                             Обновить все
                         </button>
-                        <button onclick="updateAvailableServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
+                        <button onclick="updateAvailableServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.control">
                             <span class="bf-icon size-18" data-bf-icon="upgrade"></span>
                             Обновить доступные
                         </button>
@@ -315,9 +315,10 @@
     </div>
 </div>
 
-<script src="assets/icons.js?v=2"></script>
-<script src="assets/sidebar.js?v=2"></script>
-<script src="assets/command-palette.js?v=2"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=3"></script>
+<script src="assets/sidebar.js?v=3"></script>
+<script src="assets/command-palette.js?v=3"></script>
 <script>
     let servicesData = [];
     let branchesByContainer = {};
@@ -455,6 +456,7 @@
             tbody.innerHTML = `<tr><td colspan="9" class="empty-cell">Сервисы не найдены</td></tr>`;
             return;
         }
+        const canControl = window.BF && BF.can('docker.control');
         tbody.innerHTML = servicesData.map(svc => {
             const isRunning = svc.dockerState === 'running';
             const containerName = getContainerNameFromServiceName(svc.name);
@@ -467,6 +469,21 @@
             const latestVersion = svc.latestVersion
                 ? `<span style="font-family:'Roboto Mono',monospace;">${escapeHtml(svc.latestVersion)}</span>`
                 : '<span style="color:var(--md-outline);">—</span>';
+            const actionButtons = canControl ? `
+                    <div style="display:flex;justify-content:center;gap:4px;">
+                        <button class="md-icon-btn" title="${isRunning?'Остановить':'Запустить'}"
+                            onclick="handleContainerAction(event, '${containerName}', '${isRunning?'stop':'start'}')">
+                            ${bfIcon(isRunning ? 'stop' : 'play', 'size-20')}
+                        </button>
+                        <button class="md-icon-btn" title="Перезапустить"
+                            onclick="handleContainerAction(event, '${containerName}', 'restart')">
+                            ${bfIcon('restart', 'size-20')}
+                        </button>
+                        <button class="md-icon-btn" title="Обновить образ"
+                            onclick="handleContainerAction(event, '${containerName}', 'pull')">
+                            ${bfIcon('download', 'size-20')}
+                        </button>
+                    </div>` : '<span style="color:var(--md-outline);">—</span>';
             return `
             <tr>
                 <td>
@@ -483,22 +500,7 @@
                 <td style="color:var(--md-on-surface-variant);font-size:12px;font-family:'Roboto Mono',monospace;">${svc.lastSeen ? formatRelativeTime(svc.lastSeen) : '<span style="color:var(--md-outline);">Нет данных</span>'}</td>
                 <td>${errBadge}</td>
                 <td><span class="md-status md-status-info">${svc.eventCount || 0}</span></td>
-                <td>
-                    <div style="display:flex;justify-content:center;gap:4px;">
-                        <button class="md-icon-btn" title="${isRunning?'Остановить':'Запустить'}"
-                            onclick="handleContainerAction(event, '${containerName}', '${isRunning?'stop':'start'}')">
-                            ${bfIcon(isRunning ? 'stop' : 'play', 'size-20')}
-                        </button>
-                        <button class="md-icon-btn" title="Перезапустить"
-                            onclick="handleContainerAction(event, '${containerName}', 'restart')">
-                            ${bfIcon('restart', 'size-20')}
-                        </button>
-                        <button class="md-icon-btn" title="Обновить образ"
-                            onclick="handleContainerAction(event, '${containerName}', 'pull')">
-                            ${bfIcon('download', 'size-20')}
-                        </button>
-                    </div>
-                </td>
+                <td>${actionButtons}</td>
             </tr>`;
         }).join('');
     }
@@ -520,12 +522,18 @@
     function branchSelectHtml(container, onChange) {
         const info = branchesByContainer[container];
         if (!info) return '<span style="color:var(--md-outline);">—</span>';
-        const options = info.branches
-            .map(b => `<option value="${b}" ${b === info.branch ? 'selected' : ''}>${b}</option>`)
-            .join('');
         const pending = info.runningBranch && info.runningBranch !== info.branch
             ? `<span class="md-status md-status-warn" title="Запущен образ ветки ${escapeHtml(info.runningBranch)}">не применена</span>`
             : '';
+        if (window.BF && !BF.can('docker.deploy')) {
+            return `<div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:13px;">${escapeHtml(info.branch)}</span>
+                        ${pending}
+                    </div>`;
+        }
+        const options = info.branches
+            .map(b => `<option value="${b}" ${b === info.branch ? 'selected' : ''}>${b}</option>`)
+            .join('');
         return `<div style="display:flex;align-items:center;gap:6px;">
                     <select class="md-input-outlined" data-branch-select="${container}" style="height:32px;padding:4px 8px;font-size:13px;width:auto;"
                         onchange="${onChange}">${options}</select>
@@ -546,7 +554,7 @@
 
         select.disabled = true;
         try {
-            const r = await fetch(`/api/docker/containers/${container}/branch`, {
+            const r = await BF.api(`/api/docker/containers/${container}/branch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ branch })
@@ -697,12 +705,12 @@
     // ---- Admin panel actions ----
     async function restartAdminPanel() {
         if (!confirm('Перезапустить админ-панель? Вы будете перенаправлены на страницу ожидания.')) return;
-        try { await fetch('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
+        try { await BF.api('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
         catch { showNotification('error', 'Не удалось запустить перезапуск'); }
     }
     async function updateAdminPanel() {
         if (!confirm('Обновить админ-панель? Будет загружен новый образ.')) return;
-        try { await fetch('/api/docker/containers/admin-panel/update-own', { method:'POST' }); window.location.href = '/updating'; }
+        try { await BF.api('/api/docker/containers/admin-panel/update-own', { method:'POST' }); window.location.href = '/updating'; }
         catch { showNotification('error', 'Не удалось запустить обновление'); }
     }
 
@@ -737,10 +745,11 @@
     }
 
     function renderRemoteServers() {
+        const canManage = window.BF && BF.can('remote.servers');
         const tabs = document.getElementById('serverTabs');
         tabs.innerHTML = `<button id="tab-barkfluff" data-server-tab="barkfluff" class="tab" onclick="switchTab('barkfluff')">${bfIcon('server')}BarkFluff Server</button>`
             + remoteServers.map(server => `<button data-server-tab="${server.id}" class="tab" onclick="switchTab('${server.id}')">${bfIcon('server')}${escapeHtml(server.name)}</button>`).join('')
-            + `<button class="tab" onclick="openServerDialog()" title="Добавить сервер">${bfIcon('add')}Добавить сервер</button>`;
+            + (canManage ? `<button class="tab" onclick="openServerDialog()" title="Добавить сервер">${bfIcon('add')}Добавить сервер</button>` : '');
 
         document.getElementById('remotePanels').innerHTML = remoteServers.map(server => `
             <div class="server-panel remote-server-panel" data-server-id="${server.id}" style="display:none;">
@@ -751,11 +760,11 @@
                     <div class="item"><span class="label">Password</span><span class="value">${server.isPasswordConfigured ? 'настроен' : '—'}</span></div>
                 </div>
                 <div class="actions-row">
-                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openContainerDialog('${server.id}')">${bfIcon('add', 'size-18')}Добавить контейнер</button>
-                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openConsoleDialog('${server.id}')">${bfIcon('terminal', 'size-18')}Открыть консоль</button>
+                    ${canManage ? `<button class="md-btn md-btn-tonal md-btn-xs" onclick="openContainerDialog('${server.id}')">${bfIcon('add', 'size-18')}Добавить контейнер</button>
+                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openConsoleDialog('${server.id}')">${bfIcon('terminal', 'size-18')}Открыть консоль</button>` : ''}
                     <div class="spacer"></div>
-                    <button class="md-icon-btn" title="Изменить сервер" onclick="openServerDialog('${server.id}')">${bfIcon('edit')}</button>
-                    <button class="md-icon-btn" title="Удалить сервер" onclick="deleteServer('${server.id}')">${bfIcon('delete')}</button>
+                    ${canManage ? `<button class="md-icon-btn" title="Изменить сервер" onclick="openServerDialog('${server.id}')">${bfIcon('edit')}</button>
+                    <button class="md-icon-btn" title="Удалить сервер" onclick="deleteServer('${server.id}')">${bfIcon('delete')}</button>` : ''}
                     <button class="md-icon-btn" title="Обновить контейнеры" onclick="loadRemoteContainers('${server.id}')">${bfIcon('refresh')}</button>
                 </div>
                 <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
@@ -776,15 +785,17 @@
                 tbody.innerHTML = `<tr><td colspan="3" class="empty-cell">Контейнеры ещё не добавлены</td></tr>`;
                 return;
             }
+            const canManageRemote = window.BF && BF.can('remote.servers');
             tbody.innerHTML = containers.map(container => {
                 const running = container.state === 'running';
                 const update = container.canUpdate
                     ? `<button class="md-icon-btn" title="Обновить образ" onclick="handleRemoteAction(event,'${serverId}','${container.id}','pull')">${bfIcon('download', 'size-20')}</button>`
                     : `<button class="md-icon-btn" disabled title="Контейнер запущен не через Docker Compose">${bfIcon('cloud-off', 'size-20')}</button>`;
+                const remoteActions = canManageRemote ? `<div style="display:flex;justify-content:center;gap:4px;"><button class="md-icon-btn" title="${running ? 'Остановить' : 'Запустить'}" onclick="handleRemoteAction(event,'${serverId}','${container.id}','${running ? 'stop' : 'start'}')">${bfIcon(running ? 'stop' : 'play', 'size-20')}</button>
+                    <button class="md-icon-btn" title="Перезапустить" onclick="handleRemoteAction(event,'${serverId}','${container.id}','restart')">${bfIcon('restart', 'size-20')}</button>${update}<button class="md-icon-btn" title="Убрать из списка" onclick="deleteContainer('${serverId}','${container.id}')">${bfIcon('delete', 'size-20')}</button></div>` : '<span style="color:var(--md-outline);">—</span>';
                 return `<tr><td><div style="display:flex;align-items:center;gap:10px;font-weight:500;">${bfIcon(getServiceIconPath(container.composeServiceName || container.containerName), 'size-18 service-icon')}${escapeHtml(container.containerName)}${container.composeServiceName ? `<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(container.composeServiceName)}</span>` : ''}</div></td>
                     <td>${statusBadgeHtml(container.state)}<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(container.status || '')}</span></td>
-                    <td><div style="display:flex;justify-content:center;gap:4px;"><button class="md-icon-btn" title="${running ? 'Остановить' : 'Запустить'}" onclick="handleRemoteAction(event,'${serverId}','${container.id}','${running ? 'stop' : 'start'}')">${bfIcon(running ? 'stop' : 'play', 'size-20')}</button>
-                    <button class="md-icon-btn" title="Перезапустить" onclick="handleRemoteAction(event,'${serverId}','${container.id}','restart')">${bfIcon('restart', 'size-20')}</button>${update}<button class="md-icon-btn" title="Убрать из списка" onclick="deleteContainer('${serverId}','${container.id}')">${bfIcon('delete', 'size-20')}</button></div></td></tr>`;
+                    <td>${remoteActions}</td></tr>`;
             }).join('');
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="3" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
@@ -838,7 +849,7 @@
         const button = document.getElementById('saveServerBtn');
         button.disabled = true;
         try {
-            const response = await fetch(editingServerId ? `/api/remote/servers/${editingServerId}` : '/api/remote/servers', {
+            const response = await BF.api(editingServerId ? `/api/remote/servers/${editingServerId}` : '/api/remote/servers', {
                 method: editingServerId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(request)
             });
             if (!response.ok) throw new Error(await responseMessage(response));
@@ -853,7 +864,7 @@
     async function deleteServer(serverId) {
         const server = remoteServers.find(item => item.id === serverId);
         if (!confirm(`Удалить сервер "${server?.name || ''}" и все его контейнеры из панели?`)) return;
-        const response = await fetch(`/api/remote/servers/${serverId}`, { method:'DELETE' });
+        const response = await BF.api(`/api/remote/servers/${serverId}`, { method:'DELETE' });
         if (!response.ok) { showNotification('error', await responseMessage(response)); return; }
         showNotification('success', 'Сервер удалён');
         await loadRemoteServers();
@@ -882,7 +893,7 @@
         } catch (e) { showDialogError('containerDialogError', e.message); }
     }
 
-    function openConsoleDialog(serverId) {
+    async function openConsoleDialog(serverId) {
         const server = remoteServers.find(item => item.id === serverId);
         if (!server) return;
 
@@ -893,8 +904,17 @@
         setConsoleInputEnabled(false);
         document.getElementById('consoleDialogScrim').classList.add('open');
 
+        let stepUpQuery;
+        try {
+            stepUpQuery = await BF.stepUpQuery('remote.console', `serverId=${serverId}`);
+        } catch (e) {
+            document.getElementById('consoleOutput').textContent = `Подтверждение не получено: ${e.message}\n`;
+            setConsoleStatus('Нет подтверждения', 'md-status-error');
+            return;
+        }
+
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const socket = new WebSocket(`${protocol}//${location.host}/api/remote/servers/${serverId}/console`);
+        const socket = new WebSocket(`${protocol}//${location.host}/api/remote/servers/${serverId}/console?${stepUpQuery}`);
         const consoleDecoder = new TextDecoder();
         socket.binaryType = 'arraybuffer';
         consoleSocket = socket;
@@ -1017,10 +1037,22 @@
     });
 
     // ---- Init ----
+    function applyPermissions() {
+        if (!window.BF) return;
+        document.querySelectorAll('[data-perm]').forEach(el => {
+            el.style.display = BF.can(el.dataset.perm) ? '' : 'none';
+        });
+    }
+    document.addEventListener('bf:roles', () => {
+        applyPermissions();
+        if (servicesData.length) renderServicesTable();
+        if (remoteServers.length) renderRemoteServers();
+    });
+
     (async function () {
         const auth = await checkAuth();
         if (!auth) return;
-        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? `Создан: ${formatDate(auth.createdAt)}` : '');
+        applyPermissions();
         await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers()]);
         document.getElementById('loading-overlay').classList.add('hidden');
         setTimeout(() => document.getElementById('loading-overlay').remove(), 300);

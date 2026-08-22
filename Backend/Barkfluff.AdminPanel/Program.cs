@@ -343,6 +343,8 @@ public class Program
         app.MapGet("/configuration", RequirePagePermission(AdminPermissions.ConfigRead, "configuration.html"));
         app.MapGet("/s3-storage", RequirePagePermission(AdminPermissions.ConfigRead, "s3-storage.html"));
         app.MapGet("/s3-browser", RequirePagePermission(AdminPermissions.S3Browse, "s3-browser.html"));
+        app.MapGet("/admins", RequirePagePermission(AdminPermissions.AdminsRoles, "admins.html"));
+        app.MapGet("/audit", RequirePagePermission(AdminPermissions.AuditRead, "audit.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, Path.Combine("v2", "restarting.html")));
         app.MapGet("/updating", async context => await ServeHtmlFile(context, Path.Combine("v2", "updating.html")));
 

@@ -253,9 +253,10 @@
     </div>
 </div>
 
-<script src="assets/icons.js?v=2"></script>
-<script src="assets/sidebar.js?v=2"></script>
-<script src="assets/command-palette.js?v=2"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=3"></script>
+<script src="assets/sidebar.js?v=3"></script>
+<script src="assets/command-palette.js?v=3"></script>
 <script>
     // ---- State ----
     let allLogs = [];          // нормализованные события, накопленные по страницам
@@ -541,7 +542,7 @@
         showClearState('running');
         document.getElementById('clearStage').textContent = 'Удаление логов...';
         try {
-            const r = await fetch('/api/seq/clear/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
+            const r = await BF.api('/api/seq/clear/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
             if (!r.ok) throw new Error('HTTP ' + r.status);
             clearJobId = (await r.json()).jobId;
             clearTimer = setInterval(pollClear, 1500);

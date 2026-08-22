@@ -37,7 +37,7 @@ public static class StepUpEndpoints
 
             await sender.SendStepUpRequestAsync(request);
 
-            return Results.Ok(new { confirmationId = request.ConfirmationId });
+            return Results.Ok(new { confirmationId = request.ConfirmationId, title = StepUpActions.Title(request.ActionKey) });
         })
         .WithName("CreateStepUpRequest");
 

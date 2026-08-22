@@ -237,9 +237,10 @@
     </div>
 </div>
 
-<script src="assets/icons.js?v=2"></script>
-<script src="assets/sidebar.js?v=2"></script>
-<script src="assets/command-palette.js?v=2"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=3"></script>
+<script src="assets/sidebar.js?v=3"></script>
+<script src="assets/command-palette.js?v=3"></script>
 <script>
     let peers = [];
 
@@ -294,7 +295,7 @@
     window.rotateKey = async function () {
         if (!confirm('Ротировать ключ ноды? Старый ключ истечёт через настроенное окно перекрытия (по умолчанию 30 дней), пиры обновятся при следующем рефреше.')) return;
         try {
-            const res = await fetch('/api/federation/keys/rotate', { method: 'POST' });
+            const res = await BF.api('/api/federation/keys/rotate', { method: 'POST' });
             if (!res.ok) { alert('Не удалось ротировать ключ: ' + (await res.text())); return; }
             await loadStatus();
         } catch {}
@@ -337,7 +338,7 @@
         const action = blocked ? 'заблокировать' : 'разблокировать';
         if (!confirm(`Точно ${action} ноду ${serverName}?`)) return;
         try {
-            const res = await fetch(`/api/federation/peers/${encodeURIComponent(serverName)}/block`, {
+            const res = await BF.api(`/api/federation/peers/${encodeURIComponent(serverName)}/block`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ blocked }),
@@ -374,7 +375,7 @@
                 tlsSpkiSha256: spkiRaw ? spkiRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
             };
 
-            const res = await fetch('/api/federation/peers', {
+            const res = await BF.api('/api/federation/peers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
