@@ -21,16 +21,32 @@
      * Отдельный публичный адрес файлового HTTP ноды (Beacon `files_media_endpoint`):
      * загрузка и скачивание в обход CDN с его лимитом на размер файла.
      * Пусто — работаем по адресам, которые выдал сервер, как раньше.
+     * На прокси-зеркале всегда пусто: отдельный файловый адрес ноды недоступен
+     * напрямую, и загрузка, и медиа идут через сам прокси-хост.
      */
     function mediaOrigin() {
+        if (BF.node.proxied && BF.node.proxied()) return '';
         var meta = BF.node.meta();
         return (meta && meta.filesMediaEndpoint) || '';
     }
 
-    /** Подменяет хост в ссылке Files на отдельный файловый адрес ноды; путь сохраняется. */
+    /**
+     * Подменяет хост в ссылке Files на отдельный файловый адрес ноды; путь сохраняется.
+     * На прокси-зеркале ссылка оборачивается в /media/{host}/... этого же origin:
+     * файловые хосты ноды недоступны из РФ напрямую, их релеит прокси.
+     */
     function mediaUrl(url) {
+        if (!url) return url;
+        if (BF.node.proxied && BF.node.proxied()) {
+            try {
+                var relay = new URL(url);
+                return BF.node.origin() + '/media/' + relay.host + relay.pathname + relay.search;
+            } catch (e) {
+                return url;
+            }
+        }
         var origin = mediaOrigin();
-        if (!url || !origin) return url;
+        if (!origin) return url;
         try {
             var source = new URL(url);
             var target = new URL(origin);

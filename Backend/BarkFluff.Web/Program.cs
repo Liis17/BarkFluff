@@ -18,18 +18,41 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Web:Mode = Node (по умолчанию) — хост ноды: все кластеры сервисов, статика, upload.
 //            Shell — глобальный web.barkfluff.com: только статика + прокси Navigator.
+//            Proxy — зеркало одной ноды на доступном из РФ хосте: статика + pass-through
+//            всего трафика (gRPC-Web, upload, ping) на публичный Web-шлюз ноды за
+//            Cloudflare + media-relay файловых хостов (Web:Proxy:*).
 // Читаем ДО LoadConfiguration: env-переменные CreateBuilder подхватывает сам.
-var isShellMode = string.Equals(builder.Configuration["Web:Mode"], "Shell", StringComparison.OrdinalIgnoreCase);
+var webMode = builder.Configuration["Web:Mode"];
+var isShellMode = string.Equals(webMode, "Shell", StringComparison.OrdinalIgnoreCase);
+var isProxyMode = string.Equals(webMode, "Proxy", StringComparison.OrdinalIgnoreCase);
 
-// Шелл живёт вне ноды, рядом с ним нет Configuration-сервиса, а LoadConfiguration
-// падает без ретраев при недоступном сервисе — поэтому в shell-режиме его пропускаем
-// и берём конфигурацию только из env/appsettings (тот же выход из платформенного
-// шаблона, что у BarkFluff.Navigator).
-if (!isShellMode)
+// Шелл и прокси живут вне ноды, рядом с ними нет Configuration-сервиса, а
+// LoadConfiguration падает без ретраев при недоступном сервисе — поэтому в этих
+// режимах его пропускаем и берём конфигурацию только из env/appsettings (тот же
+// осознанный выход из платформенного шаблона, что у BarkFluff.Navigator).
+if (!isShellMode && !isProxyMode)
     builder.LoadConfiguration(ServiceId.Web);
 
 // Env-переменные контейнера должны иметь приоритет над Configuration service
 builder.Configuration.AddEnvironmentVariables();
+
+// В Proxy-режиме адрес origin-ноды обязателен — fail fast, а не 502 на первом запросе.
+if (isProxyMode && Uri.TryCreate(builder.Configuration["Web:Proxy:Target"], UriKind.Absolute, out var proxyTargetUri))
+{
+    if (proxyTargetUri.Scheme != Uri.UriSchemeHttp && proxyTargetUri.Scheme != Uri.UriSchemeHttps)
+        throw new InvalidOperationException("Web:Proxy:Target должен быть http(s):// адресом Web-шлюза ноды");
+}
+else if (isProxyMode)
+{
+    throw new InvalidOperationException("Web:Mode=Proxy требует Web:Proxy:Target (публичный адрес Web-шлюза ноды, например https://web.barkfluff.com)");
+}
+
+// Allowlist файловых хостов ноды для media-relay: host → scheme. Запись может быть
+// голым хостом (https) или 'http://host' для стендов без TLS. Чужие хосты relay
+// не проксирует (403) — иначе Web превращается в open proxy.
+var mediaHosts = isProxyMode
+    ? ParseMediaHosts(builder.Configuration["Web:Proxy:MediaHosts"])
+    : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
 builder.AddBarkFluffSerilog("BarkFluff.Web");
 
@@ -80,11 +103,29 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Add(IPAddress.IPv6Loopback);
 });
 
+// Именованный HttpClient для media-relay (Proxy-режим).
+const string MediaRelayClient = "media-relay";
+
 // YARP reverse-proxy — по одному кластеру на каждый backend-сервис
 // gRPC-Web middleware (ниже) превращает входящий HTTP/1.1 gRPC-Web запрос
 // в обычный gRPC HTTP/2, после чего YARP форвардит его в соответствующий сервис.
+// В Proxy-режиме один кластер remote уводит весь трафик на Web-шлюз origin-ноды.
 builder.Services.AddReverseProxy()
-    .LoadFromMemory(BuildRoutes(isShellMode), BuildClusters(builder.Configuration, isShellMode));
+    .LoadFromMemory(BuildRoutes(isShellMode, isProxyMode), BuildClusters(builder.Configuration, isShellMode, isProxyMode));
+
+// Media-relay (только Proxy-режим): файловые хосты ноды (files.barkfluff.com и т.п.)
+// недоступны из РФ напрямую, поэтому /media/{host}/... релеит их через себя.
+// Timeout бесконечный: время жизни ответа = время жизни соединения клиента
+// (большие видео на медленном канале); разрыв фиксирует отмена RequestAborted.
+if (isProxyMode)
+{
+    builder.Services.AddHttpClient(MediaRelayClient, client => client.Timeout = Timeout.InfiniteTimeSpan)
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            // Presigned-ссылки Minio могут отдавать редиректы — проксируем их как есть.
+            AllowAutoRedirect = false
+        });
+}
 
 builder.Services.AddHealthChecks();
 
@@ -164,6 +205,14 @@ const long MAX_GRPC_WEB_REQUEST_BYTES = 4L * 1024 * 1024;
 
 app.Use(async (ctx, next) =>
 {
+    // Proxy-режим: grpc-web-text уходит на Web-шлюз ноды без изменений — base64
+    // конвертацию делает удалённый шлюз, для Cloudflare это обычный HTTPS-запрос.
+    if (isProxyMode)
+    {
+        await next();
+        return;
+    }
+
     var ct = ctx.Request.ContentType ?? "";
     var isGrpcWebText = ct.StartsWith("application/grpc-web-text", StringComparison.OrdinalIgnoreCase);
     var isGrpcWeb = isGrpcWebText || ct.StartsWith("application/grpc-web", StringComparison.OrdinalIgnoreCase);
@@ -300,51 +349,119 @@ app.MapPingEndpoint();
 
 // Firebase web configuration and the VAPID key are public client identifiers.
 // Service-account credentials deliberately remain exclusive to CloudMessaging.
-app.MapGet("/pwa-config.js", (HttpContext ctx, IConfiguration configuration) =>
+// В Proxy-режиме эндпоинт не маппится локально: catch-all маршрут уводит его на
+// Web-шлюз ноды, и service worker прокси-домена получает конфигурацию origin-ноды.
+if (!isProxyMode)
 {
-    ctx.Response.Headers.CacheControl = "no-store";
-    var firebase = configuration.GetSection("Web:Push:Firebase");
-    var vapidKey = configuration["Web:Push:VapidKey"];
-    var apiKey = firebase["ApiKey"];
-    var authDomain = firebase["AuthDomain"];
-    var projectId = firebase["ProjectId"];
-    var messagingSenderId = firebase["MessagingSenderId"];
-    var appId = firebase["AppId"];
-
-    if (new[] { vapidKey, apiKey, authDomain, projectId, messagingSenderId, appId }
-        .Any(string.IsNullOrWhiteSpace))
+    app.MapGet("/pwa-config.js", (HttpContext ctx, IConfiguration configuration) =>
     {
-        return Results.Text("self.BF_PWA_CONFIG = null;", "application/javascript", Encoding.UTF8);
-    }
+        ctx.Response.Headers.CacheControl = "no-store";
+        var firebase = configuration.GetSection("Web:Push:Firebase");
+        var vapidKey = configuration["Web:Push:VapidKey"];
+        var apiKey = firebase["ApiKey"];
+        var authDomain = firebase["AuthDomain"];
+        var projectId = firebase["ProjectId"];
+        var messagingSenderId = firebase["MessagingSenderId"];
+        var appId = firebase["AppId"];
 
-    var script = "self.BF_PWA_CONFIG = " + JsonSerializer.Serialize(new
-    {
-        firebase = new
+        if (new[] { vapidKey, apiKey, authDomain, projectId, messagingSenderId, appId }
+            .Any(string.IsNullOrWhiteSpace))
         {
-            apiKey,
-            authDomain,
-            projectId,
-            storageBucket = firebase["StorageBucket"] ?? string.Empty,
-            messagingSenderId,
-            appId
-        },
-        vapidKey
-    }) + ";";
-    return Results.Text(script, "application/javascript", Encoding.UTF8);
-});
+            return Results.Text("self.BF_PWA_CONFIG = null;", "application/javascript", Encoding.UTF8);
+        }
+
+        var script = "self.BF_PWA_CONFIG = " + JsonSerializer.Serialize(new
+        {
+            firebase = new
+            {
+                apiKey,
+                authDomain,
+                projectId,
+                storageBucket = firebase["StorageBucket"] ?? string.Empty,
+                messagingSenderId,
+                appId
+            },
+            vapidKey
+        }) + ";";
+        return Results.Text(script, "application/javascript", Encoding.UTF8);
+    });
+}
 
 // Режим хоста для клиента: нода отдаёт себя как единственную (pinned),
-// глобальный шелл заставляет выбрать ноду и проксирует Navigator.
+// глобальный шелл заставляет выбрать ноду и проксирует Navigator,
+// прокси-зеркало фиксирует ноду и помечается proxied (клиент оборачивает
+// файловые ссылки в /media/relay на этом же хосте).
 app.MapGet("/node-config.js", (HttpContext ctx) =>
 {
     ctx.Response.Headers.CacheControl = "no-store";
     var script = "self.BF_NODE_CONFIG = " + JsonSerializer.Serialize(new
     {
         pinned = !isShellMode,
-        navigatorProxy = isShellMode
+        navigatorProxy = isShellMode,
+        proxied = isProxyMode
     }) + ";";
     return Results.Text(script, "application/javascript", Encoding.UTF8);
 });
+
+// Media-relay (только Proxy-режим): браузер не может грузить файлы ноды напрямую
+// (файловые хосты за Cloudflare) — /media/{host}/{path}?{presigned-подпись} релеится
+// через этот же Web. Range/If-Range пробрасываются, ответ стримится без буферизации.
+if (isProxyMode)
+{
+    app.MapMethods("/media/{host}/{**path}", new[] { "GET", "HEAD" },
+        async (string host, string path, HttpContext ctx, IHttpClientFactory httpClientFactory) =>
+    {
+        if (!mediaHosts.TryGetValue(host, out var scheme))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        // path приходит из маршрута декодированным; кодируем каждый сегмент заново,
+        // чтобы корректно пройти раундпроцент: '100%25.png' → '100%.png' → '100%25.png'.
+        var encodedPath = string.Join("/", path.TrimStart('/').Split('/').Select(Uri.EscapeDataString));
+        var upstreamUri = $"{scheme}://{host}/{encodedPath}{ctx.Request.QueryString}";
+        using var upstreamRequest = new HttpRequestMessage(
+            HttpMethods.IsHead(ctx.Request.Method) ? HttpMethod.Head : HttpMethod.Get, upstreamUri);
+        foreach (var header in new[] { "Range", "If-Range", "If-None-Match", "If-Modified-Since" })
+        {
+            if (ctx.Request.Headers.ContainsKey(header))
+                upstreamRequest.Headers.TryAddWithoutValidation(header, ctx.Request.Headers[header].ToArray());
+        }
+
+        var client = httpClientFactory.CreateClient(MediaRelayClient);
+        try
+        {
+            using var upstream = await client.SendAsync(upstreamRequest, HttpCompletionOption.ResponseHeadersRead, ctx.RequestAborted);
+
+            ctx.Response.StatusCode = (int)upstream.StatusCode;
+            foreach (var header in new[] { "Content-Type", "Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified", "Cache-Control", "Expires" })
+            {
+                var values = upstream.Headers.TryGetValues(header, out var responseValues)
+                    ? responseValues
+                    : upstream.Content.Headers.TryGetValues(header, out var contentValues) ? contentValues : null;
+                if (values is not null)
+                    ctx.Response.Headers[header] = string.Join(", ", values);
+            }
+            // nginx спереди не должен буферизировать стриминг больших файлов
+            ctx.Response.Headers["X-Accel-Buffering"] = "no";
+
+            if (HttpMethods.IsHead(ctx.Request.Method))
+                return;
+
+            await upstream.Content.CopyToAsync(ctx.Response.Body, ctx.RequestAborted);
+        }
+        catch (Exception) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            // Клиент оборвал загрузку — Kestrel прервёт ответ сам.
+        }
+        catch (HttpRequestException)
+        {
+            if (!ctx.Response.HasStarted)
+                ctx.Response.StatusCode = StatusCodes.Status502BadGateway;
+        }
+    });
+}
 
 app.MapGet("/messenger", (IWebHostEnvironment env) =>
     Results.File(Path.Combine(env.WebRootPath, "messenger.html"), "text/html"));
@@ -372,8 +489,26 @@ app.Run();
 
 // --- YARP routes / clusters ---
 
-static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode)
+static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode, bool isProxyMode)
 {
+    // Proxy-режим: один catch-all маршрут. Все пути (gRPC-сервисы, /api/files/upload,
+    // /ping/{service}, /pwa-config.js и любые будущие эндпоинты) уходят на Web-шлюз
+    // ноды без изменений — прокси не нужно править при появлении новых маршрутов.
+    // Литеральные эндпоинты этого хоста (/health, /ping, /node-config.js, /media/*,
+    // /messenger) выигрывают у catch-all по специфичности маршрута.
+    if (isProxyMode)
+    {
+        return new List<RouteConfig>
+        {
+            new RouteConfig
+            {
+                RouteId = "remote-catchall",
+                ClusterId = "remote",
+                Match = new RouteMatch { Path = "/{**catchall}" }
+            }
+        };
+    }
+
     // Полные имена gRPC-сервисов из *_api.proto (package + service).
     // Navigator — единственный маршрут, который есть и в shell-режиме: с него
     // начинается выбор ноды, а сам каталог живёт вне ноды.
@@ -478,8 +613,34 @@ static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode)
     return routes;
 }
 
-static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config, bool isShellMode)
+static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config, bool isShellMode, bool isProxyMode)
 {
+    // Proxy-режим: единственный кластер на публичный Web-шлюз ноды (за Cloudflare).
+    // HTTP/1.1 — входящий grpc-web-text и есть HTTP/1.1, конвертацию в HTTP/2 gRPC
+    // делает удалённый шлюз; ActivityTimeout 24ч — долгоживущие server-streaming
+    // подписки (updates/onliner/fast-auth/calls) молчат часами.
+    if (isProxyMode)
+    {
+        var proxyTarget = config["Web:Proxy:Target"]!;
+        return new List<ClusterConfig>
+        {
+            new ClusterConfig
+            {
+                ClusterId = "remote",
+                HttpRequest = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
+                {
+                    Version = new Version(1, 1),
+                    VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionOrLower,
+                    ActivityTimeout = TimeSpan.FromHours(24)
+                },
+                Destinations = new Dictionary<string, DestinationConfig>
+                {
+                    ["remote-1"] = new DestinationConfig { Address = proxyTarget }
+                }
+            }
+        };
+    }
+
     // Публичный каталог нод — единственный внешний адрес, который знает и шелл, и нода.
     var navigatorCluster = ("navigator", "NavigatorService:Host", "https://navigator.barkfluff.com:443");
 
@@ -574,6 +735,25 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config, bool is
     });
 
     return clusters;
+}
+
+/// <summary>
+/// Разбирает Web:Proxy:MediaHosts в host → scheme. Запись — хост (https по
+/// умолчанию) или явный 'http://host' / 'https://host' для стендов без TLS.
+/// </summary>
+static Dictionary<string, string> ParseMediaHosts(string? raw)
+{
+    var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var entry in (raw ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        if (entry.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            result[entry["https://".Length..]] = "https";
+        else if (entry.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            result[entry["http://".Length..]] = "http";
+        else
+            result[entry] = "https";
+    }
+    return result;
 }
 
 /// <summary>

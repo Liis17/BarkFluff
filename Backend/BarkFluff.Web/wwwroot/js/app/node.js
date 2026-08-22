@@ -8,6 +8,8 @@
  * Режим хоста приходит из /node-config.js (window.BF_NODE_CONFIG):
  *   pinned: true  — страницу отдала сама нода, работаем только с ней;
  *   pinned: false — глобальный шелл, ноду выбирает пользователь.
+ *   proxied: true — прокси-зеркало ноды: gRPC и медиа ходят через этот же
+ *                  хост, файловые ссылки оборачиваются в /media/-relay.
  *
  * Exposes: BF.node
  */
@@ -27,6 +29,7 @@
 
     var config = window.BF_NODE_CONFIG || {};
     var pinned = config.pinned !== false;
+    var proxied = config.proxied === true;
 
     /**
      * Приводит пользовательский ввод к origin ('https://gw.example').
@@ -222,6 +225,7 @@
         id: id,
         key: key,
         pinned: function () { return pinned; },
+        proxied: function () { return proxied; },
         normalize: normalize,
         set: set,
         clear: clear,
