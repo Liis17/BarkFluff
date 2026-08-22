@@ -11,14 +11,14 @@ namespace Barkfluff.AdminPanel.Services;
 /// A confirmation is single-use, tied to the session token, the action key and
 /// a hash of the action's critical parameters, and expires shortly after approval.
 /// </summary>
-public class StepUpService
+public class StepUpService : IDisposable
 {
-    public static readonly TimeSpan PendingTimeout = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan PendingTimeout = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan ApprovalValidFor = TimeSpan.FromMinutes(5);
 
     private readonly ConcurrentDictionary<string, PendingStepUp> _requests = new();
     private readonly Timer _cleanupTimer;
-    private readonly object _consumeLock = new();
+    private readonly object _stateLock = new();
 
     public StepUpService()
     {
@@ -39,7 +39,11 @@ public class StepUpService
 
     public PendingStepUp? GetRequest(string confirmationId)
     {
-        return _requests.TryGetValue(confirmationId, out var request) ? request : null;
+        if (!_requests.TryGetValue(confirmationId, out var request))
+            return null;
+
+        ExpirePendingIfNeeded(request, DateTime.UtcNow);
+        return request;
     }
 
     public bool SetTelegramMessageId(string confirmationId, int messageId)
@@ -57,13 +61,22 @@ public class StepUpService
         if (!_requests.TryGetValue(confirmationId, out var request))
             return false;
 
-        lock (_consumeLock)
+        lock (_stateLock)
         {
             if (request.Status != StepUpStatus.Pending)
                 return false;
 
+            if (status is not (StepUpStatus.Approved or StepUpStatus.Rejected))
+                return false;
+
             if (request.TargetTelegramUserId != approvedByTelegramUserId)
                 return false;
+
+            if (DateTime.UtcNow - request.CreatedAt >= PendingTimeout)
+            {
+                request.Status = StepUpStatus.Expired;
+                return false;
+            }
 
             request.Status = status;
             request.ResolvedAt = DateTime.UtcNow;
@@ -78,7 +91,7 @@ public class StepUpService
     /// </summary>
     public bool TryConsume(string confirmationId, Guid tokenId, string actionKey, string parameters)
     {
-        lock (_consumeLock)
+        lock (_stateLock)
         {
             if (!_requests.TryGetValue(confirmationId, out var request))
                 return false;
@@ -108,15 +121,36 @@ public class StepUpService
 
     private void CleanupExpired(object? state)
     {
-        var cutoff = DateTime.UtcNow - PendingTimeout;
+        var now = DateTime.UtcNow;
         foreach (var kvp in _requests)
         {
-            var expired = kvp.Value.CreatedAt < cutoff && kvp.Value.Status == StepUpStatus.Pending;
-            if (expired)
+            lock (_stateLock)
             {
-                kvp.Value.Status = StepUpStatus.Expired;
-                _requests.TryRemove(kvp.Key, out _);
+                var request = kvp.Value;
+                if (request.Status == StepUpStatus.Pending && now - request.CreatedAt >= PendingTimeout)
+                    request.Status = StepUpStatus.Expired;
+
+                var lastActivity = request.ResolvedAt ?? request.CreatedAt;
+                if (request.Status != StepUpStatus.Pending && now - lastActivity >= PendingTimeout)
+                    _requests.TryRemove(kvp.Key, out _);
             }
         }
+    }
+
+    private void ExpirePendingIfNeeded(PendingStepUp request, DateTime now)
+    {
+        if (request.Status != StepUpStatus.Pending || now - request.CreatedAt < PendingTimeout)
+            return;
+
+        lock (_stateLock)
+        {
+            if (request.Status == StepUpStatus.Pending && now - request.CreatedAt >= PendingTimeout)
+                request.Status = StepUpStatus.Expired;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cleanupTimer.Dispose();
     }
 }

@@ -16,12 +16,18 @@ public class RequireStepUpFilter : IEndpointFilter
     public const string QueryParameter = "confirmation";
 
     private readonly string _actionKey;
-    private readonly Func<HttpContext, string> _paramsSelector;
+    private readonly Func<EndpointFilterInvocationContext, string> _paramsSelector;
 
     public RequireStepUpFilter(string actionKey, Func<HttpContext, string>? paramsSelector = null)
     {
         _actionKey = actionKey;
-        _paramsSelector = paramsSelector ?? (_ => string.Empty);
+        _paramsSelector = context => paramsSelector?.Invoke(context.HttpContext) ?? string.Empty;
+    }
+
+    internal RequireStepUpFilter(string actionKey, Func<EndpointFilterInvocationContext, string> paramsSelector)
+    {
+        _actionKey = actionKey;
+        _paramsSelector = paramsSelector;
     }
 
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
@@ -32,7 +38,7 @@ public class RequireStepUpFilter : IEndpointFilter
             return Results.Unauthorized();
 
         var stepUpService = http.RequestServices.GetRequiredService<StepUpService>();
-        var parameters = _paramsSelector(http);
+        var parameters = _paramsSelector(context);
 
         var confirmationId =
             http.Request.Headers[HeaderName].FirstOrDefault() ??
@@ -83,6 +89,15 @@ public class RequireStepUpFilter : IEndpointFilter
 public static class RequireStepUpExtensions
 {
     public static TBuilder RequireStepUp<TBuilder>(this TBuilder builder, string actionKey, Func<HttpContext, string>? paramsSelector = null)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        return builder.AddEndpointFilter(new RequireStepUpFilter(actionKey, paramsSelector));
+    }
+
+    public static TBuilder RequireStepUpFromArguments<TBuilder>(
+        this TBuilder builder,
+        string actionKey,
+        Func<EndpointFilterInvocationContext, string> paramsSelector)
         where TBuilder : IEndpointConventionBuilder
     {
         return builder.AddEndpointFilter(new RequireStepUpFilter(actionKey, paramsSelector));

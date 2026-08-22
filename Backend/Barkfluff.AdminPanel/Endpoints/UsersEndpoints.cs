@@ -1,5 +1,6 @@
 using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
 
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Identity;
@@ -222,7 +223,8 @@ public static class UsersEndpoints
                 assignedDate = response.UserBadge.AssignedDate?.ToDateTime()
             });
         })
-        .WithName("AssignUserBadge");
+        .WithName("AssignUserBadge")
+        .RequirePermission(AdminPermissions.BadgesManage);
 
         // DELETE /api/users/{id}/badges/{badgeId}
         group.MapDelete("/{id:long}/badges/{badgeId:int}", async (
@@ -238,7 +240,8 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = response.Success });
         })
-        .WithName("RemoveUserBadge");
+        .WithName("RemoveUserBadge")
+        .RequirePermission(AdminPermissions.BadgesManage);
 
         // PUT /api/users/{id}/storage-limit
         group.MapPut("/{id:long}/storage-limit", async (
@@ -284,7 +287,12 @@ public static class UsersEndpoints
         })
         .WithName("DisableUserOtp")
         .RequirePermission(AdminPermissions.Users2FaDisable)
-        .RequireStepUp(StepUpActions.Users2FaDisable, context => $"userId={context.Request.RouteValues["id"]}");
+        .RequireStepUpFromArguments(StepUpActions.Users2FaDisable, context =>
+        {
+            var userId = context.HttpContext.Request.RouteValues["id"];
+            var body = context.Arguments.OfType<DisableOtpBody>().FirstOrDefault();
+            return $"userId={userId};otpType={body?.OtpType}";
+        });
 
         // POST /api/users/{id}/avatar
         group.MapPost("/{id:long}/avatar", async (
@@ -376,7 +384,13 @@ public static class UsersEndpoints
         })
         .WithName("ForceChangeUserPassword")
         .RequirePermission(AdminPermissions.UsersPasswordSet)
-        .RequireStepUp(StepUpActions.UsersPasswordSet, context => $"userId={context.Request.RouteValues["id"]}");
+        .RequireStepUpFromArguments(StepUpActions.UsersPasswordSet, context =>
+        {
+            var userId = context.HttpContext.Request.RouteValues["id"];
+            var body = context.Arguments.OfType<ChangePasswordBody>().FirstOrDefault();
+            var passwordHash = StepUpService.ComputeParamsHash("users.password", body?.NewPassword ?? string.Empty);
+            return $"userId={userId};passwordHash={passwordHash}";
+        });
 
         // POST /api/users/{id}/poster
         group.MapPost("/{id:long}/poster", async (
@@ -435,7 +449,8 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = true });
         })
-        .WithName("RemoveUserSession");
+        .WithName("RemoveUserSession")
+        .RequirePermission(AdminPermissions.UsersSessionsRevoke);
     }
 
     private static async Task<T?> SafeCall<T>(Func<Grpc.Core.AsyncUnaryCall<T>> call) where T : class

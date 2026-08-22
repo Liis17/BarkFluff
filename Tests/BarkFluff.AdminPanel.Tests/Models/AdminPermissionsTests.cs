@@ -9,6 +9,7 @@ public class AdminPermissionsTests
     public static TheoryData<string, AdminRole[], bool> MatrixCases => new()
     {
         { AdminPermissions.UsersRead, new[] { AdminRole.Support, AdminRole.SecurityAdmin }, true },
+        { AdminPermissions.UsersSessionsRevoke, new[] { AdminRole.Support, AdminRole.SecurityAdmin }, true },
         { AdminPermissions.UsersPasswordSet, new[] { AdminRole.Support, AdminRole.SecurityAdmin }, true },
         { AdminPermissions.Users2FaDisable, new[] { AdminRole.SecurityAdmin }, true },
         { AdminPermissions.BadgesManage, new[] { AdminRole.ContentAdmin }, true },

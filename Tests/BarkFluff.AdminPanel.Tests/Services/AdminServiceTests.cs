@@ -149,4 +149,18 @@ public sealed class AdminServiceTests : IDisposable
         Assert.Equal(2, record.RoleSet.Count);
         Assert.DoesNotContain(nameof(AdminRole.Viewer), record.Roles);
     }
+
+    [Fact]
+    public void UpdateRoles_RejectsRemovingLastSecurityAdmin_WhenRecordIsMissing()
+    {
+        SetConfigAdmins((100, "alice"));
+        var service = CreateService();
+        service.EnsureBootstrapped();
+        _db.Admins.Delete(100);
+
+        var result = service.UpdateRoles(100, new[] { AdminRole.Support }, "test");
+
+        Assert.False(result);
+        Assert.Null(_db.Admins.FindById(100));
+    }
 }

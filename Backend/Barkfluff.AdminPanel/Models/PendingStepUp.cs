@@ -47,6 +47,33 @@ public static class StepUpActions
     public const string SeqClear = "seq.clear";
     public const string AdminsRolesUpdate = "admins.roles.update";
 
+    private static readonly IReadOnlyDictionary<string, string> PermissionByAction =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [UsersPasswordSet] = AdminPermissions.UsersPasswordSet,
+            [Users2FaDisable] = AdminPermissions.Users2FaDisable,
+            [DockerBranch] = AdminPermissions.DockerDeploy,
+            [DockerRestartAll] = AdminPermissions.DockerDeploy,
+            [DockerUpdateAll] = AdminPermissions.DockerDeploy,
+            [DockerAdminPanelRestart] = AdminPermissions.DockerDeploy,
+            [DockerAdminPanelUpdate] = AdminPermissions.DockerDeploy,
+            [RemoteServerSave] = AdminPermissions.RemoteServers,
+            [RemoteServerDelete] = AdminPermissions.RemoteServers,
+            [RemoteConsole] = AdminPermissions.RemoteConsole,
+            [ConfigUpdate] = AdminPermissions.ConfigWrite,
+            [S3ConfigUpdate] = AdminPermissions.ConfigWrite,
+            [FederationKeysRotate] = AdminPermissions.FederationManage,
+            [FederationPeerAdd] = AdminPermissions.FederationManage,
+            [FederationPeerBlock] = AdminPermissions.FederationManage,
+            [SeqClear] = AdminPermissions.SeqDelete,
+            [AdminsRolesUpdate] = AdminPermissions.AdminsRoles
+        };
+
+    public static bool TryGetPermission(string actionKey, out string permission)
+    {
+        return PermissionByAction.TryGetValue(actionKey, out permission!);
+    }
+
     public static string Title(string actionKey)
     {
         return actionKey switch

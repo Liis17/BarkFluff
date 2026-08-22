@@ -337,6 +337,9 @@ public class TelegramBotService : IHostedService, IStepUpSender
         var title = WebUtility.HtmlEncode(StepUpActions.Title(request.ActionKey));
         var session = WebUtility.HtmlEncode(request.SessionName ?? "сессия");
         var ipAddress = WebUtility.HtmlEncode(request.IpAddress ?? "неизвестен");
+        var target = string.IsNullOrWhiteSpace(request.Params)
+            ? string.Empty
+            : $"🎯 Параметры: {WebUtility.HtmlEncode(request.Params)}\n";
         var time = request.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
 
         var message = $"🔑 <b>Подтверждение действия</b>\n" +
@@ -344,6 +347,7 @@ public class TelegramBotService : IHostedService, IStepUpSender
                       $"⚡ {title}\n" +
                       $"🖥 Сессия: {session}\n" +
                       $"🌐 IP: {ipAddress}\n" +
+                      target +
                       $"🕐 Время: {time} UTC\n" +
                       $"\n" +
                       $"Подтверждение действует {StepUpService.ApprovalValidFor.TotalMinutes:0} минут после одобрения.";
@@ -752,6 +756,16 @@ public class UpdateHandler : IUpdateHandler
             return;
         }
 
+        if (action is not ("approve" or "reject"))
+        {
+            await botClient.AnswerCallbackQuery(
+                callbackQuery.Id,
+                "Неизвестное действие.",
+                showAlert: true,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
         var approved = action == "approve";
         var resolved = _stepUpService.Resolve(confirmationId, approved ? StepUpStatus.Approved : StepUpStatus.Rejected, userId);
         if (!resolved)
@@ -762,6 +776,17 @@ public class UpdateHandler : IUpdateHandler
                 cancellationToken: cancellationToken);
             return;
         }
+
+        _auditService.Log(new AuditLogEntry
+        {
+            AdminUsername = _settings.Value.GetUsername(userId) ?? "Unknown",
+            TelegramUserId = userId,
+            Action = request.ActionKey,
+            Details = StepUpActions.Title(request.ActionKey),
+            IpAddress = request.IpAddress,
+            ConfirmationId = confirmationId,
+            Outcome = approved ? "approved" : "rejected"
+        });
 
         var title = WebUtility.HtmlEncode(StepUpActions.Title(request.ActionKey));
         var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");

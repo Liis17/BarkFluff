@@ -53,6 +53,10 @@ public sealed class RequireStepUpFilterTests : IDisposable
         app.MapPost("/api/critical/{name}", (string name) => Results.Ok(new { name }))
             .RequireStepUp("docker.branch", context => $"container={context.Request.RouteValues["name"]}");
 
+        app.MapPost("/api/critical-body", (StepUpPayload payload) => Results.Ok(payload))
+            .RequireStepUpFromArguments("docker.branch", context =>
+                $"value={context.Arguments.OfType<StepUpPayload>().FirstOrDefault()?.Value}");
+
         app.MapPost("/api/stepup/request", async (StepUpRequestDto dto, HttpContext context, StepUpService stepUpService) =>
         {
             var token = (context.Items["AuthToken"] as AuthToken)!;
@@ -170,6 +174,25 @@ public sealed class RequireStepUpFilterTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task ArgumentBasedParameters_AreBoundToConfirmation()
+    {
+        var confirmationId = Approve("docker.branch", "value=one");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/critical-body")
+        {
+            Content = JsonContent.Create(new StepUpPayload("two"))
+        };
+        request.Headers.Add("X-Confirmation-Id", confirmationId);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(StatusCodes.Status428PreconditionRequired, (int)response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("value=two", body.GetProperty("parameters").GetString());
+    }
+
+    private sealed record StepUpPayload(string Value);
 
     private sealed class NoopStepUpSender : IStepUpSender
     {

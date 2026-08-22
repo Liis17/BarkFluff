@@ -31,6 +31,13 @@ public static class RemoteDockerEndpoints
             catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
             catch (Exception ex) { return Results.BadRequest(new { message = $"Не удалось подключиться по SSH: {ex.Message}" }); }
+        })
+        .RequireStepUpFromArguments(StepUpActions.RemoteServerSave, context =>
+        {
+            var request = context.Arguments.OfType<SaveRemoteServerRequest>().FirstOrDefault();
+            return request is null
+                ? string.Empty
+                : $"name={request.Name};host={request.Host};port={request.Port};username={request.Username};payloadHash={StepUpService.ComputeParamsHash("remote.server", $"{request.Name}|{request.Host}|{request.Port}|{request.Username}|{request.Password}")}";
         });
 
         group.MapPut("/servers/{serverId:guid}", async (RemoteDockerService service, Guid serverId,
@@ -45,7 +52,14 @@ public static class RemoteDockerEndpoints
             catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
             catch (Exception ex) { return Results.BadRequest(new { message = $"Не удалось подключиться по SSH: {ex.Message}" }); }
         })
-        .RequireStepUp(StepUpActions.RemoteServerSave, context => $"serverId={context.Request.RouteValues["serverId"]}");
+        .RequireStepUpFromArguments(StepUpActions.RemoteServerSave, context =>
+        {
+            var request = context.Arguments.OfType<SaveRemoteServerRequest>().FirstOrDefault();
+            var serverId = context.HttpContext.Request.RouteValues["serverId"];
+            return request is null
+                ? $"serverId={serverId}"
+                : $"serverId={serverId};name={request.Name};host={request.Host};port={request.Port};username={request.Username};payloadHash={StepUpService.ComputeParamsHash("remote.server", $"{request.Name}|{request.Host}|{request.Port}|{request.Username}|{request.Password}")}";
+        });
 
         group.MapDelete("/servers/{serverId:guid}", (RemoteDockerService service, Guid serverId) =>
         {
@@ -82,13 +96,20 @@ public static class RemoteDockerEndpoints
             catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
             catch (Exception ex) { return Results.BadRequest(new { message = $"Не удалось подключиться по SSH: {ex.Message}" }); }
         })
-        .RequireStepUp(StepUpActions.RemoteServerSave);
+        .RequireStepUpFromArguments(StepUpActions.RemoteServerSave, context =>
+        {
+            var request = context.Arguments.OfType<AddRemoteContainerRequest>().FirstOrDefault();
+            var serverId = context.HttpContext.Request.RouteValues["serverId"];
+            return $"serverId={serverId};container={request?.ContainerName}";
+        });
 
         group.MapDelete("/servers/{serverId:guid}/containers/{containerId:guid}",
             (RemoteDockerService service, Guid serverId, Guid containerId) =>
             {
                     return service.DeleteContainer(serverId, containerId) ? Results.NoContent() : Results.NotFound();
-            });
+            })
+            .RequireStepUp(StepUpActions.RemoteServerDelete, context =>
+                $"serverId={context.Request.RouteValues["serverId"]};containerId={context.Request.RouteValues["containerId"]}");
 
         group.MapGet("/servers/{serverId:guid}/console", async (RemoteDockerService service, HttpContext context,
             Guid serverId, ILogger<RemoteDockerService> logger, CancellationToken cancellationToken) =>
@@ -114,7 +135,7 @@ public static class RemoteDockerEndpoints
                 logger,
                 cancellationToken);
         })
-        .RequirePermission(AdminPermissions.RemoteServers)
+        .RequirePermission(AdminPermissions.RemoteConsole)
         .RequireStepUp(StepUpActions.RemoteConsole, context => $"serverId={context.Request.RouteValues["serverId"]}");
 
         group.MapPost("/servers/{serverId:guid}/containers/{containerId:guid}/{action}", async (
