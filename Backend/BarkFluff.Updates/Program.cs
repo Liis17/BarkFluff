@@ -180,12 +180,14 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
+builder.Services.AddBarkFluffHealth();
+
 var app = builder.Build();
 app.MapGrpcReflectionService();
 app.UseRouting();
 
 app.UseXAuth();
-app.MapPingEndpoint();
+app.MapHealthEndpoints();
 
 app.MapGrpcService<UpdatesApiService>();
 

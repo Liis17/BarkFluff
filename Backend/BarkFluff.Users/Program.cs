@@ -102,6 +102,8 @@ public class Program
             });
         });
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         // Гейджи: время старта и health-флаг миграции (0 — не применена / упала, 1 — успех).
@@ -123,7 +125,7 @@ public class Program
         app.UseRouting();
 
         app.UseXAuth();
-        app.MapPingEndpoint();
+        app.MapHealthEndpoints();
 
         // Регистрируем gRPC сервисы
         app.MapGrpcService<UsersServerApiService>();

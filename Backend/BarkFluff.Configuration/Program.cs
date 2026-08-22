@@ -73,6 +73,8 @@ public class Program
 
         builder.Services.AddScoped<ConfigurationStorage>();
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         using (var scope = app.Services.CreateScope())
@@ -149,6 +151,7 @@ public class Program
         app.UseRouting();
 
         app.MapGrpcService<ConfigurationApiService>();
+        app.MapHealthEndpoints();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();

@@ -58,6 +58,8 @@ public class Program
              .WithExposedHeaders("grpc-status", "grpc-message", "grpc-status-details-bin", "x-error-code");
         }));
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         using (var scope = app.Services.CreateScope())
@@ -82,6 +84,7 @@ public class Program
 
         app.MapGrpcReflectionService();
         app.MapGrpcService<DevelopersApiService>().EnableGrpcWeb();
+        app.MapHealthEndpoints();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();

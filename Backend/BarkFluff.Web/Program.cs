@@ -129,6 +129,8 @@ if (isProxyMode)
 
 builder.Services.AddHealthChecks();
 
+builder.Services.AddBarkFluffHealth();
+
 var app = builder.Build();
 
 // Kestrel по умолчанию ограничивает тело запроса примерно 28.6 МБ.
@@ -345,7 +347,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.MapHealthChecks("/health");
-app.MapPingEndpoint();
+app.MapHealthEndpoints();
 
 // Firebase web configuration and the VAPID key are public client identifiers.
 // Service-account credentials deliberately remain exclusive to CloudMessaging.
