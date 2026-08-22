@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
@@ -55,12 +56,13 @@ public static class AuthEndpoints
         .WithName("GetAuthStatus")
         .WithOpenApi();
 
-        group.MapGet("/me", (HttpContext context) =>
+        group.MapGet("/me", (HttpContext context, AdminService adminService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken token)
-            {
-                return Results.Unauthorized();
-            }
+            var token = context.GetAuthToken()!;
+
+            var roles = token.ApprovedByTelegramUserId.HasValue
+                ? adminService.GetRoles(token.ApprovedByTelegramUserId.Value)
+                : new HashSet<AdminRole>();
 
             return Results.Ok(new
             {
@@ -68,6 +70,7 @@ public static class AuthEndpoints
                 name = token.Name,
                 adminUsername = token.AdminUsername,
                 hasTelegramAvatar = token.ApprovedByTelegramUserId.HasValue,
+                roles = roles.Select(AdminRoles.DisplayName).ToList(),
                 createdAt = token.CreatedAt,
                 lastActivity = token.LastActivity
             });
@@ -102,10 +105,7 @@ public static class AuthEndpoints
 
         group.MapGet("/tokens", (TokenService tokenService, HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken currentToken)
-            {
-                return Results.Unauthorized();
-            }
+            var currentToken = context.GetAuthToken()!;
 
             // Only show tokens that belong to the current admin (or all tokens if current token has no admin association for backward compatibility)
             List<AuthToken> tokens;
@@ -139,10 +139,7 @@ public static class AuthEndpoints
             TokenService tokenService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken currentToken)
-            {
-                return Results.Unauthorized();
-            }
+            var currentToken = context.GetAuthToken()!;
 
             if (string.IsNullOrWhiteSpace(dto.Name))
             {
@@ -181,10 +178,7 @@ public static class AuthEndpoints
             TokenService tokenService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken currentToken)
-            {
-                return Results.Unauthorized();
-            }
+            var currentToken = context.GetAuthToken()!;
 
             if (id == currentToken.Id)
             {

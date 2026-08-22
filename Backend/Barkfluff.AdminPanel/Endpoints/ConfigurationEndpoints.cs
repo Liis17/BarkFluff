@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 
 using BarkFluff.Proto.Configuration;
@@ -19,12 +20,8 @@ public static class ConfigurationEndpoints
 
         // Получить все строки конфигурации
         group.MapGet("/all", async (
-            ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context) =>
+            ConfigurationApi.ConfigurationApiClient configClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await configClient.GetAllConfigurationsAsync(new GetAllConfigurationsRequest());
@@ -53,7 +50,8 @@ public static class ConfigurationEndpoints
             {
                 return Results.Problem($"Ошибка получения конфигурации: {ex.Message}");
             }
-        });
+        })
+        .RequirePermission(AdminPermissions.ConfigRead);
 
         // Обновить значение одной строки конфигурации
         group.MapPost("/update", async (
@@ -61,8 +59,7 @@ public static class ConfigurationEndpoints
             HttpContext context,
             ConfigurationValueUpdateRequest request) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken token)
-                return Results.Unauthorized();
+            var token = context.GetAuthToken()!;
 
             try
             {
@@ -89,16 +86,13 @@ public static class ConfigurationEndpoints
             {
                 return Results.Problem($"Ошибка обновления конфигурации: {ex.Message}");
             }
-        });
+        })
+        .RequirePermission(AdminPermissions.ConfigWrite);
 
         // Получить S3 конфигурацию (все бакеты)
         group.MapGet("/s3-configuration", async (
-            ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context) =>
+            ConfigurationApi.ConfigurationApiClient configClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await configClient.GetConfigurationAsync(new GetConfigurationRequest
@@ -129,7 +123,8 @@ public static class ConfigurationEndpoints
             {
                 return Results.Problem($"Ошибка получения конфигурации: {ex.Message}");
             }
-        });
+        })
+        .RequirePermission(AdminPermissions.ConfigRead);
 
         // Обновить S3 конфигурацию для конкретного бакета
         group.MapPost("/s3/update", async (
@@ -137,8 +132,7 @@ public static class ConfigurationEndpoints
             HttpContext context,
             S3BucketUpdateRequest request) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken token)
-                return Results.Unauthorized();
+            var token = context.GetAuthToken()!;
 
             try
             {
@@ -236,7 +230,8 @@ public static class ConfigurationEndpoints
             {
                 return Results.Problem($"Ошибка обновления конфигурации: {ex.Message}");
             }
-        });
+        })
+        .RequirePermission(AdminPermissions.ConfigWrite);
     }
 }
 

@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 
 using BarkFluff.Proto.Files;
@@ -12,16 +13,13 @@ public static class BadgesEndpoints
     public static void MapBadgesEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/badges")
-            .WithTags("Badges");
+            .WithTags("Badges")
+            .RequirePermission(AdminPermissions.BadgesManage);
 
         // GET /api/badges — все бейджи (включая неактивные)
         group.MapGet("/", async (
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var response = await usersClient.GetAllBadgesAsync(new GetAllBadgesRequest
             {
                 IncludeInactive = true
@@ -45,12 +43,8 @@ public static class BadgesEndpoints
         group.MapPost("/", async (
             HttpRequest request,
             UsersServerApi.UsersServerApiClient usersClient,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -116,12 +110,8 @@ public static class BadgesEndpoints
             int id,
             HttpRequest request,
             UsersServerApi.UsersServerApiClient usersClient,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             string name, description, imageUrl;
             bool isActive;
 
@@ -187,12 +177,8 @@ public static class BadgesEndpoints
         // DELETE /api/badges/{id} — удалить бейдж
         group.MapDelete("/{id:int}", async (
             int id,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var response = await usersClient.DeleteBadgeAsync(new DeleteBadgeRequest
             {
                 Id = id

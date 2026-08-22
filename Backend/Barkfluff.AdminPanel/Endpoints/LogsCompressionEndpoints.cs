@@ -1,4 +1,5 @@
 using Barkfluff.AdminPanel.Data;
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Services;
 
@@ -9,19 +10,16 @@ public static class LogsCompressionEndpoints
     public static void MapLogsCompressionEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/seq/compress-metrics")
-            .WithTags("LogsCompression");
+            .WithTags("LogsCompression")
+            .RequirePermission(AdminPermissions.SeqDelete);
 
         // POST /api/seq/compress-metrics/run?date=YYYY-MM-DD
         // Без date — берётся вчерашний день UTC.
         group.MapPost("/run", async (
-            HttpContext context,
             MetricsLogCompressorService compressor,
             string? date,
             CancellationToken ct) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             DateTime targetDay;
             if (!string.IsNullOrEmpty(date))
             {
@@ -53,13 +51,9 @@ public static class LogsCompressionEndpoints
 
         // GET /api/seq/compress-metrics/history?limit=30
         group.MapGet("/history", (
-            HttpContext context,
             MetricsCacheDbContext cache,
             int limit = 30) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var safeLimit = Math.Clamp(limit, 1, 365);
             var runs = cache.CompressionRuns
                 .FindAll()

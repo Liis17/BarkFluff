@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
@@ -16,12 +17,8 @@ public static class DockerEndpoints
 
         // Получить список всех контейнеров
         group.MapGet("/containers", async (
-            DockerService dockerService,
-            HttpContext context) =>
+            DockerService dockerService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var containers = await dockerService.GetContainersAsync();
             return Results.Ok(containers);
         })
@@ -31,12 +28,8 @@ public static class DockerEndpoints
         // Получить статус конкретного контейнера
         group.MapGet("/containers/{name}/status", async (
             DockerService dockerService,
-            HttpContext context,
             string name) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var status = await dockerService.GetContainerStatusAsync(name);
             return status != null ? Results.Ok(status) : Results.NotFound($"Контейнер {name} не найден");
         })
@@ -45,12 +38,8 @@ public static class DockerEndpoints
 
         group.MapGet("/containers/admin-panel/update-status", async (
             DockerService dockerService,
-            DockerRegistryService dockerRegistryService,
-            HttpContext context) =>
+            DockerRegistryService dockerRegistryService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var status = await dockerService.GetContainerStatusAsync("admin-panel");
             if (status is null)
                 return Results.NotFound("Контейнер admin-panel не найден");
@@ -64,100 +53,78 @@ public static class DockerEndpoints
         // Запустить контейнер
         group.MapPost("/containers/{name}/start", async (
             DockerService dockerService,
-            HttpContext context,
             string name) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.StartContainerAsync(name);
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("StartContainer")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerControl);
 
         // Остановить контейнер
         group.MapPost("/containers/{name}/stop", async (
             DockerService dockerService,
-            HttpContext context,
             string name) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.StopContainerAsync(name);
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("StopContainer")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerControl);
 
         // Перезапустить контейнер
         group.MapPost("/containers/{name}/restart", async (
             DockerService dockerService,
-            HttpContext context,
             string name) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.RestartContainerAsync(name);
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("RestartContainer")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerControl);
 
         // Обновить образ и пересоздать контейнер
         group.MapPost("/containers/{name}/pull", async (
             DockerService dockerService,
-            HttpContext context,
             string name) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.PullImageAndRecreateContainerAsync(name);
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("PullImageAndRecreateContainer")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerControl);
 
         // Перезапустить админ-панель
         group.MapPost("/containers/admin-panel/restart-own", async (
-            DockerService dockerService,
-            HttpContext context) =>
+            DockerService dockerService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.RestartAdminPanelAsync();
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("RestartAdminPanel")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerDeploy);
 
         // Обновить админ-панель
         group.MapPost("/containers/admin-panel/update-own", async (
-            DockerService dockerService,
-            HttpContext context) =>
+            DockerService dockerService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.UpdateAdminPanelAsync();
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("UpdateAdminPanel")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerDeploy);
 
         // Ветки обновлений сервисов из docker-compose.yml
         group.MapGet("/branches", async (
             DockerService dockerService,
-            ComposeImageService composeImageService,
-            HttpContext context) =>
+            ComposeImageService composeImageService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             IReadOnlyDictionary<string, ComposeImageInfo> images;
             try
             {
@@ -203,13 +170,9 @@ public static class DockerEndpoints
             DockerService dockerService,
             ComposeImageService composeImageService,
             DockerRegistryService dockerRegistryService,
-            HttpContext context,
             string name,
             ContainerBranchRequestDto request) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var branch = request.Branch?.Trim() ?? string.Empty;
             if (!ComposeImageService.IsKnownBranch(branch))
                 return Results.BadRequest(new ContainerActionResponseDto
@@ -292,34 +255,29 @@ public static class DockerEndpoints
             return Results.Ok(result);
         })
         .WithName("SetContainerBranch")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerDeploy);
 
         // Перезапустить все сервисы BarkFluff
         group.MapPost("/containers/restart-all", async (
-            DockerService dockerService,
-            HttpContext context) =>
+            DockerService dockerService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.RestartAllServicesAsync();
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("RestartAllContainers")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerDeploy);
 
         // Обновить все сервисы BarkFluff
         group.MapPost("/containers/update-all", async (
-            DockerService dockerService,
-            HttpContext context) =>
+            DockerService dockerService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var result = await dockerService.UpdateAllServicesAsync();
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
         .WithName("UpdateAllContainers")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerDeploy);
     }
 }
