@@ -17,22 +17,22 @@ public static class PlatformServiceRegistry
 {
     public static readonly IReadOnlyList<PlatformService> BarkFluff =
     [
-        new("BarkFluff.Identity",       "identity",         "IdentityService:Host",  "http://identity:7000"),
-        new("BarkFluff.Users",          "users",            "UsersService:Host",     "http://users:7001"),
-        new("BarkFluff.Messages",       "messages",         "MessagesService:Host",  "http://messages:7007"),
-        new("BarkFluff.Files",          "files",            "FilesService:Host",     "http://files:7005"),
-        new("BarkFluff.Updates",        "updates",          "UpdatesService:Host",   "http://updates:7015"),
-        new("BarkFluff.Notification",   "notification"),
-        new("BarkFluff.Beacon",         "beacon",           "BeaconService:Host",    "http://beacon:7002"),
-        new("BarkFluff.FastAuth",       "fast-auth",        "FastAuthService:Host",  "http://fast-auth:7008"),
-        new("BarkFluff.Onliner",        "onliner",          "OnlinerService:Host",   "http://onliner:7009"),
-        new("BarkFluff.Federation",     "federation"),
+        new("BarkFluff.Identity",       "identity",         "IdentityService:Host",       "http://identity:7000"),
+        new("BarkFluff.Users",          "users",            "UsersService:Host",          "http://users:7001"),
+        new("BarkFluff.Messages",       "messages",         "MessagesService:Host",        "http://messages:7007"),
+        new("BarkFluff.Files",          "files",            "FilesService:Host",           "http://files:7005"),
+        new("BarkFluff.Updates",        "updates",          "UpdatesService:Host",         "http://updates:7015"),
+        new("BarkFluff.Notification",   "notification",     "NotificationService:Host",    "http://notification:7004"),
+        new("BarkFluff.Beacon",         "beacon",           "BeaconService:Host",          "http://beacon:7002"),
+        new("BarkFluff.FastAuth",       "fast-auth",        "FastAuthService:Host",        "http://fast-auth:7008"),
+        new("BarkFluff.Onliner",        "onliner",          "OnlinerService:Host",         "http://onliner:7009"),
+        new("BarkFluff.Federation",     "federation",       "FederationService:Host",      "http://federation:7030"),
         new("BarkFluff.CloudMessaging", "cloud-messaging"),
-        new("BarkFluff.Web",            "web",              "WebService:Host",       "http://web:7016",       true),
-        new("BarkFluff.Configuration",  "configuration"),
-        new("BarkFluff.Developers",     "developers"),
-        new("BarkFluff.Calls",          "calls",            "CallsService:Host",     "http://calls:7025"),
-        new("BarkFluff.Bots",           "bots"),
+        new("BarkFluff.Web",            "web",              "WebService:Host",             "http://web:7016",       true),
+        new("BarkFluff.Configuration",  "configuration",    "ConfigurationService:Host",   "http://configuration:7003"),
+        new("BarkFluff.Developers",     "developers",       "DevelopersService:Host",      "http://developers:7020"),
+        new("BarkFluff.Calls",          "calls",            "CallsService:Host",           "http://calls:7025"),
+        new("BarkFluff.Bots",           "bots",             "BotsService:Host",            "http://bots:7027"),
     ];
 
     public static readonly IReadOnlyList<PlatformService> Infrastructure =
