@@ -27,8 +27,10 @@ import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class ChatsFragment : Fragment() {
 
     private var _binding: FragmentChatsBinding? = null
