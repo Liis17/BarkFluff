@@ -118,9 +118,10 @@
     </main>
 </div>
 
-<script src="assets/icons.js?v=2"></script>
-<script src="assets/sidebar.js?v=2"></script>
-<script src="assets/command-palette.js?v=2"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=3"></script>
+<script src="assets/sidebar.js?v=3"></script>
+<script src="assets/command-palette.js?v=3"></script>
 <script>
     let s3Config = {};
     let modifiedBuckets = new Set();
@@ -261,7 +262,7 @@
         const saveBtn = card.querySelector('[data-save-area] button');
         if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span> Сохранение...'; }
         try {
-            const r = await fetch('/api/configuration/s3/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            const r = await BF.api('/api/configuration/s3/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
             if (!r.ok) throw new Error();
             modifiedBuckets.delete(bucketId);
             card.classList.remove('modified');

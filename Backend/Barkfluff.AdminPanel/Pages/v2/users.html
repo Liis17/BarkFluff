@@ -405,9 +405,10 @@
     </div>
 </div>
 
-<script src="assets/icons.js?v=2"></script>
-<script src="assets/sidebar.js?v=2"></script>
-<script src="assets/command-palette.js?v=2"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=3"></script>
+<script src="assets/sidebar.js?v=3"></script>
+<script src="assets/command-palette.js?v=3"></script>
 <script>
     let users = [];
     let totalCount = 0;
@@ -571,7 +572,7 @@
             <button id="sessionsToggle" type="button" class="md-btn md-btn-text sessions-toggle" onclick="toggleSessions(${p.id})"></button>
         </section>
 
-        <section class="user-modal-section">
+        <section class="user-modal-section" id="tfa-section">
             <h4>Двухфакторная аутентификация</h4>
             ${data.twoFactor ? `
                 <div class="tfa-row">
@@ -579,14 +580,14 @@
                         <div style="font-weight:500;">Authenticator</div>
                         <div style="font-size:12px;color:${data.twoFactor.authenticatorEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.authenticatorEnabled ? 'Включён' : 'Выключен'}</div>
                     </div>
-                    <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 1)" ${!data.twoFactor.authenticatorEnabled ? 'disabled' : ''}>Отключить</button>
+                    <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 1)" ${!data.twoFactor.authenticatorEnabled ? 'disabled' : ''}>Отключить</button>
                 </div>
                 <div class="tfa-row">
                     <div>
                         <div style="font-weight:500;">Email</div>
                         <div style="font-size:12px;color:${data.twoFactor.emailEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.emailEnabled ? 'Включён' : 'Выключен'}</div>
                     </div>
-                    <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
+                    <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
                 </div>
             ` : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные недоступны</div>'}
         </section>
@@ -603,6 +604,9 @@
         if (data.storage) html += renderStorageSection(data.storage, p);
 
         document.getElementById('modalContent').innerHTML = html;
+        if (window.BF && !BF.hasRole('SecurityAdmin')) {
+            document.querySelectorAll('.tfa-disable-btn').forEach(b => b.style.display = 'none');
+        }
         renderSessionList(p.id, data.sessions || []);
     }
 
@@ -842,7 +846,7 @@
     window.disableOtp = async function (uid, otpType) {
         const name = otpType === 1 ? 'Authenticator' : 'Email';
         if (!confirm(`Отключить ${name} 2FA?`)) return;
-        try { await fetch(`/api/users/${uid}/2fa/disable`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otpType}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/2fa/disable`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otpType}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
     };
     window.updateStorageLimit = async function (uid) {
         const v = parseInt(document.getElementById('storageLimitSlider').value);
@@ -860,7 +864,7 @@
         const p = input.value.trim();
         if (!p || p.length < 6) { alert('Пароль должен быть не менее 6 символов'); return; }
         if (!confirm('Сменить пароль пользователю?')) return;
-        try { await fetch(`/api/users/${uid}/password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({newPassword:p}) }); input.value = ''; alert('Пароль изменён'); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({newPassword:p}) }); input.value = ''; alert('Пароль изменён'); } catch (e) { alert(e.message); }
     };
     window.handleAvatarUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;

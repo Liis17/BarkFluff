@@ -119,9 +119,10 @@
     </main>
 </div>
 
-<script src="assets/icons.js?v=2"></script>
-<script src="assets/sidebar.js?v=2"></script>
-<script src="assets/command-palette.js?v=2"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=3"></script>
+<script src="assets/sidebar.js?v=3"></script>
+<script src="assets/command-palette.js?v=3"></script>
 <script>
     let allItems = [];               // все строки из /api/configuration/all
     const openGroups = new Set();    // раскрытые сервисы
@@ -303,7 +304,7 @@
 
         input.disabled = true;
         try {
-            const r = await fetch('/api/configuration/update', {
+            const r = await BF.api('/api/configuration/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
