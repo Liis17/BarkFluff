@@ -1,0 +1,35 @@
+services:
+  web:
+    # Тот же образ, что и на ноде: вся статика wwwroot идентична ноде,
+    # изменения веб-клиента приезжают вместе с новым образом.
+    image: ${WEB_IMAGE:-docker.barkfluff.com/barkfluff-web:latest}
+    container_name: web-proxy
+    restart: always
+    env_file:
+      - .env
+    environment:
+      Web__Mode: Proxy
+      Web__Proxy__Target: ${WEB_PROXY_TARGET}
+      Web__Proxy__MediaHosts: ${WEB_PROXY_MEDIA_HOSTS}
+    networks:
+      - proxy-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites:/etc/nginx/conf.d:ro
+      - ./certs:/etc/nginx/certs:ro
+    restart: always
+    depends_on:
+      - web
+    networks:
+      - proxy-network
+
+networks:
+  proxy-network:
+    name: barkfluff-proxy-network

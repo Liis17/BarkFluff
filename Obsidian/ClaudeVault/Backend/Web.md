@@ -23,17 +23,21 @@ docker-compose -f docker-compose-dev.yml up web
 |---|---|---|
 | `Node` (по умолчанию) | внутри стека ноды | статика + все кластеры сервисов + Beacon + Navigator + `/api/files/upload` |
 | `Shell` | отдельный стек `docker/webshell`, домен `web.barkfluff.com` | только статика и прокси `NavigatorApi` |
+| `Proxy` | отдельный стек `docker/proxy`, доступный из РФ хост | статика + pass-through всего трафика на Web-шлюз ноды за Cloudflare + media-relay (см. [[#Режим Proxy (зеркало ноды для РФ)]]) |
 
 `Web:Mode` читается **до** `LoadConfiguration` (env-переменные `CreateBuilder` подхватывает
-сам), и в `Shell` этот вызов пропускается: рядом с шеллом нет Configuration-сервиса, а
-`LoadConfiguration` падает без ретраев. Тот же осознанный выход из платформенного шаблона,
+сам); в `Shell` и `Proxy` этот вызов пропускается: рядом с ними нет Configuration-сервиса,
+а `LoadConfiguration` падает без ретраев. Тот же осознанный выход из платформенного шаблона,
 что у [[Backend/Navigator]]. Serilog (durable Seq-буфер на диске) и метрики недоступный Seq
 переживают, их отключать не нужно.
 
 Эндпоинт `/node-config.js` (`Cache-Control: no-store`) отдаёт клиенту режим:
-`self.BF_NODE_CONFIG = {"pinned":true,"navigatorProxy":false}` у ноды и
-`{"pinned":false,"navigatorProxy":true}` у шелла. По `pinned` [[Клиенты/Web]] решает,
-показывать ли выбор сервера.
+`self.BF_NODE_CONFIG = {"pinned":true,"navigatorProxy":false,"proxied":false}` у ноды,
+`{"pinned":false,"navigatorProxy":true,"proxied":false}` у шелла и
+`{"pinned":true,"navigatorProxy":false,"proxied":true}` у прокси. По `pinned` [[Клиенты/Web]]
+решает, показывать ли выбор сервера; `proxied` включает `/media/`-обёртку файловых ссылок
+и same-origin upload. В `Proxy` `/pwa-config.js` не маппится локально — уходит на ноду,
+и service worker прокси-домена получает её Firebase-конфигурацию.
 
 ## CORS
 
@@ -336,6 +340,47 @@ YARP-маршрут `fast-auth` входит в `streamingServices` set — `Act
 имя убирается из конфига ноды. `gw.barkfluff.com` — заглушка, оператор подставляет домен
 своей ноды и указывает его же в `ExternalEndpoint:Host` сервиса Web — оттуда
 [[Backend/Beacon]] берёт `web_endpoint` для [[Backend/Navigator]].
+
+## Режим Proxy (зеркало ноды для РФ)
+
+Основной стек ноды стоит за Cloudflare и недоступен из РФ. `Web:Mode=Proxy` поднимает
+**тот же образ** `barkfluff-web` на доступном хосте как зеркало одной ноды: клиент
+(и его обновления) один, ролей у хоста — две.
+
+**Конфигурация** (env: `Web__Mode`, `Web__Proxy__Target`, `Web__Proxy__MediaHosts`):
+
+| Ключ | Значение |
+|---|---|
+| `Web:Proxy:Target` | публичный адрес Web-шлюза **ноды** (режим Node, не шелл!) — fail fast при отсутствии |
+| `Web:Proxy:MediaHosts` | allowlist файловых хостов для media-relay, через запятую; голый хост = https, можно `http://host` для стенда без TLS |
+
+**Транспорт.** В Proxy-режиме gRPC-Web↔gRPC конвертация **не выполняется**: `grpc-web-text`
+проходит насквозь (HTTP/1.1, YARP-кластер `remote` с `ActivityTimeout 24h` под долгие
+server-streaming подписки), а конвертацию делает Web-шлюз ноды — для Cloudflare это обычный
+HTTPS-запрос, неотличимый от браузерного. Host подменяется на destination (дефолт YARP),
+`Content-Length` корректен, т.к. тело не меняется.
+
+**Маршрутизация.** Один catch-all маршрут `/{**catchall}` → кластер `remote`: все gRPC-сервисы,
+`/api/files/upload/{id}`, `/ping/{service}`, `/pwa-config.js` и любые будущие эндпоинты ноды
+работают через прокси без правок кода. Литеральные эндпоинты прокси (`/health`, `/ping`,
+`/node-config.js`, `/messenger`, `/media/*`) выигрывают у catch-all по специфичности.
+
+**Media-relay.** Файловые хосты ноды (`files.barkfluff.com`, `files2...`) из РФ недоступны,
+а браузер грузит их напрямую (presigned-ссылки из `GetTempDownloadUrl` и поля
+`Chat.picture`/`User.profile_picture`/`MessageAttachment.preview_url` — последние маппятся
+через `BF.files.mediaUrl`, см. [[Клиенты/Web]]). Прокси релеит их: `GET/HEAD /media/{host}/{path}?{подпись}`
+→ `https(s)://{host}/{path}` — host обязан быть в `Web:Proxy:MediaHosts` (иначе `403`,
+чтобы не стать open proxy), query с presigned-сигнатурой сохраняется, пробрасываются
+`Range`/`If-Range` (seek в видео), ответ стримится без буферизации (`X-Accel-Buffering: no`),
+HttpClient — без таймаута (время ответа = время соединения клиента, отмена по `RequestAborted`).
+
+**Деплой** — `docker/proxy/` (compose + nginx + `sample.env`): web в Proxy-режиме + nginx
+(TLS, upload 512m, streaming 86400s, `/media/` без буферизации). Домен должен обходить
+Cloudflare (серое облако в DNS). Обновление клиента — тот же образ, что и на ноде.
+
+⚠️ **Ограничение — звонки:** сигналинг (gRPC) идёт через прокси, но WebRTC-медиа LiveKit
+подключается напрямую на `livekit_url` ноды — из РФ может не работать. FCM push в РФ и так
+недоступен.
 
 ## Зависимости
 
