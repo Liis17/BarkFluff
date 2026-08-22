@@ -1,8 +1,11 @@
 services:
   web:
     # Тот же образ, что и на ноде: вся статика wwwroot идентична ноде,
-    # изменения веб-клиента приезжают вместе с новым образом.
-    image: ${WEB_IMAGE:-docker.barkfluff.com/barkfluff-web:latest}
+    # изменения веб-клиента приезжают вместе с новым образом. Тег обязателен:
+    # stable и nightly публикуются в разные репозитории, а fallback на stable
+    # может незаметно запустить образ до режима Proxy.
+    image: ${WEB_IMAGE:?WEB_IMAGE должен указывать на образ BarkFluff.Web той же ветки, что и нода}
+    pull_policy: always
     container_name: web-proxy
     restart: always
     env_file:

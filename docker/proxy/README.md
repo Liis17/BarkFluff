@@ -20,10 +20,15 @@ Obsidian `Backend/Web.md` (режим Proxy).
 
 ```bash
 cd docker/proxy
-cp sample.env .env        # заполнить WEB_PROXY_TARGET и WEB_PROXY_MEDIA_HOSTS
+cp sample.env .env        # проверить WEB_IMAGE и заполнить target/media hosts
 mkdir certs               # положить TLS-сертификат для своего домена
 docker compose up -d
 ```
+
+`WEB_IMAGE` должен быть собран из той же ветки, что и Web-шлюз ноды:
+`barkfluff-web-nightly:latest` для nightly или `barkfluff-web:latest` для stable.
+Compose намеренно не имеет fallback на stable и всегда подтягивает указанный образ,
+чтобы прокси не запускался на старом бинарнике без режима `Proxy`.
 
 DNS домена (по умолчанию в конфиге `proxy.barkfluff.com`) направить на этот хост
 **мимо Cloudflare** (серое облако в CF), иначе теряется смысл прокси. Имя домена
