@@ -31,6 +31,34 @@ public sealed class AuthenticationViewModelTests
     }
 
     [Fact]
+    public async Task LoadFastAuthAsync_HidesLoadingIndicatorWhenQrCodeIsReady()
+    {
+        var streamGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var authentication = new FakeAuthenticationService
+        {
+            FastAuthSession = CreateFastAuthSession("session"),
+            FastAuthStreamGate = streamGate.Task
+        };
+        var viewModel = new LoginViewModel(authentication, new TestNavigationService(), new TestLocalizationService());
+        var qrReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(LoginViewModel.FastAuthQrCode))
+            {
+                qrReady.TrySetResult();
+            }
+        };
+
+        var loadTask = viewModel.LoadFastAuthAsync();
+        await qrReady.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.False(viewModel.IsFastAuthLoading);
+
+        viewModel.StopFastAuth();
+        await loadTask;
+    }
+
+    [Fact]
     public async Task LoadFastAuthAsync_MalformedQrPayload_ReportsFailureWithoutQrCode()
     {
         var authentication = new FakeAuthenticationService
@@ -121,6 +149,7 @@ public sealed class AuthenticationViewModelTests
         public PasswordResetStartResult PasswordResetStart { get; init; } = PasswordResetStartResult.Failure("Error_PasswordResetFailed");
         public int SetPasswordCalls { get; private set; }
         public int FastAuthSessionCalls { get; private set; }
+        public Task? FastAuthStreamGate { get; init; }
         public Queue<FastAuthSession?> FastAuthSessions { get; } = [];
         public Queue<IReadOnlyList<FastAuthUpdate>> FastAuthUpdateSequences { get; } = [];
 
@@ -135,6 +164,11 @@ public sealed class AuthenticationViewModelTests
 
         public async IAsyncEnumerable<FastAuthUpdate> SubscribeFastAuthAsync(FastAuthSession session, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            if (FastAuthStreamGate is not null)
+            {
+                await FastAuthStreamGate.WaitAsync(cancellationToken);
+            }
+
             var updates = FastAuthUpdateSequences.Count > 0 ? FastAuthUpdateSequences.Dequeue() : FastAuthUpdates;
             foreach (var update in updates)
             {
