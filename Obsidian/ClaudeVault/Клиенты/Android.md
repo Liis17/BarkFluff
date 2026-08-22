@@ -29,7 +29,7 @@ Package: `com.barkfluff.client`
 ## Архитектура
 
 - Activity-based + ViewModel (этапы миграции): `ChatViewModel` (сообщения/пагинация/realtime/оптимистика/закрепы/reply-edit/черновики, `StateFlow<ChatUiState>`) и `ChatsViewModel` (список чатов/папки/unread/realtime-зеркалирование) — `@HiltViewModel`. Поворот в ChatActivity залочен (portrait), VM переживaет `recreate()`; при смене chatId в `onNewIntent` выполняется `viewModelStore.clear()` перед `recreate()` — иначе ViewModelStore подсунет новому чату состояние старого. Process death: `SavedStateHandle` (pendingReply/pendingEdit) + Room-кэш + черновики
-- DI: Hilt (`AppModule`, `@HiltAndroidApp`); новые компоненты получают зависимости через конструктор/`@Inject`, legacy-касты к Application сохранены как делегаты
+- DI: Hilt (`AppModule`, `@HiltAndroidApp`); новые компоненты получают зависимости через конструктор/`@Inject`, legacy-касты к Application сохранены как делегаты. Activity и Fragment, которые получают `@HiltViewModel` через `by viewModels()`, должны быть помечены `@AndroidEntryPoint` (в частности, `MainActivity`/`ChatsFragment` и `ChatActivity`).
 - gRPC-клиенты `GrpcManager` (кроме navigator/beacon) **лениво самоподнимаются** при первом чтении свойств по адресам из `GlobalParam` (identity/users/files/messages/updates/onliner/fastAuth/calls) — процесс, поднятый FCM/виджетом, больше не ловит «клиент не создан»; после `shutdown()` ленивый подъём отключён
 - Локальное хранилище: SharedPreferences + EncryptedSharedPreferences для токенов
 - Навигация: Welcome → SelectServer → Login → Chats
