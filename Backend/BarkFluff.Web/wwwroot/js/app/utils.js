@@ -573,6 +573,9 @@
         overlayStack.push(entry);
         overlayEl.setAttribute('role', opts.role || 'dialog');
         overlayEl.setAttribute('aria-modal', 'true');
+        // A hidden overlay may have been inerted by the overlay below it.
+        // It must be made interactive before becoming the new topmost overlay.
+        overlayEl.inert = false;
         overlayEl.classList.add('visible');
         if (!trapInstalled) {
             document.addEventListener('keydown', trapKeydown, true);
