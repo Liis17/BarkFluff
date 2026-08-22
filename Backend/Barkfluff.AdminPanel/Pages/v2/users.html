@@ -510,6 +510,7 @@
 
     function renderUserModal(data) {
         const p = data.profile;
+        const canChangePassword = !window.BF || BF.can('users.password.set');
         document.getElementById('modalUserTitle').textContent = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь';
 
         let html = `
@@ -594,6 +595,7 @@
             ` : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные недоступны</div>'}
         </section>
 
+        ${canChangePassword ? `
         <section class="user-modal-section">
             <h4>Смена пароля</h4>
             <div style="display:flex;gap:8px;align-items:center;">
@@ -601,7 +603,7 @@
                 <button class="md-btn md-btn-square-press" style="background:var(--md-tertiary);color:var(--md-on-tertiary);" onclick="changeUserPassword(${p.id})">Применить</button>
             </div>
             <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Пользователь получит email об изменении пароля.</p>
-        </section>`;
+        </section>` : ''}`;
 
         if (data.storage) html += renderStorageSection(data.storage, p);
 
