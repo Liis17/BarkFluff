@@ -67,6 +67,7 @@ public class Program
         builder.Services.AddSingleton<PendingAuthService>();
         builder.Services.AddSingleton<TokenService>();
         builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton<AdminService>();
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
@@ -212,6 +213,9 @@ public class Program
             });
 
         var app = builder.Build();
+
+        // Bootstrap admin role records from Telegram:Admins (idempotent)
+        app.Services.GetRequiredService<AdminService>().EnsureBootstrapped();
 
         // Configure the pipeline
         app.UseForwardedHeaders();
