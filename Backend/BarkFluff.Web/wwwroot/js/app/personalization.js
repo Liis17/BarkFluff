@@ -32,6 +32,16 @@
     var activeChatId = '';
     var activeBackgroundFileId = '';
     var resolveVersion = 0;
+    var lastResolvedAt = 0;
+
+    /**
+     * Temp-ссылки сервера живут ограниченное время, поэтому URL фона нельзя
+     * резолвить один раз: в долго открытой вкладке ссылка протухнет, браузер
+     * пере-запросит картинку и получит 404 — фон пропадёт. Пере-резолвим
+     * не чаще, чем раз в столько миллисекунд (совпадает с TTL кеша BF.files,
+     * поэтому getFileUrls вернёт свежую ссылку).
+     */
+    var BG_URL_REFRESH_MS = 30 * 60 * 1000;
 
     function readInt(key, def) {
         var v = localStorage.getItem(key);
@@ -82,12 +92,14 @@
             return Promise.resolve('');
         }
         return BF.files.getFileUrls([fileId]).then(function (urls) {
+            lastResolvedAt = Date.now();
             if (version !== resolveVersion) return '';
             var u = urls && urls[0];
             resolvedBgUrl = u ? (u.url || u.previewUrl || '') : '';
             applyAll();
             return resolvedBgUrl;
         }).catch(function () {
+            lastResolvedAt = Date.now();
             if (version !== resolveVersion) return '';
             resolvedBgUrl = '';
             applyAll();
@@ -95,9 +107,22 @@
         });
     }
 
+    /** Пере-резолвить активный фон, если его URL мог протухнуть. */
+    function refreshActiveBackgroundIfStale() {
+        if (!activeBackgroundFileId) return;
+        if (Date.now() - lastResolvedAt < BG_URL_REFRESH_MS) return;
+        resolveBgUrl(activeBackgroundFileId);
+    }
+
     function init() {
         // Background choice is server-owned; deliberately ignore the legacy local key.
         applyAll();
+        // Периодический и «по пробуждении вкладки» пере-резолв фона: temp-ссылки
+        // протухают, а CSS-фон не умеет сообщать об ошибке загрузки.
+        setInterval(refreshActiveBackgroundIfStale, 60 * 1000);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') refreshActiveBackgroundIfStale();
+        });
         return reloadSettings();
     }
 
