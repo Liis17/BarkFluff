@@ -32,8 +32,14 @@
         if (coverSticker) {
             var coverImg = document.createElement('img');
             coverImg.alt = '';
-            BF.files.bindResilientMedia(coverImg, coverSticker.fileId, false);
+            var coverFileId = coverSticker.previewFileId || coverSticker.fileId;
+            BF.files.bindResilientMedia(coverImg, coverFileId, true);
             cover.replaceChildren(coverImg);
+            BF.files.getFileUrls([coverFileId]).then(function () {
+                var fd = BF.files.getCachedFileUrl(coverFileId);
+                var url = fd && (fd.previewUrl || fd.url);
+                if (url) coverImg.src = url;
+            });
         } else {
             cover.textContent = (pack.name || '?')[0].toUpperCase();
         }
