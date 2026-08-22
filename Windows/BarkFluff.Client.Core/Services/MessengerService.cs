@@ -74,6 +74,9 @@ public sealed class MessengerService : IMessengerService
     public Task<(ErrorReturner Error, UserData? Data)> GetUserDataAsync(long userId, CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.GetUserData(parameters, userId));
 
+    public Task<(ErrorReturner error, List<UserData>? users)> SearchUsersAsync(string query, CancellationToken cancellationToken = default) =>
+        WithParametersAsync(parameters => _webApi.SearchUser(parameters, query));
+
     public async Task<string> ResolveFileUrlAsync(string fileId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(fileId) || _session.CurrentConnection?.ConnectionParameters is not { } parameters)
