@@ -87,7 +87,8 @@ public static class ConfigurationEndpoints
                 return Results.Problem($"Ошибка обновления конфигурации: {ex.Message}");
             }
         })
-        .RequirePermission(AdminPermissions.ConfigWrite);
+        .RequirePermission(AdminPermissions.ConfigWrite)
+        .RequireStepUp(StepUpActions.ConfigUpdate);
 
         // Получить S3 конфигурацию (все бакеты)
         group.MapGet("/s3-configuration", async (
@@ -231,7 +232,8 @@ public static class ConfigurationEndpoints
                 return Results.Problem($"Ошибка обновления конфигурации: {ex.Message}");
             }
         })
-        .RequirePermission(AdminPermissions.ConfigWrite);
+        .RequirePermission(AdminPermissions.ConfigWrite)
+        .RequireStepUp(StepUpActions.S3ConfigUpdate);
     }
 }
 

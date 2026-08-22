@@ -118,7 +118,8 @@ public static class FederationEndpoints
                 return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
             }
         })
-        .WithName("UpsertManualPeer");
+        .WithName("UpsertManualPeer")
+        .RequireStepUp(StepUpActions.FederationPeerAdd);
 
         // POST /api/federation/peers/{server}/block — { "blocked": true/false }
         group.MapPost("/peers/{server}/block", async (
@@ -141,7 +142,8 @@ public static class FederationEndpoints
                 return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
             }
         })
-        .WithName("SetServerBlocked");
+        .WithName("SetServerBlocked")
+        .RequireStepUp(StepUpActions.FederationPeerBlock, context => $"server={context.Request.RouteValues["server"]}");
 
         // POST /api/federation/keys/rotate
         group.MapPost("/keys/rotate", async (
@@ -163,7 +165,8 @@ public static class FederationEndpoints
                 return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
             }
         })
-        .WithName("RotateSigningKey");
+        .WithName("RotateSigningKey")
+        .RequireStepUp(StepUpActions.FederationKeysRotate);
     }
 
     private static object MapSigningKey(SigningKey key) => new

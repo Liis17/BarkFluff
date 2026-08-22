@@ -27,7 +27,8 @@ public static class LogsClearEndpoints
             return Results.Ok(new { jobId });
         })
         .WithName("StartLogsClear")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequireStepUp(StepUpActions.SeqClear);
 
         // GET /api/seq/clear/{jobId}/status
         group.MapGet("/{jobId:guid}/status", (

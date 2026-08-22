@@ -13,12 +13,13 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Barkfluff.AdminPanel.Services;
 
-public class TelegramBotService : IHostedService
+public class TelegramBotService : IHostedService, IStepUpSender
 {
     private readonly ITelegramBotClient _botClient;
     private readonly IOptions<TelegramSettings> _settings;
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
+    private readonly StepUpService _stepUpService;
     private readonly IOptions<AuthSettings> _authSettings;
     private readonly ILogger<TelegramBotService> _logger;
     private readonly CancellationTokenSource _cts = new();
@@ -27,12 +28,14 @@ public class TelegramBotService : IHostedService
         IOptions<TelegramSettings> settings,
         PendingAuthService pendingAuthService,
         TokenService tokenService,
+        StepUpService stepUpService,
         IOptions<AuthSettings> authSettings,
         ILogger<TelegramBotService> logger)
     {
         _settings = settings;
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
+        _stepUpService = stepUpService;
         _authSettings = authSettings;
         _logger = logger;
 
@@ -110,6 +113,7 @@ public class TelegramBotService : IHostedService
             _settings,
             _pendingAuthService,
             _tokenService,
+            _stepUpService,
             _authSettings,
             _logger);
 
@@ -323,6 +327,56 @@ public class TelegramBotService : IHostedService
             _logger.LogError(ex, "Failed to send auth request to admin {AdminId}", targetUserId);
         }
     }
+
+    public async Task SendStepUpRequestAsync(PendingStepUp request)
+    {
+        var title = WebUtility.HtmlEncode(StepUpActions.Title(request.ActionKey));
+        var session = WebUtility.HtmlEncode(request.SessionName ?? "сессия");
+        var ipAddress = WebUtility.HtmlEncode(request.IpAddress ?? "неизвестен");
+        var time = request.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+
+        var message = $"🔑 <b>Подтверждение действия</b>\n" +
+                      $"\n" +
+                      $"⚡ {title}\n" +
+                      $"🖥 Сессия: {session}\n" +
+                      $"🌐 IP: {ipAddress}\n" +
+                      $"🕐 Время: {time} UTC\n" +
+                      $"\n" +
+                      $"Подтверждение действует {StepUpService.ApprovalValidFor.TotalMinutes:0} минут после одобрения.";
+
+        var keyboard = new InlineKeyboardMarkup(new[]
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("✅ Подтвердить", $"stepup:{request.ConfirmationId}:approve"),
+                InlineKeyboardButton.WithCallbackData("❌ Отклонить", $"stepup:{request.ConfirmationId}:reject")
+            }
+        });
+
+        try
+        {
+            var msg = await _botClient.SendMessage(
+                request.TargetTelegramUserId,
+                message,
+                parseMode: ParseMode.Html,
+                replyMarkup: keyboard);
+
+            _stepUpService.SetTelegramMessageId(request.ConfirmationId, msg.MessageId);
+            _logger.LogInformation("Step-up request {ActionKey} sent to admin {AdminId}", request.ActionKey, request.TargetTelegramUserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send step-up request to admin {AdminId}", request.TargetTelegramUserId);
+        }
+    }
+}
+
+/// <summary>
+/// Narrow abstraction over the Telegram sender so step-up endpoints stay testable.
+/// </summary>
+public interface IStepUpSender
+{
+    Task SendStepUpRequestAsync(PendingStepUp request);
 }
 
 // Update Handler class
@@ -332,6 +386,7 @@ public class UpdateHandler : IUpdateHandler
     private readonly IOptions<TelegramSettings> _settings;
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
+    private readonly StepUpService _stepUpService;
     private readonly IOptions<AuthSettings> _authSettings;
     private readonly ILogger _logger;
 
@@ -340,6 +395,7 @@ public class UpdateHandler : IUpdateHandler
         IOptions<TelegramSettings> settings,
         PendingAuthService pendingAuthService,
         TokenService tokenService,
+        StepUpService stepUpService,
         IOptions<AuthSettings> authSettings,
         ILogger logger)
     {
@@ -347,6 +403,7 @@ public class UpdateHandler : IUpdateHandler
         _settings = settings;
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
+        _stepUpService = stepUpService;
         _authSettings = authSettings;
         _logger = logger;
     }
@@ -478,6 +535,12 @@ public class UpdateHandler : IUpdateHandler
                     cancellationToken: cancellationToken);
             }
 
+            return;
+        }
+
+        if (parts.Length >= 3 && parts[0] == "stepup")
+        {
+            await HandleStepUpCallbackAsync(botClient, callbackQuery, userId, parts[1], parts[2], cancellationToken);
             return;
         }
 
@@ -632,6 +695,71 @@ public class UpdateHandler : IUpdateHandler
                     cancellationToken: cancellationToken);
                 break;
         }
+    }
+
+    private async Task HandleStepUpCallbackAsync(
+        ITelegramBotClient botClient,
+        CallbackQuery callbackQuery,
+        long userId,
+        string confirmationId,
+        string action,
+        CancellationToken cancellationToken)
+    {
+        var request = _stepUpService.GetRequest(confirmationId);
+        if (request == null || request.Status != StepUpStatus.Pending)
+        {
+            await botClient.AnswerCallbackQuery(
+                callbackQuery.Id,
+                "Подтверждение устарело или уже обработано.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (request.TargetTelegramUserId != userId)
+        {
+            await botClient.AnswerCallbackQuery(
+                callbackQuery.Id,
+                "Это подтверждение адресовано другому администратору.",
+                showAlert: true,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        var approved = action == "approve";
+        var resolved = _stepUpService.Resolve(confirmationId, approved ? StepUpStatus.Approved : StepUpStatus.Rejected, userId);
+        if (!resolved)
+        {
+            await botClient.AnswerCallbackQuery(
+                callbackQuery.Id,
+                "Подтверждение устарело или уже обработано.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        var title = WebUtility.HtmlEncode(StepUpActions.Title(request.ActionKey));
+        var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+        var resultMsg = approved
+            ? $"✅ <b>Действие подтверждено</b>\n\n⚡ {title}\n🕐 {time} UTC"
+            : $"❌ <b>Действие отклонено</b>\n\n⚡ {title}\n🕐 {time} UTC";
+
+        try
+        {
+            await botClient.EditMessageText(
+                callbackQuery.Message!.Chat.Id,
+                callbackQuery.Message.MessageId,
+                resultMsg,
+                parseMode: ParseMode.Html,
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not edit step-up message for admin {AdminId}", userId);
+        }
+
+        await botClient.AnswerCallbackQuery(
+            callbackQuery.Id,
+            approved ? "Подтверждено!" : "Отклонено.",
+            cancellationToken: cancellationToken);
     }
 
     private async Task HandleSessionCallbackAsync(

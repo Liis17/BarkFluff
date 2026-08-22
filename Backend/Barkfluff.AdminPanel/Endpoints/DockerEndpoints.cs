@@ -107,7 +107,8 @@ public static class DockerEndpoints
         })
         .WithName("RestartAdminPanel")
         .WithOpenApi()
-        .RequirePermission(AdminPermissions.DockerDeploy);
+        .RequirePermission(AdminPermissions.DockerDeploy)
+        .RequireStepUp(StepUpActions.DockerAdminPanelRestart);
 
         // Обновить админ-панель
         group.MapPost("/containers/admin-panel/update-own", async (
@@ -118,7 +119,8 @@ public static class DockerEndpoints
         })
         .WithName("UpdateAdminPanel")
         .WithOpenApi()
-        .RequirePermission(AdminPermissions.DockerDeploy);
+        .RequirePermission(AdminPermissions.DockerDeploy)
+        .RequireStepUp(StepUpActions.DockerAdminPanelUpdate);
 
         // Ветки обновлений сервисов из docker-compose.yml
         group.MapGet("/branches", async (
@@ -256,7 +258,8 @@ public static class DockerEndpoints
         })
         .WithName("SetContainerBranch")
         .WithOpenApi()
-        .RequirePermission(AdminPermissions.DockerDeploy);
+        .RequirePermission(AdminPermissions.DockerDeploy)
+        .RequireStepUp(StepUpActions.DockerBranch, context => $"container={context.Request.RouteValues["name"]}");
 
         // Перезапустить все сервисы BarkFluff
         group.MapPost("/containers/restart-all", async (
@@ -267,7 +270,8 @@ public static class DockerEndpoints
         })
         .WithName("RestartAllContainers")
         .WithOpenApi()
-        .RequirePermission(AdminPermissions.DockerDeploy);
+        .RequirePermission(AdminPermissions.DockerDeploy)
+        .RequireStepUp(StepUpActions.DockerRestartAll);
 
         // Обновить все сервисы BarkFluff
         group.MapPost("/containers/update-all", async (
@@ -278,6 +282,7 @@ public static class DockerEndpoints
         })
         .WithName("UpdateAllContainers")
         .WithOpenApi()
-        .RequirePermission(AdminPermissions.DockerDeploy);
+        .RequirePermission(AdminPermissions.DockerDeploy)
+        .RequireStepUp(StepUpActions.DockerUpdateAll);
     }
 }
