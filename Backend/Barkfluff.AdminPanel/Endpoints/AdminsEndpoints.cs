@@ -40,7 +40,8 @@ public static class AdminsEndpoints
             AuditService auditService) =>
         {
             var roles = AdminRoles.ParseNames(request.Roles ?? Array.Empty<string>());
-            var updatedBy = context.GetAuthToken()!.AdminUsername ?? "unknown";
+            var actor = context.GetAuthToken()!;
+            var updatedBy = actor.AdminUsername ?? "unknown";
             var previousRoles = adminService.GetRecord(telegramUserId)?.RoleSet.Select(AdminRoles.DisplayName).ToList() ?? new List<string>();
 
             if (!adminService.UpdateRoles(telegramUserId, roles, updatedBy))
@@ -51,7 +52,7 @@ public static class AdminsEndpoints
             auditService.Log(new AuditLogEntry
             {
                 AdminUsername = updatedBy,
-                TelegramUserId = telegramUserId,
+                TelegramUserId = actor.ApprovedByTelegramUserId,
                 Action = "admins.roles.update",
                 Details = $"{record.Username}: [{string.Join(", ", previousRoles)}] → [{string.Join(", ", record.RoleSet.Select(AdminRoles.DisplayName))}]",
                 IpAddress = context.Connection.RemoteIpAddress?.ToString(),
