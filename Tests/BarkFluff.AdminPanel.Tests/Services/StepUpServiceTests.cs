@@ -107,6 +107,52 @@ public class StepUpServiceTests
     }
 
     [Fact]
+    public void Resolve_ExpiredPendingRequest_Fails()
+    {
+        var service = new StepUpService();
+        var request = new PendingStepUp
+        {
+            ActionKey = Action,
+            Params = Params,
+            TokenId = TokenId,
+            TargetTelegramUserId = 100,
+            CreatedAt = DateTime.UtcNow - StepUpService.PendingTimeout - TimeSpan.FromSeconds(1)
+        };
+        service.CreateRequest(request);
+
+        Assert.False(service.Resolve(request.ConfirmationId, StepUpStatus.Approved, 100));
+        Assert.Equal(StepUpStatus.Expired, request.Status);
+    }
+
+    [Fact]
+    public void TryConsume_ExpiredApproval_Fails()
+    {
+        var service = new StepUpService();
+        var request = ApprovedRequest(service);
+        request.ResolvedAt = DateTime.UtcNow - StepUpService.ApprovalValidFor - TimeSpan.FromSeconds(1);
+
+        Assert.False(service.TryConsume(request.ConfirmationId, TokenId, Action, Params));
+        Assert.Equal(StepUpStatus.Expired, request.Status);
+    }
+
+    [Fact]
+    public void Resolve_InvalidStatus_Fails()
+    {
+        var service = new StepUpService();
+        var request = new PendingStepUp
+        {
+            ActionKey = Action,
+            Params = Params,
+            TokenId = TokenId,
+            TargetTelegramUserId = 100
+        };
+        service.CreateRequest(request);
+
+        Assert.False(service.Resolve(request.ConfirmationId, StepUpStatus.Used, 100));
+        Assert.Equal(StepUpStatus.Pending, request.Status);
+    }
+
+    [Fact]
     public void ComputeParamsHash_IsStableAndActionBound()
     {
         var hash1 = StepUpService.ComputeParamsHash(Action, Params);

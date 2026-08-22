@@ -1,5 +1,6 @@
 using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
 
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
@@ -88,7 +89,13 @@ public static class ConfigurationEndpoints
             }
         })
         .RequirePermission(AdminPermissions.ConfigWrite)
-        .RequireStepUp(StepUpActions.ConfigUpdate);
+        .RequireStepUpFromArguments(StepUpActions.ConfigUpdate, context =>
+        {
+            var request = context.Arguments.OfType<ConfigurationValueUpdateRequest>().FirstOrDefault();
+            return request is null
+                ? string.Empty
+                : $"serviceId={request.ServiceId};section={request.Section};key={request.Key};valueHash={StepUpService.ComputeParamsHash("config.value", request.Value)}";
+        });
 
         // Получить S3 конфигурацию (все бакеты)
         group.MapGet("/s3-configuration", async (
@@ -233,7 +240,17 @@ public static class ConfigurationEndpoints
             }
         })
         .RequirePermission(AdminPermissions.ConfigWrite)
-        .RequireStepUp(StepUpActions.S3ConfigUpdate);
+        .RequireStepUpFromArguments(StepUpActions.S3ConfigUpdate, context =>
+        {
+            var request = context.Arguments.OfType<S3BucketUpdateRequest>().FirstOrDefault();
+            if (request is null)
+                return string.Empty;
+
+            var values = request.Parameters
+                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => $"{pair.Key}Hash={StepUpService.ComputeParamsHash("s3.value", pair.Value)}");
+            return $"bucket={request.BucketId};{string.Join(";", values)}";
+        });
     }
 }
 

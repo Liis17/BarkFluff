@@ -7,6 +7,7 @@ namespace Barkfluff.AdminPanel.Models;
 public static class AdminPermissions
 {
     public const string UsersRead = "users.read";
+    public const string UsersSessionsRevoke = "users.sessions.revoke";
     public const string UsersPasswordSet = "users.password.set";
     public const string Users2FaDisable = "users.2fa.disable";
     public const string BadgesManage = "badges.manage";
@@ -30,6 +31,7 @@ public static class AdminPermissions
     private static readonly Dictionary<string, AdminRole[]> Matrix = new()
     {
         [UsersRead] = new[] { AdminRole.Support, AdminRole.SecurityAdmin },
+        [UsersSessionsRevoke] = new[] { AdminRole.Support, AdminRole.SecurityAdmin },
         [UsersPasswordSet] = new[] { AdminRole.Support, AdminRole.SecurityAdmin },
         [Users2FaDisable] = new[] { AdminRole.SecurityAdmin },
         [BadgesManage] = new[] { AdminRole.ContentAdmin },

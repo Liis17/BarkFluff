@@ -66,9 +66,17 @@ public static class AdminsEndpoints
             });
         })
         .WithName("UpdateAdminRoles")
-        .RequireStepUp(
+        .RequireStepUpFromArguments(
             StepUpActions.AdminsRolesUpdate,
-            context => $"target={context.Request.RouteValues["telegramUserId"]}");
+            context =>
+            {
+                var target = context.HttpContext.Request.RouteValues["telegramUserId"];
+                var request = context.Arguments.OfType<AdminRolesUpdateRequest>().FirstOrDefault();
+                var roles = request?.Roles is { } requestedRoles
+                    ? string.Join(",", requestedRoles.Order(StringComparer.OrdinalIgnoreCase))
+                    : string.Empty;
+                return $"target={target};roles={roles}";
+            });
     }
 }
 

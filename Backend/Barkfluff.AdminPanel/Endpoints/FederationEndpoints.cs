@@ -1,5 +1,6 @@
 using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
 
 using BarkFluff.Proto.Federation;
 using BarkFluff.Proto.FederationInternal;
@@ -119,7 +120,13 @@ public static class FederationEndpoints
             }
         })
         .WithName("UpsertManualPeer")
-        .RequireStepUp(StepUpActions.FederationPeerAdd);
+        .RequireStepUpFromArguments(StepUpActions.FederationPeerAdd, context =>
+        {
+            var body = context.Arguments.OfType<UpsertManualPeerRequestBody>().FirstOrDefault();
+            return body is null
+                ? string.Empty
+                : $"server={body.ServerName};endpoint={body.Endpoint};payloadHash={StepUpService.ComputeParamsHash("federation.peer", System.Text.Json.JsonSerializer.Serialize(body))}";
+        });
 
         // POST /api/federation/peers/{server}/block — { "blocked": true/false }
         group.MapPost("/peers/{server}/block", async (
@@ -143,7 +150,12 @@ public static class FederationEndpoints
             }
         })
         .WithName("SetServerBlocked")
-        .RequireStepUp(StepUpActions.FederationPeerBlock, context => $"server={context.Request.RouteValues["server"]}");
+        .RequireStepUpFromArguments(StepUpActions.FederationPeerBlock, context =>
+        {
+            var server = context.HttpContext.Request.RouteValues["server"];
+            var body = context.Arguments.OfType<SetServerBlockedRequestBody>().FirstOrDefault();
+            return $"server={server};blocked={body?.Blocked.ToString().ToLowerInvariant()}";
+        });
 
         // POST /api/federation/keys/rotate
         group.MapPost("/keys/rotate", async (

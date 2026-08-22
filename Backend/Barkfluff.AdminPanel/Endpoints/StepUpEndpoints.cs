@@ -25,6 +25,12 @@ public static class StepUpEndpoints
             if (string.IsNullOrWhiteSpace(dto.Action))
                 return Results.BadRequest(new { error = "missing_action", message = "Не указано действие" });
 
+            if (!StepUpActions.TryGetPermission(dto.Action, out var permission))
+                return Results.BadRequest(new { error = "unknown_action", message = "Неизвестное действие" });
+
+            if (!context.HasPermission(permission))
+                return Results.Forbid();
+
             var request = stepUpService.CreateRequest(new PendingStepUp
             {
                 ActionKey = dto.Action,

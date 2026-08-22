@@ -84,6 +84,12 @@ public class AdminService
         var record = _db.Admins.FindById(telegramUserId);
         var newRoles = AdminRoles.ToNames(roles);
 
+        var hasSecurityAdminAfter = newRoles.Contains(nameof(AdminRole.SecurityAdmin)) ||
+                                   GetAll().Any(r => r.TelegramUserId != telegramUserId && r.RoleSet.Contains(AdminRole.SecurityAdmin));
+
+        if (!hasSecurityAdminAfter)
+            return false;
+
         if (record == null)
         {
             record = new AdminRecord
@@ -96,11 +102,6 @@ public class AdminService
             _db.Admins.Insert(record);
             return true;
         }
-
-        var hasSecurityAdminAfter = newRoles.Contains(nameof(AdminRole.SecurityAdmin)) ||
-                                   GetAll().Any(r => r.TelegramUserId != telegramUserId && r.RoleSet.Contains(AdminRole.SecurityAdmin));
-        if (!hasSecurityAdminAfter)
-            return false;
 
         record.Roles = newRoles;
         record.UpdatedAt = DateTime.UtcNow;

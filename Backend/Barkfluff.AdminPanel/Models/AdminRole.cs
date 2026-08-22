@@ -22,7 +22,7 @@ public static class AdminRoles
     public static List<string> ToNames(IEnumerable<AdminRole> roles)
     {
         return roles
-            .Where(r => r != AdminRole.Viewer)
+            .Where(r => r != AdminRole.Viewer && Enum.IsDefined(r))
             .Distinct()
             .Select(r => r.ToString())
             .ToList();
