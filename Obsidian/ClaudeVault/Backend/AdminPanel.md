@@ -27,6 +27,10 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 `Telegram:Admins` — строка формата `"userId1:username1,userId2:username2"`.
 
+После подтверждения токен хранит только привязку к Telegram-пользователю; роли в токен не копируются. `AdminService` разрешает роли из LiteDB на каждом запросе, поэтому понижение роли действует немедленно. При первом старте каждый пользователь из `Telegram:Admins` получает полный набор `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin`; последующие запуски сохраняют роли, изменённые через `/admins`. Пользователь без записи в коллекции `admins` имеет пустое множество ролей (`Viewer` baseline).
+
+`GET /api/auth/me` возвращает текущие роли. `AdminPermissions` — единая матрица серверного доступа; endpoint filter отвечает `401` без токена и `403` при недостаточной роли. Страничные маршруты с ограничением роли редиректят на `/`.
+
 ### Telegram-бот: сессии админ-панели
 
 `/start` открывает меню с inline-кнопкой **«Мои сессии»**. Экран показывает только неистёкшие сессии текущего Telegram-админа, поддерживает пагинацию и обновление. Из карточки сессии можно увидеть имя, IP, время создания/последней активности/истечения и завершить её после отдельного подтверждения — GUID вручную вводить не требуется. Команды `/tokens`, `/kill` и `/rename` сохранены для обратной совместимости; `/sessions` — текстовый алиас интерактивного списка.
@@ -40,8 +44,12 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 ### Data Layer (LiteDB, не EF Core)
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
+- коллекция `admins` в `TokenDbContext` — Telegram ID, username, множество ролей и данные изменения
 - `MetricsCacheDbContext` — кеш метрик из Seq: `HourlyStats`, `HourlyTraffic`, `HourlyServiceMetrics`, `CompressionRuns` (история ежедневного сжатия логов-метрик) (`db/metrics_cache.db`)
 - `RemoteDockerDbContext` — удалённые SSH-серверы и отслеживаемые Docker-контейнеры (`db/remote_docker.db`)
+- `AuditDbContext` — append-only аудит критических действий (`db/audit.db`, retention 90 дней)
+
+Step-up-запросы хранятся временно в `StepUpService` (память процесса), а не в LiteDB: подтверждение одноразовое и привязано к `AuthToken.Id`.
 
 Все — Singleton. В `docker/backend/docker-compose-dev-backend.yml` каталог `/app/db` проброшен на хост как `./admindata`; файлы базы не должны добавляться в Git.
 
@@ -67,7 +75,7 @@ SSH-параметры больше не передаются через `.env` 
 
 ### Frontend
 
-Статические HTML-файлы в `Pages/` (`CopyToOutputDirectory=Always`). Шаблонизация: `{{SERVER_STARTED_AT_UTC}}` заменяется в `ServeHtmlFile()`. Маршруты страниц явно в `Program.cs`.
+Статические HTML-файлы в `Pages/` (`CopyToOutputDirectory=Always`). Шаблонизация: `{{SERVER_STARTED_AT_UTC}}` заменяется в `ServeHtmlFile()`. Маршруты страниц явно в `Program.cs`. Для актуального RBAC UI в publish входят `Pages/v2/admins.html`, `Pages/v2/audit.html`, `assets/api.js`, `assets/command-palette.js` и `assets/preview-mode.js`.
 
 ### Services
 
@@ -110,14 +118,16 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 | `users.html` | Управление пользователями (поиск, профили, 2FA, сессии) |
 | `v2/bots.html` | Управление ботами: preview в списке, профильная модалка 760px, имя/username, аватар/постер, текущий токен, перегенерация, удаление |
 | `notifications.html` | Рассылка push на Android: форма + Android-preview + send-all / send-by-deviceId |
-| `s3-storage.html` | (мёртвый, не роутится) старая плоская страница конфигурации S3 |
-| `s3-browser.html` | (мёртвый, не роутится) старый браузер S3-объектов |
+| `s3-storage.html` | Настройки S3-бакетов |
+| `s3-browser.html` | Браузер S3-объектов |
+| `admins.html` | Список администраторов и редактирование ролей (SecurityAdmin) |
+| `audit.html` | Журнал критических действий (SecurityAdmin) |
 | `Redesigned/` | (устарел, superseded) SPA-версия — index.html + app.js + screen-*.js, доступна только по `/v2/` |
 | `v2/` | **Актуальная версия** (MD3-дизайн) — многостраничная, `dashboard.html`/`services.html`/`s3-storage.html`/и т.д. |
 
 ### Актуальная версия — Pages/v2 (MD3)
 
-`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`; оставшиеся контентные иконки используют `msr`/Material Symbols). Общие навигационные и контейнерные иконки подключаются из корневого каталога `icons/` (плоская структура — все SVG в одной папке, без подпапок): пак публикуется через `/assets/icons`, а `assets/icons.js` предоставляет `bfIcon()`/`bfSetIcon()`; иконки адресуются по имени файла без папки (`bfIcon('restart')`). `assets/` (md3.css, icons.js, sidebar.js) отдаётся статикой на `/assets`. Ассеты подключаются с cache-buster `?v=` (bump при следующем изменении любого из них): панель за Cloudflare, который ставит статике `Cache-Control: max-age=14400` — без версионирования браузеры до 4 часов держат старые JS/CSS после деплоя (инцидент с «отвалившимися» иконками сайдбара 21.08.2026).
+`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/admins`, `/audit`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`; оставшиеся контентные иконки используют `msr`/Material Symbols). Общие навигационные и контейнерные иконки подключаются из корневого каталога `icons/` (плоская структура — все SVG в одной папке, без подпапок): пак публикуется через `/assets/icons`, а `assets/icons.js` предоставляет `bfIcon()`/`bfSetIcon()`; иконки адресуются по имени файла без папки (`bfIcon('restart')`). `assets/` (`md3.css`, `icons.js`, `sidebar.js`, `api.js`, `command-palette.js`) отдаётся статикой на `/assets`. `api.js` скрывает разделы по ролям и повторяет критичный запрос после step-up. Ассеты подключаются с cache-buster `?v=`: панель за Cloudflare, который ставит статике `Cache-Control: max-age=14400` — без версионирования браузеры до 4 часов держат старые JS/CSS после деплоя.
 
 В таблице **BarkFluff Server** у каждого BarkFluff-сервиса есть выпадающий список **ветки обновлений** (`master` / `nightly` / `dev`), такой же — в шапке страницы для самой админ-панели. Выбор ветки правит строку `image:` в `docker-compose.yml` папки деплоя (`ComposeImageService`) и сразу запускает pull + пересоздание контейнера, поэтому ручной `docker compose pull` из той же папки тянет те же образы. Перед записью панель проверяет, что репозиторий с таким суффиксом есть в реестре (`DockerRegistryService.RepositoryExistsAsync`); если pull не удался — правка откатывается. Для этого `docker-compose.yml` монтируется в admin-panel как `:rw` (см. `docker/{dev,master,nightly}/barkfluff/docker-compose.yml`). Если запущенный образ не совпадает с записанной в compose веткой, рядом со списком показывается бейдж «не применена». Инфраструктурные контейнеры (Seq/Redis/RabbitMQ/PostgreSQL) списка веток не имеют.
 
@@ -152,7 +162,10 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 |----------|---------|
 | Порт | 51888 |
 | Token expiration | 3 дня |
-| Pending timeout | 10 минут |
+| Auth pending timeout | 10 минут |
+| Step-up pending timeout | 5 минут |
+| Step-up approval validity | 5 минут после approve |
+| Audit retention | 90 дней |
 | Max gRPC file size | 20 МБ |
 | Metrics interval | 5 минут (пересчёт текущего/предыдущего часа + догон 72 часов) |
 | HourlyStats retention | 24 часа |
@@ -167,8 +180,26 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 Полный аудит в `SECURITY_AUDIT.md` (проект). Критические проблемы:
 - Docker socket монтируется в контейнер → полный контроль над хостом
 - Нет `HttpOnly` на cookie `auth_token`
-- Отключение 2FA пользователя без аудита
-- Нет разделения ролей
+
+Реализованные контроли AdminPanel:
+- роли `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin` разрешаются на каждый запрос; неизвестный администратор получает Viewer baseline;
+- все критичные изменения требуют step-up: запрос в Telegram, TTL 5 минут, single-use, привязка к токену, action key и hash параметров; идентификатор передаётся в `X-Confirmation-Id` (для WebSocket также query `confirmation`);
+- approve/reject, успешные и невалидные step-up, смена ролей и другие критичные действия пишутся в отдельный `db/audit.db`; просмотр доступен через `/audit` только `SecurityAdmin`;
+- `/admins` доступен `SecurityAdmin`, изменение ролей также защищено step-up; система не позволяет удалить последнего `SecurityAdmin`.
+
+### Матрица RBAC
+
+| Permission | Роли |
+|------------|------|
+| dashboard, метрики, чтение Seq, статусы сервисов, свои сессии | Viewer baseline |
+| `users.read`, `users.sessions.revoke`, `users.password.set`, `mail.manage` | Support, SecurityAdmin |
+| `users.2fa.disable` | SecurityAdmin |
+| `badges.manage`, `stickers.manage`, `bots.manage`, `reserved-names.manage`, `s3.browse`, `notifications.manage` | ContentAdmin |
+| `docker.control`, `docker.deploy`, `remote.servers`, `remote.console`, `config.write` | OperationsAdmin |
+| `config.read`, `seq.delete` | OperationsAdmin, SecurityAdmin |
+| `federation.manage`, `admins.roles`, `audit.read` | SecurityAdmin |
+
+`POST /api/stepup/request` и `GET /api/stepup/status/{id}` доступны только авторизованной сессии и только владельцу подтверждения. При отсутствии подтверждения критичный endpoint отвечает `428 Precondition Required` с `action`, `title` и параметрами для UI polling.
 
 ## Карта проекта
 
