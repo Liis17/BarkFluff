@@ -562,14 +562,23 @@
                 body: JSON.stringify({ branch })
             });
             const result = await r.json();
-            if (result.success) {
-                showNotification('success', result.message);
-                if (container === 'admin-panel') { window.location.href = '/updating'; return; }
-                setTimeout(loadServices, 2000);
-            } else {
+            if (!result.success) {
                 showNotification('error', result.message || 'Ошибка');
                 select.value = previous;
+                return;
             }
+            if (container === 'admin-panel') { window.location.href = '/updating'; return; }
+
+            showNotification('success', result.message || 'Задача в очереди');
+            const job = await waitDeployJob(result.jobId);
+            if (job.state === 'Completed') {
+                showNotification('success', `${container} переключён на ветку ${branch}`);
+            } else {
+                const failed = (job.steps || []).find(s => s.state === 'Failed');
+                showNotification('error', `Переключение не удалось: ${failed?.message || job.error || 'ошибка'}`);
+                select.value = previous;
+            }
+            loadServices();
         } catch (e) {
             showNotification('error', 'Ошибка: ' + e.message);
             select.value = previous;
@@ -608,12 +617,21 @@
         try {
             const r = await fetch(`/api/docker/containers/${container}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
             const result = await r.json();
-            if (result.success) {
-                showNotification('success', result.message);
-                setTimeout(loadServices, 2000);
-            } else {
+            if (!result.success) {
                 showNotification('error', result.message || 'Ошибка');
+                return;
             }
+
+            if (action === 'pull' && result.jobId) {
+                // Обновление ушло в очередь деплоя — ждём завершения (кнопка крутится)
+                const job = await waitDeployJob(result.jobId);
+                const failed = (job.steps || []).find(s => s.state === 'Failed');
+                if (job.state === 'Completed') showNotification('success', `${container} обновлён`);
+                else showNotification('error', `Обновление не удалось: ${failed?.message || job.error || 'ошибка'}`);
+            } else {
+                showNotification('success', result.message);
+            }
+            setTimeout(loadServices, 1000);
         } catch (e) {
             showNotification('error', 'Ошибка: ' + e.message);
         } finally {
@@ -630,7 +648,7 @@
         setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 4000);
     }
 
-    // ---- Bulk actions ----
+    // ---- Bulk actions (серверная очередь деплоя) ----
     // Bulk-действия только для микросервисов BarkFluff; инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL)
     // перезапускается вручную через per-row кнопки и в "все" не попадает.
     function updatableContainers() {
@@ -638,77 +656,123 @@
             .filter(s => s.name.startsWith('BarkFluff.') && s.updateAvailable)
             .map(s => getContainerNameFromServiceName(s.name));
     }
-    async function runBulkAction(url, confirmation, successMessage) {
-        if (!confirm(confirmation)) return;
+
+    const DEPLOY_KIND_LABELS = { Update: 'Обновление', Restart: 'Перезапуск', SwitchBranch: 'Переключение ветки' };
+
+    async function startDeployJob(url, body, title) {
         try {
-            const response = await BF.api(url, { method:'POST' });
+            const response = await BF.api(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body ? JSON.stringify(body) : undefined
+            });
             const result = await response.json().catch(() => null);
             if (!response.ok || result?.success === false)
                 throw new Error(result?.message || `HTTP ${response.status}`);
-            showNotification('success', result?.message || successMessage);
-            setTimeout(loadServices, 1500);
+            openJobModal(title, result.jobId);
         } catch (e) {
             showNotification('error', e.message || 'Операция не выполнена');
         }
     }
+
     async function restartAllServices() {
-        await runBulkAction('/api/docker/containers/restart-all', 'Перезапустить все сервисы BarkFluff?', 'Перезапуск сервисов запущен');
+        if (!confirm('Перезапустить все сервисы BarkFluff?')) return;
+        await startDeployJob('/api/docker/containers/restart-all', null, 'Перезапуск всех сервисов');
     }
     async function updateAllServices() {
-        await runBulkAction('/api/docker/containers/update-all', 'Обновить образы всех сервисов и пересоздать контейнеры?', 'Обновление сервисов запущено');
+        if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
+        await startDeployJob('/api/docker/containers/update-all', null, 'Обновление всех сервисов');
     }
     async function updateAvailableServices() {
         const containers = updatableContainers();
         if (containers.length === 0) { alert('Нет сервисов с доступными обновлениями'); return; }
         if (!confirm(`Обновить только сервисы с доступными обновлениями (${containers.length})?`)) return;
-        showProgressModal('Обновление доступных сервисов', containers, 'pull');
+        await startDeployJob('/api/docker/containers/update-many', { containers }, `Обновление доступных сервисов (${containers.length})`);
     }
 
-    function showProgressModal(title, containers, action) {
+    // ---- Отслеживание задач деплоя ----
+    let deployJobToken = 0;
+
+    async function waitDeployJob(jobId, renderModal = false) {
+        let notFoundCount = 0;
+        while (true) {
+            let job = null;
+            let notFound = false;
+            try {
+                const r = await fetch(`/api/docker/deploy/jobs/${jobId}`);
+                if (r.ok) job = await r.json();
+                else if (r.status === 404) notFound = true;
+            } catch { /* панель могла перезапуститься — продолжаем опрос */ }
+            if (job) {
+                notFoundCount = 0;
+                if (renderModal) renderJobModal(job);
+                if (job.state === 'Completed' || job.state === 'Failed') return job;
+            } else if (notFound && ++notFoundCount >= 5) {
+                // Задача исчезла (перезапуск панели очищает очередь) — не висим вечно
+                return { state: 'Failed', steps: [], error: 'Задача не найдена — панель перезапускалась' };
+            }
+            await new Promise(r => setTimeout(r, 2000));
+        }
+    }
+
+    function openJobModal(title, jobId) {
         document.getElementById('modalTitle').textContent = title;
-        document.getElementById('progressCount').textContent = `0 / ${containers.length}`;
+        document.getElementById('modalSubtitle').textContent = 'Выполняется на сервере, последовательно...';
+        document.getElementById('progressText').textContent = 'В очереди...';
+        document.getElementById('progressCount').textContent = '0 / 0';
         document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('servicesList').innerHTML = '';
         document.getElementById('modalFooter').style.display = 'none';
-        const list = document.getElementById('servicesList');
-        list.innerHTML = containers.map((c, i) => `
-            <div class="svc-row pending" data-svc="${c}">
-                ${bfIcon('pending', 'size-18')}
-                <span>${c}</span>
-            </div>
-        `).join('');
         document.getElementById('progressScrim').classList.add('open');
 
-        // sequential
-        (async () => {
-            for (let i = 0; i < containers.length; i++) {
-                const c = containers[i];
-                const row = list.querySelector(`[data-svc="${c}"]`);
-                row.classList.remove('pending');
-                row.classList.add('current');
-                bfSetIcon(row.querySelector('.bf-icon'), 'sync');
-                document.getElementById('progressText').textContent = `Обрабатываем ${c}...`;
-
-                try {
-                    const r = await fetch(`/api/docker/containers/${c}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
-                    const result = await r.json();
-                    if (!result.success) throw new Error(result.message);
-                    row.classList.remove('current');
-                    row.classList.add('completed');
-                    bfSetIcon(row.querySelector('.bf-icon'), 'check-circle');
-                } catch (e) {
-                    row.classList.remove('current');
-                    row.classList.add('error');
-                    bfSetIcon(row.querySelector('.bf-icon'), 'error');
-                }
-                document.getElementById('progressCount').textContent = `${i + 1} / ${containers.length}`;
-                document.getElementById('progressBar').style.width = (((i + 1) / containers.length) * 100) + '%';
-            }
-            document.getElementById('progressText').textContent = 'Готово';
+        const token = ++deployJobToken;
+        waitDeployJob(jobId, true).then(job => {
+            if (token !== deployJobToken) return;
+            document.getElementById('modalSubtitle').textContent = 'Завершено';
+            const failed = (job.steps || []).filter(s => s.state === 'Failed');
+            if (failed.length)
+                showNotification('error', failed.map(f => `${f.service}: ${f.message || 'ошибка'}`).join('; ').slice(0, 300));
+            else
+                showNotification('success', 'Операция завершена');
             document.getElementById('modalFooter').style.display = '';
-            setTimeout(loadServices, 1000);
-        })();
+            loadServices();
+        });
     }
-    function closeProgressModal() { document.getElementById('progressScrim').classList.remove('open'); }
+
+    function renderJobModal(job) {
+        const icons = { Pending: 'pending', InProgress: 'sync', Completed: 'check-circle', Failed: 'error' };
+        const classes = { Pending: 'pending', InProgress: 'current', Completed: 'completed', Failed: 'error' };
+        document.getElementById('servicesList').innerHTML = (job.steps || []).map(s => `
+            <div class="svc-row ${classes[s.state] || 'pending'}" title="${escapeHtml(s.message || '')}">
+                ${bfIcon(icons[s.state] || 'pending', 'size-18')}
+                <span>${escapeHtml(s.service)}${s.rolledBack ? ' — откачено' : ''}</span>
+            </div>
+        `).join('');
+        const total = (job.steps || []).length;
+        const done = (job.steps || []).filter(s => s.state === 'Completed' || s.state === 'Failed').length;
+        document.getElementById('progressCount').textContent = `${done} / ${total}`;
+        document.getElementById('progressBar').style.width = total ? `${Math.round(done / total * 100)}%` : '0%';
+        const current = (job.steps || []).find(s => s.state === 'InProgress');
+        document.getElementById('progressText').textContent = job.state === 'Queued'
+            ? 'В очереди...'
+            : current ? `Обрабатываем ${current.service}...` : (job.state === 'Running' ? 'Выполняется...' : 'Завершено');
+    }
+
+    function closeProgressModal() {
+        deployJobToken++;
+        document.getElementById('progressScrim').classList.remove('open');
+    }
+
+    // При перезагрузке страницы подхватить активную задачу деплоя
+    async function resumeActiveDeployJob() {
+        try {
+            const r = await fetch('/api/docker/deploy/jobs');
+            if (!r.ok) return;
+            const jobs = await r.json();
+            const active = jobs.find(j => j.state === 'Queued' || j.state === 'Running');
+            if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id);
+        } catch { /* ignore */ }
+    }
 
     // ---- Admin panel actions ----
     async function restartAdminPanel() {
@@ -1070,6 +1134,7 @@
         if (!auth) return;
         applyPermissions();
         await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers()]);
+        resumeActiveDeployJob();
         document.getElementById('loading-overlay').classList.add('hidden');
         setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
         refreshInterval = setInterval(() => {

@@ -171,10 +171,12 @@ public class DeployJobService : BackgroundService
 
     private async Task RunStepAsync(DeployJob job, DeployStep step, CancellationToken ct)
     {
-        // Админ-панель нельзя пересоздать из собственного процесса — обновляет себя helper-контейнер
+        // Админ-панель нельзя пересоздать из собственного процесса — ей помогает helper-контейнер
         if (string.Equals(step.Service, "admin-panel", StringComparison.OrdinalIgnoreCase))
         {
-            var result = await _docker.UpdateAdminPanelAsync();
+            var result = job.Kind == DeployJobKind.Restart
+                ? await _docker.RestartAdminPanelAsync()
+                : await _docker.UpdateAdminPanelAsync();
             if (!result.Success)
                 throw new InvalidOperationException(result.Message);
 
@@ -196,13 +198,16 @@ public class DeployJobService : BackgroundService
         }
     }
 
+    /// <summary>Имя контейнера для docker inspect/restart (compose-команды используют имя сервиса)</summary>
+    private static string ContainerOf(DeployStep step) => DockerService.ConvertServiceNameToContainerName(step.Service);
+
     private async Task RestartStepAsync(DeployStep step, CancellationToken ct)
     {
-        var result = await _docker.RestartContainerAsync(step.Service);
+        var result = await _docker.RestartContainerAsync(ContainerOf(step));
         if (!result.Success)
             throw new InvalidOperationException(result.Message);
 
-        var health = await WaitHealthyAsync(step.Service, ct);
+        var health = await WaitHealthyAsync(ContainerOf(step), ct);
         if (!health.Ok)
             throw new InvalidOperationException(health.Reason);
 
@@ -211,14 +216,16 @@ public class DeployJobService : BackgroundService
 
     private async Task UpdateStepAsync(DeployStep step, CancellationToken ct)
     {
+        var container = ContainerOf(step);
+
         // Запоминаем старый образ — он понадобится для отката, если новый окажется битым
-        var oldImageId = await _docker.GetContainerImageIdAsync(step.Service);
-        var oldReference = oldImageId is null ? null : await _docker.GetContainerImageReferenceAsync(step.Service);
+        var oldImageId = await _docker.GetContainerImageIdAsync(container);
+        var oldReference = oldImageId is null ? null : await _docker.GetContainerImageReferenceAsync(container);
 
         await _docker.ComposePullAsync(step.Service);
         await _docker.ComposeUpAsync(step.Service);
 
-        var health = await WaitHealthyAsync(step.Service, ct);
+        var health = await WaitHealthyAsync(container, ct);
         if (health.Ok)
         {
             step.Message = "Обновлён, health-check пройден";
@@ -241,6 +248,7 @@ public class DeployJobService : BackgroundService
 
     private async Task BranchStepAsync(DeployStep step, CancellationToken ct)
     {
+        var container = ContainerOf(step);
         var previousCompose = await _compose.SetBranchAsync(step.Service, step.Branch!);
 
         try
@@ -255,7 +263,7 @@ public class DeployJobService : BackgroundService
             throw;
         }
 
-        var health = await WaitHealthyAsync(step.Service, ct);
+        var health = await WaitHealthyAsync(container, ct);
         if (health.Ok)
         {
             step.Message = $"Ветка {step.Branch} применена";
