@@ -11,6 +11,7 @@
   // Mirror of the server-side AdminPermissions matrix (UI hint only).
   const PERMISSION_ROLES = {
     'users.read': ['Support', 'SecurityAdmin'],
+    'users.sessions.revoke': ['Support', 'SecurityAdmin'],
     'users.password.set': ['Support', 'SecurityAdmin'],
     'users.2fa.disable': ['SecurityAdmin'],
     'badges.manage': ['ContentAdmin'],
@@ -38,7 +39,7 @@
 
   BF.can = function (permission) {
     const allowed = PERMISSION_ROLES[permission];
-    if (!allowed) return true;
+    if (!allowed) return false;
     return allowed.some(function (r) { return BF.roles.indexOf(r) !== -1; });
   };
 
@@ -61,20 +62,17 @@
   function closeModal() {
     if (activeModal) {
       activeModal.element.remove();
+      activeModal.style.remove();
       activeModal = null;
     }
   }
 
   function showStepUpModal(title) {
-    return new Promise(function (resolve, reject) {
-      if (activeModal) {
-        reject(new Error('Уже есть ожидающее подтверждение'));
-        return;
-      }
+    if (activeModal) throw new Error('Уже есть ожидающее подтверждение');
 
-      const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
-      overlay.innerHTML = `
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    overlay.innerHTML = `
         <div style="background:var(--md-surface,#fff);border-radius:16px;max-width:420px;width:100%;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.2);font-family:inherit;">
           <div style="font-size:20px;font-weight:600;margin-bottom:8px;">Подтверждение действия</div>
           <div style="font-size:14px;color:var(--md-on-surface-variant,#5f6368);margin-bottom:20px;">
@@ -88,25 +86,17 @@
             <button type="button" class="md-btn-text bf-stepup-cancel" style="border:none;background:none;cursor:pointer;padding:8px 16px;border-radius:20px;font-size:14px;color:var(--md-primary,#8c351c);">Отменить</button>
           </div>
         </div>`;
-      overlay.querySelector('b').textContent = title;
-      document.body.appendChild(overlay);
+    overlay.querySelector('b').textContent = title;
+    document.body.appendChild(overlay);
 
-      const style = document.createElement('style');
-      style.textContent = '@keyframes bf-spin{to{transform:rotate(360deg)}}';
-      document.head.appendChild(style);
+    const style = document.createElement('style');
+    style.textContent = '@keyframes bf-spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
 
-      activeModal = {
-        element: overlay,
-        style: style,
-        resolve: resolve,
-        reject: reject
-      };
+    activeModal = { element: overlay, style: style };
 
-      overlay.querySelector('.bf-stepup-cancel').addEventListener('click', function () {
-        const m = activeModal;
-        closeModal();
-        m.reject(new Error('Подтверждение отменено'));
-      });
+    overlay.querySelector('.bf-stepup-cancel').addEventListener('click', function () {
+      closeModal();
     });
   }
 
@@ -136,15 +126,21 @@
     }
     const data = await response.json();
 
-    await showStepUpModal(data.title || 'Действие');
+    showStepUpModal(data.title || 'Действие');
     setModalStatus('Ожидание подтверждения…', true);
 
-    const deadline = Date.now() + 3 * 60 * 1000;
+    const deadline = Date.now() + 5 * 60 * 1000;
     while (Date.now() < deadline) {
       await sleep(2000);
       if (!activeModal) throw new Error('Подтверждение отменено');
 
-      const statusRes = await fetch('/api/stepup/status/' + data.confirmationId);
+      let statusRes;
+      try {
+        statusRes = await fetch('/api/stepup/status/' + data.confirmationId);
+      } catch (e) {
+        closeModal();
+        throw new Error('Не удалось проверить подтверждение');
+      }
       if (!statusRes.ok) {
         closeModal();
         throw new Error('Подтверждение истекло');

@@ -16,7 +16,8 @@
     { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications', permission: 'notifications.manage' },
     { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail',       permission: 'mail.manage' },
     { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'tune',    permission: 'config.read' },
-    { id: 's3',            href: '/s3-storage',    label: 'Хранилище S3', icon: 'cloud',   expandable: true, permission: 'config.read' },
+    { id: 's3-browser',    href: '/s3-browser',    label: 'Хранилище S3', icon: 'cloud',   expandable: true, permission: 's3.browse' },
+    { id: 's3-storage',   href: '/s3-storage',    label: 'Настройки S3', icon: 'tune',    permission: 'config.read' },
     { id: 'admins',        href: '/admins',        label: 'Админы',     icon: 'security',   permission: 'admins.roles' },
     { id: 'audit',         href: '/audit',         label: 'Аудит',      icon: 'history',    permission: 'audit.read' }
   ];
@@ -176,7 +177,7 @@
       const submenu = document.getElementById('s3-submenu');
       if (!can(item.permission)) {
         if (row) row.style.display = 'none';
-        if (item.id === 's3' && submenu) submenu.style.display = 'none';
+        if (item.expandable && submenu) submenu.style.display = 'none';
       }
     });
   }

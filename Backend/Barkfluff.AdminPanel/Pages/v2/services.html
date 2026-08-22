@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Сервисы</title>
-    <link rel="stylesheet" href="assets/md3.css?v=2">
+    <link rel="stylesheet" href="assets/md3.css?v=3">
     <style>
         .tab-bar {
             display: flex;
@@ -180,11 +180,11 @@
                 <!-- BarkFluff panel -->
                 <div id="panel-barkfluff" class="server-panel">
                     <div class="actions-row">
-                        <button onclick="restartAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.control">
+                        <button onclick="restartAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.deploy">
                             <span class="bf-icon size-18" data-bf-icon="restart"></span>
                             Перезапустить все
                         </button>
-                        <button onclick="updateAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.control">
+                        <button onclick="updateAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.deploy">
                             <span class="bf-icon size-18" data-bf-icon="download"></span>
                             Обновить все
                         </button>
@@ -328,7 +328,9 @@
         try {
             const r = await fetch('/api/auth/me');
             if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
+            const me = await r.json();
+            if (window.BF && Array.isArray(me.roles)) window.BF.roles = me.roles;
+            return me;
         } catch { window.location.href = '/'; return null; }
     }
 
@@ -631,23 +633,29 @@
     // ---- Bulk actions ----
     // Bulk-действия только для микросервисов BarkFluff; инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL)
     // перезапускается вручную через per-row кнопки и в "все" не попадает.
-    function barkfluffContainers() {
-        return servicesData
-            .filter(s => s.name.startsWith('BarkFluff.'))
-            .map(s => getContainerNameFromServiceName(s.name));
-    }
     function updatableContainers() {
         return servicesData
             .filter(s => s.name.startsWith('BarkFluff.') && s.updateAvailable)
             .map(s => getContainerNameFromServiceName(s.name));
     }
+    async function runBulkAction(url, confirmation, successMessage) {
+        if (!confirm(confirmation)) return;
+        try {
+            const response = await BF.api(url, { method:'POST' });
+            const result = await response.json().catch(() => null);
+            if (!response.ok || result?.success === false)
+                throw new Error(result?.message || `HTTP ${response.status}`);
+            showNotification('success', result?.message || successMessage);
+            setTimeout(loadServices, 1500);
+        } catch (e) {
+            showNotification('error', e.message || 'Операция не выполнена');
+        }
+    }
     async function restartAllServices() {
-        if (!confirm('Перезапустить все сервисы BarkFluff?')) return;
-        showProgressModal('Перезапуск сервисов', barkfluffContainers(), 'restart');
+        await runBulkAction('/api/docker/containers/restart-all', 'Перезапустить все сервисы BarkFluff?', 'Перезапуск сервисов запущен');
     }
     async function updateAllServices() {
-        if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
-        showProgressModal('Обновление сервисов', barkfluffContainers(), 'pull');
+        await runBulkAction('/api/docker/containers/update-all', 'Обновить образы всех сервисов и пересоздать контейнеры?', 'Обновление сервисов запущено');
     }
     async function updateAvailableServices() {
         const containers = updatableContainers();
@@ -732,6 +740,12 @@
     }
 
     async function loadRemoteServers(selectServerId = null) {
+        if (!BF.can('remote.servers')) {
+            remoteServers = [];
+            renderRemoteServers();
+            switchTab('barkfluff');
+            return;
+        }
         try {
             const response = await fetch('/api/remote/servers');
             if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -1017,9 +1031,11 @@
 
     async function deleteContainer(serverId, containerId) {
         if (!confirm('Убрать контейнер из списка панели? Сам Docker-контейнер не будет удалён.')) return;
-        const response = await fetch(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE' });
-        if (!response.ok) { showNotification('error', await responseMessage(response)); return; }
-        await loadRemoteContainers(serverId);
+        try {
+            const response = await BF.api(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE' });
+            if (!response.ok) throw new Error(await responseMessage(response));
+            await loadRemoteContainers(serverId);
+        } catch (e) { showNotification('error', e.message); }
     }
 
     function closeDialog(id) { document.getElementById(id).classList.remove('open'); }

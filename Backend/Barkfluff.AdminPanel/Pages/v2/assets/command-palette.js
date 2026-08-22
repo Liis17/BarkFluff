@@ -133,7 +133,8 @@
   // ---- Быстрые действия ----
 
   function renderActions(filter) {
-    const navItems = window.__mdNavItems || [];
+    const can = window.BF && window.BF.can ? window.BF.can : function () { return false; };
+    const navItems = (window.__mdNavItems || []).filter(it => !it.permission || can(it.permission));
     const q = filter.trim().toLowerCase();
     const filtered = q
       ? navItems.filter(it => it.label.toLowerCase().includes(q))

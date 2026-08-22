@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Логи</title>
-    <link rel="stylesheet" href="assets/md3.css?v=2">
+    <link rel="stylesheet" href="assets/md3.css?v=3">
     <style>
         .filters {
             display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
@@ -204,7 +204,7 @@
         </div>
         <div class="md-dialog-actions" id="exportActions">
             <button class="md-btn md-btn-text" onclick="closeExportModal()">Закрыть</button>
-            <button id="exportRestartBtn" class="md-btn md-btn-filled md-btn-square-press" style="display:none;" onclick="restartAfterExport()">
+            <button id="exportRestartBtn" class="md-btn md-btn-filled md-btn-square-press" data-perm="docker.deploy" style="display:none;" onclick="restartAfterExport()">
                 <span class="msr size-18">restart_alt</span> Перезапустить
             </button>
         </div>
@@ -276,7 +276,9 @@
         try {
             const r = await fetch('/api/auth/me');
             if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
+            const me = await r.json();
+            if (window.BF && Array.isArray(me.roles)) window.BF.roles = me.roles;
+            return me;
         } catch { window.location.href = '/'; return null; }
     }
 
@@ -466,7 +468,8 @@
         const running = name === 'running';
         document.getElementById('exportCloseBtn').style.display = running ? 'none' : '';
         document.getElementById('exportActions').style.display = running ? 'none' : '';
-        document.getElementById('exportRestartBtn').style.display = name === 'done' ? '' : 'none';
+        const canDeploy = window.BF && BF.can('docker.deploy');
+        document.getElementById('exportRestartBtn').style.display = name === 'done' && canDeploy ? '' : 'none';
     }
     window.openExportModal = () => { showExportState('choice'); document.getElementById('exportScrim').classList.add('open'); };
     window.closeExportModal = () => {
@@ -511,7 +514,12 @@
     }
     function showExportError(msg) { document.getElementById('exportErrorText').textContent = msg; showExportState('error'); }
     window.restartAfterExport = async function () {
-        try { await fetch('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
+        if (window.BF && !BF.can('docker.deploy')) return;
+        try {
+            const response = await BF.api('/api/docker/containers/admin-panel/restart-own', { method:'POST' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            window.location.href = '/restarting';
+        }
         catch (e) { showExportError(e.message); }
     };
 
