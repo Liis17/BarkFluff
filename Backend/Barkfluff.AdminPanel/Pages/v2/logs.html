@@ -87,7 +87,7 @@
                     <span class="msr size-18">download</span>
                     Экспорт
                 </button>
-                <button onclick="openClearModal()" class="md-btn md-btn-error-tonal md-btn-square-press" style="color:var(--md-on-error-container);background:var(--md-error-container);">
+                <button onclick="openClearModal()" class="md-btn md-btn-error-tonal md-btn-square-press" data-perm="seq.delete" style="color:var(--md-on-error-container);background:var(--md-error-container);">
                     <span class="msr size-18">delete</span>
                     Очистить
                 </button>
@@ -277,10 +277,19 @@
             const r = await fetch('/api/auth/me');
             if (!r.ok) { window.location.href = '/'; return null; }
             const me = await r.json();
-            if (window.BF && Array.isArray(me.roles)) window.BF.roles = me.roles;
+            if (window.BF && Array.isArray(me.roles)) {
+                window.BF.roles = me.roles;
+                applyPermissions();
+            }
             return me;
         } catch { window.location.href = '/'; return null; }
     }
+
+    function applyPermissions() {
+        const clearButton = document.querySelector('button[onclick="openClearModal()"]');
+        if (clearButton && window.BF) clearButton.style.display = BF.can('seq.delete') ? '' : 'none';
+    }
+    document.addEventListener('bf:roles', applyPermissions);
 
     function formatDate(s) {
         if (!s) return '—';
