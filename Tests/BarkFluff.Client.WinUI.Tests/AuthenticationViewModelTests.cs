@@ -98,7 +98,8 @@ public sealed class AuthenticationViewModelTests
         {
             RegistrationStart = RegistrationStartResult.Success("code-id")
         };
-        var viewModel = new RegistrationViewModel(authentication, new TestNavigationService(), new TestLocalizationService())
+        var navigation = new TestNavigationService();
+        var viewModel = new RegistrationViewModel(authentication, navigation, new TestLocalizationService())
         {
             FirstName = "Alice",
             Username = "alice",
@@ -115,6 +116,7 @@ public sealed class AuthenticationViewModelTests
         Assert.Equal(2, viewModel.Step);
         Assert.Equal("Registration_Success", viewModel.StatusMessage);
         Assert.Equal(1, authentication.SetPasswordCalls);
+        Assert.Equal(1, navigation.ShowMessengerCalls);
     }
 
     [Fact]
@@ -199,6 +201,8 @@ public sealed class AuthenticationViewModelTests
 
     private sealed class TestNavigationService : IOnboardingNavigationService
     {
+        public int ShowMessengerCalls { get; private set; }
+
         public object? CurrentViewModel => null;
         public event EventHandler<OnboardingNavigationEventArgs>? CurrentViewModelChanged
         {
@@ -212,6 +216,7 @@ public sealed class AuthenticationViewModelTests
         public void ShowLogin() { }
         public void ShowRegistration() { }
         public void ShowPasswordRecovery() { }
+        public void ShowMessenger() => ShowMessengerCalls++;
     }
 
     private sealed class TestLocalizationService : ILocalizationService

@@ -158,6 +158,7 @@ public sealed partial class RegistrationViewModel : ObservableObject
             }
 
             StatusMessage = _localization.GetString("Registration_Success");
+            _navigation.ShowMessenger();
         }
         catch (Exception)
         {

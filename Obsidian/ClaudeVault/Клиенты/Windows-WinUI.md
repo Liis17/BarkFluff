@@ -106,6 +106,8 @@ Beacon отдаёт `files_media_endpoint` — второй публичный o
 
 `OtpInputBehavior` переписан на `BeforeTextChanging` (отменяемый фильтр цифр), `TextChanged` + `FocusManager.TryMoveFocus` и `TextBox.Paste`. Отличие от WPF: буфер обмена в WinRT читается только асинхронно, а `Handled` обязан выставляться синхронно, поэтому штатная вставка отменяется всегда и весь разбор текста делает `PasteOtpCodeCommand`.
 
+Регистрация после успешной установки пароля сразу вызывает `IOnboardingNavigationService.ShowMessenger()`. Сервис заменяет `RegistrationViewModel` на `MessengerViewModel` и запускает `LoadAsync()`, поэтому экран пароля не остаётся доступен для повторной отправки уже установленного пароля.
+
 ## Мессенджер
 
 Две колонки: список чатов (`ListView` + `PersonPicture`, точка онлайна в углу аватара) и область чата (заголовок-кнопка → профиль собеседника, лента, композер).
