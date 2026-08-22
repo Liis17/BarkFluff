@@ -16,6 +16,12 @@ service BotsServerApi {
   // Список всех ботов
   rpc ListBots(ListBotsRequest) returns(ListBotsResponse);
 
+  // Обновить отображаемое имя и username бота.
+  rpc UpdateBotProfile(UpdateBotProfileRequest) returns(UpdateBotProfileResponse);
+
+  // Получить новый JWT с текущим token_id без ротации и отзыва действующего токена.
+  rpc GetBotToken(GetBotTokenRequest) returns(GetBotTokenResponse);
+
   // Удалить бота: строка Bots + токен + BotUpdates каскадом; в Users username освобождается,
   // аккаунт помечается удалённым. Чаты бот↔пользователь сохраняются.
   rpc DeleteBot(DeleteBotRequest) returns(DeleteBotResponse);
@@ -47,6 +53,22 @@ message BotInfo {
 
 message ListBotsResponse {
   repeated BotInfo bots = 1; // все боты
+}
+
+message UpdateBotProfileRequest {
+  int64 bot_id = 1;
+  string name = 2;
+  string username = 3;
+}
+
+message UpdateBotProfileResponse { }
+
+message GetBotTokenRequest {
+  int64 bot_id = 1;
+}
+
+message GetBotTokenResponse {
+  string token = 1;
 }
 
 message DeleteBotRequest {
