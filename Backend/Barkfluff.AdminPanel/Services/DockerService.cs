@@ -315,6 +315,15 @@ public class DockerService
     }
 
     /// <summary>
+    /// Преобразовать имя сервиса docker compose в имя контейнера (для docker inspect/restart)
+    /// </summary>
+    internal static string ConvertServiceNameToContainerName(string serviceName) => serviceName switch
+    {
+        "postgres" => "postgres_barkfluff",
+        _ => serviceName
+    };
+
+    /// <summary>
     /// Выполнить Docker команду и вернуть результат.
     /// Использует ArgumentList чтобы каждый аргумент передавался OS буквально, без shell-интерпретации.
     /// </summary>
