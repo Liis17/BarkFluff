@@ -244,7 +244,8 @@
         if (editing) {
             valueCell = `
                 <div class="value-edit-wrap">
-                    <input type="text" id="edit-input-${idx}" class="md-input-outlined" value="${escapeHtml(item.value)}"
+                    <input type="text" id="edit-input-${idx}" class="md-input-outlined" value="${escapeHtml(item.masked ? '' : item.value)}"
+                        ${item.masked ? 'placeholder="Введите новое значение (текущее скрыто)"' : ''}
                         onkeydown="onEditKey(event, ${idx})">
                 </div>
             `;
@@ -258,7 +259,7 @@
                 ? `<span class="value-text value-masked">••••••••</span>`
                 : `<span class="value-text">${escapeHtml(item.value)}</span>`;
             actionsCell = `
-                ${secret ? `<button class="md-icon-btn" title="${masked ? 'Показать' : 'Скрыть'}" onclick="toggleReveal(${idx})"><span class="msr size-20">${masked ? 'visibility' : 'visibility_off'}</span></button>` : ''}
+                ${secret && !item.masked ? `<button class="md-icon-btn" title="${masked ? 'Показать' : 'Скрыть'}" onclick="toggleReveal(${idx})"><span class="msr size-20">${masked ? 'visibility' : 'visibility_off'}</span></button>` : ''}
                 ${canWriteConfig ? `<button class="md-icon-btn" title="Изменить" onclick="startEdit(${idx})"><span class="msr size-20">edit</span></button>` : ''}
             `;
         }
@@ -310,6 +311,11 @@
         if (!input) return;
         const newValue = input.value;
 
+        if (item.masked && !newValue.trim()) {
+            alert('Текущее значение скрыто сервером. Введите новое значение или отмените редактирование.');
+            return;
+        }
+
         input.disabled = true;
         try {
             const r = await BF.api('/api/configuration/update', {
@@ -327,7 +333,7 @@
                 throw new Error(body?.message || `HTTP ${r.status}`);
             }
             const data = await r.json();
-            item.value = newValue;
+            item.value = item.masked ? '' : newValue;
             item.editedAt = new Date().toISOString();
             item.editedBy = data.editedBy || item.editedBy;
             editingIdx = null;

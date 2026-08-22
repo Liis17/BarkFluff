@@ -93,7 +93,7 @@
                 <span class="msr">info</span>
                 <div>
                     <h4>Управление конфигурацией S3 бакетов</h4>
-                    <p>Здесь отображаются все S3 бакеты и их параметры из таблицы configuration. Чувствительные данные скрыты по умолчанию. После сохранения изменений может потребоваться перезапуск сервиса Files.</p>
+                    <p>Здесь отображаются все S3 бакеты и их параметры из таблицы configuration. Ключи доступа не передаются в браузер: оставьте поле пустым, чтобы не менять значение, или введите новое для замены. После сохранения изменений может потребоваться перезапуск сервиса Files.</p>
                 </div>
             </div>
 
@@ -213,14 +213,14 @@
                         <div class="field-row">
                             <label class="label">Access Key</label>
                             <div class="password-wrap">
-                                <input type="password" value="${escapeHtml(params.accessKey || '')}" data-bucket="${bucketId}" data-key="accessKey" oninput="onFieldChange('${bucketId}')" id="access-${safeId}" class="md-input-outlined">
+                                <input type="password" value="" autocomplete="new-password" placeholder="${params.accessKeyConfigured ? `Задан (${escapeHtml(params.accessKeyMasked || 'скрыт')}) — введите новый для замены` : 'Не задан — введите ключ'}" data-bucket="${bucketId}" data-key="accessKey" oninput="onFieldChange('${bucketId}')" id="access-${safeId}" class="md-input-outlined">
                                 <button type="button" class="md-icon-btn toggle" onclick="togglePassword('access-${safeId}')"><span class="msr size-20">visibility</span></button>
                             </div>
                         </div>
                         <div class="field-row">
                             <label class="label">Secret Key</label>
                             <div class="password-wrap">
-                                <input type="password" value="${escapeHtml(params.secretKey || '')}" data-bucket="${bucketId}" data-key="secretKey" oninput="onFieldChange('${bucketId}')" id="secret-${safeId}" class="md-input-outlined">
+                                <input type="password" value="" autocomplete="new-password" placeholder="${params.secretKeyConfigured ? 'Задан — введите новый для замены' : 'Не задан — введите секретный ключ'}" data-bucket="${bucketId}" data-key="secretKey" oninput="onFieldChange('${bucketId}')" id="secret-${safeId}" class="md-input-outlined">
                                 <button type="button" class="md-icon-btn toggle" onclick="togglePassword('secret-${safeId}')"><span class="msr size-20">visibility</span></button>
                             </div>
                         </div>
@@ -266,7 +266,11 @@
         const card = document.querySelector(`[data-card="${bucketId}"]`);
         const inputs = card.querySelectorAll('input[data-key]');
         const data = { bucketId, parameters: {} };
-        inputs.forEach(i => data.parameters[i.dataset.key] = i.value);
+        inputs.forEach(i => {
+            // Секреты отправляем только если введено новое значение — пустое поле означает «не менять»
+            if ((i.dataset.key === 'accessKey' || i.dataset.key === 'secretKey') && !i.value) return;
+            data.parameters[i.dataset.key] = i.value;
+        });
 
         const saveBtn = card.querySelector('[data-save-area] button');
         if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span> Сохранение...'; }

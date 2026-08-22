@@ -27,18 +27,23 @@ public static class ConfigurationEndpoints
             {
                 var response = await configClient.GetAllConfigurationsAsync(new GetAllConfigurationsRequest());
 
-                var items = response.Configurations.Select(c => new
+                var items = response.Configurations.Select(c =>
                 {
-                    section = c.Section,
-                    key = c.Key,
-                    value = c.Value,
-                    serviceId = c.ServiceId,
-                    serviceName = Enum.IsDefined(typeof(ServiceId), c.ServiceId)
-                        ? ((ServiceId)c.ServiceId).ToString()
-                        : c.ServiceId.ToString(),
-                    editedAt = c.EditedAt?.ToDateTime().ToString("o") ?? "",
-                    editedBy = c.EditedBy,
-                    editedFrom = c.EditedFrom
+                    var masked = SensitiveConfigMasker.IsSensitive(c.Section, c.Key) && !string.IsNullOrEmpty(c.Value);
+                    return new
+                    {
+                        section = c.Section,
+                        key = c.Key,
+                        value = masked ? SensitiveConfigMasker.MaskedValue : c.Value,
+                        masked,
+                        serviceId = c.ServiceId,
+                        serviceName = Enum.IsDefined(typeof(ServiceId), c.ServiceId)
+                            ? ((ServiceId)c.ServiceId).ToString()
+                            : c.ServiceId.ToString(),
+                        editedAt = c.EditedAt?.ToDateTime().ToString("o") ?? "",
+                        editedBy = c.EditedBy,
+                        editedFrom = c.EditedFrom
+                    };
                 });
 
                 return Results.Ok(items);
@@ -61,6 +66,12 @@ public static class ConfigurationEndpoints
             ConfigurationValueUpdateRequest request) =>
         {
             var token = context.GetAuthToken()!;
+
+            if (SensitiveConfigMasker.IsSensitive(request.Section, request.Key) &&
+                string.Equals(request.Value, SensitiveConfigMasker.MaskedValue, StringComparison.Ordinal))
+            {
+                return Results.BadRequest(new { message = "Нельзя сохранить маску вместо реального значения" });
+            }
 
             try
             {
@@ -108,7 +119,7 @@ public static class ConfigurationEndpoints
                     ServiceId = (int)ServiceId.Files
                 });
 
-                // Группируем конфигурацию по бакетам
+                // Группируем конфигурацию по бакетам; секреты не возвращаем — только факт настройки и маску access key
                 var s3Config = response.Configurations
                     .Where(c => c.Section.StartsWith("S3Buckets:"))
                     .GroupBy(c => c.Section.Replace("S3Buckets:", ""))
@@ -118,8 +129,9 @@ public static class ConfigurationEndpoints
                         {
                             serviceUrl = g.FirstOrDefault(c => c.Key == "ServiceUrl")?.Value ?? "",
                             bucketName = g.FirstOrDefault(c => c.Key == "BucketName")?.Value ?? "",
-                            accessKey = g.FirstOrDefault(c => c.Key == "AccessKey")?.Value ?? "",
-                            secretKey = g.FirstOrDefault(c => c.Key == "SecretKey")?.Value ?? "",
+                            accessKeyConfigured = !string.IsNullOrEmpty(g.FirstOrDefault(c => c.Key == "AccessKey")?.Value),
+                            accessKeyMasked = SensitiveConfigMasker.MaskAccessKey(g.FirstOrDefault(c => c.Key == "AccessKey")?.Value ?? ""),
+                            secretKeyConfigured = !string.IsNullOrEmpty(g.FirstOrDefault(c => c.Key == "SecretKey")?.Value),
                             region = g.FirstOrDefault(c => c.Key == "Region")?.Value ?? "",
                             editedAt = g.MaxBy(c => c.EditedAt)?.EditedAt?.ToDateTime().ToString("o") ?? DateTime.UtcNow.ToString("o")
                         }
@@ -134,9 +146,11 @@ public static class ConfigurationEndpoints
         })
         .RequirePermission(AdminPermissions.ConfigRead);
 
-        // Обновить S3 конфигурацию для конкретного бакета
+        // Обновить S3 конфигурацию для конкретного бакета.
+        // Пустые/отсутствующие accessKey и secretKey означают «оставить текущее значение» (замена секрета — write-only).
         group.MapPost("/s3/update", async (
             ConfigurationApi.ConfigurationApiClient configClient,
+            S3BrowserService s3Browser,
             HttpContext context,
             S3BucketUpdateRequest request) =>
         {
@@ -180,7 +194,7 @@ public static class ConfigurationEndpoints
                         return Results.BadRequest(new { message = result.Message });
                 }
 
-                if (request.Parameters.TryGetValue("accessKey", out var accessKey))
+                if (request.Parameters.TryGetValue("accessKey", out var accessKey) && !string.IsNullOrWhiteSpace(accessKey))
                 {
                     var result = await configClient.UpdateConfigurationAsync(new UpdateConfigurationRequest
                     {
@@ -196,7 +210,7 @@ public static class ConfigurationEndpoints
                         return Results.BadRequest(new { message = result.Message });
                 }
 
-                if (request.Parameters.TryGetValue("secretKey", out var secretKey))
+                if (request.Parameters.TryGetValue("secretKey", out var secretKey) && !string.IsNullOrWhiteSpace(secretKey))
                 {
                     var result = await configClient.UpdateConfigurationAsync(new UpdateConfigurationRequest
                     {
@@ -227,6 +241,8 @@ public static class ConfigurationEndpoints
                     if (!result.Success)
                         return Results.BadRequest(new { message = result.Message });
                 }
+
+                s3Browser.InvalidateCache(request.BucketId);
 
                 return Results.Ok(new { message = $"Бакет {request.BucketId} успешно обновлён" });
             }

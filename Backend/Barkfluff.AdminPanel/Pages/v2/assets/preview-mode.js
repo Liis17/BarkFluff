@@ -255,15 +255,16 @@
     },
     s3Configuration() {
       const now = new Date(Date.now() - 86400000 * 3).toISOString();
+      const bucket = (name) => ({ serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: name, accessKeyConfigured: true, accessKeyMasked: 'AKI…LE', secretKeyConfigured: true, region: 'eu-central-1', editedAt: now });
       return {
-        'profile-pictures': { serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-profile-pictures', accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now },
-        'message-images':   { serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-message-images',   accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now },
-        'message-videos':   { serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-message-videos',   accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now },
-        'message-documents':{ serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-message-documents',accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now },
-        'message-audio':    { serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-message-audio',    accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now },
-        'chat-pictures':    { serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-chat-pictures',    accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now },
-        'badge-images':     { serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-badge-images',     accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now },
-        'barkfluff-uploads':{ serviceUrl: 'https://s3.eu-central-1.amazonaws.com', bucketName: 'bf-uploads',          accessKey: 'AKIAIOSFODNN7EXAMPLE', secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', editedAt: now }
+        'profile-pictures': bucket('bf-profile-pictures'),
+        'message-images':   bucket('bf-message-images'),
+        'message-videos':   bucket('bf-message-videos'),
+        'message-documents':bucket('bf-message-documents'),
+        'message-audio':    bucket('bf-message-audio'),
+        'chat-pictures':    bucket('bf-chat-pictures'),
+        'badge-images':     bucket('bf-badge-images'),
+        'barkfluff-uploads':bucket('bf-uploads')
       };
     },
     s3Browser(bucket) {
