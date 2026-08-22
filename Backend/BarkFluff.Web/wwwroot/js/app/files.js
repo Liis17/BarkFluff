@@ -11,6 +11,13 @@
     var urlCache = new Map();
 
     /**
+     * Срок жизни кэша temp-ссылок. Сервер выдаёт их на 60 минут (TempFiles:ExpiresAt),
+     * поэтому кэшируем меньше — иначе фоны/аватарки в долго открытой вкладке
+     * грузятся по протухшему URL.
+     */
+    var URL_CACHE_TTL_MS = 30 * 60 * 1000;
+
+    /**
      * Отдельный публичный адрес файлового HTTP ноды (Beacon `files_media_endpoint`):
      * загрузка и скачивание в обход CDN с его лимитом на размер файла.
      * Пусто — работаем по адресам, которые выдал сервер, как раньше.
@@ -39,8 +46,13 @@
         urlCache.set(f.fileId, {
             fileId: f.fileId,
             url: mediaUrl(f.url),
-            previewUrl: mediaUrl(f.previewUrl)
+            previewUrl: mediaUrl(f.previewUrl),
+            cachedAt: Date.now()
         });
+    }
+
+    function isCacheEntryFresh(entry) {
+        return Boolean(entry) && (Date.now() - entry.cachedAt) < URL_CACHE_TTL_MS;
     }
 
     /**
@@ -49,7 +61,11 @@
      * @returns {Promise<Object[]>} — array of {fileId, url, previewUrl}
      */
     function getFileUrls(fileIds) {
-        var missing = fileIds.filter(function (id) { return !urlCache.has(id); });
+        var missing = fileIds.filter(function (id) {
+            if (isCacheEntryFresh(urlCache.get(id))) return false;
+            urlCache.delete(id);
+            return true;
+        });
         var p = missing.length > 0
             ? BF.api.getTempDownloadUrl(missing).then(function (data) {
                 if (data && data.files) {
