@@ -15,8 +15,7 @@ public static class UsersEndpoints
     public static void MapUsersEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/users")
-            .WithTags("Users")
-            .RequirePermission(AdminPermissions.UsersRead);
+            .WithTags("Users");
 
         group.AddEndpointFilter(async (filterContext, next) =>
         {
@@ -83,7 +82,8 @@ public static class UsersEndpoints
 
             return Results.Ok(new { users, totalCount = response.TotalCount });
         })
-        .WithName("SearchUsers");
+        .WithName("SearchUsers")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // GET /api/users/{id}
         group.MapGet("/{id:long}", async (
@@ -191,7 +191,8 @@ public static class UsersEndpoints
                 })
             });
         })
-        .WithName("GetUserDetails");
+        .WithName("GetUserDetails")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // POST /api/users/{id}/badges
         group.MapPost("/{id:long}/badges", async (
@@ -265,15 +266,15 @@ public static class UsersEndpoints
                 storageLimitGb = response.User.StorageLimitGb
             });
         })
-        .WithName("UpdateStorageLimit");
+        .WithName("UpdateStorageLimit")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // POST /api/users/{id}/2fa/disable
         group.MapPost("/{id:long}/2fa/disable", async (
             long id,
-            HttpRequest request,
+            DisableOtpBody? body,
             IdentityServerApi.IdentityServerApiClient identityClient) =>
         {
-            var body = await request.ReadFromJsonAsync<DisableOtpBody>();
             if (body is null)
                 return Results.BadRequest("Invalid request body");
 
@@ -336,7 +337,8 @@ public static class UsersEndpoints
             });
         })
         .DisableAntiforgery()
-        .WithName("UploadUserAvatar");
+        .WithName("UploadUserAvatar")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // PUT /api/users/{id}/profile
         group.MapPut("/{id:long}/profile", async (
@@ -359,15 +361,15 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = true });
         })
-        .WithName("UpdateUserProfile");
+        .WithName("UpdateUserProfile")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // POST /api/users/{id}/password
         group.MapPost("/{id:long}/password", async (
             long id,
-            HttpRequest request,
+            ChangePasswordBody? body,
             IdentityServerApi.IdentityServerApiClient identityClient) =>
         {
-            var body = await request.ReadFromJsonAsync<ChangePasswordBody>();
             if (body is null || string.IsNullOrWhiteSpace(body.NewPassword))
                 return Results.BadRequest("newPassword is required");
 
@@ -433,7 +435,8 @@ public static class UsersEndpoints
             });
         })
         .DisableAntiforgery()
-        .WithName("UploadUserPoster");
+        .WithName("UploadUserPoster")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // DELETE /api/users/{id}/sessions/{deviceId}
         group.MapDelete("/{id:long}/sessions/{deviceId}", async (

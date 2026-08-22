@@ -899,7 +899,7 @@
 
     async function addDiscoveredContainer(containerName) {
         try {
-            const response = await fetch(`/api/remote/servers/${containerServerId}/containers`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({containerName}) });
+            const response = await BF.api(`/api/remote/servers/${containerServerId}/containers`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({containerName}) });
             if (!response.ok) throw new Error(await responseMessage(response));
             closeDialog('containerDialogScrim');
             showNotification('success', 'Контейнер добавлен');
