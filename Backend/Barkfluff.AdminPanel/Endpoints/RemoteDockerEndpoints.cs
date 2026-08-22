@@ -44,12 +44,14 @@ public static class RemoteDockerEndpoints
             catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
             catch (Exception ex) { return Results.BadRequest(new { message = $"Не удалось подключиться по SSH: {ex.Message}" }); }
-        });
+        })
+        .RequireStepUp(StepUpActions.RemoteServerSave, context => $"serverId={context.Request.RouteValues["serverId"]}");
 
         group.MapDelete("/servers/{serverId:guid}", (RemoteDockerService service, Guid serverId) =>
         {
             return service.DeleteServer(serverId) ? Results.NoContent() : Results.NotFound();
-        });
+        })
+        .RequireStepUp(StepUpActions.RemoteServerDelete, context => $"serverId={context.Request.RouteValues["serverId"]}");
 
         group.MapGet("/servers/{serverId:guid}/discover", async (RemoteDockerService service, Guid serverId,
             CancellationToken cancellationToken) =>
@@ -78,8 +80,9 @@ public static class RemoteDockerEndpoints
             catch (KeyNotFoundException) { return Results.NotFound(); }
             catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
-            catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
-        });
+            catch (Exception ex) { return Results.BadRequest(new { message = $"Не удалось подключиться по SSH: {ex.Message}" }); }
+        })
+        .RequireStepUp(StepUpActions.RemoteServerSave);
 
         group.MapDelete("/servers/{serverId:guid}/containers/{containerId:guid}",
             (RemoteDockerService service, Guid serverId, Guid containerId) =>
@@ -111,7 +114,8 @@ public static class RemoteDockerEndpoints
                 logger,
                 cancellationToken);
         })
-        .RequirePermission(AdminPermissions.RemoteConsole);
+        .RequirePermission(AdminPermissions.RemoteServers)
+        .RequireStepUp(StepUpActions.RemoteConsole, context => $"serverId={context.Request.RouteValues["serverId"]}");
 
         group.MapPost("/servers/{serverId:guid}/containers/{containerId:guid}/{action}", async (
             RemoteDockerService service, Guid serverId, Guid containerId, string action,

@@ -283,7 +283,8 @@ public static class UsersEndpoints
             return Results.Ok(new { success = true });
         })
         .WithName("DisableUserOtp")
-        .RequirePermission(AdminPermissions.Users2FaDisable);
+        .RequirePermission(AdminPermissions.Users2FaDisable)
+        .RequireStepUp(StepUpActions.Users2FaDisable, context => $"userId={context.Request.RouteValues["id"]}");
 
         // POST /api/users/{id}/avatar
         group.MapPost("/{id:long}/avatar", async (
@@ -374,7 +375,8 @@ public static class UsersEndpoints
             return Results.Ok(new { success = true });
         })
         .WithName("ForceChangeUserPassword")
-        .RequirePermission(AdminPermissions.UsersPasswordSet);
+        .RequirePermission(AdminPermissions.UsersPasswordSet)
+        .RequireStepUp(StepUpActions.UsersPasswordSet, context => $"userId={context.Request.RouteValues["id"]}");
 
         // POST /api/users/{id}/poster
         group.MapPost("/{id:long}/poster", async (

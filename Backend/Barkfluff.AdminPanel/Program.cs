@@ -68,6 +68,7 @@ public class Program
         builder.Services.AddSingleton<TokenService>();
         builder.Services.AddSingleton<AuthService>();
         builder.Services.AddSingleton<AdminService>();
+        builder.Services.AddSingleton<StepUpService>();
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
@@ -110,6 +111,7 @@ public class Program
 
         // Register TelegramBotService as Singleton
         builder.Services.AddSingleton<TelegramBotService>();
+        builder.Services.AddSingleton<IStepUpSender>(provider => provider.GetRequiredService<TelegramBotService>());
 
         // Also register it as Hosted Service
         builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
@@ -242,6 +244,12 @@ public class Program
 
         // Map Auth Endpoints
         app.MapAuthEndpoints();
+
+        // Map StepUp Endpoints (Telegram-подтверждение критических действий)
+        app.MapStepUpEndpoints();
+
+        // Map Admins Endpoints (управление ролями)
+        app.MapAdminsEndpoints();
 
         // Map Seq Endpoints
         app.MapSeqEndpoints();
