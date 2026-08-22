@@ -42,7 +42,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Draft-пользователи**: регистрация двухфазная — `AddDraftUser` (IsDraft=true) → `ConfirmUser` (IsDraft=false). Identity управляет процессом.
 
-**ID пользователя**: `DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()` при создании — миллисекунды снижают шанс коллизии PK при быстрой регистрации и сохраняют монотонность по времени (важно для `OrderByDescending(u => u.Id)`). Уникальность username/email гарантируется регистронезависимыми UNIQUE-индексами `LOWER("Username")` / `LOWER("Email")` + обработкой `PostgresException 23505` в `UsersStorage.CreateUser` (страховка от гонки check-then-act).
+**ID пользователя**: `DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()` при создании — миллисекунды снижают шанс коллизии PK при быстрой регистрации и сохраняют монотонность по времени (важно для `OrderByDescending(u => u.Id)`). Уникальность username/email гарантируется регистронезависимыми UNIQUE-индексами `LOWER("Username")` / `LOWER("Email")` + обработкой `PostgresException 23505` в `UsersStorage.CreateUser` и `ChangeUsername` (страховка от гонки check-then-act).
 
 **Uuid пользователя** (Фаза 0 rearch-федерации, [[Backend/Configuration#ServiceId=15]]): `Guid`, генерируется в коде (`Guid.NewGuid()`) при создании в обоих путях — `CreateUser` (draft) и `CreateBotUser`. Уникальный индекс `IX_Users_Uuid` (миграция `AddUserUuid`). У колонки есть страховочный `defaultValueSql: "gen_random_uuid()"` на уровне БД — заполнил все существующие строки при бэкфилле и подстрахует прямые INSERT в обход кода (например [[Backend/Users-Rust|Rust-порт]]). `long Id` остаётся внутренним PK, `Uuid` — будущий межсерверный идентификатор, пока без federation-логики поверх него. Отдаётся в proto `User.uuid` (поле 13, строка). Этап 0.4: `UsersApi.ResolveFederatedUser` (RPC-заглушка, реализация — Фаза 2) + `PrivacySettings.deny_federated_dm` (field 7, default false = федеративные DM разрешены) добавлены в `users_api.proto`, логики за ними пока нет.
 
@@ -94,7 +94,7 @@ FCM-привязка также хранит `UserDevice.PushPlatform` (`Android
 | `CheckExistUsername(username)`           | Проверить существование username              | **`[AllowAnonymous]`**                                               |
 | `CheckExistEmail(email)`                 | Проверить существование email                 | **`[AllowAnonymous]`**                                               |
 | `ChangeName(firstName, lastName)`        | Изменить имя и фамилию                        | Trim, RabbitMQ `UserChangedName`                                     |
-| `ChangeUsername(username)`               | Изменить username                             | Trim, RabbitMQ `UserChangedUsername`                                 |
+| `ChangeUsername(username)`               | Изменить username                             | Trim, RabbitMQ `UserChangedUsername`; конфликт уникального индекса → `UsernameExistException` |
 | `ChangeBio(bio)`                         | Изменить описание профиля                     | RabbitMQ `UserChangedBio`                                            |
 | `SearchUsers(query, pagination)`         | Поиск по имени/фамилии/username               | Trigram; макс 50; уважает `SearchVisible`                            |
 | `GetUserBadges(userId, limit)`           | Получить баджи                                | Только активные; `limit=1` для списков, `limit=3` для профиля        |
@@ -160,7 +160,7 @@ FCM-привязка также хранит `UserDevice.PushPlatform` (`Android
 | `GetDevicesWithFirebaseTokens(userIds[])` | Получить FCM-токены устройств | Для CloudMessaging/push-уведомлений |
 | `GetDevicesWithFirebaseTokensByDeviceIds(deviceIds[])` | Получить FCM-токены по списку DeviceId | Для админ-рассылки (точечной) |
 | `GetAllDevicesWithFirebaseTokens()` | Получить FCM-токены **всех** устройств с включёнными уведомлениями | Для админ-рассылки (broadcast) |
-| `UpdateProfileServer(userId, first_name, last_name, bio, username)` | Обновить профиль пользователя (service-to-service) | |
+| `UpdateProfileServer(userId, first_name, last_name, bio, username)` | Обновить профиль пользователя (service-to-service) | При конфликте username уникальный индекс возвращает `UsernameExistException` |
 | `SetProfilePosterServer(userId, poster_file_id)` | Установить (или удалить) постер профиля (service-to-service) | Пустой `poster_file_id` → удаление |
 | `GetProfilePosterServer(userId)` | Получить FileId постера профиля (service-to-service) | |
 | `CreateBotUser(username, first_name, bypass_username_rules)` | Создать бот-юзера для [[Backend/Bots]] | Сразу `IsDraft=false, IsBot=true`, без `UserContact` (nullable), Privacy по умолчанию. Идемпотентен: username занят ботом → его id + `already_existed` |
