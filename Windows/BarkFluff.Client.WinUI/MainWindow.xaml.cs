@@ -59,6 +59,7 @@ public sealed partial class MainWindow : Window
 
         // Бургер появляется только после входа: экранам онбординга он ни к чему.
         RootNavigation.IsPaneVisible = viewModel is MessengerViewModel;
+        AppTitleBar.IsPaneToggleButtonVisible = viewModel is MessengerViewModel;
         ContentFrame.Navigate(pageType, viewModel, new EntranceNavigationTransitionInfo());
         // Онбординг — линейная цепочка, «назад» в ней не нужно, а стек от неё мешал бы
         // возврату с профиля к мессенджеру.
@@ -84,16 +85,22 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnContentFrameNavigated(object sender, NavigationEventArgs eventArgs) =>
+    private void OnContentFrameNavigated(object sender, NavigationEventArgs eventArgs)
+    {
         RootNavigation.IsBackEnabled = ContentFrame.CanGoBack;
+        AppTitleBar.IsBackButtonEnabled = ContentFrame.CanGoBack;
+    }
 
-    private void OnBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs eventArgs)
+    private void OnTitleBarBackRequested(TitleBar sender, object args)
     {
         if (ContentFrame.CanGoBack)
         {
             ContentFrame.GoBack();
         }
     }
+
+    private void OnTitleBarPaneToggleRequested(TitleBar sender, object args) =>
+        RootNavigation.IsPaneOpen = !RootNavigation.IsPaneOpen;
 
     private void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs eventArgs)
     {
