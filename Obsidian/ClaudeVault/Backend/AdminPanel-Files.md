@@ -36,7 +36,7 @@
 | Файл | Эндпоинт-группа | Что делает |
 |------|----------------|-----------|
 | `AuthEndpoints.cs` | `/api/auth` | Запрос входа через Telegram, polling статуса, me, logout, управление токенами (список, rename, delete). |
-| `DockerEndpoints.cs` | `/api/docker` | Список контейнеров, start/stop/restart/pull конкретного, проверка обновления и self-restart/update AdminPanel, рестарт и обновление всей платформы. |
+| `DockerEndpoints.cs` | `/api/docker` | Список контейнеров, start/stop/restart, деплой-операции через очередь `DeployJobService` (pull, branch, restart-all, update-all, update-many + статусы задач `/deploy/jobs`), self-restart/update AdminPanel. |
 | `BadgesEndpoints.cs` | `/api/badges` | CRUD бейджей пользователей через gRPC Users + Files (загрузка изображения). |
 | `StickersEndpoints.cs` | `/api/stickers` | Управление стикерпаками: CRUD пака, CRUD стикеров, смена обложки, прокси S3. gRPC Files. |
 | `UsersEndpoints.cs` | `/api/users` | Поиск пользователей, полный профиль (параллельные gRPC-вызовы), назначение бейджей, лимит хранилища, отключение 2FA, аватар, удаление сессий. |
@@ -89,7 +89,8 @@
 | `TokenService.cs` | CRUD токенов поверх `TokenDbContext`: создание, валидация + обновление LastActivity, удаление, переименование, очистка истекших. |
 | `PendingAuthService.cs` | In-memory словарь pending-запросов. Таймер каждые 60 сек удаляет истёкшие (> `PendingRequestTimeoutMinutes`). |
 | `TelegramBotService.cs` | `IHostedService` + Singleton. Инициализирует `TelegramBotClient` (optional proxy). Отправляет запрос подтверждения с кнопками Approve/Reject. Обрабатывает callback-кнопки и команды `/start`, `/tokens`, `/kill`, `/rename`, `/pending`. |
-| `DockerService.cs` | Запускает `docker` и `docker compose` через `Process` с `ArgumentList` (защита от shell injection). Self-управление через ephemeral helper-контейнер с docker.sock. |
+| `DockerService.cs` | Запускает `docker` и `docker compose` через `Process` с `ArgumentList` (защита от shell injection). Примитивы для очереди деплоя: `ComposePullAsync`/`ComposeUpAsync`/`PruneImagesAsync`, health-inspect, image ID/reference, `TagImageAsync` (retag при откате). Self-управление через ephemeral helper-контейнер с docker.sock. |
+| `DeployJobService.cs` | Singleton + HostedService. Серверная очередь деплоя (`Channel<DeployJob>`, один потребитель): последовательные задачи Update/Restart/SwitchBranch c health-check'ом после recreate, автоматическим откатом при crash-loop/unhealthy и отложенным `image prune`. Порядок — `DeployOrder` (configuration первым). |
 | `ComposeImageService.cs` | Разбор и правка строк `image:` в `docker-compose.yml`: определение текущей ветки сервиса, переключение суффикса репозитория, бэкап в `/app/db/compose-backups`, откат. Запись в тот же inode (bind mount одного файла). |
 | `SeqService.cs` | `HttpClient` к Seq REST API: получение событий, SQL-запросы, постраничная загрузка, список сигналов, удаление по фильтру (через пакет `Seq.Api`), запись событий в CLEF-формате (`POST /api/events/raw?clef`). |
 | `LogsClearService.cs` | Singleton + Timer cleanup. Управляет job'ами удаления логов из Seq: подсчёт через SQL, удаление через `Seq.Api`. TTL 30 минут после завершения. |

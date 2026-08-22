@@ -239,13 +239,30 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 | `StartContainerAsync(name)` | `docker start {name}` |
 | `StopContainerAsync(name)` | `docker stop {name}` |
 | `RestartContainerAsync(name)` | `docker restart {name}` |
-| `PullImageAndRecreateContainerAsync(name)` | pull + compose up -d |
+| `ComposePullAsync(service)` | `docker compose pull {service}` |
+| `ComposeUpAsync(service)` | `docker compose up --force-recreate --build -d {service}` |
+| `PruneImagesAsync()` | `docker image prune -f` (только в конце деплой-задачи) |
+| `InspectStateAsync(container)` | `docker inspect` → `(State.Status, Health.Status)` для health-check'а |
+| `GetContainerImageIdAsync(container)` | `docker inspect {{.Image}}` (для отката) |
+| `GetContainerImageReferenceAsync(container)` | `docker inspect {{.Config.Image}}` |
+| `TagImageAsync(imageId, reference)` | `docker tag` — retag старого образа при откате |
 | `RestartAdminPanelAsync()` | helper-контейнер с docker.sock |
 | `UpdateAdminPanelAsync()` | pull + helper-контейнер |
-| `RestartAllServicesAsync()` | compose restart barkfluff |
-| `UpdateAllServicesAsync()` | pull + compose up -d |
+| `ConvertServiceNameToContainerName(service)` | обратное преобразование для inspect/restart (postgres → postgres_barkfluff) |
 
-> `RestartAllServicesAsync`/`UpdateAllServicesAsync` (эндпоинты `/restart-all`, `/update-all`) вызываются **только** мёртвой `Pages/Redesigned/`. Активный v2 `services.html` реализует «Перезапустить все»/«Обновить все» на клиенте: перебирает `servicesData` (из `/services/status`), фильтрует по `BarkFluff.*` (`barkfluffContainers()`) и дёргает per-container `restart`/`pull`. Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) в bulk **не** попадает — только ручной per-row перезапуск. `BarkFluff.Federation` добавлен в `KnownServices` + `ServiceToContainerMap` (`SeqEndpoints.cs`) → виден в фильтре логов, таблице сервисов и bulk-действиях.
+### DeployJobService
+**Singleton + HostedService.** Серверная очередь деплоя: `Channel<DeployJob>`, один потребитель — задачи последовательны, конкурентные compose-операции исключены. In-memory (`ConcurrentDictionary<Guid, DeployJob>`, последние 20 завершённых).
+
+| Метод | Описание |
+|-------|---------|
+| `EnqueueUpdate(services)` | Задача обновления (pull → recreate → health-check → rollback при явном падении) |
+| `EnqueueRestart(services)` | Задача перезапуска (restart → health-check, без rollback) |
+| `EnqueueBranchSwitch(service, branch)` | Задача переключения ветки (compose-правка → pull → recreate → health-check; откат compose + recreate) |
+| `GetJob(id)` / `GetRecentJobs()` | Статусы для `GET /api/docker/deploy/jobs[/{id}]` |
+
+`DeployOrder` — фиксированный порядок (configuration первым). Health-check: поллинг 3с, таймаут 60с; `exited`/`dead`/`restarting`/`unhealthy` → явное падение → откат (Update: retag старого image ID + recreate; SwitchBranch: restore compose + recreate); таймаут → шаг провален, но без отката. `image prune` — только после всей задачи.
+
+> Все деплой-эндпоинты (`/pull`, `/branch`, `/restart-all`, `/update-all`, `/update-many`) ставят задачу в очередь и возвращают `{ success, jobId, message }`. Браузерного перебора контейнеров больше нет: UI поллит `GET /api/docker/deploy/jobs/{id}` и рисует прогресс из шагов задачи. Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) в bulk не попадает — только ручной per-row перезапуск.
 
 ### SeqService
 `HttpClient` → Seq REST API.
@@ -368,13 +385,16 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | POST | `/api/docker/containers/{name}/start` | Запустить |
 | POST | `/api/docker/containers/{name}/stop` | Остановить |
 | POST | `/api/docker/containers/{name}/restart` | Перезагрузить |
-| POST | `/api/docker/containers/{name}/pull` | Обновить образ |
+| POST | `/api/docker/containers/{name}/pull` | Обновить образ — задача `Update` в очереди `DeployJobService`, ответ `{ success, jobId, message }` |
 | POST | `/api/docker/containers/admin-panel/restart-own` | Перезагрузить саму панель |
 | POST | `/api/docker/containers/admin-panel/update-own` | Обновить панель |
 | GET | `/api/docker/branches` | Ветки обновлений сервисов: `branch` из `docker-compose.yml`, `runningBranch` из образа контейнера |
-| POST | `/api/docker/containers/{name}/branch` | `{ branch }` — правка `image:` в compose + pull/recreate (для `admin-panel` — helper-контейнер); при неудаче правка откатывается |
-| POST | `/api/docker/containers/restart-all` | Рестарт всех BarkFluff-сервисов |
-| POST | `/api/docker/containers/update-all` | Обновить все сервисы |
+| POST | `/api/docker/containers/{name}/branch` | `{ branch }` — валидации + проверка реестра, затем задача `SwitchBranch` в очереди (правка `image:` → pull/recreate → health-check, откат при явном падении; для `admin-panel` — helper-контейнер) |
+| POST | `/api/docker/containers/restart-all` | Задача `Restart` для всех сервисов (в порядке `DeployOrder`) |
+| POST | `/api/docker/containers/update-all` | Задача `Update` для всех сервисов |
+| POST | `/api/docker/containers/update-many` | `{ containers: [...] }` — задача `Update` для перечисленных (замена браузерного цикла «Обновить доступные») |
+| GET | `/api/docker/deploy/jobs` | Активные и недавние задачи деплоя (шаги, состояния, сообщения) |
+| GET | `/api/docker/deploy/jobs/{id}` | Статус одной задачи: `state` (Queued/Running/Completed/Failed), `steps[]` (`service`, `state`, `message`, `rolledBack`) |
 
 ### /api/badges — BadgesEndpoints.cs
 
