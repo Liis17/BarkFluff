@@ -116,7 +116,10 @@ public static class UsersEndpoints
             var sessions = sessionsTask.Result;
             var poster = posterTask.Result;
 
-            var userProto = userSearch?.Users.FirstOrDefault();
+            if (!userSearch.Available)
+                return Results.Problem("Сервис пользователей временно недоступен", statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userProto = userSearch.Value?.Users.FirstOrDefault();
             if (userProto is null)
                 return Results.NotFound();
 
@@ -130,7 +133,7 @@ public static class UsersEndpoints
                     username = userProto.Username,
                     profilePicture = userProto.ProfilePicture,
                     profilePicturePreview = userProto.ProfilePicturePreview,
-                    profilePosterUrl = poster?.PosterUrl ?? string.Empty,
+                    profilePosterUrl = poster.Value?.PosterUrl ?? string.Empty,
                     bio = userProto.Bio,
                     registrationDate = userProto.RegistrationDate?.ToDateTime(),
                     storageLimitGb = userProto.StorageLimitGb,
@@ -147,11 +150,11 @@ public static class UsersEndpoints
                         assignedDate = b.AssignedDate?.ToDateTime()
                     })
                 },
-                contacts = contacts != null ? new
+                contacts = contacts.Value != null ? new
                 {
-                    email = contacts.Contact?.Email
+                    email = contacts.Value.Contact?.Email
                 } : null,
-                devices = devices?.Devices.Select(d => new
+                devices = devices.Value?.Devices.Select(d => new
                 {
                     deviceId = d.DeviceId,
                     originalName = d.OriginalName,
@@ -161,23 +164,23 @@ public static class UsersEndpoints
                     location = d.Location,
                     authorizedAt = d.AuthorizedAt?.ToDateTime()
                 }),
-                storage = storage != null ? new
+                storage = storage.Value != null ? new
                 {
-                    totalUsedStorage = storage.TotalUsedStorage,
-                    storageLimit = storage.StorageLimit,
-                    storageByTypes = storage.StorageByTypes.Select(s => new
+                    totalUsedStorage = storage.Value.TotalUsedStorage,
+                    storageLimit = storage.Value.StorageLimit,
+                    storageByTypes = storage.Value.StorageByTypes.Select(s => new
                     {
                         fileType = (int)s.FileType,
                         fileTypeName = s.FileType.ToString(),
                         usedStorage = s.UsedStorage
                     })
                 } : null,
-                twoFactor = otp != null ? new
+                twoFactor = otp.Value != null ? new
                 {
-                    authenticatorEnabled = otp.AuthenticatorEnabled,
-                    emailEnabled = otp.EmailEnabled
+                    authenticatorEnabled = otp.Value.AuthenticatorEnabled,
+                    emailEnabled = otp.Value.EmailEnabled
                 } : null,
-                sessions = sessions?.Sessions.Select(s => new
+                sessions = sessions.Value?.Sessions.Select(s => new
                 {
                     id = s.Id,
                     deviceId = s.DeviceId,
@@ -188,7 +191,16 @@ public static class UsersEndpoints
                     location = s.Location,
                     createdAt = s.CreatedAt?.ToDateTime(),
                     expirationAt = s.ExpirationAt?.ToDateTime()
-                })
+                }),
+                availability = new
+                {
+                    contacts = contacts.Available,
+                    devices = devices.Available,
+                    storage = storage.Available,
+                    twoFactor = otp.Available,
+                    sessions = sessions.Available,
+                    poster = poster.Available
+                }
             });
         })
         .WithName("GetUserDetails")
@@ -288,11 +300,13 @@ public static class UsersEndpoints
         })
         .WithName("DisableUserOtp")
         .RequirePermission(AdminPermissions.Users2FaDisable)
+        .RequireAdminReasonFromArguments(context =>
+            context.Arguments.OfType<DisableOtpBody>().FirstOrDefault()?.Reason)
         .RequireStepUpFromArguments(StepUpActions.Users2FaDisable, context =>
         {
             var userId = context.HttpContext.Request.RouteValues["id"];
             var body = context.Arguments.OfType<DisableOtpBody>().FirstOrDefault();
-            return $"userId={userId};otpType={body?.OtpType}";
+            return $"userId={userId};otpType={body?.OtpType};reason={body?.Reason?.Trim()}";
         });
 
         // POST /api/users/{id}/avatar
@@ -386,12 +400,14 @@ public static class UsersEndpoints
         })
         .WithName("ForceChangeUserPassword")
         .RequirePermission(AdminPermissions.UsersPasswordSet)
+        .RequireAdminReasonFromArguments(context =>
+            context.Arguments.OfType<ChangePasswordBody>().FirstOrDefault()?.Reason)
         .RequireStepUpFromArguments(StepUpActions.UsersPasswordSet, context =>
         {
             var userId = context.HttpContext.Request.RouteValues["id"];
             var body = context.Arguments.OfType<ChangePasswordBody>().FirstOrDefault();
             var passwordHash = StepUpService.ComputeParamsHash("users.password", body?.NewPassword ?? string.Empty);
-            return $"userId={userId};passwordHash={passwordHash}";
+            return $"userId={userId};passwordHash={passwordHash};reason={body?.Reason?.Trim()}";
         });
 
         // POST /api/users/{id}/poster
@@ -454,23 +470,44 @@ public static class UsersEndpoints
         })
         .WithName("RemoveUserSession")
         .RequirePermission(AdminPermissions.UsersSessionsRevoke);
+
+        // DELETE /api/users/{id}/sessions — завершить все активные сессии
+        group.MapDelete("/{id:long}/sessions", async (
+            long id,
+            UserSessionRevocationService revocationService,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await revocationService.RevokeAllAsync(id, cancellationToken);
+            return Results.Ok(new
+            {
+                requestedCount = result.RequestedCount,
+                revokedCount = result.RevokedCount,
+                failedDeviceIds = result.FailedDeviceIds
+            });
+        })
+        .WithName("RemoveAllUserSessions")
+        .RequirePermission(AdminPermissions.UsersSessionsRevoke)
+        .RequireStepUp(StepUpActions.UsersSessionsRevokeAll, context =>
+            $"userId={context.Request.RouteValues["id"]}");
     }
 
-    private static async Task<T?> SafeCall<T>(Func<Grpc.Core.AsyncUnaryCall<T>> call) where T : class
+    private static async Task<GrpcCallResult<T>> SafeCall<T>(Func<Grpc.Core.AsyncUnaryCall<T>> call) where T : class
     {
         try
         {
-            return await call();
+            return new GrpcCallResult<T>(await call(), true);
         }
         catch
         {
-            return null;
+            return new GrpcCallResult<T>(null, false);
         }
     }
 
+    private sealed record GrpcCallResult<T>(T? Value, bool Available) where T : class;
+
     private sealed record AssignBadgeBody(int BadgeId, int? Priority);
     private sealed record UpdateStorageLimitBody(int StorageLimitGb);
-    private sealed record DisableOtpBody(int OtpType);
+    private sealed record DisableOtpBody(int OtpType, string? Reason);
     private sealed record UpdateProfileBody(string? FirstName, string? LastName, string? Bio, string? Username);
-    private sealed record ChangePasswordBody(string? NewPassword);
+    private sealed record ChangePasswordBody(string? NewPassword, string? Reason);
 }

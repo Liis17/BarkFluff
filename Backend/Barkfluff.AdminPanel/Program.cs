@@ -72,6 +72,7 @@ public class Program
         builder.Services.AddSingleton<AdminService>();
         builder.Services.AddSingleton<StepUpService>();
         builder.Services.AddSingleton<AuditService>();
+        builder.Services.AddScoped<UserSessionRevocationService>();
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();

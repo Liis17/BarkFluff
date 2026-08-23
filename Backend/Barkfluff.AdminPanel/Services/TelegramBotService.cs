@@ -782,7 +782,7 @@ public class UpdateHandler : IUpdateHandler
             AdminUsername = _settings.Value.GetUsername(userId) ?? "Unknown",
             TelegramUserId = userId,
             Action = request.ActionKey,
-            Details = StepUpActions.Title(request.ActionKey),
+            Details = StepUpActions.AuditDetails(request.ActionKey, request.Params),
             IpAddress = request.IpAddress,
             ConfirmationId = confirmationId,
             Outcome = approved ? "approved" : "rejected"
