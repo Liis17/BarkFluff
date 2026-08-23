@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Сервисы</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .tab-bar {
             display: flex;
@@ -378,23 +378,15 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let servicesData = [];
     let branchesByContainer = {};
     let refreshInterval = null;
 
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            const me = await r.json();
-            if (window.BF && Array.isArray(me.roles)) window.BF.roles = me.roles;
-            return me;
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     function formatDate(iso) {
         if (!iso) return '—';
@@ -492,7 +484,7 @@
     async function loadServices() {
         const tbody = document.getElementById('servicesTableBody');
         try {
-            const res = await fetch('/api/seq/services/status');
+            const res = await BF.api('/api/seq/services/status');
             if (!res.ok) throw new Error(res.status);
             servicesData = await res.json();
             await loadBranches();
@@ -505,7 +497,7 @@
     async function loadAdminPanelUpdateStatus() {
         const badge = document.getElementById('adminPanelUpdateBadge');
         try {
-            const response = await fetch('/api/docker/containers/admin-panel/update-status');
+            const response = await BF.api('/api/docker/containers/admin-panel/update-status');
             if (!response.ok) throw new Error(response.status);
             const status = await response.json();
             badge.style.display = status.updateAvailable ? '' : 'none';
@@ -572,7 +564,7 @@
     // ---- Ветки обновлений (image: в docker-compose.yml) ----
     async function loadBranches() {
         try {
-            const res = await fetch('/api/docker/branches');
+            const res = await BF.api('/api/docker/branches');
             if (!res.ok) throw new Error(res.status);
             const branches = await res.json();
             branchesByContainer = {};
@@ -677,7 +669,7 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
         try {
-            const r = await fetch(`/api/docker/containers/${container}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
+            const r = await BF.api(`/api/docker/containers/${container}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
             const result = await r.json();
             if (!result.success) {
                 showNotification('error', result.message || 'Ошибка');
@@ -773,7 +765,7 @@
             let job = null;
             let notFound = false;
             try {
-                const r = await fetch(`/api/docker/deploy/jobs/${jobId}`);
+                const r = await BF.api(`/api/docker/deploy/jobs/${jobId}`);
                 if (r.ok) job = await r.json();
                 else if (r.status === 404) notFound = true;
             } catch { /* панель могла перезапуститься — продолжаем опрос */ }
@@ -894,7 +886,7 @@
     // При перезагрузке страницы подхватить активную задачу деплоя
     async function resumeActiveDeployJob() {
         try {
-            const r = await fetch('/api/docker/deploy/jobs');
+            const r = await BF.api('/api/docker/deploy/jobs');
             if (!r.ok) return;
             const jobs = await r.json();
             const active = jobs.find(j => j.state === 'Queued' || j.state === 'Running');
@@ -939,7 +931,7 @@
             return;
         }
         try {
-            const response = await fetch('/api/remote/servers');
+            const response = await BF.api('/api/remote/servers');
             if (!response.ok) throw new Error('HTTP ' + response.status);
             remoteServers = await response.json();
             renderRemoteServers();
@@ -984,7 +976,7 @@
         const tbody = document.getElementById(`remote-${serverId}-body`);
         if (!tbody) return;
         try {
-            const response = await fetch(`/api/remote/servers/${serverId}/containers`);
+            const response = await BF.api(`/api/remote/servers/${serverId}/containers`);
             if (!response.ok) throw new Error(await responseMessage(response));
             const containers = await response.json();
             if (!containers.length) {
@@ -1017,7 +1009,7 @@
         button.disabled = true;
         button.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
         try {
-            const response = await fetch(`/api/remote/servers/${serverId}/containers/${containerId}/${action}`, { method:'POST' });
+            const response = await BF.api(`/api/remote/servers/${serverId}/containers/${containerId}/${action}`, { method:'POST' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.message || 'Ошибка действия');
             showNotification('success', result.message);
@@ -1082,7 +1074,7 @@
         hideDialogError('containerDialogError');
         document.getElementById('containerDialogScrim').classList.add('open');
         try {
-            const response = await fetch(`/api/remote/servers/${serverId}/discover`);
+            const response = await BF.api(`/api/remote/servers/${serverId}/discover`);
             if (!response.ok) throw new Error(await responseMessage(response));
             const containers = await response.json();
             document.getElementById('discoveredContainers').innerHTML = containers.length ? `<table class="md-table"><thead><tr><th>Контейнер</th><th>Образ</th><th>Тип</th><th></th></tr></thead><tbody>${containers.map(container => `<tr><td><div style="display:flex;align-items:center;gap:10px;">${bfIcon(getServiceIconPath(container.containerName), 'size-18 service-icon')}<span>${escapeHtml(container.containerName)}</span></div></td><td>${escapeHtml(container.image)}</td><td>${container.isComposeManaged ? 'Docker Compose' : 'Docker'}</td><td><button class="md-btn md-btn-text" onclick="addDiscoveredContainer('${container.containerName}')">${bfIcon('add', 'size-18')}Добавить</button></td></tr>`).join('')}</tbody></table>` : 'Новых контейнеров не найдено.';
@@ -1240,8 +1232,7 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти из панели?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     // ---- Init ----
@@ -1263,8 +1254,7 @@
         applyPermissions();
         await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers()]);
         resumeActiveDeployJob();
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
         refreshInterval = setInterval(() => {
             loadServices();
             loadAdminPanelUpdateStatus();

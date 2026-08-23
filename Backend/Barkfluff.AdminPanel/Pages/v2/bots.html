@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Боты</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .bots-table { width: 100%; border-collapse: collapse; }
         .bots-table th, .bots-table td {
@@ -241,22 +241,16 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let bots = [];
     let currentBotData = null;
     let profileToken = '';
     const ROLE_NAMES = { 0: '', 1: 'BotFather', 2: 'Login Notifier' };
 
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     function getInitials(name) { return (name?.trim()?.[0] || '?').toUpperCase(); }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
@@ -264,7 +258,7 @@
 
     async function loadBots() {
         try {
-            const r = await fetch('/api/bots');
+            const r = await BF.api('/api/bots');
             if (!r.ok) throw new Error(await r.text());
             bots = await r.json();
             renderBots();
@@ -321,7 +315,7 @@
         const btn = document.getElementById('createBtn');
         btn.disabled = true;
         try {
-            const res = await fetch('/api/bots', {
+            const res = await BF.api('/api/bots', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -346,7 +340,7 @@
         document.getElementById('botScrim').classList.add('open');
         document.getElementById('botModalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const res = await fetch(`/api/bots/${botId}`);
+            const res = await BF.api(`/api/bots/${botId}`);
             if (!res.ok) throw new Error(await res.text());
             currentBotData = await res.json();
             renderBotModal(currentBotData);
@@ -430,7 +424,7 @@
         const username = document.getElementById('editBotUsername')?.value.trim();
         if (!name || !username) { alert('Имя и username обязательны'); return; }
         try {
-            const res = await fetch(`/api/bots/${id}/profile`, {
+            const res = await BF.api(`/api/bots/${id}/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, username })
@@ -445,7 +439,7 @@
         const file = input.files[0]; if (!file) return;
         const form = new FormData(); form.append('avatar', file, file.name);
         try {
-            const res = await fetch(`/api/bots/${id}/avatar`, { method: 'POST', body: form });
+            const res = await BF.api(`/api/bots/${id}/avatar`, { method: 'POST', body: form });
             if (!res.ok) throw new Error(await res.text());
             await openBotModal(id);
             await loadBots();
@@ -457,7 +451,7 @@
         const file = input.files[0]; if (!file) return;
         const form = new FormData(); form.append('poster', file, file.name);
         try {
-            const res = await fetch(`/api/bots/${id}/poster`, { method: 'POST', body: form });
+            const res = await BF.api(`/api/bots/${id}/poster`, { method: 'POST', body: form });
             if (!res.ok) throw new Error(await res.text());
             await openBotModal(id);
         } catch (e) { alert(e.message || 'Не удалось загрузить постер'); }
@@ -473,7 +467,7 @@
         if (!button) return;
         button.disabled = true;
         try {
-            const res = await fetch(`/api/bots/${id}/token`, { method: 'POST' });
+            const res = await BF.api(`/api/bots/${id}/token`, { method: 'POST' });
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
             profileToken = data.token;
@@ -506,7 +500,7 @@
         const username = b?.username || currentBotData?.profile?.username || '';
         if (!confirm(`Перегенерировать токен @${username}? Старый токен перестанет работать.`)) return;
         try {
-            const res = await fetch(`/api/bots/${id}/regenerate-token`, { method: 'POST' });
+            const res = await BF.api(`/api/bots/${id}/regenerate-token`, { method: 'POST' });
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
             if (!fromProfile) {
@@ -530,7 +524,7 @@
     window.deleteBot = async function (id) {
         const b = bots.find(x => x.id === id); if (!b) return;
         if (!confirm(`Удалить бота @${b.username}? Токен будет отозван, чаты сохранятся. Это действие необратимо.`)) return;
-        const res = await fetch(`/api/bots/${id}`, { method: 'DELETE' });
+        const res = await BF.api(`/api/bots/${id}`, { method: 'DELETE' });
         if (!res.ok) { alert('Не удалось удалить бота: ' + (await res.text())); return; }
         bots = bots.filter(x => x.id !== id);
         renderBots();
@@ -538,16 +532,14 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
         const auth = await checkAuth(); if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         await loadBots();
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

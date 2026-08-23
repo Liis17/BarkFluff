@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Федерация</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .kpi-grid {
             display: grid;
@@ -238,19 +238,13 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let peers = [];
 
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
     function formatDate(s) { if (!s) return '—'; return new Date(s).toLocaleString('ru-RU'); }
@@ -270,7 +264,7 @@
     // ---- Status + keys ----
     async function loadStatus() {
         try {
-            const r = await fetch('/api/federation/status');
+            const r = await BF.api('/api/federation/status');
             if (!r.ok) return;
             const s = await r.json();
 
@@ -304,7 +298,7 @@
     // ---- Peers ----
     async function loadPeers() {
         try {
-            const r = await fetch('/api/federation/peers');
+            const r = await BF.api('/api/federation/peers');
             peers = await r.json();
             renderPeers();
         } catch {}
@@ -390,16 +384,14 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
         const auth = await checkAuth(); if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         await Promise.all([loadStatus(), loadPeers()]);
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

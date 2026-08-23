@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Логи</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .filters {
             display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
@@ -254,9 +254,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     // ---- State ----
     let allLogs = [];          // нормализованные события, накопленные по страницам
@@ -273,16 +273,9 @@
     let searchDebounce = null;
 
     async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            const me = await r.json();
-            if (window.BF && Array.isArray(me.roles)) {
-                window.BF.roles = me.roles;
-                applyPermissions();
-            }
-            return me;
-        } catch { window.location.href = '/'; return null; }
+        const me = await BF.requireAuth();
+        if (me) applyPermissions();
+        return me;
     }
 
     function applyPermissions() {
@@ -342,7 +335,7 @@
     // ---- Сервисы ----
     async function loadServices() {
         try {
-            const r = await fetch('/api/seq/services');
+            const r = await BF.api('/api/seq/services');
             if (r.ok) { services = await r.json(); populateServiceSelect(); }
         } catch {}
     }
@@ -363,7 +356,7 @@
             if (activeLevel) params.set('level', activeLevel);
             if (searchQuery) params.set('search', searchQuery);
             if (lastAfterId) params.set('afterId', lastAfterId);
-            const res = await fetch('/api/seq/events?' + params.toString());
+            const res = await BF.api('/api/seq/events?' + params.toString());
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const raw = extractEvents(await res.json());
             if (raw.length) lastAfterId = raw[raw.length - 1].Id || raw[raw.length - 1].id;
@@ -491,7 +484,7 @@
         document.getElementById('exportStage').textContent = 'Подготовка экспорта...';
         document.getElementById('exportCounter').textContent = '';
         try {
-            const r = await fetch('/api/seq/export/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
+            const r = await BF.api('/api/seq/export/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
             if (!r.ok) throw new Error('HTTP ' + r.status);
             exportJobId = (await r.json()).jobId;
             exportTimer = setInterval(pollExport, 2000);
@@ -501,7 +494,7 @@
     async function pollExport() {
         if (!exportJobId) return;
         try {
-            const r = await fetch(`/api/seq/export/${exportJobId}/status`);
+            const r = await BF.api(`/api/seq/export/${exportJobId}/status`);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const s = await r.json();
             const num = (s.totalDownloaded || 0).toLocaleString('ru-RU');
@@ -569,7 +562,7 @@
     async function pollClear() {
         if (!clearJobId) return;
         try {
-            const r = await fetch(`/api/seq/clear/${clearJobId}/status`);
+            const r = await BF.api(`/api/seq/clear/${clearJobId}/status`);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const s = await r.json();
             if (s.state === 'done') {
@@ -588,8 +581,7 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти из панели?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
@@ -598,8 +590,7 @@
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         await loadServices();
         await reload();
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>
