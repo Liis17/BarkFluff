@@ -115,46 +115,39 @@
             text-align: center;
         }
         .progress-success[hidden] { display: none; }
-        .progress-success-icon {
+        .progress-success-icon-shell {
             width: 68px;
             height: 68px;
-            overflow: visible;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--md-success-container);
             color: var(--md-success);
+            opacity: 0;
+            transform: scale(.72);
         }
-        .progress-success-icon circle {
-            fill: var(--md-success-container);
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-dasharray: 182;
-            stroke-dashoffset: 182;
+        .progress-success-icon {
+            width: 48px;
+            height: 48px;
+            clip-path: inset(0 100% 0 0);
         }
-        .progress-success-icon path {
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 4;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            stroke-dasharray: 44;
-            stroke-dashoffset: 44;
-        }
-        .progress-success.is-visible { animation: progress-success-pop 500ms var(--md-easing-emphasized-decel) both; }
-        .progress-success.is-visible circle { animation: progress-success-circle 500ms var(--md-easing-emphasized-decel) both; }
-        .progress-success.is-visible path { animation: progress-success-check 420ms 280ms var(--md-easing-emphasized-decel) both; }
+        .progress-success.is-visible .progress-success-icon-shell { animation: progress-success-pop 500ms var(--md-easing-emphasized-decel) both; }
+        .progress-success.is-visible .progress-success-icon { animation: progress-success-check 420ms 280ms var(--md-easing-emphasized-decel) both; }
         .progress-success-title { font-weight: 600; color: var(--md-on-success-container); }
         .progress-success-subtitle { font-size: 13px; color: var(--md-on-surface-variant); }
         @keyframes progress-success-pop {
             from { transform: scale(.72); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
-        @keyframes progress-success-circle { to { stroke-dashoffset: 0; } }
-        @keyframes progress-success-check { to { stroke-dashoffset: 0; } }
+        @keyframes progress-success-check { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
         @media (prefers-reduced-motion: reduce) {
             .progress-services-list { scroll-behavior: auto; }
             .progress-success.is-visible,
-            .progress-success.is-visible circle,
-            .progress-success.is-visible path { animation: none; }
-            .progress-success.is-visible circle,
-            .progress-success.is-visible path { stroke-dashoffset: 0; }
+            .progress-success.is-visible .progress-success-icon-shell,
+            .progress-success.is-visible .progress-success-icon { animation: none; }
+            .progress-success.is-visible .progress-success-icon-shell { opacity: 1; transform: scale(1); }
+            .progress-success.is-visible .progress-success-icon { clip-path: inset(0); }
         }
 
         .remote-console-dialog { max-width: 1080px; }
@@ -370,10 +363,9 @@
             </div>
             <div class="md-progress-linear"><div class="bar" id="progressBar" style="width:0%;"></div></div>
             <div id="progressSuccess" class="progress-success" hidden aria-live="polite">
-                <svg class="progress-success-icon" viewBox="0 0 72 72" aria-hidden="true">
-                    <circle cx="36" cy="36" r="29"></circle>
-                    <path d="M21 37.5 31.5 48 52 25.5"></path>
-                </svg>
+                <div class="progress-success-icon-shell" aria-hidden="true">
+                    <span class="bf-icon progress-success-icon" data-bf-icon="check-circle"></span>
+                </div>
                 <div class="progress-success-title">Все сервисы обновлены успешно</div>
                 <div class="progress-success-subtitle">Окно закроется автоматически через 3 секунды</div>
             </div>
@@ -729,7 +721,7 @@
 
     const DEPLOY_KIND_LABELS = { Update: 'Обновление', Restart: 'Перезапуск', SwitchBranch: 'Переключение ветки' };
 
-    async function startDeployJob(url, body, title, options = {}) {
+    async function startDeployJob(url, body, title, autoCloseOnSuccess = false) {
         try {
             const response = await BF.api(url, {
                 method: 'POST',
@@ -739,7 +731,7 @@
             const result = await response.json().catch(() => null);
             if (!response.ok || result?.success === false)
                 throw new Error(result?.message || `HTTP ${response.status}`);
-            openJobModal(title, result.jobId, options);
+            openJobModal(title, result.jobId, autoCloseOnSuccess);
         } catch (e) {
             showNotification('error', e.message || 'Операция не выполнена');
         }
@@ -751,18 +743,24 @@
     }
     async function updateAllServices() {
         if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
-        await startDeployJob('/api/docker/containers/update-all', null, 'Обновление всех сервисов', { autoCloseOnSuccess: true });
+        await startDeployJob('/api/docker/containers/update-all', null, 'Обновление всех сервисов', true);
     }
     async function updateAvailableServices() {
         const containers = updatableContainers();
         if (containers.length === 0) { alert('Нет сервисов с доступными обновлениями'); return; }
         if (!confirm(`Обновить только сервисы с доступными обновлениями (${containers.length})?`)) return;
-        await startDeployJob('/api/docker/containers/update-many', { containers }, `Обновление доступных сервисов (${containers.length})`, { autoCloseOnSuccess: true });
+        await startDeployJob('/api/docker/containers/update-many', { containers }, `Обновление доступных сервисов (${containers.length})`, true);
     }
 
     // ---- Отслеживание задач деплоя ----
     let deployJobToken = 0;
     let progressCloseTimer = null;
+
+    function clearProgressCloseTimer() {
+        if (progressCloseTimer === null) return;
+        clearTimeout(progressCloseTimer);
+        progressCloseTimer = null;
+    }
 
     function setProgressModalLock(locked) {
         document.documentElement.classList.toggle('progress-modal-open', locked);
@@ -805,11 +803,8 @@
         success.classList.add('is-visible');
     }
 
-    function openJobModal(title, jobId, options = {}) {
-        if (progressCloseTimer !== null) {
-            clearTimeout(progressCloseTimer);
-            progressCloseTimer = null;
-        }
+    function openJobModal(title, jobId, autoCloseOnSuccess = false) {
+        clearProgressCloseTimer();
         resetProgressSuccess();
         document.getElementById('modalTitle').textContent = title;
         document.getElementById('modalSubtitle').textContent = 'Выполняется на сервере, последовательно...';
@@ -833,7 +828,7 @@
                 showNotification('success', 'Операция завершена');
             else
                 showNotification('error', job.error || 'Операция не завершена');
-            if (completedSuccessfully && options.autoCloseOnSuccess) {
+            if (completedSuccessfully && autoCloseOnSuccess) {
                 document.getElementById('modalSubtitle').textContent = 'Все шаги выполнены успешно';
                 document.getElementById('progressText').textContent = 'Готово';
                 showProgressSuccess();
@@ -890,10 +885,7 @@
     }
 
     function closeProgressModal() {
-        if (progressCloseTimer !== null) {
-            clearTimeout(progressCloseTimer);
-            progressCloseTimer = null;
-        }
+        clearProgressCloseTimer();
         deployJobToken++;
         document.getElementById('progressScrim').classList.remove('open');
         setProgressModalLock(false);
@@ -906,7 +898,7 @@
             if (!r.ok) return;
             const jobs = await r.json();
             const active = jobs.find(j => j.state === 'Queued' || j.state === 'Running');
-            if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id, { autoCloseOnSuccess: active.kind === 'Update' });
+            if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id, active.kind === 'Update');
         } catch { /* ignore */ }
     }
 
