@@ -325,11 +325,16 @@
 | RPC | Описание |
 |-----|----------|
 | `GetConfiguration` | Получить настройки сервиса по service_id |
+| `GetAllConfigurations` | Получить все строки для AdminPanel |
 | `UpdateConfiguration` | Обновить конкретный ключ (section + key + value) |
+| `GetConfigurationHistory` | Получить ревизии конкретного ключа |
+| `RollbackConfiguration` | Восстановить previous_value выбранной ревизии |
 | `GetReservedNames` | Список зарезервированных юзернеймов |
 | `AddReservedName` / `UpdateReservedName` / `DeleteReservedName` | CRUD зарезервированных юзернеймов |
 
 **`ConfigurationItem`:** section, key, value, edited_at, edited_by, edited_from, service_id
+
+**`ConfigurationRevision`:** id, section, key, service_id, previous_value, new_value, changed_at/by/from, change_kind, source_revision_id
 
 ---
 

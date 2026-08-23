@@ -41,6 +41,7 @@ public static class StepUpActions
     public const string RemoteServerDelete = "remote.server.delete";
     public const string RemoteConsole = "remote.console";
     public const string ConfigUpdate = "config.update";
+    public const string ConfigRollback = "config.rollback";
     public const string S3ConfigUpdate = "config.s3.update";
     public const string FederationKeysRotate = "federation.keys.rotate";
     public const string FederationPeerAdd = "federation.peer.add";
@@ -63,6 +64,7 @@ public static class StepUpActions
             [RemoteServerDelete] = AdminPermissions.RemoteServers,
             [RemoteConsole] = AdminPermissions.RemoteConsole,
             [ConfigUpdate] = AdminPermissions.ConfigWrite,
+            [ConfigRollback] = AdminPermissions.ConfigWrite,
             [S3ConfigUpdate] = AdminPermissions.ConfigWrite,
             [FederationKeysRotate] = AdminPermissions.FederationManage,
             [FederationPeerAdd] = AdminPermissions.FederationManage,
@@ -92,6 +94,7 @@ public static class StepUpActions
             RemoteServerDelete => "Удаление SSH-сервера",
             RemoteConsole => "Открытие SSH-консоли",
             ConfigUpdate => "Изменение конфигурации",
+            ConfigRollback => "Откат конфигурации",
             S3ConfigUpdate => "Изменение S3-конфигурации",
             FederationKeysRotate => "Ротация ключей федерации",
             FederationPeerAdd => "Добавление пира федерации",

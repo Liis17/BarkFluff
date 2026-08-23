@@ -23,18 +23,21 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 **Конфигурация:**
 - `GetConfiguration` — возвращает конфигурацию для `ServiceId`. Загружает записи с `ServiceId == запрошенный || ServiceId == Unknown`; при дублях по Section+Key приоритет у записи с конкретным ServiceId.
 - `GetAllConfigurations` — возвращает **все** строки таблицы без фильтров и дедупликации (для вкладки «Конфигурация» в [[Backend/AdminPanel|AdminPanel]]).
-- `UpdateConfiguration` — upsert по Section+Key+ServiceId. `EditedAt` ставится сервером (`DateTime.UtcNow`), `EditedBy`/`EditedFrom` передаёт клиент.
+- `UpdateConfiguration` — upsert по Section+Key+ServiceId. `EditedAt` ставится сервером (`DateTime.UtcNow`), `EditedBy`/`EditedFrom` передаёт клиент; в той же транзакции создаётся `ConfigurationRevision` с переходом old → new.
+- `GetConfigurationHistory` — последние 1–100 ревизий конкретного Section+Key+ServiceId, новые первыми.
+- `RollbackConfiguration` — по id ревизии восстанавливает её `PreviousValue` и создаёт новую ревизию `ChangeKind=Rollback` со ссылкой `SourceRevisionId`. История содержит прошлые значения, включая секретные; AdminPanel маскирует их до ответа браузеру.
 
 **Reserved Names (зарезервированные имена пользователей):**
 - `GetReservedNames` / `AddReservedName` / `UpdateReservedName` / `DeleteReservedName` — CRUD. Хранится как одна строка в БД (`Section="ReservedNames"`, `Key="Usernames"`, Value — comma-separated). Имена нормализуются в lowercase.
 
 ## Ключевые компоненты
 
-- `Domain/ConfigurationItem` — единственная сущность: Section, Key, Value, ServiceId, EditedAt/By/From
-- `Infrastructure/ConfigurationStorage` — read/upsert конфигураций + CRUD reserved names
+- `Domain/ConfigurationItem` — текущая строка: Section, Key, Value, ServiceId, EditedAt/By/From
+- `Domain/ConfigurationRevision` — неизменяемая запись перехода PreviousValue → NewValue, автор/источник/время, вид изменения и optional source revision для rollback
+- `Persistence/Services/ConfigurationStorage` — read/upsert/история/rollback конфигураций + CRUD reserved names
 - `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings` (с `Http1Port` для Files, Calls и [[Backend/Bots|Bots]]), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles` (ExpiresAt 60 мин), `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `FederationService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, `LiveKit` (+ `PublicUrl`), базы данных (Identity, Users, Files, Messages, Onliner, Bots, Calls, Federation). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
   - `Federation` (ServiceId=15, задел под федерацию из [Фазы 0 rearch](../../../docs/rearch/phase-0/README.md)): `RunSettings:Port`=7030, `FederationDb`, `Federation:Enabled`=false (дефолт), `Federation:ServerName` и `Federation:ExternalEndpoint` **намеренно не заполняются** — остаются `""`, оператор ноды задаёт сам. `FederationService:Host`/`Token` — глобальные (ServiceId=0), по аналогии с `BotsService`. Сам сервис Federation ещё не существует (Фаза 1).
-- `Infrastructure/ConfigurationContext` — EF Core DbContext, один DbSet: `Configurations`
+- `Persistence/Contexts/ConfigurationContext` — EF Core DbContext: `Configurations` и `ConfigurationRevisions`; ревизии удаляются каскадно вместе со строкой конфигурации
 - `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды; инструментирован `MetricsCollector` (счётчики запросов, ошибок, длительность)
 
 ## Миграции
@@ -50,7 +53,7 @@ dotnet tool run dotnet-ef migrations add MigrationName --project Backend/BarkFlu
 
 ## Метрики
 
-Инструментирован `MetricsCollector` (общая схема, см. [[Backend/Beacon-Metrics]]): счётчики запросов/успехов/ошибок/длительности на `GetConfiguration`, `UpdateConfiguration`, Reserved Names, плюс gauges по БД (`configurations_total`, `db_healthy`) и миграциям при старте.
+Инструментирован `MetricsCollector` (общая схема, см. [[Backend/Beacon-Metrics]]): счётчики запросов/успехов/ошибок/длительности на `GetConfiguration`, `UpdateConfiguration`, историю, rollback и Reserved Names, плюс gauges по БД (`configurations_total`, `db_healthy`) и миграциям при старте.
 
 📄 Полный реестр метрик → [[Backend/Configuration-Metrics]]
 

@@ -30,6 +30,7 @@ public static class ConfigurationEndpoints
                 var items = response.Configurations.Select(c =>
                 {
                     var masked = SensitiveConfigMasker.IsSensitive(c.Section, c.Key) && !string.IsNullOrEmpty(c.Value);
+                    var field = ConfigurationFieldCatalog.Describe(c.Section, c.Key, c.Value);
                     return new
                     {
                         section = c.Section,
@@ -42,7 +43,12 @@ public static class ConfigurationEndpoints
                             : c.ServiceId.ToString(),
                         editedAt = c.EditedAt?.ToDateTime().ToString("o") ?? "",
                         editedBy = c.EditedBy,
-                        editedFrom = c.EditedFrom
+                        editedFrom = c.EditedFrom,
+                        fieldType = field.Type.ToString().ToLowerInvariant(),
+                        required = field.Required,
+                        minimum = field.Minimum,
+                        maximum = field.Maximum,
+                        hint = field.Hint
                     };
                 });
 
@@ -67,6 +73,9 @@ public static class ConfigurationEndpoints
         {
             var token = context.GetAuthToken()!;
 
+            if (string.IsNullOrWhiteSpace(request.Section) || string.IsNullOrWhiteSpace(request.Key))
+                return Results.BadRequest(new { message = "Section и Key обязательны" });
+
             if (SensitiveConfigMasker.IsSensitive(request.Section, request.Key) &&
                 string.Equals(request.Value, SensitiveConfigMasker.MaskedValue, StringComparison.Ordinal))
             {
@@ -75,6 +84,17 @@ public static class ConfigurationEndpoints
 
             try
             {
+                var configurations = await configClient.GetAllConfigurationsAsync(new GetAllConfigurationsRequest());
+                var current = configurations.Configurations.FirstOrDefault(c =>
+                    c.Section == request.Section && c.Key == request.Key && c.ServiceId == request.ServiceId);
+                var field = ConfigurationFieldCatalog.Describe(
+                    request.Section,
+                    request.Key,
+                    current?.Value ?? request.Value);
+                var validationError = ConfigurationFieldCatalog.Validate(field, request.Value);
+                if (validationError is not null)
+                    return Results.BadRequest(new { message = validationError });
+
                 var result = await configClient.UpdateConfigurationAsync(new UpdateConfigurationRequest
                 {
                     Section = request.Section,
@@ -106,6 +126,89 @@ public static class ConfigurationEndpoints
             return request is null
                 ? string.Empty
                 : $"serviceId={request.ServiceId};section={request.Section};key={request.Key};valueHash={StepUpService.ComputeParamsHash("config.value", request.Value)}";
+        });
+
+        group.MapGet("/history", async (
+            ConfigurationApi.ConfigurationApiClient configClient,
+            string section,
+            string key,
+            int serviceId,
+            int? count) =>
+        {
+            try
+            {
+                var response = await configClient.GetConfigurationHistoryAsync(new GetConfigurationHistoryRequest
+                {
+                    Section = section,
+                    Key = key,
+                    ServiceId = serviceId,
+                    Count = Math.Clamp(count ?? 30, 1, 100)
+                });
+
+                var sensitive = SensitiveConfigMasker.IsSensitive(section, key);
+                var revisions = response.Revisions.Select(r => new
+                {
+                    id = r.Id,
+                    section = r.Section,
+                    key = r.Key,
+                    serviceId = r.ServiceId,
+                    previousValue = MaskHistoryValue(r.PreviousValue, sensitive),
+                    newValue = MaskHistoryValue(r.NewValue, sensitive),
+                    changedAt = r.ChangedAt?.ToDateTime().ToString("o") ?? string.Empty,
+                    changedBy = r.ChangedBy,
+                    changedFrom = r.ChangedFrom,
+                    changeKind = r.ChangeKind,
+                    sourceRevisionId = r.SourceRevisionId == 0 ? null : (long?)r.SourceRevisionId,
+                    masked = sensitive
+                });
+
+                return Results.Ok(revisions);
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Ошибка получения истории конфигурации: {ex.Message}");
+            }
+        })
+        .RequirePermission(AdminPermissions.ConfigRead);
+
+        group.MapPost("/rollback", async (
+            ConfigurationApi.ConfigurationApiClient configClient,
+            HttpContext context,
+            ConfigurationRollbackRequest request) =>
+        {
+            var token = context.GetAuthToken()!;
+
+            try
+            {
+                var result = await configClient.RollbackConfigurationAsync(new RollbackConfigurationRequest
+                {
+                    RevisionId = request.RevisionId,
+                    EditedBy = token.Name,
+                    EditedFrom = context.Connection.RemoteIpAddress?.ToString() ?? "admin-panel"
+                });
+
+                return result.Success
+                    ? Results.Ok(new { message = result.Message })
+                    : Results.BadRequest(new { message = result.Message });
+            }
+            catch (RpcException ex)
+            {
+                return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Ошибка отката конфигурации: {ex.Message}");
+            }
+        })
+        .RequirePermission(AdminPermissions.ConfigWrite)
+        .RequireStepUpFromArguments(StepUpActions.ConfigRollback, context =>
+        {
+            var request = context.Arguments.OfType<ConfigurationRollbackRequest>().FirstOrDefault();
+            return request is null ? string.Empty : $"revisionId={request.RevisionId}";
         });
 
         // Получить S3 конфигурацию (все бакеты)
@@ -268,6 +371,9 @@ public static class ConfigurationEndpoints
             return $"bucket={request.BucketId};{string.Join(";", values)}";
         });
     }
+
+    private static string MaskHistoryValue(string value, bool sensitive) =>
+        sensitive && !string.IsNullOrEmpty(value) ? SensitiveConfigMasker.MaskedValue : value;
 }
 
 /// <summary>
@@ -279,6 +385,11 @@ public class ConfigurationValueUpdateRequest
     public string Key { get; set; } = string.Empty;
     public int ServiceId { get; set; }
     public string Value { get; set; } = string.Empty;
+}
+
+public class ConfigurationRollbackRequest
+{
+    public long RevisionId { get; set; }
 }
 
 /// <summary>
