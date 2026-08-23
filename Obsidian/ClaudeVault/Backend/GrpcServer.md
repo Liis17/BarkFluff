@@ -54,7 +54,7 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Логирование
 
-`AddBarkFluffSerilog(serviceName)` — Serilog → Console + Seq. Enrichers: MachineName, EnvironmentName, ThreadId, Application. Microsoft/EF Core/HttpClient логи подавлены до Warning. Seq sink дуральный с файловым буфером (`logs/seq-buffer`, лимит 100MB, batch 100 событий, flush каждые 2 секунды).
+`AddBarkFluffSerilog(serviceName)` — Serilog → Console + Seq. Enrichers: MachineName, EnvironmentName, ThreadId, Application и `ActivityLogEnricher`. При наличии текущего W3C `Activity` каждый event получает `TraceId`, `SpanId` и fallback `CorrelationId`; явно заданный бизнес-correlation ID не затирается. `RequestContextInterceptor` добавляет `RequestId` (`HttpContext.TraceIdentifier`) в gRPC-логи и принимает явный `X-Correlation-ID`. Microsoft/EF Core/HttpClient логи подавлены до Warning. Seq sink дуральный с файловым буфером (`logs/seq-buffer`, лимит 100MB, batch 100 событий, flush каждые 2 секунды).
 
 ## Зависимости
 

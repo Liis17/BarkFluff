@@ -1025,7 +1025,14 @@
         const auth = await checkAuth();
         if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        const linkedUserIdParam = new URLSearchParams(window.location.search).get('userId');
+        const linkedUserId = /^\d+$/.test(linkedUserIdParam || '') ? linkedUserIdParam : null;
+        if (linkedUserId) {
+            currentQuery = linkedUserId;
+            document.getElementById('searchInput').value = linkedUserId;
+        }
         await loadUsers(true);
+        if (linkedUserId) await openUserModal(linkedUserId);
         observer.observe(document.getElementById('sentinel'));
         BF.pageReady();
     })();

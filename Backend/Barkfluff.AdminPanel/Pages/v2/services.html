@@ -94,6 +94,7 @@
         .svc-row.completed { opacity: .6; }
         .svc-row.pending   { opacity: .35; }
         .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
+        .service-target { outline: 2px solid var(--md-primary); outline-offset: -2px; background: var(--md-primary-container); }
 
         html.progress-modal-open,
         body.progress-modal-open { overflow: hidden; }
@@ -541,7 +542,7 @@
                         </button>
                     </div>` : '<span style="color:var(--md-outline);">—</span>';
             return `
-            <tr>
+            <tr data-service="${escapeHtml(svc.name)}">
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;font-weight:500;">
                         ${bfIcon(getServiceIconPath(svc.name), 'size-18 service-icon')}
@@ -559,6 +560,17 @@
                 <td>${actionButtons}</td>
             </tr>`;
         }).join('');
+        requestAnimationFrame(focusLinkedService);
+    }
+
+    function focusLinkedService() {
+        const target = new URLSearchParams(window.location.search).get('service');
+        if (!target) return;
+        const row = [...document.querySelectorAll('#servicesTableBody tr[data-service]')]
+            .find(item => item.dataset.service.toLowerCase() === target.toLowerCase());
+        if (!row) return;
+        row.classList.add('service-target');
+        row.scrollIntoView({ behavior:'smooth', block:'center' });
     }
 
     // ---- Ветки обновлений (image: в docker-compose.yml) ----
