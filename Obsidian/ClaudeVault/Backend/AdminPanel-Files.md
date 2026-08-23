@@ -46,7 +46,7 @@
 | `LogsCompressionEndpoints.cs` | `/api/seq/compress-metrics` | Ручной запуск ежедневного сжатия логов-метрик за конкретную дату, история прогонов. |
 | `NotificationsEndpoints.cs` | `/api/notifications` | Публикация push-рассылок (всем устройствам / по списку deviceId) через MassTransit. |
 | `RemoteDockerEndpoints.cs` | `/api/remote/servers` | CRUD сохранённых SSH-серверов, discovery контейнеров, список и действия над отслеживаемыми контейнерами; WebSocket-консоль принимает upgrade до открытия SSH, возвращает ready/error-сигналы и передаёт вывод PTY binary-фреймами. |
-| `ConfigurationEndpoints.cs` | `/api/configuration` | Чтение и обновление S3-конфигурации бакетов через gRPC Configuration. |
+| `ConfigurationEndpoints.cs` | `/api/configuration` | Типизированное чтение/валидация/обновление общей конфигурации, история и rollback; S3-конфигурация бакетов через gRPC Configuration. |
 | `S3BrowserEndpoints.cs` | `/api/s3` | Список бакетов, листинг объектов, получение presigned URL. |
 | `ReservedNamesEndpoints.cs` | `/api/reserved-names` | CRUD зарезервированных имён пользователей через gRPC Configuration. |
 | `MailEndpoints.cs` | `/api/mail` | Просмотр/отправка писем служебных почтовых ящиков (IMAP/SMTP через MailKit): аккаунты, список писем, письмо, вложения, inline-картинки, пометка прочитанным, отправка. |
@@ -97,6 +97,7 @@
 | `LogsExportService.cs` | Singleton + Timer cleanup. Управляет job'ами экспорта: постраничная выгрузка событий в JSON-страницы, упаковка в ZIP в `/tmp/logs-export/`. |
 | `MetricsLogCompressorService.cs` | `IHostedService` + Singleton. Ежедневно в 03:00 UTC агрегирует логи-метрики (`@MessageTemplate = 'ServiceMetrics {@Metrics}'`) за вчерашний день: один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count по каждой метрике), затем удаление исходных через точный фильтр шаблона. Идемпотентность через `MetricsCacheDbContext.CompressionRuns`. |
 | `S3BrowserService.cs` | AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из gRPC Configuration. Методы: листинг бакетов/объектов, presigned URL (5 мин). |
+| `ConfigurationFieldCatalog.cs` | Консервативно выводит тип поля конфигурации (string/secret/boolean/integer/url), ограничения и валидирует новое значение на сервере. |
 | `MetricsCollectorService.cs` | `IHostedService`. Запускается при старте + каждый час. Собирает события Seq за 24ч, группирует по часам/сервисам, сохраняет в `MetricsCacheDbContext`. Удаляет устаревшие данные (Stats >24ч, ServiceMetrics >12ч). |
 | `MailService.cs` | `IAsyncDisposable`. IMAP/SMTP клиент (MailKit) для служебных ящиков: по одному `ImapClient`+`SemaphoreSlim` на аккаунт. Список писем, письмо, вложения (включая inline по Content-ID), пометка прочитанным, отправка через SMTP. |
 | `RemoteDockerService.cs` | Управление Docker и интерактивной консолью на сохранённых в LiteDB SSH-серверах: проверка подключения, discovery, статусы, start/stop/restart, Compose-only pull + recreate. |

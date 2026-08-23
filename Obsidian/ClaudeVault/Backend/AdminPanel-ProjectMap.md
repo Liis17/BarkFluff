@@ -62,6 +62,7 @@ Barkfluff.AdminPanel/
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
 │   ├── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── ConfigurationFieldCatalog.cs   ← типы и validation rules для редактора конфигурации
 │   ├── UserSessionRevocationService.cs ← массовый отзыв пользовательских сессий с частичным результатом
 │   ├── MailService.cs                 ← IMAP/SMTP клиент (MailKit) для служебных ящиков
 │   └── RemoteDockerService.cs         ← Docker и интерактивная консоль на удалённых хостах по SSH-туннелю
@@ -481,7 +482,9 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | `/api/configuration/all` | Все строки конфигурации через rpc `GetAllConfigurations` |
-| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
+| POST | `/api/configuration/update` | Типизация/валидация `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
+| GET | `/api/configuration/history` | История ключа; секретные значения маскируются |
+| POST | `/api/configuration/rollback` | Rollback по revisionId; `config.write` + step-up |
 | GET | `/api/configuration/s3-configuration` | S3 конфиг всех бакетов |
 | POST | `/api/configuration/s3/update` | Обновить конфиг бакета `{ bucketId, parameters }` |
 
@@ -575,7 +578,10 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | gRPC-метод | Вызывается из |
 |-----------|-------------|
 | `GetConfigurationAsync()` | ConfigurationEndpoints, S3BrowserService |
+| `GetAllConfigurationsAsync()` | ConfigurationEndpoints |
 | `UpdateConfigurationAsync()` | ConfigurationEndpoints |
+| `GetConfigurationHistoryAsync()` | ConfigurationEndpoints |
+| `RollbackConfigurationAsync()` | ConfigurationEndpoints |
 | `GetReservedNamesAsync()` | ReservedNamesEndpoints |
 | `AddReservedNameAsync()` | ReservedNamesEndpoints |
 | `RenameReservedNameAsync()` | ReservedNamesEndpoints |

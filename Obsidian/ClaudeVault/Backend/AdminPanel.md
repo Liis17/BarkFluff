@@ -235,14 +235,16 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 
 ## Вкладка «Конфигурация» (`/configuration`)
 
-`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису (раскрывающиеся блоки), клиентский поиск, **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••` + флаг `masked`, кнопки «показать» для таких строк нет), inline-редактирование **только Value** (Enter — сохранить, Esc — отмена; для masked-строк ввод начинается с пустого поля, пустое значение сохранить нельзя). `EditedAt` ставит сервер, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
+`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису, клиентский поиск и **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL, секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет». История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Configuration-сервис, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
 
 Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations` (+ `serviceName` из enum `ServiceId`); чувствительные значения маскируются сервером (`SensitiveConfigMasker`), в ответе флаг `masked` |
-| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration`; для чувствительных строк значение-маска `••••••••` отклоняется с 400 |
+| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations`; добавляет `serviceName`, маску секрета и метаданные поля (`fieldType`, required/min/max/hint) |
+| POST | `/api/configuration/update` | Валидирует типизированное значение, затем `{ section, key, serviceId, value }` → rpc `UpdateConfiguration`; маска вместо секрета отклоняется с 400 |
+| GET | `/api/configuration/history` | История ключа по `section`, `key`, `serviceId`; секретные old/new values маскируются |
+| POST | `/api/configuration/rollback` | `{ revisionId }` → rpc `RollbackConfiguration`; `config.write` + step-up |
 | GET | `/api/configuration/s3-configuration` | Конфигурация S3-бакетов без секретов: `accessKeyConfigured`, `accessKeyMasked`, `secretKeyConfigured` |
 | POST | `/api/configuration/s3/update` | Обновление конфигурации S3; пустые/отсутствующие `accessKey`/`secretKey` = «оставить текущие» (замена секрета write-only); после успеха инвалидирует кэш `S3BrowserService` |
 

@@ -2,7 +2,9 @@ using BarkFluff.Configuration.Features.AddReservedName;
 using BarkFluff.Configuration.Features.DeleteReservedName;
 using BarkFluff.Configuration.Features.GetAllConfigurations;
 using BarkFluff.Configuration.Features.GetConfiguration;
+using BarkFluff.Configuration.Features.GetConfigurationHistory;
 using BarkFluff.Configuration.Features.GetReservedNames;
+using BarkFluff.Configuration.Features.RollbackConfiguration;
 using BarkFluff.Configuration.Features.UpdateConfiguration;
 using BarkFluff.Configuration.Features.UpdateReservedName;
 using BarkFluff.GrpcServer.Metrics;
@@ -113,6 +115,46 @@ public class ConfigurationApiService : BarkFluff.Proto.Configuration.Configurati
             _metrics.Add("config_update_duration_ms_total", sw.ElapsedMilliseconds);
             throw;
         }
+    }
+
+    public override async Task<GetConfigurationHistoryResponse> GetConfigurationHistory(
+        GetConfigurationHistoryRequest request,
+        ServerCallContext context)
+    {
+        _metrics.Increment("config_history_requests");
+        try
+        {
+            var response = await _mediator.Send(new GetConfigurationHistoryCommand
+            {
+                Section = request.Section,
+                Key = request.Key,
+                ServiceId = request.ServiceId,
+                Count = request.Count
+            });
+            _metrics.Increment("config_history_success");
+            return response;
+        }
+        catch
+        {
+            _metrics.Increment("config_history_errors");
+            throw;
+        }
+    }
+
+    public override async Task<RollbackConfigurationResponse> RollbackConfiguration(
+        RollbackConfigurationRequest request,
+        ServerCallContext context)
+    {
+        _metrics.Increment("config_rollback_requests");
+        var response = await _mediator.Send(new RollbackConfigurationCommand
+        {
+            RevisionId = request.RevisionId,
+            EditedBy = request.EditedBy,
+            EditedFrom = request.EditedFrom
+        });
+
+        _metrics.Increment(response.Success ? "config_rollback_success" : "config_rollback_errors");
+        return response;
     }
 
     // ─── Reserved Names ─────────────────────────────────────────────────────────

@@ -24,7 +24,8 @@
 
 | Файл | Описание |
 |------|----------|
-| `Domain/ConfigurationItem.cs` | Единственная доменная сущность. Поля: `Id`, `Section`, `Key`, `Value`, `ServiceId` (enum `ServiceId`), `EditedAt`, `EditedBy`, `EditedFrom`. Хранит одну запись конфигурации, привязанную к конкретному сервису или глобально (`ServiceId.Unknown`). |
+| `Domain/ConfigurationItem.cs` | Текущее значение конфигурации: `Id`, `Section`, `Key`, `Value`, `ServiceId`, `EditedAt`, `EditedBy`, `EditedFrom`. |
+| `Domain/ConfigurationRevision.cs` | Исторический переход `PreviousValue` → `NewValue` с автором, источником, временем, `ChangeKind` и optional `SourceRevisionId` для rollback. |
 
 ---
 
@@ -32,7 +33,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Host/ConfigurationApiService.cs` | gRPC-сервис, реализует `ConfigurationApiBase`. Принимает входящие RPC-вызовы, инкрементирует метрики через `MetricsCollector` и делегирует обработку в MediatR-команды. Методы: `GetConfiguration`, `GetAllConfigurations`, `UpdateConfiguration`, `GetReservedNames`, `AddReservedName`, `UpdateReservedName`, `DeleteReservedName`. |
+| `Host/ConfigurationApiService.cs` | gRPC-сервис, реализует `ConfigurationApiBase`. Делегирует в MediatR и считает метрики. Методы конфигурации: `GetConfiguration`, `GetAllConfigurations`, `UpdateConfiguration`, `GetConfigurationHistory`, `RollbackConfiguration`; также CRUD Reserved Names. |
 
 ---
 
@@ -46,8 +47,8 @@
 
 | Файл | Описание |
 |------|----------|
-| `Persistence/Contexts/ConfigurationContext.cs` | EF Core `DbContext`. Один `DbSet<ConfigurationItem> Configurations`. |
-| `Persistence/Services/ConfigurationStorage.cs` | Репозиторий БД: конфигурации и CSV-список зарезервированных имён. |
+| `Persistence/Contexts/ConfigurationContext.cs` | EF Core `DbContext`: `Configurations` + `ConfigurationRevisions`, FK revision → item с cascade delete и индекс истории по service/section/key/time. |
+| `Persistence/Services/ConfigurationStorage.cs` | Репозиторий БД: чтение/upsert конфигураций, атомарная запись ревизий, история, rollback и CSV-список зарезервированных имён. |
 
 ---
 
@@ -70,6 +71,12 @@
 |------|----------|
 | `Features/UpdateConfiguration/UpdateConfigurationCommand.cs` | Команда: Section, Key, Value, ServiceId, EditedBy, EditedFrom. |
 | `Features/UpdateConfiguration/UpdateConfigurationCommandHandler.cs` | Выполняет upsert через `ConfigurationStorage`, возвращает `UpdateConfigurationResponse { success, message }`. |
+
+### GetConfigurationHistory / RollbackConfiguration
+| Файл | Описание |
+|------|----------|
+| `Features/GetConfigurationHistory/*` | Команда и handler чтения последних ревизий Section+Key+ServiceId с лимитом 1–100. |
+| `Features/RollbackConfiguration/*` | Команда и handler восстановления `PreviousValue` выбранной ревизии. |
 
 ### GetReservedNames
 | Файл | Описание |
@@ -101,7 +108,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Shared/BarkFluff.Proto/configuration_api.proto` | gRPC-контракт. Сервис `ConfigurationApi`: 2 метода для конфигураций + 4 метода для Reserved Names. Сообщение `ConfigurationItem` содержит Section, Key, Value, ServiceId, EditedAt (Timestamp), EditedBy, EditedFrom. |
+| `Shared/BarkFluff.Proto/configuration_api.proto` | gRPC-контракт: чтение/all/update/history/rollback конфигурации + 4 метода Reserved Names. Содержит `ConfigurationItem` и `ConfigurationRevision`. |
 
 ---
 
@@ -130,6 +137,7 @@
 | `20260705140000_AddBotsConfiguration` | Конфигурация сервиса Bots. |
 | `20260715100000_AddBotsIdentityServiceConfiguration` | Конфигурация Bots → Identity. |
 | `20260715150000_AddLiveKitPublicUrl` | Публичный `wss://`-URL LiveKit для Beacon. |
+| `20260823205922_AddConfigurationRevisions` | Таблица `ConfigurationRevisions`, FK на `Configurations` и индекс выборки истории. |
 | `ConfigurationContextModelSnapshot.cs` | EF Core снимок модели. |
 | `fix_migration_history.sql` | SQL-скрипт ручного исправления истории миграций. |
 | `manual_add_location.sql` | SQL-скрипт ручного добавления колонки location. |
