@@ -89,7 +89,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - `auth.js`, `fast-auth.js` и `register.js` держат **собственные** клиенты и строят их лениво: на шелле ноду выбирают на той же странице, поэтому origin известен только к моменту первого вызова.
 - `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16). Временная ошибка refresh (сеть, таймаут, 5xx) сохраняет локальную сессию; [[Backend/Identity|Identity]] очищает её только через `x-error-code` невалидного refresh token (`7E6A31C5-3C4D-412E-87BC-0A387617A5D3`).
 - `js/app/metadata.js` (`BF.metadata.build(token)`) формирует метаданные: `x-auth-token` (plain) + base64 `x-device-id`/`x-device-name`/`x-os-name`/`x-app-name`/`x-app-version`. Device-id — из `js/app/device.js` (localStorage `barkfluff_device_id`); его методы `getBrowserName()` и `getOsName()` также выводятся в «О BarkFluff».
-- `js/app/health.js` (`BF.health`) — параллельная проверка `/ping` шлюза Web и `/ping/{service}` для пользовательских микросервисов; успешен только ответ `200` с телом `pong`, таймаут — 8 секунд, результат содержит время каждого запроса.
+- `js/app/health.js` (`BF.health`) — параллельная проверка `/ping` шлюза Web и `/ping/{service}` сервисов выбранной ноды; каталог Navigator намеренно не входит в список проверки; успешен только ответ `200` с телом `pong`, таймаут — 8 секунд, результат содержит время каждого запроса.
 - `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
 
 ### Real-time
