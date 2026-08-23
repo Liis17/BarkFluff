@@ -201,6 +201,32 @@
         .session-list { display: flex; flex-direction: column; gap: 6px; }
         .session-row { margin-bottom: 0; }
         .sessions-toggle { width: 100%; justify-content: center; margin-top: 8px; }
+        .user-data-warning {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-warning-container);
+            color: var(--md-on-warning-container);
+            font-size: 13px;
+        }
+        .user-section-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .user-modal-section .user-section-heading h4 { margin: 0; }
+        .admin-reason {
+            width: 100%;
+            min-height: 64px;
+            margin-top: 8px;
+            padding: 10px 14px;
+            resize: vertical;
+        }
 
         .storage-card {
             display: grid;
@@ -503,6 +529,23 @@
     function renderUserModal(data) {
         const p = data.profile;
         const canChangePassword = !window.BF || BF.can('users.password.set');
+        const unavailableLabels = {
+            contacts: 'контакты',
+            devices: 'устройства',
+            storage: 'хранилище',
+            twoFactor: '2FA',
+            sessions: 'сессии',
+            poster: 'постер профиля'
+        };
+        const unavailable = Object.entries(data.availability || {})
+            .filter(([, available]) => available === false)
+            .map(([section]) => unavailableLabels[section] || section);
+        const availabilityWarning = unavailable.length
+            ? `<div class="user-data-warning" role="status">
+                    <span class="msr size-20">warning</span>
+                    <span>Часть данных временно недоступна: ${unavailable.map(escapeHtml).join(', ')}. Остальные сведения актуальны.</span>
+               </div>`
+            : '';
         document.getElementById('modalUserTitle').textContent = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь';
 
         let html = `
@@ -524,6 +567,7 @@
         </section>
 
         <section class="user-modal-profile">
+            ${availabilityWarning}
             <div class="user-modal-identity">
                 <div class="user-modal-name">${escapeHtml(`${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь')}</div>
                 <div class="user-modal-username">@${escapeHtml(p.username || '')}</div>
@@ -562,7 +606,13 @@
         </section>
 
         <section class="user-modal-section">
-            <h4>Устройства и сессии</h4>
+            <div class="user-section-heading">
+                <h4>Устройства и сессии</h4>
+                ${data.availability?.sessions !== false && (data.sessions || []).length > 0 && (!window.BF || BF.can('users.sessions.revoke')) ? `
+                    <button id="revokeAllSessionsButton" type="button" class="md-btn md-btn-text" style="color:var(--md-error);" onclick="revokeAllSessions(${p.id})">
+                        Завершить все
+                    </button>` : ''}
+            </div>
             <div id="sessionsList" class="session-list"></div>
             <button id="sessionsToggle" type="button" class="md-btn md-btn-text sessions-toggle" onclick="toggleSessions(${p.id})"></button>
         </section>
@@ -584,6 +634,8 @@
                     </div>
                     <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
                 </div>
+                <label class="field-label" for="twoFactorReason">Причина отключения</label>
+                <textarea id="twoFactorReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
             ` : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные недоступны</div>'}
         </section>
 
@@ -594,6 +646,8 @@
                 <input id="newPasswordInput" type="password" placeholder="Новый пароль (мин. 6 символов)" class="md-input-outlined" style="flex:1;">
                 <button class="md-btn md-btn-square-press" style="background:var(--md-tertiary);color:var(--md-on-tertiary);" onclick="changeUserPassword(${p.id})">Применить</button>
             </div>
+            <label class="field-label" for="passwordReason" style="margin-top:10px;">Причина смены пароля</label>
+            <textarea id="passwordReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
             <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Пользователь получит email об изменении пароля.</p>
         </section>` : ''}`;
 
@@ -606,7 +660,7 @@
         if (window.BF && !BF.can('badges.manage')) {
             document.querySelectorAll('.badge-tile-add, .badge-tile-remove').forEach(b => b.style.display = 'none');
         }
-        renderSessionList(p.id, data.sessions || []);
+        renderSessionList(p.id, data.sessions || [], data.availability?.sessions !== false);
     }
 
     const storageTypeNames = {
@@ -645,10 +699,16 @@
             </button>`;
     }
 
-    function renderSessionList(uid, sessions) {
+    function renderSessionList(uid, sessions, available = true) {
         const list = document.getElementById('sessionsList');
         const toggle = document.getElementById('sessionsToggle');
         if (!list || !toggle) return;
+
+        if (!available) {
+            list.innerHTML = '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные о сессиях временно недоступны</div>';
+            toggle.style.display = 'none';
+            return;
+        }
 
         const allSessions = Array.isArray(sessions) ? sessions : [];
         const visibleSessions = sessionsExpanded ? allSessions : allSessions.slice(0, 3);
@@ -685,7 +745,7 @@
 
     window.toggleSessions = function (uid) {
         sessionsExpanded = !sessionsExpanded;
-        renderSessionList(uid, currentUserData?.sessions || []);
+        renderSessionList(uid, currentUserData?.sessions || [], currentUserData?.availability?.sessions !== false);
     };
 
     function renderStorageSection(storage, profile) {
@@ -834,6 +894,23 @@
         if (!confirm('Завершить сессию?')) return;
         try { await BF.api(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
     };
+    window.revokeAllSessions = async function (uid) {
+        if (window.BF && !BF.can('users.sessions.revoke')) return;
+        if (!confirm('Завершить все активные сессии пользователя?')) return;
+        try {
+            const result = await BF.request(`/api/users/${uid}/sessions`, {
+                method: 'DELETE',
+                loading: '#revokeAllSessionsButton',
+                errorToast: true
+            });
+            if (result.failedDeviceIds?.length) {
+                BF.toast(`Завершено ${result.revokedCount} из ${result.requestedCount} сессий`, 'warning');
+            } else {
+                BF.toast(`Завершено сессий: ${result.revokedCount}`, 'success');
+            }
+            await openUserModal(uid);
+        } catch (_) {}
+    };
     window.showDeviceDetails = function (session) {
         const html = `
             <p><strong>Device ID:</strong> <span style="font-family:'Roboto Mono',monospace;font-size:12px;">${escapeHtml(session.deviceId)}</span></p>
@@ -850,12 +927,18 @@
     window.disableOtp = async function (uid, otpType) {
         if (window.BF && !BF.can('users.2fa.disable')) return;
         const name = otpType === 1 ? 'Authenticator' : 'Email';
+        const reason = document.getElementById('twoFactorReason')?.value.trim();
+        if (!reason) { BF.toast('Укажите причину отключения 2FA', 'warning'); return; }
         if (!confirm(`Отключить ${name} 2FA?`)) return;
         try {
-            const response = await BF.api(`/api/users/${uid}/2fa/disable`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otpType}) });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await BF.request(`/api/users/${uid}/2fa/disable`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({otpType, reason}),
+                successToast: `${name} 2FA отключён`
+            });
             await openUserModal(uid);
-        } catch (e) { alert(e.message); }
+        } catch (_) {}
     };
     window.updateStorageLimit = async function (uid) {
         const v = parseInt(document.getElementById('storageLimitSlider').value);
@@ -872,14 +955,20 @@
         if (window.BF && !BF.can('users.password.set')) return;
         const input = document.getElementById('newPasswordInput');
         const p = input.value.trim();
+        const reason = document.getElementById('passwordReason')?.value.trim();
         if (!p || p.length < 6) { alert('Пароль должен быть не менее 6 символов'); return; }
+        if (!reason) { BF.toast('Укажите причину смены пароля', 'warning'); return; }
         if (!confirm('Сменить пароль пользователю?')) return;
         try {
-            const response = await BF.api(`/api/users/${uid}/password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({newPassword:p}) });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await BF.request(`/api/users/${uid}/password`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({newPassword:p, reason}),
+                successToast: 'Пароль изменён'
+            });
             input.value = '';
-            alert('Пароль изменён');
-        } catch (e) { alert(e.message); }
+            document.getElementById('passwordReason').value = '';
+        } catch (_) {}
     };
     window.handleAvatarUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;

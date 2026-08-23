@@ -37,7 +37,8 @@ Barkfluff.AdminPanel/
 │   ├── FederationEndpoints.cs         ← /api/federation/*
 │   └── RemoteDockerEndpoints.cs       ← /api/remote/*
 ├── Middleware/
-│   └── TokenAuthMiddleware.cs         ← cookie-аутентификация
+│   ├── TokenAuthMiddleware.cs         ← cookie-аутентификация
+│   └── RequireAdminReasonFilter.cs    ← обязательная причина чувствительного действия
 ├── Models/
 │   ├── AuthToken.cs                   ← сессионный токен
 │   ├── PendingAuthRequest.cs          ← запрос подтверждения (in-memory)
@@ -61,6 +62,7 @@ Barkfluff.AdminPanel/
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
 │   ├── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── UserSessionRevocationService.cs ← массовый отзыв пользовательских сессий с частичным результатом
 │   ├── MailService.cs                 ← IMAP/SMTP клиент (MailKit) для служебных ящиков
 │   └── RemoteDockerService.cs         ← Docker и интерактивная консоль на удалённых хостах по SSH-туннелю
 ├── Pages/

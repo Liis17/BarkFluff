@@ -31,6 +31,7 @@ public static class StepUpActions
 {
     public const string UsersPasswordSet = "users.password.set";
     public const string Users2FaDisable = "users.2fa.disable";
+    public const string UsersSessionsRevokeAll = "users.sessions.revoke-all";
     public const string DockerBranch = "docker.branch";
     public const string DockerRestartAll = "docker.restart-all";
     public const string DockerUpdateAll = "docker.update-all";
@@ -52,6 +53,7 @@ public static class StepUpActions
         {
             [UsersPasswordSet] = AdminPermissions.UsersPasswordSet,
             [Users2FaDisable] = AdminPermissions.Users2FaDisable,
+            [UsersSessionsRevokeAll] = AdminPermissions.UsersSessionsRevoke,
             [DockerBranch] = AdminPermissions.DockerDeploy,
             [DockerRestartAll] = AdminPermissions.DockerDeploy,
             [DockerUpdateAll] = AdminPermissions.DockerDeploy,
@@ -80,6 +82,7 @@ public static class StepUpActions
         {
             UsersPasswordSet => "Смена пароля пользователя",
             Users2FaDisable => "Отключение 2FA пользователя",
+            UsersSessionsRevokeAll => "Завершение всех сессий пользователя",
             DockerBranch => "Переключение ветки обновлений",
             DockerRestartAll => "Перезапуск всех сервисов",
             DockerUpdateAll => "Обновление всех сервисов",
@@ -97,5 +100,32 @@ public static class StepUpActions
             AdminsRolesUpdate => "Изменение ролей администратора",
             _ => actionKey
         };
+    }
+
+    public static string AuditDetails(string actionKey, string? parameters)
+    {
+        var title = Title(actionKey);
+        var reason = GetParameter(parameters, "reason");
+        return string.IsNullOrWhiteSpace(reason)
+            ? title
+            : $"{title}. Причина: {reason.Trim()}";
+    }
+
+    private static string? GetParameter(string? parameters, string name)
+    {
+        if (string.IsNullOrWhiteSpace(parameters))
+            return null;
+
+        var marker = $"{name}=";
+        var start = parameters.StartsWith(marker, StringComparison.Ordinal)
+            ? 0
+            : parameters.IndexOf($";{marker}", StringComparison.Ordinal) + 1;
+        if (start < 0 || start >= parameters.Length ||
+            !parameters.AsSpan(start).StartsWith(marker, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return parameters[(start + marker.Length)..];
     }
 }

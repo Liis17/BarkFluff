@@ -53,7 +53,7 @@ public class RequireStepUpFilter : IEndpointFilter
                     AdminUsername = token.AdminUsername,
                     TelegramUserId = token.ApprovedByTelegramUserId,
                     Action = _actionKey,
-                    Details = StepUpActions.Title(_actionKey),
+                    Details = StepUpActions.AuditDetails(_actionKey, parameters),
                     IpAddress = http.Connection.RemoteIpAddress?.ToString(),
                     ConfirmationId = confirmationId,
                     Outcome = "confirmed"
@@ -67,7 +67,7 @@ public class RequireStepUpFilter : IEndpointFilter
                 AdminUsername = token.AdminUsername,
                 TelegramUserId = token.ApprovedByTelegramUserId,
                 Action = _actionKey,
-                Details = StepUpActions.Title(_actionKey),
+                Details = StepUpActions.AuditDetails(_actionKey, parameters),
                 IpAddress = http.Connection.RemoteIpAddress?.ToString(),
                 ConfirmationId = confirmationId,
                 Outcome = "invalid_confirmation"

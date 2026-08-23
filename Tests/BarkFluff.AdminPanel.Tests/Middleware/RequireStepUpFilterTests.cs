@@ -26,6 +26,7 @@ public sealed class RequireStepUpFilterTests : IDisposable
     private readonly HttpClient _client;
     private readonly TokenService _tokenService;
     private readonly StepUpService _stepUpService;
+    private readonly AuditService _auditService;
     private readonly AuthToken _token;
 
     private const long AdminId = 100;
@@ -57,6 +58,15 @@ public sealed class RequireStepUpFilterTests : IDisposable
             .RequireStepUpFromArguments("docker.branch", context =>
                 $"value={context.Arguments.OfType<StepUpPayload>().FirstOrDefault()?.Value}");
 
+        app.MapPost("/api/reasoned", (ReasonedPayload payload) => Results.Ok(payload))
+            .RequireAdminReasonFromArguments(context =>
+                context.Arguments.OfType<ReasonedPayload>().FirstOrDefault()?.Reason)
+            .RequireStepUpFromArguments(StepUpActions.UsersPasswordSet, context =>
+            {
+                var payload = context.Arguments.OfType<ReasonedPayload>().FirstOrDefault();
+                return $"userId=42;reason={payload?.Reason?.Trim()}";
+            });
+
         app.MapPost("/api/stepup/request", async (StepUpRequestDto dto, HttpContext context, StepUpService stepUpService) =>
         {
             var token = (context.Items["AuthToken"] as AuthToken)!;
@@ -75,6 +85,7 @@ public sealed class RequireStepUpFilterTests : IDisposable
         services.GetRequiredService<AdminService>().EnsureBootstrapped();
         _tokenService = services.GetRequiredService<TokenService>();
         _stepUpService = services.GetRequiredService<StepUpService>();
+        _auditService = services.GetRequiredService<AuditService>();
 
         app.StartAsync().GetAwaiter().GetResult();
         _app = app;
@@ -192,7 +203,35 @@ public sealed class RequireStepUpFilterTests : IDisposable
         Assert.Equal("value=two", body.GetProperty("parameters").GetString());
     }
 
+    [Fact]
+    public async Task ConfirmedReasonedAction_WritesReasonToAuditDetails()
+    {
+        const string parameters = "userId=42;reason=Запрос владельца аккаунта";
+        var confirmationId = Approve(StepUpActions.UsersPasswordSet, parameters);
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/reasoned")
+        {
+            Content = JsonContent.Create(new ReasonedPayload("Запрос владельца аккаунта"))
+        };
+        request.Headers.Add("X-Confirmation-Id", confirmationId);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var entry = Assert.Single(_auditService.GetEntries(10, beforeUtc: null));
+        Assert.Equal(StepUpActions.UsersPasswordSet, entry.Action);
+        Assert.Contains("Запрос владельца аккаунта", entry.Details);
+    }
+
+    [Fact]
+    public async Task ReasonedActionWithoutReason_ReturnsBadRequestBeforeStepUp()
+    {
+        var response = await _client.PostAsJsonAsync("/api/reasoned", new ReasonedPayload(" "));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private sealed record StepUpPayload(string Value);
+    private sealed record ReasonedPayload(string? Reason);
 
     private sealed class NoopStepUpSender : IStepUpSender
     {
