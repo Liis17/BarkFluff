@@ -53,7 +53,7 @@ namespace BarkFluff.WebApi.Core.Managers
             try
             {
                 // Кто-то уже успел обновить токен пока мы ждали lock — повторяем сразу.
-                if (globalParam.AccessToken?.Value != staleAccessTokenValue)
+                if ((globalParam.AccessToken?.Value ?? string.Empty) != staleAccessTokenValue)
                 {
                     return true;
                 }

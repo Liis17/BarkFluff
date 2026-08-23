@@ -188,6 +188,19 @@ public class SeqService
         return ExtractFirstScalar(resp.Value);
     }
 
+    public async Task<long?> CountFilteredEventsAsync(
+        string filter,
+        DateTime? fromDateUtc = null,
+        DateTime? toDateUtc = null)
+    {
+        var resp = await RunSqlQueryAsync(
+            $"select count(*) as Total from stream where {filter}",
+            fromDateUtc,
+            toDateUtc);
+        if (resp is null) return null;
+        return ExtractFirstScalar(resp.Value);
+    }
+
     public async Task DeleteEventsAsync(
         string? filter = null,
         DateTime? fromDateUtc = null,

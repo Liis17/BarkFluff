@@ -11,19 +11,42 @@
     var urlCache = new Map();
 
     /**
+     * Срок жизни кэша temp-ссылок. Сервер выдаёт их на 60 минут (TempFiles:ExpiresAt),
+     * поэтому кэшируем меньше — иначе фоны/аватарки в долго открытой вкладке
+     * грузятся по протухшему URL.
+     */
+    var URL_CACHE_TTL_MS = 30 * 60 * 1000;
+
+    /**
      * Отдельный публичный адрес файлового HTTP ноды (Beacon `files_media_endpoint`):
      * загрузка и скачивание в обход CDN с его лимитом на размер файла.
      * Пусто — работаем по адресам, которые выдал сервер, как раньше.
+     * На прокси-зеркале всегда пусто: отдельный файловый адрес ноды недоступен
+     * напрямую, и загрузка, и медиа идут через сам прокси-хост.
      */
     function mediaOrigin() {
+        if (BF.node.proxied && BF.node.proxied()) return '';
         var meta = BF.node.meta();
         return (meta && meta.filesMediaEndpoint) || '';
     }
 
-    /** Подменяет хост в ссылке Files на отдельный файловый адрес ноды; путь сохраняется. */
+    /**
+     * Подменяет хост в ссылке Files на отдельный файловый адрес ноды; путь сохраняется.
+     * На прокси-зеркале ссылка оборачивается в /media/{host}/... этого же origin:
+     * файловые хосты ноды недоступны из РФ напрямую, их релеит прокси.
+     */
     function mediaUrl(url) {
+        if (!url) return url;
+        if (BF.node.proxied && BF.node.proxied()) {
+            try {
+                var relay = new URL(url);
+                return BF.node.origin() + '/media/' + relay.host + relay.pathname + relay.search;
+            } catch (e) {
+                return url;
+            }
+        }
         var origin = mediaOrigin();
-        if (!url || !origin) return url;
+        if (!origin) return url;
         try {
             var source = new URL(url);
             var target = new URL(origin);
@@ -39,8 +62,13 @@
         urlCache.set(f.fileId, {
             fileId: f.fileId,
             url: mediaUrl(f.url),
-            previewUrl: mediaUrl(f.previewUrl)
+            previewUrl: mediaUrl(f.previewUrl),
+            cachedAt: Date.now()
         });
+    }
+
+    function isCacheEntryFresh(entry) {
+        return Boolean(entry) && (Date.now() - entry.cachedAt) < URL_CACHE_TTL_MS;
     }
 
     /**
@@ -49,7 +77,11 @@
      * @returns {Promise<Object[]>} — array of {fileId, url, previewUrl}
      */
     function getFileUrls(fileIds) {
-        var missing = fileIds.filter(function (id) { return !urlCache.has(id); });
+        var missing = fileIds.filter(function (id) {
+            if (isCacheEntryFresh(urlCache.get(id))) return false;
+            urlCache.delete(id);
+            return true;
+        });
         var p = missing.length > 0
             ? BF.api.getTempDownloadUrl(missing).then(function (data) {
                 if (data && data.files) {
@@ -215,7 +247,7 @@
      * загрузки так же, как обычные media-элементы. При первой ошибке URL
      * обновляется по fileId; при повторной показывается заглушка.
      */
-    function loadResilientBackground(el, fileId, preferPreview) {
+    function loadResilientBackground(el, fileId, preferPreview, onResolved) {
         if (!el) return;
 
         var requestId = String(Number(el.getAttribute('data-bf-background-request') || '0') + 1);
@@ -241,10 +273,16 @@
             });
         }
 
+        function notifyResolved(url) {
+            if (typeof onResolved !== 'function') return;
+            try { onResolved(url || ''); } catch (e) {}
+        }
+
         function apply(url) {
             if (!isCurrent()) return false;
             el.style.backgroundImage = 'url("' + url + '")';
             el.classList.add('visible');
+            notifyResolved(url);
             return true;
         }
 
@@ -252,6 +290,7 @@
             if (!isCurrent()) return;
             el.style.backgroundImage = 'url("' + BROKEN_MEDIA_SVG + '")';
             el.classList.add('visible', 'bf-load-failed');
+            notifyResolved('');
         }
 
         function loadUrl(fileData, refreshed) {

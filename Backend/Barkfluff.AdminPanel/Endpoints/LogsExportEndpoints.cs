@@ -18,9 +18,6 @@ public static class LogsExportEndpoints
             LogsExportService exportService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var scope = request.Scope?.Equals("old", StringComparison.OrdinalIgnoreCase) == true
                 ? LogsExportScope.Old
                 : LogsExportScope.All;
@@ -37,9 +34,6 @@ public static class LogsExportEndpoints
             LogsExportService exportService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var job = exportService.GetJob(jobId);
             if (job is null)
                 return Results.NotFound();
@@ -63,9 +57,6 @@ public static class LogsExportEndpoints
             LogsExportService exportService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var job = exportService.GetJob(jobId);
             if (job is null || job.State != LogsExportState.Ready || string.IsNullOrEmpty(job.ZipPath) || !File.Exists(job.ZipPath))
                 return Results.NotFound();

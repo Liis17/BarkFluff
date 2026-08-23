@@ -80,6 +80,12 @@ public async Task<ErrorReturner> MethodName(params..., GlobalParam globalParam)
 
 `SafeCallAsync<T>` — автоматический рефреш токена при ошибке авторизации.
 
+Первичный обмен refresh-токена после подтверждения регистрации выполняется ещё
+без access-токена. `WebApiTokenManager` трактует отсутствующий access-токен как
+пустую строку при проверке параллельного refresh и не должен считать такой вызов
+уже завершённым: успешный результат обязан сопровождаться заполненным
+`GlobalParam.AccessToken`.
+
 ## Interceptors
 
 В `WebApiClientManager` подключаются interceptors из [[Shared/Auth]]: JWT, device ID, IP, OS, app version в metadata.

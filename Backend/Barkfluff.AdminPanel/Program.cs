@@ -44,6 +44,7 @@ public class Program
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
+        builder.Services.Configure<AuditDbSettings>(builder.Configuration.GetSection(AuditDbSettings.SectionName));
         builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
         builder.Services.Configure<LogsCompressionSettings>(builder.Configuration.GetSection(LogsCompressionSettings.SectionName));
         builder.Services.Configure<MailSettings>(builder.Configuration.GetSection(MailSettings.SectionName));
@@ -62,11 +63,16 @@ public class Program
         builder.Services.AddSingleton(metricsCacheSettings);
         builder.Services.AddSingleton<MetricsCacheDbContext>();
         builder.Services.AddSingleton<RemoteDockerDbContext>();
+        builder.Services.AddSingleton<AuditDbContext>();
 
         // Register Services
         builder.Services.AddSingleton<PendingAuthService>();
         builder.Services.AddSingleton<TokenService>();
         builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton<AdminService>();
+        builder.Services.AddSingleton<StepUpService>();
+        builder.Services.AddSingleton<AuditService>();
+        builder.Services.AddScoped<UserSessionRevocationService>();
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
@@ -76,6 +82,20 @@ public class Program
         {
             client.BaseAddress = new Uri("https://docker.barkfluff.com");
             client.Timeout = TimeSpan.FromSeconds(5);
+        });
+
+        // Liveness-пробы /ping: основные listener'ы сервисов — HTTP/2 без TLS (h2c, prior knowledge)
+        builder.Services.AddHttpClient("health-probes", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(3);
+            client.DefaultRequestVersion = System.Net.HttpVersion.Version20;
+            client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
+        });
+
+        // Пробы по HTTP/1.1 — для listener'ов с несколькими протоколами без ALPN (Web-шлюз)
+        builder.Services.AddHttpClient("health-probes-http1", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(3);
         });
 
         // Register LogsExportService as Singleton (in-memory job dictionary)
@@ -93,12 +113,20 @@ public class Program
         // Register ComposeImageService as Singleton
         builder.Services.AddSingleton<ComposeImageService>();
 
+        // Register DeployJobService — серверная очередь деплой-операций (один потребитель: задачи сериализованы)
+        builder.Services.AddSingleton<DeployJobService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<DeployJobService>());
+
         // Register Remote Docker management services
         builder.Services.AddSingleton<IRemoteSshClient, SshNetRemoteSshClient>();
         builder.Services.AddSingleton<RemoteDockerService>();
 
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
+
+        // Register HealthCollectorService — фоновый сбор liveness-статусов (/ping + Docker + Seq)
+        builder.Services.AddSingleton<HealthCollectorService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<HealthCollectorService>());
 
 
         // Register MetricsLogCompressorService — ежедневное сжатие логов-метрик в Seq в 03:00 UTC
@@ -109,6 +137,7 @@ public class Program
 
         // Register TelegramBotService as Singleton
         builder.Services.AddSingleton<TelegramBotService>();
+        builder.Services.AddSingleton<IStepUpSender>(provider => provider.GetRequiredService<TelegramBotService>());
 
         // Also register it as Hosted Service
         builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
@@ -213,6 +242,9 @@ public class Program
 
         var app = builder.Build();
 
+        // Bootstrap admin role records from Telegram:Admins (idempotent)
+        app.Services.GetRequiredService<AdminService>().EnsureBootstrapped();
+
         // Configure the pipeline
         app.UseForwardedHeaders();
         app.UseHttpsRedirection();
@@ -239,8 +271,20 @@ public class Program
         // Map Auth Endpoints
         app.MapAuthEndpoints();
 
+        // Map StepUp Endpoints (Telegram-подтверждение критических действий)
+        app.MapStepUpEndpoints();
+
+        // Map Admins Endpoints (управление ролями)
+        app.MapAdminsEndpoints();
+
+        // Map Audit Endpoints (аудит-лог критических действий)
+        app.MapAuditEndpoints();
+
         // Map Seq Endpoints
         app.MapSeqEndpoints();
+
+        // Map Health Endpoints (liveness-обзор платформы из кэша HealthCollectorService)
+        app.MapHealthEndpoints();
 
         // Map Logs Export Endpoints
         app.MapLogsExportEndpoints();
@@ -311,23 +355,40 @@ public class Program
                 await ServeHtmlFile(context, Path.Combine("v2", "Login.html"));
         });
 
-        // Page routes — serve the MD3 (v2) pages
+        // Page routes — serve the MD3 (v2) pages.
+        // Pages with restricted access redirect to the dashboard when the admin lacks the permission.
         app.MapGet("/services", async context => await ServeHtmlFile(context, Path.Combine("v2", "services.html")));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, Path.Combine("v2", "logs.html")));
-        app.MapGet("/badges", async context => await ServeHtmlFile(context, Path.Combine("v2", "badges.html")));
-        app.MapGet("/stickers", async context => await ServeHtmlFile(context, Path.Combine("v2", "stickers.html")));
-        app.MapGet("/bots", async context => await ServeHtmlFile(context, Path.Combine("v2", "bots.html")));
-        app.MapGet("/federation", async context => await ServeHtmlFile(context, Path.Combine("v2", "federation.html")));
-        app.MapGet("/users", async context => await ServeHtmlFile(context, Path.Combine("v2", "users.html")));
-        app.MapGet("/notifications", async context => await ServeHtmlFile(context, Path.Combine("v2", "notifications.html")));
-        app.MapGet("/mail", async context => await ServeHtmlFile(context, Path.Combine("v2", "mail.html")));
-        app.MapGet("/configuration", async context => await ServeHtmlFile(context, Path.Combine("v2", "configuration.html")));
-        app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-storage.html")));
-        app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, Path.Combine("v2", "s3-browser.html")));
+        app.MapGet("/badges", RequirePagePermission(AdminPermissions.BadgesManage, "badges.html"));
+        app.MapGet("/stickers", RequirePagePermission(AdminPermissions.StickersManage, "stickers.html"));
+        app.MapGet("/bots", RequirePagePermission(AdminPermissions.BotsManage, "bots.html"));
+        app.MapGet("/federation", RequirePagePermission(AdminPermissions.FederationManage, "federation.html"));
+        app.MapGet("/users", RequirePagePermission(AdminPermissions.UsersRead, "users.html"));
+        app.MapGet("/notifications", RequirePagePermission(AdminPermissions.NotificationsManage, "notifications.html"));
+        app.MapGet("/mail", RequirePagePermission(AdminPermissions.MailManage, "mail.html"));
+        app.MapGet("/configuration", RequirePagePermission(AdminPermissions.ConfigRead, "configuration.html"));
+        app.MapGet("/s3-storage", RequirePagePermission(AdminPermissions.ConfigRead, "s3-storage.html"));
+        app.MapGet("/s3-browser", RequirePagePermission(AdminPermissions.S3Browse, "s3-browser.html"));
+        app.MapGet("/admins", RequirePagePermission(AdminPermissions.AdminsRoles, "admins.html"));
+        app.MapGet("/audit", RequirePagePermission(AdminPermissions.AuditRead, "audit.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, Path.Combine("v2", "restarting.html")));
         app.MapGet("/updating", async context => await ServeHtmlFile(context, Path.Combine("v2", "updating.html")));
 
         app.Run();
+    }
+
+    private static Func<HttpContext, Task> RequirePagePermission(string permission, string page)
+    {
+        return async context =>
+        {
+            if (!context.HasPermission(permission))
+            {
+                context.Response.Redirect("/");
+                return;
+            }
+
+            await ServeHtmlFile(context, Path.Combine("v2", page));
+        };
     }
 
     // Helper function to serve HTML files

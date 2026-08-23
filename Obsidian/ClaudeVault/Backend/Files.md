@@ -24,7 +24,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 **FilesApiService** (`TokenType.User`) — клиентский API:
 - `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`
-- Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`
+- Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`, `GetStickerPackByFile` (резолвит пак по `file_id` стикера из вложения сообщения — клик по стикеру в чате открывает его пак; внутри делегирует `GetStickerPack`, «файл не стикер» и «стикер удалён» наружу неразличимы — `Exception("Стикер не найден")`)
 - `GetTempDownloadUrl` валидирует `file_ids` через `Guid.TryParse` и на невалидном значении бросает `NotValidFileIdException` (логируя само значение). Раньше `Guid.Parse` ронял вызов `FormatException` — в логах это выглядело как «КРИТИЧЕСКАЯ ОШИБКА», хотя виноват клиент, приславший вместо идентификатора, например, готовый URL картинки
 
 **FilesServerApiService** (`TokenType.Service`) — серверный API (включает админ-операции для [[Backend/AdminPanel]]):

@@ -16,12 +16,8 @@ public static class ChatsEndpoints
         group.MapGet("/{chatId}", async (
             string chatId,
             MessagesServerApi.MessagesServerApiClient messagesClient,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var chatInfo = await messagesClient.GetChatInfoServerAsync(
                 new GetChatInfoServerRequest { ChatId = chatId });
 

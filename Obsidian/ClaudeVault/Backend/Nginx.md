@@ -108,6 +108,9 @@ origin напрямую, минуя Cloudflare** с его жёстким лим
 - `add_header Access-Control-Allow-Origin '*'` — веб-клиент работает с другого origin
   (`web.barkfluff.com`), а Cloudflare, который раньше стоял перед файловым хостом, здесь
   отсутствует. Ссылки и так capability-based (кто знает URL — тот и качает).
+- `OPTIONS` для `/web/` обрабатывается самим nginx и возвращает `204` с
+  `Access-Control-Allow-Methods: POST, OPTIONS` и разрешёнными заголовками, поэтому
+  браузерный upload с progress-событиями проходит CORS preflight до backend.
 - Адрес объявляется нодой через `ExternalEndpoint:MediaHost` конфигурации [[Files]] →
   [[Beacon]] `files_media_endpoint`. Пустое значение = клиенты работают по старому адресу,
   поэтому уже установленные (старые) клиенты продолжают ходить через Cloudflare.

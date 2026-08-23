@@ -19,6 +19,7 @@ service FilesApi {
   // Стикерпаки (клиентский доступ, только чтение)
   rpc ListStickerPacks(ListStickerPacksRequest) returns(ListStickerPacksResponse); // Список стикерпаков
   rpc GetStickerPack(GetStickerPackRequest) returns(GetStickerPackResponse); // Получить стикерпак со стикерами
+  rpc GetStickerPackByFile(GetStickerPackByFileRequest) returns(GetStickerPackResponse); // Стикерпак по file_id стикера (клик по стикеру в чате)
 }
 
 service FilesServerApi {
@@ -292,6 +293,10 @@ message GetStickerPackRequest {
 message GetStickerPackResponse {
   StickerPackInfo pack = 1;
   repeated StickerInfo stickers = 2;
+}
+
+message GetStickerPackByFileRequest {
+  string file_id = 1; // file_id стикера из вложения сообщения
 }
 
 message AddStickerRequest {

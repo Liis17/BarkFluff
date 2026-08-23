@@ -17,6 +17,12 @@ service ConfigurationApi {
   // Обновить настройку
   rpc UpdateConfiguration(UpdateConfigurationRequest) returns(UpdateConfigurationResponse);
 
+  // История изменений одной настройки
+  rpc GetConfigurationHistory(GetConfigurationHistoryRequest) returns(GetConfigurationHistoryResponse);
+
+  // Откатить изменение к предыдущему значению
+  rpc RollbackConfiguration(RollbackConfigurationRequest) returns(RollbackConfigurationResponse);
+
   // Зарезервированные юзернеймы
   rpc GetReservedNames(GetReservedNamesRequest) returns(GetReservedNamesResponse);
   rpc AddReservedName(AddReservedNameRequest) returns(AddReservedNameResponse);
@@ -70,6 +76,42 @@ message UpdateConfigurationRequest {
 }
 
 message UpdateConfigurationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetConfigurationHistoryRequest {
+  string section = 1;
+  string key = 2;
+  int32 service_id = 3;
+  int32 count = 4;
+}
+
+message GetConfigurationHistoryResponse {
+  repeated ConfigurationRevision revisions = 1;
+}
+
+message ConfigurationRevision {
+  int64 id = 1;
+  string section = 2;
+  string key = 3;
+  int32 service_id = 4;
+  string previous_value = 5;
+  string new_value = 6;
+  google.protobuf.Timestamp changed_at = 7;
+  string changed_by = 8;
+  string changed_from = 9;
+  string change_kind = 10;
+  int64 source_revision_id = 11;
+}
+
+message RollbackConfigurationRequest {
+  int64 revision_id = 1;
+  string edited_by = 2;
+  string edited_from = 3;
+}
+
+message RollbackConfigurationResponse {
   bool success = 1;
   string message = 2;
 }

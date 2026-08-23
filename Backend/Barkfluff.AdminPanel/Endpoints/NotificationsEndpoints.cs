@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 
 using BarkFluff.Shared.Queue.Messages;
@@ -11,18 +12,15 @@ public static class NotificationsEndpoints
     public static void MapNotificationsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/notifications")
-            .WithTags("Notifications");
+            .WithTags("Notifications")
+            .RequirePermission(AdminPermissions.NotificationsManage);
 
         // POST /api/notifications/broadcast/all
         // Body: { title, body, imageUrl?, confirm: true }
         group.MapPost("/broadcast/all", async (
             HttpRequest request,
-            IPublishEndpoint publishEndpoint,
-            HttpContext context) =>
+            IPublishEndpoint publishEndpoint) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var body = await request.ReadFromJsonAsync<BroadcastAllBody>();
             if (body is null)
                 return Results.BadRequest(new { error = "Invalid request body" });
@@ -52,12 +50,8 @@ public static class NotificationsEndpoints
         // Body: { title, body, imageUrl?, deviceIds: string[] }
         group.MapPost("/broadcast/devices", async (
             HttpRequest request,
-            IPublishEndpoint publishEndpoint,
-            HttpContext context) =>
+            IPublishEndpoint publishEndpoint) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var body = await request.ReadFromJsonAsync<BroadcastDevicesBody>();
             if (body is null)
                 return Results.BadRequest(new { error = "Invalid request body" });

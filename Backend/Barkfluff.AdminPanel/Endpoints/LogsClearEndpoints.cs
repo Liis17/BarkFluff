@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Services;
 
@@ -10,17 +11,14 @@ public static class LogsClearEndpoints
     public static void MapLogsClearEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/seq/clear")
-            .WithTags("LogsClear");
+            .WithTags("LogsClear")
+            .RequirePermission(AdminPermissions.SeqDelete);
 
         // POST /api/seq/clear/start
         group.MapPost("/start", (
             StartClearRequest request,
-            LogsClearService clearService,
-            HttpContext context) =>
+            LogsClearService clearService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var scope = request.Scope?.Equals("old", StringComparison.OrdinalIgnoreCase) == true
                 ? LogsClearScope.Old
                 : LogsClearScope.All;
@@ -29,17 +27,15 @@ public static class LogsClearEndpoints
             return Results.Ok(new { jobId });
         })
         .WithName("StartLogsClear")
-        .WithOpenApi();
+        .WithOpenApi()
+        .RequireStepUpFromArguments(StepUpActions.SeqClear, context =>
+            $"scope={context.Arguments.OfType<StartClearRequest>().FirstOrDefault()?.Scope ?? string.Empty}");
 
         // GET /api/seq/clear/{jobId}/status
         group.MapGet("/{jobId:guid}/status", (
             Guid jobId,
-            LogsClearService clearService,
-            HttpContext context) =>
+            LogsClearService clearService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var job = clearService.GetJob(jobId);
             if (job is null)
                 return Results.NotFound();

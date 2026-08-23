@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
@@ -55,12 +56,13 @@ public static class AuthEndpoints
         .WithName("GetAuthStatus")
         .WithOpenApi();
 
-        group.MapGet("/me", (HttpContext context) =>
+        group.MapGet("/me", (HttpContext context, AdminService adminService) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken token)
-            {
-                return Results.Unauthorized();
-            }
+            var token = context.GetAuthToken()!;
+
+            var roles = token.ApprovedByTelegramUserId.HasValue
+                ? adminService.GetRoles(token.ApprovedByTelegramUserId.Value)
+                : new HashSet<AdminRole>();
 
             return Results.Ok(new
             {
@@ -68,6 +70,7 @@ public static class AuthEndpoints
                 name = token.Name,
                 adminUsername = token.AdminUsername,
                 hasTelegramAvatar = token.ApprovedByTelegramUserId.HasValue,
+                roles = roles.Select(AdminRoles.DisplayName).ToList(),
                 createdAt = token.CreatedAt,
                 lastActivity = token.LastActivity
             });
@@ -102,22 +105,11 @@ public static class AuthEndpoints
 
         group.MapGet("/tokens", (TokenService tokenService, HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken currentToken)
-            {
-                return Results.Unauthorized();
-            }
+            var currentToken = context.GetAuthToken()!;
 
-            // Only show tokens that belong to the current admin (or all tokens if current token has no admin association for backward compatibility)
-            List<AuthToken> tokens;
-            if (currentToken.ApprovedByTelegramUserId.HasValue)
-            {
-                tokens = tokenService.GetTokensByAdmin(currentToken.ApprovedByTelegramUserId.Value);
-            }
-            else
-            {
-                // Legacy: show all tokens for tokens created before multi-admin support
-                tokens = tokenService.GetAllTokens().Where(t => t.ApprovedByTelegramUserId.HasValue).ToList();
-            }
+            var tokens = currentToken.ApprovedByTelegramUserId is long telegramUserId
+                ? tokenService.GetTokensByAdmin(telegramUserId)
+                : new List<AuthToken>();
 
             return Results.Ok(tokens.Select(t => new
             {
@@ -139,32 +131,15 @@ public static class AuthEndpoints
             TokenService tokenService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken currentToken)
-            {
-                return Results.Unauthorized();
-            }
+            var currentToken = context.GetAuthToken()!;
 
             if (string.IsNullOrWhiteSpace(dto.Name))
             {
                 return Results.BadRequest(new { error = "Name cannot be empty" });
             }
 
-            // Check if the user can rename this token
-            bool success;
-            if (currentToken.ApprovedByTelegramUserId.HasValue)
-            {
-                success = tokenService.RenameTokenByAdmin(id, dto.Name, currentToken.ApprovedByTelegramUserId.Value);
-            }
-            else
-            {
-                // Legacy: allow renaming any token for tokens created before multi-admin support
-                var token = tokenService.GetToken(id);
-                if (token == null)
-                {
-                    return Results.NotFound(new { error = "Token not found" });
-                }
-                success = tokenService.RenameToken(id, dto.Name);
-            }
+            var success = currentToken.ApprovedByTelegramUserId is long telegramUserId
+                && tokenService.RenameTokenByAdmin(id, dto.Name, telegramUserId);
 
             if (!success)
             {
@@ -181,32 +156,15 @@ public static class AuthEndpoints
             TokenService tokenService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken currentToken)
-            {
-                return Results.Unauthorized();
-            }
+            var currentToken = context.GetAuthToken()!;
 
             if (id == currentToken.Id)
             {
                 return Results.BadRequest(new { error = "Cannot delete your own token through this endpoint. Use logout instead." });
             }
 
-            // Check if the user can delete this token
-            bool success;
-            if (currentToken.ApprovedByTelegramUserId.HasValue)
-            {
-                success = tokenService.DeleteTokenByAdmin(id, currentToken.ApprovedByTelegramUserId.Value);
-            }
-            else
-            {
-                // Legacy: allow deleting any token for tokens created before multi-admin support
-                var token = tokenService.GetToken(id);
-                if (token == null)
-                {
-                    return Results.NotFound(new { error = "Token not found" });
-                }
-                success = tokenService.DeleteToken(id);
-            }
+            var success = currentToken.ApprovedByTelegramUserId is long telegramUserId
+                && tokenService.DeleteTokenByAdmin(id, telegramUserId);
 
             if (!success)
             {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Хранилище S3</title>
-    <link rel="stylesheet" href="assets/md3.css">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .info-banner {
             display: flex; align-items: flex-start; gap: 12px;
@@ -71,7 +71,7 @@
 </div>
 
 <div class="md-app-shell">
-    <div id="md-nav-root" data-active="s3"></div>
+    <div id="md-nav-root" data-active="s3-storage"></div>
 
     <main class="md-main">
         <header class="md-app-bar">
@@ -80,7 +80,7 @@
                 <span class="md-status md-status-info"><span class="dot"></span>Конфигурация</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
-                <button id="restart-files-btn" class="md-btn md-btn-tonal md-btn-square-press" style="background:var(--md-warning-container);color:var(--md-on-warning-container);">
+                <button id="restart-files-btn" class="md-btn md-btn-tonal md-btn-square-press" data-perm="docker.control" style="background:var(--md-warning-container);color:var(--md-on-warning-container);">
                     <span class="msr size-18">restart_alt</span>
                     Перезапустить Files
                 </button>
@@ -93,7 +93,7 @@
                 <span class="msr">info</span>
                 <div>
                     <h4>Управление конфигурацией S3 бакетов</h4>
-                    <p>Здесь отображаются все S3 бакеты и их параметры из таблицы configuration. Чувствительные данные скрыты по умолчанию. После сохранения изменений может потребоваться перезапуск сервиса Files.</p>
+                    <p>Здесь отображаются все S3 бакеты и их параметры из таблицы configuration. Ключи доступа не передаются в браузер: оставьте поле пустым, чтобы не менять значение, или введите новое для замены. После сохранения изменений может потребоваться перезапуск сервиса Files.</p>
                 </div>
             </div>
 
@@ -118,22 +118,28 @@
     </main>
 </div>
 
-<script src="assets/icons.js"></script>
-<script src="assets/sidebar.js"></script>
-<script src="assets/command-palette.js"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=5"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let s3Config = {};
     let modifiedBuckets = new Set();
 
     async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
+        const me = await BF.requireAuth();
+        if (me) applyPermissions();
+        return me;
     }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
     function formatDate(s) { if (!s) return '—'; const d = new Date(s); if (isNaN(d.getTime())) return '—'; return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+    function applyPermissions() {
+        if (!window.BF) return;
+        document.querySelectorAll('[data-perm]').forEach(el => {
+            el.style.display = BF.can(el.dataset.perm) ? '' : 'none';
+        });
+    }
+    document.addEventListener('bf:roles', applyPermissions);
 
     function getBucketDisplayName(id) {
         const m = {
@@ -157,9 +163,7 @@
         const empty = document.getElementById('empty-state');
         const err = document.getElementById('error-state');
         try {
-            const r = await fetch('/api/configuration/s3-configuration');
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            s3Config = await r.json();
+            s3Config = await BF.request('/api/configuration/s3-configuration', { errorToast: false });
             modifiedBuckets.clear();
             if (Object.keys(s3Config).length === 0) {
                 grid.innerHTML = ''; empty.style.display = 'flex'; err.style.display = 'none';
@@ -203,14 +207,14 @@
                         <div class="field-row">
                             <label class="label">Access Key</label>
                             <div class="password-wrap">
-                                <input type="password" value="${escapeHtml(params.accessKey || '')}" data-bucket="${bucketId}" data-key="accessKey" oninput="onFieldChange('${bucketId}')" id="access-${safeId}" class="md-input-outlined">
+                                <input type="password" value="" autocomplete="new-password" placeholder="${params.accessKeyConfigured ? `Задан (${escapeHtml(params.accessKeyMasked || 'скрыт')}) — введите новый для замены` : 'Не задан — введите ключ'}" data-bucket="${bucketId}" data-key="accessKey" oninput="onFieldChange('${bucketId}')" id="access-${safeId}" class="md-input-outlined">
                                 <button type="button" class="md-icon-btn toggle" onclick="togglePassword('access-${safeId}')"><span class="msr size-20">visibility</span></button>
                             </div>
                         </div>
                         <div class="field-row">
                             <label class="label">Secret Key</label>
                             <div class="password-wrap">
-                                <input type="password" value="${escapeHtml(params.secretKey || '')}" data-bucket="${bucketId}" data-key="secretKey" oninput="onFieldChange('${bucketId}')" id="secret-${safeId}" class="md-input-outlined">
+                                <input type="password" value="" autocomplete="new-password" placeholder="${params.secretKeyConfigured ? 'Задан — введите новый для замены' : 'Не задан — введите секретный ключ'}" data-bucket="${bucketId}" data-key="secretKey" oninput="onFieldChange('${bucketId}')" id="secret-${safeId}" class="md-input-outlined">
                                 <button type="button" class="md-icon-btn toggle" onclick="togglePassword('secret-${safeId}')"><span class="msr size-20">visibility</span></button>
                             </div>
                         </div>
@@ -256,13 +260,16 @@
         const card = document.querySelector(`[data-card="${bucketId}"]`);
         const inputs = card.querySelectorAll('input[data-key]');
         const data = { bucketId, parameters: {} };
-        inputs.forEach(i => data.parameters[i.dataset.key] = i.value);
+        inputs.forEach(i => {
+            // Секреты отправляем только если введено новое значение — пустое поле означает «не менять»
+            if ((i.dataset.key === 'accessKey' || i.dataset.key === 'secretKey') && !i.value) return;
+            data.parameters[i.dataset.key] = i.value;
+        });
 
         const saveBtn = card.querySelector('[data-save-area] button');
         if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span> Сохранение...'; }
         try {
-            const r = await fetch('/api/configuration/s3/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-            if (!r.ok) throw new Error();
+            await BF.request('/api/configuration/s3/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
             modifiedBuckets.delete(bucketId);
             card.classList.remove('modified');
             const badge = card.querySelector('.bucket-head .md-status');
@@ -272,30 +279,27 @@
             setTimeout(() => { if (saveArea) saveArea.innerHTML = `<span style="font-size:12px;color:var(--md-on-surface-variant);font-style:italic;">Без изменений</span>`; }, 2000);
         } catch (e) {
             if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<span class="msr size-18">check</span>Сохранить'; }
-            alert('Ошибка сохранения');
         }
     };
 
     document.getElementById('restart-files-btn').addEventListener('click', async () => {
         if (!confirm('Перезапустить сервис Files? Загрузка/выгрузка файлов будет недоступна.')) return;
         try {
-            await fetch('/api/docker/containers/files/restart', { method:'POST' });
-            alert('Перезапуск запущен');
-        } catch { alert('Ошибка перезапуска'); }
+            await BF.request('/api/docker/containers/files/restart', { method:'POST', successToast: 'Перезапуск запущен' });
+        } catch {}
     });
 
     document.getElementById('logout-btn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
         const auth = await checkAuth(); if (!auth) return;
+        applyPermissions();
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         await loadS3Config();
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

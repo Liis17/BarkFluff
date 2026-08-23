@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin — Аудит</title>
+    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <style>
+        .audit-table { width: 100%; border-collapse: collapse; }
+        .audit-table th {
+            text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+            color: var(--md-on-surface-variant);
+            padding: 8px 12px;
+            border-top: 1px solid var(--md-outline-variant);
+            border-bottom: 1px solid var(--md-outline-variant);
+            background: var(--md-surface-container);
+            position: sticky; top: 0;
+        }
+        .audit-table td {
+            padding: 8px 12px; font-size: 13px;
+            border-bottom: 1px solid var(--md-outline-variant);
+            color: var(--md-on-surface);
+            vertical-align: top;
+        }
+        .audit-table tr:last-child td { border-bottom: none; }
+        .cell-time { white-space: nowrap; font-size: 12px; color: var(--md-on-surface-variant); font-family: 'Roboto Mono', monospace; }
+        .cell-action { font-family: 'Roboto Mono', monospace; font-size: 12px; white-space: nowrap; }
+        .outcome-ok { color: var(--md-success); }
+        .outcome-invalid { color: var(--md-error); font-weight: 600; }
+
+        @media (max-width: 600px) {
+            .audit-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="md-page-loading" id="loading-overlay">
+    <div class="md-loader-expressive"></div>
+    <div class="label">Загрузка...</div>
+</div>
+
+<div class="md-app-shell">
+    <div id="md-nav-root" data-active="audit"></div>
+
+    <main class="md-main">
+        <header class="md-app-bar">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <h1>Аудит</h1>
+                <span class="md-status md-status-info"><span class="dot"></span>Критические действия</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="msr">refresh</span></button>
+                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+            </div>
+        </header>
+
+        <div class="md-page">
+            <div class="toolbar" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant);cursor:pointer;">
+                    <input type="checkbox" id="auto-refresh" checked> Авто-обновление (30с)
+                </label>
+                <div class="spacer" style="flex:1;"></div>
+                <span style="font-size:12px;color:var(--md-on-surface-variant);" id="entries-count"></span>
+            </div>
+
+            <div style="overflow:auto;max-height:calc(100vh - 240px);border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
+                <table class="md-table audit-table">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Админ</th>
+                            <th>Действие</th>
+                            <th>Детали</th>
+                            <th>IP</th>
+                            <th>Результат</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-body">
+                        <tr><td colspan="6" class="empty-cell">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display:flex;justify-content:center;margin-top:16px;">
+                <button id="load-more-btn" class="md-btn md-btn-text" style="display:none;" onclick="loadMore()">
+                    <span class="msr size-18">expand_more</span> Загрузить ещё
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=5"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
+<script>
+    let entries = [];
+    let oldestAt = null;
+    let refreshTimer = null;
+
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function formatTime(s) { if (!s) return '—'; const d = new Date(s); if (isNaN(d.getTime())) return '—'; return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+
+    function checkAuth() { return BF.requireAuth(); }
+
+    async function loadEntries(beforeUtc) {
+        const tbody = document.getElementById('audit-body');
+        try {
+            let url = '/api/audit?limit=100';
+            if (beforeUtc) url += '&beforeUtc=' + encodeURIComponent(beforeUtc.toISOString());
+            const batch = await BF.request(url, { errorToast: false });
+            if (beforeUtc) {
+                entries = entries.concat(batch);
+            } else {
+                entries = batch;
+            }
+            if (entries.length > 0) {
+                oldestAt = new Date(entries[entries.length - 1].at);
+            }
+            render();
+            document.getElementById('load-more-btn').style.display = batch.length >= 100 ? '' : 'none';
+        } catch (e) {
+            if (!beforeUtc) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
+            }
+        }
+    }
+
+    function loadMore() {
+        if (oldestAt) loadEntries(oldestAt);
+    }
+
+    function outcomeCell(outcome) {
+        if (outcome === 'confirmed' || outcome === 'ok') return '<span class="outcome-ok">успешно</span>';
+        if (outcome === 'invalid_confirmation') return '<span class="outcome-invalid">невалидное подтверждение</span>';
+        return escapeHtml(outcome || '—');
+    }
+
+    function render() {
+        const tbody = document.getElementById('audit-body');
+        document.getElementById('entries-count').textContent = entries.length ? `Записей: ${entries.length}` : '';
+        if (!entries.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Записей пока нет</td></tr>';
+            return;
+        }
+        tbody.innerHTML = entries.map(e => `
+            <tr>
+                <td class="cell-time">${formatTime(e.at)}</td>
+                <td>@${escapeHtml(e.adminUsername || '—')}</td>
+                <td class="cell-action">${escapeHtml(e.action)}</td>
+                <td style="max-width:340px;overflow-wrap:anywhere;">${escapeHtml(e.details || '')}</td>
+                <td class="cell-time">${escapeHtml(e.ipAddress || '—')}</td>
+                <td>${outcomeCell(e.outcome)}</td>
+            </tr>`).join('');
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', () => loadEntries());
+
+    document.getElementById('auto-refresh').addEventListener('change', (e) => {
+        setupAutoRefresh(e.target.checked);
+    });
+
+    function setupAutoRefresh(enabled) {
+        if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+        if (enabled) {
+            refreshTimer = setInterval(() => {
+                if (document.visibilityState === 'visible') loadEntries();
+            }, 30000);
+        }
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        if (!confirm('Выйти?')) return;
+        await BF.logout();
+    });
+
+    (async function () {
+        const auth = await checkAuth(); if (!auth) return;
+        await loadEntries();
+        setupAutoRefresh(document.getElementById('auto-refresh').checked);
+        BF.pageReady();
+    })();
+</script>
+</body>
+</html>

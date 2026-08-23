@@ -1,4 +1,6 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
 
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Identity;
@@ -45,12 +47,8 @@ public static class UsersEndpoints
             string? query,
             int? offset,
             int? size,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var response = await usersClient.SearchUsersServerAsync(new SearchUsersServerRequest
             {
                 Query = query ?? string.Empty,
@@ -84,19 +82,16 @@ public static class UsersEndpoints
 
             return Results.Ok(new { users, totalCount = response.TotalCount });
         })
-        .WithName("SearchUsers");
+        .WithName("SearchUsers")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // GET /api/users/{id}
         group.MapGet("/{id:long}", async (
             long id,
             UsersServerApi.UsersServerApiClient usersClient,
             FilesServerApi.FilesServerApiClient filesClient,
-            IdentityServerApi.IdentityServerApiClient identityClient,
-            HttpContext context) =>
+            IdentityServerApi.IdentityServerApiClient identityClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             // Параллельные вызовы (SearchUsersServer вместо GetById — включает бейджи)
             var userSearchTask = SafeCall(() => usersClient.SearchUsersServerAsync(new SearchUsersServerRequest
             {
@@ -121,7 +116,10 @@ public static class UsersEndpoints
             var sessions = sessionsTask.Result;
             var poster = posterTask.Result;
 
-            var userProto = userSearch?.Users.FirstOrDefault();
+            if (!userSearch.Available)
+                return Results.Problem("Сервис пользователей временно недоступен", statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userProto = userSearch.Value?.Users.FirstOrDefault();
             if (userProto is null)
                 return Results.NotFound();
 
@@ -135,7 +133,7 @@ public static class UsersEndpoints
                     username = userProto.Username,
                     profilePicture = userProto.ProfilePicture,
                     profilePicturePreview = userProto.ProfilePicturePreview,
-                    profilePosterUrl = poster?.PosterUrl ?? string.Empty,
+                    profilePosterUrl = poster.Value?.PosterUrl ?? string.Empty,
                     bio = userProto.Bio,
                     registrationDate = userProto.RegistrationDate?.ToDateTime(),
                     storageLimitGb = userProto.StorageLimitGb,
@@ -152,11 +150,11 @@ public static class UsersEndpoints
                         assignedDate = b.AssignedDate?.ToDateTime()
                     })
                 },
-                contacts = contacts != null ? new
+                contacts = contacts.Value != null ? new
                 {
-                    email = contacts.Contact?.Email
+                    email = contacts.Value.Contact?.Email
                 } : null,
-                devices = devices?.Devices.Select(d => new
+                devices = devices.Value?.Devices.Select(d => new
                 {
                     deviceId = d.DeviceId,
                     originalName = d.OriginalName,
@@ -166,23 +164,23 @@ public static class UsersEndpoints
                     location = d.Location,
                     authorizedAt = d.AuthorizedAt?.ToDateTime()
                 }),
-                storage = storage != null ? new
+                storage = storage.Value != null ? new
                 {
-                    totalUsedStorage = storage.TotalUsedStorage,
-                    storageLimit = storage.StorageLimit,
-                    storageByTypes = storage.StorageByTypes.Select(s => new
+                    totalUsedStorage = storage.Value.TotalUsedStorage,
+                    storageLimit = storage.Value.StorageLimit,
+                    storageByTypes = storage.Value.StorageByTypes.Select(s => new
                     {
                         fileType = (int)s.FileType,
                         fileTypeName = s.FileType.ToString(),
                         usedStorage = s.UsedStorage
                     })
                 } : null,
-                twoFactor = otp != null ? new
+                twoFactor = otp.Value != null ? new
                 {
-                    authenticatorEnabled = otp.AuthenticatorEnabled,
-                    emailEnabled = otp.EmailEnabled
+                    authenticatorEnabled = otp.Value.AuthenticatorEnabled,
+                    emailEnabled = otp.Value.EmailEnabled
                 } : null,
-                sessions = sessions?.Sessions.Select(s => new
+                sessions = sessions.Value?.Sessions.Select(s => new
                 {
                     id = s.Id,
                     deviceId = s.DeviceId,
@@ -193,21 +191,27 @@ public static class UsersEndpoints
                     location = s.Location,
                     createdAt = s.CreatedAt?.ToDateTime(),
                     expirationAt = s.ExpirationAt?.ToDateTime()
-                })
+                }),
+                availability = new
+                {
+                    contacts = contacts.Available,
+                    devices = devices.Available,
+                    storage = storage.Available,
+                    twoFactor = otp.Available,
+                    sessions = sessions.Available,
+                    poster = poster.Available
+                }
             });
         })
-        .WithName("GetUserDetails");
+        .WithName("GetUserDetails")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // POST /api/users/{id}/badges
         group.MapPost("/{id:long}/badges", async (
             long id,
             HttpRequest request,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var body = await request.ReadFromJsonAsync<AssignBadgeBody>();
             if (body is null)
                 return Results.BadRequest("Invalid request body");
@@ -232,18 +236,15 @@ public static class UsersEndpoints
                 assignedDate = response.UserBadge.AssignedDate?.ToDateTime()
             });
         })
-        .WithName("AssignUserBadge");
+        .WithName("AssignUserBadge")
+        .RequirePermission(AdminPermissions.BadgesManage);
 
         // DELETE /api/users/{id}/badges/{badgeId}
         group.MapDelete("/{id:long}/badges/{badgeId:int}", async (
             long id,
             int badgeId,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var response = await usersClient.RemoveUserBadgeAsync(new RemoveUserBadgeRequest
             {
                 UserId = id,
@@ -252,18 +253,15 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = response.Success });
         })
-        .WithName("RemoveUserBadge");
+        .WithName("RemoveUserBadge")
+        .RequirePermission(AdminPermissions.BadgesManage);
 
         // PUT /api/users/{id}/storage-limit
         group.MapPut("/{id:long}/storage-limit", async (
             long id,
             HttpRequest request,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var body = await request.ReadFromJsonAsync<UpdateStorageLimitBody>();
             if (body is null || body.StorageLimitGb < 1 || body.StorageLimitGb > 250)
                 return Results.BadRequest("storageLimitGb must be between 1 and 250");
@@ -280,19 +278,15 @@ public static class UsersEndpoints
                 storageLimitGb = response.User.StorageLimitGb
             });
         })
-        .WithName("UpdateStorageLimit");
+        .WithName("UpdateStorageLimit")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // POST /api/users/{id}/2fa/disable
         group.MapPost("/{id:long}/2fa/disable", async (
             long id,
-            HttpRequest request,
-            IdentityServerApi.IdentityServerApiClient identityClient,
-            HttpContext context) =>
+            DisableOtpBody? body,
+            IdentityServerApi.IdentityServerApiClient identityClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
-            var body = await request.ReadFromJsonAsync<DisableOtpBody>();
             if (body is null)
                 return Results.BadRequest("Invalid request body");
 
@@ -304,19 +298,24 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = true });
         })
-        .WithName("DisableUserOtp");
+        .WithName("DisableUserOtp")
+        .RequirePermission(AdminPermissions.Users2FaDisable)
+        .RequireAdminReasonFromArguments(context =>
+            context.Arguments.OfType<DisableOtpBody>().FirstOrDefault()?.Reason)
+        .RequireStepUpFromArguments(StepUpActions.Users2FaDisable, context =>
+        {
+            var userId = context.HttpContext.Request.RouteValues["id"];
+            var body = context.Arguments.OfType<DisableOtpBody>().FirstOrDefault();
+            return $"userId={userId};otpType={body?.OtpType};reason={body?.Reason?.Trim()}";
+        });
 
         // POST /api/users/{id}/avatar
         group.MapPost("/{id:long}/avatar", async (
             long id,
             HttpRequest request,
             FilesServerApi.FilesServerApiClient filesClient,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -352,18 +351,15 @@ public static class UsersEndpoints
             });
         })
         .DisableAntiforgery()
-        .WithName("UploadUserAvatar");
+        .WithName("UploadUserAvatar")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // PUT /api/users/{id}/profile
         group.MapPut("/{id:long}/profile", async (
             long id,
             HttpRequest request,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var body = await request.ReadFromJsonAsync<UpdateProfileBody>();
             if (body is null)
                 return Results.BadRequest("Invalid request body");
@@ -379,19 +375,15 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = true });
         })
-        .WithName("UpdateUserProfile");
+        .WithName("UpdateUserProfile")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // POST /api/users/{id}/password
         group.MapPost("/{id:long}/password", async (
             long id,
-            HttpRequest request,
-            IdentityServerApi.IdentityServerApiClient identityClient,
-            HttpContext context) =>
+            ChangePasswordBody? body,
+            IdentityServerApi.IdentityServerApiClient identityClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
-            var body = await request.ReadFromJsonAsync<ChangePasswordBody>();
             if (body is null || string.IsNullOrWhiteSpace(body.NewPassword))
                 return Results.BadRequest("newPassword is required");
 
@@ -406,19 +398,25 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = true });
         })
-        .WithName("ForceChangeUserPassword");
+        .WithName("ForceChangeUserPassword")
+        .RequirePermission(AdminPermissions.UsersPasswordSet)
+        .RequireAdminReasonFromArguments(context =>
+            context.Arguments.OfType<ChangePasswordBody>().FirstOrDefault()?.Reason)
+        .RequireStepUpFromArguments(StepUpActions.UsersPasswordSet, context =>
+        {
+            var userId = context.HttpContext.Request.RouteValues["id"];
+            var body = context.Arguments.OfType<ChangePasswordBody>().FirstOrDefault();
+            var passwordHash = StepUpService.ComputeParamsHash("users.password", body?.NewPassword ?? string.Empty);
+            return $"userId={userId};passwordHash={passwordHash};reason={body?.Reason?.Trim()}";
+        });
 
         // POST /api/users/{id}/poster
         group.MapPost("/{id:long}/poster", async (
             long id,
             HttpRequest request,
             FilesServerApi.FilesServerApiClient filesClient,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -453,18 +451,15 @@ public static class UsersEndpoints
             });
         })
         .DisableAntiforgery()
-        .WithName("UploadUserPoster");
+        .WithName("UploadUserPoster")
+        .RequirePermission(AdminPermissions.UsersRead);
 
         // DELETE /api/users/{id}/sessions/{deviceId}
         group.MapDelete("/{id:long}/sessions/{deviceId}", async (
             long id,
             string deviceId,
-            IdentityServerApi.IdentityServerApiClient identityClient,
-            HttpContext context) =>
+            IdentityServerApi.IdentityServerApiClient identityClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             await identityClient.RemoveActiveSessionServerAsync(new RemoveActiveSessionServerRequest
             {
                 UserId = id,
@@ -473,24 +468,46 @@ public static class UsersEndpoints
 
             return Results.Ok(new { success = true });
         })
-        .WithName("RemoveUserSession");
+        .WithName("RemoveUserSession")
+        .RequirePermission(AdminPermissions.UsersSessionsRevoke);
+
+        // DELETE /api/users/{id}/sessions — завершить все активные сессии
+        group.MapDelete("/{id:long}/sessions", async (
+            long id,
+            UserSessionRevocationService revocationService,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await revocationService.RevokeAllAsync(id, cancellationToken);
+            return Results.Ok(new
+            {
+                requestedCount = result.RequestedCount,
+                revokedCount = result.RevokedCount,
+                failedDeviceIds = result.FailedDeviceIds
+            });
+        })
+        .WithName("RemoveAllUserSessions")
+        .RequirePermission(AdminPermissions.UsersSessionsRevoke)
+        .RequireStepUp(StepUpActions.UsersSessionsRevokeAll, context =>
+            $"userId={context.Request.RouteValues["id"]}");
     }
 
-    private static async Task<T?> SafeCall<T>(Func<Grpc.Core.AsyncUnaryCall<T>> call) where T : class
+    private static async Task<GrpcCallResult<T>> SafeCall<T>(Func<Grpc.Core.AsyncUnaryCall<T>> call) where T : class
     {
         try
         {
-            return await call();
+            return new GrpcCallResult<T>(await call(), true);
         }
         catch
         {
-            return null;
+            return new GrpcCallResult<T>(null, false);
         }
     }
 
+    private sealed record GrpcCallResult<T>(T? Value, bool Available) where T : class;
+
     private sealed record AssignBadgeBody(int BadgeId, int? Priority);
     private sealed record UpdateStorageLimitBody(int StorageLimitGb);
-    private sealed record DisableOtpBody(int OtpType);
+    private sealed record DisableOtpBody(int OtpType, string? Reason);
     private sealed record UpdateProfileBody(string? FirstName, string? LastName, string? Bio, string? Username);
-    private sealed record ChangePasswordBody(string? NewPassword);
+    private sealed record ChangePasswordBody(string? NewPassword, string? Reason);
 }

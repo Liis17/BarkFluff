@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Дашборд</title>
-    <link rel="stylesheet" href="assets/md3.css">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .kpi-grid {
@@ -147,10 +147,34 @@
         .upload-timing-bar { height: 6px; border-radius: 999px; overflow: hidden; background: var(--md-surface-container-highest); }
         .upload-timing-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--md-primary); }
 
+        /* Services health / infrastructure */
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 12px;
+        }
+        .health-card {
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-md);
+            padding: 14px 16px;
+            background: var(--md-surface-container-lowest);
+        }
+        .health-card-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px;
+        }
+        .health-card .name { font-size: 14px; font-weight: 600; color: var(--md-on-surface); }
+        .health-deps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .health-deps .md-status { font-size: 11.5px; padding: 2px 10px; }
+        .health-foot {
+            margin-top: 10px; font-size: 12px; color: var(--md-on-surface-variant);
+        }
+
         @media (max-width: 600px) {
             .service-grid { grid-template-columns: 1fr; }
             .upload-timing-head { align-items: flex-start; flex-direction: column; gap: 4px; }
             .upload-timing-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .health-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -168,9 +192,9 @@
         <header class="md-app-bar">
             <div style="display:flex;align-items:center;gap:12px;">
                 <h1>Обзор системы</h1>
-                <span class="md-status md-status-success" id="system-status-badge">
+                <span class="md-status md-status-neutral" id="system-status-badge">
                     <span class="dot"></span>
-                    Система активна
+                    Статус проверяется
                 </span>
             </div>
             <div style="display:flex;gap:8px;">
@@ -217,7 +241,7 @@
                         <span class="kpi-icon icon-success"><span class="msr">dns</span></span>
                     </div>
                     <div class="kpi-value" id="kpi-services">—</div>
-                    <div class="kpi-foot">С логами за 24ч</div>
+                    <div class="kpi-foot">Liveness-проверка каждые 30 с</div>
                 </div>
 
                 <div class="kpi-card">
@@ -228,6 +252,24 @@
                     <div class="kpi-value" id="kpi-uptime">0:00:00</div>
                     <div class="kpi-foot" id="kpi-started-at">—</div>
                 </div>
+            </div>
+
+            <!-- Services health -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Состояние сервисов</h2>
+                    <span class="hint">Liveness + readiness, обновление каждые 30 секунд</span>
+                </div>
+                <div id="services-health-grid" class="health-grid"></div>
+            </div>
+
+            <!-- Infrastructure -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Инфраструктура</h2>
+                    <span class="hint">RabbitMQ и S3 — прямые проверки; Postgres/Redis — по readiness сервисов</span>
+                </div>
+                <div id="infrastructure-grid" class="health-grid"></div>
             </div>
 
             <!-- Traffic chart -->
@@ -253,9 +295,10 @@
     </main>
 </div>
 
-<script src="assets/icons.js"></script>
-<script src="assets/sidebar.js"></script>
-<script src="assets/command-palette.js"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=5"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     // ---- Helpers ----
     function formatDate(s) {
@@ -276,6 +319,54 @@
         if (!n) return n;
         return n.split('_').map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    // ---- Services health ----
+    const HEALTH_STATUS = {
+        healthy:  { cls: 'md-status-success', label: 'Работает' },
+        degraded: { cls: 'md-status-warn',    label: 'Деградация' },
+        down:     { cls: 'md-status-error',   label: 'Недоступен' },
+        unknown:  { cls: 'md-status-neutral', label: 'Нет данных' }
+    };
+    function healthBadge(status) {
+        const info = HEALTH_STATUS[status] || HEALTH_STATUS.unknown;
+        return '<span class="md-status ' + info.cls + '"><span class="dot"></span>' + info.label + '</span>';
+    }
+    function renderServicesHealth(services) {
+        const grid = document.getElementById('services-health-grid');
+        if (!grid) return;
+        grid.innerHTML = (services || []).map(svc => {
+            const deps = (svc.readiness && svc.readiness.checks || [])
+                .map(c => '<span class="md-status ' + (c.status === 'healthy' ? 'md-status-success' : 'md-status-error') +
+                    '"><span class="dot"></span>' + escapeHtml(c.name) + '</span>')
+                .join('');
+            const foot = [
+                svc.dockerState ? 'Docker: ' + escapeHtml(svc.dockerState) : null,
+                svc.probeLatencyMs != null ? 'отклик ' + svc.probeLatencyMs + ' мс' : null,
+                svc.lastSeenUtc ? 'лог: ' + formatTime(svc.lastSeenUtc) : null
+            ].filter(Boolean).join(' · ');
+            return '<div class="health-card">' +
+                '<div class="health-card-head"><span class="name">' +
+                    escapeHtml((svc.name || '').replace('BarkFluff.', '')) + '</span>' + healthBadge(svc.status) + '</div>' +
+                (deps ? '<div class="health-deps">' + deps + '</div>' : '') +
+                (foot ? '<div class="health-foot">' + foot + '</div>' : '') +
+                '</div>';
+        }).join('');
+    }
+    function renderInfrastructure(infra) {
+        const grid = document.getElementById('infrastructure-grid');
+        if (!grid) return;
+        const sources = { bus: 'MassTransit панели', s3: 'прямая проверка', readiness: 'readiness сервисов', docker: 'docker-state', none: '—' };
+        grid.innerHTML = (infra || []).map(item => {
+            const src = sources[item.source] || item.source || '';
+            const foot = [item.detail ? escapeHtml(item.detail) : null, src].filter(Boolean).join(' · ');
+            return '<div class="health-card">' +
+                '<div class="health-card-head"><span class="name">' + escapeHtml(item.name || '') + '</span>' +
+                    healthBadge(item.status) + '</div>' +
+                (foot ? '<div class="health-foot">' + foot + '</div>' : '') +
+                '</div>';
+        }).join('');
+    }
     function getShortServiceName(n) {
         if (!n) return n;
         const parts = n.split('.');
@@ -285,20 +376,30 @@
     const metricColors = ['#8c351c','#BA1A1A','#146C2E','#815600','#7C4B96','#B4365B','#0C7C9C','#B85228','#1F8A6E','#5B5FCF','#5C772A','#A52545'];
 
     // ---- Auth ----
-    async function checkAuth() {
-        try {
-            const res = await fetch('/api/auth/me');
-            if (!res.ok) { window.location.href = '/'; return null; }
-            return await res.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     // ---- Dashboard data ----
     let trafficChart = null;
+
+    const SYSTEM_BADGE = {
+        healthy:  { cls: 'md-status-success', label: 'Система активна' },
+        degraded: { cls: 'md-status-warn',    label: 'Деградация сервиса' },
+        down:     { cls: 'md-status-error',   label: 'Сбой критичного сервиса' },
+        unknown:  { cls: 'md-status-neutral', label: 'Статус неизвестен' }
+    };
+    function updateSystemBadge(status) {
+        const el = document.getElementById('system-status-badge');
+        if (!el) return;
+        const info = SYSTEM_BADGE[status] || SYSTEM_BADGE.unknown;
+        el.className = 'md-status ' + info.cls;
+        el.innerHTML = '<span class="dot"></span>' + info.label;
+    }
+
     async function loadDashboardData() {
-        const [kpisRes, trafficRes] = await Promise.allSettled([
-            fetch('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-            fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status))
+        const [kpisRes, trafficRes, healthRes] = await Promise.allSettled([
+            BF.request('/api/seq/dashboard/kpis?hours=24', { errorToast: false }),
+            BF.request('/api/seq/dashboard/traffic?hours=24&interval=1h', { errorToast: false }),
+            BF.request('/api/health/overview', { errorToast: false })
         ]);
 
         if (kpisRes.status === 'fulfilled') {
@@ -306,9 +407,23 @@
             document.getElementById('kpi-total').textContent = formatNumber(k.totalEvents);
             document.getElementById('kpi-errors').textContent = formatNumber(k.errorCount);
             document.getElementById('kpi-warnings').textContent = formatNumber(k.warningCount);
-            document.getElementById('kpi-services').textContent = formatNumber(k.perService ? Object.keys(k.perService).length : 0);
         } else {
-            ['kpi-total','kpi-errors','kpi-warnings','kpi-services'].forEach(id => document.getElementById(id).textContent = '—');
+            ['kpi-total','kpi-errors','kpi-warnings'].forEach(id => document.getElementById(id).textContent = '—');
+        }
+
+        if (healthRes.status === 'fulfilled') {
+            const h = healthRes.value;
+            const up = (h.summary?.healthy ?? 0) + (h.summary?.degraded ?? 0);
+            const total = h.summary?.total ?? 0;
+            document.getElementById('kpi-services').textContent = total ? up + '/' + total : '—';
+            updateSystemBadge(h.systemStatus);
+            renderServicesHealth(h.services);
+            renderInfrastructure(h.infrastructure);
+        } else {
+            document.getElementById('kpi-services').textContent = '—';
+            updateSystemBadge(null);
+            renderServicesHealth([]);
+            renderInfrastructure([]);
         }
 
         if (trafficRes.status === 'fulfilled') {
@@ -449,9 +564,7 @@
         const grid = section.querySelector('.service-grid');
         grid.innerHTML = '<div style="color:var(--md-on-surface-variant);padding:16px">Загрузка...</div>';
         try {
-            const response = await fetch(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`);
-            if (!response.ok) throw new Error(response.status);
-            const data = await response.json();
+            const data = await BF.request(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`, { errorToast: false });
             grid.innerHTML = '';
             const uploadMetrics = data.metrics.filter(metric => lastUploadMetricIds.has(metric.id));
             const lastUploadCard = group.serviceName === 'BarkFluff.Files' ? renderLastUploadCard(uploadMetrics) : null;
@@ -481,9 +594,7 @@
     async function loadMetricCatalog() {
         const container = document.getElementById('service-metrics-container');
         try {
-            const response = await fetch('/api/seq/dashboard/metric-groups');
-            if (!response.ok) throw new Error(response.status);
-            const data = await response.json();
+            const data = await BF.request('/api/seq/dashboard/metric-groups', { errorToast: false });
             container.innerHTML = '';
             data.groups.forEach(group => {
                 const section = renderMetricGroup(group);
@@ -497,8 +608,7 @@
 
     // ---- Logout ----
     document.getElementById('logout-btn').addEventListener('click', async () => {
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     // ---- Uptime ----
@@ -542,9 +652,7 @@
         await loadDashboardData();
         loadMetricCatalog();
 
-        const overlay = document.getElementById('loading-overlay');
-        overlay.classList.add('hidden');
-        setTimeout(() => overlay.remove(), 300);
+        BF.pageReady();
 
         setInterval(loadDashboardData, 30000);
     })();

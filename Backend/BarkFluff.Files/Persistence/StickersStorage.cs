@@ -42,6 +42,13 @@ public class StickersStorage
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 
+    public async Task<Sticker?> GetByFileIdAsync(Guid fileId)
+    {
+        return await _context.Stickers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.FileId == fileId);
+    }
+
     public async Task<List<Sticker>> GetByIdsAsync(List<Guid> ids)
     {
         return await _context.Stickers
