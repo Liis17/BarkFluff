@@ -115,7 +115,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ## HTML-страницы (Pages/)
 
-Авторизованные MD3-страницы используют общий `Pages/v2/assets/api.js`. `BF.api()` остаётся совместимым с `fetch` и централизует обработку истёкшей сессии (`401`) и Telegram step-up (`428`); для нового кода `BF.request()` разбирает JSON/text/blob, нормализует серверные ошибки и поддерживает loading/toast. `BF.requireAuth()`, `BF.logout()` и `BF.pageReady()` убирают дублирование auth/logout/page-loading между HTML-страницами. Общие toast-стили находятся в `assets/md3.css`.
+Авторизованные MD3-страницы используют общий `Pages/v2/assets/api.js`. `BF.api()` остаётся совместимым с `fetch` и централизует обработку истёкшей сессии (`401`) и Telegram step-up (`428`); все запросы данных и действий со страниц идут через `BF.request()`, который разбирает JSON/text/blob, нормализует серверные ошибки и поддерживает loading/toast. `BF.requireAuth()`, `BF.logout()` и `BF.pageReady()` убирают дублирование auth/logout/page-loading между HTML-страницами. Общие toast-стили находятся в `assets/md3.css`.
 
 | Файл | Назначение |
 |------|-----------|
@@ -235,7 +235,7 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 
 ## Вкладка «Конфигурация» (`/configuration`)
 
-`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису, клиентский поиск и **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL, секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет». История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Configuration-сервис, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
+`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису, клиентский поиск и **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL (`http(s)` и `ws(s)` для LiveKit), секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет». История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Configuration-сервис, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
 
 Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
 

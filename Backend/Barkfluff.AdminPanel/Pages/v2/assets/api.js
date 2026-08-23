@@ -55,6 +55,13 @@
     window.location.assign('/');
   }
 
+  function handleUnauthorized(response) {
+    if (!response || response.status !== 401) return false;
+    document.dispatchEvent(new CustomEvent('bf:unauthorized'));
+    redirectToLogin();
+    return true;
+  }
+
   function setElementBusy(target, busy) {
     const element = typeof target === 'string' ? document.querySelector(target) : target;
     if (!element) return;
@@ -227,6 +234,8 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: action, parameters: parameters || '' })
     });
+    if (handleUnauthorized(response))
+      throw new BF.ApiError('Сессия истекла', 401, null, response);
     if (!response.ok) {
       const body = await response.json().catch(function () { return {}; });
       throw new Error(body.message || 'Не удалось отправить подтверждение в Telegram');
@@ -247,6 +256,10 @@
       } catch (e) {
         closeModal();
         throw new Error('Не удалось проверить подтверждение');
+      }
+      if (handleUnauthorized(statusRes)) {
+        closeModal();
+        throw new BF.ApiError('Сессия истекла', 401, null, statusRes);
       }
       if (!statusRes.ok) {
         closeModal();
@@ -294,10 +307,7 @@
       response = await nativeFetch(url, Object.assign({}, options, { headers: headers }));
     }
 
-    if (response.status === 401) {
-      document.dispatchEvent(new CustomEvent('bf:unauthorized'));
-      redirectToLogin();
-    }
+    handleUnauthorized(response);
 
     return response;
   };

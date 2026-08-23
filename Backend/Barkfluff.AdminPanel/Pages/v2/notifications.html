@@ -152,7 +152,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -205,13 +205,9 @@
         if (!payload.title || !payload.body) { toast('Заполните заголовок и тело', 'err'); return; }
         openConfirm('Отправить всем?', `Уведомление будет разослано всем пользователям с включёнными push-уведомлениями.`, async () => {
             const btn = document.getElementById('btnSendAll');
-            btn.disabled = true;
             try {
-                const res = await BF.api('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, confirm: true }) });
-                if (!res.ok) throw new Error();
-                toast('Рассылка отправлена', 'success');
-            } catch { toast('Ошибка отправки', 'err'); }
-            finally { btn.disabled = false; }
+                await BF.request('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, confirm: true }), loading: btn, successToast: 'Рассылка отправлена' });
+            } catch {}
         });
     };
 
@@ -224,13 +220,9 @@
         if (!ids.length) { toast('Не нашли валидных Device ID', 'err'); return; }
         openConfirm('Отправить выбранным?', `Уведомление получат ${ids.length} устройств.`, async () => {
             const btn = document.getElementById('btnSendDevices');
-            btn.disabled = true;
             try {
-                const res = await BF.api('/api/notifications/broadcast/devices', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, deviceIds: ids}) });
-                if (!res.ok) throw new Error();
-                toast('Рассылка отправлена', 'success');
-            } catch { toast('Ошибка отправки', 'err'); }
-            finally { btn.disabled = false; }
+                await BF.request('/api/notifications/broadcast/devices', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, deviceIds: ids}), loading: btn, successToast: 'Рассылка отправлена' });
+            } catch {}
         });
     };
 

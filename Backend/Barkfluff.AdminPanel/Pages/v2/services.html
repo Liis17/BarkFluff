@@ -379,7 +379,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -485,9 +485,7 @@
     async function loadServices() {
         const tbody = document.getElementById('servicesTableBody');
         try {
-            const res = await BF.api('/api/seq/services/status');
-            if (!res.ok) throw new Error(res.status);
-            servicesData = await res.json();
+            servicesData = await BF.request('/api/seq/services/status', { errorToast: false });
             await loadBranches();
             renderServicesTable();
         } catch (e) {
@@ -498,9 +496,7 @@
     async function loadAdminPanelUpdateStatus() {
         const badge = document.getElementById('adminPanelUpdateBadge');
         try {
-            const response = await BF.api('/api/docker/containers/admin-panel/update-status');
-            if (!response.ok) throw new Error(response.status);
-            const status = await response.json();
+            const status = await BF.request('/api/docker/containers/admin-panel/update-status', { errorToast: false });
             badge.style.display = status.updateAvailable ? '' : 'none';
         } catch {
             badge.style.display = 'none';
@@ -576,9 +572,7 @@
     // ---- Ветки обновлений (image: в docker-compose.yml) ----
     async function loadBranches() {
         try {
-            const res = await BF.api('/api/docker/branches');
-            if (!res.ok) throw new Error(res.status);
-            const branches = await res.json();
+            const branches = await BF.request('/api/docker/branches', { errorToast: false });
             branchesByContainer = {};
             branches.forEach(b => { branchesByContainer[b.container] = b; });
         } catch {
@@ -622,12 +616,12 @@
 
         select.disabled = true;
         try {
-            const r = await BF.api(`/api/docker/containers/${container}/branch`, {
+            const result = await BF.request(`/api/docker/containers/${container}/branch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ branch })
+                body: JSON.stringify({ branch }),
+                errorToast: false
             });
-            const result = await r.json();
             if (!result.success) {
                 showNotification('error', result.message || 'Ошибка');
                 select.value = previous;
@@ -681,8 +675,9 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
         try {
-            const r = await BF.api(`/api/docker/containers/${container}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
-            const result = await r.json();
+            const result = await BF.request(`/api/docker/containers/${container}/${action}`, {
+                method:'POST', headers:{'Content-Type':'application/json'}, errorToast:false
+            });
             if (!result.success) {
                 showNotification('error', result.message || 'Ошибка');
                 return;
@@ -727,14 +722,14 @@
 
     async function startDeployJob(url, body, title, autoCloseOnSuccess = false) {
         try {
-            const response = await BF.api(url, {
+            const result = await BF.request(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: body ? JSON.stringify(body) : undefined
+                body: body ? JSON.stringify(body) : undefined,
+                errorToast: false
             });
-            const result = await response.json().catch(() => null);
-            if (!response.ok || result?.success === false)
-                throw new Error(result?.message || `HTTP ${response.status}`);
+            if (result?.success === false)
+                throw new Error(result.message || 'Операция не выполнена');
             openJobModal(title, result.jobId, autoCloseOnSuccess);
         } catch (e) {
             showNotification('error', e.message || 'Операция не выполнена');
@@ -751,7 +746,7 @@
     }
     async function updateAvailableServices() {
         const containers = updatableContainers();
-        if (containers.length === 0) { alert('Нет сервисов с доступными обновлениями'); return; }
+        if (containers.length === 0) { BF.toast('Нет сервисов с доступными обновлениями', 'info'); return; }
         if (!confirm(`Обновить только сервисы с доступными обновлениями (${containers.length})?`)) return;
         await startDeployJob('/api/docker/containers/update-many', { containers }, `Обновление доступных сервисов (${containers.length})`, true);
     }
@@ -777,10 +772,11 @@
             let job = null;
             let notFound = false;
             try {
-                const r = await BF.api(`/api/docker/deploy/jobs/${jobId}`);
-                if (r.ok) job = await r.json();
-                else if (r.status === 404) notFound = true;
-            } catch { /* панель могла перезапуститься — продолжаем опрос */ }
+                job = await BF.request(`/api/docker/deploy/jobs/${jobId}`, { errorToast: false });
+            } catch (error) {
+                if (error.status === 404) notFound = true;
+                // Панель могла перезапуститься — продолжаем опрос.
+            }
             if (job) {
                 notFoundCount = 0;
                 if (renderModal) renderJobModal(job);
@@ -898,9 +894,7 @@
     // При перезагрузке страницы подхватить активную задачу деплоя
     async function resumeActiveDeployJob() {
         try {
-            const r = await BF.api('/api/docker/deploy/jobs');
-            if (!r.ok) return;
-            const jobs = await r.json();
+            const jobs = await BF.request('/api/docker/deploy/jobs', { errorToast: false });
             const active = jobs.find(j => j.state === 'Queued' || j.state === 'Running');
             if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id, active.kind === 'Update');
         } catch { /* ignore */ }
@@ -909,12 +903,12 @@
     // ---- Admin panel actions ----
     async function restartAdminPanel() {
         if (!confirm('Перезапустить админ-панель? Вы будете перенаправлены на страницу ожидания.')) return;
-        try { await BF.api('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
+        try { await BF.request('/api/docker/containers/admin-panel/restart-own', { method:'POST', errorToast:false }); window.location.href = '/restarting'; }
         catch { showNotification('error', 'Не удалось запустить перезапуск'); }
     }
     async function updateAdminPanel() {
         if (!confirm('Обновить админ-панель? Будет загружен новый образ.')) return;
-        try { await BF.api('/api/docker/containers/admin-panel/update-own', { method:'POST' }); window.location.href = '/updating'; }
+        try { await BF.request('/api/docker/containers/admin-panel/update-own', { method:'POST', errorToast:false }); window.location.href = '/updating'; }
         catch { showNotification('error', 'Не удалось запустить обновление'); }
     }
 
@@ -943,9 +937,7 @@
             return;
         }
         try {
-            const response = await BF.api('/api/remote/servers');
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            remoteServers = await response.json();
+            remoteServers = await BF.request('/api/remote/servers', { errorToast: false });
             renderRemoteServers();
             const selected = selectServerId || (activeTab !== 'barkfluff' && remoteServers.some(s => s.id === activeTab) ? activeTab : 'barkfluff');
             switchTab(selected);
@@ -988,9 +980,7 @@
         const tbody = document.getElementById(`remote-${serverId}-body`);
         if (!tbody) return;
         try {
-            const response = await BF.api(`/api/remote/servers/${serverId}/containers`);
-            if (!response.ok) throw new Error(await responseMessage(response));
-            const containers = await response.json();
+            const containers = await BF.request(`/api/remote/servers/${serverId}/containers`, { errorToast: false });
             if (!containers.length) {
                 tbody.innerHTML = `<tr><td colspan="3" class="empty-cell">Контейнеры ещё не добавлены</td></tr>`;
                 return;
@@ -1021,9 +1011,10 @@
         button.disabled = true;
         button.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
         try {
-            const response = await BF.api(`/api/remote/servers/${serverId}/containers/${containerId}/${action}`, { method:'POST' });
-            const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.message || 'Ошибка действия');
+            const result = await BF.request(`/api/remote/servers/${serverId}/containers/${containerId}/${action}`, {
+                method:'POST', errorToast:false
+            });
+            if (!result.success) throw new Error(result.message || 'Ошибка действия');
             showNotification('success', result.message);
             setTimeout(() => loadRemoteContainers(serverId), 1500);
         } catch (e) { showNotification('error', e.message); }
@@ -1057,27 +1048,25 @@
             password: document.getElementById('serverPassword').value || null
         };
         const button = document.getElementById('saveServerBtn');
-        button.disabled = true;
         try {
-            const response = await BF.api(editingServerId ? `/api/remote/servers/${editingServerId}` : '/api/remote/servers', {
-                method: editingServerId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(request)
+            const server = await BF.request(editingServerId ? `/api/remote/servers/${editingServerId}` : '/api/remote/servers', {
+                method: editingServerId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(request),
+                loading: button, errorToast:false
             });
-            if (!response.ok) throw new Error(await responseMessage(response));
-            const server = await response.json();
             closeDialog('serverDialogScrim');
             showNotification('success', 'Сервер сохранён');
             await loadRemoteServers(server.id);
         } catch (e) { showDialogError('serverDialogError', e.message); }
-        finally { button.disabled = false; }
     }
 
     async function deleteServer(serverId) {
         const server = remoteServers.find(item => item.id === serverId);
         if (!confirm(`Удалить сервер "${server?.name || ''}" и все его контейнеры из панели?`)) return;
-        const response = await BF.api(`/api/remote/servers/${serverId}`, { method:'DELETE' });
-        if (!response.ok) { showNotification('error', await responseMessage(response)); return; }
-        showNotification('success', 'Сервер удалён');
-        await loadRemoteServers();
+        try {
+            await BF.request(`/api/remote/servers/${serverId}`, { method:'DELETE', errorToast:false });
+            showNotification('success', 'Сервер удалён');
+            await loadRemoteServers();
+        } catch (e) { showNotification('error', e.message); }
     }
 
     async function openContainerDialog(serverId) {
@@ -1086,17 +1075,16 @@
         hideDialogError('containerDialogError');
         document.getElementById('containerDialogScrim').classList.add('open');
         try {
-            const response = await BF.api(`/api/remote/servers/${serverId}/discover`);
-            if (!response.ok) throw new Error(await responseMessage(response));
-            const containers = await response.json();
+            const containers = await BF.request(`/api/remote/servers/${serverId}/discover`, { errorToast:false });
             document.getElementById('discoveredContainers').innerHTML = containers.length ? `<table class="md-table"><thead><tr><th>Контейнер</th><th>Образ</th><th>Тип</th><th></th></tr></thead><tbody>${containers.map(container => `<tr><td><div style="display:flex;align-items:center;gap:10px;">${bfIcon(getServiceIconPath(container.containerName), 'size-18 service-icon')}<span>${escapeHtml(container.containerName)}</span></div></td><td>${escapeHtml(container.image)}</td><td>${container.isComposeManaged ? 'Docker Compose' : 'Docker'}</td><td><button class="md-btn md-btn-text" onclick="addDiscoveredContainer('${container.containerName}')">${bfIcon('add', 'size-18')}Добавить</button></td></tr>`).join('')}</tbody></table>` : 'Новых контейнеров не найдено.';
         } catch (e) { showDialogError('containerDialogError', e.message); }
     }
 
     async function addDiscoveredContainer(containerName) {
         try {
-            const response = await BF.api(`/api/remote/servers/${containerServerId}/containers`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({containerName}) });
-            if (!response.ok) throw new Error(await responseMessage(response));
+            await BF.request(`/api/remote/servers/${containerServerId}/containers`, {
+                method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({containerName}), errorToast:false
+            });
             closeDialog('containerDialogScrim');
             showNotification('success', 'Контейнер добавлен');
             await loadRemoteContainers(containerServerId);
@@ -1228,8 +1216,7 @@
     async function deleteContainer(serverId, containerId) {
         if (!confirm('Убрать контейнер из списка панели? Сам Docker-контейнер не будет удалён.')) return;
         try {
-            const response = await BF.api(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE' });
-            if (!response.ok) throw new Error(await responseMessage(response));
+            await BF.request(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE', errorToast:false });
             await loadRemoteContainers(serverId);
         } catch (e) { showNotification('error', e.message); }
     }
@@ -1237,7 +1224,6 @@
     function closeDialog(id) { document.getElementById(id).classList.remove('open'); }
     function showDialogError(id, message) { const el = document.getElementById(id); el.textContent = message; el.style.display = ''; }
     function hideDialogError(id) { document.getElementById(id).style.display = 'none'; }
-    async function responseMessage(response) { try { return (await response.json()).message || `HTTP ${response.status}`; } catch { return `HTTP ${response.status}`; } }
 
     document.getElementById('serverForm').addEventListener('submit', saveServer);
     document.getElementById('consoleInputForm').addEventListener('submit', sendConsoleCommand);

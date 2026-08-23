@@ -223,7 +223,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -256,10 +256,12 @@
     function addrText(a) { if (!a) return ''; return a.name ? `${a.name} <${a.address}>` : a.address; }
 
     async function loadAccounts() {
-        const r = await BF.api('/api/mail/accounts');
-        if (r.status === 401) { window.location.href = '/'; return; }
-        if (!r.ok) { toast('Не удалось загрузить ящики', 'err'); return; }
-        state.accounts = await r.json();
+        try {
+            state.accounts = await BF.request('/api/mail/accounts', { errorToast: false });
+        } catch (error) {
+            if (error.status !== 401) toast('Не удалось загрузить ящики', 'err');
+            return;
+        }
         renderTabs();
         if (state.accounts.length > 0) selectAccount(state.accounts[0].address);
         else $('message-list').innerHTML = '<div style="padding:48px 24px;text-align:center;color:var(--md-on-surface-variant);font-size:13px;">Нет настроенных ящиков.</div>';
@@ -287,14 +289,7 @@
         $('message-list').innerHTML = '<div style="padding:48px 24px;text-align:center;color:var(--md-on-surface-variant);font-size:13px;"><div class="md-loader-expressive" style="display:inline-block;margin-bottom:8px;"></div><div>Загрузка...</div></div>';
         setStatus('Загрузка', true);
         try {
-            const r = await BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages?folder=INBOX&page=0&size=50`);
-            if (r.status === 401) { window.location.href = '/'; return; }
-            if (!r.ok) {
-                $('message-list').innerHTML = `<div style="padding:48px 24px;text-align:center;color:var(--md-error);font-size:13px;">Ошибка загрузки</div>`;
-                setStatus('Ошибка', false);
-                return;
-            }
-            const data = await r.json();
+            const data = await BF.request(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages?folder=INBOX&page=0&size=50`, { errorToast: false });
             state.messages = data.items || [];
             renderList();
             setStatus(`${state.messages.length} писем${data.total != null ? ` · ${data.total} всего` : ''}`, true);
@@ -328,13 +323,11 @@
         $('message-detail').className = 'detail-pane';
         $('message-detail').innerHTML = '<div style="padding:48px;text-align:center;flex:1;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const r = await BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}`);
-            if (!r.ok) throw new Error();
-            state.selectedDetail = await r.json();
+            state.selectedDetail = await BF.request(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}`, { errorToast: false });
             const localMsg = state.messages.find(m => m.uid === uid);
             if (localMsg && !localMsg.isRead) {
                 localMsg.isRead = true; renderList();
-                BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}/read`, { method:'POST' }).catch(() => {});
+                BF.request(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}/read`, { method:'POST', errorToast: false }).catch(() => {});
             }
             renderDetail(state.selectedDetail);
         } catch (e) {
@@ -423,14 +416,12 @@
         const fd = new FormData();
         fd.append('payload', JSON.stringify(payload));
         state.pendingFiles.forEach(f => fd.append('files', f, f.name));
-        const btn = $('compose-send-btn'); btn.disabled = true;
+        const btn = $('compose-send-btn');
         try {
-            const r = await BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/send`, { method:'POST', body: fd });
-            if (!r.ok) { let m = 'Ошибка отправки'; try { const j = await r.json(); m = j.error || j.detail || m; } catch {} throw new Error(m); }
+            await BF.request(`/api/mail/${encodeURIComponent(state.activeAccount)}/send`, { method:'POST', body: fd, loading: btn, errorToast: false });
             toast('Письмо отправлено', 'ok');
             closeCompose();
         } catch (e) { toast(e.message || 'Ошибка отправки', 'err'); }
-        finally { btn.disabled = false; }
     };
     window.replyToMessage = function () {
         if (!state.selectedDetail) return;

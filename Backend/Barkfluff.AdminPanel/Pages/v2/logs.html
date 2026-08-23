@@ -310,7 +310,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -429,8 +429,8 @@
     // ---- Сервисы ----
     async function loadServices() {
         try {
-            const r = await BF.api('/api/seq/services');
-            if (r.ok) { services = await r.json(); populateServiceSelect(); }
+            services = await BF.request('/api/seq/services', { errorToast: false });
+            populateServiceSelect();
         } catch {}
     }
     function populateServiceSelect() {
@@ -767,9 +767,7 @@
         document.getElementById('exportStage').textContent = 'Подготовка экспорта...';
         document.getElementById('exportCounter').textContent = '';
         try {
-            const r = await BF.api('/api/seq/export/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            exportJobId = (await r.json()).jobId;
+            exportJobId = (await BF.request('/api/seq/export/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }), errorToast: false })).jobId;
             exportTimer = setInterval(pollExport, 2000);
             pollExport();
         } catch (e) { showExportError(e.message); }
@@ -777,9 +775,7 @@
     async function pollExport() {
         if (!exportJobId) return;
         try {
-            const r = await BF.api(`/api/seq/export/${exportJobId}/status`);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const s = await r.json();
+            const s = await BF.request(`/api/seq/export/${exportJobId}/status`, { errorToast: false });
             const num = (s.totalDownloaded || 0).toLocaleString('ru-RU');
             const stage = document.getElementById('exportStage');
             const counter = document.getElementById('exportCounter');
@@ -801,8 +797,7 @@
     window.restartAfterExport = async function () {
         if (window.BF && !BF.can('docker.deploy')) return;
         try {
-            const response = await BF.api('/api/docker/containers/admin-panel/restart-own', { method:'POST' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await BF.request('/api/docker/containers/admin-panel/restart-own', { method:'POST', errorToast: false });
             window.location.href = '/restarting';
         }
         catch (e) { showExportError(e.message); }
@@ -835,9 +830,7 @@
         showClearState('running');
         document.getElementById('clearStage').textContent = 'Удаление логов...';
         try {
-            const r = await BF.api('/api/seq/clear/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            clearJobId = (await r.json()).jobId;
+            clearJobId = (await BF.request('/api/seq/clear/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }), errorToast: false })).jobId;
             clearTimer = setInterval(pollClear, 1500);
             pollClear();
         } catch (e) { showClearError(e.message); }
@@ -845,9 +838,7 @@
     async function pollClear() {
         if (!clearJobId) return;
         try {
-            const r = await BF.api(`/api/seq/clear/${clearJobId}/status`);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const s = await r.json();
+            const s = await BF.request(`/api/seq/clear/${clearJobId}/status`, { errorToast: false });
             if (s.state === 'done') {
                 if (clearTimer) { clearInterval(clearTimer); clearTimer = null; }
                 showClearState('done');

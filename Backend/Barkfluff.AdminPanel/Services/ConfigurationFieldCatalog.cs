@@ -44,7 +44,7 @@ public static class ConfigurationFieldCatalog
         }
 
         if (IsUrlField(section, key, currentValue))
-            return new(ConfigurationFieldType.Url, Hint: "Абсолютный HTTP(S)-адрес; пустое значение отключает override");
+            return new(ConfigurationFieldType.Url, Hint: "Абсолютный HTTP(S) или WS(S)-адрес; пустое значение отключает override");
 
         if (long.TryParse(currentValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) ||
             IntegerKeyParts.Any(part => key.Contains(part, StringComparison.OrdinalIgnoreCase)))
@@ -78,10 +78,9 @@ public static class ConfigurationFieldCatalog
                 break;
 
             case ConfigurationFieldType.Url:
-                if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
-                    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || !IsAllowedUrlScheme(uri.Scheme))
                 {
-                    return "Введите абсолютный HTTP(S)-адрес";
+                    return "Введите абсолютный HTTP(S) или WS(S)-адрес";
                 }
                 break;
         }
@@ -100,7 +99,12 @@ public static class ConfigurationFieldCatalog
             return true;
         }
 
-        return Uri.TryCreate(currentValue, UriKind.Absolute, out var uri) &&
-               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        return Uri.TryCreate(currentValue, UriKind.Absolute, out var uri) && IsAllowedUrlScheme(uri.Scheme);
     }
+
+    private static bool IsAllowedUrlScheme(string scheme) =>
+        scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+        scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+        scheme.Equals("ws", StringComparison.OrdinalIgnoreCase) ||
+        scheme.Equals("wss", StringComparison.OrdinalIgnoreCase);
 }

@@ -171,7 +171,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -197,9 +197,7 @@
     async function loadConfigurations() {
         const err = document.getElementById('error-state');
         try {
-            const r = await BF.api('/api/configuration/all');
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            allItems = await r.json();
+            allItems = await BF.request('/api/configuration/all', { errorToast: false });
             revealed.clear();
             editingIdx = null;
             err.style.display = 'none';
@@ -418,9 +416,9 @@
         if (item.fieldType === 'url') {
             try {
                 const url = new URL(value);
-                if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error();
+                if (!['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol)) throw new Error();
             } catch (_) {
-                return 'Введите абсолютный HTTP(S)-адрес';
+                return 'Введите абсолютный HTTP(S) или WS(S)-адрес';
             }
         }
 

@@ -97,7 +97,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -113,9 +113,7 @@
     async function loadAdmins() {
         const tbody = document.getElementById('admins-body');
         try {
-            const r = await BF.api('/api/admins');
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            admins = await r.json();
+            admins = await BF.request('/api/admins', { errorToast: false });
             admins.forEach(a => { draftRoles[a.telegramUserId] = new Set(a.roles); });
             render();
         } catch (e) {
@@ -181,18 +179,17 @@
         if (!admin) return;
         const roles = [...(draftRoles[telegramUserId] || new Set())];
         try {
-            const r = await BF.api(`/api/admins/${telegramUserId}/roles`, {
+            const body = await BF.request(`/api/admins/${telegramUserId}/roles`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ roles })
+                body: JSON.stringify({ roles }),
+                errorToast: false
             });
-            const body = await r.json().catch(() => ({}));
-            if (!r.ok) throw new Error(body.message || 'HTTP ' + r.status);
             admin.roles = body.roles || roles;
             draftRoles[telegramUserId] = new Set(admin.roles);
             render();
         } catch (e) {
-            alert('Не удалось сохранить роли: ' + e.message);
+            BF.toast('Не удалось сохранить роли: ' + e.message, 'error');
         }
     }
 
