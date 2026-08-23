@@ -95,6 +95,68 @@
         .svc-row.pending   { opacity: .35; }
         .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
 
+        html.progress-modal-open,
+        body.progress-modal-open { overflow: hidden; }
+        #progressScrim { z-index: 100; overscroll-behavior: contain; }
+        .progress-services-list {
+            max-height: 240px;
+            overflow-y: auto;
+            margin-top: 16px;
+            overscroll-behavior: contain;
+            scroll-behavior: smooth;
+        }
+        .progress-success {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0 16px;
+            color: var(--md-on-surface);
+            text-align: center;
+        }
+        .progress-success[hidden] { display: none; }
+        .progress-success-icon {
+            width: 68px;
+            height: 68px;
+            overflow: visible;
+            color: var(--md-success);
+        }
+        .progress-success-icon circle {
+            fill: var(--md-success-container);
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-dasharray: 182;
+            stroke-dashoffset: 182;
+        }
+        .progress-success-icon path {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 44;
+            stroke-dashoffset: 44;
+        }
+        .progress-success.is-visible { animation: progress-success-pop 500ms var(--md-easing-emphasized-decel) both; }
+        .progress-success.is-visible circle { animation: progress-success-circle 500ms var(--md-easing-emphasized-decel) both; }
+        .progress-success.is-visible path { animation: progress-success-check 420ms 280ms var(--md-easing-emphasized-decel) both; }
+        .progress-success-title { font-weight: 600; color: var(--md-on-success-container); }
+        .progress-success-subtitle { font-size: 13px; color: var(--md-on-surface-variant); }
+        @keyframes progress-success-pop {
+            from { transform: scale(.72); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes progress-success-circle { to { stroke-dashoffset: 0; } }
+        @keyframes progress-success-check { to { stroke-dashoffset: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+            .progress-services-list { scroll-behavior: auto; }
+            .progress-success.is-visible,
+            .progress-success.is-visible circle,
+            .progress-success.is-visible path { animation: none; }
+            .progress-success.is-visible circle,
+            .progress-success.is-visible path { stroke-dashoffset: 0; }
+        }
+
         .remote-console-dialog { max-width: 1080px; }
         .remote-console-output {
             margin: 0;
@@ -307,7 +369,15 @@
                 <span id="progressCount" style="color:var(--md-on-surface-variant);">0 / 0</span>
             </div>
             <div class="md-progress-linear"><div class="bar" id="progressBar" style="width:0%;"></div></div>
-            <div id="servicesList" style="max-height:240px;overflow-y:auto;margin-top:16px;"></div>
+            <div id="progressSuccess" class="progress-success" hidden aria-live="polite">
+                <svg class="progress-success-icon" viewBox="0 0 72 72" aria-hidden="true">
+                    <circle cx="36" cy="36" r="29"></circle>
+                    <path d="M21 37.5 31.5 48 52 25.5"></path>
+                </svg>
+                <div class="progress-success-title">Все сервисы обновлены успешно</div>
+                <div class="progress-success-subtitle">Окно закроется автоматически через 3 секунды</div>
+            </div>
+            <div id="servicesList" class="progress-services-list"></div>
         </div>
         <div class="md-dialog-actions" id="modalFooter" style="display:none;">
             <button class="md-btn md-btn-text" onclick="closeProgressModal()">Закрыть</button>
@@ -659,7 +729,7 @@
 
     const DEPLOY_KIND_LABELS = { Update: 'Обновление', Restart: 'Перезапуск', SwitchBranch: 'Переключение ветки' };
 
-    async function startDeployJob(url, body, title) {
+    async function startDeployJob(url, body, title, options = {}) {
         try {
             const response = await BF.api(url, {
                 method: 'POST',
@@ -669,7 +739,7 @@
             const result = await response.json().catch(() => null);
             if (!response.ok || result?.success === false)
                 throw new Error(result?.message || `HTTP ${response.status}`);
-            openJobModal(title, result.jobId);
+            openJobModal(title, result.jobId, options);
         } catch (e) {
             showNotification('error', e.message || 'Операция не выполнена');
         }
@@ -681,17 +751,23 @@
     }
     async function updateAllServices() {
         if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
-        await startDeployJob('/api/docker/containers/update-all', null, 'Обновление всех сервисов');
+        await startDeployJob('/api/docker/containers/update-all', null, 'Обновление всех сервисов', { autoCloseOnSuccess: true });
     }
     async function updateAvailableServices() {
         const containers = updatableContainers();
         if (containers.length === 0) { alert('Нет сервисов с доступными обновлениями'); return; }
         if (!confirm(`Обновить только сервисы с доступными обновлениями (${containers.length})?`)) return;
-        await startDeployJob('/api/docker/containers/update-many', { containers }, `Обновление доступных сервисов (${containers.length})`);
+        await startDeployJob('/api/docker/containers/update-many', { containers }, `Обновление доступных сервисов (${containers.length})`, { autoCloseOnSuccess: true });
     }
 
     // ---- Отслеживание задач деплоя ----
     let deployJobToken = 0;
+    let progressCloseTimer = null;
+
+    function setProgressModalLock(locked) {
+        document.documentElement.classList.toggle('progress-modal-open', locked);
+        document.body.classList.toggle('progress-modal-open', locked);
+    }
 
     async function waitDeployJob(jobId, renderModal = false) {
         let notFoundCount = 0;
@@ -715,7 +791,26 @@
         }
     }
 
-    function openJobModal(title, jobId) {
+    function resetProgressSuccess() {
+        const success = document.getElementById('progressSuccess');
+        success.classList.remove('is-visible');
+        success.hidden = true;
+    }
+
+    function showProgressSuccess() {
+        const success = document.getElementById('progressSuccess');
+        success.hidden = false;
+        success.classList.remove('is-visible');
+        void success.offsetWidth;
+        success.classList.add('is-visible');
+    }
+
+    function openJobModal(title, jobId, options = {}) {
+        if (progressCloseTimer !== null) {
+            clearTimeout(progressCloseTimer);
+            progressCloseTimer = null;
+        }
+        resetProgressSuccess();
         document.getElementById('modalTitle').textContent = title;
         document.getElementById('modalSubtitle').textContent = 'Выполняется на сервере, последовательно...';
         document.getElementById('progressText').textContent = 'В очереди...';
@@ -724,19 +819,54 @@
         document.getElementById('servicesList').innerHTML = '';
         document.getElementById('modalFooter').style.display = 'none';
         document.getElementById('progressScrim').classList.add('open');
+        setProgressModalLock(true);
 
         const token = ++deployJobToken;
         waitDeployJob(jobId, true).then(job => {
             if (token !== deployJobToken) return;
-            document.getElementById('modalSubtitle').textContent = 'Завершено';
             const failed = (job.steps || []).filter(s => s.state === 'Failed');
+            const completedSuccessfully = job.state === 'Completed' && failed.length === 0;
+            document.getElementById('modalSubtitle').textContent = completedSuccessfully ? 'Завершено' : 'Завершено с ошибками';
             if (failed.length)
                 showNotification('error', failed.map(f => `${f.service}: ${f.message || 'ошибка'}`).join('; ').slice(0, 300));
-            else
+            else if (completedSuccessfully)
                 showNotification('success', 'Операция завершена');
-            document.getElementById('modalFooter').style.display = '';
+            else
+                showNotification('error', job.error || 'Операция не завершена');
+            if (completedSuccessfully && options.autoCloseOnSuccess) {
+                document.getElementById('modalSubtitle').textContent = 'Все шаги выполнены успешно';
+                document.getElementById('progressText').textContent = 'Готово';
+                showProgressSuccess();
+                progressCloseTimer = setTimeout(() => {
+                    progressCloseTimer = null;
+                    if (token === deployJobToken) closeProgressModal();
+                }, 3000);
+            } else {
+                document.getElementById('modalFooter').style.display = '';
+            }
             loadServices();
         });
+    }
+
+    function scrollCurrentServiceIntoView() {
+        const list = document.getElementById('servicesList');
+        const current = list.querySelector('.svc-row.current');
+        if (!current || list.clientHeight === 0) return;
+
+        const listRect = list.getBoundingClientRect();
+        const currentRect = current.getBoundingClientRect();
+        const currentTop = list.scrollTop + currentRect.top - listRect.top;
+        const currentBottom = currentTop + current.offsetHeight;
+        const visibleTop = list.scrollTop + 8;
+        const visibleBottom = list.scrollTop + list.clientHeight - 8;
+
+        if (currentTop >= visibleTop && currentBottom <= visibleBottom) return;
+
+        const targetTop = Math.max(0, currentTop - (list.clientHeight - current.offsetHeight) / 2);
+        if (typeof list.scrollTo === 'function')
+            list.scrollTo({ top: targetTop, behavior: 'smooth' });
+        else
+            list.scrollTop = targetTop;
     }
 
     function renderJobModal(job) {
@@ -756,11 +886,17 @@
         document.getElementById('progressText').textContent = job.state === 'Queued'
             ? 'В очереди...'
             : current ? `Обрабатываем ${current.service}...` : (job.state === 'Running' ? 'Выполняется...' : 'Завершено');
+        scrollCurrentServiceIntoView();
     }
 
     function closeProgressModal() {
+        if (progressCloseTimer !== null) {
+            clearTimeout(progressCloseTimer);
+            progressCloseTimer = null;
+        }
         deployJobToken++;
         document.getElementById('progressScrim').classList.remove('open');
+        setProgressModalLock(false);
     }
 
     // При перезагрузке страницы подхватить активную задачу деплоя
@@ -770,7 +906,7 @@
             if (!r.ok) return;
             const jobs = await r.json();
             const active = jobs.find(j => j.state === 'Queued' || j.state === 'Running');
-            if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id);
+            if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id, { autoCloseOnSuccess: active.kind === 'Update' });
         } catch { /* ignore */ }
     }
 
