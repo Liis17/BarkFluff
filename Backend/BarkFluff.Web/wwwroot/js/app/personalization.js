@@ -62,6 +62,17 @@
         document.documentElement.style.setProperty(name, value);
     }
 
+    function loadBackgroundLayer(fileId, version) {
+        var layer = document.getElementById('messagesBgLayer');
+        if (!layer || !BF.files || !BF.files.loadResilientBackground) return;
+        BF.files.loadResilientBackground(layer, fileId || '', false, function (url) {
+            if (version !== undefined && version !== resolveVersion) return;
+            resolvedBgUrl = url || '';
+            if (url) lastResolvedAt = Date.now();
+            applyAll();
+        });
+    }
+
     function applyAll() {
         var radius = readInt(KEYS.radius, DEFAULTS.radius);
         var blurOn = readBool(KEYS.blurOn, DEFAULTS.blurOn);
@@ -84,11 +95,13 @@
         if (!fileId) {
             resolvedBgUrl = '';
             applyAll();
+            loadBackgroundLayer('');
             return Promise.resolve('');
         }
         if (!window.BF || !BF.files || !BF.files.getFileUrls) {
             resolvedBgUrl = '';
             applyAll();
+            loadBackgroundLayer('');
             return Promise.resolve('');
         }
         return BF.files.getFileUrls([fileId]).then(function (urls) {
@@ -97,12 +110,14 @@
             var u = urls && urls[0];
             resolvedBgUrl = u ? (u.url || u.previewUrl || '') : '';
             applyAll();
+            loadBackgroundLayer(fileId, version);
             return resolvedBgUrl;
         }).catch(function () {
             lastResolvedAt = Date.now();
             if (version !== resolveVersion) return '';
             resolvedBgUrl = '';
             applyAll();
+            loadBackgroundLayer('');
             return '';
         });
     }
