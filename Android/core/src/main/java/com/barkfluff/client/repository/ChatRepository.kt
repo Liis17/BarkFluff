@@ -203,7 +203,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 ChatInfo(
                     chatId = chatId,
                     title = response.title,
-                    pictureFileId = response.picture,
+                    pictureFileId = grpcManager.extractGuidFromUrl(response.picture),
                     isGroupChat = response.isGroupChat,
                     lastMessageId = response.lastMessageId,
                     firstUnreadMessageId = response.firstUnreadMessageId,
@@ -298,7 +298,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 .build()
 
             val response = grpcManager.filesClient!!.getUploadUrl(request)
-            Result.success(UploadUrlResult(response.url, response.fileId))
+            Result.success(UploadUrlResult(grpcManager.toMediaUrl(response.url), response.fileId))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting upload URL", e)
             Result.failure(Exception("Ошибка получения URL загрузки: ${e.message}"))
@@ -345,7 +345,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
             val uploadUrlResponse = grpcManager.filesClient!!.getUploadUrl(uploadUrlRequest)
             val fileId = uploadUrlResponse.fileId
-            val uploadUrl = uploadUrlResponse.url
+            val uploadUrl = grpcManager.toMediaUrl(uploadUrlResponse.url)
 
             Log.d(TAG, "Upload URL received, fileId: $fileId")
 

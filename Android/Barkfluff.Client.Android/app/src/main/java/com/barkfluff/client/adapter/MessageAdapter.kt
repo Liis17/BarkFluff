@@ -44,6 +44,8 @@ import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.FileMediaUrl
+import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
@@ -75,12 +77,14 @@ class MessageAdapter(
     var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
-    /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
-    private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
+    /** Вызывается при клике на пузырь сообщения — открыть меню действий. bubble = messageCard/stickerContainer, для позиционирования оверлея. */
+    private val onMessageActionRequested: ((bubble: View, item: MessageItem) -> Unit)? = null,
     /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
     private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
     /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
-    private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null
+    private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null,
+    /** Вызывается при тапе по пузырю/индикатору в режиме выделения — переключить выбор сообщения. */
+    private val onSelectionToggle: ((messageId: Long) -> Unit)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
@@ -88,6 +92,47 @@ class MessageAdapter(
         if (position < 0 || position >= itemCount) return null
         val item = getItem(position)
         return if (item.type == MessageType.MESSAGE) item else null
+    }
+
+    /** Режим множественного выделения сообщений — состоянием владеет ChatActivity. */
+    var selectionMode: Boolean = false
+        private set
+    private var selectedIds: Set<Long> = emptySet()
+
+    /** Включает/выключает режим выделения — меняется видимость индикатора у всех строк. */
+    fun setSelectionMode(enabled: Boolean, selected: Set<Long> = emptySet()) {
+        selectionMode = enabled
+        selectedIds = selected
+        notifyDataSetChanged()
+    }
+
+    /** Обновляет набор выбранных ID после переключения одного сообщения — точечный ребинд. */
+    fun setSelected(messageId: Long, allSelected: Set<Long>) {
+        selectedIds = allSelected
+        val position = currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
+        if (position >= 0) notifyItemChanged(position)
+    }
+
+    /**
+     * Показывает/скрывает индикатор выделения и переключает его иконку по состоянию выбора.
+     * Для [contentColumn] (только у входящих — у исходящих под индикатор уже есть готовый
+     * отступ) сдвигает содержимое вправо через translationX, освобождая место слева.
+     */
+    private fun bindSelectionIndicator(indicator: ImageView, contentColumn: View?, item: MessageItem) {
+        val isSelectable = selectionMode && item.type == MessageType.MESSAGE
+        indicator.visibility = if (isSelectable) View.VISIBLE else View.GONE
+        if (isSelectable) {
+            indicator.setImageResource(
+                if (item.messageId in selectedIds) R.drawable.ic_action_select else R.drawable.ic_circle_outline
+            )
+            indicator.setOnClickListener { onSelectionToggle?.invoke(item.messageId) }
+        } else {
+            indicator.setOnClickListener(null)
+        }
+        if (contentColumn != null) {
+            val density = contentColumn.resources.displayMetrics.density
+            contentColumn.translationX = if (isSelectable) SELECTION_SHIFT_DP * density else 0f
+        }
     }
 
     companion object {
@@ -112,6 +157,10 @@ class MessageAdapter(
         private const val BUBBLE_GROUP_GAP_DP = 10
         /** Отступ между сообщениями внутри одной серии. */
         private const val BUBBLE_INNER_GAP_DP = 3
+        /** Без скругления (для мест, где форма пузыря не пробрасывается, напр. вложения в forward-цитате). */
+        private val ZERO_CORNERS = floatArrayOf(0f, 0f, 0f, 0f)
+        /** Сдвиг contentColumn у входящих в режиме выделения: 24dp индикатор + 8dp зазор. */
+        private const val SELECTION_SHIFT_DP = 32f
 
         private val voiceAutoDownloads = mutableSetOf<String>()
         private val voiceWaveformCache = mutableMapOf<String, FloatArray>()
@@ -286,25 +335,77 @@ class MessageAdapter(
      * Форма пузыря по макету M3E: серия сообщений одного отправителя срастается,
      * «хвостик» (маленький угол) остаётся только у последнего сообщения серии.
      */
-    private fun applyBubbleShape(card: MaterialCardView, group: GroupPosition, isSentByMe: Boolean) {
-        val density = card.resources.displayMetrics.density
+    /** Радиусы углов пузыря [topLeft, topRight, bottomRight, bottomLeft] в px, по той же логике, что и облачко. */
+    private fun computeBubbleCorners(density: Float, group: GroupPosition, isSentByMe: Boolean): FloatArray {
         val big = messageCornerRadiusDp * density
         val mid = big / 2f
         val small = minOf(BUBBLE_TAIL_CORNER_DP * density, mid)
-
-        val builder = ShapeAppearanceModel.builder()
-        if (isSentByMe) {
-            builder.setTopLeftCornerSize(big)
-                .setTopRightCornerSize(if (group.isFirst) big else mid)
-                .setBottomRightCornerSize(if (group.isLast) small else mid)
-                .setBottomLeftCornerSize(big)
+        return if (isSentByMe) {
+            floatArrayOf(
+                big,
+                if (group.isFirst) big else mid,
+                if (group.isLast) small else mid,
+                big
+            )
         } else {
-            builder.setTopLeftCornerSize(if (group.isFirst) big else mid)
-                .setTopRightCornerSize(big)
-                .setBottomRightCornerSize(big)
-                .setBottomLeftCornerSize(if (group.isLast) small else mid)
+            floatArrayOf(
+                if (group.isFirst) big else mid,
+                big,
+                big,
+                if (group.isLast) small else mid
+            )
         }
-        card.shapeAppearanceModel = builder.build()
+    }
+
+    /**
+     * Радиусы углов одной ячейки медиа-сетки: угол пузыря наследуется только той ячейкой,
+     * что физически стоит в соответствующем углу сетки, внутренние стыки ячеек — прямые.
+     */
+    private fun mediaCellCorners(
+        bubbleCorners: FloatArray,
+        roundTop: Boolean,
+        roundBottom: Boolean,
+        isTopRow: Boolean,
+        isBottomRow: Boolean,
+        isLeftCol: Boolean,
+        isRightCol: Boolean
+    ): FloatArray = floatArrayOf(
+        if (isTopRow && isLeftCol && roundTop) bubbleCorners[0] else 0f,
+        if (isTopRow && isRightCol && roundTop) bubbleCorners[1] else 0f,
+        if (isBottomRow && isRightCol && roundBottom) bubbleCorners[2] else 0f,
+        if (isBottomRow && isLeftCol && roundBottom) bubbleCorners[3] else 0f
+    )
+
+    /** Применяет per-corner скругление к превью и видео-оверлею ячейки медиа-сетки. */
+    private fun applyMediaCellCorners(cellView: View, corners: FloatArray) {
+        val thumbnail = cellView.findViewById<ShapeableImageView>(R.id.thumbnailImage)
+        thumbnail.shapeAppearanceModel = ShapeAppearanceModel.builder()
+            .setTopLeftCornerSize(corners[0])
+            .setTopRightCornerSize(corners[1])
+            .setBottomRightCornerSize(corners[2])
+            .setBottomLeftCornerSize(corners[3])
+            .build()
+
+        cellView.findViewById<View>(R.id.videoOverlay).background = GradientDrawable().apply {
+            setColor(0x52000000)
+            cornerRadii = floatArrayOf(
+                corners[0], corners[0],
+                corners[1], corners[1],
+                corners[2], corners[2],
+                corners[3], corners[3]
+            )
+        }
+    }
+
+    private fun applyBubbleShape(card: MaterialCardView, group: GroupPosition, isSentByMe: Boolean) {
+        val density = card.resources.displayMetrics.density
+        val c = computeBubbleCorners(density, group, isSentByMe)
+        card.shapeAppearanceModel = ShapeAppearanceModel.builder()
+            .setTopLeftCornerSize(c[0])
+            .setTopRightCornerSize(c[1])
+            .setBottomRightCornerSize(c[2])
+            .setBottomLeftCornerSize(c[3])
+            .build()
     }
 
     /** Сообщения внутри серии стоят плотнее, чем соседние серии. */
@@ -331,24 +432,19 @@ class MessageAdapter(
         private val binding: ItemMessageSentBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private var lastTouchRawX: Float = 0f
-        private var lastTouchRawY: Float = 0f
-
-        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
-            // Перехват raw координат касания для позиционирования popup
-            binding.root.setOnTouchListener { _, event ->
-                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
-                    lastTouchRawX = event.rawX
-                    lastTouchRawY = event.rawY
-                }
-                false
+            // Индикатор выделения уже попадает в существующий отступ слева — сдвигать нечего.
+            bindSelectionIndicator(binding.selectionIndicator, contentColumn = null, item)
+
+            // Клик открывает меню действий только по самому пузырю — тап в пустое
+            // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
+            // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
+            val bubbleClickListener = View.OnClickListener { v ->
+                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
             }
-            // Click по корневому FrameLayout (вне bubble) — открывает action menu в точке касания
-            binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
-            }
+            binding.messageCard.setOnClickListener(bubbleClickListener)
+            binding.stickerContainer.setOnClickListener(bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
@@ -383,6 +479,12 @@ class MessageAdapter(
 
                 // Форма пузыря: базовый радиус — из настроек персонализации
                 applyBubbleShape(binding.messageCard, group, isSentByMe = true)
+                val bubbleCorners = computeBubbleCorners(
+                    binding.root.resources.displayMetrics.density, group, isSentByMe = true
+                )
+                val roundMediaTop = binding.replyQuote.quoteContainer.visibility != View.VISIBLE
+                val roundMediaBottom = item.text.isBlank() &&
+                    binding.forwardQuotesContainer.visibility != View.VISIBLE
 
                 if (item.text.isNotBlank()) {
                     MarkdownRenderer.renderMessageInto(
@@ -415,7 +517,10 @@ class MessageAdapter(
                     }
                     binding.attachmentsContainer.removeAllViews()
                     binding.attachmentsContainer.addView(
-                        buildLocalMediaGrid(binding.root.context, item.localPreviewUris, mediaWidthPx)
+                        buildLocalMediaGrid(
+                            binding.root.context, item.localPreviewUris, mediaWidthPx,
+                            bubbleCorners, roundMediaTop, roundMediaBottom
+                        )
                     )
                     if (showMediaTimeOverlay) {
                         bindMediaTimeOverlay(binding.attachmentsContainer, item)
@@ -436,7 +541,10 @@ class MessageAdapter(
                         displayedAttachments,
                         mediaWidthPx,
                         isSentByMe = true,
-                        sourceMessageId = item.messageId
+                        sourceMessageId = item.messageId,
+                        mediaCorners = bubbleCorners,
+                        roundMediaTop = roundMediaTop,
+                        roundMediaBottom = roundMediaBottom
                     )
                     if (showMediaTimeOverlay) {
                         bindMediaTimeOverlay(binding.attachmentsContainer, item)
@@ -479,9 +587,6 @@ class MessageAdapter(
         private val binding: ItemMessageReceivedBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private var lastTouchRawX: Float = 0f
-        private var lastTouchRawY: Float = 0f
-
         /** Вызывается и из полного bind, и из частичного обновления по PAYLOAD_SENDER_INFO. */
         fun bindSenderInfo(item: MessageItem) {
             if (!isGroupChat) {
@@ -519,19 +624,20 @@ class MessageAdapter(
             }
         }
 
-        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
-            binding.root.setOnTouchListener { _, event ->
-                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
-                    lastTouchRawX = event.rawX
-                    lastTouchRawY = event.rawY
-                }
-                false
+            // У входящих своего отступа под индикатор нет — в режиме выделения сдвигаем
+            // весь контент вправо, освобождая место индикатору у левого края.
+            bindSelectionIndicator(binding.selectionIndicator, binding.contentColumn, item)
+
+            // Клик открывает меню действий только по самому пузырю — тап в пустое
+            // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
+            // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
+            val bubbleClickListener = View.OnClickListener { v ->
+                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
             }
-            binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
-            }
+            binding.messageCard.setOnClickListener(bubbleClickListener)
+            binding.stickerContainer.setOnClickListener(bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста)
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
@@ -567,6 +673,12 @@ class MessageAdapter(
 
                 // Форма пузыря: базовый радиус — из настроек персонализации
                 applyBubbleShape(binding.messageCard, group, isSentByMe = false)
+                val bubbleCorners = computeBubbleCorners(
+                    binding.root.resources.displayMetrics.density, group, isSentByMe = false
+                )
+                val roundMediaTop = binding.replyQuote.quoteContainer.visibility != View.VISIBLE
+                val roundMediaBottom = item.text.isBlank() &&
+                    binding.forwardQuotesContainer.visibility != View.VISIBLE
 
                 if (item.text.isNotBlank()) {
                     MarkdownRenderer.renderMessageInto(
@@ -602,7 +714,10 @@ class MessageAdapter(
                         binding.attachmentsContainer,
                         displayedAttachments,
                         mediaWidthPx,
-                        sourceMessageId = item.messageId
+                        sourceMessageId = item.messageId,
+                        mediaCorners = bubbleCorners,
+                        roundMediaTop = roundMediaTop,
+                        roundMediaBottom = roundMediaBottom
                     )
                     if (showMediaTimeOverlay) {
                         bindMediaTimeOverlay(binding.attachmentsContainer, item)
@@ -766,7 +881,7 @@ class MessageAdapter(
 
     private fun loadStickerImage(imageView: ImageView, attachment: Shared.MessageAttachment) {
         val fileId = if (attachment.previewFileId.isNotBlank()) attachment.previewFileId else attachment.fileId
-        val previewUrl = attachment.previewUrl
+        val previewUrl = FileMediaUrl.rewrite(imageView.context, attachment.previewUrl)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
@@ -869,7 +984,10 @@ class MessageAdapter(
         attachments: List<Shared.MessageAttachment>,
         mediaWidthPx: Int = 0,
         isSentByMe: Boolean = false,
-        sourceMessageId: Long? = null
+        sourceMessageId: Long? = null,
+        mediaCorners: FloatArray = ZERO_CORNERS,
+        roundMediaTop: Boolean = false,
+        roundMediaBottom: Boolean = false
     ) {
         container.removeAllViews()
 
@@ -898,9 +1016,16 @@ class MessageAdapter(
             )
         }
 
-        // Медиа-сетка (IMAGE / GIF / VIDEO) — ряды по алгоритму WPF MultiImageGrid
+        // Медиа-сетка (IMAGE / GIF / VIDEO) — ряды по алгоритму WPF MultiImageGrid.
+        // Низ сетки скругляется под форму пузыря, только если медиа — последнее видимое
+        // содержимое (иначе за ней идут стикеры/аудио/документы и низ должен остаться прямым).
         if (mediaItems.isNotEmpty() && mediaWidthPx > 0) {
-            val mediaGrid = buildMediaGrid(context, mediaItems, mediaWidthPx, sourceMessageId)
+            val effectiveRoundBottom = roundMediaBottom &&
+                stickers.isEmpty() && audios.isEmpty() && docs.isEmpty()
+            val mediaGrid = buildMediaGrid(
+                context, mediaItems, mediaWidthPx, sourceMessageId,
+                mediaCorners, roundMediaTop, effectiveRoundBottom
+            )
             wrapper.addView(mediaGrid)
         }
 
@@ -948,7 +1073,10 @@ class MessageAdapter(
         context: android.content.Context,
         mediaItems: List<Shared.MessageAttachment>,
         maxWidth: Int,
-        sourceMessageId: Long?
+        sourceMessageId: Long?,
+        bubbleCorners: FloatArray = ZERO_CORNERS,
+        roundTop: Boolean = false,
+        roundBottom: Boolean = false
     ): View {
         val dm = context.resources.displayMetrics
         val spacingPx = (2 * dm.density + 0.5f).toInt()
@@ -996,7 +1124,14 @@ class MessageAdapter(
                     if (col > 0) marginStart = spacingPx
                 }
 
-                bindMediaCell(cellView, attachment, capped, itemIndex, sourceMessageId)
+                val cellCorners = mediaCellCorners(
+                    bubbleCorners, roundTop, roundBottom,
+                    isTopRow = rowIdx == 0,
+                    isBottomRow = rowIdx == layout.lastIndex,
+                    isLeftCol = col == 0,
+                    isRightCol = col == itemsInRow - 1
+                )
+                bindMediaCell(cellView, attachment, capped, itemIndex, sourceMessageId, cellCorners)
                 row.addView(cellView)
                 itemIndex++
             }
@@ -1014,13 +1149,22 @@ class MessageAdapter(
     private fun buildLocalMediaGrid(
         context: android.content.Context,
         uris: List<Uri>,
-        maxWidth: Int
+        maxWidth: Int,
+        bubbleCorners: FloatArray = ZERO_CORNERS,
+        roundTop: Boolean = false,
+        roundBottom: Boolean = false
     ): View {
         val dm = context.resources.displayMetrics
         val spacingPx = (2 * dm.density + 0.5f).toInt()
         val capped = uris.take(10)
         val layout = determineLayout(capped.size)
         val isSingle = capped.size == 1
+        val singleRatio: Float? = if (isSingle) {
+            val uri = capped[0]
+            val isVideo = context.contentResolver.getType(uri)?.startsWith("video/") == true
+            val dims = if (isVideo) getVideoDimensions(uri, context) else ImageCompressor.getImageDimensions(uri, context)
+            dims?.takeIf { it.first > 0 && it.second > 0 }?.let { (w, h) -> w.toFloat() / h.toFloat() }
+        } else null
 
         val column = android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.VERTICAL
@@ -1034,7 +1178,11 @@ class MessageAdapter(
         for ((rowIdx, itemsInRow) in layout.withIndex()) {
             val totalSpacing = spacingPx * (itemsInRow - 1)
             val cellWidth = (maxWidth - totalSpacing) / itemsInRow
-            val cellHeight = if (isSingle) (cellWidth * 0.75f).toInt() else cellWidth
+            val cellHeight = when {
+                isSingle && singleRatio != null -> (cellWidth / singleRatio).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
+                isSingle -> (cellWidth * 0.75f).toInt()
+                else -> cellWidth
+            }
 
             val row = android.widget.LinearLayout(context).apply {
                 orientation = android.widget.LinearLayout.HORIZONTAL
@@ -1051,6 +1199,14 @@ class MessageAdapter(
                 cellView.layoutParams = android.widget.LinearLayout.LayoutParams(cellWidth, cellHeight).apply {
                     if (col > 0) marginStart = spacingPx
                 }
+                val cellCorners = mediaCellCorners(
+                    bubbleCorners, roundTop, roundBottom,
+                    isTopRow = rowIdx == 0,
+                    isBottomRow = rowIdx == layout.lastIndex,
+                    isLeftCol = col == 0,
+                    isRightCol = col == itemsInRow - 1
+                )
+                applyMediaCellCorners(cellView, cellCorners)
                 val thumbnail = cellView.findViewById<ImageView>(R.id.thumbnailImage)
                 val videoOverlay = cellView.findViewById<View>(R.id.videoOverlay)
                 val playIcon = cellView.findViewById<ImageView>(R.id.playIcon)
@@ -1077,12 +1233,14 @@ class MessageAdapter(
         attachment: Shared.MessageAttachment,
         allMedia: List<Shared.MessageAttachment>,
         position: Int,
-        sourceMessageId: Long?
+        sourceMessageId: Long?,
+        cellCorners: FloatArray = ZERO_CORNERS
     ) {
         val thumbnail = cellView.findViewById<ImageView>(R.id.thumbnailImage)
         val videoOverlay = cellView.findViewById<View>(R.id.videoOverlay)
         val playIcon = cellView.findViewById<ImageView>(R.id.playIcon)
 
+        applyMediaCellCorners(cellView, cellCorners)
         thumbnail.setImageDrawable(null)
 
         val isVideo = attachment.type == Shared.MessageAttachmentType.VIDEO
@@ -1091,7 +1249,7 @@ class MessageAdapter(
 
         // Загружаем превью (previewFileId → fileId как fallback)
         val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
-        val previewUrl    = attachment.previewUrl
+        val previewUrl    = FileMediaUrl.rewrite(thumbnail.context, attachment.previewUrl)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
@@ -1129,7 +1287,7 @@ class MessageAdapter(
                 }
                 val clickedIndex = imageItems.indexOf(attachment).coerceAtLeast(0)
                 val allFileIds    = imageItems.map { it.fileId }
-                val allPreviewUrls = imageItems.map { it.previewUrl }
+                val allPreviewUrls = imageItems.map { FileMediaUrl.rewrite(ctx, it.previewUrl) }
                 ctx.startActivity(
                     ImageViewerActivity.createIntent(
                         ctx,
@@ -1446,6 +1604,21 @@ class MessageAdapter(
         }
     }
 
+    private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(context, uri)
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            retriever.release()
+            if (width <= 0 || height <= 0) null
+            else if (rotation == 90 || rotation == 270) Pair(height, width) else Pair(width, height)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun loadVoiceWaveform(
         fileId: String,
         file: File,
@@ -1519,7 +1692,7 @@ class MessageAdapter(
 
         // Load thumbnail
         val thumbnailFileId = attachment.previewFileId.ifBlank { "" }
-        val thumbnailUrl = attachment.previewUrl
+        val thumbnailUrl = FileMediaUrl.rewrite(binding.root.context, attachment.previewUrl)
 
         if (thumbnailUrl.isNotBlank()) {
             ImageLoadHelper.loadByFileId(
@@ -1587,7 +1760,7 @@ class MessageAdapter(
         val context = container.context
         val fileId = attachment.fileId
         val fileName = attachment.fileName.ifBlank { context.getString(R.string.attachment_file) }
-        val previewUrl = attachment.previewUrl
+        val previewUrl = FileMediaUrl.rewrite(context, attachment.previewUrl)
 
         binding.docFileName.text = fileName
         binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)

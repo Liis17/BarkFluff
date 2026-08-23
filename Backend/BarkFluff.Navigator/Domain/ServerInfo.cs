@@ -28,6 +28,13 @@ public class ServerInfo
 
     // gRPC-Web шлюз ноды для браузера (BarkFluff.Web). Пусто — нода не поддерживает веб-клиент.
     public string? WebEndpoint { get; set; }
+
+    // Отдельный origin файлового HTTP в обход CDN. Пусто — файлы отдаются только по адресу Files.
+    public string? FilesMediaEndpoint { get; set; }
+
+    // Ручная запись администратора: всегда видна в каталоге (ListServers, админка, публичная страница),
+    // вне TTL активной регистрации. Добавляется через админку Navigator.
+    public bool IsManual { get; set; }
 }
 
 public class NavigatorSigningKeyInfo

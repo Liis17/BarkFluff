@@ -46,6 +46,7 @@ public actor StickersRepository: StickersRepositoryProtocol {
         var request = Barkfluff_Files_GetStickerPackRequest()
         request.packID = packID
         let req = request
+        let mediaOrigin = await connectionManager.filesMediaOrigin
 
         do {
             return try await connectionManager.withAuthorizedClient(for: .files) { [self] client in
@@ -53,7 +54,7 @@ public actor StickersRepository: StickersRepositoryProtocol {
                 let response = try await filesClient.getStickerPack(req)
                 return StickerPackContent(
                     pack: toDTO(response.pack),
-                    stickers: response.stickers.map(toDTO)
+                    stickers: response.stickers.map { toDTO($0, mediaOrigin: mediaOrigin) }
                 )
             }
         } catch let error as RPCError {
@@ -75,7 +76,7 @@ public actor StickersRepository: StickersRepositoryProtocol {
         )
     }
 
-    private nonisolated func toDTO(_ s: Barkfluff_Files_StickerInfo) -> StickerInfoDTO {
+    private nonisolated func toDTO(_ s: Barkfluff_Files_StickerInfo, mediaOrigin: String?) -> StickerInfoDTO {
         StickerInfoDTO(
             id: s.id,
             stickerPackID: s.stickerPackID,
@@ -83,8 +84,8 @@ public actor StickersRepository: StickersRepositoryProtocol {
             previewFileID: s.previewFileID,
             emoji: s.emoji,
             addedAt: Self.date(from: s.addedAt),
-            fileURL: s.fileURL,
-            previewURL: s.previewURL
+            fileURL: ConnectionManager.rewriteHost(s.fileURL, mediaOrigin: mediaOrigin),
+            previewURL: ConnectionManager.rewriteHost(s.previewURL, mediaOrigin: mediaOrigin)
         )
     }
 

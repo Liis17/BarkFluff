@@ -85,6 +85,28 @@ public class S3BrowserService
         });
     }
 
+    /// <summary>
+    /// Лёгкая проверка доступности S3 для health-обзора: ListObjects (MaxKeys=1) на первом
+    /// настроенном бакете существующим клиентом. null — бакеты не настроены.
+    /// </summary>
+    public async Task<TimeSpan?> CheckHealthAsync(CancellationToken ct = default)
+    {
+        await EnsureInitializedAsync();
+
+        var bucketId = _configs.Keys.OrderBy(k => k, StringComparer.Ordinal).FirstOrDefault();
+        if (bucketId is null)
+            return null;
+
+        var client = GetOrCreateClient(bucketId);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        await client.ListObjectsV2Async(new ListObjectsV2Request
+        {
+            BucketName = _configs[bucketId].BucketName,
+            MaxKeys = 1
+        }, ct);
+        return stopwatch.Elapsed;
+    }
+
     public async Task<List<BucketInfo>> GetBucketNamesAsync()
     {
         await EnsureInitializedAsync();

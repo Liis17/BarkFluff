@@ -59,7 +59,12 @@ async function main() {
     });
 
     const results = await loaded.health.check();
-    assert.equal(results.length, 11, 'all client-facing liveness services should be checked');
+    assert.equal(results.length, 10, 'all node liveness services should be checked');
+    assert.equal(
+        results.some((service) => service.id === 'navigator'),
+        false,
+        'Navigator should not be included in node health checks'
+    );
     const identity = results.find((service) => service.id === 'identity');
     const beacon = results.find((service) => service.id === 'beacon');
     const users = results.find((service) => service.id === 'users');

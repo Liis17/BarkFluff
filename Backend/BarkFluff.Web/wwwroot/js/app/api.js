@@ -16,6 +16,11 @@
     var files = function () { return c().files; };
     var onliner = function () { return c().onliner; };
 
+    // Chat/Users/Messages встраивают в ответы уже готовые ссылки на Files (picture,
+    // profilePicture, previewUrl…), в обход BF.files.getFileUrls/getUploadUrl — подменяем
+    // хост на files_media_endpoint ноды тем же способом, здесь же, в момент маппинга.
+    var mediaUrl = function (url) { return (BF.files && BF.files.mediaUrl) ? BF.files.mediaUrl(url) : url; };
+
     var sharedPb = function () { return window.proto.barkfluff.shared; };
     var msgPb = function () { return window.proto.barkfluff.messages; };
     var usrPb = function () { return window.proto.barkfluff.users; };
@@ -63,7 +68,7 @@
             id: a.getId(),
             type: enumName(a.getType()),
             fileId: a.getFileId(),
-            previewUrl: a.getPreviewUrl(),
+            previewUrl: mediaUrl(a.getPreviewUrl()),
             attachmentSize: a.getAttachmentSize(),
             previewFileId: a.getPreviewFileId(),
             fileName: a.getFileName(),
@@ -100,7 +105,7 @@
         return {
             id: ch.getId(),
             title: ch.getTitle(),
-            picture: ch.getPicture(),
+            picture: mediaUrl(ch.getPicture()),
             isGroupChat: ch.getIsGroupChat(),
             lastMessage: lm ? mapMessage(lm) : null,
             members: ch.getMembersList().map(function (m) { return { userId: m.getUserId() }; }),
@@ -141,8 +146,8 @@
             firstName: u.getFirstName(),
             lastName: u.getLastName(),
             username: u.getUsername(),
-            profilePicture: u.getProfilePicture(),
-            profilePicturePreview: u.getProfilePicturePreview(),
+            profilePicture: mediaUrl(u.getProfilePicture()),
+            profilePicturePreview: mediaUrl(u.getProfilePicturePreview()),
             profilePosterFileId: u.getProfilePosterFileId ? u.getProfilePosterFileId() : '',
             isBot: u.getIsBot ? u.getIsBot() : false,
             bio: u.getBio(),
@@ -151,7 +156,7 @@
                 var badge = b.getBadge();
                 return {
                     name: badge ? badge.getName() : '',
-                    imageUrl: badge ? badge.getImageUrl() : '',
+                    imageUrl: badge ? mediaUrl(badge.getImageUrl()) : '',
                     priority: b.getPriority()
                 };
             })
@@ -200,7 +205,7 @@
                 lastMessageId: resp.getLastMessageId(),
                 firstUnreadMessageId: resp.getFirstUnreadMessageId(),
                 title: resp.getTitle(),
-                picture: resp.getPicture(),
+                picture: mediaUrl(resp.getPicture()),
                 isGroupChat: resp.getIsGroupChat(),
                 countUnread: resp.getCountUnread(),
                 membersId: resp.getMembersIdList()
@@ -384,7 +389,7 @@
         req.setPictureFileId(pictureFileId || '');
         return c().authCall(messages().updateGroupChat.bind(messages()), req).then(function (resp) {
             var ch = resp.getChat();
-            return { chat: ch ? { id: ch.getId(), title: ch.getTitle(), picture: ch.getPicture() } : null };
+            return { chat: ch ? { id: ch.getId(), title: ch.getTitle(), picture: mediaUrl(ch.getPicture()) } : null };
         });
     }
 
@@ -465,7 +470,32 @@
         return c().authCall(files().getStickerPack.bind(files()), req).then(function (resp) {
             var pack = resp.getPack();
             return {
-                pack: pack ? { id: pack.getId(), name: pack.getName(), description: pack.getDescription() } : null,
+                pack: pack ? {
+                    id: pack.getId(), name: pack.getName(), description: pack.getDescription(),
+                    coverStickerId: pack.getCoverStickerId()
+                } : null,
+                stickers: resp.getStickersList().map(function (s) {
+                    return {
+                        id: s.getId(),
+                        fileId: s.getFileId(),
+                        previewFileId: s.getPreviewFileId(),
+                        emoji: s.getEmoji()
+                    };
+                })
+            };
+        });
+    }
+
+    function getStickerPackByFile(fileId) {
+        var req = new (filePb().GetStickerPackByFileRequest)();
+        req.setFileId(fileId);
+        return c().authCall(files().getStickerPackByFile.bind(files()), req).then(function (resp) {
+            var pack = resp.getPack();
+            return {
+                pack: pack ? {
+                    id: pack.getId(), name: pack.getName(), description: pack.getDescription(),
+                    coverStickerId: pack.getCoverStickerId()
+                } : null,
                 stickers: resp.getStickersList().map(function (s) {
                     return {
                         id: s.getId(),
@@ -960,6 +990,7 @@
         getTempDownloadUrl: getTempDownloadUrl,
         listStickerPacks: listStickerPacks,
         getStickerPack: getStickerPack,
+        getStickerPackByFile: getStickerPackByFile,
         setOnlineStatus: setOnlineStatus,
         getOnlineStatus: getOnlineStatus,
         setTypingStatus: setTypingStatus,

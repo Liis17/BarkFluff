@@ -54,10 +54,10 @@ function loadFolders() {
             BF: {
                 utils: {},
                 icons: {
-                    element: function (category, name, className) {
+                    element: function (name, className) {
                         var icon = new FakeElement('span');
                         icon.className = ('bf-icon ' + (className || '')).trim();
-                        icon.dataset.bfIcon = category + '/' + name;
+                        icon.dataset.bfIcon = name;
                         return icon;
                     }
                 },

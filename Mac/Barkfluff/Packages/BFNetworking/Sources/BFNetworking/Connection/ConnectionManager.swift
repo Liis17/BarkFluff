@@ -49,6 +49,10 @@ public actor ConnectionManager {
     public private(set) var serverInfo: ServerInfoDTO?
     public private(set) var isBootstrapped = false
 
+    /// Отдельный публичный origin файлового HTTP ноды ('https://files2.example.com').
+    /// nil — нода такого адреса не имеет, файлы идут по адресу из ссылок Files.
+    public private(set) var filesMediaOrigin: String?
+
     /// Снимок известных эндпоинтов сервисов. Возвращается копией, чтобы не делиться внутренним состоянием.
     public func endpoints() -> [ServiceKind: ServiceEndpoint] {
         serviceEndpoints
@@ -128,6 +132,7 @@ public actor ConnectionManager {
 
         // Маппинг сервисов из ответа Beacon
         mapServiceEndpoints(from: response)
+        filesMediaOrigin = response.filesMediaEndpoint.isEmpty ? nil : response.filesMediaEndpoint
 
         // Создаём ServerInfoDTO
         let info = ServerInfoDTO(
@@ -271,9 +276,39 @@ public actor ConnectionManager {
         serviceEndpoints[kind] = endpoint
     }
 
+    /// Подменяет хост в файловой ссылке на отдельный медиа-адрес ноды.
+    /// Files выдаёт ссылки на свой основной адрес, который может стоять за CDN с лимитом
+    /// на размер файла; если нода объявила отдельный файловый origin — грузим через него.
+    /// Путь ссылки не меняется, поэтому старые ноды (origin пуст) работают как раньше.
+    public func rewriteToMediaOrigin(_ urlString: String) -> String {
+        Self.rewriteHost(urlString, mediaOrigin: filesMediaOrigin)
+    }
+
+    /// Чистая версия `rewriteToMediaOrigin` без обращения к состоянию актора: Chat/Users/Messages
+    /// кладут готовые ссылки на Files прямо в свои ответы (picture, profilePicture, previewURL…),
+    /// и их маппинг в других репозиториях — синхронные nonisolated-функции. Актор читается один
+    /// раз в начале вызова (`await connectionManager.filesMediaOrigin`), а дальше это значение
+    /// пробрасывается сюда без новых пересечений актора на каждое поле.
+    public nonisolated static func rewriteHost(_ urlString: String, mediaOrigin: String?) -> String {
+        guard let origin = mediaOrigin,
+              let mediaComponents = URLComponents(string: origin),
+              let mediaHost = mediaComponents.host,
+              var components = URLComponents(string: urlString),
+              components.host != nil
+        else {
+            return urlString
+        }
+
+        components.scheme = mediaComponents.scheme ?? components.scheme
+        components.host = mediaHost
+        components.port = mediaComponents.port
+        return components.string ?? urlString
+    }
+
     public func shutdown() async {
         isBootstrapped = false
         serviceEndpoints.removeAll()
         serverInfo = nil
+        filesMediaOrigin = nil
     }
 }

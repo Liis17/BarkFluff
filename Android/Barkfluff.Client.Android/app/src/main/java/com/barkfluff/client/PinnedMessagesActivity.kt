@@ -83,7 +83,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
                 val r = grpcManager.getFileDownloadUrl(fileId)
                 if (r.isSuccess) r.getOrNull() else null
             },
-            onMessageActionRequested = { _, item, _, _ -> showUnpinMenu(item) },
+            onMessageActionRequested = { _, item -> showUnpinMenu(item) },
         )
         binding.pinnedRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.pinnedRecyclerView.adapter = adapter

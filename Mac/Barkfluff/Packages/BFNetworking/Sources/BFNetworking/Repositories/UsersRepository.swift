@@ -21,11 +21,13 @@ public actor UsersRepository: UsersRepositoryProtocol {
         request.userID = userID
         let req = request
 
+        let mediaOrigin = await connectionManager.filesMediaOrigin
+
         do {
             return try await connectionManager.withAuthorizedClient(for: .users) { client in
                 let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
                 let response = try await usersClient.getUser(req)
-                return self.mapUser(response.user)
+                return self.mapUser(response.user, mediaOrigin: mediaOrigin)
             }
         } catch let error as RPCError {
             throw GRPCErrorMapper.map(error)
@@ -255,11 +257,13 @@ public actor UsersRepository: UsersRepositoryProtocol {
         request.pagination = pagination
         let req = request
 
+        let mediaOrigin = await connectionManager.filesMediaOrigin
+
         do {
             return try await connectionManager.withAuthorizedClient(for: .users) { client in
                 let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
                 let response = try await usersClient.searchUsers(req)
-                let users = response.users.map { self.mapUser($0) }
+                let users = response.users.map { self.mapUser($0, mediaOrigin: mediaOrigin) }
                 return (users: users, totalCount: response.totalCount)
             }
         } catch let error as RPCError {
@@ -272,6 +276,8 @@ public actor UsersRepository: UsersRepositoryProtocol {
         request.userID = userID
         let req = request
 
+        let mediaOrigin = await connectionManager.filesMediaOrigin
+
         do {
             return try await connectionManager.withAuthorizedClient(for: .users) { client in
                 let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
@@ -281,7 +287,7 @@ public actor UsersRepository: UsersRepositoryProtocol {
                         id: String(userBadge.badge.id),
                         name: userBadge.badge.name,
                         description: userBadge.badge.description_p,
-                        iconURL: userBadge.badge.imageURL.isEmpty ? nil : userBadge.badge.imageURL
+                        iconURL: userBadge.badge.imageURL.isEmpty ? nil : ConnectionManager.rewriteHost(userBadge.badge.imageURL, mediaOrigin: mediaOrigin)
                     )
                 }
             }
@@ -342,7 +348,7 @@ public actor UsersRepository: UsersRepositoryProtocol {
         )
     }
 
-    private nonisolated func mapUser(_ user: Barkfluff_Users_User) -> UserInfo {
+    private nonisolated func mapUser(_ user: Barkfluff_Users_User, mediaOrigin: String?) -> UserInfo {
         let registrationDate: Date
         if user.hasRegistrationDate {
             let ts = user.registrationDate
@@ -358,8 +364,8 @@ public actor UsersRepository: UsersRepositoryProtocol {
             username: user.username,
             email: nil,
             bio: user.bio.isEmpty ? nil : user.bio,
-            profilePictureURL: user.profilePicture.isEmpty ? nil : user.profilePicture,
-            profilePicturePreviewURL: user.profilePicturePreview.isEmpty ? nil : user.profilePicturePreview,
+            profilePictureURL: user.profilePicture.isEmpty ? nil : ConnectionManager.rewriteHost(user.profilePicture, mediaOrigin: mediaOrigin),
+            profilePicturePreviewURL: user.profilePicturePreview.isEmpty ? nil : ConnectionManager.rewriteHost(user.profilePicturePreview, mediaOrigin: mediaOrigin),
             profilePosterFileID: user.profilePosterFileID.isEmpty ? nil : user.profilePosterFileID,
             registrationDate: registrationDate
         )

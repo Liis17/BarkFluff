@@ -78,6 +78,9 @@ service IdentityServerApi {
 
   // Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
   rpc CreateBotTokenServer(CreateBotTokenServerRequest) returns(CreateBotTokenServerResponse);
+
+  // Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
+  rpc GetBotTokenServer(GetBotTokenServerRequest) returns(GetBotTokenServerResponse);
 }
 
 message CreateSessionForUserServerRequest {
@@ -119,6 +122,15 @@ message CreateBotTokenServerRequest {
 message CreateBotTokenServerResponse {
   string token = 1; // JWT бота
   string token_id = 2; // Идентификатор выпуска токена (для отзыва)
+}
+
+message GetBotTokenServerRequest {
+  int64 bot_user_id = 1; // Идентификатор бота (Users.Id)
+  string token_id = 2; // Существующий идентификатор выпуска токена
+}
+
+message GetBotTokenServerResponse {
+  string token = 1; // JWT бота с тем же token_id
 }
 
 // Принудительная смена пароля (серверный, для админ-панели)

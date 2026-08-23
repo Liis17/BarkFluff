@@ -23,9 +23,14 @@
     <None Remove="Pages\v2\stickers.html" />
     <None Remove="Pages\v2\updating.html" />
     <None Remove="Pages\v2\users.html" />
+    <None Remove="Pages\v2\admins.html" />
+    <None Remove="Pages\v2\audit.html" />
     <None Remove="Pages\v2\assets\md3.css" />
     <None Remove="Pages\v2\assets\icons.js" />
     <None Remove="Pages\v2\assets\sidebar.js" />
+    <None Remove="Pages\v2\assets\api.js" />
+    <None Remove="Pages\v2\assets\command-palette.js" />
+    <None Remove="Pages\v2\assets\preview-mode.js" />
   </ItemGroup>
 
   <ItemGroup>
@@ -80,6 +85,12 @@
     <Content Include="Pages\v2\users.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Pages\v2\admins.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\audit.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Pages\v2\assets\md3.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -89,14 +100,19 @@
     <Content Include="Pages\v2\assets\sidebar.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Pages\v2\assets\api.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\assets\command-palette.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\assets\preview-mode.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="..\..\icons\**\*.svg">
-      <Link>Pages\v2\assets\icons\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\..\icons\**\README.md">
       <Link>Pages\v2\assets\icons\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

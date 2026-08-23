@@ -42,8 +42,9 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `identity.conf` | `identity.barkfluff.com` → [[Identity]] | 7000 | gRPC |
 | `users.conf` | `users.barkfluff.com` → [[Users]] | 7001 | gRPC |
 | `beacon.conf` | `beacon.barkfluff.com` → [[Beacon]] | 7002 | gRPC |
-| `navigator.conf` | `navigator.barkfluff.com` → [[Navigator]] | 64646 (gRPC) + 64647 (HTTP `/admin/`) | gRPC + HTTP |
+| `navigator.conf` | `navigator.barkfluff.com` → [[Navigator]] | 64646 (gRPC) + 64647 (HTTP `/`, `/admin/`) | gRPC + HTTP |
 | `files.conf` | `files.barkfluff.com` → [[Files]] | 7005 (gRPC) + 7006 (HTTP `/web/`) | gRPC + HTTP |
+| `files-media.conf` | `files2.barkfluff.com` → [[Files]] HTTP **в обход Cloudflare** | 7006 (HTTP `/web/`) | HTTP |
 | `messages.conf` | `messages.barkfluff.com` → [[Messages]] | 7007 | gRPC |
 | `fast-auth.conf` | `fast-auth.barkfluff.com` → [[FastAuth]] | 7008 | gRPC |
 | `onliner.conf` | `onliner.barkfluff.com` → [[Onliner]] | 7009 | gRPC |
@@ -96,8 +97,28 @@ Security-аудит (S1/D2): rate limit на анонимные (без JWT) э�
 - `/` → gRPC `:7005` (основной API)
 - `/web/` → HTTP `:7006` с rewrite и `client_max_body_size 512m`, таймауты 600s для больших файлов
 
+### `files-media.conf`
+Отдельный субдомен `files2.barkfluff.com` только под файловый HTTP (`:7006`), **направленный на
+origin напрямую, минуя Cloudflare** с его жёстким лимитом 100 МБ на файл. gRPC туда не публикуется —
+остаётся на `files.barkfluff.com`.
+
+- Location ровно один — `/web/` (тот же rewrite и таймауты 600s, `client_max_body_size 512m`), путь
+  намеренно совпадает с `files.conf`: [[Files]] по-прежнему выдаёт ссылки
+  `https://files.barkfluff.com/web/download/{id}`, а клиент **подменяет в них только хост**.
+- `add_header Access-Control-Allow-Origin '*'` — веб-клиент работает с другого origin
+  (`web.barkfluff.com`), а Cloudflare, который раньше стоял перед файловым хостом, здесь
+  отсутствует. Ссылки и так capability-based (кто знает URL — тот и качает).
+- `OPTIONS` для `/web/` обрабатывается самим nginx и возвращает `204` с
+  `Access-Control-Allow-Methods: POST, OPTIONS` и разрешёнными заголовками, поэтому
+  браузерный upload с progress-событиями проходит CORS preflight до backend.
+- Адрес объявляется нодой через `ExternalEndpoint:MediaHost` конфигурации [[Files]] →
+  [[Beacon]] `files_media_endpoint`. Пустое значение = клиенты работают по старому адресу,
+  поэтому уже установленные (старые) клиенты продолжают ходить через Cloudflare.
+- DNS `files2` должен указывать на origin **без** проксирования Cloudflare, иначе смысла нет;
+  сертификат — общий wildcard из `01-ssl-params.conf`.
+
 ### `navigator.conf`
-`navigator.barkfluff.com` совмещает публичный gRPC-реестр и React-админку [[Backend/Navigator]]. `/` перенаправляет на `/admin/`; `/admin/` проксируется как HTTP на внутренний порт Navigator `64647`; все прочие пути идут через `grpc_pass` на `64646`. В production compose имя upstream — `navigator`; в dev-варианте, где сервис называется `navigator-dev`, его нужно заменить в конфиге.
+`navigator.barkfluff.com` совмещает публичный gRPC-реестр, публичную главную страницу и React-админку [[Backend/Navigator]]. HTTP-часть (порт `64647`): `/` (публичный каталог серверов), `/assets/`, `/api/` (анонимный список серверов), `/ping`, `/admin/`; все прочие пути идут через `grpc_pass` на `64646`. Раньше `/` делал 301 на `/admin/` — убрано. Источник истины конфига — `docker/navigator/nginx/navigator.conf` в репозитории (upstream по умолчанию `127.0.0.1:64646/64647` — хостовые порты выделенного хоста; при размещении nginx в общей docker-сети заменить на `navigator:7010/7011` и добавить resolver, в dev-варианте сервис называется `navigator-dev`).
 
 ### `web.conf`
 Два location:
@@ -151,8 +172,9 @@ WSS-сигнализация LiveKit SFU: `listen 443 ssl` (**без** `http2` �
 | `identity.barkfluff.com` | [[Identity]] |
 | `users.barkfluff.com` | [[Users]] |
 | `beacon.barkfluff.com` | [[Beacon]] |
-| `navigator.barkfluff.com` | [[Navigator]] (gRPC + `/admin/`) |
-| `files.barkfluff.com` | [[Files]] |
+| `navigator.barkfluff.com` | [[Navigator]] (gRPC + `/` + `/admin/`) |
+| `files.barkfluff.com` | [[Files]] (gRPC + `/web/` через Cloudflare) |
+| `files2.barkfluff.com` | [[Files]] HTTP (`/web/`, мимо Cloudflare — без лимита 100 МБ) |
 | `messages.barkfluff.com` | [[Messages]] |
 | `fast-auth.barkfluff.com` | [[FastAuth]] |
 | `onliner.barkfluff.com` | [[Onliner]] |

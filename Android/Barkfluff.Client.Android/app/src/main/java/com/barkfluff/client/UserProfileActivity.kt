@@ -27,6 +27,7 @@ import com.barkfluff.client.repository.ChatRepository
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -334,7 +335,7 @@ class UserProfileActivity : AppCompatActivity() {
                     barkfluff.shared.Shared.MessageAttachmentType.IMAGE,
                     barkfluff.shared.Shared.MessageAttachmentType.GIF -> {
                         val allFileIds = adapter.currentList.map { it.attachment.fileId }
-                        val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
+                        val allPreviewUrls = adapter.currentList.map { FileMediaUrl.rewrite(this@UserProfileActivity, it.attachment.previewUrl) }
                         val allFileNames = adapter.currentList.map { it.attachment.fileName }
                         val sourceMessageIds = adapter.currentList.map { it.messageId }
                         val position = adapter.currentList.indexOf(attachmentInfo).coerceAtLeast(0)

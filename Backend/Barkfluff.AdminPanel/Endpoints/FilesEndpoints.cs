@@ -16,12 +16,8 @@ public static class FilesEndpoints
         group.MapGet("/{fileId}", async (
             string fileId,
             FilesServerApi.FilesServerApiClient filesClient,
-            UsersServerApi.UsersServerApiClient usersClient,
-            HttpContext context) =>
+            UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             GetFileDataResponse fileResponse;
             try
             {

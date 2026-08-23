@@ -264,6 +264,7 @@
     <string name="cd_play_video">播放视频</string>
     <string name="cd_download_video">下载视频</string>
     <string name="cd_read_status">已读状态</string>
+    <string name="cd_select_message">选择消息</string>
     <string name="cd_media_preview_photo">打开照片：%1$s</string>
     <string name="cd_media_preview_video">打开视频：%1$s</string>
     <string name="cd_media_select">选择：%1$s</string>
@@ -616,6 +617,18 @@
     <string name="msg_action_delete">删除</string>
     <string name="msg_action_forward">转发</string>
     <string name="msg_action_pin">置顶</string>
+    <string name="msg_action_copy_markdown">复制为 Markdown</string>
+    <string name="msg_action_properties">属性</string>
+    <string name="msg_action_select">选择</string>
+    <string name="msg_properties_id">消息 ID：%1$d</string>
+    <string name="msg_properties_sender">发送者：%1$s</string>
+    <string name="msg_properties_sent_at">发送时间：%1$s</string>
+    <string name="msg_properties_edited_yes">已编辑：是</string>
+    <string name="msg_properties_edited_no">已编辑：否</string>
+    <string name="msg_properties_read_yes">已读：是</string>
+    <string name="msg_properties_read_no">已读：否</string>
+    <string name="msg_properties_attachments_header">附件：</string>
+    <string name="msg_properties_no_attachments">无附件</string>
 
     <!-- Language Settings -->
     <string name="language_settings_title">语言</string>
@@ -902,6 +915,7 @@
     <string name="delete_message_title">删除消息？</string>
     <string name="delete_message_message">此操作无法撤销。</string>
     <string name="message_delete_error">删除错误：%1$s</string>
+    <string name="message_delete_batch_failed">删除失败的消息数：%1$d</string>
     <string name="message_not_loaded">消息未加载</string>
     <string name="message_save_image">保存图片</string>
     <string name="message_save_images">保存图片</string>

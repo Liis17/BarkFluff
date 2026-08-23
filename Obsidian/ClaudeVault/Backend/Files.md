@@ -24,7 +24,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 **FilesApiService** (`TokenType.User`) — клиентский API:
 - `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`
-- Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`
+- Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`, `GetStickerPackByFile` (резолвит пак по `file_id` стикера из вложения сообщения — клик по стикеру в чате открывает его пак; внутри делегирует `GetStickerPack`, «файл не стикер» и «стикер удалён» наружу неразличимы — `Exception("Стикер не найден")`)
 - `GetTempDownloadUrl` валидирует `file_ids` через `Guid.TryParse` и на невалидном значении бросает `NotValidFileIdException` (логируя само значение). Раньше `Guid.Parse` ронял вызов `FormatException` — в логах это выглядело как «КРИТИЧЕСКАЯ ОШИБКА», хотя виноват клиент, приславший вместо идентификатора, например, готовый URL картинки
 
 **FilesServerApiService** (`TokenType.Service`) — серверный API (включает админ-операции для [[Backend/AdminPanel]]):
@@ -48,6 +48,14 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 - Через nginx: `ExternalEndpoint:Host` + `/web`
 - Локально: `RunSettings.Host:Http1Port`
+
+> **Отдельный файловый адрес (мимо CDN).** Ссылки Files всегда указывают на `ExternalEndpoint:Host`,
+> который в проде стоит за Cloudflare с лимитом 100 МБ на файл. Ключ `ExternalEndpoint:MediaHost`
+> (миграция `20260816120000_AddFilesMediaExternalEndpoint`, по умолчанию пустой) задаёт второй
+> публичный адрес того же HTTP-порта, направленный на origin напрямую
+> (`files2.barkfluff.com`, [[Backend/Nginx]]). **Сам сервис его не использует** — адрес уходит
+> клиентам через [[Backend/Beacon]] (`files_media_endpoint`), и хост подменяет клиент, сохраняя
+> путь `/web/...`. Так старые клиенты продолжают работать через прежний адрес.
 
 ### S3-инфраструктура
 

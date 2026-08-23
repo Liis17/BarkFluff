@@ -13,6 +13,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+@AndroidEntryPoint
 class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {

@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
@@ -11,14 +12,12 @@ public static class MailEndpoints
     public static void MapMailEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/mail")
-            .WithTags("Mail");
+            .WithTags("Mail")
+            .RequirePermission(AdminPermissions.MailManage);
 
         // GET /api/mail/accounts
-        group.MapGet("/accounts", (MailService mail, HttpContext context) =>
+        group.MapGet("/accounts", (MailService mail) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             return Results.Ok(mail.GetAccounts());
         })
         .WithName("ListMailAccounts");
@@ -30,12 +29,8 @@ public static class MailEndpoints
             int? page,
             int? size,
             MailService mail,
-            HttpContext context,
             CancellationToken ct) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var result = await mail.ListMessagesAsync(
@@ -62,12 +57,8 @@ public static class MailEndpoints
             string address,
             long uid,
             MailService mail,
-            HttpContext context,
             CancellationToken ct) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var detail = await mail.GetMessageAsync(address, (uint)uid, ct);
@@ -92,12 +83,8 @@ public static class MailEndpoints
             long uid,
             int idx,
             MailService mail,
-            HttpContext context,
             CancellationToken ct) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var att = await mail.GetAttachmentAsync(address, (uint)uid, idx, ct);
@@ -121,12 +108,8 @@ public static class MailEndpoints
             long uid,
             string cid,
             MailService mail,
-            HttpContext context,
             CancellationToken ct) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var att = await mail.GetInlineAttachmentAsync(address, (uint)uid, cid, ct);
@@ -149,12 +132,8 @@ public static class MailEndpoints
             string address,
             long uid,
             MailService mail,
-            HttpContext context,
             CancellationToken ct) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 await mail.MarkAsReadAsync(address, (uint)uid, ct);
@@ -176,12 +155,8 @@ public static class MailEndpoints
             string address,
             HttpRequest request,
             MailService mail,
-            HttpContext context,
             CancellationToken ct) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest(new { error = "Ожидается multipart/form-data" });
 

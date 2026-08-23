@@ -21,4 +21,21 @@ public class BotTokenIssuer
 
         return (response.Token, response.TokenId);
     }
+
+    /// <summary>Повторно выпустить JWT с текущим token_id без ротации.</summary>
+    public async Task<string> GetCurrentAsync(
+        long botId,
+        string tokenId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _identityClient.GetBotTokenServerAsync(
+            new GetBotTokenServerRequest
+            {
+                BotUserId = botId,
+                TokenId = tokenId
+            },
+            cancellationToken: cancellationToken);
+
+        return response.Token;
+    }
 }

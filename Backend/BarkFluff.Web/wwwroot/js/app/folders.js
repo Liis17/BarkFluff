@@ -242,7 +242,7 @@
         allTab.type = 'button';
         allTab.className = 'folder-tab' + (activeFolderId === 'all' ? ' active' : '');
         allTab.dataset.folderId = 'all';
-        allTab.appendChild(BF.icons.element('folders', 'all-chats', 'folder-tab-icon'));
+        allTab.appendChild(BF.icons.element('all-chats', 'folder-tab-icon'));
         allTab.appendChild(document.createTextNode(BF.i18n.t('folder.allChats')));
         allTab.addEventListener('click', function () { setActiveFolderId('all'); });
         folderTabsEl.appendChild(allTab);
@@ -259,7 +259,7 @@
             var labelEl = document.createElement('span');
             labelEl.className = 'folder-tab-label';
             if (isFolderIconKey(f.folderIcon)) {
-                labelEl.appendChild(BF.icons.element('folders', f.folderIcon, 'folder-tab-icon'));
+                labelEl.appendChild(BF.icons.element(f.folderIcon, 'folder-tab-icon'));
                 labelEl.appendChild(document.createTextNode(' '));
             } else if (f.folderIcon) {
                 // Keep rendering legacy emoji values until the folder is edited.
@@ -412,7 +412,7 @@
             cell.title = iconKey;
             cell.setAttribute('aria-label', iconKey);
             cell.dataset.icon = iconKey;
-            cell.appendChild(BF.icons.element('folders', iconKey));
+            cell.appendChild(BF.icons.element(iconKey));
             cell.addEventListener('click', function () { selectIcon(iconKey); });
             folderEmojiGrid.appendChild(cell);
         });

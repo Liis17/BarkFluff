@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Сервисы</title>
-    <link rel="stylesheet" href="assets/md3.css">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .tab-bar {
             display: flex;
@@ -94,6 +94,62 @@
         .svc-row.completed { opacity: .6; }
         .svc-row.pending   { opacity: .35; }
         .svc-row.error     { background: var(--md-error-container);   color: var(--md-on-error-container); }
+        .service-target { outline: 2px solid var(--md-primary); outline-offset: -2px; background: var(--md-primary-container); }
+
+        html.progress-modal-open,
+        body.progress-modal-open { overflow: hidden; }
+        #progressScrim { z-index: 100; overscroll-behavior: contain; }
+        .progress-services-list {
+            max-height: 240px;
+            overflow-y: auto;
+            margin-top: 16px;
+            overscroll-behavior: contain;
+            scroll-behavior: smooth;
+        }
+        .progress-success {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0 16px;
+            color: var(--md-on-surface);
+            text-align: center;
+        }
+        .progress-success[hidden] { display: none; }
+        .progress-success-icon-shell {
+            width: 68px;
+            height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--md-success-container);
+            color: var(--md-success);
+            opacity: 0;
+            transform: scale(.72);
+        }
+        .progress-success-icon {
+            width: 48px;
+            height: 48px;
+            clip-path: inset(0 100% 0 0);
+        }
+        .progress-success.is-visible .progress-success-icon-shell { animation: progress-success-pop 500ms var(--md-easing-emphasized-decel) both; }
+        .progress-success.is-visible .progress-success-icon { animation: progress-success-check 420ms 280ms var(--md-easing-emphasized-decel) both; }
+        .progress-success-title { font-weight: 600; color: var(--md-on-success-container); }
+        .progress-success-subtitle { font-size: 13px; color: var(--md-on-surface-variant); }
+        @keyframes progress-success-pop {
+            from { transform: scale(.72); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes progress-success-check { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            .progress-services-list { scroll-behavior: auto; }
+            .progress-success.is-visible,
+            .progress-success.is-visible .progress-success-icon-shell,
+            .progress-success.is-visible .progress-success-icon { animation: none; }
+            .progress-success.is-visible .progress-success-icon-shell { opacity: 1; transform: scale(1); }
+            .progress-success.is-visible .progress-success-icon { clip-path: inset(0); }
+        }
 
         .remote-console-dialog { max-width: 1080px; }
         .remote-console-output {
@@ -142,23 +198,24 @@
             <h1>Сервисы</h1>
             <div style="display:flex;gap:8px;align-items:center;">
                 <span class="md-status md-status-info">
-                    <span class="bf-icon size-18" data-bf-icon="admin/autorenew"></span>
+                    <span class="bf-icon size-18" data-bf-icon="autorenew"></span>
                     Авто-обновление: 30с
                 </span>
                 <span id="adminPanelUpdateBadge" class="md-status md-status-warn" title="Доступно обновление админ-панели" style="display:none;">
-                    <span class="bf-icon size-16" data-bf-icon="admin/update-available"></span>
+                    <span class="bf-icon size-16" data-bf-icon="update-available"></span>
                     Обновление
                 </span>
-                <button onclick="restartAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
-                    <span class="bf-icon size-18" data-bf-icon="admin/restart"></span>
+                <span id="adminPanelBranch" title="Ветка обновлений админ-панели"></span>
+                <button onclick="restartAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press" data-perm="docker.deploy">
+                    <span class="bf-icon size-18" data-bf-icon="restart"></span>
                     Перезапустить
                 </button>
-                <button onclick="updateAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press">
-                    <span class="bf-icon size-18" data-bf-icon="message-actions/download"></span>
+                <button onclick="updateAdminPanel()" class="md-btn md-btn-tonal md-btn-square-press" data-perm="docker.deploy">
+                    <span class="bf-icon size-18" data-bf-icon="download"></span>
                     Обновить
                 </button>
                 <button id="logoutBtn" class="md-icon-btn" title="Выйти">
-                    <span class="bf-icon" data-bf-icon="admin/logout"></span>
+                    <span class="bf-icon" data-bf-icon="logout"></span>
                 </button>
             </div>
         </header>
@@ -167,11 +224,11 @@
             <div class="panel">
                 <div class="tab-bar" id="serverTabs">
                     <button id="tab-barkfluff" class="tab active" onclick="switchTab('barkfluff')">
-                        <span class="bf-icon" data-bf-icon="admin/server"></span>
+                        <span class="bf-icon" data-bf-icon="server"></span>
                         BarkFluff Server
                     </button>
                     <button class="tab" onclick="openServerDialog()" title="Добавить сервер">
-                        <span class="bf-icon" data-bf-icon="admin/add"></span>
+                        <span class="bf-icon" data-bf-icon="add"></span>
                         Добавить сервер
                     </button>
                 </div>
@@ -179,21 +236,21 @@
                 <!-- BarkFluff panel -->
                 <div id="panel-barkfluff" class="server-panel">
                     <div class="actions-row">
-                        <button onclick="restartAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
-                            <span class="bf-icon size-18" data-bf-icon="admin/restart"></span>
+                        <button onclick="restartAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.deploy">
+                            <span class="bf-icon size-18" data-bf-icon="restart"></span>
                             Перезапустить все
                         </button>
-                        <button onclick="updateAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
-                            <span class="bf-icon size-18" data-bf-icon="message-actions/download"></span>
+                        <button onclick="updateAllServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.deploy">
+                            <span class="bf-icon size-18" data-bf-icon="download"></span>
                             Обновить все
                         </button>
-                        <button onclick="updateAvailableServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press">
-                            <span class="bf-icon size-18" data-bf-icon="admin/upgrade"></span>
+                        <button onclick="updateAvailableServices()" class="md-btn md-btn-tonal md-btn-xs md-btn-square-press" data-perm="docker.control">
+                            <span class="bf-icon size-18" data-bf-icon="upgrade"></span>
                             Обновить доступные
                         </button>
                         <div class="spacer"></div>
                         <button id="refreshBtn" class="md-btn md-btn-text" onclick="loadServices()">
-                            <span class="bf-icon size-18" data-bf-icon="admin/refresh"></span>
+                            <span class="bf-icon size-18" data-bf-icon="refresh"></span>
                             Обновить
                         </button>
                     </div>
@@ -204,6 +261,7 @@
                                 <tr>
                                     <th>Сервис</th>
                                     <th>Статус</th>
+                                    <th>Ветка</th>
                                     <th>Текущая версия</th>
                                     <th>Последняя версия</th>
                                     <th>Последний лог</th>
@@ -213,7 +271,7 @@
                                 </tr>
                             </thead>
                             <tbody id="servicesTableBody">
-                                <tr><td colspan="8" class="empty-cell">
+                                <tr><td colspan="9" class="empty-cell">
                                     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
                                         <div class="md-loader-expressive" style="width:24px;height:24px;"></div>
                                         Загрузка сервисов...
@@ -291,7 +349,7 @@
         <div class="md-dialog-header">
             <div style="display:flex;align-items:center;gap:12px;">
                 <span class="md-icon-btn tonal-style" style="background:var(--md-warning-container);color:var(--md-on-warning-container);">
-                    <span class="bf-icon" data-bf-icon="admin/restart"></span>
+                    <span class="bf-icon" data-bf-icon="restart"></span>
                 </span>
                 <div>
                     <h3 id="modalTitle">Перезапуск сервисов</h3>
@@ -305,7 +363,14 @@
                 <span id="progressCount" style="color:var(--md-on-surface-variant);">0 / 0</span>
             </div>
             <div class="md-progress-linear"><div class="bar" id="progressBar" style="width:0%;"></div></div>
-            <div id="servicesList" style="max-height:240px;overflow-y:auto;margin-top:16px;"></div>
+            <div id="progressSuccess" class="progress-success" hidden aria-live="polite">
+                <div class="progress-success-icon-shell" aria-hidden="true">
+                    <span class="bf-icon progress-success-icon" data-bf-icon="check-circle"></span>
+                </div>
+                <div class="progress-success-title">Все сервисы обновлены успешно</div>
+                <div class="progress-success-subtitle">Окно закроется автоматически через 3 секунды</div>
+            </div>
+            <div id="servicesList" class="progress-services-list"></div>
         </div>
         <div class="md-dialog-actions" id="modalFooter" style="display:none;">
             <button class="md-btn md-btn-text" onclick="closeProgressModal()">Закрыть</button>
@@ -313,20 +378,16 @@
     </div>
 </div>
 
-<script src="assets/icons.js"></script>
-<script src="assets/sidebar.js"></script>
-<script src="assets/command-palette.js"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=5"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let servicesData = [];
+    let branchesByContainer = {};
     let refreshInterval = null;
 
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     function formatDate(iso) {
         if (!iso) return '—';
@@ -359,58 +420,58 @@
     }
 
     const SERVICE_ICON_PATHS = {
-        'BarkFluff.Beacon':         'services/beacon',
-        'BarkFluff.Configuration':  'services/configuration',
-        'BarkFluff.Files':          'services/files',
-        'BarkFluff.Identity':       'services/identity',
-        'BarkFluff.Messages':       'services/messages',
-        'BarkFluff.Notification':   'services/notification',
-        'BarkFluff.Users':          'services/users',
-        'BarkFluff.FastAuth':       'services/fastauth',
-        'BarkFluff.Updates':        'services/updates',
-        'BarkFluff.Onliner':        'services/onliner',
-        'BarkFluff.Federation':     'services/federation',
-        'BarkFluff.CloudMessaging': 'services/cloudmessaging',
-        'BarkFluff.Web':            'services/web',
-        'BarkFluff.WebServer':      'services/webserver',
-        'BarkFluff.ClientStorage':  'services/clientstorage',
-        'BarkFluff.Developers':     'services/developers',
-        'BarkFluff.Calls':          'services/calls',
-        'BarkFluff.Bots':           'services/bots',
-        'BarkFluff.Navigator':      'services/navigator',
-        'BarkFluff.AdminPanel':     'services/adminpanel',
-        'Barkfluff.AdminPanel':     'services/adminpanel',
-        'Seq':                      'services/seq',
-        'RabbitMQ':                 'services/rabbitmq',
-        'Redis':                    'services/redis',
-        'PostgreSQL':               'services/postgresql'
+        'BarkFluff.Beacon':         'beacon',
+        'BarkFluff.Configuration':  'configuration',
+        'BarkFluff.Files':          'files',
+        'BarkFluff.Identity':       'identity',
+        'BarkFluff.Messages':       'messages',
+        'BarkFluff.Notification':   'notification',
+        'BarkFluff.Users':          'users',
+        'BarkFluff.FastAuth':       'fastauth',
+        'BarkFluff.Updates':        'updates',
+        'BarkFluff.Onliner':        'onliner',
+        'BarkFluff.Federation':     'federation',
+        'BarkFluff.CloudMessaging': 'cloudmessaging',
+        'BarkFluff.Web':            'web',
+        'BarkFluff.WebServer':      'webserver',
+        'BarkFluff.ClientStorage':  'clientstorage',
+        'BarkFluff.Developers':     'developers',
+        'BarkFluff.Calls':          'calls',
+        'BarkFluff.Bots':           'bots',
+        'BarkFluff.Navigator':      'navigator',
+        'BarkFluff.AdminPanel':     'adminpanel',
+        'Barkfluff.AdminPanel':     'adminpanel',
+        'Seq':                      'seq',
+        'RabbitMQ':                 'rabbitmq',
+        'Redis':                    'redis',
+        'PostgreSQL':               'postgresql'
     };
     const SERVICE_SUFFIX_ICON_PATHS = {
-        'cloudmessaging': 'services/cloudmessaging',
-        'cloud-messaging': 'services/cloudmessaging',
-        'fastauth': 'services/fastauth',
-        'fast-auth': 'services/fastauth',
-        'clientstorage': 'services/clientstorage',
-        'client-storage': 'services/clientstorage',
-        'webserver': 'services/webserver',
-        'web-server': 'services/webserver',
-        'configuration': 'services/configuration',
-        'notification': 'services/notification',
-        'federation': 'services/federation',
-        'developers': 'services/developers',
-        'navigator': 'services/navigator',
-        'adminpanel': 'services/adminpanel',
-        'admin-panel': 'services/adminpanel',
-        'messages': 'services/messages',
-        'identity': 'services/identity',
-        'beacon': 'services/beacon',
-        'users': 'services/users',
-        'updates': 'services/updates',
-        'onliner': 'services/onliner',
-        'files': 'services/files',
-        'calls': 'services/calls',
-        'bots': 'services/bots',
-        'web': 'services/web'
+        'cloudmessaging': 'cloudmessaging',
+        'cloud-messaging': 'cloudmessaging',
+        'fastauth': 'fastauth',
+        'fast-auth': 'fastauth',
+        'clientstorage': 'clientstorage',
+        'client-storage': 'clientstorage',
+        'webserver': 'webserver',
+        'web-server': 'webserver',
+        'configuration': 'configuration',
+        'notification': 'notification',
+        'federation': 'federation',
+        'developers': 'developers',
+        'navigator': 'navigator',
+        'adminpanel': 'adminpanel',
+        'admin-panel': 'adminpanel',
+        'messages': 'messages',
+        'identity': 'identity',
+        'beacon': 'beacon',
+        'users': 'users',
+        'updates': 'updates',
+        'onliner': 'onliner',
+        'files': 'files',
+        'calls': 'calls',
+        'bots': 'bots',
+        'web': 'web'
     };
 
     function getServiceIconPath(serviceName) {
@@ -418,27 +479,24 @@
         if (SERVICE_ICON_PATHS[name]) return SERVICE_ICON_PATHS[name];
         const normalized = name.toLowerCase().replace(/[_\s]+/g, '-');
         const suffix = Object.keys(SERVICE_SUFFIX_ICON_PATHS).find(key => normalized.includes(key));
-        return suffix ? SERVICE_SUFFIX_ICON_PATHS[suffix] : 'admin/server';
+        return suffix ? SERVICE_SUFFIX_ICON_PATHS[suffix] : 'server';
     }
 
     async function loadServices() {
         const tbody = document.getElementById('servicesTableBody');
         try {
-            const res = await fetch('/api/seq/services/status');
-            if (!res.ok) throw new Error(res.status);
-            servicesData = await res.json();
+            servicesData = await BF.request('/api/seq/services/status', { errorToast: false });
+            await loadBranches();
             renderServicesTable();
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="8" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки сервисов</td></tr>`;
         }
     }
 
     async function loadAdminPanelUpdateStatus() {
         const badge = document.getElementById('adminPanelUpdateBadge');
         try {
-            const response = await fetch('/api/docker/containers/admin-panel/update-status');
-            if (!response.ok) throw new Error(response.status);
-            const status = await response.json();
+            const status = await BF.request('/api/docker/containers/admin-panel/update-status', { errorToast: false });
             badge.style.display = status.updateAvailable ? '' : 'none';
         } catch {
             badge.style.display = 'none';
@@ -448,9 +506,10 @@
     function renderServicesTable() {
         const tbody = document.getElementById('servicesTableBody');
         if (!servicesData.length) {
-            tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">Сервисы не найдены</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-cell">Сервисы не найдены</td></tr>`;
             return;
         }
+        const canControl = window.BF && BF.can('docker.control');
         tbody.innerHTML = servicesData.map(svc => {
             const isRunning = svc.dockerState === 'running';
             const containerName = getContainerNameFromServiceName(svc.name);
@@ -463,39 +522,135 @@
             const latestVersion = svc.latestVersion
                 ? `<span style="font-family:'Roboto Mono',monospace;">${escapeHtml(svc.latestVersion)}</span>`
                 : '<span style="color:var(--md-outline);">—</span>';
+            const actionButtons = canControl ? `
+                    <div style="display:flex;justify-content:center;gap:4px;">
+                        <button class="md-icon-btn" title="${isRunning?'Остановить':'Запустить'}"
+                            onclick="handleContainerAction(event, '${containerName}', '${isRunning?'stop':'start'}')">
+                            ${bfIcon(isRunning ? 'stop' : 'play', 'size-20')}
+                        </button>
+                        <button class="md-icon-btn" title="Перезапустить"
+                            onclick="handleContainerAction(event, '${containerName}', 'restart')">
+                            ${bfIcon('restart', 'size-20')}
+                        </button>
+                        <button class="md-icon-btn" title="Обновить образ"
+                            onclick="handleContainerAction(event, '${containerName}', 'pull')">
+                            ${bfIcon('download', 'size-20')}
+                        </button>
+                    </div>` : '<span style="color:var(--md-outline);">—</span>';
             return `
-            <tr>
+            <tr data-service="${escapeHtml(svc.name)}">
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;font-weight:500;">
                         ${bfIcon(getServiceIconPath(svc.name), 'size-18 service-icon')}
                         ${escapeHtml(svc.name)}
-                        ${svc.updateAvailable ? `<span class="md-status md-status-warn" title="Доступно обновление">${bfIcon('admin/update-available', 'size-16')}Обновление</span>` : ''}
+                        ${svc.updateAvailable ? `<span class="md-status md-status-warn" title="Доступно обновление">${bfIcon('update-available', 'size-16')}Обновление</span>` : ''}
                     </div>
                 </td>
                 <td>${statusBadgeHtml(svc.dockerState)}</td>
+                <td>${branchSelectHtml(containerName, `handleBranchChange(event, '${containerName}')`)}</td>
                 <td>${currentVersion}</td>
                 <td>${latestVersion}</td>
                 <td style="color:var(--md-on-surface-variant);font-size:12px;font-family:'Roboto Mono',monospace;">${svc.lastSeen ? formatRelativeTime(svc.lastSeen) : '<span style="color:var(--md-outline);">Нет данных</span>'}</td>
                 <td>${errBadge}</td>
                 <td><span class="md-status md-status-info">${svc.eventCount || 0}</span></td>
-                <td>
-                    <div style="display:flex;justify-content:center;gap:4px;">
-                        <button class="md-icon-btn" title="${isRunning?'Остановить':'Запустить'}"
-                            onclick="handleContainerAction(event, '${containerName}', '${isRunning?'stop':'start'}')">
-                            ${bfIcon(isRunning ? 'admin/stop' : 'admin/play', 'size-20')}
-                        </button>
-                        <button class="md-icon-btn" title="Перезапустить"
-                            onclick="handleContainerAction(event, '${containerName}', 'restart')">
-                            ${bfIcon('admin/restart', 'size-20')}
-                        </button>
-                        <button class="md-icon-btn" title="Обновить образ"
-                            onclick="handleContainerAction(event, '${containerName}', 'pull')">
-                            ${bfIcon('message-actions/download', 'size-20')}
-                        </button>
-                    </div>
-                </td>
+                <td>${actionButtons}</td>
             </tr>`;
         }).join('');
+        requestAnimationFrame(focusLinkedService);
+    }
+
+    function focusLinkedService() {
+        const target = new URLSearchParams(window.location.search).get('service');
+        if (!target) return;
+        const row = [...document.querySelectorAll('#servicesTableBody tr[data-service]')]
+            .find(item => item.dataset.service.toLowerCase() === target.toLowerCase());
+        if (!row) return;
+        row.classList.add('service-target');
+        row.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+
+    // ---- Ветки обновлений (image: в docker-compose.yml) ----
+    async function loadBranches() {
+        try {
+            const branches = await BF.request('/api/docker/branches', { errorToast: false });
+            branchesByContainer = {};
+            branches.forEach(b => { branchesByContainer[b.container] = b; });
+        } catch {
+            branchesByContainer = {};
+        }
+        renderAdminPanelBranch();
+    }
+
+    function branchSelectHtml(container, onChange) {
+        const info = branchesByContainer[container];
+        if (!info) return '<span style="color:var(--md-outline);">—</span>';
+        const pending = info.runningBranch && info.runningBranch !== info.branch
+            ? `<span class="md-status md-status-warn" title="Запущен образ ветки ${escapeHtml(info.runningBranch)}">не применена</span>`
+            : '';
+        if (window.BF && !BF.can('docker.deploy')) {
+            return `<div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:13px;">${escapeHtml(info.branch)}</span>
+                        ${pending}
+                    </div>`;
+        }
+        const options = info.branches
+            .map(b => `<option value="${b}" ${b === info.branch ? 'selected' : ''}>${b}</option>`)
+            .join('');
+        return `<div style="display:flex;align-items:center;gap:6px;">
+                    <select class="md-input-outlined" data-branch-select="${container}" style="height:32px;padding:4px 8px;font-size:13px;width:auto;"
+                        onchange="${onChange}">${options}</select>
+                    ${pending}
+                </div>`;
+    }
+
+    async function handleBranchChange(event, container) {
+        const select = event.currentTarget;
+        const branch = select.value;
+        const previous = (branchesByContainer[container] || {}).branch;
+        if (branch === previous) return;
+
+        if (!confirm(`Переключить "${container}" на ветку ${branch}? Строка image: в docker-compose.yml будет изменена, образ загружен, контейнер пересоздан.\n\nВнимание: смешивание веток может нарушить совместимость контрактов между сервисами.`)) {
+            select.value = previous;
+            return;
+        }
+
+        select.disabled = true;
+        try {
+            const result = await BF.request(`/api/docker/containers/${container}/branch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ branch }),
+                errorToast: false
+            });
+            if (!result.success) {
+                showNotification('error', result.message || 'Ошибка');
+                select.value = previous;
+                return;
+            }
+            if (container === 'admin-panel') { window.location.href = '/updating'; return; }
+
+            showNotification('success', result.message || 'Задача в очереди');
+            const job = await waitDeployJob(result.jobId);
+            if (job.state === 'Completed') {
+                showNotification('success', `${container} переключён на ветку ${branch}`);
+            } else {
+                const failed = (job.steps || []).find(s => s.state === 'Failed');
+                showNotification('error', `Переключение не удалось: ${failed?.message || job.error || 'ошибка'}`);
+                select.value = previous;
+            }
+            loadServices();
+        } catch (e) {
+            showNotification('error', 'Ошибка: ' + e.message);
+            select.value = previous;
+        } finally {
+            select.disabled = false;
+        }
+    }
+
+    function renderAdminPanelBranch() {
+        const holder = document.getElementById('adminPanelBranch');
+        if (!holder) return;
+        holder.innerHTML = branchSelectHtml('admin-panel', "handleBranchChange(event, 'admin-panel')");
     }
 
     function getContainerNameFromServiceName(name) {
@@ -520,14 +675,24 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
         try {
-            const r = await fetch(`/api/docker/containers/${container}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
-            const result = await r.json();
-            if (result.success) {
-                showNotification('success', result.message);
-                setTimeout(loadServices, 2000);
-            } else {
+            const result = await BF.request(`/api/docker/containers/${container}/${action}`, {
+                method:'POST', headers:{'Content-Type':'application/json'}, errorToast:false
+            });
+            if (!result.success) {
                 showNotification('error', result.message || 'Ошибка');
+                return;
             }
+
+            if (action === 'pull' && result.jobId) {
+                // Обновление ушло в очередь деплоя — ждём завершения (кнопка крутится)
+                const job = await waitDeployJob(result.jobId);
+                const failed = (job.steps || []).find(s => s.state === 'Failed');
+                if (job.state === 'Completed') showNotification('success', `${container} обновлён`);
+                else showNotification('error', `Обновление не удалось: ${failed?.message || job.error || 'ошибка'}`);
+            } else {
+                showNotification('success', result.message);
+            }
+            setTimeout(loadServices, 1000);
         } catch (e) {
             showNotification('error', 'Ошибка: ' + e.message);
         } finally {
@@ -539,94 +704,211 @@
     function showNotification(type, message) {
         const el = document.createElement('div');
         el.className = `notif ${type}`;
-        el.innerHTML = `${bfIcon(type === 'success' ? 'admin/check-circle' : 'admin/error')}<span>${escapeHtml(message)}</span>`;
+        el.innerHTML = `${bfIcon(type === 'success' ? 'check-circle' : 'error')}<span>${escapeHtml(message)}</span>`;
         document.body.appendChild(el);
         setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 4000);
     }
 
-    // ---- Bulk actions ----
+    // ---- Bulk actions (серверная очередь деплоя) ----
     // Bulk-действия только для микросервисов BarkFluff; инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL)
     // перезапускается вручную через per-row кнопки и в "все" не попадает.
-    function barkfluffContainers() {
-        return servicesData
-            .filter(s => s.name.startsWith('BarkFluff.'))
-            .map(s => getContainerNameFromServiceName(s.name));
-    }
     function updatableContainers() {
         return servicesData
             .filter(s => s.name.startsWith('BarkFluff.') && s.updateAvailable)
             .map(s => getContainerNameFromServiceName(s.name));
     }
+
+    const DEPLOY_KIND_LABELS = { Update: 'Обновление', Restart: 'Перезапуск', SwitchBranch: 'Переключение ветки' };
+
+    async function startDeployJob(url, body, title, autoCloseOnSuccess = false) {
+        try {
+            const result = await BF.request(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body ? JSON.stringify(body) : undefined,
+                errorToast: false
+            });
+            if (result?.success === false)
+                throw new Error(result.message || 'Операция не выполнена');
+            openJobModal(title, result.jobId, autoCloseOnSuccess);
+        } catch (e) {
+            showNotification('error', e.message || 'Операция не выполнена');
+        }
+    }
+
     async function restartAllServices() {
         if (!confirm('Перезапустить все сервисы BarkFluff?')) return;
-        showProgressModal('Перезапуск сервисов', barkfluffContainers(), 'restart');
+        await startDeployJob('/api/docker/containers/restart-all', null, 'Перезапуск всех сервисов');
     }
     async function updateAllServices() {
         if (!confirm('Обновить образы всех сервисов и пересоздать контейнеры?')) return;
-        showProgressModal('Обновление сервисов', barkfluffContainers(), 'pull');
+        await startDeployJob('/api/docker/containers/update-all', null, 'Обновление всех сервисов', true);
     }
     async function updateAvailableServices() {
         const containers = updatableContainers();
-        if (containers.length === 0) { alert('Нет сервисов с доступными обновлениями'); return; }
+        if (containers.length === 0) { BF.toast('Нет сервисов с доступными обновлениями', 'info'); return; }
         if (!confirm(`Обновить только сервисы с доступными обновлениями (${containers.length})?`)) return;
-        showProgressModal('Обновление доступных сервисов', containers, 'pull');
+        await startDeployJob('/api/docker/containers/update-many', { containers }, `Обновление доступных сервисов (${containers.length})`, true);
     }
 
-    function showProgressModal(title, containers, action) {
+    // ---- Отслеживание задач деплоя ----
+    let deployJobToken = 0;
+    let progressCloseTimer = null;
+
+    function clearProgressCloseTimer() {
+        if (progressCloseTimer === null) return;
+        clearTimeout(progressCloseTimer);
+        progressCloseTimer = null;
+    }
+
+    function setProgressModalLock(locked) {
+        document.documentElement.classList.toggle('progress-modal-open', locked);
+        document.body.classList.toggle('progress-modal-open', locked);
+    }
+
+    async function waitDeployJob(jobId, renderModal = false) {
+        let notFoundCount = 0;
+        while (true) {
+            let job = null;
+            let notFound = false;
+            try {
+                job = await BF.request(`/api/docker/deploy/jobs/${jobId}`, { errorToast: false });
+            } catch (error) {
+                if (error.status === 404) notFound = true;
+                // Панель могла перезапуститься — продолжаем опрос.
+            }
+            if (job) {
+                notFoundCount = 0;
+                if (renderModal) renderJobModal(job);
+                if (job.state === 'Completed' || job.state === 'Failed') return job;
+            } else if (notFound && ++notFoundCount >= 5) {
+                // Задача исчезла (перезапуск панели очищает очередь) — не висим вечно
+                return { state: 'Failed', steps: [], error: 'Задача не найдена — панель перезапускалась' };
+            }
+            await new Promise(r => setTimeout(r, 2000));
+        }
+    }
+
+    function resetProgressSuccess() {
+        const success = document.getElementById('progressSuccess');
+        success.classList.remove('is-visible');
+        success.hidden = true;
+    }
+
+    function showProgressSuccess() {
+        const success = document.getElementById('progressSuccess');
+        success.hidden = false;
+        success.classList.remove('is-visible');
+        void success.offsetWidth;
+        success.classList.add('is-visible');
+    }
+
+    function openJobModal(title, jobId, autoCloseOnSuccess = false) {
+        clearProgressCloseTimer();
+        resetProgressSuccess();
         document.getElementById('modalTitle').textContent = title;
-        document.getElementById('progressCount').textContent = `0 / ${containers.length}`;
+        document.getElementById('modalSubtitle').textContent = 'Выполняется на сервере, последовательно...';
+        document.getElementById('progressText').textContent = 'В очереди...';
+        document.getElementById('progressCount').textContent = '0 / 0';
         document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('servicesList').innerHTML = '';
         document.getElementById('modalFooter').style.display = 'none';
+        document.getElementById('progressScrim').classList.add('open');
+        setProgressModalLock(true);
+
+        const token = ++deployJobToken;
+        waitDeployJob(jobId, true).then(job => {
+            if (token !== deployJobToken) return;
+            const failed = (job.steps || []).filter(s => s.state === 'Failed');
+            const completedSuccessfully = job.state === 'Completed' && failed.length === 0;
+            document.getElementById('modalSubtitle').textContent = completedSuccessfully ? 'Завершено' : 'Завершено с ошибками';
+            if (failed.length)
+                showNotification('error', failed.map(f => `${f.service}: ${f.message || 'ошибка'}`).join('; ').slice(0, 300));
+            else if (completedSuccessfully)
+                showNotification('success', 'Операция завершена');
+            else
+                showNotification('error', job.error || 'Операция не завершена');
+            if (completedSuccessfully && autoCloseOnSuccess) {
+                document.getElementById('modalSubtitle').textContent = 'Все шаги выполнены успешно';
+                document.getElementById('progressText').textContent = 'Готово';
+                showProgressSuccess();
+                progressCloseTimer = setTimeout(() => {
+                    progressCloseTimer = null;
+                    if (token === deployJobToken) closeProgressModal();
+                }, 3000);
+            } else {
+                document.getElementById('modalFooter').style.display = '';
+            }
+            loadServices();
+        });
+    }
+
+    function scrollCurrentServiceIntoView() {
         const list = document.getElementById('servicesList');
-        list.innerHTML = containers.map((c, i) => `
-            <div class="svc-row pending" data-svc="${c}">
-                ${bfIcon('admin/pending', 'size-18')}
-                <span>${c}</span>
+        const current = list.querySelector('.svc-row.current');
+        if (!current || list.clientHeight === 0) return;
+
+        const listRect = list.getBoundingClientRect();
+        const currentRect = current.getBoundingClientRect();
+        const currentTop = list.scrollTop + currentRect.top - listRect.top;
+        const currentBottom = currentTop + current.offsetHeight;
+        const visibleTop = list.scrollTop + 8;
+        const visibleBottom = list.scrollTop + list.clientHeight - 8;
+
+        if (currentTop >= visibleTop && currentBottom <= visibleBottom) return;
+
+        const targetTop = Math.max(0, currentTop - (list.clientHeight - current.offsetHeight) / 2);
+        if (typeof list.scrollTo === 'function')
+            list.scrollTo({ top: targetTop, behavior: 'smooth' });
+        else
+            list.scrollTop = targetTop;
+    }
+
+    function renderJobModal(job) {
+        const icons = { Pending: 'pending', InProgress: 'sync', Completed: 'check-circle', Failed: 'error' };
+        const classes = { Pending: 'pending', InProgress: 'current', Completed: 'completed', Failed: 'error' };
+        document.getElementById('servicesList').innerHTML = (job.steps || []).map(s => `
+            <div class="svc-row ${classes[s.state] || 'pending'}" title="${escapeHtml(s.message || '')}">
+                ${bfIcon(icons[s.state] || 'pending', 'size-18')}
+                <span>${escapeHtml(s.service)}${s.rolledBack ? ' — откачено' : ''}</span>
             </div>
         `).join('');
-        document.getElementById('progressScrim').classList.add('open');
-
-        // sequential
-        (async () => {
-            for (let i = 0; i < containers.length; i++) {
-                const c = containers[i];
-                const row = list.querySelector(`[data-svc="${c}"]`);
-                row.classList.remove('pending');
-                row.classList.add('current');
-                bfSetIcon(row.querySelector('.bf-icon'), 'admin/sync');
-                document.getElementById('progressText').textContent = `Обрабатываем ${c}...`;
-
-                try {
-                    const r = await fetch(`/api/docker/containers/${c}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'} });
-                    const result = await r.json();
-                    if (!result.success) throw new Error(result.message);
-                    row.classList.remove('current');
-                    row.classList.add('completed');
-                    bfSetIcon(row.querySelector('.bf-icon'), 'admin/check-circle');
-                } catch (e) {
-                    row.classList.remove('current');
-                    row.classList.add('error');
-                    bfSetIcon(row.querySelector('.bf-icon'), 'admin/error');
-                }
-                document.getElementById('progressCount').textContent = `${i + 1} / ${containers.length}`;
-                document.getElementById('progressBar').style.width = (((i + 1) / containers.length) * 100) + '%';
-            }
-            document.getElementById('progressText').textContent = 'Готово';
-            document.getElementById('modalFooter').style.display = '';
-            setTimeout(loadServices, 1000);
-        })();
+        const total = (job.steps || []).length;
+        const done = (job.steps || []).filter(s => s.state === 'Completed' || s.state === 'Failed').length;
+        document.getElementById('progressCount').textContent = `${done} / ${total}`;
+        document.getElementById('progressBar').style.width = total ? `${Math.round(done / total * 100)}%` : '0%';
+        const current = (job.steps || []).find(s => s.state === 'InProgress');
+        document.getElementById('progressText').textContent = job.state === 'Queued'
+            ? 'В очереди...'
+            : current ? `Обрабатываем ${current.service}...` : (job.state === 'Running' ? 'Выполняется...' : 'Завершено');
+        scrollCurrentServiceIntoView();
     }
-    function closeProgressModal() { document.getElementById('progressScrim').classList.remove('open'); }
+
+    function closeProgressModal() {
+        clearProgressCloseTimer();
+        deployJobToken++;
+        document.getElementById('progressScrim').classList.remove('open');
+        setProgressModalLock(false);
+    }
+
+    // При перезагрузке страницы подхватить активную задачу деплоя
+    async function resumeActiveDeployJob() {
+        try {
+            const jobs = await BF.request('/api/docker/deploy/jobs', { errorToast: false });
+            const active = jobs.find(j => j.state === 'Queued' || j.state === 'Running');
+            if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id, active.kind === 'Update');
+        } catch { /* ignore */ }
+    }
 
     // ---- Admin panel actions ----
     async function restartAdminPanel() {
         if (!confirm('Перезапустить админ-панель? Вы будете перенаправлены на страницу ожидания.')) return;
-        try { await fetch('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
+        try { await BF.request('/api/docker/containers/admin-panel/restart-own', { method:'POST', errorToast:false }); window.location.href = '/restarting'; }
         catch { showNotification('error', 'Не удалось запустить перезапуск'); }
     }
     async function updateAdminPanel() {
         if (!confirm('Обновить админ-панель? Будет загружен новый образ.')) return;
-        try { await fetch('/api/docker/containers/admin-panel/update-own', { method:'POST' }); window.location.href = '/updating'; }
+        try { await BF.request('/api/docker/containers/admin-panel/update-own', { method:'POST', errorToast:false }); window.location.href = '/updating'; }
         catch { showNotification('error', 'Не удалось запустить обновление'); }
     }
 
@@ -648,10 +930,14 @@
     }
 
     async function loadRemoteServers(selectServerId = null) {
+        if (!BF.can('remote.servers')) {
+            remoteServers = [];
+            renderRemoteServers();
+            switchTab('barkfluff');
+            return;
+        }
         try {
-            const response = await fetch('/api/remote/servers');
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            remoteServers = await response.json();
+            remoteServers = await BF.request('/api/remote/servers', { errorToast: false });
             renderRemoteServers();
             const selected = selectServerId || (activeTab !== 'barkfluff' && remoteServers.some(s => s.id === activeTab) ? activeTab : 'barkfluff');
             switchTab(selected);
@@ -661,10 +947,11 @@
     }
 
     function renderRemoteServers() {
+        const canManage = window.BF && BF.can('remote.servers');
         const tabs = document.getElementById('serverTabs');
-        tabs.innerHTML = `<button id="tab-barkfluff" data-server-tab="barkfluff" class="tab" onclick="switchTab('barkfluff')">${bfIcon('admin/server')}BarkFluff Server</button>`
-            + remoteServers.map(server => `<button data-server-tab="${server.id}" class="tab" onclick="switchTab('${server.id}')">${bfIcon('admin/server')}${escapeHtml(server.name)}</button>`).join('')
-            + `<button class="tab" onclick="openServerDialog()" title="Добавить сервер">${bfIcon('admin/add')}Добавить сервер</button>`;
+        tabs.innerHTML = `<button id="tab-barkfluff" data-server-tab="barkfluff" class="tab" onclick="switchTab('barkfluff')">${bfIcon('server')}BarkFluff Server</button>`
+            + remoteServers.map(server => `<button data-server-tab="${server.id}" class="tab" onclick="switchTab('${server.id}')">${bfIcon('server')}${escapeHtml(server.name)}</button>`).join('')
+            + (canManage ? `<button class="tab" onclick="openServerDialog()" title="Добавить сервер">${bfIcon('add')}Добавить сервер</button>` : '');
 
         document.getElementById('remotePanels').innerHTML = remoteServers.map(server => `
             <div class="server-panel remote-server-panel" data-server-id="${server.id}" style="display:none;">
@@ -675,12 +962,12 @@
                     <div class="item"><span class="label">Password</span><span class="value">${server.isPasswordConfigured ? 'настроен' : '—'}</span></div>
                 </div>
                 <div class="actions-row">
-                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openContainerDialog('${server.id}')">${bfIcon('admin/add', 'size-18')}Добавить контейнер</button>
-                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openConsoleDialog('${server.id}')">${bfIcon('admin/terminal', 'size-18')}Открыть консоль</button>
+                    ${canManage ? `<button class="md-btn md-btn-tonal md-btn-xs" onclick="openContainerDialog('${server.id}')">${bfIcon('add', 'size-18')}Добавить контейнер</button>
+                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openConsoleDialog('${server.id}')">${bfIcon('terminal', 'size-18')}Открыть консоль</button>` : ''}
                     <div class="spacer"></div>
-                    <button class="md-icon-btn" title="Изменить сервер" onclick="openServerDialog('${server.id}')">${bfIcon('message-actions/edit')}</button>
-                    <button class="md-icon-btn" title="Удалить сервер" onclick="deleteServer('${server.id}')">${bfIcon('message-actions/delete')}</button>
-                    <button class="md-icon-btn" title="Обновить контейнеры" onclick="loadRemoteContainers('${server.id}')">${bfIcon('admin/refresh')}</button>
+                    ${canManage ? `<button class="md-icon-btn" title="Изменить сервер" onclick="openServerDialog('${server.id}')">${bfIcon('edit')}</button>
+                    <button class="md-icon-btn" title="Удалить сервер" onclick="deleteServer('${server.id}')">${bfIcon('delete')}</button>` : ''}
+                    <button class="md-icon-btn" title="Обновить контейнеры" onclick="loadRemoteContainers('${server.id}')">${bfIcon('refresh')}</button>
                 </div>
                 <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
                     <table class="md-table"><thead><tr><th>Контейнер</th><th>Статус</th><th style="text-align:center;">Действия</th></tr></thead>
@@ -693,22 +980,22 @@
         const tbody = document.getElementById(`remote-${serverId}-body`);
         if (!tbody) return;
         try {
-            const response = await fetch(`/api/remote/servers/${serverId}/containers`);
-            if (!response.ok) throw new Error(await responseMessage(response));
-            const containers = await response.json();
+            const containers = await BF.request(`/api/remote/servers/${serverId}/containers`, { errorToast: false });
             if (!containers.length) {
                 tbody.innerHTML = `<tr><td colspan="3" class="empty-cell">Контейнеры ещё не добавлены</td></tr>`;
                 return;
             }
+            const canManageRemote = window.BF && BF.can('remote.servers');
             tbody.innerHTML = containers.map(container => {
                 const running = container.state === 'running';
                 const update = container.canUpdate
-                    ? `<button class="md-icon-btn" title="Обновить образ" onclick="handleRemoteAction(event,'${serverId}','${container.id}','pull')">${bfIcon('message-actions/download', 'size-20')}</button>`
-                    : `<button class="md-icon-btn" disabled title="Контейнер запущен не через Docker Compose">${bfIcon('admin/cloud-off', 'size-20')}</button>`;
+                    ? `<button class="md-icon-btn" title="Обновить образ" onclick="handleRemoteAction(event,'${serverId}','${container.id}','pull')">${bfIcon('download', 'size-20')}</button>`
+                    : `<button class="md-icon-btn" disabled title="Контейнер запущен не через Docker Compose">${bfIcon('cloud-off', 'size-20')}</button>`;
+                const remoteActions = canManageRemote ? `<div style="display:flex;justify-content:center;gap:4px;"><button class="md-icon-btn" title="${running ? 'Остановить' : 'Запустить'}" onclick="handleRemoteAction(event,'${serverId}','${container.id}','${running ? 'stop' : 'start'}')">${bfIcon(running ? 'stop' : 'play', 'size-20')}</button>
+                    <button class="md-icon-btn" title="Перезапустить" onclick="handleRemoteAction(event,'${serverId}','${container.id}','restart')">${bfIcon('restart', 'size-20')}</button>${update}<button class="md-icon-btn" title="Убрать из списка" onclick="deleteContainer('${serverId}','${container.id}')">${bfIcon('delete', 'size-20')}</button></div>` : '<span style="color:var(--md-outline);">—</span>';
                 return `<tr><td><div style="display:flex;align-items:center;gap:10px;font-weight:500;">${bfIcon(getServiceIconPath(container.composeServiceName || container.containerName), 'size-18 service-icon')}${escapeHtml(container.containerName)}${container.composeServiceName ? `<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(container.composeServiceName)}</span>` : ''}</div></td>
                     <td>${statusBadgeHtml(container.state)}<span style="margin-left:8px;font-size:12px;color:var(--md-on-surface-variant);">${escapeHtml(container.status || '')}</span></td>
-                    <td><div style="display:flex;justify-content:center;gap:4px;"><button class="md-icon-btn" title="${running ? 'Остановить' : 'Запустить'}" onclick="handleRemoteAction(event,'${serverId}','${container.id}','${running ? 'stop' : 'start'}')">${bfIcon(running ? 'admin/stop' : 'admin/play', 'size-20')}</button>
-                    <button class="md-icon-btn" title="Перезапустить" onclick="handleRemoteAction(event,'${serverId}','${container.id}','restart')">${bfIcon('admin/restart', 'size-20')}</button>${update}<button class="md-icon-btn" title="Убрать из списка" onclick="deleteContainer('${serverId}','${container.id}')">${bfIcon('message-actions/delete', 'size-20')}</button></div></td></tr>`;
+                    <td>${remoteActions}</td></tr>`;
             }).join('');
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="3" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
@@ -724,9 +1011,10 @@
         button.disabled = true;
         button.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span>';
         try {
-            const response = await fetch(`/api/remote/servers/${serverId}/containers/${containerId}/${action}`, { method:'POST' });
-            const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.message || 'Ошибка действия');
+            const result = await BF.request(`/api/remote/servers/${serverId}/containers/${containerId}/${action}`, {
+                method:'POST', errorToast:false
+            });
+            if (!result.success) throw new Error(result.message || 'Ошибка действия');
             showNotification('success', result.message);
             setTimeout(() => loadRemoteContainers(serverId), 1500);
         } catch (e) { showNotification('error', e.message); }
@@ -760,27 +1048,25 @@
             password: document.getElementById('serverPassword').value || null
         };
         const button = document.getElementById('saveServerBtn');
-        button.disabled = true;
         try {
-            const response = await fetch(editingServerId ? `/api/remote/servers/${editingServerId}` : '/api/remote/servers', {
-                method: editingServerId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(request)
+            const server = await BF.request(editingServerId ? `/api/remote/servers/${editingServerId}` : '/api/remote/servers', {
+                method: editingServerId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(request),
+                loading: button, errorToast:false
             });
-            if (!response.ok) throw new Error(await responseMessage(response));
-            const server = await response.json();
             closeDialog('serverDialogScrim');
             showNotification('success', 'Сервер сохранён');
             await loadRemoteServers(server.id);
         } catch (e) { showDialogError('serverDialogError', e.message); }
-        finally { button.disabled = false; }
     }
 
     async function deleteServer(serverId) {
         const server = remoteServers.find(item => item.id === serverId);
         if (!confirm(`Удалить сервер "${server?.name || ''}" и все его контейнеры из панели?`)) return;
-        const response = await fetch(`/api/remote/servers/${serverId}`, { method:'DELETE' });
-        if (!response.ok) { showNotification('error', await responseMessage(response)); return; }
-        showNotification('success', 'Сервер удалён');
-        await loadRemoteServers();
+        try {
+            await BF.request(`/api/remote/servers/${serverId}`, { method:'DELETE', errorToast:false });
+            showNotification('success', 'Сервер удалён');
+            await loadRemoteServers();
+        } catch (e) { showNotification('error', e.message); }
     }
 
     async function openContainerDialog(serverId) {
@@ -789,24 +1075,23 @@
         hideDialogError('containerDialogError');
         document.getElementById('containerDialogScrim').classList.add('open');
         try {
-            const response = await fetch(`/api/remote/servers/${serverId}/discover`);
-            if (!response.ok) throw new Error(await responseMessage(response));
-            const containers = await response.json();
-            document.getElementById('discoveredContainers').innerHTML = containers.length ? `<table class="md-table"><thead><tr><th>Контейнер</th><th>Образ</th><th>Тип</th><th></th></tr></thead><tbody>${containers.map(container => `<tr><td><div style="display:flex;align-items:center;gap:10px;">${bfIcon(getServiceIconPath(container.containerName), 'size-18 service-icon')}<span>${escapeHtml(container.containerName)}</span></div></td><td>${escapeHtml(container.image)}</td><td>${container.isComposeManaged ? 'Docker Compose' : 'Docker'}</td><td><button class="md-btn md-btn-text" onclick="addDiscoveredContainer('${container.containerName}')">${bfIcon('admin/add', 'size-18')}Добавить</button></td></tr>`).join('')}</tbody></table>` : 'Новых контейнеров не найдено.';
+            const containers = await BF.request(`/api/remote/servers/${serverId}/discover`, { errorToast:false });
+            document.getElementById('discoveredContainers').innerHTML = containers.length ? `<table class="md-table"><thead><tr><th>Контейнер</th><th>Образ</th><th>Тип</th><th></th></tr></thead><tbody>${containers.map(container => `<tr><td><div style="display:flex;align-items:center;gap:10px;">${bfIcon(getServiceIconPath(container.containerName), 'size-18 service-icon')}<span>${escapeHtml(container.containerName)}</span></div></td><td>${escapeHtml(container.image)}</td><td>${container.isComposeManaged ? 'Docker Compose' : 'Docker'}</td><td><button class="md-btn md-btn-text" onclick="addDiscoveredContainer('${container.containerName}')">${bfIcon('add', 'size-18')}Добавить</button></td></tr>`).join('')}</tbody></table>` : 'Новых контейнеров не найдено.';
         } catch (e) { showDialogError('containerDialogError', e.message); }
     }
 
     async function addDiscoveredContainer(containerName) {
         try {
-            const response = await fetch(`/api/remote/servers/${containerServerId}/containers`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({containerName}) });
-            if (!response.ok) throw new Error(await responseMessage(response));
+            await BF.request(`/api/remote/servers/${containerServerId}/containers`, {
+                method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({containerName}), errorToast:false
+            });
             closeDialog('containerDialogScrim');
             showNotification('success', 'Контейнер добавлен');
             await loadRemoteContainers(containerServerId);
         } catch (e) { showDialogError('containerDialogError', e.message); }
     }
 
-    function openConsoleDialog(serverId) {
+    async function openConsoleDialog(serverId) {
         const server = remoteServers.find(item => item.id === serverId);
         if (!server) return;
 
@@ -817,8 +1102,17 @@
         setConsoleInputEnabled(false);
         document.getElementById('consoleDialogScrim').classList.add('open');
 
+        let stepUpQuery;
+        try {
+            stepUpQuery = await BF.stepUpQuery('remote.console', `serverId=${serverId}`);
+        } catch (e) {
+            document.getElementById('consoleOutput').textContent = `Подтверждение не получено: ${e.message}\n`;
+            setConsoleStatus('Нет подтверждения', 'md-status-error');
+            return;
+        }
+
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const socket = new WebSocket(`${protocol}//${location.host}/api/remote/servers/${serverId}/console`);
+        const socket = new WebSocket(`${protocol}//${location.host}/api/remote/servers/${serverId}/console?${stepUpQuery}`);
         const consoleDecoder = new TextDecoder();
         socket.binaryType = 'arraybuffer';
         consoleSocket = socket;
@@ -921,33 +1215,44 @@
 
     async function deleteContainer(serverId, containerId) {
         if (!confirm('Убрать контейнер из списка панели? Сам Docker-контейнер не будет удалён.')) return;
-        const response = await fetch(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE' });
-        if (!response.ok) { showNotification('error', await responseMessage(response)); return; }
-        await loadRemoteContainers(serverId);
+        try {
+            await BF.request(`/api/remote/servers/${serverId}/containers/${containerId}`, { method:'DELETE', errorToast:false });
+            await loadRemoteContainers(serverId);
+        } catch (e) { showNotification('error', e.message); }
     }
 
     function closeDialog(id) { document.getElementById(id).classList.remove('open'); }
     function showDialogError(id, message) { const el = document.getElementById(id); el.textContent = message; el.style.display = ''; }
     function hideDialogError(id) { document.getElementById(id).style.display = 'none'; }
-    async function responseMessage(response) { try { return (await response.json()).message || `HTTP ${response.status}`; } catch { return `HTTP ${response.status}`; } }
 
     document.getElementById('serverForm').addEventListener('submit', saveServer);
     document.getElementById('consoleInputForm').addEventListener('submit', sendConsoleCommand);
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти из панели?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     // ---- Init ----
+    function applyPermissions() {
+        if (!window.BF) return;
+        document.querySelectorAll('[data-perm]').forEach(el => {
+            el.style.display = BF.can(el.dataset.perm) ? '' : 'none';
+        });
+    }
+    document.addEventListener('bf:roles', () => {
+        applyPermissions();
+        if (servicesData.length) renderServicesTable();
+        if (remoteServers.length) renderRemoteServers();
+    });
+
     (async function () {
         const auth = await checkAuth();
         if (!auth) return;
-        if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? `Создан: ${formatDate(auth.createdAt)}` : '');
+        applyPermissions();
         await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers()]);
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        resumeActiveDeployJob();
+        BF.pageReady();
         refreshInterval = setInterval(() => {
             loadServices();
             loadAdminPanelUpdateStatus();

@@ -133,7 +133,8 @@
   // ---- Быстрые действия ----
 
   function renderActions(filter) {
-    const navItems = window.__mdNavItems || [];
+    const can = window.BF && window.BF.can ? window.BF.can : function () { return false; };
+    const navItems = (window.__mdNavItems || []).filter(it => !it.permission || can(it.permission));
     const q = filter.trim().toLowerCase();
     const filtered = q
       ? navItems.filter(it => it.label.toLowerCase().includes(q))
@@ -194,8 +195,8 @@
     try {
       if (kind === 'guid') {
         const [fileRes, chatRes] = await Promise.allSettled([
-          fetch(`/api/files/${encodeURIComponent(query)}`),
-          fetch(`/api/chats/${encodeURIComponent(query)}`)
+          BF.api(`/api/files/${encodeURIComponent(query)}`),
+          BF.api(`/api/chats/${encodeURIComponent(query)}`)
         ]);
         if (fileRes.status === 'fulfilled' && fileRes.value.ok) {
           blocks.push({ kind: 'file', data: await fileRes.value.json() });
@@ -205,7 +206,7 @@
         }
       } else {
         const params = new URLSearchParams({ query, offset: 0, size: 8 });
-        const res = await fetch(`/api/users?${params}`);
+        const res = await BF.api(`/api/users?${params}`);
         if (res.ok) {
           const data = await res.json();
           data.users.forEach(u => blocks.push({ kind: 'user', data: u }));

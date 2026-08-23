@@ -46,6 +46,8 @@
     var isLoadingNewer = false;
     var hasNewerGap = false;      // хвост буфера обрезан — окно не доходит до конца чата
     var isJumpingToTail = false;
+    var isJumpingToMessage = false;
+    var resyncSeparatorId = null; // id первого сообщения после resync-пропуска (разделитель «Новые сообщения»)
     var markReadTimer = null;
     var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
@@ -120,6 +122,7 @@
     // Sticker picker elements
     var stickerBtn = $('#stickerBtn');
     var stickerPicker = $('#stickerPicker');
+    var stickerSearch = $('#stickerSearch');
     var stickerPacksBar = $('#stickerPacksBar');
     var stickerGrid = $('#stickerGrid');
 
@@ -147,7 +150,7 @@
     function botBadgeMarkup() {
         var label = u.escapeHtml(BF.i18n.t('common.bot'));
         return '<span class="bot-badge" role="img" aria-label="' + label + '" title="' + label + '">' +
-            BF.icons.html('services', 'bots') + '</span>';
+            BF.icons.html('bots') + '</span>';
     }
 
     function setChatCallButtonsVisible(visible) {
@@ -298,7 +301,7 @@
                 '<div class="chat-avatar">' + avatarHtml +
                 onlineDot + '</div>' +
                 '<div class="chat-info"><div class="chat-info-top">' +
-                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">' + BF.icons.html('settings', 'security') + '</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
+                '<span class="chat-name">' + (isPrivate ? '<span class="chat-lock" title="' + u.escapeHtml(BF.i18n.t('newchat.mode.private')) + '">' + BF.icons.html('security') + '</span>' : '') + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + (isBot ? botBadgeMarkup() : '') + '</span>' +
                 '<span class="chat-time">' + time + '</span></div>' +
                 '<div class="chat-info-bottom"><span class="chat-preview">' + previewHtml + '</span>' +
                 '<span class="chat-unread' + (unread > 0 ? ' visible' : '') + '">' + unreadText + '</span></div></div>';
@@ -419,6 +422,7 @@
         hasNewerGap = false;
         isLoadingNewer = false;
         isJumpingToTail = false;
+        resyncSeparatorId = null;
         clearPendingReply(false);
         clearPendingEdit();
         closeContextMenu();
@@ -478,7 +482,10 @@
                                 handleOnlineStatus(s.userId, s.status, s.lastSeen);
                             }
                         }).catch(function () {});
-                    }).catch(function () {});
+                    }).catch(function () {
+                        loadingMessages.classList.remove('visible');
+                        showToast(BF.i18n.t('common.loadError'), true);
+                    });
                 }
             } else {
                 chatHeaderStatus.textContent = BF.i18n.tp('group.memberCount', info.membersId ? info.membersId.length : 0);
@@ -534,9 +541,7 @@
         renderChatList();
     }
 
-    // Скроллит к первому непрочитанному (если есть) либо в самый низ чата,
-    // и повторяет попытку после того как догрузятся картинки сообщений —
-    // без этого reflow от догрузки картинок сбивает позицию скролла.
+    // Скроллит к первому непрочитанному (если есть) либо в самый низ чата.
     function settleScroll(unreadId) {
         function anchor() {
             var el = unreadId && messagesInner.querySelector('[data-msg-id="' + unreadId + '"]');
@@ -544,6 +549,27 @@
             else scrollToBottom();
         }
         anchor();
+        resettleAfterImages(anchor);
+    }
+
+    // Скроллит цель прыжка в центр вьюпорта и подсвечивает её (animation msgHighlight).
+    function settleHighlight(id) {
+        function anchor() {
+            var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
+            if (el) el.scrollIntoView({ block: 'center' });
+        }
+        anchor();
+        var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
+        if (el) {
+            el.classList.add('highlight');
+            setTimeout(function () { el.classList.remove('highlight'); }, 1500);
+        }
+        resettleAfterImages(anchor);
+    }
+
+    // Повторяет anchor, когда догрузятся картинки сообщений — без этого reflow
+    // от картинок сбивает позицию скролла после открытия чата или прыжка к сообщению.
+    function resettleAfterImages(anchor) {
         var pending = Array.prototype.filter.call(messagesInner.querySelectorAll('img'), function (im) { return !im.complete; });
         if (pending.length === 0) return;
         var settled = false;
@@ -585,6 +611,14 @@
         return sep;
     }
 
+    function makeUnreadSeparator(i18nKey) {
+        var usep = document.createElement('div');
+        usep.className = 'msg-unread-separator';
+        usep.dataset.sepKey = i18nKey;
+        usep.innerHTML = '<span>' + u.escapeHtml(BF.i18n.t(i18nKey)) + '</span>';
+        return usep;
+    }
+
     function prefetchAttachmentUrls(list) {
         var fileIds = [];
         list.forEach(function (msg) {
@@ -603,7 +637,12 @@
         return prefetchAttachmentUrls(messages).then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
-            var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
+            // Разделитель непрочитанных: якорь resync-догрузки («Новые сообщения»)
+            // важнее первого непрочитанного из chat info. Приватные чаты якорь не
+            // ставят (их resync идёт мимо resyncCurrentChatTail) — игнорируем.
+            var sepId = currentChatType !== 1 && resyncSeparatorId ? resyncSeparatorId
+                : (currentChatInfo && currentChatInfo.firstUnreadMessageId);
+            var sepKey = currentChatType !== 1 && resyncSeparatorId ? 'chat.newMessages' : 'chat.unreadMessages';
             messages.forEach(function (msg, index) {
                 chain = chain.then(function () {
                     var msgDate = u.formatDate(msg.sentAt);
@@ -611,11 +650,8 @@
                         lastDate = msgDate;
                         messagesInner.appendChild(makeDateSeparator(msgDate));
                     }
-                    if (unreadId && Number(msg.id) === Number(unreadId)) {
-                        var usep = document.createElement('div');
-                        usep.className = 'msg-unread-separator';
-                        usep.innerHTML = '<span>' + u.escapeHtml(BF.i18n.t('chat.unreadMessages')) + '</span>';
-                        messagesInner.appendChild(usep);
+                    if (sepId && Number(msg.id) === Number(sepId)) {
+                        messagesInner.appendChild(makeUnreadSeparator(sepKey));
                     }
                     return BF.messages.buildMessageElement(msg, myUserId, getUser, showMediaOverlay, buildMessageOptions(msg, index)).then(function (el) {
                         el.dataset.date = msgDate;
@@ -690,9 +726,12 @@
     }
 
     function removeOrphanSeparators() {
-        Array.prototype.slice.call(messagesInner.querySelectorAll('.msg-date-separator')).forEach(function (sep) {
+        Array.prototype.slice.call(messagesInner.querySelectorAll('.msg-date-separator, .msg-unread-separator')).forEach(function (sep) {
             var next = sep.nextElementSibling;
-            if (!next || next.classList.contains('msg-date-separator')) sep.remove();
+            if (!next || next.classList.contains('msg-date-separator')) {
+                if (sep.dataset.sepKey === 'chat.newMessages') resyncSeparatorId = null;
+                sep.remove();
+            }
         });
     }
 
@@ -703,7 +742,7 @@
 
     // Возврат к живому хвосту, когда скользящее окно обрезало последние сообщения.
     function jumpToLiveTail() {
-        if (isJumpingToTail || !currentChatId) return;
+        if (isJumpingToTail || isJumpingToMessage || !currentChatId) return;
         isJumpingToTail = true;
         var chatId = currentChatId;
 
@@ -713,6 +752,7 @@
             mergePendingUploadsIntoMessages(chatId);
             hasNewerGap = false;
             noMoreOlder = false;
+            resyncSeparatorId = null; // окно снова на живом хвосте — границы «нового» нет
             return renderMessages().then(function () {
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             });
@@ -762,7 +802,7 @@
         };
     }
 
-    function appendMessageToView(msg) {
+    function appendMessageToView(msg, separatorKey) {
         // Хвост буфера обрезан — сообщение лежит за пределами загруженного окна. Не рисуем его
         // и убираем из массива, чтобы тот остался непрерывным: пользователь увидит сообщение,
         // когда вернётся к живому хвосту (кнопка «вниз» или прокрутка).
@@ -771,10 +811,10 @@
             if (gapIdx >= 0) messages.splice(gapIdx, 1);
             return Promise.resolve();
         }
-        return appendMessageElement(msg);
+        return appendMessageElement(msg, separatorKey);
     }
 
-    function appendMessageElement(msg) {
+    function appendMessageElement(msg, separatorKey) {
         var previous = messages.length > 1 ? messages[messages.length - 2] : null;
         var refreshPrevious = previous && currentChatInfo && currentChatInfo.isGroupChat &&
             previous.senderId !== myUserId && canGroupMessages(previous, msg)
@@ -794,6 +834,7 @@
                     if (node.dataset && node.dataset.date) { lastMsgDate = node.dataset.date; break; }
                 }
                 if (msgDate !== lastMsgDate) messagesInner.appendChild(makeDateSeparator(msgDate));
+                if (separatorKey) messagesInner.appendChild(makeUnreadSeparator(separatorKey));
                 el.dataset.date = msgDate;
                 messagesInner.appendChild(el);
             });
@@ -929,7 +970,7 @@
 
     // Подгрузка новых сообщений, когда скользящее окно обрезало хвост ленты.
     function loadNewerMessages() {
-        if (!hasNewerGap || isLoadingNewer || isJumpingToTail || !currentChatId || messages.length === 0) return;
+        if (!hasNewerGap || isLoadingNewer || isJumpingToTail || isJumpingToMessage || !currentChatId || messages.length === 0) return;
         isLoadingNewer = true;
         var pagedChatId = currentChatId;
         var newestId = messages[messages.length - 1].id || 0;
@@ -947,7 +988,10 @@
             fresh.forEach(function (msg) {
                 chain = chain.then(function () {
                     messages.push(msg);
-                    return appendMessageElement(msg);
+                    // resync-пропуск мог прийти именно этой страницей (окно было в
+                    // середине истории) — перед якорным сообщением ставим разделитель.
+                    var sepKey = resyncSeparatorId && Number(msg.id) === Number(resyncSeparatorId) ? 'chat.newMessages' : null;
+                    return appendMessageElement(msg, sepKey);
                 });
             });
             return chain.then(function () { trimMessages('head'); });
@@ -956,7 +1000,7 @@
 
     // Lazy-load older messages
     messagesArea.addEventListener('scroll', function () {
-        if (messagesArea.scrollTop < 100 && !isLoadingOlder && !noMoreOlder && currentChatId && messages.length > 0) {
+        if (messagesArea.scrollTop < 100 && !isLoadingOlder && !isJumpingToMessage && !noMoreOlder && currentChatId && messages.length > 0) {
             isLoadingOlder = true;
             loadingMessages.classList.add('visible');
             var oldestId = messages[0].id || 0;
@@ -1286,7 +1330,9 @@
         if (markReadPending.size === 0) return;
         var ids = Array.from(markReadPending);
         markReadPending.clear();
-        BF.api.markAsRead(ids).catch(function () {});
+        BF.api.markAsRead(ids).catch(function () {
+            showToast(BF.i18n.t('error.markRead'), true);
+        });
     }
 
     // ========== TITLE UNREAD BADGE ==========
@@ -1582,6 +1628,9 @@
                 ? Math.max.apply(null, numericMessageIds)
                 : -Infinity;
             var tailOnly = numericMessageIds.length > 0 && diff.news.every(function (m) { return Number(m.id) > maxCurId; });
+            // Якорь разделителя «Новые сообщения»: первое пропущенное. Не ставим, когда
+            // пользователь был у нижнего края — там догруженное сразу помечается прочитанным.
+            resyncSeparatorId = !wasAtBottom && diff.news.length > 0 ? diff.news[0].id : null;
             if (!tailOnly) {
                 messages = fetched;
                 mergePendingUploadsIntoMessages(chatId);
@@ -1598,12 +1647,16 @@
             diff.readUpdates.forEach(applyReadByUpdate);
 
             var chain = Promise.resolve();
+            var firstNewsAppended = false;
             diff.news.forEach(function (m) {
                 chain = chain.then(function () {
                     if (chatId !== currentChatId) return;
                     if (reconcilePendingUpload(chatId, m)) return;
                     messages.push(m);
-                    return appendMessageToView(m);
+                    // Перед первым дописанным — разделитель «Новые сообщения».
+                    var sepKey = resyncSeparatorId && !firstNewsAppended ? 'chat.newMessages' : null;
+                    firstNewsAppended = true;
+                    return appendMessageToView(m, sepKey);
                 });
             });
             return chain.then(function () {
@@ -1667,9 +1720,20 @@
         // Показываем/скрываем кнопку прокрутки вниз
         var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
+        if (distFromBottom < 100) loadNewerMessages();
         if (distFromBottom <= 300 && newMessagesBelowCount > 0) {
             newMessagesBelowCount = 0;
             updateScrollBadge();
+        }
+
+        // Разделитель «Новые сообщения» полностью ушёл выше видимой области —
+        // пользователь его прошёл: убираем и элемент, и якорь.
+        if (resyncSeparatorId) {
+            var newMsgSep = messagesInner.querySelector('.msg-unread-separator[data-sep-key="chat.newMessages"]');
+            if (newMsgSep && newMsgSep.getBoundingClientRect().bottom < messagesArea.getBoundingClientRect().top) {
+                newMsgSep.remove();
+                resyncSeparatorId = null;
+            }
         }
 
         if (_markReadScrollTimer) return;
@@ -2387,6 +2451,7 @@
                 if (fileId) {
                     var image = document.createElement('img');
                     image.alt = '';
+                    BF.files.bindResilientMedia(image, fileId, true);
                     card.appendChild(image);
                     BF.files.getFileUrls([fileId]).then(function (urls) {
                         var item = urls && urls[0];
@@ -2429,7 +2494,9 @@
         navigator.clipboard.writeText(String(text)).then(function () {
             BF.sound.play('success');
             groupToast(BF.i18n.t('common.copied'));
-        }).catch(function () {});
+        }).catch(function () {
+            showToast(BF.i18n.t('error.copy'), true);
+        });
     }
     document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -2440,15 +2507,21 @@
 
     // ========== GROUP INFO PANEL ==========
 
-    function groupToast(text) {
+    function showToast(text, isError) {
         if (!soonToastEl) return;
+        if (showToast._t) clearTimeout(showToast._t);
         soonToastEl.textContent = text;
+        soonToastEl.classList.toggle('error', !!isError);
         soonToastEl.classList.add('visible');
-        if (groupToast._t) clearTimeout(groupToast._t);
-        groupToast._t = setTimeout(function () {
+        showToast._t = setTimeout(function () {
             soonToastEl.classList.remove('visible');
+            soonToastEl.classList.remove('error');
             soonToastEl.textContent = BF.i18n.t('common.comingSoon');
         }, 1800);
+    }
+
+    function groupToast(text) {
+        showToast(text, false);
     }
 
     // ========== SCROLL TO BOTTOM BUTTON ==========
@@ -2476,6 +2549,37 @@
     var stickerPacksCache = null;
     var stickerPacksContentCache = {}; // packId → { stickers, coverFileId }
     var currentStickerPackId = null;
+    var RECENT_TAB = '__recent__';
+    var RECENT_STICKER_LIMIT = 32;
+    var recentStickerIds = [];
+    var stickerSearchQuery = '';
+    var stickerGridRenderVersion = 0;
+
+    function recentStickersKey() { return BF.node.key('bf_recent_stickers_' + myUserId); }
+    try { recentStickerIds = JSON.parse(localStorage.getItem(recentStickersKey()) || '[]') || []; } catch (_) { recentStickerIds = []; }
+
+    function addRecentSticker(stickerId) {
+        if (!stickerId) return;
+        var i = recentStickerIds.indexOf(stickerId);
+        if (i >= 0) recentStickerIds.splice(i, 1);
+        recentStickerIds.unshift(stickerId);
+        if (recentStickerIds.length > RECENT_STICKER_LIMIT) recentStickerIds.length = RECENT_STICKER_LIMIT;
+        try { localStorage.setItem(recentStickersKey(), JSON.stringify(recentStickerIds)); } catch (_) {}
+    }
+
+    // Локальные id резолвятся против закешированных паков: стикер, удалённый из пака, просто исчезает.
+    function resolveRecentStickers() {
+        var result = [];
+        recentStickerIds.forEach(function (id) {
+            for (var packId in stickerPacksContentCache) {
+                var stickers = stickerPacksContentCache[packId].stickers || [];
+                for (var i = 0; i < stickers.length; i++) {
+                    if (stickers[i].id === id) { result.push(stickers[i]); return; }
+                }
+            }
+        });
+        return result;
+    }
 
     if (stickerBtn) {
         stickerBtn.addEventListener('click', function (e) {
@@ -2483,7 +2587,10 @@
             var isOpen = stickerPicker.classList.contains('visible');
             stickerPicker.classList.toggle('visible', !isOpen);
             stickerBtn.classList.toggle('active', !isOpen);
-            if (!isOpen) loadStickerPacks();
+            if (!isOpen) {
+                if (stickerSearch) { stickerSearch.value = ''; stickerSearchQuery = ''; }
+                loadStickerPacks();
+            }
         });
     }
 
@@ -2495,8 +2602,25 @@
         }
     });
 
+    if (stickerSearch) {
+        stickerSearch.addEventListener('input', function () {
+            stickerSearchQuery = stickerSearch.value.trim();
+            renderStickerGrid();
+        });
+    }
+
+    function defaultStickerTabId() {
+        return resolveRecentStickers().length > 0 ? RECENT_TAB : stickerPacksCache[0].id;
+    }
+
     function loadStickerPacks() {
-        if (stickerPacksCache) { renderStickerPackTabs(); return; }
+        if (stickerPacksCache) {
+            if (stickerPacksCache.length === 0) return;
+            renderStickerPackTabs();
+            if (!currentStickerPackId) loadStickerPackContent(defaultStickerTabId());
+            else if (currentStickerPackId === RECENT_TAB) loadStickerPackContent(RECENT_TAB);
+            return;
+        }
         BF.api.listStickerPacks(0, 50).then(function (data) {
             stickerPacksCache = data.packs || [];
             if (stickerPacksCache.length === 0) {
@@ -2523,7 +2647,7 @@
                 return coverIds.length > 0 ? BF.files.getFileUrls(coverIds) : Promise.resolve();
             }).then(function () {
                 renderStickerPackTabs();
-                if (stickerPacksCache.length > 0) loadStickerPackContent(stickerPacksCache[0].id);
+                loadStickerPackContent(defaultStickerTabId());
             });
         }).catch(function () {
             if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('common.loadError')) + '</div>';
@@ -2533,6 +2657,17 @@
     function renderStickerPackTabs() {
         if (!stickerPacksBar) return;
         stickerPacksBar.innerHTML = '';
+        if (resolveRecentStickers().length > 0) {
+            var recentTab = document.createElement('div');
+            recentTab.className = 'sticker-pack-tab recent' + (currentStickerPackId === RECENT_TAB ? ' active' : '');
+            recentTab.title = BF.i18n.t('sticker.recent');
+            recentTab.appendChild(BF.icons.element('history'));
+            recentTab.addEventListener('click', function (event) {
+                event.stopPropagation();
+                loadStickerPackContent(RECENT_TAB);
+            });
+            stickerPacksBar.appendChild(recentTab);
+        }
         stickerPacksCache.forEach(function (pack) {
             var tab = document.createElement('div');
             tab.className = 'sticker-pack-tab' + (pack.id === currentStickerPackId ? ' active' : '');
@@ -2550,31 +2685,40 @@
             } else {
                 tab.textContent = (pack.name || '?')[0].toUpperCase();
             }
-            tab.addEventListener('click', function () { loadStickerPackContent(pack.id); });
+            tab.addEventListener('click', function (event) {
+                event.stopPropagation();
+                loadStickerPackContent(pack.id);
+            });
             stickerPacksBar.appendChild(tab);
         });
     }
 
-    function loadStickerPackContent(packId) {
-        currentStickerPackId = packId;
+    function currentTabStickers() {
+        if (currentStickerPackId === RECENT_TAB) return resolveRecentStickers();
+        var cached = stickerPacksContentCache[currentStickerPackId];
+        return cached ? cached.stickers : [];
+    }
+
+    function renderStickerGrid() {
         if (!stickerGrid) return;
+        var renderVersion = ++stickerGridRenderVersion;
         stickerGrid.innerHTML = '';
-
-        if (stickerPacksBar) {
-            stickerPacksBar.querySelectorAll('.sticker-pack-tab').forEach(function (tab, i) {
-                tab.classList.toggle('active', stickerPacksCache[i] && stickerPacksCache[i].id === packId);
-            });
-        }
-
-        var cached = stickerPacksContentCache[packId];
-        var stickers = cached ? cached.stickers : [];
+        var stickers = currentTabStickers();
         if (stickers.length === 0) {
-            stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('sticker.packEmpty')) + '</div>';
+            stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t(currentStickerPackId === RECENT_TAB ? 'sticker.empty' : 'sticker.packEmpty')) + '</div>';
             return;
+        }
+        if (stickerSearchQuery) {
+            stickers = stickers.filter(function (s) { return (s.emoji || '').indexOf(stickerSearchQuery) >= 0; });
+            if (stickers.length === 0) {
+                stickerGrid.innerHTML = '<div class="sticker-pack-empty">' + u.escapeHtml(BF.i18n.t('sticker.empty')) + '</div>';
+                return;
+            }
         }
         // Показываем full-версии стикеров (fileId, не preview)
         var fileIds = stickers.map(function (s) { return s.fileId; }).filter(Boolean);
         BF.files.getFileUrls(fileIds).then(function () {
+            if (renderVersion !== stickerGridRenderVersion) return;
             stickers.forEach(function (s) {
                 var fd = BF.files.getCachedFileUrl(s.fileId);
                 var url = fd && fd.url;
@@ -2583,15 +2727,23 @@
                 img.src = url;
                 img.title = s.emoji || '';
                 img.loading = 'lazy';
-                img.addEventListener('click', function () { sendSticker(s.fileId); });
+                img.addEventListener('click', function () { sendSticker(s); });
                 BF.files.bindResilientMedia(img, s.fileId, false);
                 stickerGrid.appendChild(img);
             });
         });
     }
 
-    function sendSticker(fileId) {
+    function loadStickerPackContent(packId) {
+        currentStickerPackId = packId;
+        renderStickerPackTabs();
+        renderStickerGrid();
+    }
+
+    function sendSticker(sticker) {
+        var fileId = sticker && sticker.fileId;
         if (!currentChatId || currentChatType === 1 || !fileId) return;
+        addRecentSticker(sticker.id);
         stickerPicker.classList.remove('visible');
         stickerBtn.classList.remove('active');
         var sentChatId = currentChatId;
@@ -2611,18 +2763,15 @@
                     renderChatList();
                 }
             }
-        }).catch(function () {});
+        }).catch(function () {
+            showToast(BF.i18n.t('error.sendMessage'), true);
+        });
     }
 
     // ========== REPLY / FORWARD / CONTEXT MENU ==========
 
     function showSoonToast() {
-        if (!soonToastEl) return;
-        soonToastEl.classList.add('visible');
-        if (showSoonToast._t) clearTimeout(showSoonToast._t);
-        showSoonToast._t = setTimeout(function () {
-            soonToastEl.classList.remove('visible');
-        }, 1800);
+        showToast(BF.i18n.t('common.comingSoon'), false);
     }
 
     function buildReplyPreviewText(msg) {
@@ -2706,7 +2855,9 @@
             deleteMsgOk.disabled = true;
             BF.api.deleteMessage(messageId).then(function () {
                 applyMessageDelete(currentChatId, messageId);
-            }).catch(function () {})
+            }).catch(function () {
+                showToast(BF.i18n.t('error.deleteMessage'), true);
+            })
             .finally(function () {
                 deleteMsgOk.disabled = false;
                 BF.utils.closeOverlay(deleteMsgConfirmOverlay);
@@ -2865,7 +3016,9 @@
             });
         }).then(function (png) {
             return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-        }).catch(function () {});
+        }).catch(function () {
+            showToast(BF.i18n.t('error.copy'), true);
+        });
     }
 
     function chatAvatarMarkup(chat) {
@@ -2964,17 +3117,15 @@
             forwardSendBtn.disabled = false;
             forwardSendBtn.textContent = originalLabel;
             closeForwardModal();
-            if (soonToastEl) {
-                soonToastEl.textContent = BF.i18n.tp('forward.done', ids.length);
-                soonToastEl.classList.add('visible');
-                setTimeout(function () {
-                    soonToastEl.classList.remove('visible');
-                    soonToastEl.textContent = BF.i18n.t('common.comingSoon');
-                }, 1800);
-            }
+            showToast(BF.i18n.tp('forward.done', ids.length), false);
         });
     }
 
+    // Прыжок к сообщению (reply-цитата, закреплённые): цель уже в DOM — плавный
+    // скролл с подсветкой; иначе грузим окно ±30 вокруг цели и заменяем буфер
+    // целиком. Идём через loadMessagesPage — работает и в приватных (E2E) чатах.
+    // Прежний merge старого буфера с загруженным участком оставлял дыру в истории
+    // без флага hasNewerGap, из-за чего хвост «смешивался» с прыжком.
     function scrollToMessage(id) {
         if (!id) return;
         var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
@@ -2984,25 +3135,34 @@
             setTimeout(function () { el.classList.remove('highlight'); }, 1500);
             return;
         }
-        if (!currentChatId) return;
-        BF.api.listMessages(currentChatId, id, 25, 25).then(function (data) {
-            if (!data || !data.messages || data.messages.length === 0) return;
-            var existingIds = new Set(messages.map(function (m) { return m.id; }));
-            var merged = messages.slice();
-            data.messages.forEach(function (m) {
-                if (!existingIds.has(m.id)) merged.push(m);
-            });
-            merged.sort(function (a, b) { return (a.sentAt || 0) - (b.sentAt || 0); });
-            messages = merged;
-            renderMessages().then(function () {
-                var el2 = messagesInner.querySelector('[data-msg-id="' + id + '"]');
-                if (el2) {
-                    el2.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    el2.classList.add('highlight');
-                    setTimeout(function () { el2.classList.remove('highlight'); }, 1500);
-                }
-            });
-        });
+        if (!currentChatId || isJumpingToMessage || isJumpingToTail || isLoadingOlder || isLoadingNewer) return;
+        isJumpingToMessage = true;
+        var chatId = currentChatId;
+
+        loadMessagesPage(chatId, id, 30, 30).then(function (data) {
+            if (chatId !== currentChatId) return;
+            var fetched = (data && data.messages) || [];
+            var target = fetched.find(function (m) { return Number(m.id) === Number(id); });
+            if (!target) {
+                showToast(BF.i18n.t('chat.messageNotFound'), true);
+                return;
+            }
+
+            messages = fetched;
+            mergePendingUploadsIntoMessages(chatId);
+            resyncSeparatorId = null; // окно перенесено к цели прыжка — прежняя граница «нового» неактуальна
+
+            // Края чата определяем по числу сообщений старее/новее цели: api.js
+            // подменяет offsetBefore=0 на 30, поэтому размер ответа не показатель.
+            // При ровно 30 оставляем «зазор» — следующая догрузка его закроет.
+            var targetId = Number(id);
+            var olderCount = fetched.filter(function (m) { return Number(m.id) < targetId; }).length;
+            var newerCount = fetched.filter(function (m) { return Number(m.id) > targetId; }).length;
+            noMoreOlder = olderCount < 30;
+            hasNewerGap = newerCount >= 30; // хвост за окном: живые сообщения не рисуются (guard appendMessageToView)
+
+            return renderMessages().then(function () { settleHighlight(id); });
+        }).finally(function () { isJumpingToMessage = false; });
     }
 
     // --- Reply preview close handler ---
@@ -3052,7 +3212,9 @@
                 openForwardModal(resolveForwardSourceIds(msg, msgId));
             } else if (act === 'copy-text') {
                 var t = msg && msg.content && msg.content.text;
-                if (t) navigator.clipboard.writeText(t).catch(function () {});
+                if (t) navigator.clipboard.writeText(t).catch(function () {
+                    showToast(BF.i18n.t('error.copy'), true);
+                });
             } else if (act === 'copy-image') {
                 copyImageToClipboard(image);
             } else if (act === 'edit') {
@@ -3234,7 +3396,7 @@
     var chatCmShownAt = 0;
 
     function contextMenuIcon() {
-        return '<span class="cm-icon">' + BF.icons.html('settings', 'chat-folders') + '</span>';
+        return '<span class="cm-icon">' + BF.icons.html('chat-folders') + '</span>';
     }
 
     function buildChatContextMenu(chatId) {
@@ -3548,8 +3710,16 @@
         });
     }
 
+    if (BF.stickerPack && BF.stickerPack.init) {
+        BF.stickerPack.init({ onStickerSend: sendSticker });
+    }
+
     BF.realtime.startAll();
     if (BF.calls && BF.calls.start) BF.calls.start();
+
+    // Метаданные ноды (в т.ч. отдельный файловый адрес): на самой ноде экрана выбора
+    // не было, а адрес мог и поменяться. Промах не мешает — файлы пойдут по адресам Files.
+    BF.node.refreshMeta();
 
     if (BF.personalization && BF.personalization.init) BF.personalization.init();
 

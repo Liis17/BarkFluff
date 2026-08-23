@@ -16,7 +16,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
     private const int MaxDescriptionLength = 512;
     private const int MaxLocationLength = 128;
     private const int MaxBeaconHostLength = 2048;
-    private const int MaxWebEndpointLength = 2048;
+    private const int MaxPublicEndpointLength = 2048;
 
     [GeneratedRegex(@"^#?[0-9A-Fa-f]{6}$", RegexOptions.Compiled)]
     private static partial Regex HexColorRegex();
@@ -119,7 +119,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
         // web_endpoint необязателен: нода без веб-клиента просто не попадёт в список выбора.
         if (!string.IsNullOrWhiteSpace(server.WebEndpoint))
         {
-            if (server.WebEndpoint.Length > MaxWebEndpointLength || !IsValidWebEndpoint(server.WebEndpoint))
+            if (server.WebEndpoint.Length > MaxPublicEndpointLength || !IsValidPublicEndpoint(server.WebEndpoint))
             {
                 _logger.LogWarning(
                     "Попытка регистрации сервера '{ServerName}' с некорректным WebEndpoint: {WebEndpoint}",
@@ -127,6 +127,21 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
                     server.WebEndpoint
                 );
                 throw new InvalidWebEndpointException();
+            }
+        }
+
+        // files_media_endpoint необязателен: нода без отдельного файлового адреса
+        // отдаёт файлы по основному адресу Files, как было до появления поля.
+        if (!string.IsNullOrWhiteSpace(server.FilesMediaEndpoint))
+        {
+            if (server.FilesMediaEndpoint.Length > MaxPublicEndpointLength || !IsValidPublicEndpoint(server.FilesMediaEndpoint))
+            {
+                _logger.LogWarning(
+                    "Попытка регистрации сервера '{ServerName}' с некорректным FilesMediaEndpoint: {FilesMediaEndpoint}",
+                    server.Name,
+                    server.FilesMediaEndpoint
+                );
+                throw new InvalidFilesMediaEndpointException();
             }
         }
 
@@ -166,7 +181,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
         return new RegisterServerResponse();
     }
 
-    private static bool IsValidBeaconHost(string host)
+    internal static bool IsValidBeaconHost(string host)
     {
         if (host.Contains("://", StringComparison.Ordinal))
         {
@@ -177,9 +192,9 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
         return Uri.CheckHostName(host) != UriHostNameType.Unknown;
     }
 
-    // Браузер получит этот адрес как origin gRPC-Web клиентов, поэтому требуем
-    // абсолютный http/https-URI без пути.
-    private static bool IsValidWebEndpoint(string endpoint)
+    // Клиент получит этот адрес как origin (gRPC-Web шлюз, файловый HTTP), поэтому
+    // требуем абсолютный http/https-URI без пути.
+    internal static bool IsValidPublicEndpoint(string endpoint)
     {
         return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
@@ -193,5 +208,10 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
 
         if (!HexColorRegex().IsMatch(color))
             throw new InvalidHexColorException();
+    }
+
+    internal static bool IsValidHexColor(string color)
+    {
+        return string.IsNullOrEmpty(color) || HexColorRegex().IsMatch(color);
     }
 }

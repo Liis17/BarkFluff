@@ -98,6 +98,7 @@
                     location: resp.getLocation(),
                     livekitUrl: resp.getLivekitUrl(),
                     serverName: resp.getServerName(),
+                    filesMediaEndpoint: resp.getFilesMediaEndpoint(),
                     color: color ? color.getMainHex() : ''
                 });
             });

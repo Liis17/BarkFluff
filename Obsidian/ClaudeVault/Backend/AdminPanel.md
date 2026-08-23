@@ -27,6 +27,10 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 `Telegram:Admins` — строка формата `"userId1:username1,userId2:username2"`.
 
+После подтверждения токен хранит только привязку к Telegram-пользователю; роли в токен не копируются. `AdminService` разрешает роли из LiteDB на каждом запросе, поэтому понижение роли действует немедленно. При первом старте каждый пользователь из `Telegram:Admins` получает полный набор `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin`; последующие запуски сохраняют роли, изменённые через `/admins`. Пользователь без записи в коллекции `admins` имеет пустое множество ролей (`Viewer` baseline).
+
+`GET /api/auth/me` возвращает текущие роли. `AdminPermissions` — единая матрица серверного доступа; endpoint filter отвечает `401` без токена и `403` при недостаточной роли. Страничные маршруты с ограничением роли редиректят на `/`.
+
 ### Telegram-бот: сессии админ-панели
 
 `/start` открывает меню с inline-кнопкой **«Мои сессии»**. Экран показывает только неистёкшие сессии текущего Telegram-админа, поддерживает пагинацию и обновление. Из карточки сессии можно увидеть имя, IP, время создания/последней активности/истечения и завершить её после отдельного подтверждения — GUID вручную вводить не требуется. Команды `/tokens`, `/kill` и `/rename` сохранены для обратной совместимости; `/sessions` — текстовый алиас интерактивного списка.
@@ -40,8 +44,12 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 ### Data Layer (LiteDB, не EF Core)
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
+- коллекция `admins` в `TokenDbContext` — Telegram ID, username, множество ролей и данные изменения
 - `MetricsCacheDbContext` — кеш метрик из Seq: `HourlyStats`, `HourlyTraffic`, `HourlyServiceMetrics`, `CompressionRuns` (история ежедневного сжатия логов-метрик) (`db/metrics_cache.db`)
 - `RemoteDockerDbContext` — удалённые SSH-серверы и отслеживаемые Docker-контейнеры (`db/remote_docker.db`)
+- `AuditDbContext` — append-only аудит критических действий (`db/audit.db`, retention 90 дней)
+
+Step-up-запросы хранятся временно в `StepUpService` (память процесса), а не в LiteDB: подтверждение одноразовое и привязано к `AuthToken.Id`.
 
 Все — Singleton. В `docker/backend/docker-compose-dev-backend.yml` каталог `/app/db` проброшен на хост как `./admindata`; файлы базы не должны добавляться в Git.
 
@@ -61,22 +69,25 @@ SSH-параметры больше не передаются через `.env` 
 | `FilesServerApi` | Файлы, S3 |
 | `IdentityServerApi` | Авторизация |
 | `ConfigurationApi` | Конфигурация |
-| `BotsServerApi` | Боты ([[Backend/Bots]]): создание системных, токены, удаление |
+| `BotsServerApi` | Боты ([[Backend/Bots]]): создание, профиль, preview-аватары, токены, удаление |
 
 Ключи: `{Service}Service:Host` и `{Service}Service:Token`.
 
 ### Frontend
 
-Статические HTML-файлы в `Pages/` (`CopyToOutputDirectory=Always`). Шаблонизация: `{{SERVER_STARTED_AT_UTC}}` заменяется в `ServeHtmlFile()`. Маршруты страниц явно в `Program.cs`.
+Статические HTML-файлы в `Pages/` (`CopyToOutputDirectory=Always`). Шаблонизация: `{{SERVER_STARTED_AT_UTC}}` заменяется в `ServeHtmlFile()`. Маршруты страниц явно в `Program.cs`. Для актуального RBAC UI в publish входят `Pages/v2/admins.html`, `Pages/v2/audit.html`, `assets/api.js`, `assets/command-palette.js` и `assets/preview-mode.js`.
 
 ### Services
 
 - `DockerService` — управление Docker-контейнерами
 - `DockerRegistryService` — без авторизации читает semver-теги из публичного `docker.barkfluff.com/v2/{repository}/tags/list` и сравнивает их с образом запущенного BarkFluff-контейнера. Для `:latest` `DockerService` получает локальный `RepoDigest`, а сервис сопоставляет его с `Docker-Content-Digest` semver-manifest’ов registry. `barkfluff-*-dev` проверяется только в одноимённом dev-репозитории; hash и прочие не-semver-теги не участвуют в сравнении.
+- `ComposeImageService` — читает и правит строки `image:` в `docker-compose.yml` (переключение сервиса на ветку обновлений). Разбор построчный, без YAML-библиотеки: меняется только суффикс репозитория (`barkfluff-users` ↔ `barkfluff-users-nightly` ↔ `barkfluff-users-dev`), тег и остальной файл сохраняются байт-в-байт. Запись идёт **в тот же inode** (перезапись по тому же пути, без rename) — иначе bind mount одного файла в контейнер оторвётся. Перед записью — резервная копия в `/app/db/compose-backups` (хранятся последние 20).
+- `DeployJobService` — серверная очередь деплоя (BackgroundService + `Channel<T>`, один потребитель): обновление/перезапуск/переключение ветки сервисов выполняются последовательными задачами, конкурентные `docker compose` операции исключены. Каждый шаг: pull → recreate → health-check (`docker inspect` state + Docker healthcheck, поллинг 3с, таймаут 60с; crash-loop/exited/unhealthy — явное падение). При явном падении шаг откатывается: Update — retag предыдущего image ID + recreate, SwitchBranch — restore compose + recreate. `docker image prune` выполняется только в конце задачи — старые образы нужны для отката. Порядок фиксирован `DeployOrder` (configuration первым — от него зависят остальные). Задачи in-memory (перезапуск панели очищает очередь), хранятся последние 20 завершённых. Результат каждого шага сохраняется в Seq как структурированный `EventType=Deployment`, поэтому сравнение ошибок до/после не зависит от памяти процесса. Admin-panel в шаге обновляет/перезапускает себя через helper-контейнер (`admin-panel-updater`/`admin-panel-restarter`).
 - `SeqService` — проксирование логов из Seq (HttpClient), удаление по фильтру (`Seq.Api`), запись событий в CLEF-формате
 - `S3BrowserService` — браузер S3/Minio (AWSSDK.S3)
 - `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из структурированных `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. Текущий и предыдущий час пересчитываются всегда; отсутствующие часы последних 72 часов догоняются по шесть за цикл. `MetricRollupHours` отмечает только полностью прочитанные часы, поэтому ошибка или лимит Seq не заменяют витрину частичным результатом. История — 30 дней. Для [[Backend/Files]] также показывает одну карточку последней загрузки: полный pipeline и этапы буферизации, SHA-256, обработки и S3 (ms); это не почасовые графики.
 - `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет `MetricRollupHours` для каждого исходного часа; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
+- `HealthCollectorService` — фоновый сбор состояния сервисов платформы (цикл 30 c): liveness-проба `GET /health/live` (fallback `/ping` для образов без health-endpoint'ов; h2c prior-knowledge для gRPC-портов, HTTP/1.1 для `Web` — его `Http1AndHttp2` listener без ALPN не принимает h2c), readiness-проба `GET /health/ready` (кэш проверок зависимостей на стороне сервиса, см. [[Backend/GrpcServer]]), статусы Docker-контейнеров, свежесть логов в Seq для сервисов без HTTP-listener ([[Backend/CloudMessaging]]). Инфраструктура: RabbitMQ — MassTransit-бин панели, S3 — прямая проверка `S3BrowserService.CheckHealthAsync()` (ListObjects MaxKeys=1), PostgreSQL/Redis — агрегат readiness-чеков сервисов (EF-контексты / Redis-чеки) с fallback на docker-state. Снимок в памяти singleton'а — API отвечает мгновенно. Статусы per-service: `healthy | degraded | down | unknown`; `degraded` = жив, но readiness частично провален; `down` = мёртв или все зависимости недоступны. Общий `systemStatus`: `down` если упал критичный сервис ([[Backend/Beacon|Beacon]], [[Backend/Identity|Identity]], [[Backend/Updates|Updates]]), иначе `degraded` при любом не-healthy, иначе `healthy`
 - `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
 
 ### MassTransit (RabbitMQ publisher)
@@ -87,7 +98,13 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 Каждый файл в `Endpoints/` — extension method `Map{Name}Endpoints()`. Добавление: создать метод в существующем файле или новый файл + вызов в `Program.cs`.
 
-`BotsEndpoints` зарегистрирован через `app.MapBotsEndpoints()` и проксирует `ListBots`, создание системного бота, перегенерацию токена и удаление в [[Backend/Bots|Bots]]. Сервис `BarkFluff.Bots` также входит в списки статусов контейнеров и метрик Seq на актуальных страницах `Pages/v2/services.html` и `Pages/v2/dashboard.html`.
+### Health / Liveness / Readiness
+
+`Endpoints/HealthEndpoints.cs` — `GET /api/health/overview` отдаёт снимок из кэша `HealthCollectorService` (пока первый цикл не собран — 503). Канонический список сервисов платформы — `Models/PlatformServiceRegistry.cs` (16 сервисов BarkFluff + 5 инфраструктурных контейнеров; Seq-имя ↔ Docker-контейнер ↔ адрес пробы) — единый источник для health-обзора и Seq-статусов, приватные копии в `SeqEndpoints` убраны. JSON: `{ generatedAtUtc, services: [{ name, container, status, hasProbe, probeUp, probeLatencyMs, dockerState, lastSeenUtc, readiness: { status, checks: [{ name, status, latencyMs, error }] } }], summary: { total, healthy, degraded, down, unknown }, systemStatus, infrastructure: [{ name, status, source, detail }] }`. Доступен baseline Viewer (auth через TokenAuthMiddleware, отдельной роли нет).
+
+Карточка «Активных сервисов» на `Pages/v2/dashboard.html` показывает `up/total` (up = healthy + degraded) из этого endpoint'а, бейдж «Система активна» в шапке — реальный статус `systemStatus`. Панель «Состояние сервисов» — per-service карточки со статус-бейджем, чипами зависимостей из readiness и footer'ом (docker-state, отклик, время последнего лога); панель «Инфраструктура» — RabbitMQ/S3/PostgreSQL/Redis с указанием источника проверки.
+
+`BotsEndpoints` зарегистрирован через `app.MapBotsEndpoints()`. `GET /api/bots` получает `ListBots`, затем одним batch-вызовом `UsersServerApi.ListByIds` добавляет в список только `profilePicturePreview` (без fallback на оригинал). `GET /api/bots/{id}` отдаёт профиль, полный аватар, preview, постер и метаданные; `PUT /profile` обновляет имя/username через Bots, а `/avatar` и `/poster` используют серверные загрузчики Files + Users. Текущий JWT получается лениво через `POST /token`, отдаётся с `Cache-Control: no-store`; `POST /regenerate-token` по-прежнему отзывает старый токен. Ошибки валидации/конфликта/отсутствия бота преобразуются в 400/409/404. Сервис `BarkFluff.Bots` также входит в списки статусов контейнеров и метрик Seq на актуальных страницах `Pages/v2/services.html` и `Pages/v2/dashboard.html`.
 
 `UsersEndpoints` и `SearchUsersServer` показывают только обычные аккаунты: боты не входят в `/api/users` и `totalCount`, а запросы к пользовательским операциям по bot ID отвечают 404. Управление ботами остаётся в `/bots` (`Pages/v2/bots.html`).
 
@@ -98,31 +115,43 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ## HTML-страницы (Pages/)
 
+Авторизованные MD3-страницы используют общий `Pages/v2/assets/api.js`. `BF.api()` остаётся совместимым с `fetch` и централизует обработку истёкшей сессии (`401`) и Telegram step-up (`428`); все запросы данных и действий со страниц идут через `BF.request()`, который разбирает JSON/text/blob, нормализует серверные ошибки и поддерживает loading/toast. `BF.requireAuth()`, `BF.logout()` и `BF.pageReady()` убирают дублирование auth/logout/page-loading между HTML-страницами. Общие toast-стили находятся в `assets/md3.css`.
+
 | Файл | Назначение |
 |------|-----------|
 | `Login.html` | Форма входа: nickname → polling статуса |
-| `dashboard.html` | KPI, трафик, метрики сервисов из Seq |
+| `dashboard.html` | KPI (включая liveness «X/Y» из `/api/health/overview`), бейдж системного статуса, трафик, метрики сервисов из Seq |
 | `services.html` | Управление Docker-контейнерами |
 | `logs.html` | Просмотр логов Seq с фильтрацией |
 | `badges.html` | CRUD бейджей |
 | `stickers.html` | Управление стикерпаками |
 | `users.html` | Управление пользователями (поиск, профили, 2FA, сессии) |
-| `v2/bots.html` | Управление ботами: создание системного, токен (показ один раз), перегенерация, удаление |
+| `v2/bots.html` | Управление ботами: preview в списке, профильная модалка 760px, имя/username, аватар/постер, текущий токен, перегенерация, удаление |
 | `notifications.html` | Рассылка push на Android: форма + Android-preview + send-all / send-by-deviceId |
-| `s3-storage.html` | (мёртвый, не роутится) старая плоская страница конфигурации S3 |
-| `s3-browser.html` | (мёртвый, не роутится) старый браузер S3-объектов |
+| `s3-storage.html` | Настройки S3-бакетов |
+| `s3-browser.html` | Браузер S3-объектов |
+| `admins.html` | Список администраторов и редактирование ролей (SecurityAdmin) |
+| `audit.html` | Журнал критических действий (SecurityAdmin) |
 | `Redesigned/` | (устарел, superseded) SPA-версия — index.html + app.js + screen-*.js, доступна только по `/v2/` |
 | `v2/` | **Актуальная версия** (MD3-дизайн) — многостраничная, `dashboard.html`/`services.html`/`s3-storage.html`/и т.д. |
 
+`Pages/v2/logs.html` поддерживает сохранённые в `localStorage` наборы фильтров, режим серверной группировки одинаковых Error/Fatal, фильтры и переходы по `CorrelationId`/`RequestId`/`TraceId`/user ID, ссылку на строку сервиса и сравнение количества ошибок в симметричном окне ±30 минут относительно маркера деплоя. Группировка выполняется `SeqEventAnalyzer` по сервису, `MessageTemplate` (fallback — сообщение) и типу исключения; endpoint ограничивает объём анализируемых событий и сообщает `truncated`.
+
 ### Актуальная версия — Pages/v2 (MD3)
 
-`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`; оставшиеся контентные иконки используют `msr`/Material Symbols). Общие навигационные и контейнерные иконки подключаются из корневого каталога `icons/`: `icons/admin` и `icons/services` публикуются через `/assets/icons`, а `assets/icons.js` предоставляет `bfIcon()`/`bfSetIcon()`. `assets/` (md3.css, icons.js, sidebar.js) отдаётся статикой на `/assets`.
+`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/admins`, `/audit`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`; оставшиеся контентные иконки используют `msr`/Material Symbols). Общие навигационные и контейнерные иконки подключаются из корневого каталога `icons/` (плоская структура — все SVG в одной папке, без подпапок): пак публикуется через `/assets/icons`, а `assets/icons.js` предоставляет `bfIcon()`/`bfSetIcon()`; иконки адресуются по имени файла без папки (`bfIcon('restart')`). `assets/` (`md3.css`, `icons.js`, `sidebar.js`, `api.js`, `command-palette.js`) отдаётся статикой на `/assets`. `api.js` скрывает разделы по ролям и повторяет критичный запрос после step-up. Ассеты подключаются с cache-buster `?v=`: панель за Cloudflare, который ставит статике `Cache-Control: max-age=14400` — без версионирования браузеры до 4 часов держат старые JS/CSS после деплоя.
 
-На `/services` в таблице **BarkFluff Server** показываются текущий и последний semver-тег образа. Для контейнера выбирается иконка из `icons/services` по имени сервиса; для удалённых контейнеров используется compose service/container name, а неизвестные контейнеры получают общую иконку сервера. Кнопки запуска, остановки и перезапуска используют `icons/admin`, а общие действия обновления/редактирования/удаления переиспользуют `icons/message-actions`. Если последний тег выше текущего, рядом с сервисом показывается warning-бейдж «Обновление» с иконкой. Такой же бейдж появляется в шапке перед кнопками управления админ-панелью, если для её собственного образа доступна новая версия. Для `:latest` версия определяется по `RepoDigest`; инфраструктурные, hash-образы без сопоставимого digest и недоступный registry показываются как `—`, не блокируя статус сервисов.
+В таблице **BarkFluff Server** у каждого BarkFluff-сервиса есть выпадающий список **ветки обновлений** (`master` / `nightly` / `dev`), такой же — в шапке страницы для самой админ-панели. Выбор ветки ставит задачу в серверную очередь `DeployJobService`: правка строки `image:` в `docker-compose.yml` → pull → recreate → health-check; при явном падении контейнера (crash-loop/unhealthy) переключение откатывается на прежнюю ветку. Перед постановкой в очередь панель проверяет, что репозиторий с таким суффиксом есть в реестре (`DockerRegistryService.RepositoryExistsAsync`). Для этого `docker-compose.yml` монтируется в admin-panel как `:rw` (см. `docker/{dev,master,nightly}/barkfluff/docker-compose.yml`). Если запущенный образ не совпадает с записанной в compose веткой, рядом со списком показывается бейдж «не применена». Инфраструктурные контейнеры (Seq/Redis/RabbitMQ/PostgreSQL) списка веток не имеют.
+
+Все деплой-действия (`pull` одного контейнера, «Обновить все», «Перезапустить все», «Обновить доступные», переключение ветки) идут через `DeployJobService` и возвращают `jobId`; UI (`services.html`) поллит `GET /api/docker/deploy/jobs/{id}` и рисует прогресс-модалку из статусов шагов (pending/current/completed/error, откат помечается «— откачено»). Массовое «Обновить доступные» больше не перебирает контейнеры в браузере — список уходит одним `POST /api/docker/containers/update-many`. При перезагрузке страницы активная задача подхватывается через `GET /api/docker/deploy/jobs` и модалка восстанавливается. Во время progress-модалки фоновой скролл страницы блокируется, а список шагов автоматически прокручивается к текущему `InProgress`-сервису. Успешные bulk-обновления показывают анимированную галочку и закрывают модалку через 3 секунды; при ошибке модалка остаётся открытой.
+
+На `/services` в таблице **BarkFluff Server** показываются текущий и последний semver-тег образа. Для контейнера выбирается иконка из `icons/` по имени сервиса; для удалённых контейнеров используется compose service/container name, а неизвестные контейнеры получают общую иконку сервера. Кнопки запуска, остановки и перезапуска и общие действия обновления/редактирования/удаления используют иконки из того же плоского пака (`stop`/`play`/`restart`, `download`/`edit`/`delete`). Если последний тег выше текущего, рядом с сервисом показывается warning-бейдж «Обновление» с иконкой. Такой же бейдж появляется в шапке перед кнопками управления админ-панелью, если для её собственного образа доступна новая версия. Для `:latest` версия определяется по `RepoDigest`; инфраструктурные, hash-образы без сопоставимого digest и недоступный registry показываются как `—`, не блокируя статус сервисов.
 
 **Любые доработки UI AdminPanel — только в `Pages/v2/`.**
 
 Карточки и сетка стикерпаков используют полный файл стикера, а не его 64×64 preview. Бейджи выводят сохранённый постоянный URL исходного изображения.
+
+Модалка пользователя на `Pages/v2/users.html` использует компактную ширину 760px, постер профиля с соотношением 3:1 и квадратный аватар. Бейджи находятся рядом с краткой информацией профиля в виде плиток: последняя плитка открывает отдельную форму добавления, а крестик удаления появляется при наведении/фокусе и требует подтверждения. В блоке устройств сначала показываются три сессии с кнопкой разворачивания остальных; `DELETE /api/users/{id}/sessions` завершает все активные сессии и возвращает счётчики успешных/неуспешных отзывов. `GET /api/users/{id}` возвращает `availability` по зависимым данным (контакты, устройства, хранилище, 2FA, сессии, постер), поэтому частичный сбой gRPC показывается предупреждением, а не как отсутствие данных. Использование хранилища отображается кольцевой диаграммой с сегментами типов файлов, свободным местом лимита и компактной легендой вместо линейного прогрессбара и таблицы.
 
 #### Тема и акцент
 
@@ -147,7 +176,10 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 |----------|---------|
 | Порт | 51888 |
 | Token expiration | 3 дня |
-| Pending timeout | 10 минут |
+| Auth pending timeout | 10 минут |
+| Step-up pending timeout | 5 минут |
+| Step-up approval validity | 5 минут после approve |
+| Audit retention | 90 дней |
 | Max gRPC file size | 20 МБ |
 | Metrics interval | 5 минут (пересчёт текущего/предыдущего часа + догон 72 часов) |
 | HourlyStats retention | 24 часа |
@@ -155,15 +187,35 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 | Metrics compression schedule | ежедневно в 03:00 UTC (вчерашний UTC-день) |
 | Sticker bucket | `message-documents` |
 
-`Pages/v2/s3-storage.html` — редактор параметров бакетов включает поле `Region` (для Cloudflare R2 обычно `auto`, для MinIO/S3 необязательно). Соответствует `S3_REGION`/`AuthenticationRegion` в [[Backend/ClientStorage]] и [[Backend/Files]].
+`Pages/v2/s3-storage.html` — редактор параметров бакетов включает поле `Region` (для Cloudflare R2 обычно `auto`, для MinIO/S3 необязательно). Соответствует `S3_REGION`/`AuthenticationRegion` в [[Backend/ClientStorage]] и [[Backend/Files]]. Ключи доступа не возвращаются в браузер: API отдаёт только `accessKeyConfigured`/`accessKeyMasked` (маска вида `AKI…LE`) и `secretKeyConfigured`; замена — ввод нового значения в `POST /s3/update` (пустое поле = «не менять»), после обновления инвалидируется кэш `S3BrowserService` по бакету.
 
 ## Безопасность
 
 Полный аудит в `SECURITY_AUDIT.md` (проект). Критические проблемы:
 - Docker socket монтируется в контейнер → полный контроль над хостом
 - Нет `HttpOnly` на cookie `auth_token`
-- Отключение 2FA пользователя без аудита
-- Нет разделения ролей
+
+Реализованные контроли AdminPanel:
+- секреты конфигурации не покидают сервер: строки с ключом/секцией по эвристике `token|secret|password|accesskey` маскируются в API (`SensitiveConfigMasker`), S3-эндпоинты отдают только `configured`-флаги и маску access key, замена секрета — write-only через `POST /s3/update`;
+- роли `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin` разрешаются на каждый запрос; неизвестный администратор получает Viewer baseline;
+- все критичные изменения требуют step-up: запрос в Telegram, TTL 5 минут, single-use, привязка к токену, action key и hash параметров; идентификатор передаётся в `X-Confirmation-Id` (для WebSocket также query `confirmation`);
+- смена пароля пользователя и отключение 2FA требуют непустую причину до 500 символов; причина входит в step-up и сохраняется в деталях аудита, но новый пароль представлен только хешем параметров;
+- approve/reject, успешные и невалидные step-up, смена ролей и другие критичные действия пишутся в отдельный `db/audit.db`; просмотр доступен через `/audit` только `SecurityAdmin`;
+- `/admins` доступен `SecurityAdmin`, изменение ролей также защищено step-up; система не позволяет удалить последнего `SecurityAdmin`.
+
+### Матрица RBAC
+
+| Permission | Роли |
+|------------|------|
+| dashboard, метрики, чтение Seq, статусы сервисов, свои сессии | Viewer baseline |
+| `users.read`, `users.sessions.revoke`, `users.password.set`, `mail.manage` | Support, SecurityAdmin |
+| `users.2fa.disable` | SecurityAdmin |
+| `badges.manage`, `stickers.manage`, `bots.manage`, `reserved-names.manage`, `s3.browse`, `notifications.manage` | ContentAdmin |
+| `docker.control`, `docker.deploy`, `remote.servers`, `remote.console`, `config.write` | OperationsAdmin |
+| `config.read`, `seq.delete` | OperationsAdmin, SecurityAdmin |
+| `federation.manage`, `admins.roles`, `audit.read` | SecurityAdmin |
+
+`POST /api/stepup/request` и `GET /api/stepup/status/{id}` доступны только авторизованной сессии и только владельцу подтверждения. При отсутствии подтверждения критичный endpoint отвечает `428 Precondition Required` с `action`, `title` и параметрами для UI polling.
 
 ## Карта проекта
 
@@ -183,16 +235,18 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 
 ## Вкладка «Конфигурация» (`/configuration`)
 
-`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису (раскрывающиеся блоки), клиентский поиск, маскировка секретов (ключ/секция содержит `Token|Secret|Password|AccessKey` → ••• с кнопкой «показать»), inline-редактирование **только Value** (Enter — сохранить, Esc — отмена). `EditedAt` ставит сервер, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
+`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису, клиентский поиск и **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL (`http(s)` и `ws(s)` для LiveKit), секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет». История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Configuration-сервис, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
 
 Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations` (+ `serviceName` из enum `ServiceId`) |
-| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
-| GET | `/api/configuration/s3-configuration` | Конфигурация S3-бакетов |
-| POST | `/api/configuration/s3/update` | Обновление конфигурации S3 |
+| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations`; добавляет `serviceName`, маску секрета и метаданные поля (`fieldType`, required/min/max/hint) |
+| POST | `/api/configuration/update` | Валидирует типизированное значение, затем `{ section, key, serviceId, value }` → rpc `UpdateConfiguration`; маска вместо секрета отклоняется с 400 |
+| GET | `/api/configuration/history` | История ключа по `section`, `key`, `serviceId`; секретные old/new values маскируются |
+| POST | `/api/configuration/rollback` | `{ revisionId }` → rpc `RollbackConfiguration`; `config.write` + step-up |
+| GET | `/api/configuration/s3-configuration` | Конфигурация S3-бакетов без секретов: `accessKeyConfigured`, `accessKeyMasked`, `secretKeyConfigured` |
+| POST | `/api/configuration/s3/update` | Обновление конфигурации S3; пустые/отсутствующие `accessKey`/`secretKey` = «оставить текущие» (замена секрета write-only); после успеха инвалидирует кэш `S3BrowserService` |
 
 ## REST API: Notifications
 

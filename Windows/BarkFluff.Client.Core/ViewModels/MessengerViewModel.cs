@@ -31,6 +31,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     // До первого подключения индикатор не показываем: у стримов ещё не было повода упасть.
     private bool _isRealtimeConnected = true;
     private bool _isPresenceConnected = true;
+    private int _searchRequestVersion;
 
     public MessengerViewModel(
         IMessengerService messenger,
@@ -60,6 +61,7 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     /// <summary>Отфильтрованная поиском проекция <see cref="Chats"/>; к ней привязан список в разметке.</summary>
     public ObservableCollection<ChatItemViewModel> VisibleChats { get; } = [];
+    public ObservableCollection<UserSearchResultViewModel> SearchResults { get; } = [];
     public ObservableCollection<MessageItemViewModel> Messages { get; } = [];
 
     internal ILocalizationService Localization => _localization;
@@ -78,6 +80,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     /// на пустом мессенджере был бы невидим. С заголовочным индикатором не совмещается.
     /// </summary>
     public bool IsChatListReconnectingVisible => IsReconnecting && !HasSelectedChat;
+
+    public bool IsSearchResultsVisible => SearchResults.Count > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedChat), nameof(IsChatPlaceholderVisible))]
@@ -151,6 +155,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         Profile.Reset();
         Chats.Clear();
         VisibleChats.Clear();
+        SearchResults.Clear();
+        _searchRequestVersion++;
+        OnPropertyChanged(nameof(IsSearchResultsVisible));
         Messages.Clear();
         DraftText = string.Empty;
         SearchText = string.Empty;
@@ -163,7 +170,55 @@ public sealed partial class MessengerViewModel : ObservableObject
         CancelPrivateUnlock();
     }
 
-    partial void OnSearchTextChanged(string value) => ApplyChatFilter();
+    partial void OnSearchTextChanged(string value)
+    {
+        ApplyChatFilter();
+        _ = LoadServerSearchAsync(value);
+    }
+
+    private async Task LoadServerSearchAsync(string value)
+    {
+        var query = value.Trim();
+        var requestVersion = ++_searchRequestVersion;
+        SearchResults.Clear();
+        OnPropertyChanged(nameof(IsSearchResultsVisible));
+        if (query.Length < 3)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _messenger.SearchUsersAsync(query);
+            if (requestVersion != _searchRequestVersion)
+            {
+                return;
+            }
+
+            if (!result.error.IsSuccess || result.users is null)
+            {
+                ReportBackgroundError(result.error);
+                return;
+            }
+
+            foreach (var user in result.users)
+            {
+                SearchResults.Add(new UserSearchResultViewModel(user));
+            }
+
+            OnPropertyChanged(nameof(IsSearchResultsVisible));
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception)
+        {
+            if (requestVersion == _searchRequestVersion)
+            {
+                ActionError = _localization.GetString("Messenger_ActionFailed");
+            }
+        }
+    }
 
     /// <summary>
     /// Выбранный чат остаётся в выборке даже когда не подходит под фильтр: иначе список
@@ -175,7 +230,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         var filtered = Chats.Where(chat =>
             query.Length == 0
             || chat == SelectedChat
-            || chat.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+            || chat.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || chat.Username.Contains(query, StringComparison.CurrentCultureIgnoreCase));
 
         VisibleChats.Clear();
         foreach (var chat in filtered)
@@ -380,6 +436,57 @@ public sealed partial class MessengerViewModel : ObservableObject
     [RelayCommand]
     private void CloseProfile() => IsProfileVisible = false;
 
+    public async Task OpenSearchResultAsync(UserSearchResultViewModel result)
+    {
+        var existing = Chats.FirstOrDefault(chat => chat.PeerUserId == result.UserId);
+        if (existing is not null)
+        {
+            SearchText = string.Empty;
+            SelectedChat = existing;
+            return;
+        }
+
+        var currentUserId = _messenger.CurrentUserId;
+        if (currentUserId is null)
+        {
+            return;
+        }
+
+        ActionError = null;
+        var chatIdResult = await _messenger.GetPersonChatIdAsync(result.UserId);
+        if (!chatIdResult.error.IsSuccess)
+        {
+            ActionError = DescribeError(chatIdResult.error);
+            return;
+        }
+
+        var chatsResult = await _messenger.GetChatsAsync();
+        if (!chatsResult.error.IsSuccess || chatsResult.chats is null)
+        {
+            ActionError = DescribeError(chatsResult.error);
+            return;
+        }
+
+        var definition = chatsResult.chats.FirstOrDefault(chat => chat.Id == chatIdResult.chatId);
+        if (definition is null)
+        {
+            ActionError = _localization.GetString("Messenger_ActionFailed");
+            return;
+        }
+
+        var item = Chats.FirstOrDefault(chat => chat.Id == definition.Id);
+        if (item is null)
+        {
+            item = await CreateChatItemAsync(definition, currentUserId.Value);
+            Chats.Insert(0, item);
+            ApplyChatFilter();
+            await TrackPresenceForChatsAsync();
+        }
+
+        SearchText = string.Empty;
+        SelectedChat = item;
+    }
+
     private async Task LoadPrivateMessagesAsync(
         ChatItemViewModel chat,
         int loadVersion,
@@ -524,6 +631,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         var title = string.IsNullOrWhiteSpace(chat.Title) ? _localization.GetString("Messenger_Chat") : chat.Title;
         var firstName = string.Empty;
         var lastName = string.Empty;
+        var username = string.Empty;
         long? peerUserId = null;
         // Chat.Picture сервер отдаёт готовой ссылкой на файл, а не идентификатором,
         // поэтому её нельзя разрешать через Files — она уже готова к показу.
@@ -540,6 +648,7 @@ public sealed partial class MessengerViewModel : ObservableObject
                 {
                     firstName = userResult.Data.FirstName;
                     lastName = userResult.Data.LastName;
+                    username = userResult.Data.Username;
                     title = string.Join(' ', new[] { firstName, lastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
                     title = string.IsNullOrWhiteSpace(title) ? _localization.GetString("Messenger_Chat") : title;
                     avatarUrl = userResult.Data.ProfilePicturePreviewUrl;
@@ -547,7 +656,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             }
         }
 
-        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl, peerUserId, _localization);
+        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl, peerUserId, _localization, username);
     }
 
     private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
@@ -900,11 +1009,40 @@ public sealed partial class MessengerViewModel : ObservableObject
     }
 }
 
+public sealed class UserSearchResultViewModel
+{
+    public UserSearchResultViewModel(UserData user)
+    {
+        UserId = user.Id;
+        Username = user.Username;
+        DisplayName = string.Join(' ', new[] { user.FirstName, user.LastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
+        DisplayName = string.IsNullOrWhiteSpace(DisplayName) ? Username : DisplayName;
+        UsernameLabel = string.IsNullOrWhiteSpace(Username) ? string.Empty : $"@{Username}";
+        AvatarUrl = string.IsNullOrWhiteSpace(user.ProfilePictureUrl)
+            ? user.ProfilePicturePreviewUrl
+            : user.ProfilePictureUrl;
+    }
+
+    public long UserId { get; }
+    public string DisplayName { get; }
+    public string Username { get; }
+    public string UsernameLabel { get; }
+    public string AvatarUrl { get; }
+}
+
 public sealed partial class ChatItemViewModel : ObservableObject
 {
     private readonly ILocalizationService _localization;
 
-    public ChatItemViewModel(Chat chat, string title, string firstName, string lastName, string avatarUrl, long? peerUserId, ILocalizationService localization)
+    public ChatItemViewModel(
+        Chat chat,
+        string title,
+        string firstName,
+        string lastName,
+        string avatarUrl,
+        long? peerUserId,
+        ILocalizationService localization,
+        string username = "")
     {
         _localization = localization;
         Definition = chat;
@@ -912,6 +1050,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
         Title = title;
         FirstName = firstName;
         LastName = lastName;
+        Username = username;
         AvatarUrl = avatarUrl;
         PeerUserId = peerUserId;
         IsPrivate = chat.ChatType == ChatType.Private;
@@ -926,6 +1065,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
     public string Title { get; }
     public string FirstName { get; }
     public string LastName { get; }
+    public string Username { get; }
     public string AvatarUrl { get; }
 
     /// <summary>Собеседник личного чата; <c>null</c> у групповых — им присутствие не показывается.</summary>

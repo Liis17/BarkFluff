@@ -5,18 +5,21 @@
 
 (function () {
   const NAV_ITEMS = [
-    { id: 'dashboard',     href: '/',              label: 'Дашборд',    icon: 'admin/dashboard' },
-    { id: 'services',      href: '/services',      label: 'Сервисы',    icon: 'admin/server' },
-    { id: 'logs',          href: '/logs',          label: 'Логи',       icon: 'admin/terminal' },
-    { id: 'badges',        href: '/badges',        label: 'Бейджи',     icon: 'admin/badge' },
-    { id: 'stickers',      href: '/stickers',      label: 'Стикеры',    icon: 'admin/sticker' },
-    { id: 'users',         href: '/users',         label: 'Юзеры',      icon: 'admin/users' },
-    { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'services/bots' },
-    { id: 'federation',    href: '/federation',    label: 'Федерация',  icon: 'services/federation' },
-    { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'settings/notifications' },
-    { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'admin/mail' },
-    { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'admin/tune' },
-    { id: 's3',            href: '/s3-storage',    label: 'Хранилище S3', icon: 'settings/cloud', expandable: true }
+    { id: 'dashboard',     href: '/',              label: 'Дашборд',    icon: 'dashboard' },
+    { id: 'services',      href: '/services',      label: 'Сервисы',    icon: 'server' },
+    { id: 'logs',          href: '/logs',          label: 'Логи',       icon: 'terminal' },
+    { id: 'badges',        href: '/badges',        label: 'Бейджи',     icon: 'badge',      permission: 'badges.manage' },
+    { id: 'stickers',      href: '/stickers',      label: 'Стикеры',    icon: 'sticker',    permission: 'stickers.manage' },
+    { id: 'users',         href: '/users',         label: 'Юзеры',      icon: 'users',      permission: 'users.read' },
+    { id: 'bots',          href: '/bots',          label: 'Боты',       icon: 'bots',       permission: 'bots.manage' },
+    { id: 'federation',    href: '/federation',    label: 'Федерация',  icon: 'federation', permission: 'federation.manage' },
+    { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications', permission: 'notifications.manage' },
+    { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail',       permission: 'mail.manage' },
+    { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'tune',    permission: 'config.read' },
+    { id: 's3-browser',    href: '/s3-browser',    label: 'Хранилище S3', icon: 'cloud',   expandable: true, permission: 's3.browse' },
+    { id: 's3-storage',   href: '/s3-storage',    label: 'Настройки S3', icon: 'tune',    permission: 'config.read' },
+    { id: 'admins',        href: '/admins',        label: 'Админы',     icon: 'security',   permission: 'admins.roles' },
+    { id: 'audit',         href: '/audit',         label: 'Аудит',      icon: 'history',    permission: 'audit.read' }
   ];
 
   const icon = (path, className = '') => window.bfIcon(path, className);
@@ -40,7 +43,7 @@
             <span>${item.label}</span>
           </a>
           <button class="md-nav-expander" id="s3-chevron-btn" onclick="window.__toggleS3Menu && window.__toggleS3Menu()" aria-label="Развернуть">
-            <span id="s3-chevron-icon">${icon('admin/chevron-down')}</span>
+            <span id="s3-chevron-icon">${icon('chevron-down')}</span>
           </button>
         </div>
         <div id="s3-submenu" class="md-nav-submenu" style="display:none;"></div>
@@ -63,7 +66,7 @@
     rootEl.innerHTML = `
       <aside class="md-nav-drawer">
         <div class="md-nav-header">
-          <span class="md-nav-logo">${icon('admin/forum')}</span>
+          <span class="md-nav-logo">${icon('forum')}</span>
           <div class="md-nav-brand">
             BarkFluff
             <small>Admin Console</small>
@@ -93,12 +96,12 @@
     if (!submenu) return;
     submenu.innerHTML = '<div style="padding:6px 16px 6px 56px;font-size:12px;color:var(--md-on-surface-variant);">Загрузка...</div>';
     try {
-      const res = await fetch('/api/s3/buckets');
+      const res = await BF.api('/api/s3/buckets');
       if (!res.ok) throw new Error('failed');
       const buckets = await res.json();
       submenu.innerHTML = buckets.map(b => `
         <a class="md-nav-subitem" href="/s3-browser?bucket=${encodeURIComponent(b.id)}">
-          ${icon('admin/folder', 'size-18')}
+          ${icon('folder', 'size-18')}
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.displayName}</span>
         </a>
       `).join('');
@@ -156,15 +159,42 @@
     const m = document.getElementById('md-nav-usermeta');
     const username = user.adminUsername ? `@${user.adminUsername}` : 'Admin';
     if (n) n.textContent = username;
-    if (m) m.textContent = user.name || '';
+    const roles = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles.join(' · ') : 'Viewer';
+    if (m) m.textContent = roles;
     setAvatar(a, username, user.hasTelegramAvatar ? '/api/auth/me/avatar' : '');
   };
 
+  // -------- Role-based visibility --------
+
+  function applyPermissions() {
+    const can = window.BF && window.BF.can ? window.BF.can : function () { return true; };
+    const root = document.getElementById('md-nav-root');
+    if (!root) return;
+    NAV_ITEMS.forEach(function (item) {
+      if (!item.permission) return;
+      const link = root.querySelector(`a.md-nav-item[href="${item.href}"]`);
+      const row = link ? link.closest('.md-nav-row') || link : null;
+      const submenu = document.getElementById('s3-submenu');
+      if (!can(item.permission)) {
+        if (row) row.style.display = 'none';
+        if (item.expandable && submenu) submenu.style.display = 'none';
+      }
+    });
+  }
+
   async function loadCurrentUser() {
     try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) window.mdNavSetUser(await response.json());
+      const response = await BF.api('/api/auth/me');
+      if (response.ok) {
+        const me = await response.json();
+        if (window.BF && Array.isArray(me.roles)) {
+          window.BF.roles = me.roles;
+          document.dispatchEvent(new CustomEvent('bf:roles', { detail: me.roles }));
+        }
+        window.mdNavSetUser(me);
+      }
     } catch (e) {}
+    applyPermissions();
   }
 
   // -------- Mobile off-canvas drawer --------
@@ -175,7 +205,7 @@
 
     let toggle = appBar.querySelector('.md-nav-toggle');
     if (!toggle) {
-      toggle = el(`<button class="md-nav-toggle md-icon-btn" aria-label="Меню">${icon('admin/menu')}</button>`);
+      toggle = el(`<button class="md-nav-toggle md-icon-btn" aria-label="Меню">${icon('menu')}</button>`);
       appBar.insertBefore(toggle, appBar.firstChild);
     }
 

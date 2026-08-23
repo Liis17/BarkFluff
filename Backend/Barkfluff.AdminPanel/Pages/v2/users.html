@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Юзеры</title>
-    <link rel="stylesheet" href="assets/md3.css">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .users-list { display: flex; flex-direction: column; gap: 6px; }
         .user-row {
@@ -34,8 +34,15 @@
         .info .uname { color: var(--md-on-surface-variant); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .uid { color: var(--md-on-surface-variant); font-size: 13px; flex-shrink: 0; font-family: 'Roboto Mono', monospace; }
 
-        /* Modal — poster + avatar header */
-        .modal-cover {
+        /* Compact user modal */
+        .user-dialog { max-width: 760px; }
+        .user-dialog .md-dialog-header {
+            min-height: 56px;
+            padding: 12px 20px;
+        }
+        .user-dialog .md-dialog-header h3 { font-size: 18px; }
+        .user-dialog .md-dialog-body { padding: 0; }
+        .user-modal-cover {
             position: relative;
             aspect-ratio: 3 / 1;
             background: var(--md-surface-container-high);
@@ -45,7 +52,8 @@
             cursor: pointer;
             overflow: hidden;
         }
-        .modal-cover .overlay {
+        .user-modal-cover > img { width: 100%; height: 100%; object-fit: cover; }
+        .user-modal-cover .overlay {
             position: absolute; inset: 0;
             background: rgba(0,0,0,0.4);
             display: flex; align-items: center; justify-content: center;
@@ -53,15 +61,18 @@
             opacity: 0; transition: opacity .2s;
             font-size: 14px; font-weight: 500;
         }
-        .modal-cover:hover .overlay { opacity: 1; }
-        .modal-avatar-wrap {
+        @media (hover: hover) and (pointer: fine) {
+            .user-modal-cover:hover .overlay { opacity: 1; }
+        }
+        .user-modal-avatar-wrap {
             position: absolute;
-            bottom: -48px;
+            bottom: -80px;
             left: 50%;
             transform: translateX(-50%);
-            width: 96px; height: 96px;
+            width: 160px; height: 160px;
+            aspect-ratio: 1;
             border-radius: 50%;
-            border: 5px solid var(--md-surface-container-high);
+            border: 4px solid var(--md-surface-container-high);
             background: var(--md-tertiary-container);
             color: var(--md-on-tertiary-container);
             display: inline-flex; align-items: center; justify-content: center;
@@ -69,23 +80,213 @@
             cursor: pointer;
             overflow: hidden;
         }
-        .modal-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
-        .modal-avatar-overlay {
+        .user-modal-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .user-modal-avatar-overlay {
             position: absolute; inset: 0; border-radius: 50%;
             background: rgba(0,0,0,.45);
             display: flex; align-items: center; justify-content: center;
             color: white; opacity: 0; transition: opacity .2s;
         }
-        .modal-avatar-wrap:hover .modal-avatar-overlay { opacity: 1; }
+        @media (hover: hover) and (pointer: fine) {
+            .user-modal-avatar-wrap:hover .user-modal-avatar-overlay { opacity: 1; }
+        }
 
-        .modal-body-section h4 {
-            margin: 24px 0 12px;
+        .user-modal-profile { padding: 92px 20px 0; }
+        .user-modal-identity { margin-bottom: 14px; }
+        .user-modal-name { font-size: 18px; font-weight: 600; line-height: 1.25; }
+        .user-modal-username { margin-top: 2px; color: var(--md-on-surface-variant); }
+        .user-modal-profile h4 {
+            margin: 0 0 10px;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .8px;
             color: var(--md-on-surface-variant);
         }
+        .user-modal-meta {
+            display: flex; flex-wrap: wrap; gap: 8px 12px;
+            margin: 14px 0 12px;
+            font-size: 12px;
+            color: var(--md-on-surface-variant);
+        }
+        .user-modal-section { padding: 0 20px; }
+        .user-modal-section h4 {
+            margin: 22px 0 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--md-on-surface-variant);
+        }
+        .user-modal-section-last { padding-bottom: 20px; }
+
+        .badge-tiles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .badge-tile {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 88px;
+            min-height: 78px;
+            padding: 10px 7px 8px;
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-md);
+            background: var(--md-surface-container);
+            color: var(--md-on-surface);
+            text-align: center;
+        }
+        .badge-tile img {
+            width: 32px; height: 32px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .badge-tile .badge-name {
+            width: 100%;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+        .badge-tile-add {
+            border-style: dashed;
+            background: transparent;
+            color: var(--md-primary);
+            cursor: pointer;
+            font: inherit;
+            transition: background var(--md-dur-2) var(--md-easing-standard),
+                        border-color var(--md-dur-2) var(--md-easing-standard),
+                        transform 160ms ease-out;
+        }
+        .badge-tile-add:active { transform: scale(.97); }
+        .badge-tile-remove {
+            position: absolute;
+            top: 4px; right: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: var(--md-error-container);
+            color: var(--md-on-error-container);
+            cursor: pointer;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(.9);
+            transition: opacity 160ms ease-out, transform 160ms ease-out, background 160ms ease-out;
+        }
+        .badge-tile-remove .msr { font-size: 16px; }
+        @media (hover: hover) and (pointer: fine) {
+            .badge-tile-add:hover { background: var(--md-primary-container); border-color: var(--md-primary); }
+            .badge-tile:hover .badge-tile-remove,
+            .badge-tile-remove:focus-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+            .badge-tile-remove:hover { background: var(--md-error); color: var(--md-on-error); }
+        }
+        @media (hover: none) {
+            .badge-tile-remove { opacity: 1; transform: scale(1); pointer-events: auto; }
+        }
+        .badge-add-dialog { max-width: 420px; }
+        .badge-add-dialog .md-dialog-body { padding: 0 20px 8px; }
+        #badgeAddScrim { z-index: 90; }
+
+        .session-list { display: flex; flex-direction: column; gap: 6px; }
+        .session-row { margin-bottom: 0; }
+        .sessions-toggle { width: 100%; justify-content: center; margin-top: 8px; }
+        .user-data-warning {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-warning-container);
+            color: var(--md-on-warning-container);
+            font-size: 13px;
+        }
+        .user-section-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .user-modal-section .user-section-heading h4 { margin: 0; }
+        .admin-reason {
+            width: 100%;
+            min-height: 64px;
+            margin-top: 8px;
+            padding: 10px 14px;
+            resize: vertical;
+        }
+
+        .storage-card {
+            display: grid;
+            grid-template-columns: 148px minmax(0, 1fr);
+            gap: 18px;
+            align-items: center;
+            padding: 14px;
+            border-radius: var(--md-shape-lg);
+            background: var(--md-surface-container);
+        }
+        .storage-ring {
+            position: relative;
+            display: grid;
+            place-items: center;
+            width: 148px;
+            height: 148px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .storage-ring::after {
+            content: "";
+            position: absolute;
+            inset: 16px;
+            border-radius: 50%;
+            background: var(--md-surface-container);
+        }
+        .storage-ring.is-overflow { box-shadow: 0 0 0 2px var(--md-error); }
+        .storage-ring-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            max-width: 94px;
+            text-align: center;
+        }
+        .storage-ring-content strong { font-size: 20px; color: var(--md-on-surface); }
+        .storage-ring-content span { font-size: 10px; line-height: 1.25; color: var(--md-on-surface-variant); }
+        .storage-ring-content .storage-overflow { color: var(--md-error); }
+        .storage-legend {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 12px;
+            min-width: 0;
+        }
+        .storage-legend-item {
+            display: grid;
+            grid-template-columns: 8px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            font-size: 11px;
+        }
+        .storage-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .storage-legend-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .storage-legend-value { color: var(--md-on-surface-variant); white-space: nowrap; }
+        .storage-empty { grid-column: 1 / -1; font-size: 12px; color: var(--md-on-surface-variant); }
+        .storage-limit-row { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+
         .badge-row {
             display: flex; align-items: center; gap: 12px;
             padding: 8px 12px;
@@ -102,6 +303,7 @@
             cursor: pointer;
             transition: background .2s;
         }
+        .session-list .session-row { margin-bottom: 0; }
         .session-row:hover { background: var(--md-surface-container-high); }
         .tfa-row {
             display: flex; align-items: center; justify-content: space-between;
@@ -117,6 +319,12 @@
         @media (max-width: 600px) {
             .field-grid { grid-template-columns: 1fr; }
             .md-search { width: 100% !important; }
+            .storage-card { grid-template-columns: 1fr; }
+            .storage-ring { margin: 0 auto; }
+            .storage-legend { grid-template-columns: 1fr; }
+            .storage-empty { grid-column: auto; }
+            .storage-limit-row { flex-wrap: wrap; }
+            .storage-limit-row input { min-width: 140px; }
         }
     </style>
 </head>
@@ -166,12 +374,32 @@
 
 <!-- User modal -->
 <div id="userScrim" class="md-scrim" onclick="if(event.target===this)closeUserModal()">
-    <div class="md-dialog md-dialog-xl" style="padding:0;">
-        <div class="md-dialog-header" style="padding:16px 24px;border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);">
+    <div class="md-dialog user-dialog">
+        <div class="md-dialog-header" style="border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);">
             <h3 id="modalUserTitle">Пользователь</h3>
             <button class="md-icon-btn" onclick="closeUserModal()"><span class="msr">close</span></button>
         </div>
         <div class="md-dialog-body" id="modalContent" style="padding:0;"></div>
+    </div>
+</div>
+
+<!-- Add badge modal -->
+<div id="badgeAddScrim" class="md-scrim" onclick="if(event.target===this)closeBadgeAddModal()">
+    <div class="md-dialog badge-add-dialog">
+        <div class="md-dialog-header">
+            <h3>Добавить бейдж</h3>
+            <button class="md-icon-btn" onclick="closeBadgeAddModal()"><span class="msr">close</span></button>
+        </div>
+        <div class="md-dialog-body">
+            <label class="field-label" for="badgeAddSelect">Бейдж</label>
+            <select id="badgeAddSelect" class="md-input-outlined" style="width:100%;">
+                <option value="">Загрузка...</option>
+            </select>
+        </div>
+        <div class="md-dialog-actions">
+            <button class="md-btn md-btn-text" onclick="closeBadgeAddModal()">Отмена</button>
+            <button id="addBadgeSubmit" class="md-btn md-btn-filled md-btn-square-press" onclick="addUserBadge()">Добавить</button>
+        </div>
     </div>
 </div>
 
@@ -203,9 +431,10 @@
     </div>
 </div>
 
-<script src="assets/icons.js"></script>
-<script src="assets/sidebar.js"></script>
-<script src="assets/command-palette.js"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=5"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let users = [];
     let totalCount = 0;
@@ -215,15 +444,11 @@
     let searchTimeout = null;
     let allBadges = [];
     let currentUserData = null;
+    let sessionsExpanded = false;
+    let badgeAddUserId = null;
     const PAGE_SIZE = 50;
 
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     function getInitials(f, l) { return ((f?.[0] || '') + (l?.[0] || '')).toUpperCase() || '?'; }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
@@ -239,9 +464,7 @@
 
         try {
             const params = new URLSearchParams({ query: currentQuery, offset: currentOffset, size: PAGE_SIZE });
-            const res = await fetch(`/api/users?${params}`);
-            if (!res.ok) throw new Error();
-            const data = await res.json();
+            const data = await BF.request(`/api/users?${params}`);
             totalCount = data.totalCount;
             users = reset ? data.users : users.concat(data.users);
             currentOffset += data.users.length;
@@ -283,12 +506,12 @@
 
     // ---- USER MODAL ----
     window.openUserModal = async function (userId) {
+        sessionsExpanded = false;
+        closeBadgeAddModal();
         document.getElementById('userScrim').classList.add('open');
         document.getElementById('modalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const res = await fetch(`/api/users/${userId}`);
-            if (!res.ok) throw new Error();
-            currentUserData = await res.json();
+            currentUserData = await BF.request(`/api/users/${userId}`, { errorToast: false });
             renderUserModal(currentUserData);
         } catch (e) {
             document.getElementById('modalContent').innerHTML = `<div style="padding:48px;text-align:center;color:var(--md-error);">Ошибка загрузки</div>`;
@@ -301,28 +524,55 @@
 
     function renderUserModal(data) {
         const p = data.profile;
-        document.getElementById('modalUserTitle').textContent = `${p.firstName} ${p.lastName}`;
+        const canChangePassword = !window.BF || BF.can('users.password.set');
+        const unavailableLabels = {
+            contacts: 'контакты',
+            devices: 'устройства',
+            storage: 'хранилище',
+            twoFactor: '2FA',
+            sessions: 'сессии',
+            poster: 'постер профиля'
+        };
+        const unavailable = Object.entries(data.availability || {})
+            .filter(([, available]) => available === false)
+            .map(([section]) => unavailableLabels[section] || section);
+        const availabilityWarning = unavailable.length
+            ? `<div class="user-data-warning" role="status">
+                    <span class="msr size-20">warning</span>
+                    <span>Часть данных временно недоступна: ${unavailable.map(escapeHtml).join(', ')}. Остальные сведения актуальны.</span>
+               </div>`
+            : '';
+        document.getElementById('modalUserTitle').textContent = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь';
 
         let html = `
         <section style="position:relative;">
-            <div class="modal-cover" onclick="document.getElementById('posterFileInput').click()">
+            <div class="user-modal-cover" onclick="document.getElementById('posterFileInput').click()">
                 ${p.profilePosterUrl
-                    ? `<img src="${p.profilePosterUrl}" style="width:100%;height:100%;object-fit:cover;">`
+                    ? `<img src="${escapeHtml(p.profilePosterUrl)}" alt="Постер профиля">`
                     : `<span class="msr size-48" style="opacity:.55;">image</span>`}
                 <div class="overlay"><span class="msr">image</span> Изменить постер</div>
             </div>
-            <div class="modal-avatar-wrap" onclick="document.getElementById('avatarFileInput').click()">
+            <div class="user-modal-avatar-wrap" onclick="document.getElementById('avatarFileInput').click()">
                 ${p.profilePicture
-                    ? `<img src="${p.profilePicture}">`
+                    ? `<img src="${escapeHtml(p.profilePicture)}" alt="Аватар профиля">`
                     : `<span>${getInitials(p.firstName, p.lastName)}</span>`}
-                <div class="modal-avatar-overlay"><span class="msr">photo_camera</span></div>
+                <div class="user-modal-avatar-overlay"><span class="msr">photo_camera</span></div>
             </div>
             <input type="file" id="posterFileInput" accept="image/*" style="display:none;" onchange="handlePosterUpload(this, ${p.id})">
             <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this, ${p.id})">
         </section>
 
-        <section class="modal-body-section" style="padding:64px 24px 0;">
-            <div style="font-size:12px;color:var(--md-on-surface-variant);display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+        <section class="user-modal-profile">
+            ${availabilityWarning}
+            <div class="user-modal-identity">
+                <div class="user-modal-name">${escapeHtml(`${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь')}</div>
+                <div class="user-modal-username">@${escapeHtml(p.username || '')}</div>
+            </div>
+            <h4>Бейджи</h4>
+            <div class="badge-tiles">
+                ${renderBadgeTiles(p)}
+            </div>
+            <div class="user-modal-meta">
                 <span>ID: <strong>${p.id}</strong></span>
                 <span>•</span>
                 <span>Email: ${escapeHtml(data.contacts?.email || '—')}</span>
@@ -351,43 +601,19 @@
             </div>
         </section>
 
-        <section class="modal-body-section" style="padding:0 24px;">
-            <h4>Бейджи</h4>
-            <div id="userBadgesList">
-                ${(p.badges && p.badges.length > 0)
-                    ? p.badges.map(ub => `
-                        <div class="badge-row">
-                            ${ub.badge.imageUrl ? `<img src="${ub.badge.imageUrl}" style="width:24px;height:24px;object-fit:contain;">` : `<span class="msr size-20" style="color:var(--md-primary);">workspace_premium</span>`}
-                            <span style="flex:1;font-weight:500;">${escapeHtml(ub.badge.name)}</span>
-                            <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="removeUserBadge(${p.id}, ${ub.badge.id})">Удалить</button>
-                        </div>`).join('')
-                    : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Нет бейджей</div>'}
+        <section class="user-modal-section">
+            <div class="user-section-heading">
+                <h4>Устройства и сессии</h4>
+                ${data.availability?.sessions !== false && (data.sessions || []).length > 0 && (!window.BF || BF.can('users.sessions.revoke')) ? `
+                    <button id="revokeAllSessionsButton" type="button" class="md-btn md-btn-text" style="color:var(--md-error);" onclick="revokeAllSessions(${p.id})">
+                        Завершить все
+                    </button>` : ''}
             </div>
-            <div style="margin-top:12px;display:flex;gap:8px;">
-                <select id="addBadgeSelect" class="md-input-outlined" style="flex:1;">
-                    <option value="">Выберите бейдж...</option>
-                </select>
-                <button class="md-btn md-btn-tonal md-btn-square-press" onclick="addUserBadge(${p.id})">Добавить</button>
-            </div>
+            <div id="sessionsList" class="session-list"></div>
+            <button id="sessionsToggle" type="button" class="md-btn md-btn-text sessions-toggle" onclick="toggleSessions(${p.id})"></button>
         </section>
 
-        <section class="modal-body-section" style="padding:0 24px;">
-            <h4>Устройства и сессии</h4>
-            ${(data.sessions || []).length > 0
-                ? (data.sessions || []).map(s => `
-                    <div class="session-row" onclick='showDeviceDetails(${JSON.stringify(s).replace(/'/g, "&#39;")})'>
-                        <span class="msr" style="color:var(--md-primary);">${s.appName && s.appName.includes('Desktop') ? 'desktop_mac' : 'smartphone'}</span>
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.customName || s.originalName || 'Устройство')}</div>
-                            <div style="font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.operationSystem || '')} • ${escapeHtml(s.appName || '')} ${s.location ? '• ' + escapeHtml(s.location) : ''}</div>
-                        </div>
-                        <span style="font-size:12px;color:var(--md-on-surface-variant);">${s.createdAt ? formatDate(s.createdAt) : ''}</span>
-                        <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="event.stopPropagation();removeSession(${p.id}, '${escapeHtml(s.deviceId)}')">Завершить</button>
-                    </div>`).join('')
-                : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Нет активных сессий</div>'}
-        </section>
-
-        <section class="modal-body-section" style="padding:0 24px;">
+        <section class="user-modal-section" id="tfa-section">
             <h4>Двухфакторная аутентификация</h4>
             ${data.twoFactor ? `
                 <div class="tfa-row">
@@ -395,59 +621,198 @@
                         <div style="font-weight:500;">Authenticator</div>
                         <div style="font-size:12px;color:${data.twoFactor.authenticatorEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.authenticatorEnabled ? 'Включён' : 'Выключен'}</div>
                     </div>
-                    <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 1)" ${!data.twoFactor.authenticatorEnabled ? 'disabled' : ''}>Отключить</button>
+                    <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 1)" ${!data.twoFactor.authenticatorEnabled ? 'disabled' : ''}>Отключить</button>
                 </div>
                 <div class="tfa-row">
                     <div>
                         <div style="font-weight:500;">Email</div>
                         <div style="font-size:12px;color:${data.twoFactor.emailEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.emailEnabled ? 'Включён' : 'Выключен'}</div>
                     </div>
-                    <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
+                    <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
                 </div>
+                <label class="field-label" for="twoFactorReason">Причина отключения</label>
+                <textarea id="twoFactorReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
             ` : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные недоступны</div>'}
         </section>
 
-        <section class="modal-body-section" style="padding:0 24px;">
+        ${canChangePassword ? `
+        <section class="user-modal-section">
             <h4>Смена пароля</h4>
             <div style="display:flex;gap:8px;align-items:center;">
                 <input id="newPasswordInput" type="password" placeholder="Новый пароль (мин. 6 символов)" class="md-input-outlined" style="flex:1;">
                 <button class="md-btn md-btn-square-press" style="background:var(--md-tertiary);color:var(--md-on-tertiary);" onclick="changeUserPassword(${p.id})">Применить</button>
             </div>
+            <label class="field-label" for="passwordReason" style="margin-top:10px;">Причина смены пароля</label>
+            <textarea id="passwordReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
             <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Пользователь получит email об изменении пароля.</p>
-        </section>`;
+        </section>` : ''}`;
 
-        if (data.storage) {
-            const st = data.storage;
-            const usedMb = (st.totalUsedStorage / 1048576).toFixed(1);
-            const limitGb = (st.storageLimit / 1073741824).toFixed(1);
-            const pct = st.storageLimit > 0 ? Math.min((st.totalUsedStorage / st.storageLimit) * 100, 100) : 0;
-            const overflow = st.totalUsedStorage > st.storageLimit;
-            const typeNames = { 1:'Аватарки',2:'Изображения',3:'Видео',4:'GIF',5:'Документы',6:'Обложки чатов',7:'Аудио',8:'Голосовые',9:'Стикеры',10:'Постер' };
-            html += `
-            <section class="modal-body-section" style="padding:0 24px 24px;">
-                <h4>Хранилище</h4>
-                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-                    <span>${usedMb} МБ / ${limitGb} ГБ</span>
-                    <span>${pct.toFixed(1)}%</span>
-                </div>
-                <div class="md-progress-linear"><div class="bar" style="width:${pct}%;${overflow?'background:var(--md-error);':''}"></div></div>
-                ${st.storageByTypes && st.storageByTypes.length ? `
-                    <table class="md-table" style="margin-top:16px;">
-                        <thead><tr><th>Тип</th><th style="text-align:right;">Занято</th></tr></thead>
-                        <tbody>${st.storageByTypes.map(t => `<tr><td>${typeNames[t.fileType] || t.fileTypeName}</td><td style="text-align:right;color:var(--md-on-surface-variant);">${formatBytes(t.usedStorage)}</td></tr>`).join('')}</tbody>
-                    </table>` : ''}
-                <div style="display:flex;gap:16px;align-items:center;margin-top:16px;">
-                    <label style="font-size:13px;color:var(--md-on-surface-variant);">Лимит:</label>
-                    <input type="range" id="storageLimitSlider" min="1" max="250" step="1" value="${p.storageLimitGb}" oninput="document.getElementById('storageLimitValue').textContent=this.value" style="flex:1;accent-color:var(--md-primary);">
-                    <span id="storageLimitValue" style="font-weight:500;min-width:24px;text-align:right;">${p.storageLimitGb}</span>
-                    <span style="font-size:13px;color:var(--md-on-surface-variant);">ГБ</span>
-                    <button class="md-btn md-btn-tonal md-btn-square-press" onclick="updateStorageLimit(${p.id})">Применить</button>
-                </div>
-            </section>`;
-        }
+        if (data.storage) html += renderStorageSection(data.storage, p);
 
         document.getElementById('modalContent').innerHTML = html;
-        loadAllBadgesForSelect();
+        if (window.BF && !BF.can('users.2fa.disable')) {
+            document.querySelectorAll('.tfa-disable-btn').forEach(b => b.style.display = 'none');
+        }
+        if (window.BF && !BF.can('badges.manage')) {
+            document.querySelectorAll('.badge-tile-add, .badge-tile-remove').forEach(b => b.style.display = 'none');
+        }
+        renderSessionList(p.id, data.sessions || [], data.availability?.sessions !== false);
+    }
+
+    const storageTypeNames = {
+        1: 'Аватарки', 2: 'Изображения', 3: 'Видео', 4: 'GIF', 5: 'Документы',
+        6: 'Обложки чатов', 7: 'Аудио', 8: 'Голосовые', 9: 'Стикеры', 10: 'Постер'
+    };
+    const storageChartColors = [
+        'var(--md-primary)', 'var(--md-secondary)', 'var(--md-tertiary)',
+        'var(--md-success)', 'var(--md-warning)', 'var(--md-error)',
+        'var(--md-on-surface-variant)', 'var(--md-outline)', '#af5f45', '#776b2f'
+    ];
+
+    function renderBadgeTiles(profile) {
+        const tiles = (profile.badges || []).map(userBadge => {
+            const badge = userBadge.badge || {};
+            const badgeId = Number(badge.id);
+            const badgeName = badge.name || 'Бейдж';
+            const image = badge.imageUrl
+                ? `<img src="${escapeHtml(badge.imageUrl)}" alt="">`
+                : '<span class="msr size-32" style="color:var(--md-primary);">workspace_premium</span>';
+            return `
+                <div class="badge-tile" title="${escapeHtml(badgeName)}">
+                    ${image}
+                    <span class="badge-name">${escapeHtml(badgeName)}</span>
+                    <button type="button" class="badge-tile-remove" aria-label="Удалить бейдж «${escapeHtml(badgeName)}»"
+                        onclick="event.stopPropagation();removeUserBadge(${profile.id}, ${badgeId})">
+                        <span class="msr">close</span>
+                    </button>
+                </div>`;
+        }).join('');
+
+        return `${tiles}
+            <button type="button" class="badge-tile badge-tile-add" onclick="openBadgeAddModal(${profile.id})" aria-label="Добавить бейдж">
+                <span class="msr size-28">add</span>
+                <span class="badge-name">Добавить</span>
+            </button>`;
+    }
+
+    function renderSessionList(uid, sessions, available = true) {
+        const list = document.getElementById('sessionsList');
+        const toggle = document.getElementById('sessionsToggle');
+        if (!list || !toggle) return;
+
+        if (!available) {
+            list.innerHTML = '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные о сессиях временно недоступны</div>';
+            toggle.style.display = 'none';
+            return;
+        }
+
+        const allSessions = Array.isArray(sessions) ? sessions : [];
+        const visibleSessions = sessionsExpanded ? allSessions : allSessions.slice(0, 3);
+        if (visibleSessions.length === 0) {
+            list.innerHTML = '<div style="color:var(--md-on-surface-variant);font-size:13px;">Нет активных сессий</div>';
+        } else {
+            list.innerHTML = visibleSessions.map((session, index) => `
+                <div class="session-row" data-session-index="${index}">
+                    <span class="msr" style="color:var(--md-primary);">${session.appName && session.appName.includes('Desktop') ? 'desktop_mac' : 'smartphone'}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(session.customName || session.originalName || 'Устройство')}</div>
+                        <div style="font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(session.operationSystem || '')} • ${escapeHtml(session.appName || '')} ${session.location ? '• ' + escapeHtml(session.location) : ''}</div>
+                    </div>
+                    <span style="font-size:12px;color:var(--md-on-surface-variant);">${session.createdAt ? formatDate(session.createdAt) : ''}</span>
+                    ${window.BF && BF.can('users.sessions.revoke') ? '<button type="button" class="md-btn md-btn-text session-end" style="color:var(--md-error);">Завершить</button>' : ''}
+                </div>`).join('');
+
+            list.querySelectorAll('.session-row').forEach((row, index) => {
+                const session = visibleSessions[index];
+                row.addEventListener('click', () => showDeviceDetails(session));
+                const endButton = row.querySelector('.session-end');
+                if (endButton) endButton.addEventListener('click', event => {
+                    event.stopPropagation();
+                    removeSession(uid, session.deviceId);
+                });
+            });
+        }
+
+        toggle.style.display = allSessions.length > 3 ? 'inline-flex' : 'none';
+        toggle.innerHTML = sessionsExpanded
+            ? '<span class="msr size-18">expand_less</span> Свернуть'
+            : '<span class="msr size-18">expand_more</span> Развернуть';
+    }
+
+    window.toggleSessions = function (uid) {
+        sessionsExpanded = !sessionsExpanded;
+        renderSessionList(uid, currentUserData?.sessions || [], currentUserData?.availability?.sessions !== false);
+    };
+
+    function renderStorageSection(storage, profile) {
+        const totalUsed = Math.max(Number(storage.totalUsedStorage) || 0, 0);
+        const limit = Math.max(Number(storage.storageLimit) || 0, 0);
+        const usedPercent = limit > 0 ? Math.min((totalUsed / limit) * 100, 100) : (totalUsed > 0 ? 100 : 0);
+        const overflow = totalUsed > limit;
+        const usedMb = (totalUsed / 1048576).toFixed(1);
+        const limitGb = (limit / 1073741824).toFixed(1);
+        const types = (storage.storageByTypes || [])
+            .map(type => ({
+                ...type,
+                usedStorage: Math.max(Number(type.usedStorage) || 0, 0),
+                name: storageTypeNames[type.fileType] || type.fileTypeName || 'Другое'
+            }))
+            .filter(type => type.usedStorage > 0)
+            .sort((left, right) => right.usedStorage - left.usedStorage);
+        const typesTotal = types.reduce((sum, type) => sum + type.usedStorage, 0);
+        const chartTotal = typesTotal || totalUsed;
+        const segments = [];
+        let cursor = 0;
+
+        if (chartTotal > 0 && usedPercent > 0) {
+            types.forEach((type, index) => {
+                const next = Math.min(usedPercent, cursor + usedPercent * (type.usedStorage / chartTotal));
+                if (next > cursor) {
+                    segments.push(`${storageChartColors[index % storageChartColors.length]} ${cursor.toFixed(2)}% ${next.toFixed(2)}%`);
+                }
+                cursor = next;
+            });
+            if (cursor < usedPercent) {
+                segments.push(`${storageChartColors[0]} ${cursor.toFixed(2)}% ${usedPercent.toFixed(2)}%`);
+            }
+        }
+        if (usedPercent < 100) {
+            segments.push(`var(--md-surface-container-highest) ${usedPercent.toFixed(2)}% 100%`);
+        }
+        if (segments.length === 0) segments.push('var(--md-surface-container-highest) 0 100%');
+
+        const chartStyle = `background:conic-gradient(${segments.join(', ')});`;
+        const ariaLabel = `Занято ${usedMb} МБ из ${limitGb} ГБ, ${usedPercent.toFixed(1)} процентов`;
+        const legend = types.length
+            ? types.map((type, index) => `
+                <div class="storage-legend-item" title="${escapeHtml(type.name)}">
+                    <span class="storage-legend-dot" style="background:${storageChartColors[index % storageChartColors.length]};"></span>
+                    <span class="storage-legend-name">${escapeHtml(type.name)}</span>
+                    <span class="storage-legend-value">${formatBytes(type.usedStorage)}</span>
+                </div>`).join('')
+            : '<div class="storage-empty">Нет загруженных файлов</div>';
+
+        return `
+            <section class="user-modal-section user-modal-section-last">
+                <h4>Хранилище</h4>
+                <div class="storage-card">
+                    <div class="storage-ring${overflow ? ' is-overflow' : ''}" style="${chartStyle}" role="img" aria-label="${escapeHtml(ariaLabel)}">
+                        <div class="storage-ring-content">
+                            <strong>${usedPercent.toFixed(1)}%</strong>
+                            <span class="${overflow ? 'storage-overflow' : ''}">${overflow ? 'Превышен лимит' : `${usedMb} МБ из ${limitGb} ГБ`}</span>
+                        </div>
+                    </div>
+                    <div class="storage-legend">${legend}</div>
+                </div>
+                <div class="storage-limit-row">
+                    <label style="font-size:13px;color:var(--md-on-surface-variant);" for="storageLimitSlider">Лимит:</label>
+                    <input type="range" id="storageLimitSlider" min="1" max="250" step="1" value="${profile.storageLimitGb || 1}"
+                        oninput="document.getElementById('storageLimitValue').textContent=this.value" style="flex:1;accent-color:var(--md-primary);">
+                    <span id="storageLimitValue" style="font-weight:500;min-width:24px;text-align:right;">${profile.storageLimitGb || 1}</span>
+                    <span style="font-size:13px;color:var(--md-on-surface-variant);">ГБ</span>
+                    <button class="md-btn md-btn-tonal md-btn-square-press" onclick="updateStorageLimit(${profile.id})">Применить</button>
+                </div>
+            </section>`;
     }
 
     function formatBytes(b) {
@@ -458,32 +823,84 @@
         return (b/1073741824).toFixed(2) + ' ГБ';
     }
 
+    window.openBadgeAddModal = async function (uid) {
+        if (window.BF && !BF.can('badges.manage')) return;
+        badgeAddUserId = uid;
+        document.getElementById('badgeAddScrim').classList.add('open');
+        const select = document.getElementById('badgeAddSelect');
+        const submit = document.getElementById('addBadgeSubmit');
+        select.innerHTML = '<option value="">Загрузка...</option>';
+        submit.disabled = true;
+        await loadAllBadgesForSelect();
+    };
+    window.closeBadgeAddModal = function () {
+        document.getElementById('badgeAddScrim').classList.remove('open');
+        badgeAddUserId = null;
+    };
+
     async function loadAllBadgesForSelect() {
+        const select = document.getElementById('badgeAddSelect');
+        const submit = document.getElementById('addBadgeSubmit');
+        if (!select) return;
         try {
             if (allBadges.length === 0) {
-                const r = await fetch('/api/badges');
-                if (r.ok) allBadges = await r.json();
+                allBadges = await BF.request('/api/badges', { errorToast: false });
             }
-            const sel = document.getElementById('addBadgeSelect');
-            if (!sel) return;
             const existing = new Set((currentUserData?.profile?.badges || []).map(ub => ub.badge.id));
-            sel.innerHTML = '<option value="">Выберите бейдж...</option>' +
-                allBadges.filter(b => b.isActive && !existing.has(b.id)).map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
-        } catch {}
+            const available = allBadges.filter(b => b.isActive && !existing.has(b.id));
+            select.innerHTML = available.length
+                ? '<option value="">Выберите бейдж...</option>' + available.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')
+                : '<option value="">Нет доступных бейджей</option>';
+            submit.disabled = available.length === 0;
+        } catch {
+            select.innerHTML = '<option value="">Ошибка загрузки</option>';
+            submit.disabled = true;
+        }
     }
 
-    window.addUserBadge = async function (uid) {
-        const sel = document.getElementById('addBadgeSelect');
-        const id = parseInt(sel.value); if (!id) return;
-        try { await fetch(`/api/users/${uid}/badges`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({badgeId:id}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+    window.addUserBadge = async function (uid = badgeAddUserId) {
+        if (window.BF && !BF.can('badges.manage')) return;
+        const select = document.getElementById('badgeAddSelect');
+        const submit = document.getElementById('addBadgeSubmit');
+        const id = parseInt(select?.value);
+        if (!uid || !id) return;
+        try {
+            await BF.request(`/api/users/${uid}/badges`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({badgeId:id}),
+                loading: submit
+            });
+            closeBadgeAddModal();
+            await openUserModal(uid);
+        } catch (_) {}
     };
     window.removeUserBadge = async function (uid, bid) {
+        if (window.BF && !BF.can('badges.manage')) return;
         if (!confirm('Удалить бейдж?')) return;
-        try { await fetch(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (_) {}
     };
     window.removeSession = async function (uid, did) {
+        if (window.BF && !BF.can('users.sessions.revoke')) return;
         if (!confirm('Завершить сессию?')) return;
-        try { await fetch(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (_) {}
+    };
+    window.revokeAllSessions = async function (uid) {
+        if (window.BF && !BF.can('users.sessions.revoke')) return;
+        if (!confirm('Завершить все активные сессии пользователя?')) return;
+        try {
+            const result = await BF.request(`/api/users/${uid}/sessions`, {
+                method: 'DELETE',
+                loading: '#revokeAllSessionsButton',
+                errorToast: true
+            });
+            if (result.failedDeviceIds?.length) {
+                BF.toast(`Завершено ${result.revokedCount} из ${result.requestedCount} сессий`, 'warning');
+            } else {
+                BF.toast(`Завершено сессий: ${result.revokedCount}`, 'success');
+            }
+            await openUserModal(uid);
+        } catch (_) {}
     };
     window.showDeviceDetails = function (session) {
         const html = `
@@ -499,38 +916,61 @@
     };
     window.closeDeviceModal = function () { document.getElementById('deviceScrim').classList.remove('open'); };
     window.disableOtp = async function (uid, otpType) {
+        if (window.BF && !BF.can('users.2fa.disable')) return;
         const name = otpType === 1 ? 'Authenticator' : 'Email';
+        const reason = document.getElementById('twoFactorReason')?.value.trim();
+        if (!reason) { BF.toast('Укажите причину отключения 2FA', 'warning'); return; }
         if (!confirm(`Отключить ${name} 2FA?`)) return;
-        try { await fetch(`/api/users/${uid}/2fa/disable`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otpType}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try {
+            await BF.request(`/api/users/${uid}/2fa/disable`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({otpType, reason}),
+                successToast: `${name} 2FA отключён`
+            });
+            await openUserModal(uid);
+        } catch (_) {}
     };
     window.updateStorageLimit = async function (uid) {
         const v = parseInt(document.getElementById('storageLimitSlider').value);
-        try { await fetch(`/api/users/${uid}/storage-limit`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({storageLimitGb:v}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/storage-limit`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({storageLimitGb:v}) }); await openUserModal(uid); } catch (_) {}
     };
     window.saveProfileChanges = async function (uid) {
         const firstName = document.getElementById('editFirstName').value.trim();
         const lastName = document.getElementById('editLastName').value.trim();
         const username = document.getElementById('editUsername').value.trim();
         const bio = document.getElementById('editBio').value.trim();
-        try { await fetch(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (_) {}
     };
     window.changeUserPassword = async function (uid) {
+        if (window.BF && !BF.can('users.password.set')) return;
         const input = document.getElementById('newPasswordInput');
         const p = input.value.trim();
-        if (!p || p.length < 6) { alert('Пароль должен быть не менее 6 символов'); return; }
+        const reason = document.getElementById('passwordReason')?.value.trim();
+        if (!p || p.length < 6) { BF.toast('Пароль должен быть не менее 6 символов', 'warning'); return; }
+        if (!reason) { BF.toast('Укажите причину смены пароля', 'warning'); return; }
         if (!confirm('Сменить пароль пользователю?')) return;
-        try { await fetch(`/api/users/${uid}/password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({newPassword:p}) }); input.value = ''; alert('Пароль изменён'); } catch (e) { alert(e.message); }
+        try {
+            await BF.request(`/api/users/${uid}/password`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({newPassword:p, reason}),
+                successToast: 'Пароль изменён'
+            });
+            input.value = '';
+            document.getElementById('passwordReason').value = '';
+        } catch (_) {}
     };
     window.handleAvatarUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;
         const fd = new FormData(); fd.append('avatar', f, f.name);
-        try { await fetch(`/api/users/${uid}/avatar`, { method:'POST', body: fd }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/avatar`, { method:'POST', body: fd }); await openUserModal(uid); await loadUsers(true); } catch (_) {}
         input.value = '';
     };
     window.handlePosterUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;
         const fd = new FormData(); fd.append('poster', f, f.name);
-        try { await fetch(`/api/users/${uid}/poster`, { method:'POST', body: fd }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/poster`, { method:'POST', body: fd }); await openUserModal(uid); } catch (_) {}
         input.value = '';
     };
 
@@ -542,8 +982,7 @@
         const list = document.getElementById('reservedNamesList');
         list.innerHTML = '<div style="padding:16px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const r = await fetch('/api/reserved-names');
-            reservedNames = await r.json();
+            reservedNames = await BF.request('/api/reserved-names', { errorToast: false });
             renderReservedNames();
         } catch { list.innerHTML = '<p style="color:var(--md-error);">Ошибка загрузки</p>'; }
     }
@@ -560,27 +999,32 @@
     window.addReservedName = async function () {
         const input = document.getElementById('newReservedName');
         const name = input.value.trim(); if (!name) return;
-        try { await fetch('/api/reserved-names', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); input.value = ''; await loadReservedNames(); } catch (e) { alert(e.message); }
+        try { await BF.request('/api/reserved-names', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); input.value = ''; await loadReservedNames(); } catch (_) {}
     };
     window.removeReservedName = async function (name) {
         if (!confirm(`Удалить «${name}»?`)) return;
-        try { await fetch(`/api/reserved-names/${encodeURIComponent(name)}`, { method:'DELETE' }); await loadReservedNames(); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/reserved-names/${encodeURIComponent(name)}`, { method:'DELETE' }); await loadReservedNames(); } catch (_) {}
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
         const auth = await checkAuth();
         if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
+        const linkedUserIdParam = new URLSearchParams(window.location.search).get('userId');
+        const linkedUserId = /^\d+$/.test(linkedUserIdParam || '') ? linkedUserIdParam : null;
+        if (linkedUserId) {
+            currentQuery = linkedUserId;
+            document.getElementById('searchInput').value = linkedUserId;
+        }
         await loadUsers(true);
+        if (linkedUserId) await openUserModal(linkedUserId);
         observer.observe(document.getElementById('sentinel'));
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

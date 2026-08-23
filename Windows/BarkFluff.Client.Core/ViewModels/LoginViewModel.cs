@@ -114,7 +114,6 @@ public sealed partial class LoginViewModel : ObservableObject
     private async Task RunFastAuthAsync(CancellationTokenSource cancellation, int generation)
     {
         var cancellationToken = cancellation.Token;
-        IsFastAuthLoading = true;
         ErrorMessage = null;
         try
         {
@@ -125,6 +124,7 @@ public sealed partial class LoginViewModel : ObservableObject
                     return;
                 }
 
+                IsFastAuthLoading = true;
                 FastAuthQrCode = null;
                 FastAuthCountdown = string.Empty;
                 FastAuthStatusMessage = _localization.GetString("FastAuth_Creating");
@@ -148,6 +148,7 @@ public sealed partial class LoginViewModel : ObservableObject
                     return;
                 }
 
+                IsFastAuthLoading = false;
                 FastAuthStatusMessage = _localization.GetString("FastAuth_WaitingConfirmation");
                 using var sessionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 var countdownTask = UpdateFastAuthCountdownAsync(session, generation, sessionCancellation.Token);

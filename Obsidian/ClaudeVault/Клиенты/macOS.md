@@ -281,6 +281,32 @@ Sandbox: добавлен entitlement `com.apple.security.files.downloads.read-w
 
 Регенерация proto: `make generate` в `Packages/BFProto/` (источник — `Mac/Barkfluff/Protos/`, синхронизируется с `Shared/BarkFluff.Proto/`).
 
+## Отдельный файловый адрес ноды (мимо CDN)
+
+Beacon отдаёт `files_media_endpoint` — второй публичный origin файлового HTTP ноды
+(`files2.barkfluff.com`, [[Backend/Nginx]]), не проходящий через CDN с его лимитом на размер файла.
+
+- `ConnectionManager.filesMediaOrigin` заполняется в `bootstrap` (сбрасывается в `shutdown`),
+  `rewriteToMediaOrigin(_:)` подменяет в ссылке **только** схему/хост/порт — путь `/web/...` тот же.
+- Применяется в `FilesRepository`: `getUploadURL`, `getTempDownloadURL(s)`.
+- ⚠️ **Chat/Users/Messages встраивают готовые ссылки на Files прямо в свои ответы** — `Chat.picture`,
+  `User.profilePicture(Preview)`, `Badge.imageURL`, `MessageAttachment.previewURL`, `Sticker.fileURL`/
+  `previewURL` — эти поля идут мимо `FilesRepository`, их URL строит сам сервис через
+  `ExternalEndpoint:Host`. `ConnectionManager.rewriteHost(_:mediaOrigin:)` — чистая nonisolated static
+  версия `rewriteToMediaOrigin` (без обращения к состоянию актора) — применяется прямо в
+  `MessagesRepository` (`listChats`/`createGroupChat`/`listMessages`/`sendMessage`/`editMessage`/
+  `listChatAttachments`, включая вложенные `mapMessage`/`mapAttachment`/`mapInnerAttachment`),
+  `UsersRepository` (`getUser`/`searchUsers`/`getUserBadges`, `mapUser`), `UpdatesRepository`
+  (`subscribeNewMessages`/`subscribeMessagesEdited`, realtime-поток) и `StickersRepository`
+  (`getStickerPack`). Каждый вызывающий метод один раз читает `await connectionManager.filesMediaOrigin`
+  и прокидывает строку дальше в синхронные `nonisolated`-мапперы — лишних пересечений актора на
+  каждое поле нет. **Если добавляешь новое поле-URL из ответа сервиса — не забудь и его**, это уже
+  дважды ловилось как баг (сначала в вебе, потом здесь).
+- Аватары из профилей (`presignedURLHint` в `MediaCacheManager`) намеренно остаются на основном
+  адресе Files — они мелкие, и CDN для них полезен.
+- Пустое значение (нода не объявила адрес) = поведение как раньше. Изменения лежат в общих пакетах,
+  поэтому распространяются и на [[Клиенты/iOS]].
+
 ## Отправка изображений (клиентская оптимизация)
 
 Перед загрузкой на сервер вложения с `uploadFileType == .messageAttachmentImage` (PNG/JPEG/WebP/HEIC/BMP по расширению) проходят пайплайн в `ConversationViewModel.optimizeImage(_:)` в соответствии с разделом «Изображения» из [[Клиенты/DesignDocument]]:

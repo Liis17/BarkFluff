@@ -10,7 +10,22 @@
     android:paddingTop="0dp"
     android:paddingBottom="0dp">
 
+    <!-- Индикатор выделения (режим множественного выбора) — занимает то же место,
+         откуда начинается облачко, поэтому в режиме выбора contentColumn сдвигается
+         вправо через translationX (в отличие от sent-варианта, где под индикатор уже
+         есть готовый отступ). -->
+    <ImageView
+        android:id="@+id/selectionIndicator"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="start|center_vertical"
+        android:contentDescription="@string/cd_select_message"
+        android:visibility="gone"
+        tools:src="@drawable/ic_action_select"
+        tools:visibility="visible" />
+
     <LinearLayout
+        android:id="@+id/contentColumn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start"

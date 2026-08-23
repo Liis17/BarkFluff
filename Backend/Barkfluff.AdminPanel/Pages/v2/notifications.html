@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Уведомления</title>
-    <link rel="stylesheet" href="assets/md3.css">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .notif-layout {
             display: grid;
@@ -53,21 +53,6 @@
         .preview-shell .img-wrap { margin-top: 10px; border-radius: var(--md-shape-sm); overflow: hidden; background: #0a0d14; }
         .preview-shell .img-wrap img { display: block; width: 100%; max-height: 220px; object-fit: cover; }
 
-        /* Toast */
-        #toastWrap { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
-        .toast {
-            padding: 12px 16px;
-            border-radius: var(--md-shape-md);
-            background: var(--md-inverse-surface);
-            color: var(--md-inverse-on-surface);
-            box-shadow: var(--md-elev-3);
-            font-size: 14px;
-            display: flex; align-items: center; gap: 12px;
-            animation: toast-in .3s var(--md-easing-emphasized-decel);
-        }
-        @keyframes toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .toast.success { background: var(--md-success-container); color: var(--md-on-success-container); }
-        .toast.err     { background: var(--md-error-container);   color: var(--md-on-error-container); }
     </style>
 </head>
 <body>
@@ -166,28 +151,15 @@
     </div>
 </div>
 
-<div id="toastWrap"></div>
-
-<script src="assets/icons.js"></script>
-<script src="assets/sidebar.js"></script>
-<script src="assets/command-palette.js"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=5"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
     function formatDate(s) { if (!s) return ''; return new Date(s).toLocaleDateString('ru-RU'); }
 
-    function toast(msg, type = '') {
-        const el = document.createElement('div');
-        el.className = 'toast ' + type;
-        el.innerHTML = `<span class="msr">${type==='success'?'check_circle':type==='err'?'error':'info'}</span><span>${msg}</span>`;
-        document.getElementById('toastWrap').appendChild(el);
-        setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 4000);
-    }
+    function toast(msg, type = '') { BF.toast(msg, type === 'err' ? 'error' : type); }
 
     function openConfirm(title, body, onOk) {
         document.getElementById('confirmTitle').textContent = title;
@@ -233,13 +205,9 @@
         if (!payload.title || !payload.body) { toast('Заполните заголовок и тело', 'err'); return; }
         openConfirm('Отправить всем?', `Уведомление будет разослано всем пользователям с включёнными push-уведомлениями.`, async () => {
             const btn = document.getElementById('btnSendAll');
-            btn.disabled = true;
             try {
-                const res = await fetch('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, confirm: true }) });
-                if (!res.ok) throw new Error();
-                toast('Рассылка отправлена', 'success');
-            } catch { toast('Ошибка отправки', 'err'); }
-            finally { btn.disabled = false; }
+                await BF.request('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, confirm: true }), loading: btn, successToast: 'Рассылка отправлена' });
+            } catch {}
         });
     };
 
@@ -252,27 +220,21 @@
         if (!ids.length) { toast('Не нашли валидных Device ID', 'err'); return; }
         openConfirm('Отправить выбранным?', `Уведомление получат ${ids.length} устройств.`, async () => {
             const btn = document.getElementById('btnSendDevices');
-            btn.disabled = true;
             try {
-                const res = await fetch('/api/notifications/broadcast/devices', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, deviceIds: ids}) });
-                if (!res.ok) throw new Error();
-                toast('Рассылка отправлена', 'success');
-            } catch { toast('Ошибка отправки', 'err'); }
-            finally { btn.disabled = false; }
+                await BF.request('/api/notifications/broadcast/devices', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, deviceIds: ids}), loading: btn, successToast: 'Рассылка отправлена' });
+            } catch {}
         });
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
         const auth = await checkAuth(); if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

@@ -355,7 +355,17 @@ public class UsersStorage
 
         user.Username = username;
 
-        await _usersContext.SaveChangesAsync();
+        try
+        {
+            await _usersContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" } pg &&
+                                            pg.ConstraintName?.Contains("username", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // CheckExistUsername и запись разделены, поэтому уникальный индекс остаётся
+            // последней защитой от гонки при параллельной смене username.
+            throw new UsernameExistException();
+        }
     }
 
     public async Task ChangeBio(long userId, string newBio)
