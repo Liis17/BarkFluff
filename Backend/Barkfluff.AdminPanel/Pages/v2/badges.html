@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Бейджи</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .badges-grid {
             display: grid;
@@ -202,26 +202,20 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let badges = [];
 
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
     function formatDate(s) { if (!s) return ''; return new Date(s).toLocaleDateString('ru-RU'); }
 
     async function loadBadges() {
         try {
-            const r = await fetch('/api/badges');
+            const r = await BF.api('/api/badges');
             badges = await r.json();
             renderBadges();
         } catch {}
@@ -328,8 +322,8 @@
             if (f) fd.append('image', f);
             else if (isEdit) fd.append('imageUrl', document.getElementById('editImageUrl').value);
             const res = isEdit
-                ? await fetch(`/api/badges/${id}`, { method:'PUT', body: fd })
-                : await fetch('/api/badges', { method:'POST', body: fd });
+                ? await BF.api(`/api/badges/${id}`, { method:'PUT', body: fd })
+                : await BF.api('/api/badges', { method:'POST', body: fd });
             if (!res.ok) { alert('Не удалось сохранить бейдж: ' + (await res.text())); return; }
             closeModal();
             await loadBadges();
@@ -340,23 +334,21 @@
     window.deleteBadge = async function (id) {
         const b = badges.find(x => x.id === id); if (!b) return;
         if (!confirm(`Удалить бейдж «${b.name}»? Это действие необратимо.`)) return;
-        try { await fetch(`/api/badges/${id}`, { method:'DELETE' }); } catch {}
+        try { await BF.api(`/api/badges/${id}`, { method:'DELETE' }); } catch {}
         badges = badges.filter(x => x.id !== id);
         renderBadges();
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
         const auth = await checkAuth(); if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         await loadBadges();
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

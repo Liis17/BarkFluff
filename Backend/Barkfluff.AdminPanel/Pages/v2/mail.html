@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Почта</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .md-page { padding: 0; }
         .mail-shell {
@@ -131,18 +131,6 @@
             width: 100%;
         }
 
-        #toast {
-            position: fixed; bottom: 24px; right: 24px;
-            padding: 12px 16px;
-            background: var(--md-inverse-surface);
-            color: var(--md-inverse-on-surface);
-            border-radius: var(--md-shape-md);
-            box-shadow: var(--md-elev-3);
-            z-index: 999;
-            display: none;
-            font-size: 14px;
-        }
-
         @media (max-width: 600px) {
             .mail-shell { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; }
         }
@@ -234,12 +222,10 @@
     </div>
 </div>
 
-<div id="toast"></div>
-
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     const state = {
         accounts: [], activeAccount: null,
@@ -249,14 +235,7 @@
     const $ = id => document.getElementById(id);
 
     function toast(msg, kind = 'info') {
-        const el = $('toast');
-        el.textContent = msg;
-        const colors = { info: 'var(--md-inverse-surface)', ok: 'var(--md-success)', err: 'var(--md-error)', warn: 'var(--md-tertiary)' };
-        const fgs = { info: 'var(--md-inverse-on-surface)', ok: '#fff', err: '#fff', warn: '#fff' };
-        el.style.background = colors[kind] || colors.info;
-        el.style.color = fgs[kind] || fgs.info;
-        el.style.display = '';
-        setTimeout(() => { el.style.display = 'none'; }, 4000);
+        BF.toast(msg, kind === 'ok' ? 'success' : kind === 'err' ? 'error' : kind === 'warn' ? 'warning' : kind);
     }
     function setStatus(text, ok = true) {
         const el = $('connection-status');
@@ -277,7 +256,7 @@
     function addrText(a) { if (!a) return ''; return a.name ? `${a.name} <${a.address}>` : a.address; }
 
     async function loadAccounts() {
-        const r = await fetch('/api/mail/accounts');
+        const r = await BF.api('/api/mail/accounts');
         if (r.status === 401) { window.location.href = '/'; return; }
         if (!r.ok) { toast('Не удалось загрузить ящики', 'err'); return; }
         state.accounts = await r.json();
@@ -308,7 +287,7 @@
         $('message-list').innerHTML = '<div style="padding:48px 24px;text-align:center;color:var(--md-on-surface-variant);font-size:13px;"><div class="md-loader-expressive" style="display:inline-block;margin-bottom:8px;"></div><div>Загрузка...</div></div>';
         setStatus('Загрузка', true);
         try {
-            const r = await fetch(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages?folder=INBOX&page=0&size=50`);
+            const r = await BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages?folder=INBOX&page=0&size=50`);
             if (r.status === 401) { window.location.href = '/'; return; }
             if (!r.ok) {
                 $('message-list').innerHTML = `<div style="padding:48px 24px;text-align:center;color:var(--md-error);font-size:13px;">Ошибка загрузки</div>`;
@@ -349,13 +328,13 @@
         $('message-detail').className = 'detail-pane';
         $('message-detail').innerHTML = '<div style="padding:48px;text-align:center;flex:1;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const r = await fetch(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}`);
+            const r = await BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}`);
             if (!r.ok) throw new Error();
             state.selectedDetail = await r.json();
             const localMsg = state.messages.find(m => m.uid === uid);
             if (localMsg && !localMsg.isRead) {
                 localMsg.isRead = true; renderList();
-                fetch(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}/read`, { method:'POST' }).catch(() => {});
+                BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${uid}/read`, { method:'POST' }).catch(() => {});
             }
             renderDetail(state.selectedDetail);
         } catch (e) {
@@ -446,7 +425,7 @@
         state.pendingFiles.forEach(f => fd.append('files', f, f.name));
         const btn = $('compose-send-btn'); btn.disabled = true;
         try {
-            const r = await fetch(`/api/mail/${encodeURIComponent(state.activeAccount)}/send`, { method:'POST', body: fd });
+            const r = await BF.api(`/api/mail/${encodeURIComponent(state.activeAccount)}/send`, { method:'POST', body: fd });
             if (!r.ok) { let m = 'Ошибка отправки'; try { const j = await r.json(); m = j.error || j.detail || m; } catch {} throw new Error(m); }
             toast('Письмо отправлено', 'ok');
             closeCompose();
@@ -467,20 +446,15 @@
 
     $('logout-btn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
-        try {
-            const tk = await fetch('/api/auth/me');
-            if (!tk.ok) { window.location.href = '/'; return; }
-            const j = await tk.json();
-            if (window.mdNavSetUser) window.mdNavSetUser(j.name || 'Admin', j.createdAt ? new Date(j.createdAt).toLocaleDateString('ru-RU') : '');
-        } catch { window.location.href = '/'; return; }
+        const j = await BF.requireAuth();
+        if (!j) return;
+        if (window.mdNavSetUser) window.mdNavSetUser(j.name || 'Admin', j.createdAt ? new Date(j.createdAt).toLocaleDateString('ru-RU') : '');
         await loadAccounts();
-        $('loading-overlay').classList.add('hidden');
-        setTimeout(() => $('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

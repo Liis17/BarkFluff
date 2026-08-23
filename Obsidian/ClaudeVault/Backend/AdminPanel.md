@@ -115,6 +115,8 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ## HTML-страницы (Pages/)
 
+Авторизованные MD3-страницы используют общий `Pages/v2/assets/api.js`. `BF.api()` остаётся совместимым с `fetch` и централизует обработку истёкшей сессии (`401`) и Telegram step-up (`428`); для нового кода `BF.request()` разбирает JSON/text/blob, нормализует серверные ошибки и поддерживает loading/toast. `BF.requireAuth()`, `BF.logout()` и `BF.pageReady()` убирают дублирование auth/logout/page-loading между HTML-страницами. Общие toast-стили находятся в `assets/md3.css`.
+
 | Файл | Назначение |
 |------|-----------|
 | `Login.html` | Форма входа: nickname → polling статуса |

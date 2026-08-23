@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Юзеры</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .users-list { display: flex; flex-direction: column; gap: 6px; }
         .user-row {
@@ -406,9 +406,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     let users = [];
     let totalCount = 0;
@@ -422,15 +422,7 @@
     let badgeAddUserId = null;
     const PAGE_SIZE = 50;
 
-    async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            const me = await r.json();
-            if (window.BF && Array.isArray(me.roles)) window.BF.roles = me.roles;
-            return me;
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     function getInitials(f, l) { return ((f?.[0] || '') + (l?.[0] || '')).toUpperCase() || '?'; }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
@@ -446,7 +438,7 @@
 
         try {
             const params = new URLSearchParams({ query: currentQuery, offset: currentOffset, size: PAGE_SIZE });
-            const res = await fetch(`/api/users?${params}`);
+            const res = await BF.api(`/api/users?${params}`);
             if (!res.ok) throw new Error();
             const data = await res.json();
             totalCount = data.totalCount;
@@ -495,7 +487,7 @@
         document.getElementById('userScrim').classList.add('open');
         document.getElementById('modalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const res = await fetch(`/api/users/${userId}`);
+            const res = await BF.api(`/api/users/${userId}`);
             if (!res.ok) throw new Error();
             currentUserData = await res.json();
             renderUserModal(currentUserData);
@@ -796,7 +788,7 @@
         if (!select) return;
         try {
             if (allBadges.length === 0) {
-                const r = await fetch('/api/badges');
+                const r = await BF.api('/api/badges');
                 if (r.ok) allBadges = await r.json();
             }
             const existing = new Set((currentUserData?.profile?.badges || []).map(ub => ub.badge.id));
@@ -819,7 +811,7 @@
         if (!uid || !id) return;
         submit.disabled = true;
         try {
-            const response = await fetch(`/api/users/${uid}/badges`, {
+            const response = await BF.api(`/api/users/${uid}/badges`, {
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({badgeId:id})
@@ -835,12 +827,12 @@
     window.removeUserBadge = async function (uid, bid) {
         if (window.BF && !BF.can('badges.manage')) return;
         if (!confirm('Удалить бейдж?')) return;
-        try { await fetch(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
     };
     window.removeSession = async function (uid, did) {
         if (window.BF && !BF.can('users.sessions.revoke')) return;
         if (!confirm('Завершить сессию?')) return;
-        try { await fetch(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
     };
     window.showDeviceDetails = function (session) {
         const html = `
@@ -867,14 +859,14 @@
     };
     window.updateStorageLimit = async function (uid) {
         const v = parseInt(document.getElementById('storageLimitSlider').value);
-        try { await fetch(`/api/users/${uid}/storage-limit`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({storageLimitGb:v}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/storage-limit`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({storageLimitGb:v}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
     };
     window.saveProfileChanges = async function (uid) {
         const firstName = document.getElementById('editFirstName').value.trim();
         const lastName = document.getElementById('editLastName').value.trim();
         const username = document.getElementById('editUsername').value.trim();
         const bio = document.getElementById('editBio').value.trim();
-        try { await fetch(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
     };
     window.changeUserPassword = async function (uid) {
         if (window.BF && !BF.can('users.password.set')) return;
@@ -892,13 +884,13 @@
     window.handleAvatarUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;
         const fd = new FormData(); fd.append('avatar', f, f.name);
-        try { await fetch(`/api/users/${uid}/avatar`, { method:'POST', body: fd }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/avatar`, { method:'POST', body: fd }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
         input.value = '';
     };
     window.handlePosterUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;
         const fd = new FormData(); fd.append('poster', f, f.name);
-        try { await fetch(`/api/users/${uid}/poster`, { method:'POST', body: fd }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/users/${uid}/poster`, { method:'POST', body: fd }); await openUserModal(uid); } catch (e) { alert(e.message); }
         input.value = '';
     };
 
@@ -910,7 +902,7 @@
         const list = document.getElementById('reservedNamesList');
         list.innerHTML = '<div style="padding:16px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const r = await fetch('/api/reserved-names');
+            const r = await BF.api('/api/reserved-names');
             reservedNames = await r.json();
             renderReservedNames();
         } catch { list.innerHTML = '<p style="color:var(--md-error);">Ошибка загрузки</p>'; }
@@ -928,17 +920,16 @@
     window.addReservedName = async function () {
         const input = document.getElementById('newReservedName');
         const name = input.value.trim(); if (!name) return;
-        try { await fetch('/api/reserved-names', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); input.value = ''; await loadReservedNames(); } catch (e) { alert(e.message); }
+        try { await BF.api('/api/reserved-names', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); input.value = ''; await loadReservedNames(); } catch (e) { alert(e.message); }
     };
     window.removeReservedName = async function (name) {
         if (!confirm(`Удалить «${name}»?`)) return;
-        try { await fetch(`/api/reserved-names/${encodeURIComponent(name)}`, { method:'DELETE' }); await loadReservedNames(); } catch (e) { alert(e.message); }
+        try { await BF.api(`/api/reserved-names/${encodeURIComponent(name)}`, { method:'DELETE' }); await loadReservedNames(); } catch (e) { alert(e.message); }
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     (async function () {
@@ -947,8 +938,7 @@
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         await loadUsers(true);
         observer.observe(document.getElementById('sentinel'));
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

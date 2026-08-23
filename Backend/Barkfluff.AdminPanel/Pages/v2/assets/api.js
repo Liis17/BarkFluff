@@ -1,12 +1,13 @@
 /* =============================================================
-   BarkFluff Admin — API helper with Telegram step-up (428) flow
-   Exposes: BF.api(url, options), BF.confirm(action, params),
-            BF.stepUpQuery(action, params), BF.roles, BF.can()
+   BarkFluff Admin — shared API and UI feedback helpers.
+   Keeps BF.api() response-compatible with fetch while adding:
+   Telegram step-up, auth expiry, normalized errors, loading and toasts.
    ============================================================= */
 
 (function () {
   const BF = window.BF || (window.BF = {});
   BF.roles = BF.roles || [];
+  const nativeFetch = window.fetch.bind(window);
 
   // Mirror of the server-side AdminPermissions matrix (UI hint only).
   const PERMISSION_ROLES = {
@@ -43,17 +44,123 @@
     return allowed.some(function (r) { return BF.roles.indexOf(r) !== -1; });
   };
 
-  function loadRoles() {
-    fetch('/api/auth/me')
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (me) {
-        if (me && Array.isArray(me.roles)) {
-          BF.roles = me.roles;
-          document.dispatchEvent(new CustomEvent('bf:roles', { detail: me.roles }));
-        }
-      })
-      .catch(function () {});
+  function publishRoles(me) {
+    if (!me || !Array.isArray(me.roles)) return;
+    BF.roles = me.roles;
+    document.dispatchEvent(new CustomEvent('bf:roles', { detail: me.roles }));
   }
+
+  function redirectToLogin() {
+    if (window.location.pathname === '/') return;
+    window.location.assign('/');
+  }
+
+  function setElementBusy(target, busy) {
+    const element = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!element) return;
+
+    if (busy) {
+      element.setAttribute('aria-busy', 'true');
+      element.classList.add('bf-busy');
+      if ('disabled' in element) {
+        element.dataset.bfWasDisabled = element.disabled ? 'true' : 'false';
+        element.disabled = true;
+      }
+      return;
+    }
+
+    element.removeAttribute('aria-busy');
+    element.classList.remove('bf-busy');
+    if ('disabled' in element) {
+      element.disabled = element.dataset.bfWasDisabled === 'true';
+      delete element.dataset.bfWasDisabled;
+    }
+  }
+
+  function getToastHost() {
+    let host = document.getElementById('bf-toast-host');
+    if (host) return host;
+
+    host = document.createElement('div');
+    host.id = 'bf-toast-host';
+    host.className = 'bf-toast-host';
+    host.setAttribute('aria-live', 'polite');
+    document.body.appendChild(host);
+    return host;
+  }
+
+  BF.toast = function (message, type, duration) {
+    if (!message) return;
+    const kind = type || 'info';
+    const toast = document.createElement('div');
+    toast.className = 'bf-toast bf-toast-' + kind;
+    toast.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+
+    const icon = document.createElement('span');
+    icon.className = 'msr size-20';
+    icon.textContent = kind === 'success' ? 'check_circle'
+      : kind === 'error' ? 'error'
+      : kind === 'warning' ? 'warning'
+      : 'info';
+
+    const text = document.createElement('span');
+    text.textContent = String(message);
+    toast.append(icon, text);
+    getToastHost().appendChild(toast);
+
+    window.setTimeout(function () {
+      toast.classList.add('bf-toast-leaving');
+      window.setTimeout(function () { toast.remove(); }, 180);
+    }, duration || 4500);
+  };
+
+  BF.setLoading = setElementBusy;
+
+  BF.pageReady = function () {
+    const overlay = document.getElementById('loading-overlay');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    window.setTimeout(function () { overlay.remove(); }, 300);
+  };
+
+  BF.ApiError = class ApiError extends Error {
+    constructor(message, status, details, response) {
+      super(message);
+      this.name = 'ApiError';
+      this.status = status || 0;
+      this.details = details || null;
+      this.response = response || null;
+    }
+  };
+
+  async function readError(response) {
+    let body = null;
+    const contentType = response.headers.get('content-type') || '';
+    try {
+      body = contentType.includes('json')
+        ? await response.clone().json()
+        : await response.clone().text();
+    } catch (_) {}
+
+    let message = '';
+    if (typeof body === 'string') message = body;
+    else if (body) {
+      message = body.message || body.detail || body.title || '';
+      if (!message && body.errors && typeof body.errors === 'object') {
+        message = Object.values(body.errors).flat().filter(Boolean).join(' ');
+      }
+    }
+
+    if (!message) {
+      if (response.status === 403) message = 'Недостаточно прав для выполнения действия';
+      else if (response.status >= 500) message = 'Сервис временно недоступен';
+      else message = 'Запрос завершился с ошибкой HTTP ' + response.status;
+    }
+
+    return new BF.ApiError(message, response.status, body, response);
+  }
+
+  BF.readError = readError;
 
   // -------- Step-up modal --------
 
@@ -115,7 +222,7 @@
 
   // Requests a Telegram confirmation and resolves with the confirmation id.
   BF.confirm = async function (action, parameters) {
-    const response = await fetch('/api/stepup/request', {
+    const response = await nativeFetch('/api/stepup/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: action, parameters: parameters || '' })
@@ -136,7 +243,7 @@
 
       let statusRes;
       try {
-        statusRes = await fetch('/api/stepup/status/' + data.confirmationId);
+        statusRes = await nativeFetch('/api/stepup/status/' + data.confirmationId);
       } catch (e) {
         closeModal();
         throw new Error('Не удалось проверить подтверждение');
@@ -165,23 +272,100 @@
     throw new Error('Истекло время ожидания подтверждения');
   };
 
-  // fetch wrapper: transparently handles 428 step-up and retries once
+  // Response-compatible fetch wrapper: handles 428 step-up and auth expiry.
   BF.api = async function (url, options) {
     options = options || {};
-    let response = await fetch(url, options);
+    let response;
+    try {
+      response = await nativeFetch(url, options);
+    } catch (error) {
+      document.dispatchEvent(new CustomEvent('bf:api-error', { detail: error }));
+      throw new BF.ApiError('Не удалось связаться с сервером', 0, error, null);
+    }
 
     if (response.status === 428) {
-      const body = await response.json().catch(function () { return null; });
+      const body = await response.clone().json().catch(function () { return null; });
       if (!body || !body.action) return response;
 
       const confirmationId = await BF.confirm(body.action, body.parameters);
 
       const headers = new Headers(options.headers || {});
       headers.set('X-Confirmation-Id', confirmationId);
-      response = await fetch(url, Object.assign({}, options, { headers: headers }));
+      response = await nativeFetch(url, Object.assign({}, options, { headers: headers }));
+    }
+
+    if (response.status === 401) {
+      document.dispatchEvent(new CustomEvent('bf:unauthorized'));
+      redirectToLogin();
     }
 
     return response;
+  };
+
+  // Parsed API call for new code. Throws BF.ApiError for any non-2xx response.
+  BF.request = async function (url, options) {
+    options = options || {};
+    const requestOptions = Object.assign({}, options);
+    const loading = requestOptions.loading;
+    const responseType = requestOptions.responseType || 'auto';
+    const errorToast = requestOptions.errorToast !== false;
+    const successToast = requestOptions.successToast;
+    delete requestOptions.loading;
+    delete requestOptions.responseType;
+    delete requestOptions.errorToast;
+    delete requestOptions.successToast;
+
+    setElementBusy(loading, true);
+    try {
+      const response = await BF.api(url, requestOptions);
+      if (!response.ok) throw await readError(response);
+
+      let result;
+      if (responseType === 'response') result = response;
+      else if (responseType === 'blob') result = await response.blob();
+      else if (responseType === 'text') result = await response.text();
+      else if (response.status === 204) result = null;
+      else {
+        const contentType = response.headers.get('content-type') || '';
+        result = contentType.includes('json') ? await response.json() : await response.text();
+      }
+
+      if (successToast) BF.toast(successToast, 'success');
+      return result;
+    } catch (error) {
+      const apiError = error instanceof BF.ApiError
+        ? error
+        : new BF.ApiError(error && error.message ? error.message : 'Неизвестная ошибка', 0, error, null);
+      if (errorToast && apiError.status !== 401) BF.toast(apiError.message, 'error');
+      throw apiError;
+    } finally {
+      setElementBusy(loading, false);
+    }
+  };
+
+  let currentAdminPromise = null;
+  BF.requireAuth = function (forceReload) {
+    if (!currentAdminPromise || forceReload) {
+      currentAdminPromise = BF.request('/api/auth/me', { errorToast: false })
+        .then(function (me) {
+          publishRoles(me);
+          return me;
+        })
+        .catch(function (error) {
+          currentAdminPromise = null;
+          if (error.status !== 401) BF.toast(error.message, 'error');
+          return null;
+        });
+    }
+    return currentAdminPromise;
+  };
+
+  BF.logout = async function () {
+    try {
+      await BF.api('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.assign('/');
+    }
   };
 
   // For WebSocket connections (SSH console): returns the query string with the confirmation id.
@@ -190,5 +374,5 @@
     return 'confirmation=' + encodeURIComponent(confirmationId);
   };
 
-  loadRoles();
+  BF.requireAuth();
 })();

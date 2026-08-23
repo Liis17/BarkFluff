@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Дашборд</title>
-    <link rel="stylesheet" href="assets/md3.css?v=3">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .kpi-grid {
@@ -296,9 +296,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=3"></script>
-<script src="assets/sidebar.js?v=3"></script>
-<script src="assets/command-palette.js?v=3"></script>
+<script src="assets/api.js?v=4"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     // ---- Helpers ----
     function formatDate(s) {
@@ -376,13 +376,7 @@
     const metricColors = ['#8c351c','#BA1A1A','#146C2E','#815600','#7C4B96','#B4365B','#0C7C9C','#B85228','#1F8A6E','#5B5FCF','#5C772A','#A52545'];
 
     // ---- Auth ----
-    async function checkAuth() {
-        try {
-            const res = await fetch('/api/auth/me');
-            if (!res.ok) { window.location.href = '/'; return null; }
-            return await res.json();
-        } catch { window.location.href = '/'; return null; }
-    }
+    function checkAuth() { return BF.requireAuth(); }
 
     // ---- Dashboard data ----
     let trafficChart = null;
@@ -403,9 +397,9 @@
 
     async function loadDashboardData() {
         const [kpisRes, trafficRes, healthRes] = await Promise.allSettled([
-            fetch('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-            fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-            fetch('/api/health/overview').then(r => r.ok ? r.json() : Promise.reject(r.status))
+            BF.api('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
+            BF.api('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status)),
+            BF.api('/api/health/overview').then(r => r.ok ? r.json() : Promise.reject(r.status))
         ]);
 
         if (kpisRes.status === 'fulfilled') {
@@ -570,7 +564,7 @@
         const grid = section.querySelector('.service-grid');
         grid.innerHTML = '<div style="color:var(--md-on-surface-variant);padding:16px">Загрузка...</div>';
         try {
-            const response = await fetch(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`);
+            const response = await BF.api(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`);
             if (!response.ok) throw new Error(response.status);
             const data = await response.json();
             grid.innerHTML = '';
@@ -602,7 +596,7 @@
     async function loadMetricCatalog() {
         const container = document.getElementById('service-metrics-container');
         try {
-            const response = await fetch('/api/seq/dashboard/metric-groups');
+            const response = await BF.api('/api/seq/dashboard/metric-groups');
             if (!response.ok) throw new Error(response.status);
             const data = await response.json();
             container.innerHTML = '';
@@ -618,8 +612,7 @@
 
     // ---- Logout ----
     document.getElementById('logout-btn').addEventListener('click', async () => {
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
 
     // ---- Uptime ----
@@ -663,9 +656,7 @@
         await loadDashboardData();
         loadMetricCatalog();
 
-        const overlay = document.getElementById('loading-overlay');
-        overlay.classList.add('hidden');
-        setTimeout(() => overlay.remove(), 300);
+        BF.pageReady();
 
         setInterval(loadDashboardData, 30000);
     })();

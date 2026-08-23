@@ -1065,6 +1065,51 @@ html, body {
 .md-page-loading.hidden { opacity: 0; pointer-events: none; }
 .md-page-loading .label { font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
 
+/* ─── Shared request feedback ───────────────────────────────────────────── */
+.bf-busy { cursor: progress !important; }
+
+.bf-toast-host {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 12000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.bf-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--md-shape-md);
+  background: var(--md-inverse-surface);
+  color: var(--md-inverse-on-surface);
+  box-shadow: var(--md-elev-3);
+  font-size: 14px;
+  line-height: 20px;
+  animation: bf-toast-in 180ms var(--md-easing-emphasized-decel);
+  pointer-events: auto;
+}
+
+.bf-toast-success { background: var(--md-success-container); color: var(--md-on-success-container); }
+.bf-toast-warning { background: var(--md-warning-container); color: var(--md-on-warning-container); }
+.bf-toast-error { background: var(--md-error-container); color: var(--md-on-error-container); }
+.bf-toast-leaving { opacity: 0; transform: translateY(8px); transition: opacity 180ms, transform 180ms; }
+
+@keyframes bf-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .bf-toast-host { right: 16px; bottom: 16px; left: 16px; align-items: stretch; }
+}
+
 /* ============================================================
    RESPONSIVE APP SHELL — off-canvas nav drawer (mobile)
    ============================================================ */

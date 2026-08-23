@@ -96,7 +96,7 @@
     if (!submenu) return;
     submenu.innerHTML = '<div style="padding:6px 16px 6px 56px;font-size:12px;color:var(--md-on-surface-variant);">Загрузка...</div>';
     try {
-      const res = await fetch('/api/s3/buckets');
+      const res = await BF.api('/api/s3/buckets');
       if (!res.ok) throw new Error('failed');
       const buckets = await res.json();
       submenu.innerHTML = buckets.map(b => `
@@ -184,7 +184,7 @@
 
   async function loadCurrentUser() {
     try {
-      const response = await fetch('/api/auth/me');
+      const response = await BF.api('/api/auth/me');
       if (response.ok) {
         const me = await response.json();
         if (window.BF && Array.isArray(me.roles)) {
