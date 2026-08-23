@@ -296,7 +296,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -397,9 +397,9 @@
 
     async function loadDashboardData() {
         const [kpisRes, trafficRes, healthRes] = await Promise.allSettled([
-            BF.api('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-            BF.api('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-            BF.api('/api/health/overview').then(r => r.ok ? r.json() : Promise.reject(r.status))
+            BF.request('/api/seq/dashboard/kpis?hours=24', { errorToast: false }),
+            BF.request('/api/seq/dashboard/traffic?hours=24&interval=1h', { errorToast: false }),
+            BF.request('/api/health/overview', { errorToast: false })
         ]);
 
         if (kpisRes.status === 'fulfilled') {
@@ -564,9 +564,7 @@
         const grid = section.querySelector('.service-grid');
         grid.innerHTML = '<div style="color:var(--md-on-surface-variant);padding:16px">Загрузка...</div>';
         try {
-            const response = await BF.api(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`);
-            if (!response.ok) throw new Error(response.status);
-            const data = await response.json();
+            const data = await BF.request(`/api/seq/dashboard/metric-groups/${encodeURIComponent(group.serviceName)}?hours=72`, { errorToast: false });
             grid.innerHTML = '';
             const uploadMetrics = data.metrics.filter(metric => lastUploadMetricIds.has(metric.id));
             const lastUploadCard = group.serviceName === 'BarkFluff.Files' ? renderLastUploadCard(uploadMetrics) : null;
@@ -596,9 +594,7 @@
     async function loadMetricCatalog() {
         const container = document.getElementById('service-metrics-container');
         try {
-            const response = await BF.api('/api/seq/dashboard/metric-groups');
-            if (!response.ok) throw new Error(response.status);
-            const data = await response.json();
+            const data = await BF.request('/api/seq/dashboard/metric-groups', { errorToast: false });
             container.innerHTML = '';
             data.groups.forEach(group => {
                 const section = renderMetricGroup(group);

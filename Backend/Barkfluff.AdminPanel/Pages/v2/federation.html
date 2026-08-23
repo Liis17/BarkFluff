@@ -238,7 +238,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -264,9 +264,7 @@
     // ---- Status + keys ----
     async function loadStatus() {
         try {
-            const r = await BF.api('/api/federation/status');
-            if (!r.ok) return;
-            const s = await r.json();
+            const s = await BF.request('/api/federation/status', { errorToast: false });
 
             document.getElementById('notConfiguredWarning').style.display = s.serverName ? 'none' : 'flex';
             document.getElementById('statServerName').textContent = s.serverName || '—';
@@ -289,8 +287,7 @@
     window.rotateKey = async function () {
         if (!confirm('Ротировать ключ ноды? Старый ключ истечёт через настроенное окно перекрытия (по умолчанию 30 дней), пиры обновятся при следующем рефреше.')) return;
         try {
-            const res = await BF.api('/api/federation/keys/rotate', { method: 'POST' });
-            if (!res.ok) { alert('Не удалось ротировать ключ: ' + (await res.text())); return; }
+            await BF.request('/api/federation/keys/rotate', { method: 'POST', successToast: 'Ключ ротирован' });
             await loadStatus();
         } catch {}
     };
@@ -298,8 +295,7 @@
     // ---- Peers ----
     async function loadPeers() {
         try {
-            const r = await BF.api('/api/federation/peers');
-            peers = await r.json();
+            peers = await BF.request('/api/federation/peers', { errorToast: false });
             renderPeers();
         } catch {}
     }
@@ -332,12 +328,11 @@
         const action = blocked ? 'заблокировать' : 'разблокировать';
         if (!confirm(`Точно ${action} ноду ${serverName}?`)) return;
         try {
-            const res = await BF.api(`/api/federation/peers/${encodeURIComponent(serverName)}/block`, {
+            await BF.request(`/api/federation/peers/${encodeURIComponent(serverName)}/block`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ blocked }),
             });
-            if (!res.ok) { alert('Не удалось изменить статус: ' + (await res.text())); return; }
             await loadPeers();
         } catch {}
     };
@@ -356,7 +351,6 @@
     window.submitAddPeer = async function (event) {
         event.preventDefault();
         const btn = document.getElementById('addPeerBtn');
-        btn.disabled = true;
         try {
             const keyId = document.getElementById('peerKeyId').value.trim();
             const publicKeyBase64 = document.getElementById('peerPublicKey').value.trim();
@@ -369,17 +363,15 @@
                 tlsSpkiSha256: spkiRaw ? spkiRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
             };
 
-            const res = await BF.api('/api/federation/peers', {
+            await BF.request('/api/federation/peers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
+                loading: btn
             });
-            if (!res.ok) { alert('Не удалось добавить пира: ' + (await res.text())); return; }
             closeAddPeerModal();
             await loadPeers();
-        } finally {
-            btn.disabled = false;
-        }
+        } catch {}
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {

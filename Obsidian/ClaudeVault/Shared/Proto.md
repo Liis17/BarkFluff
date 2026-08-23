@@ -28,7 +28,7 @@ dotnet build BarkFluff.Proto.csproj
 | `fast_auth_api.proto` | `BarkFluff.Proto.FastAuth` | QR/текстовая авторизация |
 | `beacon_api.proto` | `BarkFluff.Proto.Beacon` | Описание сервера и адреса микросервисов |
 | `navigator_api.proto` | `BarkFluff.Proto.Navigator` | Глобальный реестр серверов |
-| `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Централизованная конфигурация |
+| `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Централизованная конфигурация: чтение/update, история ревизий и rollback; Reserved Names |
 | `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
 | `calls_api.proto` | `BarkFluff.Proto.Calls` | Звонки (1-на-1 и групповые) поверх LiveKit SFU: инициация, подписка на события, история, качество голоса |
 | `bots_api.proto` | `BarkFluff.Proto.Bots` | Bot API: `BotsServerApi` (AdminPanel — создание/список/профиль/аватары через Users+Files/удаление/токены) + `BotsExternalApi` (внешние программы, bot-JWT в `x-auth-token`, политика `TokenType.Bot`) |
@@ -48,6 +48,7 @@ dotnet build BarkFluff.Proto.csproj
 - `shared.proto` импортируется в `messages_api.proto`, `updates_api.proto`, `users_api.proto` — общие типы сюда
 - `MessageAttachmentType` enum — в `shared.proto` (не в `messages_api.proto`), т.к. используется и в `files_api.proto`
 - `CreateTokenResponse.access_token` имеет **field_number=2** (не 1) — важно при ручной десериализации
+- `ConfigurationApi.GetConfigurationHistory` возвращает переходы `previous_value → new_value`; `RollbackConfiguration` восстанавливает `previous_value` выбранной ревизии и записывает новый rollback-переход. Контракт аддитивный, существующие field numbers не менялись.
 - `AuthRequest` и `FindByLoginRequest` используют `oneof login` (username ИЛИ email)
 - `SendMessageRequest` использует `oneof source_id` (chat_id ИЛИ user_id)
 - `ListMessagesRequest`: поле `count` устарело, использовать `offset_before`/`offset_after`

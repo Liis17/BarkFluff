@@ -315,7 +315,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -546,8 +546,7 @@
 
     async function loadPacks() {
         try {
-            const r = await BF.api('/api/stickers/packs');
-            const data = await r.json();
+            const data = await BF.request('/api/stickers/packs');
             packs = Array.isArray(data) ? data : (data.packs || []);
             renderPacks();
         } catch {}
@@ -601,13 +600,11 @@
         const cover = document.getElementById('createCoverInput').files[0];
         if (cover) fd.append('image', cover);
         const btn = document.getElementById('createPackBtn');
-        btn.disabled = true;
         try {
-            const res = await BF.api('/api/stickers/packs', { method:'POST', body: fd });
-            if (!res.ok) { alert('Не удалось создать пак: ' + (await res.text())); return; }
+            await BF.request('/api/stickers/packs', { method:'POST', body: fd, loading: btn });
             await loadPacks();
             closeCreatePackModal();
-        } finally { btn.disabled = false; }
+        } catch {}
     };
 
     // Pack detail
@@ -616,8 +613,7 @@
         document.getElementById('packDetailScrim').classList.add('open');
         document.getElementById('stickersGrid').innerHTML = `<div style="grid-column:1/-1;padding:32px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>`;
         try {
-            const r = await BF.api(`/api/stickers/packs/${id}`);
-            currentPackData = await r.json();
+            currentPackData = await BF.request(`/api/stickers/packs/${id}`);
             renderPackDetail();
         } catch {}
     };
@@ -652,7 +648,7 @@
     window.savePackName = async function () {
         const name = document.getElementById('detailPackNameInput').value.trim();
         if (!name || name === originalPackName) return;
-        try { await BF.api(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, description: currentPackData.description || '', coverStickerId: currentPackData.coverStickerId || '' }) }); originalPackName = name; document.getElementById('saveNameBtn').style.display = 'none'; await loadPacks(); } catch {}
+        try { await BF.request(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, description: currentPackData.description || '', coverStickerId: currentPackData.coverStickerId || '' }) }); originalPackName = name; document.getElementById('saveNameBtn').style.display = 'none'; await loadPacks(); } catch {}
     };
 
     window.handleCoverChange = function (input) {
@@ -665,7 +661,7 @@
             iconEl: document.getElementById('detailCoverIcon'),
             onApply: async (file) => {
                 const fd = new FormData(); fd.append('image', file);
-                try { await BF.api(`/api/stickers/packs/${currentPackId}/cover`, { method:'PUT', body: fd }); await openPackDetail(currentPackId); await loadPacks(); } catch {}
+                try { await BF.request(`/api/stickers/packs/${currentPackId}/cover`, { method:'PUT', body: fd }); await openPackDetail(currentPackId); await loadPacks(); } catch {}
             }
         });
     };
@@ -673,7 +669,7 @@
     window.deleteCurrentPack = async function () {
         if (!currentPackData) return;
         if (!confirm(`Удалить пак «${currentPackData.name}»? Все стикеры будут удалены.`)) return;
-        try { await BF.api(`/api/stickers/packs/${currentPackId}`, { method:'DELETE' }); } catch {}
+        try { await BF.request(`/api/stickers/packs/${currentPackId}`, { method:'DELETE' }); } catch { return; }
         packs = packs.filter(p => p.id !== currentPackId);
         renderPacks();
         closePackDetailModal();
@@ -681,7 +677,7 @@
 
     window.deleteSticker = async function (sid) {
         if (!confirm('Удалить стикер?')) return;
-        try { await BF.api(`/api/stickers/${sid}`, { method:'DELETE' }); await openPackDetail(currentPackId); } catch {}
+        try { await BF.request(`/api/stickers/${sid}`, { method:'DELETE' }); await openPackDetail(currentPackId); } catch {}
     };
 
     // Add sticker
@@ -707,10 +703,9 @@
         fd.append('image', document.getElementById('stickerImageInput').files[0]);
         fd.append('emoji', document.getElementById('stickerEmoji').value);
         const btn = document.getElementById('addStickerBtn');
-        btn.disabled = true;
-        try { await BF.api(`/api/stickers/packs/${currentPackId}/stickers`, { method:'POST', body: fd }); await openPackDetail(currentPackId); }
+        try { await BF.request(`/api/stickers/packs/${currentPackId}/stickers`, { method:'POST', body: fd, loading: btn }); await openPackDetail(currentPackId); }
         catch {}
-        finally { btn.disabled = false; closeAddStickerModal(); }
+        finally { closeAddStickerModal(); }
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {

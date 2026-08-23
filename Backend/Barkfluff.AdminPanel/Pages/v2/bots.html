@@ -241,7 +241,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -258,9 +258,7 @@
 
     async function loadBots() {
         try {
-            const r = await BF.api('/api/bots');
-            if (!r.ok) throw new Error(await r.text());
-            bots = await r.json();
+            bots = await BF.request('/api/bots');
             renderBots();
         } catch {}
     }
@@ -313,24 +311,20 @@
     window.createBot = async function (event) {
         event.preventDefault();
         const btn = document.getElementById('createBtn');
-        btn.disabled = true;
         try {
-            const res = await BF.api('/api/bots', {
+            const data = await BF.request('/api/bots', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: document.getElementById('botUsername').value.trim(),
                     name: document.getElementById('botName').value.trim()
-                })
+                }),
+                loading: btn
             });
-            if (!res.ok) { alert('Не удалось создать бота: ' + (await res.text())); return; }
-            const data = await res.json();
             closeCreateModal();
             showToken(data.token);
             await loadBots();
-        } finally {
-            btn.disabled = false;
-        }
+        } catch {}
     };
 
     // ---- Bot profile ----
@@ -340,9 +334,7 @@
         document.getElementById('botScrim').classList.add('open');
         document.getElementById('botModalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const res = await BF.api(`/api/bots/${botId}`);
-            if (!res.ok) throw new Error(await res.text());
-            currentBotData = await res.json();
+            currentBotData = await BF.request(`/api/bots/${botId}`, { errorToast: false });
             renderBotModal(currentBotData);
         } catch {
             document.getElementById('botModalContent').innerHTML = '<div style="padding:48px;text-align:center;color:var(--md-error);">Ошибка загрузки профиля</div>';
@@ -422,28 +414,26 @@
     window.saveBotProfile = async function (id) {
         const name = document.getElementById('editBotName')?.value.trim();
         const username = document.getElementById('editBotUsername')?.value.trim();
-        if (!name || !username) { alert('Имя и username обязательны'); return; }
+        if (!name || !username) { BF.toast('Имя и username обязательны', 'warning'); return; }
         try {
-            const res = await BF.api(`/api/bots/${id}/profile`, {
+            await BF.request(`/api/bots/${id}/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, username })
             });
-            if (!res.ok) throw new Error(await res.text());
             await openBotModal(id);
             await loadBots();
-        } catch (e) { alert(e.message || 'Не удалось сохранить профиль'); }
+        } catch {}
     };
 
     window.handleBotAvatarUpload = async function (input, id) {
         const file = input.files[0]; if (!file) return;
         const form = new FormData(); form.append('avatar', file, file.name);
         try {
-            const res = await BF.api(`/api/bots/${id}/avatar`, { method: 'POST', body: form });
-            if (!res.ok) throw new Error(await res.text());
+            await BF.request(`/api/bots/${id}/avatar`, { method: 'POST', body: form });
             await openBotModal(id);
             await loadBots();
-        } catch (e) { alert(e.message || 'Не удалось загрузить аватар'); }
+        } catch {}
         input.value = '';
     };
 
@@ -451,10 +441,9 @@
         const file = input.files[0]; if (!file) return;
         const form = new FormData(); form.append('poster', file, file.name);
         try {
-            const res = await BF.api(`/api/bots/${id}/poster`, { method: 'POST', body: form });
-            if (!res.ok) throw new Error(await res.text());
+            await BF.request(`/api/bots/${id}/poster`, { method: 'POST', body: form });
             await openBotModal(id);
-        } catch (e) { alert(e.message || 'Не удалось загрузить постер'); }
+        } catch {}
         input.value = '';
     };
 
@@ -467,9 +456,7 @@
         if (!button) return;
         button.disabled = true;
         try {
-            const res = await BF.api(`/api/bots/${id}/token`, { method: 'POST' });
-            if (!res.ok) throw new Error(await res.text());
-            const data = await res.json();
+            const data = await BF.request(`/api/bots/${id}/token`, { method: 'POST' });
             profileToken = data.token;
             const value = document.getElementById('botTokenValue');
             value.textContent = profileToken;
@@ -477,9 +464,7 @@
             button.innerHTML = '<span class="msr size-18">content_copy</span> Скопировать токен';
             await copyText(profileToken);
             button.onclick = () => copyText(profileToken);
-        } catch (e) {
-            alert(e.message || 'Не удалось получить токен');
-        } finally {
+        } catch {} finally {
             button.disabled = false;
         }
     };
@@ -500,9 +485,7 @@
         const username = b?.username || currentBotData?.profile?.username || '';
         if (!confirm(`Перегенерировать токен @${username}? Старый токен перестанет работать.`)) return;
         try {
-            const res = await BF.api(`/api/bots/${id}/regenerate-token`, { method: 'POST' });
-            if (!res.ok) throw new Error(await res.text());
-            const data = await res.json();
+            const data = await BF.request(`/api/bots/${id}/regenerate-token`, { method: 'POST' });
             if (!fromProfile) {
                 showToken(data.token);
             } else {
@@ -518,16 +501,17 @@
                 await copyText(profileToken);
             }
             await loadBots();
-        } catch (e) { alert(e.message || 'Не удалось перегенерировать токен'); }
+        } catch {}
     };
 
     window.deleteBot = async function (id) {
         const b = bots.find(x => x.id === id); if (!b) return;
         if (!confirm(`Удалить бота @${b.username}? Токен будет отозван, чаты сохранятся. Это действие необратимо.`)) return;
-        const res = await BF.api(`/api/bots/${id}`, { method: 'DELETE' });
-        if (!res.ok) { alert('Не удалось удалить бота: ' + (await res.text())); return; }
-        bots = bots.filter(x => x.id !== id);
-        renderBots();
+        try {
+            await BF.request(`/api/bots/${id}`, { method: 'DELETE' });
+            bots = bots.filter(x => x.id !== id);
+            renderBots();
+        } catch {}
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {

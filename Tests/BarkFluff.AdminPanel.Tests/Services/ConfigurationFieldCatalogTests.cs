@@ -11,6 +11,7 @@ public class ConfigurationFieldCatalogTests
     [InlineData("Feature", "Enabled", "true", ConfigurationFieldType.Boolean)]
     [InlineData("Server", "Port", "7001", ConfigurationFieldType.Integer)]
     [InlineData("ExternalEndpoint", "Host", "https://example.org", ConfigurationFieldType.Url)]
+    [InlineData("LiveKit", "PublicUrl", "wss://livekit.example.org", ConfigurationFieldType.Url)]
     [InlineData("Limits", "MaxItems", "100", ConfigurationFieldType.Integer)]
     [InlineData("Profile", "DisplayName", "BarkFluff", ConfigurationFieldType.String)]
     public void Describe_InfersTypedField(string section, string key, string value, ConfigurationFieldType expected)
@@ -43,6 +44,7 @@ public class ConfigurationFieldCatalogTests
     [InlineData("Feature", "Enabled", "false")]
     [InlineData("Server", "Port", "443")]
     [InlineData("ExternalEndpoint", "Host", "https://example.org/api")]
+    [InlineData("LiveKit", "Url", "ws://livekit:7880")]
     [InlineData("JwtSettings", "SecretKey", "new-secret")]
     public void Validate_AcceptsValidTypedValue(string section, string key, string value)
     {

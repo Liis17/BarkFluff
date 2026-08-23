@@ -432,7 +432,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -464,9 +464,7 @@
 
         try {
             const params = new URLSearchParams({ query: currentQuery, offset: currentOffset, size: PAGE_SIZE });
-            const res = await BF.api(`/api/users?${params}`);
-            if (!res.ok) throw new Error();
-            const data = await res.json();
+            const data = await BF.request(`/api/users?${params}`);
             totalCount = data.totalCount;
             users = reset ? data.users : users.concat(data.users);
             currentOffset += data.users.length;
@@ -513,9 +511,7 @@
         document.getElementById('userScrim').classList.add('open');
         document.getElementById('modalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const res = await BF.api(`/api/users/${userId}`);
-            if (!res.ok) throw new Error();
-            currentUserData = await res.json();
+            currentUserData = await BF.request(`/api/users/${userId}`, { errorToast: false });
             renderUserModal(currentUserData);
         } catch (e) {
             document.getElementById('modalContent').innerHTML = `<div style="padding:48px;text-align:center;color:var(--md-error);">Ошибка загрузки</div>`;
@@ -848,8 +844,7 @@
         if (!select) return;
         try {
             if (allBadges.length === 0) {
-                const r = await BF.api('/api/badges');
-                if (r.ok) allBadges = await r.json();
+                allBadges = await BF.request('/api/badges', { errorToast: false });
             }
             const existing = new Set((currentUserData?.profile?.badges || []).map(ub => ub.badge.id));
             const available = allBadges.filter(b => b.isActive && !existing.has(b.id));
@@ -869,30 +864,26 @@
         const submit = document.getElementById('addBadgeSubmit');
         const id = parseInt(select?.value);
         if (!uid || !id) return;
-        submit.disabled = true;
         try {
-            const response = await BF.api(`/api/users/${uid}/badges`, {
+            await BF.request(`/api/users/${uid}/badges`, {
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({badgeId:id})
+                body: JSON.stringify({badgeId:id}),
+                loading: submit
             });
-            if (!response.ok) throw new Error('Не удалось добавить бейдж');
             closeBadgeAddModal();
             await openUserModal(uid);
-        } catch (e) {
-            submit.disabled = false;
-            alert(e.message);
-        }
+        } catch (_) {}
     };
     window.removeUserBadge = async function (uid, bid) {
         if (window.BF && !BF.can('badges.manage')) return;
         if (!confirm('Удалить бейдж?')) return;
-        try { await BF.api(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (_) {}
     };
     window.removeSession = async function (uid, did) {
         if (window.BF && !BF.can('users.sessions.revoke')) return;
         if (!confirm('Завершить сессию?')) return;
-        try { await BF.api(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/sessions/${did}`, { method:'DELETE' }); await openUserModal(uid); } catch (_) {}
     };
     window.revokeAllSessions = async function (uid) {
         if (window.BF && !BF.can('users.sessions.revoke')) return;
@@ -942,21 +933,21 @@
     };
     window.updateStorageLimit = async function (uid) {
         const v = parseInt(document.getElementById('storageLimitSlider').value);
-        try { await BF.api(`/api/users/${uid}/storage-limit`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({storageLimitGb:v}) }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/storage-limit`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({storageLimitGb:v}) }); await openUserModal(uid); } catch (_) {}
     };
     window.saveProfileChanges = async function (uid) {
         const firstName = document.getElementById('editFirstName').value.trim();
         const lastName = document.getElementById('editLastName').value.trim();
         const username = document.getElementById('editUsername').value.trim();
         const bio = document.getElementById('editBio').value.trim();
-        try { await BF.api(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({firstName,lastName,bio,username}) }); await openUserModal(uid); await loadUsers(true); } catch (_) {}
     };
     window.changeUserPassword = async function (uid) {
         if (window.BF && !BF.can('users.password.set')) return;
         const input = document.getElementById('newPasswordInput');
         const p = input.value.trim();
         const reason = document.getElementById('passwordReason')?.value.trim();
-        if (!p || p.length < 6) { alert('Пароль должен быть не менее 6 символов'); return; }
+        if (!p || p.length < 6) { BF.toast('Пароль должен быть не менее 6 символов', 'warning'); return; }
         if (!reason) { BF.toast('Укажите причину смены пароля', 'warning'); return; }
         if (!confirm('Сменить пароль пользователю?')) return;
         try {
@@ -973,13 +964,13 @@
     window.handleAvatarUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;
         const fd = new FormData(); fd.append('avatar', f, f.name);
-        try { await BF.api(`/api/users/${uid}/avatar`, { method:'POST', body: fd }); await openUserModal(uid); await loadUsers(true); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/avatar`, { method:'POST', body: fd }); await openUserModal(uid); await loadUsers(true); } catch (_) {}
         input.value = '';
     };
     window.handlePosterUpload = async function (input, uid) {
         const f = input.files[0]; if (!f) return;
         const fd = new FormData(); fd.append('poster', f, f.name);
-        try { await BF.api(`/api/users/${uid}/poster`, { method:'POST', body: fd }); await openUserModal(uid); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/users/${uid}/poster`, { method:'POST', body: fd }); await openUserModal(uid); } catch (_) {}
         input.value = '';
     };
 
@@ -991,8 +982,7 @@
         const list = document.getElementById('reservedNamesList');
         list.innerHTML = '<div style="padding:16px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
-            const r = await BF.api('/api/reserved-names');
-            reservedNames = await r.json();
+            reservedNames = await BF.request('/api/reserved-names', { errorToast: false });
             renderReservedNames();
         } catch { list.innerHTML = '<p style="color:var(--md-error);">Ошибка загрузки</p>'; }
     }
@@ -1009,11 +999,11 @@
     window.addReservedName = async function () {
         const input = document.getElementById('newReservedName');
         const name = input.value.trim(); if (!name) return;
-        try { await BF.api('/api/reserved-names', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); input.value = ''; await loadReservedNames(); } catch (e) { alert(e.message); }
+        try { await BF.request('/api/reserved-names', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) }); input.value = ''; await loadReservedNames(); } catch (_) {}
     };
     window.removeReservedName = async function (name) {
         if (!confirm(`Удалить «${name}»?`)) return;
-        try { await BF.api(`/api/reserved-names/${encodeURIComponent(name)}`, { method:'DELETE' }); await loadReservedNames(); } catch (e) { alert(e.message); }
+        try { await BF.request(`/api/reserved-names/${encodeURIComponent(name)}`, { method:'DELETE' }); await loadReservedNames(); } catch (_) {}
     };
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {

@@ -119,7 +119,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=4"></script>
+<script src="assets/api.js?v=5"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -163,9 +163,7 @@
         const empty = document.getElementById('empty-state');
         const err = document.getElementById('error-state');
         try {
-            const r = await BF.api('/api/configuration/s3-configuration');
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            s3Config = await r.json();
+            s3Config = await BF.request('/api/configuration/s3-configuration', { errorToast: false });
             modifiedBuckets.clear();
             if (Object.keys(s3Config).length === 0) {
                 grid.innerHTML = ''; empty.style.display = 'flex'; err.style.display = 'none';
@@ -271,8 +269,7 @@
         const saveBtn = card.querySelector('[data-save-area] button');
         if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="md-loader-expressive" style="width:18px;height:18px;"></span> Сохранение...'; }
         try {
-            const r = await BF.api('/api/configuration/s3/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-            if (!r.ok) throw new Error();
+            await BF.request('/api/configuration/s3/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
             modifiedBuckets.delete(bucketId);
             card.classList.remove('modified');
             const badge = card.querySelector('.bucket-head .md-status');
@@ -282,17 +279,14 @@
             setTimeout(() => { if (saveArea) saveArea.innerHTML = `<span style="font-size:12px;color:var(--md-on-surface-variant);font-style:italic;">Без изменений</span>`; }, 2000);
         } catch (e) {
             if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<span class="msr size-18">check</span>Сохранить'; }
-            alert('Ошибка сохранения');
         }
     };
 
     document.getElementById('restart-files-btn').addEventListener('click', async () => {
         if (!confirm('Перезапустить сервис Files? Загрузка/выгрузка файлов будет недоступна.')) return;
         try {
-            const response = await BF.api('/api/docker/containers/files/restart', { method:'POST' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            alert('Перезапуск запущен');
-        } catch { alert('Ошибка перезапуска'); }
+            await BF.request('/api/docker/containers/files/restart', { method:'POST', successToast: 'Перезапуск запущен' });
+        } catch {}
     });
 
     document.getElementById('logout-btn').addEventListener('click', async () => {
