@@ -42,12 +42,18 @@ public class DeployJobService : BackgroundService
     private readonly ConcurrentDictionary<Guid, DeployJob> _jobs = new();
     private readonly DockerService _docker;
     private readonly ComposeImageService _compose;
+    private readonly SeqService _seq;
     private readonly ILogger<DeployJobService> _logger;
 
-    public DeployJobService(DockerService docker, ComposeImageService compose, ILogger<DeployJobService> logger)
+    public DeployJobService(
+        DockerService docker,
+        ComposeImageService compose,
+        SeqService seq,
+        ILogger<DeployJobService> logger)
     {
         _docker = docker;
         _compose = compose;
+        _seq = seq;
         _logger = logger;
     }
 
@@ -127,6 +133,7 @@ public class DeployJobService : BackgroundService
         foreach (var step in job.Steps)
         {
             step.State = DeployStepState.InProgress;
+            var stopping = false;
             try
             {
                 await RunStepAsync(job, step, ct);
@@ -136,7 +143,7 @@ public class DeployJobService : BackgroundService
             {
                 step.State = DeployStepState.Failed;
                 step.Message = "Остановка админ-панели";
-                break;
+                stopping = true;
             }
             catch (Exception ex)
             {
@@ -144,6 +151,10 @@ public class DeployJobService : BackgroundService
                 step.Message = ex.Message;
                 _logger.LogError(ex, "Deploy job {JobId}: шаг {Service} провалился", job.Id, step.Service);
             }
+
+            await RecordDeploymentAsync(job, step);
+            if (stopping)
+                break;
         }
 
         // Очистка неиспользуемых образов — только после всей задачи:
@@ -167,6 +178,40 @@ public class DeployJobService : BackgroundService
             : null;
         job.FinishedAtUtc = DateTime.UtcNow;
         _logger.LogInformation("Deploy job {JobId} завершён: {State}{Error}", job.Id, job.State, job.Error is null ? "" : $" — {job.Error}");
+    }
+
+    private async Task RecordDeploymentAsync(DeployJob job, DeployStep step)
+    {
+        var application = PlatformServiceRegistry.All
+            .FirstOrDefault(service => service.Container.Equals(step.Service, StringComparison.OrdinalIgnoreCase))
+            ?.Name
+            ?? (step.Service.Equals("admin-panel", StringComparison.OrdinalIgnoreCase)
+                ? "BarkFluff.AdminPanel"
+                : step.Service);
+        var status = step.State == DeployStepState.Completed ? "Completed" : "Failed";
+
+        try
+        {
+            await _seq.IngestEventAsync(
+                DateTime.UtcNow,
+                "Information",
+                "Admin deployment {DeploymentKind} for {Application} finished with {DeploymentStatus}",
+                new Dictionary<string, object?>
+                {
+                    ["Application"] = application,
+                    ["EventType"] = "Deployment",
+                    ["DeploymentKind"] = job.Kind.ToString(),
+                    ["DeploymentStatus"] = status,
+                    ["DeploymentBranch"] = step.Branch,
+                    ["DeploymentRolledBack"] = step.RolledBack,
+                    ["DeploymentMessage"] = step.Message,
+                    ["DeployJobId"] = job.Id
+                });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Deploy job {JobId}: не удалось записать маркер деплоя {Service} в Seq", job.Id, step.Service);
+        }
     }
 
     private async Task RunStepAsync(DeployJob job, DeployStep step, CancellationToken ct)

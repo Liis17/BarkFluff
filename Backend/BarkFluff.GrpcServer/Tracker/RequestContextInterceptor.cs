@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Serilog.Context;
+
 using System.Text;
 
 namespace BarkFluff.GrpcServer.Tracker;
@@ -43,6 +45,12 @@ public class RequestContextInterceptor : Interceptor
         };
 
         accessor.Set(requestContext);
+
+        using var requestIdScope = LogContext.PushProperty("RequestId", httpContext.TraceIdentifier);
+        var incomingCorrelationId = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+        using var correlationScope = string.IsNullOrWhiteSpace(incomingCorrelationId)
+            ? null
+            : LogContext.PushProperty("CorrelationId", incomingCorrelationId);
 
         _logger.LogDebug(
             "Входящий gRPC запрос {Method} от устройства: {DeviceName} ({OS}), IP: {IpAddress}, DeviceID: {DeviceId}, Приложение: {AppName} v{AppVersion}",

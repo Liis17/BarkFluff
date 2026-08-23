@@ -264,6 +264,8 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 
 `DeployOrder` — фиксированный порядок (configuration первым). Health-check: поллинг 3с, таймаут 60с; `exited`/`dead`/`restarting`/`unhealthy` → явное падение → откат (Update: retag старого image ID + recreate; SwitchBranch: restore compose + recreate); таймаут → шаг провален, но без отката. `image prune` — только после всей задачи.
 
+После каждого шага `DeployJobService` пишет в Seq информационный маркер `EventType=Deployment` с целевым `Application`, kind/status/branch/rollback, сообщением и `DeployJobId`. Даже неуспешный шаг остаётся уровнем Information, чтобы сам маркер не искажал сравнение Error/Fatal до/после. Ошибка записи маркера логируется, но не меняет результат самого деплоя.
+
 > Все деплой-эндпоинты (`/pull`, `/branch`, `/restart-all`, `/update-all`, `/update-many`) ставят задачу в очередь и возвращают `{ success, jobId, message }`. Браузерного перебора контейнеров больше нет: UI поллит `GET /api/docker/deploy/jobs/{id}` и рисует прогресс из шагов задачи. Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) в bulk не попадает — только ручной per-row перезапуск.
 
 ### SeqService
@@ -427,19 +429,24 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | `/api/users?query=&offset=&size=` | Поиск пользователей |
-| GET | `/api/users/{id}` | Полный профиль (параллельно: Search, Contacts, Devices, Storage, OTP, Sessions) |
+| GET | `/api/users/{id}` | Полный профиль + `availability` зависимых секций (параллельно: Search, Contacts, Devices, Storage, OTP, Sessions, Poster) |
 | POST | `/api/users/{id}/badges` | Назначить бейдж `{ badgeId, priority }` |
 | DELETE | `/api/users/{id}/badges/{badgeId}` | Удалить бейдж |
 | PUT | `/api/users/{id}/storage-limit` | Изменить лимит `{ storageLimitGb: 1-250 }` |
-| POST | `/api/users/{id}/2fa/disable` | Отключить 2FA `{ otpType }` |
+| POST | `/api/users/{id}/2fa/disable` | Отключить 2FA `{ otpType, reason }`; reason обязателен, до 500 символов |
+| POST | `/api/users/{id}/password` | Сменить пароль `{ newPassword, reason }`; reason обязателен и пишется в аудит |
 | POST | `/api/users/{id}/avatar` | Загрузить аватар (multipart: avatar) |
 | DELETE | `/api/users/{id}/sessions/{deviceId}` | Удалить сессию пользователя |
+| DELETE | `/api/users/{id}/sessions` | Завершить все сессии; `{ requestedCount, revokedCount, failedDeviceIds }` |
 
 ### /api/seq — SeqEndpoints.cs
 
 | Метод | Путь | Query | Описание |
 |-------|------|-------|---------|
-| GET | `/api/seq/events` | application, count, fromUtc, level, search, afterId | Логи из Seq |
+| GET | `/api/seq/events` | application, count, fromUtc, level, search, correlationId, requestId, userId, afterId | Логи из Seq |
+| GET | `/api/seq/error-groups` | application, search, IDs, hours, maxEvents | Серверная группировка Error/Fatal; возвращает `groups`, `scannedEventCount`, `truncated` |
+| GET | `/api/seq/deployments` | application, hours | Маркеры шагов деплоя из Seq |
+| GET | `/api/seq/deployments/compare` | application, atUtc, windowMinutes | Количество ошибок до/после выбранного деплоя и delta |
 | GET | `/api/seq/services` | — | Сервисы для фильтра логов — только микросервисы (`KnownServices`, где имя начинается с `BarkFluff.`). Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) исключена: она не пишет логи в Seq |
 | GET | `/api/seq/dashboard/kpis` | hours (def 24) | KPI из кеша или Seq |
 | GET | `/api/seq/dashboard/traffic` | hours, interval | `{ all, errors, warnings }` |
@@ -629,9 +636,9 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 
 ## UI Pages — поведение фронтенда
 
-### `/logs` (`Pages/logs.html`)
+### `/logs` (`Pages/v2/logs.html`)
 
-Просмотр событий Seq с фильтрами (сервис / уровень / поиск) и серверной пагинацией через `afterId`.
+Просмотр событий Seq с фильтрами (сервис / уровень / поиск / correlation-request-user ID) и серверной пагинацией через `afterId`. Сохранённые наборы фильтров (максимум 20) живут только в `localStorage` браузера и не содержат серверных секретов.
 
 **Структура таблицы (5 колонок):** chevron / Время / Уровень / Сервис / Сообщение.
 
@@ -640,15 +647,9 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 - `Template` — `MessageTemplate` (показывается только если отличается от Message).
 - `Properties` — таблица `key → value`, отсортированная по имени; объекты сериализуются `JSON.stringify`.
 - `Exception` — `<pre>` на красном фоне (только если поле непустое).
-- Кнопка `Copy JSON` — копирует полный объект события через `navigator.clipboard.writeText(JSON.stringify(evt, null, 2))`.
+- ID-чипы повторно фильтруют поток по `CorrelationId`/`TraceId` или `RequestId`; user ID открывает `/users?userId=...`, сервис — `/services?service=...` с подсветкой строки.
 
-Реализация:
-- На каждое событие рендерятся **две** `<tr>`: основная (`.log-row` с `data-idx`) и скрытая `.log-detail-row` с `colspan="5"`.
-- Один обработчик кликов через **делегирование** на `<tbody id="logsTableBody">` ловит как открытие/закрытие строки, так и клик по кнопке `.copy-json-btn`.
-- Содержимое деталей рендерится **lazily** — только при первом раскрытии (`detail.dataset.rendered = '1'`).
-- `dataset.idx` рассчитывается как `allLogs.length + index` ДО конкатенации в `allLogs`, чтобы при `append` (load more) индексы не пересекались.
-
-**Backend нового endpoint не понадобился** — `/api/seq/events` уже отдаёт полное событие (`SeqService.GetEventsAsync` зовёт Seq с `render=true`), включая `Properties`, `Exception`, `MessageTemplate`.
+Режим **«Группы ошибок»** вызывает `/api/seq/error-groups`: `SeqEventAnalyzer` объединяет Error/Fatal по `Application + MessageTemplate/message + exception type`, возвращает число повторений, первое/последнее время и контекст последнего события. Селектор деплоя читает структурированные маркеры и показывает сравнение Error/Fatal за ±30 минут.
 
 **Экспорт логов в шапке.** Кнопка `Экспорт логов` справа от заголовка открывает модалку с 4 состояниями:
 

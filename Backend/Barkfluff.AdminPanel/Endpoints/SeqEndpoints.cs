@@ -21,36 +21,12 @@ public static class SeqEndpoints
             string? fromUtc = null,
             string? level = null,
             string? search = null,
+            string? correlationId = null,
+            string? requestId = null,
+            string? userId = null,
             string? afterId = null) =>
         {
-            var filterParts = new List<string>();
-
-            if (!string.IsNullOrEmpty(application))
-            {
-                filterParts.Add($"Application = '{application.Replace("'", "''")}'");
-            }
-
-            if (!string.IsNullOrEmpty(level))
-            {
-                if (level.Equals("Error", StringComparison.OrdinalIgnoreCase))
-                {
-                    filterParts.Add("@Level in ['Error', 'Fatal']");
-                }
-                else
-                {
-                    filterParts.Add($"@Level = '{level.Replace("'", "''")}'");
-                }
-            }
-
-            if (!string.IsNullOrEmpty(search))
-            {
-                var sanitized = search.Replace("'", "''");
-                filterParts.Add($"IndexOf(@Message, '{sanitized}') >= 0");
-            }
-
-            var filter = filterParts.Count > 0
-                ? string.Join(" and ", filterParts)
-                : null;
+            var filter = BuildEventFilter(application, level, search, correlationId, requestId, userId);
 
             DateTime? fromDate = null;
             if (!string.IsNullOrEmpty(fromUtc) && DateTime.TryParse(fromUtc, out var parsed))
@@ -60,6 +36,125 @@ public static class SeqEndpoints
             return events.HasValue ? Results.Ok(events.Value) : Results.StatusCode(502);
         })
         .WithName("GetSeqEvents")
+        .WithOpenApi();
+
+        group.MapGet("/error-groups", async (
+            SeqService seqService,
+            string? application = null,
+            string? search = null,
+            string? correlationId = null,
+            string? requestId = null,
+            string? userId = null,
+            int hours = 24,
+            int maxEvents = 5000) =>
+        {
+            hours = Math.Clamp(hours, 1, 24 * 30);
+            maxEvents = Math.Clamp(maxEvents, 100, 20_000);
+            var filter = BuildEventFilter(
+                application,
+                "Error",
+                search,
+                correlationId,
+                requestId,
+                userId);
+            var events = await seqService.GetAllEventsListAsync(
+                filter,
+                DateTime.UtcNow.AddHours(-hours),
+                maxEvents);
+            if (events is null)
+                return Results.StatusCode(502);
+
+            return Results.Ok(new
+            {
+                groups = SeqEventAnalyzer.GroupErrors(events),
+                scannedEventCount = events.Count,
+                truncated = events.Count >= maxEvents,
+                periodHours = hours
+            });
+        })
+        .WithName("GetSeqErrorGroups")
+        .WithOpenApi();
+
+        group.MapGet("/deployments", async (
+            SeqService seqService,
+            string? application = null,
+            int hours = 24 * 7) =>
+        {
+            hours = Math.Clamp(hours, 1, 24 * 90);
+            var filterParts = new List<string> { "EventType = 'Deployment'" };
+            if (!string.IsNullOrWhiteSpace(application))
+                filterParts.Add($"Application = '{EscapeSeq(application)}'");
+
+            var events = await seqService.GetAllEventsListAsync(
+                string.Join(" and ", filterParts),
+                DateTime.UtcNow.AddHours(-hours),
+                1000);
+            if (events is null)
+                return Results.StatusCode(502);
+
+            var deployments = events.Select(evt => new
+            {
+                eventId = GetEventId(evt),
+                application = SeqEventAnalyzer.ReadProperty(evt, "Application"),
+                timestampUtc = GetEventTimestamp(evt),
+                kind = SeqEventAnalyzer.ReadProperty(evt, "DeploymentKind"),
+                status = SeqEventAnalyzer.ReadProperty(evt, "DeploymentStatus"),
+                branch = SeqEventAnalyzer.ReadProperty(evt, "DeploymentBranch"),
+                rolledBack = bool.TryParse(SeqEventAnalyzer.ReadProperty(evt, "DeploymentRolledBack"), out var rolledBack) && rolledBack,
+                jobId = SeqEventAnalyzer.ReadProperty(evt, "DeployJobId"),
+                message = SeqEventAnalyzer.ReadProperty(evt, "DeploymentMessage")
+            })
+            .Where(deployment => deployment.timestampUtc.HasValue)
+            .OrderByDescending(deployment => deployment.timestampUtc)
+            .ToList();
+
+            return Results.Ok(deployments);
+        })
+        .WithName("GetSeqDeployments")
+        .WithOpenApi();
+
+        group.MapGet("/deployments/compare", async (
+            SeqService seqService,
+            string application,
+            string atUtc,
+            int windowMinutes = 30) =>
+        {
+            if (string.IsNullOrWhiteSpace(application) ||
+                !DateTime.TryParse(atUtc, null, System.Globalization.DateTimeStyles.RoundtripKind, out var deploymentAt))
+            {
+                return Results.BadRequest(new { message = "Укажите сервис и корректное время деплоя" });
+            }
+
+            deploymentAt = deploymentAt.ToUniversalTime();
+            windowMinutes = Math.Clamp(windowMinutes, 5, 24 * 60);
+            var filter = $"Application = '{EscapeSeq(application)}' and @Level in ['Error', 'Fatal']";
+            var window = TimeSpan.FromMinutes(windowMinutes);
+            var beforeTask = seqService.CountFilteredEventsAsync(
+                filter,
+                deploymentAt.Subtract(window),
+                deploymentAt.AddTicks(-1));
+            var afterTask = seqService.CountFilteredEventsAsync(
+                filter,
+                deploymentAt,
+                deploymentAt.Add(window));
+            await Task.WhenAll(beforeTask, afterTask);
+
+            if (!beforeTask.Result.HasValue || !afterTask.Result.HasValue)
+                return Results.StatusCode(502);
+
+            var before = beforeTask.Result.Value;
+            var after = afterTask.Result.Value;
+            return Results.Ok(new
+            {
+                application,
+                deploymentAtUtc = deploymentAt,
+                windowMinutes,
+                beforeErrorCount = before,
+                afterErrorCount = after,
+                delta = after - before
+            });
+        })
+        .WithName("CompareSeqDeployment")
         .WithOpenApi();
 
         group.MapGet("/services", () =>
@@ -396,6 +491,62 @@ public static class SeqEndpoints
     }
 
     #region Helpers
+
+    private static string? BuildEventFilter(
+        string? application,
+        string? level,
+        string? search,
+        string? correlationId,
+        string? requestId,
+        string? userId)
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(application))
+            parts.Add($"Application = '{EscapeSeq(application)}'");
+
+        if (!string.IsNullOrWhiteSpace(level))
+        {
+            parts.Add(level.Equals("Error", StringComparison.OrdinalIgnoreCase)
+                ? "@Level in ['Error', 'Fatal']"
+                : $"@Level = '{EscapeSeq(level)}'");
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+            parts.Add($"IndexOf(@Message, '{EscapeSeq(search)}') >= 0");
+
+        if (!string.IsNullOrWhiteSpace(correlationId))
+        {
+            var value = EscapeSeq(correlationId);
+            parts.Add($"(ToString(CorrelationId) = '{value}' or ToString(TraceId) = '{value}')");
+        }
+
+        if (!string.IsNullOrWhiteSpace(requestId))
+        {
+            var value = EscapeSeq(requestId);
+            parts.Add($"(ToString(RequestId) = '{value}' or ToString(TraceIdentifier) = '{value}')");
+        }
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            var value = EscapeSeq(userId);
+            parts.Add($"(ToString(UserId) = '{value}' or ToString(AffectedUserId) = '{value}' or ToString(TargetUserId) = '{value}' or ToString(SubjectUserId) = '{value}')");
+        }
+
+        return parts.Count == 0 ? null : string.Join(" and ", parts);
+    }
+
+    private static string EscapeSeq(string value) => value.Replace("'", "''");
+
+    private static string? GetEventId(JsonElement evt)
+    {
+        if (evt.ValueKind != JsonValueKind.Object) return null;
+        if (evt.TryGetProperty("Id", out var id) && id.ValueKind == JsonValueKind.String)
+            return id.GetString();
+        if (evt.TryGetProperty("id", out var lowerId) && lowerId.ValueKind == JsonValueKind.String)
+            return lowerId.GetString();
+        return null;
+    }
 
     private static DateTime TruncateToHour(DateTime dt)
     {
