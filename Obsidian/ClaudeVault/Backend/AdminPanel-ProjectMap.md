@@ -37,7 +37,8 @@ Barkfluff.AdminPanel/
 │   ├── FederationEndpoints.cs         ← /api/federation/*
 │   └── RemoteDockerEndpoints.cs       ← /api/remote/*
 ├── Middleware/
-│   └── TokenAuthMiddleware.cs         ← cookie-аутентификация
+│   ├── TokenAuthMiddleware.cs         ← cookie-аутентификация
+│   └── RequireAdminReasonFilter.cs    ← обязательная причина чувствительного действия
 ├── Models/
 │   ├── AuthToken.cs                   ← сессионный токен
 │   ├── PendingAuthRequest.cs          ← запрос подтверждения (in-memory)
@@ -61,6 +62,8 @@ Barkfluff.AdminPanel/
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
 │   ├── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── ConfigurationFieldCatalog.cs   ← типы и validation rules для редактора конфигурации
+│   ├── UserSessionRevocationService.cs ← массовый отзыв пользовательских сессий с частичным результатом
 │   ├── MailService.cs                 ← IMAP/SMTP клиент (MailKit) для служебных ящиков
 │   └── RemoteDockerService.cs         ← Docker и интерактивная консоль на удалённых хостах по SSH-туннелю
 ├── Pages/
@@ -117,7 +120,7 @@ GET /updating          → v2/updating.html (публичный)
 GET /v2/               → Redesigned/index.html (отдельный SPA-эксперимент, не трогать)
 ```
 
-**Статика MD3-страниц.** v2-страницы ссылаются на `assets/md3.css`, `assets/icons.js` и `assets/sidebar.js` → отдаются из `Pages/v2/assets/` по `RequestPath = "/assets"` (добавлен в `Program.cs`). В `Barkfluff.AdminPanel.csproj` общий корневой каталог `icons/` линкуется в `Pages/v2/assets/icons/` и копируется при сборке. `icons.js` превращает SVG в монохромные `currentColor`-иконки через CSS mask и предоставляет `bfIcon(path, className)` для повторного использования. `TokenAuthMiddleware` пропускает `/assets/*` без авторизации (нужно для стилей и иконок страницы логина). Навигация (`sidebar.js`) использует абсолютные чистые URL. `preview-mode.js` (моки для офлайн-превью) НЕ подключён в проде — теги `<script>` удалены, страницы ходят в реальные `/api/*`.
+**Статика MD3-страниц.** v2-страницы ссылаются на `assets/md3.css`, `assets/icons.js`, `assets/api.js` и `assets/sidebar.js` → отдаются из `Pages/v2/assets/` по `RequestPath = "/assets"` (добавлен в `Program.cs`). В `Barkfluff.AdminPanel.csproj` общий корневой каталог `icons/` линкуется в `Pages/v2/assets/icons/` и копируется при сборке. `icons.js` превращает SVG в монохромные `currentColor`-иконки через CSS mask и предоставляет `bfIcon(path, className)` для повторного использования. `api.js` предоставляет response-compatible `BF.api` (единые `401` и `428`), parsed `BF.request`, auth/logout, loading и toast; авторизованные страницы и общие sidebar/command-palette не вызывают `fetch` напрямую. `TokenAuthMiddleware` пропускает `/assets/*` без авторизации (нужно для стилей и иконок страницы логина). Навигация (`sidebar.js`) использует абсолютные чистые URL. `preview-mode.js` (моки для офлайн-превью) НЕ подключён в проде — теги `<script>` удалены, страницы ходят в реальные `/api/*`.
 
 ---
 
@@ -239,13 +242,32 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 | `StartContainerAsync(name)` | `docker start {name}` |
 | `StopContainerAsync(name)` | `docker stop {name}` |
 | `RestartContainerAsync(name)` | `docker restart {name}` |
-| `PullImageAndRecreateContainerAsync(name)` | pull + compose up -d |
+| `ComposePullAsync(service)` | `docker compose pull {service}` |
+| `ComposeUpAsync(service)` | `docker compose up --force-recreate --build -d {service}` |
+| `PruneImagesAsync()` | `docker image prune -f` (только в конце деплой-задачи) |
+| `InspectStateAsync(container)` | `docker inspect` → `(State.Status, Health.Status)` для health-check'а |
+| `GetContainerImageIdAsync(container)` | `docker inspect {{.Image}}` (для отката) |
+| `GetContainerImageReferenceAsync(container)` | `docker inspect {{.Config.Image}}` |
+| `TagImageAsync(imageId, reference)` | `docker tag` — retag старого образа при откате |
 | `RestartAdminPanelAsync()` | helper-контейнер с docker.sock |
 | `UpdateAdminPanelAsync()` | pull + helper-контейнер |
-| `RestartAllServicesAsync()` | compose restart barkfluff |
-| `UpdateAllServicesAsync()` | pull + compose up -d |
+| `ConvertServiceNameToContainerName(service)` | обратное преобразование для inspect/restart (postgres → postgres_barkfluff) |
 
-> `RestartAllServicesAsync`/`UpdateAllServicesAsync` (эндпоинты `/restart-all`, `/update-all`) вызываются **только** мёртвой `Pages/Redesigned/`. Активный v2 `services.html` реализует «Перезапустить все»/«Обновить все» на клиенте: перебирает `servicesData` (из `/services/status`), фильтрует по `BarkFluff.*` (`barkfluffContainers()`) и дёргает per-container `restart`/`pull`. Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) в bulk **не** попадает — только ручной per-row перезапуск. `BarkFluff.Federation` добавлен в `KnownServices` + `ServiceToContainerMap` (`SeqEndpoints.cs`) → виден в фильтре логов, таблице сервисов и bulk-действиях.
+### DeployJobService
+**Singleton + HostedService.** Серверная очередь деплоя: `Channel<DeployJob>`, один потребитель — задачи последовательны, конкурентные compose-операции исключены. In-memory (`ConcurrentDictionary<Guid, DeployJob>`, последние 20 завершённых).
+
+| Метод | Описание |
+|-------|---------|
+| `EnqueueUpdate(services)` | Задача обновления (pull → recreate → health-check → rollback при явном падении) |
+| `EnqueueRestart(services)` | Задача перезапуска (restart → health-check, без rollback) |
+| `EnqueueBranchSwitch(service, branch)` | Задача переключения ветки (compose-правка → pull → recreate → health-check; откат compose + recreate) |
+| `GetJob(id)` / `GetRecentJobs()` | Статусы для `GET /api/docker/deploy/jobs[/{id}]` |
+
+`DeployOrder` — фиксированный порядок (configuration первым). Health-check: поллинг 3с, таймаут 60с; `exited`/`dead`/`restarting`/`unhealthy` → явное падение → откат (Update: retag старого image ID + recreate; SwitchBranch: restore compose + recreate); таймаут → шаг провален, но без отката. `image prune` — только после всей задачи.
+
+После каждого шага `DeployJobService` пишет в Seq информационный маркер `EventType=Deployment` с целевым `Application`, kind/status/branch/rollback, сообщением и `DeployJobId`. Даже неуспешный шаг остаётся уровнем Information, чтобы сам маркер не искажал сравнение Error/Fatal до/после. Ошибка записи маркера логируется, но не меняет результат самого деплоя.
+
+> Все деплой-эндпоинты (`/pull`, `/branch`, `/restart-all`, `/update-all`, `/update-many`) ставят задачу в очередь и возвращают `{ success, jobId, message }`. Браузерного перебора контейнеров больше нет: UI поллит `GET /api/docker/deploy/jobs/{id}` и рисует прогресс из шагов задачи. Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) в bulk не попадает — только ручной per-row перезапуск.
 
 ### SeqService
 `HttpClient` → Seq REST API.
@@ -368,13 +390,16 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | POST | `/api/docker/containers/{name}/start` | Запустить |
 | POST | `/api/docker/containers/{name}/stop` | Остановить |
 | POST | `/api/docker/containers/{name}/restart` | Перезагрузить |
-| POST | `/api/docker/containers/{name}/pull` | Обновить образ |
+| POST | `/api/docker/containers/{name}/pull` | Обновить образ — задача `Update` в очереди `DeployJobService`, ответ `{ success, jobId, message }` |
 | POST | `/api/docker/containers/admin-panel/restart-own` | Перезагрузить саму панель |
 | POST | `/api/docker/containers/admin-panel/update-own` | Обновить панель |
 | GET | `/api/docker/branches` | Ветки обновлений сервисов: `branch` из `docker-compose.yml`, `runningBranch` из образа контейнера |
-| POST | `/api/docker/containers/{name}/branch` | `{ branch }` — правка `image:` в compose + pull/recreate (для `admin-panel` — helper-контейнер); при неудаче правка откатывается |
-| POST | `/api/docker/containers/restart-all` | Рестарт всех BarkFluff-сервисов |
-| POST | `/api/docker/containers/update-all` | Обновить все сервисы |
+| POST | `/api/docker/containers/{name}/branch` | `{ branch }` — валидации + проверка реестра, затем задача `SwitchBranch` в очереди (правка `image:` → pull/recreate → health-check, откат при явном падении; для `admin-panel` — helper-контейнер) |
+| POST | `/api/docker/containers/restart-all` | Задача `Restart` для всех сервисов (в порядке `DeployOrder`) |
+| POST | `/api/docker/containers/update-all` | Задача `Update` для всех сервисов |
+| POST | `/api/docker/containers/update-many` | `{ containers: [...] }` — задача `Update` для перечисленных (замена браузерного цикла «Обновить доступные») |
+| GET | `/api/docker/deploy/jobs` | Активные и недавние задачи деплоя (шаги, состояния, сообщения) |
+| GET | `/api/docker/deploy/jobs/{id}` | Статус одной задачи: `state` (Queued/Running/Completed/Failed), `steps[]` (`service`, `state`, `message`, `rolledBack`) |
 
 ### /api/badges — BadgesEndpoints.cs
 
@@ -405,19 +430,24 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | `/api/users?query=&offset=&size=` | Поиск пользователей |
-| GET | `/api/users/{id}` | Полный профиль (параллельно: Search, Contacts, Devices, Storage, OTP, Sessions) |
+| GET | `/api/users/{id}` | Полный профиль + `availability` зависимых секций (параллельно: Search, Contacts, Devices, Storage, OTP, Sessions, Poster) |
 | POST | `/api/users/{id}/badges` | Назначить бейдж `{ badgeId, priority }` |
 | DELETE | `/api/users/{id}/badges/{badgeId}` | Удалить бейдж |
 | PUT | `/api/users/{id}/storage-limit` | Изменить лимит `{ storageLimitGb: 1-250 }` |
-| POST | `/api/users/{id}/2fa/disable` | Отключить 2FA `{ otpType }` |
+| POST | `/api/users/{id}/2fa/disable` | Отключить 2FA `{ otpType, reason }`; reason обязателен, до 500 символов |
+| POST | `/api/users/{id}/password` | Сменить пароль `{ newPassword, reason }`; reason обязателен и пишется в аудит |
 | POST | `/api/users/{id}/avatar` | Загрузить аватар (multipart: avatar) |
 | DELETE | `/api/users/{id}/sessions/{deviceId}` | Удалить сессию пользователя |
+| DELETE | `/api/users/{id}/sessions` | Завершить все сессии; `{ requestedCount, revokedCount, failedDeviceIds }` |
 
 ### /api/seq — SeqEndpoints.cs
 
 | Метод | Путь | Query | Описание |
 |-------|------|-------|---------|
-| GET | `/api/seq/events` | application, count, fromUtc, level, search, afterId | Логи из Seq |
+| GET | `/api/seq/events` | application, count, fromUtc, level, search, correlationId, requestId, userId, afterId | Логи из Seq |
+| GET | `/api/seq/error-groups` | application, search, IDs, hours, maxEvents | Серверная группировка Error/Fatal; возвращает `groups`, `scannedEventCount`, `truncated` |
+| GET | `/api/seq/deployments` | application, hours | Маркеры шагов деплоя из Seq |
+| GET | `/api/seq/deployments/compare` | application, atUtc, windowMinutes | Количество ошибок до/после выбранного деплоя и delta |
 | GET | `/api/seq/services` | — | Сервисы для фильтра логов — только микросервисы (`KnownServices`, где имя начинается с `BarkFluff.`). Инфраструктура (Seq/Minio/RabbitMQ/Redis/PostgreSQL) исключена: она не пишет логи в Seq |
 | GET | `/api/seq/dashboard/kpis` | hours (def 24) | KPI из кеша или Seq |
 | GET | `/api/seq/dashboard/traffic` | hours, interval | `{ all, errors, warnings }` |
@@ -452,7 +482,9 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | `/api/configuration/all` | Все строки конфигурации через rpc `GetAllConfigurations` |
-| POST | `/api/configuration/update` | `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
+| POST | `/api/configuration/update` | Типизация/валидация `{ section, key, serviceId, value }` → rpc `UpdateConfiguration` |
+| GET | `/api/configuration/history` | История ключа; секретные значения маскируются |
+| POST | `/api/configuration/rollback` | Rollback по revisionId; `config.write` + step-up |
 | GET | `/api/configuration/s3-configuration` | S3 конфиг всех бакетов |
 | POST | `/api/configuration/s3/update` | Обновить конфиг бакета `{ bucketId, parameters }` |
 
@@ -546,7 +578,10 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 | gRPC-метод | Вызывается из |
 |-----------|-------------|
 | `GetConfigurationAsync()` | ConfigurationEndpoints, S3BrowserService |
+| `GetAllConfigurationsAsync()` | ConfigurationEndpoints |
 | `UpdateConfigurationAsync()` | ConfigurationEndpoints |
+| `GetConfigurationHistoryAsync()` | ConfigurationEndpoints |
+| `RollbackConfigurationAsync()` | ConfigurationEndpoints |
 | `GetReservedNamesAsync()` | ReservedNamesEndpoints |
 | `AddReservedNameAsync()` | ReservedNamesEndpoints |
 | `RenameReservedNameAsync()` | ReservedNamesEndpoints |
@@ -607,9 +642,9 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 
 ## UI Pages — поведение фронтенда
 
-### `/logs` (`Pages/logs.html`)
+### `/logs` (`Pages/v2/logs.html`)
 
-Просмотр событий Seq с фильтрами (сервис / уровень / поиск) и серверной пагинацией через `afterId`.
+Просмотр событий Seq с фильтрами (сервис / уровень / поиск / correlation-request-user ID) и серверной пагинацией через `afterId`. Сохранённые наборы фильтров (максимум 20) живут только в `localStorage` браузера и не содержат серверных секретов.
 
 **Структура таблицы (5 колонок):** chevron / Время / Уровень / Сервис / Сообщение.
 
@@ -618,15 +653,9 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
 - `Template` — `MessageTemplate` (показывается только если отличается от Message).
 - `Properties` — таблица `key → value`, отсортированная по имени; объекты сериализуются `JSON.stringify`.
 - `Exception` — `<pre>` на красном фоне (только если поле непустое).
-- Кнопка `Copy JSON` — копирует полный объект события через `navigator.clipboard.writeText(JSON.stringify(evt, null, 2))`.
+- ID-чипы повторно фильтруют поток по `CorrelationId`/`TraceId` или `RequestId`; user ID открывает `/users?userId=...`, сервис — `/services?service=...` с подсветкой строки.
 
-Реализация:
-- На каждое событие рендерятся **две** `<tr>`: основная (`.log-row` с `data-idx`) и скрытая `.log-detail-row` с `colspan="5"`.
-- Один обработчик кликов через **делегирование** на `<tbody id="logsTableBody">` ловит как открытие/закрытие строки, так и клик по кнопке `.copy-json-btn`.
-- Содержимое деталей рендерится **lazily** — только при первом раскрытии (`detail.dataset.rendered = '1'`).
-- `dataset.idx` рассчитывается как `allLogs.length + index` ДО конкатенации в `allLogs`, чтобы при `append` (load more) индексы не пересекались.
-
-**Backend нового endpoint не понадобился** — `/api/seq/events` уже отдаёт полное событие (`SeqService.GetEventsAsync` зовёт Seq с `render=true`), включая `Properties`, `Exception`, `MessageTemplate`.
+Режим **«Группы ошибок»** вызывает `/api/seq/error-groups`: `SeqEventAnalyzer` объединяет Error/Fatal по `Application + MessageTemplate/message + exception type`, возвращает число повторений, первое/последнее время и контекст последнего события. Селектор деплоя читает структурированные маркеры и показывает сравнение Error/Fatal за ±30 минут.
 
 **Экспорт логов в шапке.** Кнопка `Экспорт логов` справа от заголовка открывает модалку с 4 состояниями:
 

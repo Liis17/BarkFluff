@@ -17,7 +17,7 @@ namespace Barkfluff.WebServer.Controllers
             }
 
             var fileBytes = System.IO.File.ReadAllBytes(faviconPath);
-            return File(fileBytes, "image/png", "favicon.ico");
+            return File(fileBytes, "image/x-icon", "favicon.ico");
         }
     }
 }

@@ -157,6 +157,8 @@ public class Program
             });
         });
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         using (var scope = app.Services.CreateScope())
@@ -180,6 +182,7 @@ public class Program
 
         // Bot REST API (HTTP/1.1 на RunSettings:Http1Port)
         app.MapBotApiEndpoints();
+        app.MapHealthEndpoints();
 
         var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
         startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());

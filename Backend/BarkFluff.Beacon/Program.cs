@@ -59,6 +59,8 @@ public class Program
         });
         builder.Services.AddHostedService<ServerRegistrationService>();
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         // Гейдж со временем старта сервиса — позволяет админке вычислять uptime.
@@ -69,7 +71,7 @@ public class Program
         if (app.Environment.IsDevelopment())
             app.MapGrpcReflectionService();
         app.UseRouting();
-        app.MapPingEndpoint();
+        app.MapHealthEndpoints();
         app.MapGrpcService<BeaconApiService>();
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();

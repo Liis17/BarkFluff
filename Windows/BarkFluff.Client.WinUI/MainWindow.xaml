@@ -15,7 +15,13 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar x:Name="AppTitleBar" Title="{StaticResource App_Title}" />
+        <TitleBar x:Name="AppTitleBar"
+                  Title="{StaticResource App_Title}"
+                  IsBackButtonVisible="True"
+                  IsBackButtonEnabled="False"
+                  IsPaneToggleButtonVisible="False"
+                  BackRequested="OnTitleBarBackRequested"
+                  PaneToggleRequested="OnTitleBarPaneToggleRequested" />
 
         <!--
             LeftMinimal — единственный режим NavigationView, который даёт ровно кнопку-бургер
@@ -24,9 +30,9 @@
         -->
         <NavigationView x:Name="RootNavigation"
                         Grid.Row="1"
-                        BackRequested="OnBackRequested"
-                        IsBackButtonVisible="Visible"
+                        IsBackButtonVisible="Collapsed"
                         IsBackEnabled="False"
+                        IsPaneToggleButtonVisible="False"
                         IsPaneVisible="False"
                         IsSettingsVisible="False"
                         ItemInvoked="OnNavigationItemInvoked"

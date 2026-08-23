@@ -44,12 +44,15 @@ Proto-бандл собирается с `--minify` (1.7 МБ вместо 2.9 �
 - `js/app/node.js` (`BF.node`) — единственный источник адреса ноды. Импортируется entry-point'ом **до**
   `device.js`/`clients.js`: клиенты gRPC-Web создаются синхронно при загрузке скрипта и
   захватывают origin, поэтому адрес обязан резолвиться из localStorage, без сети.
-  - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`.
-  - `key(name)` — ключ хранилища с суффиксом `@{origin}`; `set/clear/meta/list/normalize`.
+  - `origin()` — `bf_node_origin` из localStorage; при `pinned` всегда `window.location.origin`
+    (нода и прокси-зеркало ноды — [[Backend/Web]] режим Proxy).
+  - `key(name)` — ключ хранилища с суффиксом `@{origin}`; `set/clear/meta/list/normalize`;
+    `proxied()` — страница отдана прокси-зеркалом ноды.
   - `beaconClient()` / `navigatorClient()` — Beacon смотрит на выбранную ноду, Navigator
     всегда same-origin (каталог проксирует тот хост, что отдал страницу).
 - **Режим хоста** — `/node-config.js` (эндпоинт [[Backend/Web]], `no-store`):
-  `{pinned: true}` у ноды, `{pinned: false, navigatorProxy: true}` у шелла. Переключатель
+  `{pinned: true}` у ноды, `{pinned: false, navigatorProxy: true}` у шелла,
+  `{pinned: true, proxied: true}` у прокси-зеркала. Переключатель
   сервера показывается только при `pinned: false`.
 - `js/app/nodepicker.js` (`BF.nodePicker`) — экран выбора в `index.html` (`#nodeSection`):
   каталог `NavigatorApi.ListServers`, история ранее использованных нод и ручной ввод.
@@ -86,7 +89,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - `auth.js`, `fast-auth.js` и `register.js` держат **собственные** клиенты и строят их лениво: на шелле ноду выбирают на той же странице, поэтому origin известен только к моменту первого вызова.
 - `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16). Временная ошибка refresh (сеть, таймаут, 5xx) сохраняет локальную сессию; [[Backend/Identity|Identity]] очищает её только через `x-error-code` невалидного refresh token (`7E6A31C5-3C4D-412E-87BC-0A387617A5D3`).
 - `js/app/metadata.js` (`BF.metadata.build(token)`) формирует метаданные: `x-auth-token` (plain) + base64 `x-device-id`/`x-device-name`/`x-os-name`/`x-app-name`/`x-app-version`. Device-id — из `js/app/device.js` (localStorage `barkfluff_device_id`); его методы `getBrowserName()` и `getOsName()` также выводятся в «О BarkFluff».
-- `js/app/health.js` (`BF.health`) — параллельная проверка `/ping` шлюза Web и `/ping/{service}` для пользовательских микросервисов; успешен только ответ `200` с телом `pong`, таймаут — 8 секунд, результат содержит время каждого запроса.
+- `js/app/health.js` (`BF.health`) — параллельная проверка `/ping` шлюза Web и `/ping/{service}` сервисов выбранной ноды; каталог Navigator намеренно не входит в список проверки; успешен только ответ `200` с телом `pong`, таймаут — 8 секунд, результат содержит время каждого запроса.
 - `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
 
 ### Real-time
@@ -102,12 +105,23 @@ origin, сопоставить ключ нечем — вход потребуе
 ### Файлы и медиа
 - `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).
 - **Отдельный файловый адрес ноды.** Если Beacon отдал `files_media_endpoint` (`BF.node.meta().filesMediaEndpoint`, см. [[Backend/Nginx]] `files2.barkfluff.com`), `files.js` шлёт multipart прямо туда (`{origin}/web/upload/{fileId}` вместо `/api/files/upload/{fileId}` через шлюз ноды) и подменяет хост во всех ссылках из `GetTempDownloadUrl` (`cacheFile`/`mediaUrl`, путь сохраняется). Так загрузка и скачивание идут мимо CDN с его лимитом на размер файла; пустое поле = прежнее поведение. Метаданные ноды на pinned-хосте берутся из `BF.node.refreshMeta()` (вызов Beacon при старте `main.js`) — экрана выбора ноды там не было.
+  - **Прокси-зеркало ноды** (`proxied: true`): файловый адрес ноды недоступен из РФ напрямую, поэтому `mediaOrigin()` всегда пуст (upload — same-origin `/api/files/upload/` через прокси), а `mediaUrl()` оборачивает **любую** файловую ссылку в `{origin}/media/{host}/{path}?{query}` — relay прокси ([[Backend/Web]], режим Proxy) ходит до хоста сам. `api.js` пропускает аватары/превью/бейджи через ту же `mediaUrl`, поэтому они покрываются автоматически; хост не из allowlist прокси получит 403 → сработает плейсхолдер resilient-media.
   - ⚠️ **Не только `GetTempDownloadUrl`.** Chat/Users/Messages встраивают готовые ссылки на Files прямо в свои ответы — `Chat.picture`, `User.profile_picture(_preview)`, `MessageAttachment.preview_url`, `Badge.image_url` — эти поля идут мимо `getFileUrls`, их сервис формирует сам через `ExternalEndpoint:Host` (всегда старый `files.barkfluff.com`). `api.js` подменяет хост и в них — та же `mediaUrl()` из `files.js` (экспортирована как `BF.files.mediaUrl`), вызывается прямо в `mapChat`/`mapUser`/`mapAttachment`/`getChatInfo`/`updateGroupChat` при маппинге ответа. Забыть это место и чинить только `getTempDownloadUrl` — типичная ошибка: аватары и превью в списке чатов продолжат идти на `files.barkfluff.com`, хотя полноразмерное скачивание уже уйдёт на `files2`.
 - `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
 - Видеосообщение без текстовой подписи выводится без полей облачка: время и статус накладываются на превью. При подписи между превью и текстом остаётся только нижний отступ.
 - **Optimistic upload.** При отправке картинок и файлов `main.js` сразу добавляет локальное исходящее сообщение со статусом часов. Картинки используют локальные `ObjectURL`, сохраняют финальную раскладку сетки, размываются и показывают круговой прогресс для каждого файла; документы показывают линейный прогресс под именем. `files.js/uploadFile` использует `XMLHttpRequest.upload.progress`, поэтому UI отражает реально переданные браузером байты. После `SendMessage` или собственного realtime-эха локальный bubble заменяется серверным: корреляция идёт по уже зарезервированному набору `fileId`, что поддерживает оба порядка прихода и не создаёт дубликат. Активные pending-сообщения хранятся по чатам и возвращаются в список после переключения между чатами или полного realtime-resync. Набор вложений отправляется целиком: при сбое любого upload сообщение снимается и показывается ошибка, а не отправляется неполная версия. `ObjectURL` освобождаются после замены или ошибки; галочки появляются только у серверного сообщения.
 - ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `js/app/media-viewer.js` (`BF.mediaViewer`) при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
 - `js/app/imageeditor.js` (`BF.imageEditor`) — редактор изображения перед отправкой (crop/rotate/flip/кисть/пикселизация/ластик). Инициализируется в `main.js` (`BF.imageEditor.init()`), открывается из `attach.js` (`BF.imageEditor.open(...)`).
+
+### Стикеры
+Пикер у композера (`main.js`, секция STICKER PICKER): табы паков с обложками + **«Недавние»** (иконка `history`, появляются только при непустом списке; дефолтная вкладка при открытии — как на iOS) и **поиск по emoji** (`#stickerSearch`, фильтр `contains` по стикерам текущей вкладки).
+
+- «Недавние» — localStorage `bf_recent_stickers_{userId}` (через `BF.node.key`, т.е. per-user + per-node), лимит 32, самые свежие сверху; id резолвятся против кеша паков (стикер, удалённый из пака, исчезает — паттерн `RecentStickersStore` macOS/iOS).
+- Отправка: `sendSticker` → `SendMessage(file_ids=[stickerFileId])`, тип вложения `Sticker` определяет бэкенд по `UploadFileType.MessageAttachmentSticker` ([[Backend/Messages]]).
+- Ссылки стикеров идут через `BF.files` с resilient-refresh (`bindResilientMedia`).
+- i18n: `sticker.recent` / `sticker.searchPlaceholder` / `sticker.empty` (+ существующие `sticker.noPacks` / `sticker.packEmpty`).
+- **Размер стикеров** — слайдер 96–240px (шаг 1, дефолт 160) в настройках персонализации, рядом с «Закруглением пузырей». Хранение `bf_pers_sticker_size` (общий ключ без суффикса ноды, как остальные `bf_pers_*`), применение через CSS-переменную `--sticker-size` в `personalization.js::applyAll` → `.msg-attachments img.attach-sticker`. Паритет с [[Клиенты/Android]] (`chatStickerSizeDp`).
+- **Модалка стикерпака по клику на стикер** (`js/app/stickerpack.js`, `BF.stickerPack`): клик на `.attach-sticker` в ленте → `FilesApi.GetStickerPackByFile(file_id)` → оверлей `#stickerPackOverlay` (`.profile-overlay`-паттерн, focus-trap через `BF.utils.openOverlay`) с обложкой, названием, описанием и сеткой стикеров; клик по стикеру в модалке отправляет его в текущий чат (колбэк `onStickerSend` из `main.js`). Пак не найден → статус `sticker.packNotFound`. Ссылки — через `BF.files` + `bindResilientMedia`.
 
 ### Markdown в облачках
 
@@ -202,6 +216,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - На странице авторизации fast-auth QR плавно заменяет спиннер только после загрузки изображения; QR настройки 2FA при регистрации получает отдельный state-reveal. Скрытые QR исключаются из accessibility tree через `aria-hidden`.
 - В мессенджере анимируются только редкие и пространственно значимые состояния: меню FAB создания чата, popover выбора устройств/качества звонка, file-drop feedback, вход/выход media lightbox и success-toast. Списки чатов/сообщений и клавиатурная навигация lightbox остаются мгновенными.
 - Lightbox инвалидирует `overlayFileToken` сразу при закрытии, но очищает media `src` после 120 мс exit-перехода; быстрое повторное открытие отменяет отложенную очистку.
+- Все полноэкранные и диалоговые оверлеи проходят через `BF.utils.openOverlay/closeOverlay`: стек управляет focus-trap и `inert` фоном. При открытии вложенного оверлея целевой элемент принудительно выводится из `inert`, потому что скрытые соседние оверлеи уже могли быть заблокированы нижним слоем; это сохраняет кликабельность подтверждений, выбора фона и lightbox.
 - `prefers-reduced-motion: reduce` убирает scale/translate из новых переходов и сохраняет только короткий opacity-feedback.
 
 ### Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер)
@@ -211,11 +226,11 @@ origin, сопоставить ключ нечем — вход потребуе
 - **`refreshFileUrl(fileId)`** — удаляет закешированный (протухший) URL из `urlCache`, перезапрашивает свежий через `BF.api.getTempDownloadUrl`, обновляет кеш (другие элементы по тому же `fileId` забирают свежую запись), возвращает `{fileId,url,previewUrl}|null`.
 - **`bindResilientMedia(el, fileId, preferPreview)`** — для `<img>`/`<video>`/`<audio>`: сохраняет `data-bf-file-id` на элементе, по событию `error` (404/протухание) рефрешит ссылку и перезагружает (`el.src = fresh`); при повторной неудаче — плейсхолдер. `fileId` читается из data-атрибута на момент ошибки (актуально для переиспользуемых элементов — лайтбокс `#overlayImage`/`#overlayVideo`).
 - **`bindResilientLink(el, fileId)`** — для документов (`<a>`): URL не загружается до клика, поэтому рефрешится лениво — префетч при `mouseenter`/`focus`, чтобы к моменту клика ссылка была свежей. При неудаче — заглушка.
-- **`loadResilientBackground(el, fileId, preferPreview)`** — для CSS-фонов: предварительно грузит URL через `Image`, поэтому может обработать ошибку, недоступную самому `background-image`; один раз обновляет URL по `fileId`, затем показывает SVG-заглушку. Используется для постера профиля.
+- **`loadResilientBackground(el, fileId, preferPreview, onResolved)`** — для CSS-фонов: предварительно грузит URL через `Image`, поэтому может обработать ошибку, недоступную самому `background-image`; один раз обновляет URL по `fileId`, затем показывает SVG-заглушку. Необязательный `onResolved` получает свежий URL (или пустую строку для заглушки). Используется для постера профиля и слоя фона чата `#messagesBgLayer`.
 - **`applyPlaceholder(el)`** — заменяет элемент на векторную заглушку (inline-SVG data-URI, нейтральный серый) + класс `.bf-load-failed`: img → SVG в `src`, video → SVG в `poster` + сброс `src`, audio → сброс `src`, a → удаление `href`.
 - **Состояние** в data-атрибутах: `data-bf-file-id`, `data-bf-prefer-preview`, `data-bf-refreshed`, `data-bf-refreshing`, `data-bf-failed`. Защита от гонок: пока рефреш в полёте (`data-bf-refreshing`), повторные ошибки не показывают плейсхолдер; при сбросе элемента (закрытие лайтбокса) `data-bf-file-id` снимается — случайные ошибки игнорируются.
 
-Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` в `media-viewer.js` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`) и постер профиля (`openProfile`). CSS `.bf-load-failed` — в `wwwroot/css/messenger.css`.
+Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель, превью фонов и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`openChatBackgroundSelector`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` в `media-viewer.js` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`), постер профиля (`openProfile`) и основной фон чата (`personalization.js` → `#messagesBgLayer`). CSS `.bf-load-failed` — в `wwwroot/css/messenger.css`.
 
 > Аватары (`chat.picture`/`user.profilePicture`) приходят с сервера готовой ссылкой (не через `urlCache`) и этим механизмом не покрываются — их рефреш требует перезапроса чата/юзера.
 

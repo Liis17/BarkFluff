@@ -84,11 +84,11 @@ Beacon отдаёт `files_media_endpoint` — второй публичный o
 
 ## Shell
 
-`MainWindow` — контрол `TitleBar` (`ExtendsContentIntoTitleBar` + `SetTitleBar`), под ним `NavigationView` с `Frame` внутри, плюс `TaskbarIcon` из `H.NotifyIcon.WinUI`. WinUI-версия H.NotifyIcon не даёт событий клика, только команды, поэтому двойной клик по значку привязан к `DoubleClickCommand` из code-behind.
+`MainWindow` — контрол `TitleBar` (`ExtendsContentIntoTitleBar` + `SetTitleBar`) со встроенными кнопками «назад» и меню, под ним `NavigationView` с `Frame` внутри, плюс `TaskbarIcon` из `H.NotifyIcon.WinUI`. WinUI-версия H.NotifyIcon не даёт событий клика, только команды, поэтому двойной клик по значку привязан к `DoubleClickCommand` из code-behind.
 
-`PaneDisplayMode="LeftMinimal"` — единственный режим, дающий ровно кнопку-бургер сверху слева и панель поверх контента. Пункта два: «Профиль» и «Настройки». `IsPaneVisible` включается только когда текущая вьюмодель — `MessengerViewModel`: на онбординге и логине идти из панели некуда. Пункт «Профиль» не переходит по `Frame` — открывает оверлей `MessengerViewModel.OpenOwnProfileCommand` поверх уже отображённой `MessengerPage` (см. [[#Профиль]]); «Настройки» по-прежнему страница.
+`PaneDisplayMode="LeftMinimal"` сохраняет панель поверх контента, но её штатные верхние кнопки скрыты: `TitleBar` показывает меню в title bar только после входа, а кнопка «назад» там же управляет стеком `Frame`. Пункта два: «Профиль» и «Настройки». `IsPaneVisible` включается только когда текущая вьюмодель — `MessengerViewModel`: на онбординге и логине идти из панели некуда. Пункт «Профиль» не переходит по `Frame` — открывает оверлей `MessengerViewModel.OpenOwnProfileCommand` поверх уже отображённой `MessengerPage` (см. [[#Профиль]]); «Настройки» по-прежнему страница.
 
-Настройки навигируются **через `Frame` напрямую**, не через `IOnboardingNavigationService`: сервис заменяет `CurrentViewModel`, а `ShowMessenger()` вызывает `LoadAsync()` — возврат перезагружал бы весь список чатов. Возврат — штатной кнопкой «назад» `NavigationView` (`IsBackEnabled` обновляется в `Frame.Navigated`). Стек онбординга чистится при каждой навигации из сервиса, иначе «назад» уводило бы на экран логина. `MessengerPage` объявлена `NavigationCacheMode="Required"`, чтобы возврат не пересоздавал ленту.
+Настройки навигируются **через `Frame` напрямую**, не через `IOnboardingNavigationService`: сервис заменяет `CurrentViewModel`, а `ShowMessenger()` вызывает `LoadAsync()` — возврат перезагружал бы весь список чатов. Состояние доступности кнопки «назад» в `TitleBar` и `NavigationView` обновляется в `Frame.Navigated`. Стек онбординга чистится при каждой навигации из сервиса, иначе «назад» уводило бы на экран логина. `MessengerPage` объявлена `NavigationCacheMode="Required"`, чтобы возврат не пересоздавал ленту.
 
 Закрытие обрабатывает `AppWindow.Closing`: в режиме `MinimizeToTray` отмена + `Hide()`, пункт «Выход» выставляет флаг и закрывает по-настоящему.
 
@@ -105,6 +105,8 @@ Beacon отдаёт `files_media_endpoint` — второй публичный o
 Замены контролов WPF UI → WinUI: `ui:Card` → `Border` со стилем `OnboardingCard`; `ui:Button Appearance="Primary"` → `Style="{StaticResource AccentButtonStyle}"`; `ui:PasswordBox RevealButtonEnabled` → `PasswordRevealMode="Peek"`; `ui:ProgressRing` → `ProgressRing IsActive="True"` с `Visibility` по флагу (так поведение совпадает с WPF: скрытый индикатор не занимает места); fade-in `Storyboard` четырёх экранов → `EntranceNavigationTransitionInfo` на `Frame`.
 
 `OtpInputBehavior` переписан на `BeforeTextChanging` (отменяемый фильтр цифр), `TextChanged` + `FocusManager.TryMoveFocus` и `TextBox.Paste`. Отличие от WPF: буфер обмена в WinRT читается только асинхронно, а `Handled` обязан выставляться синхронно, поэтому штатная вставка отменяется всегда и весь разбор текста делает `PasteOtpCodeCommand`.
+
+Регистрация после успешной установки пароля сразу вызывает `IOnboardingNavigationService.ShowMessenger()`. Сервис заменяет `RegistrationViewModel` на `MessengerViewModel` и запускает `LoadAsync()`, поэтому экран пароля не остаётся доступен для повторной отправки уже установленного пароля.
 
 ## Мессенджер
 
@@ -200,6 +202,8 @@ Beacon отдаёт `files_media_endpoint` — второй публичный o
 
 `SettingsPage` — master-detail оболочка с четырнадцатью разделами. Разделы «Безопасность», «Аккаунт», «Приватность», «Устройства» и «Уведомления» уже подключены к [[Клиенты/Windows-WebApiCore]]; «Данные и кеш» отображает серверную квоту и разбивку по типам файлов. Локальные кеши по-прежнему недоступны и явно помечены как Android-only. Приватность сохраняется оптимистично и при ошибке повторно загружает серверное состояние.
 
+Загрузка «Устройств» считает неполный успешный ответ (без текущего устройства или списка сессий) ошибкой загрузки и показывает `Error_SettingsLoadFailed`, не обращаясь к отсутствующим данным.
+
 «Персонализация» сохраняет в SQLite JSON-группу `settings.interface`: радиус сообщений, параметры размытия и затемнения фона, а также относительное время онлайна. Диапазоны значений нормализуются до записи; остальные пункты, которым пока нет применения в WinUI, остаются помечены как недоступные.
 
 «Аккаунт» получает и изменяет имя, username, bio и аватар через `IAccountSettingsService`. Выход — единый порядок: остановка real-time стримов, отзыв refresh-токена, очистка защищённой сессии и ключей приватных чатов, `MessengerViewModel.Reset()`, затем переход на логин. Это не оставляет данные предыдущей сессии в кэшированной странице мессенджера.
@@ -253,7 +257,7 @@ Reply и forward разделены на бэкенде (см. [[Backend/Message
 - `LoginViewModel.FastAuthQrCode` отдаёт base64-строку, а не `ImageSource`; картинку собирает `Base64ToImageSourceConverter`.
 - `MessengerViewModel` использует `IUiDispatcher` вместо `Application.Current.Dispatcher`; буфер обмена — `DataPackage` + `Clipboard.SetContent`, изображение копируется как `RandomAccessStreamReference` по URL.
 - `MainWindowViewModel` больше не хранит `IsSettingsVisible`: настройки — отдельная страница в панели навигации.
-- Поиск чатов в WPF-версии не работал: `SearchText` объявлен, но нигде не читался. В WinUI добавлена `VisibleChats` — фильтр по заголовку, всегда сохраняющий выбранный чат (иначе список сбросил бы `SelectedItem` и закрыл переписку).
+- Поиск в мессенджере работает локально и через сервер: `VisibleChats` фильтрует загруженные чаты по заголовку и username, а после трёх символов `MessengerService.SearchUsersAsync` наполняет `SearchResults` результатами поиска пользователей. Клик по серверному результату открывает существующий чат или подтягивает созданный/найденный чат через `GetPersonChatId` и `GetChats`; выбранный чат сохраняется при локальной фильтрации.
 - Новый чат, о котором пришло сообщение, дозагружается точечно и вставляется первым: `Clear()` на привязанной коллекции обнулил бы `SelectedChat`.
 - `MVVMTK0045` подавлен в Core: `[ObservableProperty]` на полях несовместим с AOT в WinRT-сценариях, но AOT и trimming выключены; переход на partial-свойства требует выноса инициализаторов в конструкторы и вынесен в отдельную задачу.
 - Вложения в профиле (Фото/Видео/Файлы/Голосовые с пагинацией) реализованы только в WinUI: у WPF в `Profile.xaml` есть те же вкладки визуально, но загрузка вложений не подключена — там они остаются пустыми заглушками.

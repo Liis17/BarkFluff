@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 
 using BarkFluff.Proto.Configuration;
@@ -11,15 +12,12 @@ public static class ReservedNamesEndpoints
     public static void MapReservedNamesEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/reserved-names")
-            .WithTags("ReservedNames");
+            .WithTags("ReservedNames")
+            .RequirePermission(AdminPermissions.ReservedNamesManage);
 
         group.MapGet("/", async (
-            ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context) =>
+            ConfigurationApi.ConfigurationApiClient configClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await configClient.GetReservedNamesAsync(new GetReservedNamesRequest());
@@ -33,12 +31,8 @@ public static class ReservedNamesEndpoints
 
         group.MapPost("/", async (
             ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context,
             AddReservedNameDto dto) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await configClient.AddReservedNameAsync(new AddReservedNameRequest { Name = dto.Name });
@@ -55,12 +49,8 @@ public static class ReservedNamesEndpoints
 
         group.MapPut("/", async (
             ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context,
             UpdateReservedNameDto dto) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await configClient.UpdateReservedNameAsync(new UpdateReservedNameRequest
@@ -81,12 +71,8 @@ public static class ReservedNamesEndpoints
 
         group.MapDelete("/{name}", async (
             string name,
-            ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context) =>
+            ConfigurationApi.ConfigurationApiClient configClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var decodedName = Uri.UnescapeDataString(name);

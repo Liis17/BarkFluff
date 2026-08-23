@@ -194,6 +194,7 @@
 | `CheckFileHash` | Проверить дедупликацию по хешу |
 | `GetUserStorageInfo` | Информация о хранилище текущего пользователя |
 | `ListStickerPacks` / `GetStickerPack` | Список стикерпаков и их содержимое |
+| `GetStickerPackByFile` | Стикерпак по `file_id` стикера (клик по стикеру в чате) |
 
 #### `FilesServerApi` (внутренний, Service token)
 | RPC | Описание |
@@ -324,11 +325,16 @@
 | RPC | Описание |
 |-----|----------|
 | `GetConfiguration` | Получить настройки сервиса по service_id |
+| `GetAllConfigurations` | Получить все строки для AdminPanel |
 | `UpdateConfiguration` | Обновить конкретный ключ (section + key + value) |
+| `GetConfigurationHistory` | Получить ревизии конкретного ключа |
+| `RollbackConfiguration` | Восстановить previous_value выбранной ревизии |
 | `GetReservedNames` | Список зарезервированных юзернеймов |
 | `AddReservedName` / `UpdateReservedName` / `DeleteReservedName` | CRUD зарезервированных юзернеймов |
 
 **`ConfigurationItem`:** section, key, value, edited_at, edited_by, edited_from, service_id
+
+**`ConfigurationRevision`:** id, section, key, service_id, previous_value, new_value, changed_at/by/from, change_kind, source_revision_id
 
 ---
 

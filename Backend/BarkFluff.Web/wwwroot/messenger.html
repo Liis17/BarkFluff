@@ -154,6 +154,10 @@
                     </div>
                     <div class="input-bar-inner">
                         <div class="sticker-picker" id="stickerPicker">
+                            <div class="sticker-search">
+                                <span class="bf-icon" data-bf-icon="search" aria-hidden="true"></span>
+                                <input type="text" id="stickerSearch" data-i18n-placeholder="sticker.searchPlaceholder" placeholder="Поиск по emoji…" maxlength="24" autocomplete="off">
+                            </div>
                             <div class="sticker-packs-bar" id="stickerPacksBar"></div>
                             <div class="sticker-grid" id="stickerGrid"></div>
                         </div>
@@ -521,6 +525,19 @@
                 <div class="profile-status-line" data-i18n="chat.background.hint">Выберите изображение или вернитесь к глобальному фону</div>
             </div>
             <div class="sd-bg-grid chat-background-selector-grid" id="chatBackgroundSelectorGrid"></div>
+        </div>
+    </div>
+
+    <!-- Sticker pack overlay -->
+    <div class="profile-overlay" id="stickerPackOverlay">
+        <div class="profile-panel stickerpack-panel">
+            <button class="profile-close" id="spClose">&times;</button>
+            <div class="profile-header">
+                <div class="profile-avatar sp-cover" id="spCover"></div>
+                <div class="profile-name" id="spName"></div>
+                <div class="profile-status-line" id="spDesc"></div>
+            </div>
+            <div class="sp-grid" id="spGrid"></div>
         </div>
     </div>
 

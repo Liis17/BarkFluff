@@ -425,3 +425,9 @@ default.profraw
 /Backend/BarkFluff.Web/wwwroot/legal/
 
 /Android/.idea/caches
+
+# Docker local environment: secrets and host-mounted data
+docker/**/.env
+docker/**/admindata/
+docker/**/data/
+docker/**/backups/

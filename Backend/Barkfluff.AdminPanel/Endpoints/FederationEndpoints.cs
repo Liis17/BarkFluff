@@ -1,4 +1,6 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
 
 using BarkFluff.Proto.Federation;
 using BarkFluff.Proto.FederationInternal;
@@ -14,16 +16,13 @@ public static class FederationEndpoints
     public static void MapFederationEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/federation")
-            .WithTags("Federation");
+            .WithTags("Federation")
+            .RequirePermission(AdminPermissions.FederationManage);
 
         // GET /api/federation/status
         group.MapGet("/status", async (
-            FederationInternalApi.FederationInternalApiClient federationClient,
-            HttpContext context) =>
+            FederationInternalApi.FederationInternalApiClient federationClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await federationClient.GetFederationStatusAsync(new GetFederationStatusRequest());
@@ -47,12 +46,8 @@ public static class FederationEndpoints
 
         // GET /api/federation/peers
         group.MapGet("/peers", async (
-            FederationInternalApi.FederationInternalApiClient federationClient,
-            HttpContext context) =>
+            FederationInternalApi.FederationInternalApiClient federationClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await federationClient.GetKnownServersAsync(new GetKnownServersRequest());
@@ -80,12 +75,8 @@ public static class FederationEndpoints
         // POST /api/federation/peers — добавить/обновить ручного пира
         group.MapPost("/peers", async (
             UpsertManualPeerRequestBody body,
-            FederationInternalApi.FederationInternalApiClient federationClient,
-            HttpContext context) =>
+            FederationInternalApi.FederationInternalApiClient federationClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (string.IsNullOrWhiteSpace(body.ServerName) || string.IsNullOrWhiteSpace(body.Endpoint))
                 return Results.BadRequest("server_name and endpoint are required");
 
@@ -128,18 +119,21 @@ public static class FederationEndpoints
                 return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
             }
         })
-        .WithName("UpsertManualPeer");
+        .WithName("UpsertManualPeer")
+        .RequireStepUpFromArguments(StepUpActions.FederationPeerAdd, context =>
+        {
+            var body = context.Arguments.OfType<UpsertManualPeerRequestBody>().FirstOrDefault();
+            return body is null
+                ? string.Empty
+                : $"server={body.ServerName};endpoint={body.Endpoint};payloadHash={StepUpService.ComputeParamsHash("federation.peer", System.Text.Json.JsonSerializer.Serialize(body))}";
+        });
 
         // POST /api/federation/peers/{server}/block — { "blocked": true/false }
         group.MapPost("/peers/{server}/block", async (
             string server,
             SetServerBlockedRequestBody body,
-            FederationInternalApi.FederationInternalApiClient federationClient,
-            HttpContext context) =>
+            FederationInternalApi.FederationInternalApiClient federationClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 await federationClient.SetServerBlockedAsync(new SetServerBlockedRequest
@@ -155,16 +149,18 @@ public static class FederationEndpoints
                 return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
             }
         })
-        .WithName("SetServerBlocked");
+        .WithName("SetServerBlocked")
+        .RequireStepUpFromArguments(StepUpActions.FederationPeerBlock, context =>
+        {
+            var server = context.HttpContext.Request.RouteValues["server"];
+            var body = context.Arguments.OfType<SetServerBlockedRequestBody>().FirstOrDefault();
+            return $"server={server};blocked={body?.Blocked.ToString().ToLowerInvariant()}";
+        });
 
         // POST /api/federation/keys/rotate
         group.MapPost("/keys/rotate", async (
-            FederationInternalApi.FederationInternalApiClient federationClient,
-            HttpContext context) =>
+            FederationInternalApi.FederationInternalApiClient federationClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var response = await federationClient.RotateSigningKeyAsync(new RotateSigningKeyRequest());
@@ -181,7 +177,8 @@ public static class FederationEndpoints
                 return Results.Problem($"Ошибка gRPC: {ex.Status.Detail}");
             }
         })
-        .WithName("RotateSigningKey");
+        .WithName("RotateSigningKey")
+        .RequireStepUp(StepUpActions.FederationKeysRotate);
     }
 
     private static object MapSigningKey(SigningKey key) => new

@@ -45,8 +45,11 @@ public class Program
         builder.Services.AddTransient<EmailSender>();
         builder.Services.AddTransient<HtmlEmailTemplateParser>();
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
         app.UseRouting();
+        app.MapHealthEndpoints();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();

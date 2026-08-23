@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Middleware;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Services;
 
@@ -18,17 +19,14 @@ public static class StickersEndpoints
     public static void MapStickersEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/stickers")
-            .WithTags("Stickers");
+            .WithTags("Stickers")
+            .RequirePermission(AdminPermissions.StickersManage);
 
         // GET /api/stickers/file/{fileId} — прокси скачивания файла через S3
         group.MapGet("/file/{fileId}", async (
             string fileId,
-            S3BrowserService s3Service,
-            HttpContext context) =>
+            S3BrowserService s3Service) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             try
             {
                 var presignedUrl = await s3Service.GetPresignedUrlAsync(StickerBucketId, fileId);
@@ -43,12 +41,8 @@ public static class StickersEndpoints
 
         // GET /api/stickers/packs — список стикерпаков
         group.MapGet("/packs", async (
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var response = await filesClient.ListStickerPacksAsync(new ListStickerPacksRequest
             {
                 Pagination = new PageRequest { Offset = 0, Size = 200 }
@@ -96,12 +90,8 @@ public static class StickersEndpoints
         // POST /api/stickers/packs — создать стикерпак
         group.MapPost("/packs", async (
             HttpRequest request,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -163,12 +153,8 @@ public static class StickersEndpoints
         // GET /api/stickers/packs/{id} — стикерпак с содержимым
         group.MapGet("/packs/{id}", async (
             string id,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var response = await filesClient.GetStickerPackAsync(new GetStickerPackRequest
             {
                 PackId = id
@@ -215,12 +201,8 @@ public static class StickersEndpoints
         group.MapPut("/packs/{id}", async (
             string id,
             HttpRequest request,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var body = await request.ReadFromJsonAsync<UpdatePackBody>();
             if (body == null)
                 return Results.BadRequest("Invalid request body");
@@ -248,12 +230,8 @@ public static class StickersEndpoints
         group.MapPut("/packs/{id}/cover", async (
             string id,
             HttpRequest request,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -301,12 +279,8 @@ public static class StickersEndpoints
         // DELETE /api/stickers/packs/{id} — удалить стикерпак
         group.MapDelete("/packs/{id}", async (
             string id,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             await filesClient.DeleteStickerPackAsync(new DeleteStickerPackRequest { PackId = id });
             return Results.Ok(new { success = true });
         })
@@ -316,12 +290,8 @@ public static class StickersEndpoints
         group.MapPost("/packs/{id}/stickers", async (
             string id,
             HttpRequest request,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             if (!request.HasFormContentType)
                 return Results.BadRequest("Expected multipart/form-data");
 
@@ -367,12 +337,8 @@ public static class StickersEndpoints
         group.MapPut("/{stickerId}", async (
             string stickerId,
             HttpRequest request,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             var body = await request.ReadFromJsonAsync<UpdateStickerBody>();
             if (body == null || string.IsNullOrWhiteSpace(body.Emoji))
                 return Results.BadRequest("Emoji is required");
@@ -394,12 +360,8 @@ public static class StickersEndpoints
         // DELETE /api/stickers/{stickerId} — удалить стикер
         group.MapDelete("/{stickerId}", async (
             string stickerId,
-            FilesServerApi.FilesServerApiClient filesClient,
-            HttpContext context) =>
+            FilesServerApi.FilesServerApiClient filesClient) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
-                return Results.Unauthorized();
-
             await filesClient.RemoveStickerAsync(new RemoveStickerRequest { StickerId = stickerId });
             return Results.Ok(new { success = true });
         })

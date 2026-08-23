@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Логи</title>
-    <link rel="stylesheet" href="assets/md3.css">
+    <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .filters {
             display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
@@ -16,6 +16,38 @@
         }
         .filters > .grow { flex: 1; min-width: 200px; }
         .level-buttons { display: flex; gap: 4px; }
+        .filter-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; }
+        .filter-tools .md-input-outlined { min-width: 180px; }
+        .view-buttons { display: flex; gap: 4px; }
+        .context-links { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+        .context-link {
+            display: inline-flex; align-items: center; gap: 5px;
+            min-height: 28px; padding: 3px 9px;
+            border: 1px solid var(--md-outline-variant);
+            border-radius: 999px;
+            background: var(--md-surface-container-lowest);
+            color: var(--md-primary);
+            font: inherit; font-size: 11px; text-decoration: none; cursor: pointer;
+        }
+        .group-count {
+            display: inline-flex; align-items: center;
+            margin-left: 8px; padding: 2px 7px;
+            border-radius: 999px;
+            background: var(--md-error-container); color: var(--md-on-error-container);
+            font: 600 11px/1.4 'Roboto Mono', monospace;
+        }
+        .service-link { color: var(--md-primary); text-decoration: none; }
+        .service-link:hover { text-decoration: underline; }
+        .deployment-comparison {
+            display: none; align-items: center; gap: 10px;
+            margin: -8px 0 20px; padding: 12px 16px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-surface-container);
+            font-size: 13px;
+        }
+        .deployment-comparison.open { display: flex; }
+        .deployment-comparison.is-worse { background: var(--md-error-container); color: var(--md-on-error-container); }
+        .deployment-comparison.is-better { background: var(--md-success-container); color: var(--md-on-success-container); }
 
         .logs-card {
             background: var(--md-surface-container-lowest);
@@ -87,7 +119,7 @@
                     <span class="msr size-18">download</span>
                     Экспорт
                 </button>
-                <button onclick="openClearModal()" class="md-btn md-btn-error-tonal md-btn-square-press" style="color:var(--md-on-error-container);background:var(--md-error-container);">
+                <button onclick="openClearModal()" class="md-btn md-btn-error-tonal md-btn-square-press" data-perm="seq.delete" style="color:var(--md-on-error-container);background:var(--md-error-container);">
                     <span class="msr size-18">delete</span>
                     Очистить
                 </button>
@@ -134,7 +166,31 @@
                     <span class="msr size-18">refresh</span>
                     Обновить
                 </button>
+
+                <div class="filter-tools">
+                    <select id="savedFilterSelect" class="md-input-outlined" aria-label="Сохранённые фильтры">
+                        <option value="">Сохранённые фильтры</option>
+                    </select>
+                    <button id="saveFilterBtn" class="md-btn md-btn-tonal" type="button">
+                        <span class="msr size-18">bookmark_add</span> Сохранить
+                    </button>
+                    <button id="deleteFilterBtn" class="md-icon-btn" type="button" title="Удалить выбранный фильтр" disabled>
+                        <span class="msr">bookmark_remove</span>
+                    </button>
+
+                    <div class="view-buttons" aria-label="Режим отображения">
+                        <button data-view="events" class="md-chip selected" type="button">События</button>
+                        <button data-view="groups" class="md-chip" type="button">Группы ошибок</button>
+                    </div>
+
+                    <select id="deploymentSelect" class="md-input-outlined" aria-label="Момент деплоя">
+                        <option value="">Сравнить с деплоем…</option>
+                    </select>
+                    <button id="compareDeploymentBtn" class="md-btn md-btn-tonal" type="button" disabled>Сравнить ±30 мин</button>
+                </div>
             </div>
+
+            <div id="deploymentComparison" class="deployment-comparison" role="status"></div>
 
             <div class="logs-card">
                 <div style="overflow:auto;">
@@ -204,7 +260,7 @@
         </div>
         <div class="md-dialog-actions" id="exportActions">
             <button class="md-btn md-btn-text" onclick="closeExportModal()">Закрыть</button>
-            <button id="exportRestartBtn" class="md-btn md-btn-filled md-btn-square-press" style="display:none;" onclick="restartAfterExport()">
+            <button id="exportRestartBtn" class="md-btn md-btn-filled md-btn-square-press" data-perm="docker.deploy" style="display:none;" onclick="restartAfterExport()">
                 <span class="msr size-18">restart_alt</span> Перезапустить
             </button>
         </div>
@@ -253,9 +309,10 @@
     </div>
 </div>
 
-<script src="assets/icons.js"></script>
-<script src="assets/sidebar.js"></script>
-<script src="assets/command-palette.js"></script>
+<script src="assets/icons.js?v=3"></script>
+<script src="assets/api.js?v=5"></script>
+<script src="assets/sidebar.js?v=4"></script>
+<script src="assets/command-palette.js?v=4"></script>
 <script>
     // ---- State ----
     let allLogs = [];          // нормализованные события, накопленные по страницам
@@ -268,16 +325,25 @@
     let activeLevel = '';
     let activeService = '';
     let searchQuery = '';
+    let activeContext = null;
+    let viewMode = 'events';
+    let groupMetadata = null;
+    let deployments = [];
     let autoRefreshTimer = null;
     let searchDebounce = null;
+    const SAVED_FILTERS_KEY = 'barkfluff.admin.logs.savedFilters.v1';
 
     async function checkAuth() {
-        try {
-            const r = await fetch('/api/auth/me');
-            if (!r.ok) { window.location.href = '/'; return null; }
-            return await r.json();
-        } catch { window.location.href = '/'; return null; }
+        const me = await BF.requireAuth();
+        if (me) applyPermissions();
+        return me;
     }
+
+    function applyPermissions() {
+        const clearButton = document.querySelector('button[onclick="openClearModal()"]');
+        if (clearButton && window.BF) clearButton.style.display = BF.can('seq.delete') ? '' : 'none';
+    }
+    document.addEventListener('bf:roles', applyPermissions);
 
     function formatDate(s) {
         if (!s) return '—';
@@ -286,6 +352,7 @@
         return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
     }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function escapeAttr(t) { return escapeHtml(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
     function levelChip(level) {
         const l = (level || '').toLowerCase();
@@ -315,9 +382,41 @@
         const raw = e.Properties || e.properties;
         if (Array.isArray(raw)) props = raw.map(p => [p.Name || p.name, p.Value !== undefined ? p.Value : p.value]);
         else if (raw && typeof raw === 'object') props = Object.entries(raw);
-        const appProp = props.find(([k]) => k === 'Application');
+        const appProp = props.find(([k]) => String(k || '').toLowerCase() === 'application');
         const service = appProp ? appProp[1] : (e.Application || '');
-        return { id, level, message, template, timestamp, exception, service, props };
+        const traceId = propertyValue(props, ['TraceId']);
+        const correlationId = propertyValue(props, ['CorrelationId', 'CorrelationID', 'X-Correlation-ID']) || traceId;
+        const requestId = propertyValue(props, ['RequestId', 'RequestID', 'TraceIdentifier', 'X-Request-ID']);
+        const userId = propertyValue(props, ['UserId', 'AffectedUserId', 'TargetUserId', 'SubjectUserId']);
+        return { id, level, message, template, timestamp, exception, service, props, traceId, correlationId, requestId, userId, isGroup:false };
+    }
+
+    function propertyValue(props, names) {
+        const wanted = names.map(name => name.toLowerCase());
+        const match = props.find(([key]) => wanted.includes(String(key || '').toLowerCase()));
+        if (!match || match[1] == null || match[1] === '') return '';
+        return typeof match[1] === 'object' ? JSON.stringify(match[1]) : String(match[1]);
+    }
+
+    function normalizeGroup(group) {
+        return {
+            id: group.representativeEventId,
+            level: group.level || 'Error',
+            message: group.message || group.messageTemplate || '',
+            template: group.messageTemplate || '',
+            timestamp: group.lastSeenUtc,
+            firstSeenUtc: group.firstSeenUtc,
+            exception: group.exception || '',
+            service: group.application || '',
+            props: [],
+            traceId: group.traceId || '',
+            correlationId: group.correlationId || group.traceId || '',
+            requestId: group.requestId || '',
+            userId: group.userId || '',
+            count: group.count || 0,
+            groupKey: group.key,
+            isGroup: true
+        };
     }
 
     function extractEvents(data) {
@@ -330,8 +429,8 @@
     // ---- Сервисы ----
     async function loadServices() {
         try {
-            const r = await fetch('/api/seq/services');
-            if (r.ok) { services = await r.json(); populateServiceSelect(); }
+            services = await BF.request('/api/seq/services', { errorToast: false });
+            populateServiceSelect();
         } catch {}
     }
     function populateServiceSelect() {
@@ -341,6 +440,104 @@
         sel.value = cur;
     }
 
+    function readSavedFilters() {
+        try {
+            const value = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || '[]');
+            return Array.isArray(value) ? value : [];
+        } catch { return []; }
+    }
+
+    function renderSavedFilters(selectedId = '') {
+        const select = document.getElementById('savedFilterSelect');
+        const filters = readSavedFilters();
+        select.innerHTML = '<option value="">Сохранённые фильтры</option>' + filters
+            .map(filter => `<option value="${escapeAttr(filter.id)}">${escapeHtml(filter.name)}</option>`)
+            .join('');
+        select.value = selectedId;
+        document.getElementById('deleteFilterBtn').disabled = !select.value;
+    }
+
+    function currentFilterState(name, id) {
+        return {
+            id,
+            name,
+            service: activeService,
+            level: activeLevel,
+            search: searchQuery,
+            context: activeContext,
+            viewMode
+        };
+    }
+
+    function markFilterDirty() {
+        document.getElementById('savedFilterSelect').value = '';
+        document.getElementById('deleteFilterBtn').disabled = true;
+    }
+
+    function syncFilterControls() {
+        document.getElementById('serviceFilter').value = activeService;
+        document.getElementById('searchInput').value = activeContext?.value || searchQuery;
+        document.querySelectorAll('.level-buttons .md-chip').forEach(button =>
+            button.classList.toggle('selected', button.dataset.level === activeLevel));
+        document.querySelectorAll('.view-buttons .md-chip').forEach(button =>
+            button.classList.toggle('selected', button.dataset.view === viewMode));
+    }
+
+    async function applySavedFilter(id) {
+        const filter = readSavedFilters().find(item => item.id === id);
+        if (!filter) return;
+        activeService = filter.service || '';
+        activeLevel = filter.level || '';
+        searchQuery = filter.search || '';
+        activeContext = filter.context?.kind && filter.context?.value ? filter.context : null;
+        viewMode = filter.viewMode === 'groups' ? 'groups' : 'events';
+        if (viewMode === 'groups') activeLevel = 'Error';
+        syncFilterControls();
+        document.getElementById('savedFilterSelect').value = id;
+        document.getElementById('deleteFilterBtn').disabled = false;
+        await loadDeployments();
+        await reload();
+    }
+
+    async function loadDeployments() {
+        const select = document.getElementById('deploymentSelect');
+        const params = new URLSearchParams({ hours: String(24 * 30) });
+        if (activeService) params.set('application', activeService);
+        try {
+            deployments = await BF.request('/api/seq/deployments?' + params, { errorToast:false });
+        } catch { deployments = []; }
+        select.innerHTML = '<option value="">Сравнить с деплоем…</option>' + deployments.map((deployment, index) => {
+            const kind = deployment.kind === 'SwitchBranch' ? 'ветка' : deployment.kind === 'Restart' ? 'рестарт' : 'обновление';
+            const status = deployment.status === 'Failed' ? ' · ошибка' : '';
+            return `<option value="${index}">${escapeHtml(shortService(deployment.application))} · ${formatDate(deployment.timestampUtc)} · ${kind}${status}</option>`;
+        }).join('');
+        document.getElementById('compareDeploymentBtn').disabled = true;
+        document.getElementById('deploymentComparison').className = 'deployment-comparison';
+    }
+
+    async function compareSelectedDeployment() {
+        const index = Number(document.getElementById('deploymentSelect').value);
+        const deployment = deployments[index];
+        if (!deployment) return;
+        const params = new URLSearchParams({
+            application: deployment.application,
+            atUtc: deployment.timestampUtc,
+            windowMinutes: '30'
+        });
+        try {
+            const comparison = await BF.request('/api/seq/deployments/compare?' + params, {
+                loading: '#compareDeploymentBtn'
+            });
+            const delta = comparison.delta;
+            const sign = delta > 0 ? '+' : '';
+            const banner = document.getElementById('deploymentComparison');
+            banner.className = 'deployment-comparison open' + (delta > 0 ? ' is-worse' : delta < 0 ? ' is-better' : '');
+            banner.innerHTML = `<span class="msr size-20">${delta > 0 ? 'trending_up' : delta < 0 ? 'trending_down' : 'trending_flat'}</span>
+                <span><strong>${escapeHtml(shortService(comparison.application))}</strong>, деплой ${formatDate(comparison.deploymentAtUtc)}:
+                ошибок за 30 минут до — <strong>${comparison.beforeErrorCount}</strong>, после — <strong>${comparison.afterErrorCount}</strong> (${sign}${delta}).</span>`;
+        } catch (_) {}
+    }
+
     // ---- События (server-side фильтрация + пагинация через afterId) ----
     async function fetchMore() {
         if (loading || !hasMore) return;
@@ -348,12 +545,22 @@
         try {
             const params = new URLSearchParams({ count: pageSize });
             if (activeService) params.set('application', activeService);
-            if (activeLevel) params.set('level', activeLevel);
+            if (activeLevel && viewMode === 'events') params.set('level', activeLevel);
             if (searchQuery) params.set('search', searchQuery);
+            if (activeContext) params.set(activeContext.kind, activeContext.value);
+
+            if (viewMode === 'groups') {
+                params.delete('count');
+                params.set('hours', '24');
+                const data = await BF.request('/api/seq/error-groups?' + params, { errorToast:false });
+                allLogs = data.groups.map(normalizeGroup);
+                groupMetadata = data;
+                hasMore = false;
+                return;
+            }
+
             if (lastAfterId) params.set('afterId', lastAfterId);
-            const res = await fetch('/api/seq/events?' + params.toString());
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const raw = extractEvents(await res.json());
+            const raw = extractEvents(await BF.request('/api/seq/events?' + params, { errorToast:false }));
             if (raw.length) lastAfterId = raw[raw.length - 1].Id || raw[raw.length - 1].id;
             allLogs = allLogs.concat(raw.map(normalizeEvent));
             hasMore = raw.length >= pageSize;
@@ -365,7 +572,7 @@
     }
 
     async function reload() {
-        allLogs = []; currentPage = 0; lastAfterId = null; hasMore = true;
+        allLogs = []; currentPage = 0; lastAfterId = null; hasMore = true; groupMetadata = null;
         await fetchMore();
         render();
     }
@@ -387,8 +594,8 @@
                     <td class="log-cell-toggle"><span class="msr size-18" style="color:var(--md-on-surface-variant);transition:transform .2s;">chevron_right</span></td>
                     <td class="log-cell-time">${formatDate(log.timestamp)}</td>
                     <td class="log-cell-level">${levelChip(log.level)}</td>
-                    <td class="log-cell-service">${escapeHtml(shortService(log.service))}</td>
-                    <td class="log-cell-msg">${escapeHtml(log.message)}</td>
+                    <td class="log-cell-service">${log.service ? `<a class="service-link" href="/services?service=${encodeURIComponent(log.service)}" onclick="event.stopPropagation()">${escapeHtml(shortService(log.service))}</a>` : '—'}</td>
+                    <td class="log-cell-msg">${escapeHtml(log.message)}${log.isGroup ? `<span class="group-count">×${log.count}</span>` : ''}</td>
                 </tr>
             `).join('');
         }
@@ -396,10 +603,37 @@
         const total = allLogs.length;
         document.getElementById('logsCount').textContent =
             total === 0 ? 'Нет записей'
-            : `Показаны ${start + 1}–${Math.min(start + pageSize, total)} из ${total}${hasMore ? '+' : ''}`;
+            : viewMode === 'groups'
+                ? `Группы ${start + 1}–${Math.min(start + pageSize, total)} из ${total}; событий просмотрено ${groupMetadata?.scannedEventCount || 0}${groupMetadata?.truncated ? '+' : ''}`
+                : `Показаны ${start + 1}–${Math.min(start + pageSize, total)} из ${total}${hasMore ? '+' : ''}`;
         document.getElementById('prevBtn').disabled = currentPage === 0;
         document.getElementById('nextBtn').disabled = ((currentPage + 1) * pageSize >= total) && !hasMore;
     }
+
+    function renderContextLinks(log) {
+        const links = [];
+        if (log.correlationId) links.push({ label:'Correlation ID', kind:'correlationId', value:log.correlationId, icon:'link' });
+        if (log.traceId && log.traceId !== log.correlationId) links.push({ label:'Trace ID', kind:'correlationId', value:log.traceId, icon:'timeline' });
+        if (log.requestId) links.push({ label:'Request ID', kind:'requestId', value:log.requestId, icon:'tag' });
+        const buttons = links.map(item => `
+            <button type="button" class="context-link context-filter" data-kind="${item.kind}" data-value="${escapeAttr(item.value)}" title="Показать связанные события">
+                <span class="msr size-16">${item.icon}</span>${item.label}: ${escapeHtml(item.value)}
+            </button>`).join('');
+        const user = log.userId ? `
+            <a class="context-link" href="/users?userId=${encodeURIComponent(log.userId)}" onclick="event.stopPropagation()">
+                <span class="msr size-16">person</span>Пользователь ${escapeHtml(log.userId)}
+            </a>` : '';
+        return buttons || user ? `<div class="context-links">${buttons}${user}</div>` : '';
+    }
+
+    window.filterByContext = async function (kind, value) {
+        activeContext = { kind, value };
+        searchQuery = '';
+        markFilterDirty();
+        syncFilterControls();
+        BF.toast('Фильтр по идентификатору применён', 'info');
+        await reload();
+    };
 
     window.toggleExpand = function (row, idx) {
         const next = row.nextElementSibling;
@@ -422,28 +656,82 @@
             ? `<div style="margin:8px 0;color:var(--md-on-surface-variant);">Template: ${escapeHtml(log.template)}</div>` : '';
         const exc = log.exception
             ? `<pre style="margin-top:8px;color:var(--md-error);white-space:pre-wrap;">${escapeHtml(log.exception)}</pre>` : '';
+        const groupSummary = log.isGroup
+            ? `<div style="margin:8px 0;color:var(--md-on-surface-variant);">Повторений: <strong>${log.count}</strong> · первое: ${formatDate(log.firstSeenUtc)} · последнее: ${formatDate(log.timestamp)}</div>`
+            : '';
         detail.innerHTML = `<td colspan="5" style="padding:0;"><div class="log-detail">
             <div style="margin-bottom:8px;color:var(--md-on-surface);font-weight:500;">${escapeHtml(log.message)}</div>
-            ${tmpl}${props}${exc}
+            ${groupSummary}${renderContextLinks(log)}${tmpl}${props}${exc}
         </div></td>`;
         row.after(detail);
+        detail.querySelectorAll('.context-filter').forEach(button => {
+            button.addEventListener('click', event => {
+                event.stopPropagation();
+                filterByContext(button.dataset.kind, button.dataset.value);
+            });
+        });
     };
 
     // ---- Filters wiring ----
     document.getElementById('searchInput').addEventListener('input', e => {
         searchQuery = e.target.value;
+        activeContext = null;
+        markFilterDirty();
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(reload, 300);
     });
-    document.getElementById('serviceFilter').addEventListener('change', e => { activeService = e.target.value; reload(); });
+    document.getElementById('serviceFilter').addEventListener('change', async e => {
+        activeService = e.target.value;
+        markFilterDirty();
+        await loadDeployments();
+        await reload();
+    });
     document.querySelectorAll('.level-buttons .md-chip').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.level-buttons .md-chip').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
             activeLevel = btn.dataset.level;
+            viewMode = 'events';
+            markFilterDirty();
+            syncFilterControls();
             reload();
         });
     });
+    document.querySelectorAll('.view-buttons .md-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            viewMode = btn.dataset.view;
+            if (viewMode === 'groups') activeLevel = 'Error';
+            markFilterDirty();
+            syncFilterControls();
+            reload();
+        });
+    });
+    document.getElementById('savedFilterSelect').addEventListener('change', event => {
+        document.getElementById('deleteFilterBtn').disabled = !event.target.value;
+        if (event.target.value) applySavedFilter(event.target.value);
+    });
+    document.getElementById('saveFilterBtn').addEventListener('click', () => {
+        const name = prompt('Название фильтра')?.trim();
+        if (!name) return;
+        const filters = readSavedFilters();
+        const id = window.crypto?.randomUUID?.() || String(Date.now());
+        filters.push(currentFilterState(name, id));
+        try {
+            localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters.slice(-20)));
+            renderSavedFilters(id);
+            BF.toast('Фильтр сохранён', 'success');
+        } catch { BF.toast('Не удалось сохранить фильтр в браузере', 'error'); }
+    });
+    document.getElementById('deleteFilterBtn').addEventListener('click', () => {
+        const select = document.getElementById('savedFilterSelect');
+        if (!select.value || !confirm('Удалить сохранённый фильтр?')) return;
+        const filters = readSavedFilters().filter(filter => filter.id !== select.value);
+        localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters));
+        renderSavedFilters();
+    });
+    document.getElementById('deploymentSelect').addEventListener('change', event => {
+        document.getElementById('compareDeploymentBtn').disabled = event.target.value === '';
+        document.getElementById('deploymentComparison').className = 'deployment-comparison';
+    });
+    document.getElementById('compareDeploymentBtn').addEventListener('click', compareSelectedDeployment);
     document.getElementById('refreshBtn').addEventListener('click', reload);
     document.getElementById('autoRefreshToggle').addEventListener('change', e => {
         if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
@@ -465,7 +753,8 @@
         const running = name === 'running';
         document.getElementById('exportCloseBtn').style.display = running ? 'none' : '';
         document.getElementById('exportActions').style.display = running ? 'none' : '';
-        document.getElementById('exportRestartBtn').style.display = name === 'done' ? '' : 'none';
+        const canDeploy = window.BF && BF.can('docker.deploy');
+        document.getElementById('exportRestartBtn').style.display = name === 'done' && canDeploy ? '' : 'none';
     }
     window.openExportModal = () => { showExportState('choice'); document.getElementById('exportScrim').classList.add('open'); };
     window.closeExportModal = () => {
@@ -478,9 +767,7 @@
         document.getElementById('exportStage').textContent = 'Подготовка экспорта...';
         document.getElementById('exportCounter').textContent = '';
         try {
-            const r = await fetch('/api/seq/export/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            exportJobId = (await r.json()).jobId;
+            exportJobId = (await BF.request('/api/seq/export/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }), errorToast: false })).jobId;
             exportTimer = setInterval(pollExport, 2000);
             pollExport();
         } catch (e) { showExportError(e.message); }
@@ -488,9 +775,7 @@
     async function pollExport() {
         if (!exportJobId) return;
         try {
-            const r = await fetch(`/api/seq/export/${exportJobId}/status`);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const s = await r.json();
+            const s = await BF.request(`/api/seq/export/${exportJobId}/status`, { errorToast: false });
             const num = (s.totalDownloaded || 0).toLocaleString('ru-RU');
             const stage = document.getElementById('exportStage');
             const counter = document.getElementById('exportCounter');
@@ -510,7 +795,11 @@
     }
     function showExportError(msg) { document.getElementById('exportErrorText').textContent = msg; showExportState('error'); }
     window.restartAfterExport = async function () {
-        try { await fetch('/api/docker/containers/admin-panel/restart-own', { method:'POST' }); window.location.href = '/restarting'; }
+        if (window.BF && !BF.can('docker.deploy')) return;
+        try {
+            await BF.request('/api/docker/containers/admin-panel/restart-own', { method:'POST', errorToast: false });
+            window.location.href = '/restarting';
+        }
         catch (e) { showExportError(e.message); }
     };
 
@@ -541,9 +830,7 @@
         showClearState('running');
         document.getElementById('clearStage').textContent = 'Удаление логов...';
         try {
-            const r = await fetch('/api/seq/clear/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }) });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            clearJobId = (await r.json()).jobId;
+            clearJobId = (await BF.request('/api/seq/clear/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ scope }), errorToast: false })).jobId;
             clearTimer = setInterval(pollClear, 1500);
             pollClear();
         } catch (e) { showClearError(e.message); }
@@ -551,9 +838,7 @@
     async function pollClear() {
         if (!clearJobId) return;
         try {
-            const r = await fetch(`/api/seq/clear/${clearJobId}/status`);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const s = await r.json();
+            const s = await BF.request(`/api/seq/clear/${clearJobId}/status`, { errorToast: false });
             if (s.state === 'done') {
                 if (clearTimer) { clearInterval(clearTimer); clearTimer = null; }
                 showClearState('done');
@@ -570,18 +855,31 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         if (!confirm('Выйти из панели?')) return;
-        try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-        window.location.href = '/';
+        await BF.logout();
     });
+
+    function applyUrlFilters() {
+        const params = new URLSearchParams(window.location.search);
+        activeService = params.get('service') || '';
+        searchQuery = params.get('search') || '';
+        const contextKinds = ['correlationId', 'requestId', 'userId'];
+        const contextKind = contextKinds.find(kind => params.get(kind));
+        activeContext = contextKind ? { kind:contextKind, value:params.get(contextKind) } : null;
+        viewMode = params.get('view') === 'groups' ? 'groups' : 'events';
+        activeLevel = viewMode === 'groups' ? 'Error' : (params.get('level') || '');
+        syncFilterControls();
+    }
 
     (async function () {
         const auth = await checkAuth();
         if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         await loadServices();
+        renderSavedFilters();
+        applyUrlFilters();
+        await loadDeployments();
         await reload();
-        document.getElementById('loading-overlay').classList.add('hidden');
-        setTimeout(() => document.getElementById('loading-overlay').remove(), 300);
+        BF.pageReady();
     })();
 </script>
 </body>

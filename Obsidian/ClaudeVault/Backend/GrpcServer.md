@@ -6,9 +6,11 @@ Shared-библиотека (.NET 10.0), подключаемая всеми bac
 
 → [[Backend/GrpcServer-ProjectMap|Карта проекта — все файлы и их назначение]]
 
-## Liveness endpoint
+## Liveness / Readiness endpoints
 
 `MapPingEndpoint()` регистрирует анонимный `GET /ping` на listener(ах) сервиса. При доступном процессе возвращает `200 text/plain` с телом `pong`. Endpoint проверяет только доступность listener и не является readiness-проверкой зависимостей.
+
+`MapHealthEndpoints()` = `/ping` + `/health/live` + `/health/ready` (пара к `builder.Services.AddBarkFluffHealth()`). Live отвечает `{status:"alive", instanceId}`. Ready отдаёт кэш фонового `ReadinessMonitorService` (цикл 15 c, без сетевых вызовов на запрос): `{status: healthy|degraded|down|starting, checkedAtUtc, checks:[{name, status, latencyMs, error}], instanceId}`; HTTP 503 только при `down`. Зависимости обнаруживаются из DI автоматически: EF Core DbContext'и (по загруженным сборкам — `AddDbContext` регистрирует только конкретный тип), `IBusControl` (RabbitMQ), `IConnectionMultiplexer` (Redis), `IAmazonS3`. `degraded` = часть зависимостей недоступна, `down` = все. Подключён всем сервисам с HTTP listener ([[Backend/CloudMessaging]] — worker без listener, мониторится [[Backend/AdminPanel]] по docker-state и Seq). См. [[Backend/AdminPanel]] — health-обзор панели.
 
 ## Startup-конвейер (порядок вызовов в Program.cs)
 
@@ -52,7 +54,7 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Логирование
 
-`AddBarkFluffSerilog(serviceName)` — Serilog → Console + Seq. Enrichers: MachineName, EnvironmentName, ThreadId, Application. Microsoft/EF Core/HttpClient логи подавлены до Warning. Seq sink дуральный с файловым буфером (`logs/seq-buffer`, лимит 100MB, batch 100 событий, flush каждые 2 секунды).
+`AddBarkFluffSerilog(serviceName)` — Serilog → Console + Seq. Enrichers: MachineName, EnvironmentName, ThreadId, Application и `ActivityLogEnricher`. При наличии текущего W3C `Activity` каждый event получает `TraceId`, `SpanId` и fallback `CorrelationId`; явно заданный бизнес-correlation ID не затирается. `RequestContextInterceptor` добавляет `RequestId` (`HttpContext.TraceIdentifier`) в gRPC-логи и принимает явный `X-Correlation-ID`. Microsoft/EF Core/HttpClient логи подавлены до Warning. Seq sink дуральный с файловым буфером (`logs/seq-buffer`, лимит 100MB, batch 100 событий, flush каждые 2 секунды).
 
 ## Зависимости
 

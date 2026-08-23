@@ -120,6 +120,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.Core", "Wi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.WinUI.Tests", "Tests\BarkFluff.Client.WinUI.Tests\BarkFluff.Client.WinUI.Tests.csproj", "{D2D7844D-D678-4030-A1D1-4D7C895DBE22}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Configuration.Tests", "Tests\BarkFluff.Configuration.Tests\BarkFluff.Configuration.Tests.csproj", "{3EB0D803-82F9-4AD4-92F8-46B30B858749}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -748,6 +750,18 @@ Global
 		{D2D7844D-D678-4030-A1D1-4D7C895DBE22}.Release|x64.Build.0 = Release|Any CPU
 		{D2D7844D-D678-4030-A1D1-4D7C895DBE22}.Release|x86.ActiveCfg = Release|Any CPU
 		{D2D7844D-D678-4030-A1D1-4D7C895DBE22}.Release|x86.Build.0 = Release|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Debug|x64.Build.0 = Debug|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Debug|x86.Build.0 = Debug|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Release|x64.ActiveCfg = Release|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Release|x64.Build.0 = Release|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Release|x86.ActiveCfg = Release|Any CPU
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -804,6 +818,7 @@ Global
 		{E9478246-50A5-4415-BF02-365C9588AC21} = {2025C280-3C60-4211-9768-B271D4317C90}
 		{BF019659-BB3E-4176-87A9-B344FA15CFF6} = {2025C280-3C60-4211-9768-B271D4317C90}
 		{D2D7844D-D678-4030-A1D1-4D7C895DBE22} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{3EB0D803-82F9-4AD4-92F8-46B30B858749} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}

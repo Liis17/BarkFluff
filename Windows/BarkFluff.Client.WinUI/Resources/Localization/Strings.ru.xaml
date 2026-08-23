@@ -97,6 +97,7 @@
     <x:String x:Key="Error_PasswordResetFailed">Не удалось начать восстановление пароля. Попробуйте позже.</x:String>
     <x:String x:Key="Error_PasswordResetCodeInvalid">Код восстановления неверный или истёк.</x:String>
     <x:String x:Key="Messenger_Search">Поиск чатов и пользователей</x:String>
+    <x:String x:Key="Messenger_SearchResults">Пользователи</x:String>
     <x:String x:Key="Messenger_Reconnecting">Переподключение…</x:String>
     <x:String x:Key="Messenger_Send">Отправить</x:String>
     <x:String x:Key="Messenger_Empty">Выберите чат, чтобы начать переписку</x:String>

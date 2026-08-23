@@ -25,6 +25,7 @@ import '../wwwroot/js/app/settings.js';
 import '../wwwroot/js/app/attach.js';
 import '../wwwroot/js/app/imageeditor.js';
 import '../wwwroot/js/app/folders.js';
+import '../wwwroot/js/app/stickerpack.js';
 import '../wwwroot/js/app/pinned.js';
 import '../wwwroot/js/app/push.js';
 import '../wwwroot/js/app/cmdpalette.js';

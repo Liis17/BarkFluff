@@ -11,7 +11,6 @@
     var REQUEST_TIMEOUT_MS = 8000;
     var SERVICES = [
         { id: 'web', name: 'Web', path: '/ping' },
-        { id: 'navigator', name: 'Navigator', path: '/ping/navigator' },
         { id: 'beacon', name: 'Beacon', path: '/ping/beacon' },
         { id: 'identity', name: 'Identity', path: '/ping/identity' },
         { id: 'users', name: 'Users', path: '/ping/users' },

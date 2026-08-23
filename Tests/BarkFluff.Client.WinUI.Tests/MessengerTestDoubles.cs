@@ -189,6 +189,12 @@ internal sealed class FakeMessengerService : IMessengerService
 
     public UserData? UserData { get; set; }
 
+    public List<UserData> SearchUsers { get; } = [];
+
+    public List<string> SearchQueries { get; } = [];
+
+    public bool SearchUsersFail { get; set; }
+
     public bool UserDataFails { get; set; }
 
     public bool ChatsFail { get; set; }
@@ -243,6 +249,14 @@ internal sealed class FakeMessengerService : IMessengerService
         Task.FromResult<(ErrorReturner, UserData?)>(UserDataFails
             ? (new ErrorReturner(false, "failed"), null)
             : (new ErrorReturner(true), UserData));
+
+    public Task<(ErrorReturner error, List<UserData>? users)> SearchUsersAsync(string query, CancellationToken cancellationToken = default)
+    {
+        SearchQueries.Add(query);
+        return Task.FromResult<(ErrorReturner, List<UserData>?)>(SearchUsersFail
+            ? (new ErrorReturner(false, "search failed"), null)
+            : (new ErrorReturner(true), [.. SearchUsers]));
+    }
 
     public Task<string> ResolveFileUrlAsync(string fileId, CancellationToken cancellationToken = default) =>
         Task.FromResult(string.Empty);

@@ -41,10 +41,13 @@ public class ConfigurationStorage
         var existing = await _context.Configurations
             .FirstOrDefaultAsync(x => x.Section == section && x.Key == key && x.ServiceId == serviceId);
 
+        var changedAt = DateTime.UtcNow;
+        var previousValue = existing?.Value ?? string.Empty;
+
         if (existing != null)
         {
             existing.Value = value;
-            existing.EditedAt = DateTime.UtcNow;
+            existing.EditedAt = changedAt;
             existing.EditedBy = editedBy;
             existing.EditedFrom = editedFrom;
         }
@@ -55,13 +58,28 @@ public class ConfigurationStorage
                 Section = section,
                 Key = key,
                 Value = value,
-                EditedAt = DateTime.UtcNow,
+                EditedAt = changedAt,
                 EditedBy = editedBy,
                 EditedFrom = editedFrom,
                 ServiceId = serviceId
             };
             await _context.Configurations.AddAsync(newItem);
+            existing = newItem;
         }
+
+        await _context.ConfigurationRevisions.AddAsync(new ConfigurationRevision
+        {
+            ConfigurationItem = existing,
+            Section = section,
+            Key = key,
+            ServiceId = serviceId,
+            PreviousValue = previousValue,
+            NewValue = value,
+            ChangedAt = changedAt,
+            ChangedBy = editedBy,
+            ChangedFrom = editedFrom,
+            ChangeKind = "Update"
+        });
 
         await _context.SaveChangesAsync();
         _metrics.Increment("configurations_db_writes");
@@ -70,6 +88,59 @@ public class ConfigurationStorage
         // изменения редкие (UpdateConfiguration вызывается админом, не клиентами).
         var total = await _context.Configurations.CountAsync();
         _metrics.Set("configurations_total", total);
+    }
+
+    public async Task<List<ConfigurationRevision>> GetConfigurationHistoryAsync(
+        string section,
+        string key,
+        ServiceId serviceId,
+        int count)
+    {
+        return await _context.ConfigurationRevisions
+            .AsNoTracking()
+            .Where(x => x.Section == section && x.Key == key && x.ServiceId == serviceId)
+            .OrderByDescending(x => x.ChangedAt)
+            .ThenByDescending(x => x.Id)
+            .Take(Math.Clamp(count, 1, 100))
+            .ToListAsync();
+    }
+
+    public async Task RollbackConfigurationAsync(long revisionId, string editedBy, string editedFrom)
+    {
+        var sourceRevision = await _context.ConfigurationRevisions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == revisionId)
+            ?? throw new InvalidOperationException($"Ревизия {revisionId} не найдена");
+
+        var configuration = await _context.Configurations
+            .FirstOrDefaultAsync(x => x.Id == sourceRevision.ConfigurationItemId)
+            ?? throw new InvalidOperationException("Строка конфигурации для ревизии не найдена");
+
+        var changedAt = DateTime.UtcNow;
+        var currentValue = configuration.Value;
+
+        configuration.Value = sourceRevision.PreviousValue;
+        configuration.EditedAt = changedAt;
+        configuration.EditedBy = editedBy;
+        configuration.EditedFrom = editedFrom;
+
+        await _context.ConfigurationRevisions.AddAsync(new ConfigurationRevision
+        {
+            ConfigurationItemId = configuration.Id,
+            Section = configuration.Section,
+            Key = configuration.Key,
+            ServiceId = configuration.ServiceId,
+            PreviousValue = currentValue,
+            NewValue = sourceRevision.PreviousValue,
+            ChangedAt = changedAt,
+            ChangedBy = editedBy,
+            ChangedFrom = editedFrom,
+            ChangeKind = "Rollback",
+            SourceRevisionId = sourceRevision.Id
+        });
+
+        await _context.SaveChangesAsync();
+        _metrics.Increment("configurations_db_writes");
     }
 
     // ─── Reserved Names ─────────────────────────────────────────────────────────

@@ -27,9 +27,13 @@ public class TokenDbContext : IDisposable
         _db = new LiteDatabase(dbPath);
         Tokens = _db.GetCollection<AuthToken>("tokens");
         Tokens.EnsureIndex(x => x.LastActivity);
+        Admins = _db.GetCollection<AdminRecord>("admins");
+        Admins.EnsureIndex(x => x.Username);
     }
 
     public ILiteCollection<AuthToken> Tokens { get; }
+
+    public ILiteCollection<AdminRecord> Admins { get; }
 
     public void Dispose()
     {

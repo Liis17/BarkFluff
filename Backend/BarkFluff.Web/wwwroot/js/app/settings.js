@@ -1320,6 +1320,11 @@
             function (n) { BF.personalization.setRadius(n); applyPreview(); });
         body.appendChild(radiusCtl.row);
 
+        var stickerSizeCtl = buildSlider(BF.i18n.t('personalization.stickerSize'), 96, 240, 1,
+            BF.personalization.getStickerSize(), 'px',
+            function (n) { BF.personalization.setStickerSize(n); });
+        body.appendChild(stickerSizeCtl.row);
+
         // Blur toggle + slider
         var blurInitial = BF.personalization.getBlurEnabled();
         var blurToggleSec = document.createElement('div');

@@ -13,7 +13,7 @@ dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 
 ## Структура проекта (эталон Identity/Users/Files)
 
-- `Features/` — CQRS (MediatR): admin (`CreateSystemBot`, `ListBots`, `DeleteBot`, `RegenerateToken`) + внешний API (`GetMe`, `SendBotMessage`, `SendBotFile`, `EditBotMessage`, `DeleteBotMessage`, `GetBotFile`, `GetBotUserInfo`, `GetBotUpdates`, `SetMyCommands`, `GetMyCommands`)
+- `Features/` — CQRS (MediatR): admin (`CreateSystemBot`, `ListBots`, `UpdateBotProfile`, `GetBotToken`, `DeleteBot`, `RegenerateToken`) + внешний API (`GetMe`, `SendBotMessage`, `SendBotFile`, `EditBotMessage`, `DeleteBotMessage`, `GetBotFile`, `GetBotUserInfo`, `GetBotUpdates`, `SetMyCommands`, `GetMyCommands`)
 - `Host/` — `BotsServerApiService`, `BotsExternalApiService` + `BotAuthInterceptor`; `Http/` — `BotApiEndpoints`, `BotAuthEndpointFilter`, `BotApiResponse`
 - `Services/` — `BotRegistryCache`, `BotAccessValidator`, `BotCallerContext`, `IBotRateLimiter`/`RedisBotRateLimiter`, `IBotPollingGuard`/`RedisBotPollingGuard`, `BotUpdateNotifier`, `UpdateJsonMapper`, `BotFather/`; hosted: `SystemBotsSeeder`, `BotsCleanupService`
 - `Infrastructure/` — только `BotTokenIssuer` (обёртка gRPC-клиента [[Backend/Identity]])
@@ -31,9 +31,10 @@ dotnet test Tests/BarkFluff.Bots.Tests/BarkFluff.Bots.Tests.csproj
 Бот ──sendMessage──▶ Bots ──SendMessageServer──▶ Messages (членство/запрет инициации)
 ```
 
-- **Токен бота** — общесистемный долгоживущий JWT (`TokenType.Bot`, exp 9999): claims `x-user-id` (= botId), `x-token-type=Bot`, `x-bot-token-id` (uuid выпуска). Выпускает [[Backend/Identity]] (`IdentityServerApi.CreateBotTokenServer`) через `Infrastructure/BotTokenIssuer`; Bots хранит только `TokenId` (plaintext-JWT показывается один раз: BotFather / AdminPanel / RegenerateToken).
+- **Токен бота** — общесистемный долгоживущий JWT (`TokenType.Bot`, exp 9999): claims `x-user-id` (= botId), `x-token-type=Bot`, `x-bot-token-id` (uuid выпуска). Выпускает [[Backend/Identity]] (`IdentityServerApi.CreateBotTokenServer`) через `Infrastructure/BotTokenIssuer`; Bots хранит только `TokenId`, plaintext-JWT нигде не сохраняется. `GetBotToken` вызывает Identity с тем же `TokenId`, поэтому текущий токен можно получить повторно без ротации и отзыва; `RegenerateToken` создаёт новый `TokenId` и отзывает старый.
 - **Авторизация внешнего API**: штатный XAuth (заголовок `x-auth-token`) + политика `[Authorize(Policy = nameof(TokenType.Bot))]`. После JWT-валидации `BotAccessValidator` (общий синглтон) сверяет claim `x-bot-token-id` с `TokenId` в кэше (мгновенный отзыв: `RegenerateToken`/`DeleteBot` убивают старый JWT, переживает рестарты — источник истины Postgres), проверяет `SystemRole == None` и rate-limit. Обёртки: `Host/BotAuthInterceptor` (gRPC, через `AddServiceOptions`) и `Host/Http/BotAuthEndpointFilter` (401/429 в формате Bot API). Бот текущего запроса — scoped `Services/BotCallerContext` (из `UserContext.UserId` + кэш). Политика `User` bot-JWT не принимает — на другие API платформы токен не проходит.
 - **`BotRegistryCache`** — локальный кэш всех ботов. Грузится сидером, обновляется в местах записи; авторитативен для сверки `TokenId`. При масштабировании изменения (Set/Remove) рассылаются fan-out событием `BotRegistryChangedEvent`, консьюмер на каждом инстансе перечитывает бота из БД (иначе XAuth на другом инстансе видел бы старый `TokenId` после регенерации).
+- **Профиль бота**: `UpdateBotProfile` сначала проверяет запись `Bots` и `Users.IsBot`, валидирует имя и username (3–32, `[A-Za-z0-9_]`, суффикс `bot`, отсутствие конфликта), затем обновляет Users, `Bots.Name`/`Bots.Username` и вызывает `BotRegistryCache.Set`. Так изменения username не расходятся между Users, Bots и XAuth-кэшем.
 - **CQRS**: внешний API идёт через Features (`GetMe`, `SendBotMessage` — общий для gRPC/HTTP, `SendBotFile` — квота 1 ГБ + upload, `GetBotUserInfo`, `GetBotUpdates` — long-poll в хендлере). Host тонкий; `SubscribeUpdates` остаётся в Host (server-streaming в MediatR не ложится). Маппинг Domain/proto → ответы — в `Mapping/` (`BotMapping`, `BotMessageMapping`, `BotUpdateMapping`). В `Infrastructure/` — только `BotTokenIssuer`; hosted-сервисы (`BotsCleanupService`, `SystemBotsSeeder`) — в `Services/`.
 - **Приём входящих**: второй consumer `NewMessageEvent` (очередь `new-messages-bots-handler`, competing — сохраняет update один раз, [[Backend/Updates]] не затронут). Пересечение `ChatMembers` с реестром ботов (исключая отправителя) → `BotUpdates` (jsonb payload, Telegram-like) + публикация fan-out `BotUpdateSignalEvent`; консьюмер на каждом инстансе будит свои локальные waiter'ы `BotUpdateNotifier` (TaskCompletionSource per bot) — сигнал доходит до poller'а на любом инстансе (update шарится через БД).
 - **Отзыв сессий**: `SessionRevokedConsumer` + fan-out-очередь `session-revoked-bots-{InstanceId}` (autodelete) — консистентно с остальными сервисами. Сегодня Bots обслуживает только Service/Bot-токены (user-путь отсутствует), так что это консистентность паттерна и future-proofing.
@@ -69,6 +70,8 @@ Consumer дополнительно пропускает события, где 
 |-----|-----------|
 | `CreateSystemBot(username, name)` | Создать системного бота → `{bot_id, token}` (токен один раз) |
 | `ListBots` | Все боты |
+| `UpdateBotProfile(bot_id, name, username)` | Валидировать и атомарно по шагам обновить профиль Users + имя/username в Bots и кэше |
+| `GetBotToken(bot_id)` | Получить JWT с текущим `TokenId` без ротации |
 | `DeleteBot(bot_id)` | Удалить: строка Bots + BotUpdates каскадом; в Users username освобождается (`deleted_{id}`), аккаунт из поиска (`IsDraft=true`). Чаты сохраняются |
 | `RegenerateToken(bot_id)` | Новый токен (старый отозван) |
 
@@ -112,7 +115,7 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 | `UsersService:Host/Token` | CreateBotUser/DeleteBotUser, профили, getUserInfo |
 | `MessagesService:Host/Token` | SendMessageServer |
 | `FilesService:Host/Token` | UploadFileServer (вложения), UploadAvatarServer (аватарки) |
-| `IdentityService:Host/Token` | CreateBotTokenServer (выпуск bot-JWT) |
+| `IdentityService:Host/Token` | CreateBotTokenServer (новый bot-JWT) и GetBotTokenServer (повторная выдача с текущим TokenId) |
 | `ExternalEndpoint:Host` | субдомен bots |
 
 Для AdminPanel — секция `BotsService:Host/Token` (ServiceId=0).
@@ -126,7 +129,7 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 - **[[Backend/Users]]** — `CreateBotUser` (идемпотентен, IsBot=true, без UserContact), `DeleteBotUser`, `GetById`/`GetUserByUsername`, `UpdateProfileServer`, `SetProfilePictureServer`.
 - **[[Backend/Messages]]** — `SendMessageServer` (sender = бот; авторизация отправки внутри), `EditMessageServer`/`DeleteMessageServer` (авторство внутри), `NewMessageEvent` (второй consumer).
 - **[[Backend/Files]]** — `UploadFileServer` (полный пайплайн), `UploadAvatarServer`, `GetFileData`, `GetTempDownloadUrlServer` (getFile), `GetUserStorageInfoServer` (квота 1 ГБ).
-- **[[Backend/Identity]]** — `CreateBotTokenServer` (выпуск bot-JWT); публикует `EmailNotification` (SuccessfulLogin) для login-notifier.
+- **[[Backend/Identity]]** — `CreateBotTokenServer`/`GetBotTokenServer` (выпуск bot-JWT); публикует `EmailNotification` (SuccessfulLogin) для login-notifier.
 - **[[Backend/Beacon]]** — отдаёт `Service bots = 15` в `GetServerInfoResponse`.
 
 ## Не реализовано (v1)

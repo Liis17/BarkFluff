@@ -117,6 +117,8 @@ public class Program
             });
         });
 
+        builder.Services.AddBarkFluffHealth();
+
         var app = builder.Build();
 
         using (var scope = app.Services.CreateScope())
@@ -132,7 +134,7 @@ public class Program
         app.MapGrpcReflectionService();
 
         app.UseXAuth();
-        app.MapPingEndpoint();
+        app.MapHealthEndpoints();
 
         app.MapControllers();
 

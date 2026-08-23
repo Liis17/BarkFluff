@@ -188,6 +188,9 @@
             img.src = stickerUrl;
             img.loading = 'lazy';
             BF.files.bindResilientMedia(img, sticker.fileId, false);
+            img.addEventListener('click', function () {
+                if (BF.stickerPack) BF.stickerPack.openByFile(sticker.fileId);
+            });
             container.appendChild(img);
             return;
         }
