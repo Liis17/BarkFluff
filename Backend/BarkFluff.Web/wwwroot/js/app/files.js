@@ -247,7 +247,7 @@
      * загрузки так же, как обычные media-элементы. При первой ошибке URL
      * обновляется по fileId; при повторной показывается заглушка.
      */
-    function loadResilientBackground(el, fileId, preferPreview) {
+    function loadResilientBackground(el, fileId, preferPreview, onResolved) {
         if (!el) return;
 
         var requestId = String(Number(el.getAttribute('data-bf-background-request') || '0') + 1);
@@ -273,10 +273,16 @@
             });
         }
 
+        function notifyResolved(url) {
+            if (typeof onResolved !== 'function') return;
+            try { onResolved(url || ''); } catch (e) {}
+        }
+
         function apply(url) {
             if (!isCurrent()) return false;
             el.style.backgroundImage = 'url("' + url + '")';
             el.classList.add('visible');
+            notifyResolved(url);
             return true;
         }
 
@@ -284,6 +290,7 @@
             if (!isCurrent()) return;
             el.style.backgroundImage = 'url("' + BROKEN_MEDIA_SVG + '")';
             el.classList.add('visible', 'bf-load-failed');
+            notifyResolved('');
         }
 
         function loadUrl(fileData, refreshed) {

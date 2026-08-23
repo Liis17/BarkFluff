@@ -2451,6 +2451,7 @@
                 if (fileId) {
                     var image = document.createElement('img');
                     image.alt = '';
+                    BF.files.bindResilientMedia(image, fileId, true);
                     card.appendChild(image);
                     BF.files.getFileUrls([fileId]).then(function (urls) {
                         var item = urls && urls[0];
