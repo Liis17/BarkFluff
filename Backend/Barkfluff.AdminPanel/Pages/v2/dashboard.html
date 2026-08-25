@@ -170,6 +170,68 @@
             margin-top: 10px; font-size: 12px; color: var(--md-on-surface-variant);
         }
 
+        /* Keep the service availability overview dense without hiding its diagnostics. */
+        .services-health-grid {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+        .services-health-grid .health-card {
+            min-width: 0;
+            padding: 9px 10px;
+            border-left-width: 3px;
+        }
+        .services-health-grid .health-card.status-healthy { border-left-color: var(--md-success); }
+        .services-health-grid .health-card.status-degraded { border-left-color: var(--md-warning); }
+        .services-health-grid .health-card.status-down { border-left-color: var(--md-error); }
+        .services-health-grid .health-card.status-unknown { border-left-color: var(--md-outline); }
+        .services-health-grid .health-card-head { gap: 6px; }
+        .services-health-grid .health-card .name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        .services-health-grid .health-card-head .md-status {
+            flex-shrink: 0;
+            height: 22px;
+            padding: 0 8px;
+            font-size: 11px;
+        }
+        .services-health-grid .health-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            margin-top: 6px;
+        }
+        .services-health-grid .health-deps {
+            flex: 1 1 auto;
+            min-width: 0;
+            gap: 4px;
+            margin-top: 0;
+        }
+        .services-health-grid .health-deps .md-status {
+            height: 20px;
+            padding: 0 7px;
+            font-size: 10.5px;
+        }
+        .services-health-grid .health-foot {
+            flex: 0 1 48%;
+            min-width: 0;
+            max-width: 48%;
+            overflow: hidden;
+            margin-top: 0;
+            font-size: 11px;
+            line-height: 16px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .services-health-grid .health-card-meta-only .health-foot {
+            flex-basis: auto;
+            max-width: 100%;
+        }
+
         @media (max-width: 600px) {
             .service-grid { grid-template-columns: 1fr; }
             .upload-timing-head { align-items: flex-start; flex-direction: column; gap: 4px; }
@@ -260,7 +322,7 @@
                     <h2>Состояние сервисов</h2>
                     <span class="hint">Liveness + readiness, обновление каждые 30 секунд</span>
                 </div>
-                <div id="services-health-grid" class="health-grid"></div>
+                <div id="services-health-grid" class="health-grid services-health-grid"></div>
             </div>
 
             <!-- Infrastructure -->
@@ -345,11 +407,16 @@
                 svc.probeLatencyMs != null ? 'отклик ' + svc.probeLatencyMs + ' мс' : null,
                 svc.lastSeenUtc ? 'лог: ' + formatTime(svc.lastSeenUtc) : null
             ].filter(Boolean).join(' · ');
-            return '<div class="health-card">' +
-                '<div class="health-card-head"><span class="name">' +
-                    escapeHtml((svc.name || '').replace('BarkFluff.', '')) + '</span>' + healthBadge(svc.status) + '</div>' +
+            const statusClass = Object.prototype.hasOwnProperty.call(HEALTH_STATUS, svc.status) ? svc.status : 'unknown';
+            const serviceName = (svc.name || '').replace('BarkFluff.', '');
+            const details = (deps || foot) ? '<div class="health-card-meta' + (!deps ? ' health-card-meta-only' : '') + '">' +
                 (deps ? '<div class="health-deps">' + deps + '</div>' : '') +
-                (foot ? '<div class="health-foot">' + foot + '</div>' : '') +
+                (foot ? '<div class="health-foot" title="' + foot + '">' + foot + '</div>' : '') +
+                '</div>' : '';
+            return '<div class="health-card status-' + statusClass + '">' +
+                '<div class="health-card-head"><span class="name" title="' + escapeHtml(serviceName) + '">' +
+                    escapeHtml(serviceName) + '</span>' + healthBadge(svc.status) + '</div>' +
+                details +
                 '</div>';
         }).join('');
     }
