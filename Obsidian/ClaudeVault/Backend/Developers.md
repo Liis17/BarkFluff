@@ -15,7 +15,7 @@ dotnet build Barkfluff.Developers.csproj
 ## Особенности
 
 - Принимает **gRPC-Web** напрямую (не через [[Backend/Web]] YARP-прокси)
-- Kestrel: `HttpProtocols.Http2` — gRPC-Web термируется на nginx (через `developers.conf`), backend получает уже HTTP/2 gRPC
+- Kestrel: `HttpProtocols.Http1AndHttp2` — `developers.conf` передаёт gRPC-Web через HTTP/1.1; native gRPC принимается напрямую внутренним HTTP/2-листенером сервиса
 - Все методы защищены `[Authorize(Policy = nameof(TokenType.User))]`
 - Фронтенд: React + Vite + TypeScript (`Frontend/Developers/`) — см. [[Клиенты/Developers-Web]]
 
