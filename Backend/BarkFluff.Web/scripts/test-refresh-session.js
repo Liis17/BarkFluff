@@ -10,11 +10,19 @@ function loadModule(file, refreshError) {
     var refreshToken = 'refresh-token';
     var location = { href: '/messenger' };
     class IdentityApiClient {
-        createToken(_request, _metadata, callback) { callback(refreshError); }
+        createToken(_request, _metadata, callback) {
+            if (refreshError !== 'hang') callback(refreshError);
+            return { cancel: function () {} };
+        }
     }
     class Client {}
     var context = {
         Promise: Promise,
+        Date: Date,
+        Math: Math,
+        AbortController: globalThis.AbortController,
+        setTimeout: setTimeout,
+        clearTimeout: clearTimeout,
         console: console,
         window: {
             location: location,
@@ -45,6 +53,14 @@ function loadModule(file, refreshError) {
     };
     context.BF = context.window.BF;
     vm.createContext(context);
+    vm.runInContext(
+        fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/network.js'), 'utf8'),
+        context
+    );
+    context.window.BF.network.POLICIES.REFRESH.attemptTimeoutMs = 10;
+    context.window.BF.network.POLICIES.REFRESH.overallTimeoutMs = 25;
+    context.window.BF.network.POLICIES.REFRESH.baseDelayMs = 0;
+    context.window.BF.network.POLICIES.REFRESH.maxDelayMs = 0;
     vm.runInContext(fs.readFileSync(file, 'utf8'), context);
     return { context: context, wasCleared: function () { return cleared; }, location: location };
 }
@@ -59,6 +75,18 @@ async function main() {
     );
     assert.equal(transientClients.wasCleared(), false, 'temporary refresh error must preserve tokens');
     assert.equal(transientClients.location.href, '/messenger', 'temporary refresh error must not redirect to login');
+
+    var hangingClients = loadModule(clientsFile, 'hang');
+    await assert.rejects(
+        Promise.race([
+            hangingClients.context.window.BF.clients.authCall(function (_request, _metadata, callback) { callback(null, {}); }, {}),
+            new Promise(function (_resolve, reject) {
+                setTimeout(function () { reject(new Error('refresh remained pending')); }, 80);
+            })
+        ]),
+        /token_refresh_unavailable/
+    );
+    assert.equal(hangingClients.wasCleared(), false, 'a timed out refresh must preserve tokens');
 
     var invalidClients = loadModule(clientsFile, {
         code: 9,
