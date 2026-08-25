@@ -95,7 +95,10 @@ Proto-файлы скопированы в `Frontend/Developers/proto/`.
 
 ## Деплой
 
-`npm run build` → `dist/` монтируется к существующему nginx-контейнеру.
+`Dockerfile.slim` запускает `npm ci` и `npm run build`, затем копирует `dist/` в
+`/app/wwwroot` контейнера `Barkfluff.Developers`. Сервис раздаёт SPA на HTTP-порту
+`7021`, а gRPC-Web API остаётся на `7020`; внешний Nginx маршрутизирует `/grpc/...`
+к API, остальные пути — к SPA.
 
 ## Связанные файлы
 
