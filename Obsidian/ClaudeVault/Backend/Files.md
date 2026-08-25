@@ -7,6 +7,8 @@
 
 Расположение: `Backend/BarkFluff.Files/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 > 📁 Детальная карта всех файлов проекта: [[Backend/Files-ProjectMap]]
 
 ## Сборка

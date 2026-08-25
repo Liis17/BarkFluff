@@ -64,7 +64,8 @@ public class Program
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Federation");
 
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<FederationContext>(c
             => c.UseNpgsql(builder.Configuration["FederationDb"], npgsql =>

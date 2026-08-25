@@ -206,7 +206,7 @@ docker logs <container_name>
 
 ## 📚 Дополнительная информация
 
-- Все gRPC сервисы поддерживают gRPC Reflection
+- gRPC Reflection включён только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется
 - Files сервис имеет два порта: один для gRPC (7005), другой для REST API (7006)
 - Configuration Service хранит настройки в PostgreSQL
 - При изменении портов в .env файле убедитесь, что они совпадают с appsettings.json

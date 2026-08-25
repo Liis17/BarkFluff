@@ -22,7 +22,8 @@ builder.Services.AddGrpc(options =>
 });
 builder.Services.AddBarkFluffMetrics("BarkFluff.Updates");
 
-builder.Services.AddGrpcReflection();
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddGrpcReflection();
 
 // Register Updates services including StreamSubscriptionsManager as Singleton
 builder.Services.AddUpdatesServices();
@@ -183,7 +184,8 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddBarkFluffHealth();
 
 var app = builder.Build();
-app.MapGrpcReflectionService();
+if (app.Environment.IsDevelopment())
+    app.MapGrpcReflectionService();
 app.UseRouting();
 
 app.UseXAuth();

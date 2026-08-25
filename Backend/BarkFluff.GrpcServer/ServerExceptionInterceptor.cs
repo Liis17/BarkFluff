@@ -107,7 +107,7 @@ public class ServerExceptionInterceptor : Interceptor
             {
                 { "x-error-code", baseException.ErrorCode }
             };
-            throw new RpcException(new Status(StatusCode.Unknown, ex.Message), trailers);
+            throw new RpcException(new Status(StatusCode.Unknown, baseException.ErrorMessage), trailers);
         }
     }
 

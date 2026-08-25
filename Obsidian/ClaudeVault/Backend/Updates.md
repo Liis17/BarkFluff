@@ -9,6 +9,8 @@ Real-time сервис: доставляет события клиентам ч�
 
 Расположение: `Backend/BarkFluff.Updates/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 ## Сборка
 
 ```bash

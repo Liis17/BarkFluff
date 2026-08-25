@@ -6,6 +6,8 @@
 
 Расположение: `Backend/BarkFluff.Identity/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 ## Сборка
 
 ```bash

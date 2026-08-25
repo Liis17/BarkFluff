@@ -6,6 +6,8 @@
 
 Расположение: `Backend/BarkFluff.Users/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 → [[Backend/Users-ProjectMap]] — карта всех файлов и классов проекта
 → [[Backend/Users-Metrics]] — реестр метрик сервиса (через `ServiceMetrics`-логи в Seq)
 → [[Backend/Users-ChatFolders-ClientGuide]] — гайд для клиентских агентов: какие RPC папок чатов когда вызывать, ошибки, edge cases

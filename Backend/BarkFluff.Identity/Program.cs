@@ -33,7 +33,8 @@ public class Program
 
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.Identity");
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<IdentityContext>(c
             => c.UseNpgsql(builder.Configuration["IdentityDb"], npgsql =>
@@ -109,7 +110,8 @@ public class Program
         app.UseRouting();
         app.UseCors("IdentityCors");
         app.UseGrpcWeb();
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
 
         app.UseXAuth();
         app.MapHealthEndpoints();

@@ -24,6 +24,12 @@ builder.Services.AddXAuth(builder.Configuration);    // 6. JWT-аутентиф�
 app.UseXAuth();                                       // 7. Middleware auth
 ```
 
+### gRPC Reflection
+
+Во всех активных .NET gRPC-сервисах `AddGrpcReflection()` и `MapGrpcReflectionService()`
+вызываются только при `Environment.IsDevelopment()`. В Production, Nightly и Master
+endpoint reflection не публикуется.
+
 ## XAuth (`XAuth/`)
 
 JWT-аутентификация через заголовок `x-auth-token` (не стандартный Authorization). Две политики:
@@ -38,7 +44,7 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Interceptors (через `AddBarkFluffGrpc()`)
 
-- **ServerExceptionInterceptor** — ловит `BaseGrpcException` и необработанные исключения → `RpcException` с trailer `x-error-code`. Уже сформированные `RpcException` сохраняют исходный status/trailers: ожидаемые клиентские статусы (`FailedPrecondition`, `Cancelled`, `InvalidArgument`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Unauthenticated`, `OutOfRange`) логируются как Warning, инфраструктурные gRPC-статусы — как Error без маркировки «критическая ошибка». Бизнес-ошибки → их доменный `StatusCode`, неизвестные исключения → `StatusCode.Unknown`. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`.
+- **ServerExceptionInterceptor** — ловит `BaseGrpcException` и необработанные исключения → `RpcException` с trailer `x-error-code`. Уже сформированные `RpcException` сохраняют исходный status/trailers: ожидаемые клиентские статусы (`FailedPrecondition`, `Cancelled`, `InvalidArgument`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Unauthenticated`, `OutOfRange`) логируются как Warning, инфраструктурные gRPC-статусы — как Error без маркировки «критическая ошибка». Бизнес-ошибки → их доменный `StatusCode`, неизвестные исключения → `StatusCode.Unknown` с фиксированным `BaseGrpcException.ErrorMessage` без передачи `ex.Message` клиенту. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`.
 - **RequestContextInterceptor** — извлекает клиентские metadata-заголовки (`x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`) в scoped `RequestContext`. IP-адрес резолвится по приоритету: 1) `x-ip-address` из gRPC metadata, 2) `X-Forwarded-For` HTTP-заголовок, 3) `X-Real-IP` (nginx), 4) `RemoteIpAddress` TCP-соединения.
 
 ## Конфигурация (`WebApplicationBuilderExtensions`)
