@@ -1,6 +1,7 @@
 # Barkfluff.Developers
 
-Портал документации для разработчиков-клиентов BarkFluff. Содержит секции документации, метаданные proto-файлов и коды ошибок. Порт: **7020**.
+Портал документации для разработчиков-клиентов BarkFluff. Содержит секции документации, метаданные proto-файлов и коды ошибок.
+API/gRPC-Web слушает **7020**, статика SPA — **7021**.
 
 Расположение: `Backend/Barkfluff.Developers/`
 
@@ -17,7 +18,8 @@ dotnet build Barkfluff.Developers.csproj
 ## Особенности
 
 - Принимает **gRPC-Web** напрямую (не через [[Backend/Web]] YARP-прокси)
-- Kestrel: `HttpProtocols.Http1AndHttp2` — `developers.conf` передаёт gRPC-Web через HTTP/1.1; native gRPC принимается напрямую внутренним HTTP/2-листенером сервиса
+- Kestrel: API-порт `HttpProtocols.Http1AndHttp2`, static-порт `HttpProtocols.Http1`
+- Статика раздаётся самим сервисом с `7021`; API на `7020` доступен через `developers.conf`
 - Все методы защищены `[Authorize(Policy = nameof(TokenType.User))]`
 - Фронтенд: React + Vite + TypeScript (`Frontend/Developers/`) — см. [[Клиенты/Developers-Web]]
 
@@ -70,6 +72,8 @@ dotnet build Barkfluff.Developers.csproj
 |------|---------|
 | `DevelopersDb` | PostgreSQL connection string |
 | `IdentityService:Host` | gRPC-клиент Identity (для валидации JWT) |
+| `RunSettings:Port` | API/gRPC-порт, по умолчанию `7020` |
+| `RunSettings:Http1Port` | HTTP-порт статики, по умолчанию `7021` |
 
 ## Proto
 
@@ -82,7 +86,10 @@ dotnet build Barkfluff.Developers.csproj
 docker build -t barkfluff-developers .
 ```
 
-CI собирает сервис из `Dockerfile.slim`, как и [[Backend/Users]].
+CI собирает сервис из `Dockerfile.slim`, как и [[Backend/Users]]. Dockerfile собирает
+`Frontend/Developers` через Node/Vite и копирует `dist/` в `/app/wwwroot` образа.
+Переменные `DEVELOPERS_PORT` и `DEVELOPERS_HTTP1PORT` позволяют переопределить API- и
+static-порты.
 
 ## Связанные файлы
 

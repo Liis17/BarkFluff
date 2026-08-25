@@ -34,6 +34,7 @@
 | **Updates** | 8 | 7015 | - | `UPDATES_PORT` |
 | **Onliner** | 9 | 7009 | - | `ONLINER_PORT` |
 | **Navigator** | - | 7010 | - | `NAVIGATOR_PORT` |
+| **Developers** | 12 | 7020 | 7021 | `DEVELOPERS_PORT`, `DEVELOPERS_HTTP1PORT` |
 
 ## 🐳 Инфраструктурные сервисы
 
@@ -208,5 +209,6 @@ docker logs <container_name>
 
 - gRPC Reflection включён только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется
 - Files сервис имеет два порта: один для gRPC (7005), другой для REST API (7006)
+- Developers сервис имеет два порта: один для gRPC-Web API (7020), другой для SPA-статики (7021)
 - Configuration Service хранит настройки в PostgreSQL
 - При изменении портов в .env файле убедитесь, что они совпадают с appsettings.json

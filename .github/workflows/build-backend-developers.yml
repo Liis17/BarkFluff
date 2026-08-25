@@ -8,6 +8,7 @@ on:
       - nightly
     paths:
       - 'Backend/Barkfluff.Developers/**'
+      - 'Frontend/Developers/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 

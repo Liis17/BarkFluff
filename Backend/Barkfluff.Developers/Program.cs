@@ -21,14 +21,28 @@ public class Program
         builder.LoadConfiguration(ServiceId.Developers);
         builder.AddBarkFluffSerilog("BarkFluff.Developers");
 
+        var port = builder.Configuration.GetValue<int>("RunSettings:Port");
+        if (int.TryParse(Environment.GetEnvironmentVariable("DEVELOPERS_PORT"), out var configuredPort))
+            port = configuredPort;
+        if (port <= 0) port = 7020;
+
+        var staticPort = builder.Configuration.GetValue<int>("RunSettings:Http1Port");
+        if (int.TryParse(Environment.GetEnvironmentVariable("DEVELOPERS_HTTP1PORT"), out var configuredStaticPort))
+            staticPort = configuredStaticPort;
+        if (staticPort <= 0) staticPort = 7021;
+        if (staticPort == port)
+            throw new InvalidOperationException("Developers API and static ports must be different.");
+
         builder.WebHost.ConfigureKestrel(options =>
         {
-            var port = builder.Configuration.GetValue<int>("RunSettings:Port");
-            if (port <= 0) port = 7020;
-
             options.ListenAnyIP(port, listenOptions =>
             {
                 listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+            });
+
+            options.ListenAnyIP(staticPort, listenOptions =>
+            {
+                listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
             });
         });
 
@@ -77,6 +91,26 @@ public class Program
             var protoStorage = scope.ServiceProvider.GetRequiredService<ProtoMetadataStorage>();
             protoStorage.SeedIfNeeded().GetAwaiter().GetResult();
         }
+
+        var staticRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+        var staticIndex = Path.Combine(staticRoot, "index.html");
+
+        app.MapWhen(context => context.Connection.LocalPort == staticPort, staticApplication =>
+        {
+            staticApplication.UseDefaultFiles();
+            staticApplication.UseStaticFiles();
+            staticApplication.Run(async context =>
+            {
+                if ((context.Request.Method != HttpMethods.Get && context.Request.Method != HttpMethods.Head)
+                    || !File.Exists(staticIndex))
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    return;
+                }
+
+                await context.Response.SendFileAsync(staticIndex);
+            });
+        });
 
         app.UseRouting();
         app.UseCors("DevelopersCors");
