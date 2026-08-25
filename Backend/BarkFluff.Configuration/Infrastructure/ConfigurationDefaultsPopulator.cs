@@ -44,6 +44,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Onliner, "onliner" },
         { ServiceId.CloudMessaging, "cloud-messaging" },
         { ServiceId.Web, "web" },
+        { ServiceId.Developers, "developers" },
         { ServiceId.Calls, "calls" },
         { ServiceId.Bots, "bots" },
         { ServiceId.Federation, "federation" },
@@ -65,6 +66,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Onliner, 7009 },
         { ServiceId.CloudMessaging, 7011 },
         { ServiceId.Web, 7016 },
+        { ServiceId.Developers, 7020 },
         { ServiceId.Calls, 7025 },
         { ServiceId.Bots, 7027 },
         { ServiceId.Federation, 7030 },
@@ -85,6 +87,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Updates, "updates" },
         { ServiceId.Onliner, "onliner" },
         { ServiceId.Web, "web" },
+        { ServiceId.Developers, "developers" },
         { ServiceId.Calls, "calls" },
         { ServiceId.Bots, "bots" },
     };
@@ -99,6 +102,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Files, ("FilesDb", "files") },
         { ServiceId.Messages, ("MessagesDb", "messages") },
         { ServiceId.Onliner, ("OnlinerDb", "onliner") },
+        { ServiceId.Developers, ("DevelopersDb", "developers") },
         { ServiceId.Calls, ("CallsDb", "calls") },
         { ServiceId.Bots, ("BotsDb", "bots") },
         { ServiceId.Federation, ("FederationDb", "federation") },
@@ -230,11 +234,13 @@ public class ConfigurationDefaultsPopulator
                 return port.ToString();
         }
 
-        // --- RunSettings:Http1Port (Files, Calls, Bots) ---
+        // --- RunSettings:Http1Port (Files, Developers, Calls, Bots) ---
         if (config.Section == "RunSettings" && config.Key == "Http1Port")
         {
             if (serviceId == ServiceId.Files)
                 return "7006";
+            if (serviceId == ServiceId.Developers)
+                return "7021"; // HTTP/1.1-листенер для SPA Developers
             if (serviceId == ServiceId.Calls)
                 return "7026"; // HTTP/1.1-листенер для приёма LiveKit-webhooks
             if (serviceId == ServiceId.Bots)
