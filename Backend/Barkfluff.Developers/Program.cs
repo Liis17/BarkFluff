@@ -28,7 +28,7 @@ public class Program
 
             options.ListenAnyIP(port, listenOptions =>
             {
-                listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+                listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
             });
         });
 
