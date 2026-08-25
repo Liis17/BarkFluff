@@ -116,6 +116,15 @@ Configuration Service управляет следующими ключами к�
 - `FilesDb` - строка подключения для Files (ServiceId: 5)
 - `MessagesDb` - строка подключения для Messages (ServiceId: 6)
 - `OnlinerDb` - строка подключения для Onliner (ServiceId: 9)
+- `DevelopersDb` - строка подключения для Developers (ServiceId: 12)
+
+### Чистый deployment
+
+Миграция `AddDevelopersConfiguration` идемпотентно создаёт конфигурационные строки
+Developers для ServiceId 12. При первом старте Configuration пустые значения
+заполняются defaults: API `7020`, SPA `7021`, база `developers` и внешний endpoint
+`https://developers.example.com`. Операторские значения, заданные заранее, не
+перезаписываются.
 
 ### Service URLs
 - `NavigatorUrl` - URL сервиса Navigator

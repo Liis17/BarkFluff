@@ -74,6 +74,12 @@ dotnet build Barkfluff.Developers.csproj
 | `IdentityService:Host` | gRPC-клиент Identity (для валидации JWT) |
 | `RunSettings:Port` | API/gRPC-порт, по умолчанию `7020` |
 | `RunSettings:Http1Port` | HTTP-порт статики, по умолчанию `7021` |
+| `ExternalEndpoint:Host` | внешний адрес портала, по умолчанию `https://developers.example.com` |
+
+Для чистого deployment миграция `AddDevelopersConfiguration` идемпотентно создаёт
+строки `RunSettings`, `DevelopersDb` и `ExternalEndpoint` для `ServiceId=12`.
+ConfigurationDefaultsPopulator заполняет пустые значения: БД `developers`, API `7020`
+и SPA `7021`; заранее заданные оператором значения сохраняются.
 
 ## Proto
 
