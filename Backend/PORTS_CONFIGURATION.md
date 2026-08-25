@@ -106,8 +106,8 @@ networks:
 Configuration Service управляет следующими ключами конфигурации:
 
 ### RunSettings
-- `Port` - основной порт сервиса (HTTP/2 для gRPC)
-- `Http1Port` - дополнительный порт для HTTP/1.1 (только Files)
+- `Port` - основной порт сервиса (HTTP/2 для gRPC или HTTP/1.1 для gRPC-Web)
+- `Http1Port` - дополнительный порт для HTTP/1.1 (Files REST, Calls webhooks, Bots REST, Developers SPA)
 - `Host` - хост для прослушивания (по умолчанию: localhost)
 
 ### Database Connections
