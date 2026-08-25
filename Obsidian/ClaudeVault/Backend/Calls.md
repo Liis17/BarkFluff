@@ -83,7 +83,11 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 | `CallsDb` | строка подключения CDR |
 | `MessagesService:Host/Token` | авторизация группы + список участников |
 | `LiveKit:Url` | WSS-адрес (дублируется в [[Backend/Beacon]].`livekit_url`) |
-| `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `docker/livekit/livekit.yaml`) |
+| `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `docker/{dev,nightly,master}/barkfluff/livekit/livekit.yaml`) |
+
+В Git заданы development-defaults LiveKit: `devkey` и
+`devsecret_change_me_in_production_0123456789`; production secrets оператор должен
+переопределить согласованно в Configuration и `livekit.yaml`.
 
 ## Внешний доступ ([[Backend/Nginx]])
 
@@ -98,7 +102,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 - **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка), `GetChatMemberIds` (ринг участникам) и `PostCallSystemMessage` (системное сообщение об итоге звонка при завершении).
 - **[[Backend/Beacon]]** — отдаёт клиенту `livekit_url` из конфига Calls.
-- **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `docker/livekit/livekit.yaml`.
+- **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `docker/{dev,nightly,master}/barkfluff/livekit/livekit.yaml`.
 - **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами); `ChatMemberKickedConsumer` (очередь `chat-member-kicked-calls`, событие `ChatMemberKickedEvent`: при кике пользователя из чата best-effort удаляет его из активной LiveKit-комнаты через `RoomServiceClient.RemoveParticipant`); публикация `IncomingCallPushEvent` / `CallDismissPushEvent` для [[Backend/CloudMessaging]].
 
 ## Клиенты

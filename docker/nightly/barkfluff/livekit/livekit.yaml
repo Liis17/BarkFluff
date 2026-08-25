@@ -7,8 +7,8 @@ rtc:
   use_external_ip: true
 
 keys:
-  barkfluffkeys: your_key
+  devkey: devsecret_change_me_in_production_0123456789
 webhook:
-  api_key: barkfluffkeys
+  api_key: devkey
   urls:
     - http://calls:7026/livekit/webhook
