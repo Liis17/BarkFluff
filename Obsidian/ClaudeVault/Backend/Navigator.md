@@ -7,6 +7,8 @@
 
 Расположение: `Backend/BarkFluff.Navigator/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 Роль в федерации — вторичный канал (источник 2 discovery, [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]]): каталог публичных нод + кросс-проверка ключей при первом контакте + фолбэк-резолв, когда `/.well-known` недоступен. Сеть обязана работать при лежащем Navigator — уже знакомые ноды (`KnownServers` в [[Backend/Federation]]) продолжают общаться напрямую.
 
 **Вне платформенного шаблона** (публичная инфраструктура вне ноды): без `LoadConfiguration`/Serilog/метрик — осознанное решение фазы 1.

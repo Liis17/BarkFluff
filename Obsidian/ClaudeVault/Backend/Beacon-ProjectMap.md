@@ -11,7 +11,7 @@
 
 - Читает порт из env-переменных `BEACON_PORT` / `RunSettings__Port`, иначе из `RunSettings:Port` (7002)
 - Загружает конфигурацию через `LoadConfiguration(ServiceId.Beacon)` из Configuration service
-- Регистрирует: MediatR, gRPC reflection, Serilog, метрики (`AddBarkFluffMetrics`)
+- Регистрирует: MediatR, gRPC reflection только в Development, Serilog, метрики (`AddBarkFluffMetrics`)
 - Регистрирует gRPC-клиенты: `NavigatorApiClient` (по ключу `NavigatorUrl`) и `ConfigurationApiClient` (по ключу `ConfigurationServiceAddr`)
 - Запускает `ServerRegistrationService` как `HostedService`
 

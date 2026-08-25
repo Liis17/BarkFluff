@@ -34,7 +34,8 @@ public class Program
 
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.Developers");
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -82,7 +83,8 @@ public class Program
         app.UseGrpcWeb();
         app.UseXAuth();
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
         app.MapGrpcService<DevelopersApiService>().EnableGrpcWeb();
         app.MapHealthEndpoints();
 

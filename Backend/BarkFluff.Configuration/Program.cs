@@ -43,7 +43,8 @@ public class Program
             options.Interceptors.Add<ServerExceptionInterceptor>();
         });
 
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         var host = builder.Configuration["CONFIGURATION_HOST"];
         var port = builder.Configuration["CONFIGURATION_DBPORT"];
@@ -147,7 +148,8 @@ public class Program
             }
         }
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
         app.UseRouting();
 
         app.MapGrpcService<ConfigurationApiService>();

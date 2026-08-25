@@ -10,7 +10,7 @@
 ### `Program.cs`
 Точка запуска сервиса. Настраивает WebApplication:
 - Загружает конфигурацию через `LoadConfiguration(ServiceId.FastAuth)`
-- Регистрирует Serilog, метрики, gRPC reflection
+- Регистрирует Serilog, метрики, gRPC reflection только в Development
 - Подключает `XAuth` (JWT/Service авторизация)
 - Конфигурирует gRPC-клиент `IdentityServerApi` с `JwtClientInterceptor` и `ExceptionClientInterceptor`
 - Маппит `FastAuthApiService` и `FastAuthServerApiService`

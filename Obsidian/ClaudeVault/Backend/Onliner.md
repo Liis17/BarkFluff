@@ -10,6 +10,8 @@
 
 Расположение: `Backend/BarkFluff.Onliner/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 📁 **[[Backend/Onliner-ProjectMap]]** — карта всех файлов и классов проекта
 
 ## Сборка

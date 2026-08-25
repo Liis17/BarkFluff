@@ -6,6 +6,8 @@
 
 Расположение: `Backend/BarkFluff.Messages/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 📁 **Карта файлов проекта:** [[Backend/Messages-ProjectMap]]
 📊 **Реестр метрик:** [[Backend/Messages-Metrics]]
 📌 **Клиентский гайд по закреплённым сообщениям:** [[Backend/Messages-PinnedMessages-ClientGuide]] — какие RPC и события вызывать/слушать в Android/WPF/Web/iOS/macOS/Linux

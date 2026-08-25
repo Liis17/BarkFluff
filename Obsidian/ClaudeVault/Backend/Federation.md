@@ -6,6 +6,8 @@
 
 Расположение: `Backend/BarkFluff.Federation/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 ## Доставка (этап 2.2)
 
 Надёжная доставка федеративных событий из [[04-federation-service|docs/rearch/04]].

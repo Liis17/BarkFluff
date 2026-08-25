@@ -18,7 +18,7 @@ Shared-библиотека инфраструктуры. Подключаетс
 | `ServiceCollectionExtensions.cs` | Extension-методы для `IServiceCollection`: `AddSettings<T>()` — регистрирует `IOptions<T>` и `T` как singleton; `AddBarkFluffGrpc()` — регистрирует gRPC с двумя interceptors (`ServerExceptionInterceptor`, `RequestContextInterceptor`), scoped `IRequestContextAccessor` (writer) и scoped-фабрику `RequestContext`, делегирующую accessor'у. |
 | `SerilogExtensions.cs` | Extension-методы для Serilog: `AddBarkFluffSerilog(serviceName)` — настраивает Serilog → Console + Seq (дуральный sink с файловым буфером `logs/seq-buffer`, лимит 100MB); `AddBarkFluffMetrics(serviceName)` — регистрирует `MetricsCollector` (singleton) и `MetricsReporterService` (HostedService). |
 | `ActivityLogEnricher.cs` | Добавляет к структурированным логам `TraceId`, `SpanId` и fallback `CorrelationId` из текущего W3C `Activity`, не заменяя явный correlation ID. |
-| `ServerExceptionInterceptor.cs` | gRPC Unary interceptor. Перехватывает `BaseGrpcException` → `RpcException(FailedPrecondition)` с trailer `x-error-code`; необработанные исключения → `RpcException(Unknown)`. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`. |
+| `ServerExceptionInterceptor.cs` | gRPC Unary interceptor. Перехватывает `BaseGrpcException` → `RpcException(FailedPrecondition)` с trailer `x-error-code`; необработанные исключения → `RpcException(Unknown)` с фиксированным detail без передачи `ex.Message`. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`. |
 
 ---
 
