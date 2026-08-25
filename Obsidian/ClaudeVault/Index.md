@@ -31,7 +31,6 @@
 | [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
 | [[Backend/Users-Metrics]] | Реестр метрик Users (через ServiceMetrics-логи в Seq) | — |
 | [[Backend/Users-ChatFolders-ClientGuide]] | Клиентский гайд: папки чатов (UsersApi, XAuth) | — |
-| [[Backend/Users-Rust]] | **Rust drop-in порт Users** (tonic/sqlx/lapin) — тестовый эксперимент | 7001 |
 | [[Backend/Messages]] | Чаты, сообщения, вложения | 7007 |
 | [[Backend/Messages-ProjectMap]] | Карта всех файлов и классов Messages | — |
 | [[Backend/Messages-Metrics]] | Реестр метрик Messages (auto MediatR + доменные + consumer-метрики) | — |
