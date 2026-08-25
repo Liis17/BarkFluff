@@ -12,7 +12,8 @@ namespace Barkfluff.AdminPanel.Services;
 
 /// <summary>
 /// Фоновый сбор состояния сервисов платформы: liveness-пробы GET /health/live (fallback /ping
-/// для образов без health-endpoint'ов; h2c для gRPC-портов, HTTP/1.1 для Web), readiness
+/// для образов без health-endpoint'ов; h2c для HTTP/2-only портов, HTTP/1.1 для mixed
+/// listener'ов без TLS), readiness
 /// GET /health/ready (кэш проверок зависимостей на стороне сервиса), статусы Docker-контейнеров,
 /// свежесть логов в Seq для сервисов без HTTP-listener. Инфраструктура: RabbitMQ через
 /// собственный MassTransit-бин панели, S3 через S3BrowserService, Postgres/Redis — агрегат
