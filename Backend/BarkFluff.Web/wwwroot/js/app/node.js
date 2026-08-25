@@ -187,11 +187,15 @@
         var client = beaconClient();
         if (!client || !window.proto) return Promise.resolve(null);
 
-        return new Promise(function (resolve) {
-            var req = new window.proto.barkfluff.beacon.GetServerInfoRequest();
-            var metadata = (window.BF.metadata && window.BF.metadata.build()) || {};
-            client.getServerInfo(req, metadata, function (err, resp) {
-                if (err || !resp) { resolve(null); return; }
+        var req = new window.proto.barkfluff.beacon.GetServerInfoRequest();
+        var metadata = (window.BF.metadata && window.BF.metadata.build()) || {};
+        return window.BF.network.unary(
+            client.getServerInfo.bind(client),
+            req,
+            metadata,
+            window.BF.network.POLICIES.READ
+        ).then(function (resp) {
+                if (!resp) return null;
                 var color = resp.getColor();
                 var data = {
                     name: resp.getPublicName() || resp.getName(),
@@ -203,9 +207,8 @@
                     color: color ? color.getMainHex() : ''
                 };
                 setMeta(data);
-                resolve(data);
-            });
-        });
+                return data;
+            }).catch(function () { return null; });
     }
 
     /**

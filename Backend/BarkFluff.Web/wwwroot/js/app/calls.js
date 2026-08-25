@@ -270,7 +270,7 @@
         req.setMediaType(mediaType);
 
         return BF.clients.authCall(
-            BF.clients.calls.initiateCall.bind(BF.clients.calls), req
+            BF.clients.calls.initiateCall.bind(BF.clients.calls), req, BF.network.POLICIES.MUTATION
         ).then(function (resp) {
             var callId = resp.getCallId();
             currentCall = {
@@ -305,7 +305,7 @@
         req.setCallId(callId);
         var call = currentCall;
         return BF.clients.authCall(
-            BF.clients.calls.acceptCall.bind(BF.clients.calls), req
+            BF.clients.calls.acceptCall.bind(BF.clients.calls), req, BF.network.POLICIES.MUTATION
         ).then(function (resp) {
             if (call && call.callId === callId) {
                 call.status = 'active';
@@ -334,7 +334,7 @@
         req.setCallId(callId);
         if (currentCall && currentCall.callId === callId) currentCall = null;
         return BF.clients.authCall(
-            BF.clients.calls.rejectCall.bind(BF.clients.calls), req
+            BF.clients.calls.rejectCall.bind(BF.clients.calls), req, BF.network.POLICIES.MUTATION
         ).catch(function () { /* best-effort */ });
     }
 
@@ -343,7 +343,7 @@
         req.setCallId(callId);
         var media = mediaType != null ? mediaType : callsProto().CallMediaType.CALL_MEDIA_VIDEO;
         return BF.clients.authCall(
-            BF.clients.calls.joinCall.bind(BF.clients.calls), req
+            BF.clients.calls.joinCall.bind(BF.clients.calls), req, BF.network.POLICIES.MUTATION
         ).then(function (resp) {
             currentCall = {
                 callId: callId,
@@ -378,7 +378,7 @@
         if (currentCall && currentCall.callId === callId) currentCall = null;
         emit('ended', { callId: callId, reason: null, durationSeconds: 0, wasRinging: wasRinging, local: true });
         return BF.clients.authCall(
-            BF.clients.calls.endCall.bind(BF.clients.calls), req
+            BF.clients.calls.endCall.bind(BF.clients.calls), req, BF.network.POLICIES.MUTATION
         ).catch(function () { /* best-effort */ });
     }
 
@@ -388,7 +388,7 @@
         req.setCallId(callId);
         req.setQuality(quality);
         return BF.clients.authCall(
-            BF.clients.calls.setCallAudioQuality.bind(BF.clients.calls), req
+            BF.clients.calls.setCallAudioQuality.bind(BF.clients.calls), req, BF.network.POLICIES.MUTATION
         );
     }
 

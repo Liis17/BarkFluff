@@ -1,6 +1,6 @@
 /**
  * gRPC-Web client instances + authCall wrapper with auto token-refresh.
- * Requires: barkfluff.bundle.js loaded (window.barkfluff), BF.tokens, BF.metadata
+ * Requires: barkfluff.bundle.js loaded (window.barkfluff), BF.tokens, BF.metadata, BF.network
  * Exposes: BF.clients
  */
 (function () {
@@ -52,29 +52,30 @@
         var rt = BF.tokens.getRefreshToken();
         if (!rt) return Promise.resolve(null);
 
-        var p = new Promise(function (resolve) {
-            var proto = window.proto.barkfluff.identity;
-            var req = new proto.CreateTokenRequest();
-            req.setRefreshToken(rt);
+        var proto = window.proto.barkfluff.identity;
+        var req = new proto.CreateTokenRequest();
+        req.setRefreshToken(rt);
 
-            var meta = BF.metadata.build();
-            identityClient.createToken(req, meta, function (err, resp) {
-                if (err || !resp) {
-                    // Сетевая ошибка не означает, что refresh token недействителен.
-                    // Очищаем сессию только по явному ответу Identity.
-                    if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
-                    resolve(null);
-                    return;
-                }
-                var at = resp.getAccessToken();
-                if (!at) { resolve(null); return; }
+        var p = BF.network.unary(
+            identityClient.createToken.bind(identityClient),
+            req,
+            BF.metadata.build(),
+            BF.network.POLICIES.REFRESH
+        ).then(function (resp) {
+            if (!resp) return null;
+            var at = resp.getAccessToken();
+            if (!at) return null;
 
-                var stored = BF.tokens.get() || {};
-                stored.accessToken = at.getValue();
-                stored.accessTokenExpiration = at.getExpirationDate().toDate().getTime();
-                BF.tokens.save(stored);
-                resolve(at.getValue());
-            });
+            var stored = BF.tokens.get() || {};
+            stored.accessToken = at.getValue();
+            stored.accessTokenExpiration = at.getExpirationDate().toDate().getTime();
+            BF.tokens.save(stored);
+            return at.getValue();
+        }).catch(function (err) {
+            // Сетевая ошибка не означает, что refresh token недействителен.
+            // Очищаем сессию только по явному ответу Identity.
+            if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
+            return null;
         });
 
         refreshPromise = p.finally(function () { refreshPromise = null; });
@@ -97,7 +98,7 @@
      * @param {Object} request — protobuf request message
      * @returns {Promise<Object>} — protobuf response message
      */
-    function authCall(method, request) {
+    function authCall(method, request, policy) {
         return getValidToken().then(function (token) {
             if (!token) {
                 if (!BF.tokens.getRefreshToken()) {
@@ -106,33 +107,29 @@
                 }
                 return Promise.reject(new Error('token_refresh_unavailable'));
             }
-            return callWithToken(method, request, token, false);
+            return callWithToken(method, request, token, false, policy || BF.network.POLICIES.MUTATION);
         });
     }
 
-    function callWithToken(method, request, token, isRetry) {
+    function callWithToken(method, request, token, isRetry, policy) {
         var meta = BF.metadata.build(token);
-        return new Promise(function (resolve, reject) {
-            method(request, meta, function (err, resp) {
-                if (err) {
-                    // On UNAUTHENTICATED, try refresh once
-                    if (err.code === 16 && !isRetry) {
-                        refreshToken().then(function (newToken) {
-                            if (!newToken) {
-                                if (!BF.tokens.getRefreshToken()) window.location.href = '/';
-                                return reject(err);
-                            }
-                            callWithToken(method, request, newToken, true).then(resolve, reject);
-                        });
-                        return;
+        return BF.network.unary(method, request, meta, policy).catch(function (err) {
+            // UNAUTHENTICATED означает, что мутация не была авторизована: после refresh
+            // её можно один раз безопасно отправить повторно.
+            if (err.code === 16 && !isRetry) {
+                return refreshToken().then(function (newToken) {
+                    if (!newToken) {
+                        if (!BF.tokens.getRefreshToken()) window.location.href = '/';
+                        throw err;
                     }
-                    // Attach parsed error code
-                    var errorCode = err.metadata && err.metadata['x-error-code'];
-                    err.errorCode = errorCode || null;
-                    return reject(err);
-                }
-                resolve(resp);
-            });
+                    return callWithToken(method, request, newToken, true, policy);
+                });
+            }
+            if (!err.errorCode) {
+                var errorCode = err.metadata && err.metadata['x-error-code'];
+                err.errorCode = errorCode || null;
+            }
+            throw err;
         });
     }
 
