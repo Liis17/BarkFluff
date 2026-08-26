@@ -61,6 +61,7 @@
     var chatListLoading = false;
     var chatListRequest = null;
     var pendingUploads = new Map(); // local message id -> optimistic upload state
+    var pendingFileSelectionEntry = null;
     var GENERIC_MESSAGE_TYPE = 1;
     var IMAGE_UPLOAD_TYPE = 2;
     var GIF_UPLOAD_TYPE = 4;
@@ -1342,6 +1343,7 @@
                 }).catch(function () {});
             }
         }
+        saveCurrentDraft();
         messageInput.focus();
     }
 
@@ -1391,9 +1393,11 @@
                     return;
                 }
                 if (needsFile) {
-                    restorePendingComposer(entry);
-                    removePendingUpload(entry);
-                    if (fileInput) fileInput.click();
+                    setPendingState(entry, 'waiting-file');
+                    pendingFileSelectionEntry = entry;
+                    if (fileInput) {
+                        fileInput.click();
+                    }
                     return;
                 }
                 return runPendingSend(entry, true);
@@ -1511,12 +1515,47 @@
 
     // ========== FILE UPLOAD ==========
 
-    attachBtn.addEventListener('click', function () { fileInput.click(); });
+    attachBtn.addEventListener('click', function () {
+        pendingFileSelectionEntry = null;
+        fileInput.click();
+    });
 
     fileInput.addEventListener('change', function () {
         var files = Array.from(fileInput.files);
         fileInput.value = '';
+        var retryEntry = pendingFileSelectionEntry;
+        pendingFileSelectionEntry = null;
         if (files.length === 0) return;
+
+        if (retryEntry && !retryEntry.settled) {
+            var incomplete = retryEntry.uploads.filter(function (upload) {
+                return upload.state !== 'completed';
+            });
+            var matches = files.length === incomplete.length && files.every(function (file, index) {
+                return BF.files.matchesPendingUpload(incomplete[index], file);
+            });
+            if (!matches) {
+                groupToast(BF.i18n.t('error.uploadAttachment'));
+                setPendingState(retryEntry, 'waiting-file');
+                return;
+            }
+
+            retryEntry.runtimeFiles = new Array(retryEntry.uploads.length);
+            incomplete.forEach(function (upload, index) {
+                var file = files[index];
+                retryEntry.runtimeFiles[upload.index] = file;
+                var attachment = retryEntry.localMessage.content.attachments[upload.index];
+                if (attachment && (upload.uploadType === IMAGE_UPLOAD_TYPE || upload.uploadType === GIF_UPLOAD_TYPE)) {
+                    var previewUrl = URL.createObjectURL(file);
+                    retryEntry.previewUrls.push(previewUrl);
+                    attachment.localPreviewUrl = previewUrl;
+                }
+            });
+            refreshPendingElement(retryEntry);
+            retryEntry.retrying = true;
+            runPendingSend(retryEntry, true).finally(function () { retryEntry.retrying = false; });
+            return;
+        }
         openAttachModal(files);
     });
 

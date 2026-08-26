@@ -90,6 +90,109 @@ public class MessageOutboxDispatcherTests
         row.Status.Should().Be(MessageOutboxStatus.Delivered);
     }
 
+    [Fact]
+    public async Task DispatchOnceAsync_AfterBrokerRecovery_DeliversRetriedEvent()
+    {
+        var brokerAvailable = false;
+        var publishEndpoint = new Mock<IPublishEndpoint>();
+        publishEndpoint
+            .Setup(endpoint => endpoint.Publish(
+                It.IsAny<NewMessageEvent>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(() => brokerAvailable
+                ? Task.CompletedTask
+                : Task.FromException(new InvalidOperationException("RabbitMQ unavailable")));
+        await using var provider = CreateProvider(publishEndpoint.Object);
+        var rowId = await SeedOutboxAsync(
+            provider,
+            Guid.NewGuid(),
+            MessageOutboxStatus.Pending,
+            DateTime.UtcNow);
+        var dispatcher = CreateDispatcher(provider);
+
+        await dispatcher.DispatchOnceAsync(CancellationToken.None);
+
+        await using (var retryScope = provider.CreateAsyncScope())
+        {
+            var context = retryScope.ServiceProvider.GetRequiredService<MessagesContext>();
+            var retry = await context.MessageOutbox.SingleAsync(entry => entry.Id == rowId);
+            retry.NextAttemptAt = DateTime.UtcNow.AddSeconds(-1);
+            await context.SaveChangesAsync();
+        }
+        brokerAvailable = true;
+
+        await dispatcher.DispatchOnceAsync(CancellationToken.None);
+
+        await using var verificationScope = provider.CreateAsyncScope();
+        var delivered = await verificationScope.ServiceProvider.GetRequiredService<MessagesContext>()
+            .MessageOutbox.SingleAsync(entry => entry.Id == rowId);
+        delivered.Status.Should().Be(MessageOutboxStatus.Delivered);
+        delivered.Attempts.Should().Be(1);
+        publishEndpoint.Verify(endpoint => endpoint.Publish(
+            It.IsAny<NewMessageEvent>(),
+            It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task DispatchOnceAsync_AfterRetryWindow_MarksEventDeadLetter()
+    {
+        var publishEndpoint = new Mock<IPublishEndpoint>();
+        publishEndpoint
+            .Setup(endpoint => endpoint.Publish(
+                It.IsAny<NewMessageEvent>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("RabbitMQ unavailable"));
+        await using var provider = CreateProvider(publishEndpoint.Object);
+        var rowId = await SeedOutboxAsync(
+            provider,
+            Guid.NewGuid(),
+            MessageOutboxStatus.Pending,
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(-8));
+
+        await CreateDispatcher(provider).DispatchOnceAsync(CancellationToken.None);
+
+        await using var scope = provider.CreateAsyncScope();
+        var row = await scope.ServiceProvider.GetRequiredService<MessagesContext>()
+            .MessageOutbox.SingleAsync(entry => entry.Id == rowId);
+        row.Status.Should().Be(MessageOutboxStatus.DeadLetter);
+        row.Attempts.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Janitor_RemovesOnlyDeliveredEventsOutsideRetentionWindow()
+    {
+        await using var provider = CreateProvider(Mock.Of<IPublishEndpoint>());
+        var expiredId = await SeedOutboxAsync(
+            provider,
+            Guid.NewGuid(),
+            MessageOutboxStatus.Delivered,
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(-8));
+        var currentId = await SeedOutboxAsync(
+            provider,
+            Guid.NewGuid(),
+            MessageOutboxStatus.Delivered,
+            DateTime.UtcNow);
+        var deadLetterId = await SeedOutboxAsync(
+            provider,
+            Guid.NewGuid(),
+            MessageOutboxStatus.DeadLetter,
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(-8));
+        var janitor = new MessageOutboxJanitor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            TestHelper.CreateLogger<MessageOutboxJanitor>());
+
+        var deleted = await janitor.CleanupOnceAsync(CancellationToken.None);
+
+        deleted.Should().Be(1);
+        await using var scope = provider.CreateAsyncScope();
+        var ids = await scope.ServiceProvider.GetRequiredService<MessagesContext>()
+            .MessageOutbox.Select(entry => entry.Id).ToListAsync();
+        ids.Should().NotContain(expiredId).And.Contain([currentId, deadLetterId]);
+    }
+
     private static ServiceProvider CreateProvider(IPublishEndpoint publishEndpoint)
     {
         var databaseName = Guid.NewGuid().ToString();
@@ -113,7 +216,8 @@ public class MessageOutboxDispatcherTests
         ServiceProvider provider,
         Guid eventId,
         MessageOutboxStatus status,
-        DateTime nextAttemptAt)
+        DateTime nextAttemptAt,
+        DateTime? createdAt = null)
     {
         await using var scope = provider.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<MessagesContext>();
@@ -122,7 +226,7 @@ public class MessageOutboxDispatcherTests
             EventId = eventId,
             MessageId = Random.Shared.NextInt64(1, long.MaxValue),
             Payload = JsonSerializer.SerializeToUtf8Bytes(new NewMessageEvent { EventId = eventId }),
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = createdAt ?? DateTime.UtcNow,
             NextAttemptAt = nextAttemptAt,
             Status = status,
         };

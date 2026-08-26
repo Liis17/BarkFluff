@@ -1,6 +1,6 @@
 # Web — надёжность сетевых операций
 
-> Исследование для [[Клиенты/Web]]. Исходный код не изменён. Актуально на 2026-08-25.
+> **Статус: реализовано 2026-08-26.** Ниже сохранён исходный аудит на 2026-08-25; раздел «Что происходит сейчас» описывает состояние **до** исправлений.
 > Связанные сервисы: [[Backend/Web]], [[Backend/Messages]], [[Backend/Files]], [[Backend/Identity]].
 
 ## Решение в одном абзаце
@@ -243,3 +243,10 @@ read-modify-write операции, а не отдельного RPC. Один �
 - Текст, подпись и reply переживают timeout и reload; более новый draft не удаляется ACK старой
   операции.
 - Retry ограничен по попыткам и общему времени, имеет jitter и проверен детерминированными тестами.
+
+## Итог реализации
+
+- Все Web unary переведены на `BF.network.unary` с явной `READ/REFRESH/DRAFT/MUTATION`-политикой; server-streaming остался на существующей reconnect-логике.
+- `SendMessage` получил `client_operation_id`, unique `(SenderId, ClientOperationId)` и transactional `MessageOutbox` с at-least-once dispatcher; см. [[Backend/Messages]] и [[Архитектура]].
+- Резервирование и upload идемпотентны; добавлен status endpoint, lease/reclaim и end-to-end cancellation до S3/БД. Ручной retry сначала сверяет статус; см. [[Backend/Files]].
+- Черновик остаётся dirty до ACK и защищён generation. Pending send сохраняет text/caption/reply/file IDs в localStorage, а UI даёт отмену upload и ручной retry с прежним operation ID; см. [[Клиенты/Web]]. Binary IndexedDB-outbox намеренно не добавлялся.
