@@ -1,10 +1,13 @@
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Exceptions;
 using BarkFluff.Messages.Persistence.Services.Dtos;
+using BarkFluff.Shared.Queue.Messages;
 
 using Microsoft.EntityFrameworkCore;
 
 using Npgsql;
+
+using System.Text.Json;
 
 namespace BarkFluff.Messages.Persistence.Services;
 
@@ -132,11 +135,91 @@ public class MessagesStorage
         return result.Entity;
     }
 
-    public async Task<List<Message>> GetMessagesByIds(List<long> messageIds)
+    public Task<Message?> GetByClientOperationIdAsync(
+        long senderId,
+        Guid clientOperationId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Messages
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                message => message.SenderId == senderId && message.ClientOperationId == clientOperationId,
+                cancellationToken);
+    }
+
+    public async Task<(Message Message, bool Created)> AddMessageWithOutboxAsync(
+        Message message,
+        Func<Message, NewMessageEvent> eventFactory,
+        CancellationToken cancellationToken)
+    {
+        if (message.ClientOperationId is { } operationId && message.SenderId is { } senderId)
+        {
+            var existing = await GetByClientOperationIdAsync(senderId, operationId, cancellationToken);
+            if (existing is not null)
+                return (existing, false);
+        }
+
+        try
+        {
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction is not null)
+                return await AddMessageAndOutboxRowsAsync(message, eventFactory, cancellationToken);
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                var result = await AddMessageAndOutboxRowsAsync(message, eventFactory, cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return result;
+            });
+        }
+        catch (DbUpdateException) when (message.ClientOperationId.HasValue && message.SenderId.HasValue)
+        {
+            _context.ChangeTracker.Clear();
+            var winner = await GetByClientOperationIdAsync(
+                message.SenderId.Value,
+                message.ClientOperationId.Value,
+                cancellationToken);
+            if (winner is not null)
+                return (winner, false);
+            throw;
+        }
+    }
+
+    private async Task<(Message Message, bool Created)> AddMessageAndOutboxRowsAsync(
+        Message message,
+        Func<Message, NewMessageEvent> eventFactory,
+        CancellationToken cancellationToken)
+    {
+        message.LastChangeAt = message.SentAt;
+        await _context.Messages.AddAsync(message, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var queueEvent = eventFactory(message);
+        if (queueEvent.EventId == Guid.Empty)
+            queueEvent.EventId = Guid.NewGuid();
+
+        var now = DateTime.UtcNow;
+        _context.MessageOutbox.Add(new MessageOutboxEntry
+        {
+            EventId = queueEvent.EventId,
+            MessageId = message.Id,
+            Payload = JsonSerializer.SerializeToUtf8Bytes(queueEvent),
+            CreatedAt = now,
+            NextAttemptAt = now,
+            Status = MessageOutboxStatus.Pending,
+        });
+        await _context.SaveChangesAsync(cancellationToken);
+        return (message, true);
+    }
+
+    public async Task<List<Message>> GetMessagesByIds(
+        List<long> messageIds,
+        CancellationToken cancellationToken = default)
     {
         return await _context.Messages
             .Where(m => messageIds.Contains(m.Id) && !m.IsDeleted)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<List<Message>> GetMessagesByIdsInChatAsync(Guid chatId, List<long> messageIds)
@@ -153,7 +236,9 @@ public class MessagesStorage
 
     // Отличается от GetMessagesByIds тем, что НЕ отбрасывает удалённые: цитата на удалённое
     // сообщение должна отрисоваться как «сообщение удалено», а не исчезнуть без следа.
-    public async Task<List<Message>> GetMessagesByIdsIncludingDeletedAsync(List<long> messageIds)
+    public async Task<List<Message>> GetMessagesByIdsIncludingDeletedAsync(
+        List<long> messageIds,
+        CancellationToken cancellationToken = default)
     {
         if (messageIds.Count == 0)
         {
@@ -162,13 +247,13 @@ public class MessagesStorage
 
         return await _context.Messages
             .Where(m => messageIds.Contains(m.Id))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<Message?> GetMessageById(long id)
+    public async Task<Message?> GetMessageById(long id, CancellationToken cancellationToken = default)
     {
         return await _context.Messages
-            .FirstOrDefaultAsync(m => m.Id == id);
+            .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
     }
 
     // Поиск fed-сообщения по стабильному межнодовому id (docs/rearch/05, ApplyFederatedEdit/Delete,

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Features.SendMessage;
 using BarkFluff.Messages.Infrastructure;
@@ -6,6 +8,7 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+using BarkFluff.Shared.Queue.Messages;
 
 using Grpc.Core;
 
@@ -46,6 +49,13 @@ public class SendMessageCommandHandlerTests
             TestHelper.CreateLogger<SendMessageCommandHandler>());
     }
 
+    private NewMessageEvent GetQueuedEvent()
+    {
+        var row = _h.DbContext.MessageOutbox.Should().ContainSingle().Subject;
+        return JsonSerializer.Deserialize<NewMessageEvent>(row.Payload)
+            ?? throw new InvalidOperationException("Outbox payload is empty");
+    }
+
     private void SetupUsersClient(long userId, string firstName = "Test", string lastName = "User", string username = "testuser")
     {
         var response = new GetByIdResponse
@@ -76,7 +86,54 @@ public class SendMessageCommandHandlerTests
 
         result.Should().NotBeNull();
         result.Message.Content.Text.Should().Be("Hello");
-        _h.PublishEndpointMock.Verify(p => p.Publish(It.IsAny<Shared.Queue.Messages.NewMessageEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        GetQueuedEvent().Message.Should().NotBeEmpty();
+        _h.PublishEndpointMock.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Handle_SameClientOperationId_ReturnsTheSameMessageAndSingleOutboxEntry()
+    {
+        var userId = 1L;
+        var operationId = Guid.NewGuid();
+        var chat = await _h.SeedChat(memberUserIds: [userId, 2]);
+        var handler = CreateHandler(userId);
+        var command = new SendMessageCommand
+        {
+            ChatId = chat.Id,
+            ClientOperationId = operationId,
+            Message = new OutgoingMsg { Text = "Hello once" }
+        };
+
+        var first = await handler.Handle(command, CancellationToken.None);
+        var second = await handler.Handle(command, CancellationToken.None);
+
+        second.Message.Id.Should().Be(first.Message.Id);
+        second.Message.ClientOperationId.Should().Be(operationId.ToString());
+        _h.DbContext.Messages.Should().ContainSingle();
+        _h.DbContext.MessageOutbox.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Handle_WithoutClientOperationId_PreservesLegacyNonIdempotentContract()
+    {
+        var userId = 1L;
+        var chat = await _h.SeedChat(memberUserIds: [userId, 2]);
+        var handler = CreateHandler(userId);
+
+        var first = await handler.Handle(new SendMessageCommand
+        {
+            ChatId = chat.Id,
+            Message = new OutgoingMsg { Text = "legacy" }
+        }, CancellationToken.None);
+        var second = await handler.Handle(new SendMessageCommand
+        {
+            ChatId = chat.Id,
+            Message = new OutgoingMsg { Text = "legacy" }
+        }, CancellationToken.None);
+
+        second.Message.Id.Should().NotBe(first.Message.Id);
+        _h.DbContext.Messages.Should().HaveCount(2);
+        _h.DbContext.MessageOutbox.Should().HaveCount(2);
     }
 
     [Fact]
@@ -251,15 +308,13 @@ public class SendMessageCommandHandlerTests
         result.Message.FederatedId.Should().NotBeNullOrEmpty();
         result.Message.SenderUuid.Should().Be(localUuid.ToString());
 
-        _h.PublishEndpointMock.Verify(p => p.Publish(
-            It.Is<Shared.Queue.Messages.NewMessageEvent>(e =>
-                e.IsFederated
-                && e.RemoteParticipants.Count == 1
-                && e.RemoteParticipants[0].Uuid == remoteUuid
-                && e.SenderUuid == localUuid
-                && e.SenderFid == "@alice:remote.test"
-                && e.LastChangeAt.HasValue),
-            It.IsAny<CancellationToken>()), Times.Once);
+        var queuedEvent = GetQueuedEvent();
+        queuedEvent.IsFederated.Should().BeTrue();
+        queuedEvent.RemoteParticipants.Should().ContainSingle();
+        queuedEvent.RemoteParticipants[0].Uuid.Should().Be(remoteUuid);
+        queuedEvent.SenderUuid.Should().Be(localUuid);
+        queuedEvent.SenderFid.Should().Be("@alice:remote.test");
+        queuedEvent.LastChangeAt.Should().HaveValue();
     }
 
     [Fact]
@@ -312,7 +367,8 @@ public class SendMessageCommandHandlerTests
         var chatsStorageMock = new Mock<ChatsStorage>(_h.DbContext) { CallBase = true };
         chatsStorageMock
             .Setup(s => s.CreateFederatedChatAsync(
-                It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+                It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(winnerChat);
 
         var handler = new SendMessageCommandHandler(
@@ -335,13 +391,11 @@ public class SendMessageCommandHandlerTests
         }, CancellationToken.None);
 
         _h.DbContext.Messages.Should().ContainSingle(m => m.ChatId == winnerChat.Id);
-        _h.PublishEndpointMock.Verify(p => p.Publish(
-            It.Is<Shared.Queue.Messages.NewMessageEvent>(e =>
-                e.ChatId == winnerChat.Id
-                && !e.IsFirstMessageInChat
-                && e.InitiatorUuid == null
-                && e.InviteeUuid == null),
-            It.IsAny<CancellationToken>()), Times.Once);
+        var queuedEvent = GetQueuedEvent();
+        queuedEvent.ChatId.Should().Be(winnerChat.Id);
+        queuedEvent.IsFirstMessageInChat.Should().BeFalse();
+        queuedEvent.InitiatorUuid.Should().BeNull();
+        queuedEvent.InviteeUuid.Should().BeNull();
     }
 
     [Fact]

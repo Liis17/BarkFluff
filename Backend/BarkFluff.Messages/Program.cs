@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Messages.BackgroundServices;
 using BarkFluff.Messages.Host;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Infrastructure.Behaviors;
@@ -93,6 +94,8 @@ public class Program
         builder.Services.AddTransient<EncryptedMessageQueueSender>();
         builder.Services.AddTransient<SecretMessageQueueSender>();
         builder.Services.AddTransient<ReadByQueueSender>();
+        builder.Services.AddHostedService<MessageOutboxDispatcher>();
+        builder.Services.AddHostedService<MessageOutboxJanitor>();
 
         builder.Services.AddMassTransit(x =>
         {
