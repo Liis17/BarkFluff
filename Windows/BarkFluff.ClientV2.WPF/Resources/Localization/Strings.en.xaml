@@ -50,6 +50,9 @@
     <sys:String x:Key="Error_LoginFailed">Unable to sign in. Check your username and password.</sys:String>
     <sys:String x:Key="Error_LoginTwoFactorRequired">Enter your two-factor authentication code.</sys:String>
     <sys:String x:Key="Error_LoginTwoFactorInvalid">The two-factor authentication code is invalid.</sys:String>
+    <sys:String x:Key="Error_LoginRateLimited">Too many sign-in attempts. Try again later.</sys:String>
+    <sys:String x:Key="Error_LoginLocked">Sign-in is temporarily locked. Try again later.</sys:String>
+    <sys:String x:Key="Error_LoginProtectionUnavailable">Sign-in protection is temporarily unavailable. Try again later.</sys:String>
     <sys:String x:Key="FastAuth_Creating">Creating a new QR code…</sys:String>
     <sys:String x:Key="FastAuth_WaitingConfirmation">Waiting for confirmation on your other device.</sys:String>
     <sys:String x:Key="FastAuth_Scanned">QR code scanned. Confirm the sign-in on your other device.</sys:String>
@@ -82,6 +85,9 @@
     <sys:String x:Key="Error_RegistrationFieldsRequired">Enter your first name, username, and email.</sys:String>
     <sys:String x:Key="Error_RegistrationFailed">Unable to create the profile. Check the details and try again.</sys:String>
     <sys:String x:Key="Error_RegistrationCodeInvalid">The confirmation code is invalid or expired.</sys:String>
+    <sys:String x:Key="Error_RegistrationRateLimited">Too many registration requests. Try again later.</sys:String>
+    <sys:String x:Key="Error_RegistrationLocked">Registration confirmation is temporarily locked.</sys:String>
+    <sys:String x:Key="Error_RegistrationProtectionUnavailable">Registration protection is temporarily unavailable. Try again later.</sys:String>
     <sys:String x:Key="Error_PasswordMismatch">Passwords do not match.</sys:String>
     <sys:String x:Key="Error_PasswordInvalid">Unable to set the password. Try a different password.</sys:String>
     <sys:String x:Key="PasswordRecovery_Title">Reset your password</sys:String>
@@ -97,6 +103,12 @@
     <sys:String x:Key="Error_RecoveryIdentifierRequired">Enter your username or email.</sys:String>
     <sys:String x:Key="Error_PasswordResetFailed">Unable to start password recovery. Try again later.</sys:String>
     <sys:String x:Key="Error_PasswordResetCodeInvalid">The reset code is invalid or expired.</sys:String>
+    <sys:String x:Key="Error_PasswordResetRateLimited">Too many password reset requests. Try again later.</sys:String>
+    <sys:String x:Key="Error_PasswordResetLocked">Password reset is temporarily locked. Try again later.</sys:String>
+    <sys:String x:Key="Error_PasswordResetProtectionUnavailable">Password reset protection is temporarily unavailable. Try again later.</sys:String>
+    <sys:String x:Key="Error_TwoFactorRateLimited">Too many two-factor requests. Try again later.</sys:String>
+    <sys:String x:Key="Error_TwoFactorLocked">The two-factor operation is temporarily locked.</sys:String>
+    <sys:String x:Key="Error_TwoFactorProtectionUnavailable">Two-factor protection is temporarily unavailable. Try again later.</sys:String>
     <sys:String x:Key="Messenger_Search">Search chats and people</sys:String>
     <sys:String x:Key="Messenger_Send">Send</sys:String>
     <sys:String x:Key="Messenger_Empty">Select a chat to start messaging</sys:String>

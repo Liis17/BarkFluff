@@ -45,7 +45,7 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 ## Interceptors (через `AddBarkFluffGrpc()`)
 
 - **ServerExceptionInterceptor** — ловит `BaseGrpcException` и необработанные исключения → `RpcException` с trailer `x-error-code`. Уже сформированные `RpcException` сохраняют исходный status/trailers: ожидаемые клиентские статусы (`FailedPrecondition`, `Cancelled`, `InvalidArgument`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Unauthenticated`, `OutOfRange`) логируются как Warning, инфраструктурные gRPC-статусы — как Error без маркировки «критическая ошибка». Бизнес-ошибки → их доменный `StatusCode`, неизвестные исключения → `StatusCode.Unknown` с фиксированным `BaseGrpcException.ErrorMessage` без передачи `ex.Message` клиенту. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`.
-- **RequestContextInterceptor** — извлекает клиентские metadata-заголовки (`x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`) в scoped `RequestContext`. IP-адрес резолвится по приоритету: 1) `x-ip-address` из gRPC metadata, 2) `X-Forwarded-For` HTTP-заголовок, 3) `X-Real-IP` (nginx), 4) `RemoteIpAddress` TCP-соединения.
+- **RequestContextInterceptor** — извлекает клиентские metadata-заголовки (`x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`) в scoped `RequestContext`. `IpAddress` для legacy-логики резолвится с учётом `x-ip-address`, а `TrustedIpAddress` для security-ключей — только из `X-Real-IP`, `X-Forwarded-For` или `RemoteIpAddress` TCP-соединения; клиентский `x-ip-address` в trusted-адрес не попадает.
 
 ## Конфигурация (`WebApplicationBuilderExtensions`)
 

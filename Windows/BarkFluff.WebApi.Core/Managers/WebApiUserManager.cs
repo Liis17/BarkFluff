@@ -436,6 +436,18 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Неверный код двухфакторной аутентификации (OTP)"), null, null, true);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return (new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_LoginRateLimited"), null, null, false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return (new ErrorReturner(false, "Вход временно заблокирован. Повторите попытку позже", errorResourceKey: "Error_LoginLocked"), null, null, false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return (new ErrorReturner(false, "Защита входа временно недоступна. Повторите попытку позже", errorResourceKey: "Error_LoginProtectionUnavailable"), null, null, false);
+            }
         }
 
         /// <summary>

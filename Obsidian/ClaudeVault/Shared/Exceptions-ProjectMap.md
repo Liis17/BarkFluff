@@ -35,6 +35,9 @@
 | `InvalidLoginOrPasswordException.cs` | `21BFB9B5-C377-45D1-9B15-6B7F3432B397` | Неверный логин или пароль |
 | `InvalidOldPasswordException.cs` | `A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04` | Неверный старый пароль |
 | `InvalidRefreshTokenException.cs` | `7E6A31C5-3C4D-412E-87BC-0A387617A5D3` | *(ErrorMessage не переопределён — используется базовое "Неизвестная ошибка")* |
+| `IdentityRateLimitExceededException.cs` | `7D1CBF0E-2C85-4A2A-9B2D-6B2A6CF5A1E2` | Rate limit Identity (`ResourceExhausted`) |
+| `IdentityLockoutException.cs` | `B95A5B58-6A7F-43A2-A9B9-D9D8F8B4B1E4` | Lockout Identity (`ResourceExhausted`) |
+| `IdentityProtectionUnavailableException.cs` | `A7B3D2F1-4C6E-4E6D-8A6B-2F0A9C7D5E11` | Redis-защита недоступна (`Unavailable`) |
 | `NotSetUsernameOrEmailException.cs` | `55872FA3-4F77-4C5A-B471-C25699BA20C0` | Не передан ни логин ни email |
 | `NotValidOtpCodeException.cs` | `803B632C-4457-4B05-9435-9C3DD0F41E00` | Неверный код 2FA |
 | `OtpCodeNeedException.cs` | `C1576884-12D8-4722-A7EE-9F9789AD1265` | Необходимо 2FA ввести код |

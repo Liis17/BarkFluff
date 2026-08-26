@@ -10,7 +10,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Program.cs` | Точка входа. Регистрация сервисов: EF Core, MediatR, XAuth, gRPC, CORS, MassTransit, gRPC-клиент UsersServerApi. Автоматическое применение миграций при старте. |
+| `Program.cs` | Точка входа. Регистрация сервисов: EF Core, MediatR, XAuth, gRPC, CORS, MassTransit, gRPC-клиент UsersServerApi, Redis `IConnectionMultiplexer`, `IdentitySecurityOptions` и `IdentityAbuseGuardBehavior`. Автоматическое применение миграций при старте. |
 | `appsettings.json` | Базовая конфигурация (заглушка, реальные значения приходят от [[Backend/Configuration]]) |
 | `appsettings.Development.json` | Конфигурация для локальной разработки |
 | `Dockerfile.slim` | Docker-образ сервиса, используемый CI и production. |
@@ -102,6 +102,15 @@ gRPC-сервисы — точки входа в сервис.
 | `Exceptions/RefreshTokenNotFoundException.cs` | Исключение: refresh token не найден. |
 | `Migrations/` | EF Core миграции (применяются автоматически при старте). |
 
+## Security/
+
+| Файл | Назначение |
+|------|-----------|
+| `IIdentityAbuseGuard.cs` | Контракт распределённых rate limit, failure counters, lockout и progressive delay |
+| `RedisIdentityAbuseGuard.cs` | Атомарные Redis Lua-операции, TTL, разделение ключей по IP/login/user/code/OTP и fail-closed при ошибке Redis |
+| `IdentityAbuseGuardBehavior.cs` | MediatR-защита восьми публичных high-risk RPC; Server API-команды не участвуют |
+| `IdentityAbuseOperation.cs` / `IdentityFailureResult.cs` | Типы операций и результат счётчика попыток |
+
 ---
 
 ## Services/
@@ -122,6 +131,7 @@ gRPC-сервисы — точки входа в сервис.
 | Файл | Назначение |
 |------|-----------|
 | `JwtSettings.cs` | POCO для конфигурации JWT: `SecretKey`, `Issuer`, `Audience`, `ExpiryMinutes`. |
+| `IdentitySecurityOptions.cs` | Лимиты, окна TTL, lockout и progressive delay защиты Identity. |
 
 ---
 
