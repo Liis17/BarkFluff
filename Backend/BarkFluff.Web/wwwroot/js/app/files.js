@@ -322,6 +322,14 @@
         return 5;
     }
 
+    function matchesPendingUpload(upload, file) {
+        if (!upload || !file) return false;
+        return file.name === upload.name &&
+            file.size === upload.size &&
+            (file.type || '') === (upload.type || '') &&
+            getUploadFileType(file.type, upload.uploadType === 5, file.name) === upload.uploadType;
+    }
+
     // --- Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер) ---
 
     // Векторная заглушка «не удалось загрузить» (data-URI, нейтральный серый — читается на любой теме).
@@ -527,6 +535,7 @@
         retryUpload: retryUpload,
         getUploadStatus: getUploadStatus,
         getUploadFileType: getUploadFileType,
+        matchesPendingUpload: matchesPendingUpload,
         applyPlaceholder: applyPlaceholder,
         bindResilientMedia: bindResilientMedia,
         bindResilientLink: bindResilientLink,

@@ -29,7 +29,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 
 | Feature | Описание |
 |---------|----------|
-| `SendMessage` | Отправка в чат или DM (авто-создаёт личный чат). Лимиты: текст ≤ 4096 символов, ≤ 10 вложений, ≤ 20 пересылаемых сообщений. Ответ (`ReplyToMessageId`) хранится ссылкой, пересылка (`ForwardedMessageIds`) — снапшотом с сохранением порядка клиента |
+| `SendMessage` | Отправка в чат или DM (авто-создаёт личный чат). Лимиты: текст ≤ 4096 символов, ≤ 10 вложений, ≤ 20 пересылаемых сообщений. Ответ (`ReplyToMessageId`) хранится ссылкой, пересылка (`ForwardedMessageIds`) — снапшотом с сохранением порядка клиента. Опциональный UUID `client_operation_id` делает ручной retry идемпотентным: повтор от того же sender возвращает прежний `Message`, не повторяя outbox и метрики |
 | `EditMessage` | Правка своего сообщения: текст и/или список вложений. Forward-снапшот не редактируется. Системные нельзя. Выставляет `IsEdited`+`EditedAt`, публикует `MessageEditedEvent` |
 | `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`) с очисткой `Content.Text` и записей `MessageAttachments`; файлы в [[Backend/Files]] остаются. Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
 | `ListChats` | Список непустых чатов с пагинацией по последнему неудалённому сообщению (`last_message.SentAt DESC`); имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат). Приватные Pending-чаты видны и приглашённому (по `PrivateUserLowId/HighId`, он ещё не member); Rejected — только инициатору. В proto `Chat.private_inviter_user_id=16` — инициатор инвайта (вычисляется: до Accept единственный реальный member = инициатор), клиент по нему определяет роль |
@@ -76,6 +76,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `MessagesApiService` | `TokenType.User` — клиентский API |
 | `MessagesServerApiService` | `TokenType.Service` — межсервисный API |
 
+`MessagesApiService.SendMessage` передаёт `ServerCallContext.CancellationToken` в MediatR; обработчик протягивает его в EF Core и зависимости. Отмена прекращает незавершённую работу, но не откатывает уже committed-сообщение; для этого нужен тот же `client_operation_id` при retry.
+
 `MessagesServerApi.SendMessageServer(sender_user_id, oneof chat_id/user_id, OutgoingMessage, allow_chat_creation)` — отправка от имени пользователя (вызывает [[Backend/Bots]]). `SendMessageCommand.SenderId` параметризует отправителя (null = клиентский путь из UserContext); переиспользуется вся логика (вложения, лимиты, `NewMessageEvent`). В серверном пути **авто-создание личного чата запрещено** (бот не пишет первым), кроме `allow_chat_creation=true` (системные боты, login-notifier). Членство отправителя в чате проверяется как обычно (`CheckAccessToChat` с senderId).
 
 `MessagesServerApi.EditMessageServer(sender_user_id, message_id, text, files_ids)` и `DeleteMessageServer(sender_user_id, message_id)` — правка и удаление от имени пользователя (вызывает [[Backend/Bots]]). Тот же приём, что у `SendMessageServer`: `EditMessageCommand.SenderId`/`DeleteMessageCommand.SenderId` параметризуют автора (null = клиентский путь из UserContext), вся остальная логика переиспользуется. **Проверка авторства не ослабляется** — `message.SenderId != senderId` по-прежнему даёт `NoPermissionException`, поэтому по чужому `message_id` бот ничего не сделает и `chat_id` в запросе не нужен.
@@ -88,7 +90,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 ### RabbitMQ
 
 **Публикует:**
-- `NewMessageEvent` → [[Backend/Updates]] (отправка сообщения, создание группы, kick, pin/unpin/unpin-all системные сообщения)
+- `NewMessageEvent` → [[Backend/Updates]] (клиентский `SendMessage` идёт через transactional outbox; прочие пути — создание группы, kick, pin/unpin/unpin-all системные сообщения)
 - `MessageReadEvent` → [[Backend/Updates]] (MarkAsRead)
 - `MessageEditedEvent` → [[Backend/Updates]] (EditMessage)
 - `MessageDeletedEvent` → [[Backend/Updates]] (DeleteMessage)
@@ -110,6 +112,14 @@ docker-compose -f docker-compose-dev.yml up -d messages
 - `user-changed-name-messages` → `UserChangedNameConsumer` → Redis-кеш имён
 - `user-changed-avatar-messages` → `UserChangedAvatarConsumer` → Redis-кеш аватаров
 - `session-revoked-messages` → `SessionRevokedConsumer` → инвалидация токена сессии (`TokenRevocationCache`, XAuth)
+
+### Transactional outbox `SendMessage`
+
+`MessagesStorage.AddMessageWithOutboxAsync` в одной PostgreSQL-транзакции сохраняет `Message` и сериализованный `NewMessageEvent` в `MessageOutbox`. Если вторая запись не удалась, транзакция откатывает и сообщение. У каждого события стабильный UUID `EventId`.
+
+`MessageOutboxDispatcher` каждые 2 с атомарно claim'ит до 100 `Pending`-строк через `FOR UPDATE SKIP LOCKED`, переводит их в `Processing` с lease 2 минуты и публикует в RabbitMQ. Истёкший lease reclaim'ится. Ошибки повторяются с backoff 1 с → 5 с → 30 с → 2 мин → 10 мин → 30 мин; после 7 суток строка становится `DeadLetter`. `MessageOutboxJanitor` раз в час удаляет `Delivered` старше 7 суток.
+
+Гарантия — **at-least-once**: crash после publish, но до фиксации `Delivered` может опубликовать тот же `EventId` повторно. Exactly-once inbox консюмеров в этот контур не входит. Метрики: `message_outbox_pending`, `message_outbox_delivered`, `message_outbox_delivery_errors`, `message_outbox_dispatch_errors`, `message_outbox_reclaimed`, `message_outbox_deadletter`.
 
 ### Redis-кеш
 
@@ -148,7 +158,8 @@ API: `EnqueueMessageAsync` / `AckMessageAsync` / `ListPendingMessagesAsync` (с�
 |----------|---------------|
 | `Chat` | `LastMessage`, `CountUnread`, `FirstUnreadMessageId` — вычисляются в рантайме, не в БД. `Type` (enum ChatType: Regular/Private/Secret, default=Regular). `KdfSalt` и `PassphraseVerifier` — bytea nullable, заполняются только для `Type=Private`. Чаты с `Type=Secret` сервер не материализует — поле существует только для совместимости proto. `CreatedAt` (timestamptz, default=UtcNow). `PrivateUserLowId`/`PrivateUserHighId` — нормализованная пара участников приватного чата (уникальный индекс). `PrivateInviteState` (enum: Pending/Accepted/Rejected, default=Pending) |
 | `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление. `UserUuid` (Guid?, nullable) — фаза 0 федерации, пока никем не заполняется. Proto `ChatMember` получил параллельные `user_uuid`(5)/`server_name`(6) — этап 0.4, пока не маппится из домена |
-| `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable). Индекс `(ChatId, SentAt)` — обязателен: все выборки сообщений фильтруют по `ChatId` и сортируют по `SentAt`, без него seq scan. **Фаза 0 федерации**: `LastChangeAt` (timestamptz, NOT NULL) — единая UTC-метка последнего изменения, основа будущего LWW; ставится в `MessagesStorage.AddMessage` (=`SentAt`, покрывает все пути создания — обычные и системные сообщения), в `EditMessageCommandHandler` (=`EditedAt`), в `DeleteMessageCommandHandler` (=`UtcNow`); наружу пока не отдаётся. `ReplyToMessageId` (long?, nullable) — ответ хранится ссылкой; **намеренно без FK**: `ChatsStorage.DeleteChat` удаляет чат физически с каскадом в `Messages`, и самоссылающийся FK ронял бы удаление любого чата с ответом. `FederatedId`/`SenderUuid` (Guid?, nullable) — пассивны, пока никем не заполняются; уникальный частичный индекс `(ChatId, FederatedId) WHERE FederatedId IS NOT NULL` — под будущую идемпотентность импорта |
+| `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable). Индекс `(ChatId, SentAt)` — обязателен: все выборки сообщений фильтруют по `ChatId` и сортируют по `SentAt`, без него seq scan. `ClientOperationId` (Guid?, nullable) + filtered unique index `(SenderId, ClientOperationId)` даёт идемпотентность `SendMessage`; NULL сохраняет прежнюю семантику старых клиентов. `LastChangeAt` (timestamptz, NOT NULL) — единая UTC-метка последнего изменения, основа LWW; ставится при create/edit/delete. `ReplyToMessageId` (long?, nullable) — ответ хранится ссылкой; **намеренно без FK**: `ChatsStorage.DeleteChat` удаляет чат физически с каскадом в `Messages`. `FederatedId`/`SenderUuid` (Guid?, nullable) — федеративная корреляция; уникальный частичный индекс `(ChatId, FederatedId) WHERE FederatedId IS NOT NULL` |
+| `MessageOutboxEntry` | Durable `NewMessageEvent`: stable `EventId`, `MessageId`, serialized `Payload`, `Pending/Processing/Delivered/DeadLetter`, attempts, `NextAttemptAt`, `LastError`. Уникальные индексы `EventId` и `MessageId`; индекс `(Status, NextAttemptAt)` для dispatcher |
 | `EncryptedMessage` | Шифрованное сообщение приватного чата. Отдельная таблица `EncryptedMessages` (НЕ join с `Messages`). Поля: `Id` (bigserial), `ChatId`, `SenderId`, `SenderDeviceId` (Guid), `SentAt`, `Ciphertext`/`Nonce`/`AssociatedData` (bytea), `IsEdited`, `EditedAt`, `IsDeleted`. Soft-delete очищает все 3 bytea-поля. Индексы по `ChatId` и `(ChatId, SentAt)` |
 | `PrivateChatReadState` | Составной ключ `(ChatId, UserId)`, хранит только ID последнего прочитанного зашифрованного сообщения; используется для `count_unread` без раскрытия содержимого |
 | `MessageAttachment` | Owned collection в отдельной таблице `MessageAttachments` |

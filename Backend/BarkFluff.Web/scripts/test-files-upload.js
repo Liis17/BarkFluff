@@ -68,6 +68,19 @@ async function wait(ms) { await new Promise((resolve) => setTimeout(resolve, ms)
 
 async function main() {
     let files = loadFiles();
+    assert.equal(files.matchesPendingUpload({
+        name: 'file.bin',
+        size: 3,
+        type: 'application/octet-stream',
+        uploadType: 5
+    }, file), true);
+    assert.equal(files.matchesPendingUpload({
+        name: 'other.bin',
+        size: 3,
+        type: 'application/octet-stream',
+        uploadType: 5
+    }, file), false, 'a different file of the same upload type is rejected');
+
     const wall = files.uploadFile(file, 5, null, { operationId: 'wall', wallTimeoutMs: 10, stallTimeoutMs: 100 });
     await assert.rejects(wall, (error) => error.kind === 'timeout' && error.timeout === 'wall');
     assert.equal(FakeXhr.requests[0].aborted, true);

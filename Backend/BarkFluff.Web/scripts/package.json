@@ -7,6 +7,8 @@
     "build:shell-version": "node build-shell-version.js",
     "test:chat-background-refresh": "node test-chat-background-refresh.js",
     "test:network": "node test-network.js",
+    "test:refresh-session": "node test-refresh-session.js",
+    "test:legal-network": "node test-legal-network.js",
     "test:drafts": "node test-drafts.js",
     "test:files-upload": "node test-files-upload.js",
     "test:pending-sends": "node test-pending-sends.js",

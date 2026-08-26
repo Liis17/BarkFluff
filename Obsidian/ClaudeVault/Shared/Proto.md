@@ -50,7 +50,9 @@ dotnet build BarkFluff.Proto.csproj
 - `CreateTokenResponse.access_token` имеет **field_number=2** (не 1) — важно при ручной десериализации
 - `ConfigurationApi.GetConfigurationHistory` возвращает переходы `previous_value → new_value`; `RollbackConfiguration` восстанавливает `previous_value` выбранной ревизии и записывает новый rollback-переход. Контракт аддитивный, существующие field numbers не менялись.
 - `AuthRequest` и `FindByLoginRequest` используют `oneof login` (username ИЛИ email)
-- `SendMessageRequest` использует `oneof source_id` (chat_id ИЛИ user_id)
+- `SendMessageRequest` использует `oneof source_id` (chat_id ИЛИ user_id); `client_operation_id` (field 5, UUID) даёт [[Backend/Messages]] идемпотентную корреляцию ручного retry
+- `Message.client_operation_id` (field 13) возвращает тот же UUID в ACK, realtime и history; пустая строка у legacy-сообщений
+- `GetUploadUrlRequest.client_operation_id` (field 2, UUID) делает резервирование слота [[Backend/Files]] идемпотентным для одного user/type
 - `ListMessagesRequest`: поле `count` устарело, использовать `offset_before`/`offset_after`
 - `MessageReadEvent.new_read_by` — **полный** список прочитавших, не только новых
 - `UploadFileType` — отдельный enum от `MessageAttachmentType`, маппировать при отправке сообщений

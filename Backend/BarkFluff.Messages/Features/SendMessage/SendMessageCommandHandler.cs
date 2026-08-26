@@ -401,8 +401,10 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             );
         }
 
+        var forwardedMessageCount = 0;
         if (request.Message.ForwardedMessageIds is { Count: > 0 } forwardSourceIds)
         {
+            forwardedMessageCount = forwardSourceIds.Count;
             _logger.LogDebug(
                 "Обработка {ForwardCount} пересланных сообщений от пользователя {UserId}",
                 forwardSourceIds.Count,
@@ -502,8 +504,6 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                     ForwardedOrder = order
                 });
             }
-
-            _metrics.Add("messages_forwarded", forwardSourceIds.Count);
 
             _logger.LogInformation(
                 "Добавлено {ForwardCount} пересланных сообщений",
@@ -625,6 +625,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         if (!saveResult.Created)
             return new SendMessageResponse { Message = message.ToGrpc(filesInfoMap) };
 
+        if (forwardedMessageCount > 0)
+            _metrics.Add("messages_forwarded", forwardedMessageCount);
         _metrics.Increment("messages_sent");
         if (!string.IsNullOrEmpty(request.Message.Text))
             _metrics.Increment("messages_sent_with_text");
