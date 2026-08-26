@@ -28,13 +28,13 @@ public class GetChatDraftQueryHandler : IRequestHandler<GetChatDraftQuery, GetCh
 
     public async Task<GetChatDraftResponse> Handle(GetChatDraftQuery request, CancellationToken cancellationToken)
     {
-        var chat = await _chatsStorage.GetChat(request.ChatId) ?? throw new ChatNotFoundException();
+        var chat = await _chatsStorage.GetChat(request.ChatId, cancellationToken) ?? throw new ChatNotFoundException();
         if (chat.Type != ChatType.Regular)
             throw new ChatNotRegularException();
-        if (!await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId))
+        if (!await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId, cancellationToken))
             throw new NoAccessToChatException();
 
-        var draft = await _chatDraftsStorage.GetAsync(request.ChatId, _userContext.UserId);
+        var draft = await _chatDraftsStorage.GetAsync(request.ChatId, _userContext.UserId, cancellationToken);
         if (draft is null)
             return new GetChatDraftResponse();
 

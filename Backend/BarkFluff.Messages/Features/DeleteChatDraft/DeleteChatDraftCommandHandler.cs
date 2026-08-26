@@ -25,15 +25,16 @@ public class DeleteChatDraftCommandHandler : IRequestHandler<DeleteChatDraftComm
 
     public async Task<bool> Handle(DeleteChatDraftCommand request, CancellationToken cancellationToken)
     {
-        var chat = await _chatsStorage.GetChat(request.ChatId) ?? throw new ChatNotFoundException();
+        var chat = await _chatsStorage.GetChat(request.ChatId, cancellationToken) ?? throw new ChatNotFoundException();
         if (chat.Type != ChatType.Regular)
             throw new ChatNotRegularException();
-        if (!await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId))
+        if (!await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId, cancellationToken))
             throw new NoAccessToChatException();
 
         return await _chatDraftsStorage.DeleteIfRevisionMatchesAsync(
             request.ChatId,
             _userContext.UserId,
-            request.Revision);
+            request.Revision,
+            cancellationToken);
     }
 }

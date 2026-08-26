@@ -1,5 +1,8 @@
+using BarkFluff.Messages.Features.DeleteChatDraft;
+using BarkFluff.Messages.Features.GetChatDraft;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.SendMessage;
+using BarkFluff.Messages.Features.UpsertChatDraft;
 using BarkFluff.Messages.Host;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
@@ -85,5 +88,33 @@ public class MessagesApiServiceTests
         _mediator.Verify(
             m => m.Send(It.IsAny<SendMessageCommand>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task DraftCalls_ForwardGrpcCancellationToken()
+    {
+        using var cts = new CancellationTokenSource();
+        var chatId = Guid.NewGuid().ToString();
+        var revision = Guid.NewGuid().ToString();
+        var context = new TestServerCallContext(cts.Token);
+        _mediator
+            .Setup(m => m.Send(It.IsAny<GetChatDraftQuery>(), cts.Token))
+            .ReturnsAsync(new GetChatDraftResponse());
+        _mediator
+            .Setup(m => m.Send(It.IsAny<UpsertChatDraftCommand>(), cts.Token))
+            .ReturnsAsync(new UpsertChatDraftResponse());
+        _mediator
+            .Setup(m => m.Send(It.IsAny<DeleteChatDraftCommand>(), cts.Token))
+            .ReturnsAsync(true);
+
+        await _service.GetChatDraft(new GetChatDraftRequest { ChatId = chatId }, context);
+        await _service.UpsertChatDraft(new UpsertChatDraftRequest { ChatId = chatId, Text = "draft" }, context);
+        await _service.DeleteChatDraft(
+            new DeleteChatDraftRequest { ChatId = chatId, ExpectedRevision = revision },
+            context);
+
+        _mediator.Verify(m => m.Send(It.IsAny<GetChatDraftQuery>(), cts.Token), Times.Once);
+        _mediator.Verify(m => m.Send(It.IsAny<UpsertChatDraftCommand>(), cts.Token), Times.Once);
+        _mediator.Verify(m => m.Send(It.IsAny<DeleteChatDraftCommand>(), cts.Token), Times.Once);
     }
 }
