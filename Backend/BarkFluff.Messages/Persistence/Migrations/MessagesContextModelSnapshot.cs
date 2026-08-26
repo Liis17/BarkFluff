@@ -291,6 +291,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<Guid>("ChatId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ClientOperationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("EditedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -337,7 +340,57 @@ namespace BarkFluff.Messages.Persistence.Migrations
 
                     b.HasIndex("ChatId", "SentAt");
 
+                    b.HasIndex("SenderId", "ClientOperationId")
+                        .IsUnique()
+                        .HasFilter("\"SenderId\" IS NOT NULL AND \"ClientOperationId\" IS NOT NULL");
+
                     b.ToTable("Messages");
+                });
+
+            modelBuilder.Entity("BarkFluff.Messages.Domain.MessageOutboxEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<long>("MessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Payload")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("MessageId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "NextAttemptAt");
+
+                    b.ToTable("MessageOutbox", (string)null);
                 });
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.PinnedMessage", b =>

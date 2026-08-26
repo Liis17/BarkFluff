@@ -236,6 +236,8 @@ message SendMessageRequest {
   }
   
   OutgoingMessage message = 3; // Отправляемое сообщение
+
+  string client_operation_id = 5; // UUID логической отправки для идемпотентного повтора
   
 }
 

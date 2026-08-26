@@ -37,7 +37,9 @@ public class ReplyPreviewResolver
     /// Возвращает превью по id ОРИГИНАЛА (не отвечающего сообщения). Пустой словарь, если среди
     /// сообщений нет ни одного ответа — обычный случай, лишних запросов в нём не делается.
     /// </summary>
-    public async Task<IReadOnlyDictionary<long, ReplyInfo>> ResolveAsync(IEnumerable<Domain.Message> messages)
+    public async Task<IReadOnlyDictionary<long, ReplyInfo>> ResolveAsync(
+        IEnumerable<Domain.Message> messages,
+        CancellationToken cancellationToken = default)
     {
         var replyTargetIds = messages
             .Where(m => m.ReplyToMessageId.HasValue)
@@ -50,7 +52,9 @@ public class ReplyPreviewResolver
 
         // Намеренно НЕ GetMessagesByIds: тот фильтрует удалённые, а удалённый оригинал нужно
         // показать как «сообщение удалено», а не как отсутствующую цитату.
-        var originals = await _messagesStorage.GetMessagesByIdsIncludingDeletedAsync(replyTargetIds);
+        var originals = await _messagesStorage.GetMessagesByIdsIncludingDeletedAsync(
+            replyTargetIds,
+            cancellationToken);
 
         var senderIds = originals
             .Where(m => m is { IsDeleted: false, SenderId: not null })
@@ -62,7 +66,8 @@ public class ReplyPreviewResolver
         if (senderIds.Count > 0)
         {
             var usersResponse = await _usersServerApiClient.ListByIdsAsync(
-                new ListByIdsRequest { Ids = { senderIds } });
+                new ListByIdsRequest { Ids = { senderIds } },
+                cancellationToken: cancellationToken);
 
             foreach (var user in usersResponse.Users)
                 namesById[user.Id] = $"{user.FirstName} {user.LastName}";

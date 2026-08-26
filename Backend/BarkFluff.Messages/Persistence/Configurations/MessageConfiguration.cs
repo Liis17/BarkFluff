@@ -19,6 +19,10 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         // Без этого индекса PostgreSQL делает sequential scan всей таблицы Messages.
         builder.HasIndex(m => new { m.ChatId, m.SentAt });
 
+        builder.HasIndex(m => new { m.SenderId, m.ClientOperationId })
+            .IsUnique()
+            .HasFilter("\"SenderId\" IS NOT NULL AND \"ClientOperationId\" IS NOT NULL");
+
         // Идемпотентность будущего импорта федеративных сообщений (Фаза 2):
         // один и тот же FederatedId не может встретиться дважды в одном чате.
         builder.HasIndex(m => new { m.ChatId, m.FederatedId })

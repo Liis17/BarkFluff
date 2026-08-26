@@ -129,6 +129,13 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Message = request.Message.ToCommandMessage(),
         };
 
+        if (!string.IsNullOrWhiteSpace(request.ClientOperationId))
+        {
+            if (!Guid.TryParse(request.ClientOperationId, out var clientOperationId))
+                throw new ClientOperationIdNotValidException();
+            command.ClientOperationId = clientOperationId;
+        }
+
         switch (request.SourceIdCase)
         {
             case SendMessageRequest.SourceIdOneofCase.ChatId when Guid.TryParse(request.ChatId, out Guid chatId):
@@ -146,7 +153,7 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
                 throw new ChatIdNotValidException();
         }
 
-        return await _mediator.Send(command);
+        return await _mediator.Send(command, context.CancellationToken);
     }
 
     public override async Task<CreateGroupChatResponse> CreateGroupChat(CreateGroupChatRequest request, ServerCallContext context)

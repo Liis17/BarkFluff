@@ -150,7 +150,8 @@ public class ImportFederatedChatCommandHandlerTests
         var chatsStorageMock = new Mock<ChatsStorage>(_h.DbContext) { CallBase = true };
         chatsStorageMock
             .Setup(s => s.CreateFederatedChatAsync(
-                It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+                It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(winnerChat);
 
         var handler = new ImportFederatedChatCommandHandler(

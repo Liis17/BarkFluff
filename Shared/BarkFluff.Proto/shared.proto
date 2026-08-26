@@ -39,6 +39,8 @@ message Message {
   repeated string federated_read_by = 11; // UUID remote-участников, прочитавших сообщение (FederatedReadStates; рендер — Фаза 5)
 
   ReplyInfo reply_to = 12; // Заполнено => сообщение является ответом. Резолвится сервером при выдаче
+
+  string client_operation_id = 13; // UUID клиентской операции отправителя; пусто у старых сообщений
 }
 
 // Превью цитируемого сообщения для reply. В отличие от ForwardedMessageAttachment это НЕ снапшот:
@@ -220,4 +222,3 @@ message SecretEnvelope {
 
   google.protobuf.Timestamp sent_at = 6; // Дата отправки (UTC, проставляется сервером)
 }
-
