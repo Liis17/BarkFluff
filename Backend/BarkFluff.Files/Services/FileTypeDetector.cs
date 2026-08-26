@@ -70,7 +70,9 @@ public class FileTypeDetector
     /// </summary>
     /// <param name="stream">Поток с содержимым файла (позиция должна быть в начале).</param>
     /// <returns>Определённый тип вложения сообщения.</returns>
-    public async Task<DetectedFileType> DetectAsync(Stream stream)
+    public async Task<DetectedFileType> DetectAsync(
+        Stream stream,
+        CancellationToken cancellationToken = default)
     {
         if (stream == null || stream.Length < 4)
         {
@@ -84,7 +86,7 @@ public class FileTypeDetector
         {
             // Читаем достаточно байтов для всех проверок (минимум 12 для WebP/WAV/AVI)
             var buffer = new byte[Math.Min(32, stream.Length)];
-            var bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length));
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
 
             if (bytesRead < 4)
             {

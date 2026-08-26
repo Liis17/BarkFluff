@@ -55,7 +55,8 @@ public class UploadAvatarServerCommandHandler : IRequestHandler<UploadAvatarServ
         var processedBytes = await _imageCompressor.ProcessAvatarAsync(rawStream);
 
         using var mainStream = new MemoryStream(processedBytes);
-        var mainEtag = await _s3Uploader.UploadAsync(bucketName, $"{mainFileId}", mainStream, "image/jpeg");
+        var mainEtag = await _s3Uploader.UploadAsync(
+            bucketName, $"{mainFileId}", mainStream, "image/jpeg", cancellationToken);
 
         // Создаём превью (64px)
         var previewFileId = Guid.NewGuid();
@@ -64,7 +65,8 @@ public class UploadAvatarServerCommandHandler : IRequestHandler<UploadAvatarServ
         var previewBytes = await _imageCompressor.CompressImageAsync(previewInputStream, 64);
 
         using var previewStream = new MemoryStream(previewBytes);
-        var previewEtag = await _s3Uploader.UploadAsync(bucketName, $"{previewFileId}", previewStream, "image/jpeg");
+        var previewEtag = await _s3Uploader.UploadAsync(
+            bucketName, $"{previewFileId}", previewStream, "image/jpeg", cancellationToken);
 
         // Сохраняем превью в БД
         var previewFile = new DomainUploadFile

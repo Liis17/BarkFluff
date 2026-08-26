@@ -599,6 +599,21 @@ static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode, bool isProxyMode
     // HTTP upload — client-streaming недоступен в gRPC-Web, поэтому используем прямой HTTP POST.
     routes.Add(new RouteConfig
     {
+        RouteId = "files-http-upload-status",
+        ClusterId = "files-http",
+        Match = new RouteMatch
+        {
+            Path = "/api/files/upload/{uploadId}/status",
+            Methods = new[] { "GET" }
+        },
+        Transforms = new[]
+        {
+            new Dictionary<string, string> { { "PathPattern", "/upload/{uploadId}/status" } }
+        }
+    });
+
+    routes.Add(new RouteConfig
+    {
         RouteId = "files-http-upload",
         ClusterId = "files-http",
         Match = new RouteMatch

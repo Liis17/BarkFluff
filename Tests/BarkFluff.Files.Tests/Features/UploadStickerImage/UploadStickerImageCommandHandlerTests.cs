@@ -45,7 +45,7 @@ public class UploadStickerImageCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.MessageAttachmentSticker)).Returns("message-documents");
-        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-sticker");
 
         var result = await _handler.Handle(new UploadStickerImageCommand
@@ -64,7 +64,7 @@ public class UploadStickerImageCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.MessageAttachmentSticker)).Returns("message-documents");
-        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-sticker");
 
         await _handler.Handle(new UploadStickerImageCommand
@@ -84,7 +84,7 @@ public class UploadStickerImageCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.MessageAttachmentSticker)).Returns("message-documents");
-        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-sticker");
 
         await _handler.Handle(new UploadStickerImageCommand
@@ -94,7 +94,7 @@ public class UploadStickerImageCommandHandlerTests
         }, CancellationToken.None);
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), "image/webp"),
+            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), "image/webp", It.IsAny<CancellationToken>()),
             Times.Once());
     }
 }

@@ -157,4 +157,139 @@ public class UploadedFilesStorageTests : IAsyncLifetime
         result[UploadFileType.MessageAttachmentImage].Should().Be(300);
         result[UploadFileType.MessageAttachmentVideo].Should().Be(500);
     }
+
+    [Fact]
+    public async Task ClaimUpload_OnlyOneClaimOwnsTheLease()
+    {
+        var reservation = await Storage.ReserveUploadAsync(
+            1,
+            Guid.NewGuid(),
+            UploadFileType.MessageAttachmentDocument,
+            DateTime.UtcNow,
+            TimeSpan.FromHours(2),
+            CancellationToken.None);
+
+        var first = await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+        var second = await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+
+        first.Outcome.Should().Be(UploadClaimOutcome.Claimed);
+        first.LeaseToken.Should().NotBeNull();
+        second.Outcome.Should().Be(UploadClaimOutcome.Processing);
+    }
+
+    [Fact]
+    public async Task CompleteUpload_PreservesActualDeduplicatedFileId()
+    {
+        var reservation = await Storage.ReserveUploadAsync(
+            1,
+            Guid.NewGuid(),
+            UploadFileType.MessageAttachmentDocument,
+            DateTime.UtcNow,
+            TimeSpan.FromHours(2),
+            CancellationToken.None);
+        var claim = await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+        var actualFileId = Guid.NewGuid();
+
+        await Storage.CompleteUploadAsync(
+            reservation.FileId,
+            claim.LeaseToken!.Value,
+            actualFileId,
+            CancellationToken.None);
+        var repeated = await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+
+        repeated.Outcome.Should().Be(UploadClaimOutcome.Completed);
+        repeated.ResultFileId.Should().Be(actualFileId);
+    }
+
+    [Fact]
+    public async Task ReleaseUpload_ReturnsOperationToPending()
+    {
+        var reservation = await Storage.ReserveUploadAsync(
+            1,
+            Guid.NewGuid(),
+            UploadFileType.MessageAttachmentDocument,
+            DateTime.UtcNow,
+            TimeSpan.FromHours(2),
+            CancellationToken.None);
+        var claim = await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+
+        await Storage.ReleaseUploadAsync(
+            reservation.FileId,
+            claim.LeaseToken!.Value,
+            CancellationToken.None);
+        var repeated = await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+
+        repeated.Outcome.Should().Be(UploadClaimOutcome.Claimed);
+        repeated.LeaseToken.Should().NotBe(claim.LeaseToken!.Value);
+    }
+
+    [Fact]
+    public async Task DeleteExpiredPending_RemovesPendingOperationAndSlot()
+    {
+        var reservation = await Storage.ReserveUploadAsync(
+            1,
+            Guid.NewGuid(),
+            UploadFileType.MessageAttachmentDocument,
+            DateTime.UtcNow.AddHours(-3),
+            TimeSpan.FromHours(2),
+            CancellationToken.None);
+
+        var deleted = await Storage.DeleteExpiredPendingAsync();
+
+        deleted.Should().Be(1);
+        (await Storage.GetFile(reservation.FileId)).Should().BeNull();
+        (await Storage.GetUploadOperationAsync(reservation.FileId)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteExpiredPending_DoesNotDeleteProcessingOperation_AndLeaseCanBeReclaimed()
+    {
+        var oldNow = DateTime.UtcNow.AddHours(-3);
+        var reservation = await Storage.ReserveUploadAsync(
+            1,
+            Guid.NewGuid(),
+            UploadFileType.MessageAttachmentDocument,
+            oldNow,
+            TimeSpan.FromHours(2),
+            CancellationToken.None);
+        await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            oldNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+
+        var deleted = await Storage.DeleteExpiredPendingAsync();
+        var reclaimed = await Storage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(35),
+            CancellationToken.None);
+
+        deleted.Should().Be(0);
+        reclaimed.Outcome.Should().Be(UploadClaimOutcome.Claimed);
+    }
 }

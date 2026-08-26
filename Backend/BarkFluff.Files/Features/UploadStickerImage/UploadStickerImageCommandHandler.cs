@@ -54,7 +54,8 @@ public class UploadStickerImageCommandHandler : IRequestHandler<UploadStickerIma
         var processedBytes = await _imageCompressor.ProcessStickerAsync(rawStream);
 
         using var stream = new MemoryStream(processedBytes);
-        var etag = await _s3Uploader.UploadAsync(bucketName, $"{fileId}", stream, "image/webp");
+        var etag = await _s3Uploader.UploadAsync(
+            bucketName, $"{fileId}", stream, "image/webp", cancellationToken);
 
         var uploadFile = new DomainUploadFile
         {
