@@ -6,6 +6,7 @@ using BarkFluff.Identity.Features.DisableOtpVerification;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 
@@ -63,11 +64,12 @@ public class DisableOtpVerificationCommandHandlerTests
                 Task.FromResult(new Grpc.Core.Metadata()), () => Grpc.Core.Status.DefaultSuccess, () => new Grpc.Core.Metadata(), () => { }));
     }
 
-    private DisableOtpVerificationCommandHandler CreateHandler()
+    private DisableOtpVerificationCommandHandler CreateHandler(TestHelper.TestIdentityAbuseGuard? abuseGuard = null)
     {
         return new DisableOtpVerificationCommandHandler(
             _userContext, _authPropsStorage, _notificationSender,
-            _locationClient, _usersClient.Object, _requestContext, _metrics, _logger.Object);
+            _locationClient, _usersClient.Object, _requestContext, _metrics, _logger.Object,
+            abuseGuard ?? TestHelper.CreateAbuseGuard());
     }
 
     [Fact]
@@ -101,6 +103,58 @@ public class DisableOtpVerificationCommandHandlerTests
         var cmd = new DisableOtpVerificationCommand { OptType = BarkFluff.Proto.Identity.OtpTypeId.Authenticator, OtpCode = "000000" };
 
         await Assert.ThrowsAsync<NotValidOtpCodeException>(() => handler.Handle(cmd, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Handle_FifthWrongOtp_LocksDisableOperationAndDoesNotNotify()
+    {
+        _context.AuthUserProperties.Add(new AuthUserProperty
+        {
+            UserId = 1,
+            OtpEnabled = true,
+            OtpSecret = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20))
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        abuseGuard.OtpFailureResult = new IdentityFailureResult(5, true);
+        var handler = CreateHandler(abuseGuard);
+        var command = new DisableOtpVerificationCommand
+        {
+            OptType = BarkFluff.Proto.Identity.OtpTypeId.Authenticator,
+            OtpCode = "000000"
+        };
+
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(command, CancellationToken.None));
+
+        var props = await _context.AuthUserProperties.FirstAsync(x => x.UserId == 1);
+        Assert.True(props.OtpEnabled);
+        _publishEndpoint.Verify(
+            p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Assert.Equal(1, abuseGuard.OtpFailureCalls);
+    }
+
+    [Fact]
+    public async Task Handle_MissingAuthenticatorOtp_DoesNotRegisterFailure()
+    {
+        _context.AuthUserProperties.Add(new AuthUserProperty
+        {
+            UserId = 1,
+            OtpEnabled = true,
+            OtpSecret = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20))
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        var handler = CreateHandler(abuseGuard);
+
+        await Assert.ThrowsAsync<OtpCodeNeedException>(() => handler.Handle(
+            new DisableOtpVerificationCommand { OptType = BarkFluff.Proto.Identity.OtpTypeId.Authenticator },
+            CancellationToken.None));
+
+        Assert.Equal(0, abuseGuard.OtpFailureCalls);
     }
 
     [Fact]

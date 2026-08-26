@@ -5,6 +5,7 @@ using BarkFluff.Identity.Features.ConfirmAccount;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Queue.Notifications;
@@ -59,11 +60,14 @@ public class ConfirmAccountCommandHandlerTests
         DeviceId = deviceId
     };
 
-    private ConfirmAccountCommandHandler CreateHandler(RequestContext? ctx = null)
+    private ConfirmAccountCommandHandler CreateHandler(
+        RequestContext? ctx = null,
+        TestHelper.TestIdentityAbuseGuard? abuseGuard = null)
     {
         return new ConfirmAccountCommandHandler(
             _codesStorage, _usersClient.Object, _refreshTokensStorage,
-            ctx ?? _requestContext, _notificationSender, _locationClient, _metrics, _logger.Object);
+            ctx ?? _requestContext, _notificationSender, _locationClient, _metrics, _logger.Object,
+            abuseGuard ?? TestHelper.CreateAbuseGuard());
     }
 
     [Fact]
@@ -123,6 +127,35 @@ public class ConfirmAccountCommandHandlerTests
         var cmd = new ConfirmAccountCommand { Code = "123456", CodeId = _context.ConfirmationCodes.First().Id.ToString() };
 
         await Assert.ThrowsAsync<ConfirmationCodeIncorrectException>(() => handler.Handle(cmd, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Handle_FifthWrongCode_InvalidatesCodeAndStopsAccountConfirmation()
+    {
+        var codeId = Guid.NewGuid();
+        _context.ConfirmationCodes.Add(new ConfirmationCode
+        {
+            Id = codeId,
+            Type = ConfirmationCodeType.Registration,
+            Expires = DateTime.UtcNow.AddHours(1),
+            Value = "654321",
+            OwnerId = 42
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        abuseGuard.CodeFailureResult = new IdentityFailureResult(5, true);
+        var handler = CreateHandler(abuseGuard: abuseGuard);
+
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(
+            new ConfirmAccountCommand { Code = "123456", CodeId = codeId.ToString() },
+            CancellationToken.None));
+
+        Assert.Empty(_context.ConfirmationCodes);
+        _usersClient.Verify(
+            c => c.ConfirmUserAsync(It.IsAny<ConfirmUserRequest>(), null, null, CancellationToken.None),
+            Times.Never);
+        Assert.Equal(1, abuseGuard.CodeFailureCalls);
     }
 
     [Fact]

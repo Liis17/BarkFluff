@@ -279,6 +279,25 @@ public class ConfigurationDefaultsPopulator
             return "redis:6379";
         }
 
+        // --- Identity security limits ---
+        if (serviceId == ServiceId.Identity && config.Section == "IdentitySecurity")
+        {
+            return config.Key switch
+            {
+                "HighRiskRequestsPerMinute" => "60",
+                "SubjectRequestsPerWindow" => "5",
+                "SubjectWindowMinutes" => "15",
+                "FailureLimit" => "5",
+                "FailureWindowMinutes" => "15",
+                "LockoutMinutes" => "15",
+                "CodeAttemptLimit" => "5",
+                "OtpAttemptLimit" => "5",
+                "BackoffBaseMilliseconds" => "250",
+                "BackoffMaxMilliseconds" => "2000",
+                _ => null
+            };
+        }
+
         // --- Seq (агрегатор логов) ---
         if (config.Section == "Seq" && config.Key == "ServerUrl")
         {
