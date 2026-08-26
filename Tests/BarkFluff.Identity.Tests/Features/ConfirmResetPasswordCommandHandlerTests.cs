@@ -7,6 +7,7 @@ using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
 using BarkFluff.Shared.Exceptions.Identity;
 
@@ -65,11 +66,14 @@ public class ConfirmResetPasswordCommandHandlerTests
         DeviceId = deviceId
     };
 
-    private ConfirmResetPasswordCommandHandler CreateHandler(RequestContext? ctx = null)
+    private ConfirmResetPasswordCommandHandler CreateHandler(
+        RequestContext? ctx = null,
+        TestHelper.TestIdentityAbuseGuard? abuseGuard = null)
     {
         return new ConfirmResetPasswordCommandHandler(
             _resetPasswordsStorage, _authPropsStorage, _passwordsStorage,
-            _refreshTokensStorage, _mediator.Object, ctx ?? _requestContext, _metrics, _logger.Object);
+            _refreshTokensStorage, _mediator.Object, ctx ?? _requestContext, _metrics, _logger.Object,
+            abuseGuard ?? TestHelper.CreateAbuseGuard());
     }
 
     [Fact]
@@ -133,6 +137,61 @@ public class ConfirmResetPasswordCommandHandlerTests
         var cmd = new ConfirmResetPasswordCommand { ResetId = resetId, OtpCode = "654321" };
 
         await Assert.ThrowsAsync<NotValidOtpCodeException>(() => handler.Handle(cmd, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Handle_FifthWrongOtp_InvalidatesResetRequest()
+    {
+        var resetId = Guid.NewGuid();
+        _context.ResetPasswords.Add(new ResetPassword
+        {
+            Id = resetId,
+            IsApproved = false,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            OtpType = DomainOtpType.Email,
+            OtpCode = "123456",
+            UserId = 1
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        abuseGuard.CodeFailureResult = new IdentityFailureResult(5, true);
+        var handler = CreateHandler(abuseGuard: abuseGuard);
+
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(
+            new ConfirmResetPasswordCommand { ResetId = resetId, OtpCode = "654321" },
+            CancellationToken.None));
+
+        var reset = await _context.ResetPasswords.FindAsync(resetId);
+        Assert.True(reset!.IsApproved);
+        Assert.Null(reset.OtpCode);
+        _mediator.Verify(m => m.Send(It.IsAny<CreateTokenCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(1, abuseGuard.CodeFailureCalls);
+    }
+
+    [Fact]
+    public async Task Handle_MissingOtp_DoesNotRegisterFailure()
+    {
+        var resetId = Guid.NewGuid();
+        _context.ResetPasswords.Add(new ResetPassword
+        {
+            Id = resetId,
+            IsApproved = false,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            OtpType = DomainOtpType.Email,
+            OtpCode = "123456",
+            UserId = 1
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        var handler = CreateHandler(abuseGuard: abuseGuard);
+
+        await Assert.ThrowsAsync<OtpCodeNeedException>(() => handler.Handle(
+            new ConfirmResetPasswordCommand { ResetId = resetId },
+            CancellationToken.None));
+
+        Assert.Equal(0, abuseGuard.CodeFailureCalls);
     }
 
     [Fact]

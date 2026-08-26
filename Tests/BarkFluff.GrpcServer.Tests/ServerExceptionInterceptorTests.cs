@@ -1,4 +1,5 @@
 using BarkFluff.Shared.Exceptions;
+using BarkFluff.Shared.Exceptions.Identity;
 
 using Grpc.Core;
 
@@ -41,6 +42,24 @@ public class ServerExceptionInterceptorTests
 
         exception.StatusCode.Should().Be(StatusCode.Unavailable);
         logger.Levels.Should().Contain(LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task UnaryServerHandler_IdentityProtectionError_UsesStatusAndErrorCodeTrailer()
+    {
+        var logger = new RecordingLogger<ServerExceptionInterceptor>();
+        var interceptor = new ServerExceptionInterceptor(logger);
+        var expected = new IdentityProtectionUnavailableException();
+
+        var exception = await Assert.ThrowsAsync<RpcException>(() => interceptor.UnaryServerHandler<object, object>(
+            new object(),
+            Mock.Of<ServerCallContext>(),
+            (_, _) => throw expected));
+
+        exception.StatusCode.Should().Be(StatusCode.Unavailable);
+        exception.Trailers.GetValue("x-error-code").Should().Be(expected.ErrorCode);
+        logger.Levels.Should().Contain(LogLevel.Warning);
+        logger.Levels.Should().NotContain(LogLevel.Error);
     }
 
     [Fact]
