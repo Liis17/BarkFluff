@@ -24,8 +24,11 @@
     function draftCall(method, request) {
         return c().authCall(method, request, BF.network.POLICIES.DRAFT);
     }
-    function mutationCall(method, request) {
-        return c().authCall(method, request, BF.network.POLICIES.MUTATION);
+    function mutationCall(method, request, signal) {
+        var policy = signal
+            ? BF.network.withSignal(BF.network.POLICIES.MUTATION, signal)
+            : BF.network.POLICIES.MUTATION;
+        return c().authCall(method, request, policy);
     }
 
     // Chat/Users/Messages встраивают в ответы уже готовые ссылки на Files (picture,
@@ -105,6 +108,7 @@
             replyTo: m.getReplyTo ? mapReplyTo(m.getReplyTo()) : null,
             isEdited: m.getIsEdited ? m.getIsEdited() : false,
             editedAt: m.getEditedAt ? tsToMs(m.getEditedAt()) : null,
+            clientOperationId: m.getClientOperationId ? m.getClientOperationId() : '',
             content: {
                 text: content ? content.getText() : '',
                 attachments: content ? content.getAttachmentsList().map(mapAttachment) : []
@@ -300,6 +304,9 @@
             msg.setForwardedMessageIdsList(opts.forwardedMessageIds);
         }
         req.setMessage(msg);
+        if (opts.clientOperationId && req.setClientOperationId) {
+            req.setClientOperationId(opts.clientOperationId);
+        }
 
         return mutationCall(messages().sendMessage.bind(messages()), req).then(function (resp) {
             var m = resp.getMessage();
@@ -429,10 +436,13 @@
         });
     }
 
-    function getUploadUrl(fileType) {
+    function getUploadUrl(fileType, clientOperationId, signal) {
         var req = new (filePb().GetUploadUrlRequest)();
         req.setFileType(fileType || 0);
-        return mutationCall(files().getUploadUrl.bind(files()), req).then(function (resp) {
+        if (clientOperationId && req.setClientOperationId) {
+            req.setClientOperationId(clientOperationId);
+        }
+        return mutationCall(files().getUploadUrl.bind(files()), req, signal).then(function (resp) {
             return { url: resp.getUrl(), fileId: resp.getFileId() };
         });
     }

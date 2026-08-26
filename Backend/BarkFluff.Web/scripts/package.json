@@ -7,6 +7,9 @@
     "build:shell-version": "node build-shell-version.js",
     "test:chat-background-refresh": "node test-chat-background-refresh.js",
     "test:network": "node test-network.js",
+    "test:drafts": "node test-drafts.js",
+    "test:files-upload": "node test-files-upload.js",
+    "test:pending-sends": "node test-pending-sends.js",
     "format": "prettier --write ../wwwroot/js/app/**/*.js *.js",
     "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js app-bundle-entry.js build-app.js",
     "lint": "cd .. && scripts/node_modules/.bin/eslint --config scripts/eslint.config.cjs wwwroot/js/app/**/*.js scripts/build-app.js scripts/build-shell-version.js scripts/app-bundle-entry.js"

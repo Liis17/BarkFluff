@@ -10,6 +10,7 @@ import '../wwwroot/js/app/utils.js';
 import '../wwwroot/js/app/sound.js';
 import '../wwwroot/js/app/api.js';
 import '../wwwroot/js/app/drafts.js';
+import '../wwwroot/js/app/pending-sends.js';
 import '../wwwroot/js/app/privatechat.js';
 import '../wwwroot/js/app/newchat.js';
 import '../wwwroot/js/app/files.js';

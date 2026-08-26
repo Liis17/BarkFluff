@@ -61,10 +61,17 @@
     var chatListLoading = false;
     var chatListRequest = null;
     var pendingUploads = new Map(); // local message id -> optimistic upload state
-    var pendingUploadCounter = 0;
     var GENERIC_MESSAGE_TYPE = 1;
     var IMAGE_UPLOAD_TYPE = 2;
     var GIF_UPLOAD_TYPE = 4;
+
+    function newOperationId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+        });
+    }
 
     // Reply / Forward / Context menu state
     var pendingReply = null;
@@ -796,6 +803,8 @@
         var showSenderGutter = !!(currentChatInfo && currentChatInfo.isGroupChat) && msg.senderId !== myUserId;
         return {
             onReplyClick: scrollToMessage,
+            onPendingCancel: cancelPendingSend,
+            onPendingRetry: retryPendingSend,
             groupedWithPrevious: groupedWithPrevious,
             showSenderGutter: showSenderGutter,
             showSenderAvatar: showSenderGutter && !canGroupMessages(msg, next)
@@ -857,6 +866,7 @@
         if (!entry || entry.settled) return;
         entry.settled = true;
         pendingUploads.delete(entry.localId);
+        if (BF.pendingSends && entry.operationId) BF.pendingSends.remove(entry.operationId);
         releasePendingPreviews(entry);
 
         var idx = messages.findIndex(function (m) { return String(m.id) === String(entry.localId); });
@@ -875,6 +885,10 @@
     }
 
     function pendingUploadMatches(entry, msg) {
+        if (entry.operationId && msg && msg.clientOperationId &&
+            String(entry.operationId).toLowerCase() === String(msg.clientOperationId).toLowerCase()) {
+            return true;
+        }
         var serverIds = messageFileIds(msg);
         var pendingIds = entry.fileIds.map(function (id) { return String(id).toLowerCase(); }).sort();
         return pendingIds.length > 0 &&
@@ -889,6 +903,8 @@
             if (serverMessage) {
                 entry.settled = true;
                 pendingUploads.delete(entry.localId);
+                if (BF.pendingSends && entry.operationId) BF.pendingSends.remove(entry.operationId);
+                if (BF.drafts && entry.draftSnapshot) BF.drafts.clearSent(entry.chatId, entry.draftSnapshot);
                 releasePendingPreviews(entry);
             } else {
                 messages.push(entry.localMessage);
@@ -926,6 +942,8 @@
 
         entry.settled = true;
         pendingUploads.delete(entry.localId);
+        if (BF.pendingSends && entry.operationId) BF.pendingSends.remove(entry.operationId);
+        if (BF.drafts && entry.draftSnapshot) BF.drafts.clearSent(entry.chatId, entry.draftSnapshot);
 
         if (String(chatId) !== String(currentChatId)) {
             releasePendingPreviews(entry);
@@ -955,6 +973,106 @@
         }
         if (wasAtBottom && localIdx >= 0 && serverIdx < 0) setTimeout(scrollToBottom, 0);
         return true;
+    }
+
+    function pendingSnapshot(entry) {
+        return {
+            operationId: entry.operationId,
+            chatId: entry.chatId,
+            generation: entry.draftSnapshot ? entry.draftSnapshot.generation : 0,
+            text: entry.text || '',
+            caption: entry.caption || '',
+            replyToMessageId: entry.replyToMessageId || 0,
+            fileIds: entry.fileIds.slice(),
+            uploads: entry.uploads.map(function (upload) {
+                return {
+                    operationId: upload.operationId,
+                    reservedFileId: upload.reservedFileId || '',
+                    resultFileId: upload.resultFileId || '',
+                    name: upload.name,
+                    size: upload.size,
+                    type: upload.type,
+                    uploadType: upload.uploadType,
+                    state: upload.state
+                };
+            }),
+            state: entry.localMessage.pendingState,
+            createdAt: entry.createdAt
+        };
+    }
+
+    function persistPendingEntry(entry) {
+        return BF.pendingSends && BF.pendingSends.put(pendingSnapshot(entry));
+    }
+
+    function refreshPendingElement(entry) {
+        if (String(entry.chatId) !== String(currentChatId)) return;
+        var oldEl = findMessageGroup(entry.localId);
+        if (!oldEl) return;
+        buildMessageViewElement(entry.localMessage).then(function (newEl) {
+            newEl.dataset.date = oldEl.dataset.date;
+            if (oldEl.isConnected) oldEl.replaceWith(newEl);
+        });
+    }
+
+    function setPendingState(entry, state) {
+        entry.localMessage.pendingState = state;
+        persistPendingEntry(entry);
+        refreshPendingElement(entry);
+    }
+
+    function restorePendingSends() {
+        if (!BF.pendingSends) return;
+        BF.pendingSends.all().forEach(function (stored) {
+            var localId = 'pending-send-' + stored.operationId;
+            var uploads = (stored.uploads || []).map(function (upload, index) {
+                return Object.assign({}, upload, { index: index });
+            });
+            var attachments = uploads.map(function (upload, index) {
+                var isImage = upload.uploadType === IMAGE_UPLOAD_TYPE || upload.uploadType === GIF_UPLOAD_TYPE;
+                return {
+                    type: isImage ? (upload.uploadType === GIF_UPLOAD_TYPE ? 'GIF' : 'IMAGE') : 'DOCUMENT',
+                    fileId: upload.resultFileId || '',
+                    fileName: upload.name,
+                    attachmentSize: upload.size,
+                    localPreviewUrl: '',
+                    uploadProgress: upload.state === 'completed' ? 100 : 0,
+                    uploadIndex: index,
+                    isPending: true
+                };
+            });
+            var localMessage = {
+                id: localId,
+                senderId: myUserId,
+                readBy: [],
+                sentAt: stored.createdAt || Date.now(),
+                type: GENERIC_MESSAGE_TYPE,
+                isPending: true,
+                pendingState: uploads.some(function (upload) { return upload.state !== 'completed'; })
+                    ? 'waiting-file'
+                    : (stored.state === 'failed' || stored.state === 'unknown' ? stored.state : 'unknown'),
+                clientOperationId: stored.operationId,
+                content: { text: stored.caption || stored.text || '', attachments: attachments }
+            };
+            pendingUploads.set(localId, {
+                localId: localId,
+                operationId: stored.operationId,
+                chatId: stored.chatId,
+                createdAt: stored.createdAt || Date.now(),
+                text: stored.text || '',
+                caption: stored.caption || '',
+                replyToMessageId: stored.replyToMessageId || 0,
+                draftSnapshot: { generation: stored.generation || 0 },
+                localMessage: localMessage,
+                fileIds: (stored.fileIds || []).slice(),
+                uploads: uploads,
+                runtimeFiles: null,
+                previewUrls: [],
+                abortController: null,
+                retrying: false,
+                settled: false
+            });
+        });
     }
 
     // Страница ленты: обычный чат или приватный (там батч приходит зашифрованным).
@@ -1029,6 +1147,267 @@
 
     // ========== SEND MESSAGE ==========
 
+    function createPendingSend(files, asDocuments, text, caption) {
+        var operationId = newOperationId();
+        var localId = 'pending-send-' + operationId;
+        var previewUrls = [];
+        var uploads = (files || []).map(function (file, index) {
+            var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
+            return {
+                index: index,
+                operationId: newOperationId(),
+                reservedFileId: '',
+                resultFileId: '',
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                uploadType: uploadType,
+                state: 'pending'
+            };
+        });
+        var localAttachments = uploads.map(function (upload) {
+            var file = files[upload.index];
+            var isImage = !asDocuments && (upload.uploadType === IMAGE_UPLOAD_TYPE || upload.uploadType === GIF_UPLOAD_TYPE);
+            var previewUrl = isImage ? URL.createObjectURL(file) : '';
+            if (previewUrl) previewUrls.push(previewUrl);
+            return {
+                type: isImage ? (upload.uploadType === GIF_UPLOAD_TYPE ? 'GIF' : 'IMAGE') : 'DOCUMENT',
+                fileId: '',
+                fileName: upload.name,
+                attachmentSize: upload.size,
+                localPreviewUrl: previewUrl,
+                uploadProgress: 0,
+                uploadIndex: upload.index,
+                isPending: true
+            };
+        });
+        var draftSnapshot = BF.drafts ? BF.drafts.snapshot(currentChatId) : null;
+        var localMessage = {
+            id: localId,
+            senderId: myUserId,
+            readBy: [],
+            sentAt: Date.now(),
+            type: GENERIC_MESSAGE_TYPE,
+            isPending: true,
+            pendingState: uploads.length ? 'uploading' : 'sending',
+            clientOperationId: operationId,
+            content: { text: caption || text || '', attachments: localAttachments }
+        };
+        return {
+            localId: localId,
+            operationId: operationId,
+            chatId: currentChatId,
+            createdAt: localMessage.sentAt,
+            text: text || '',
+            caption: caption || '',
+            replyToMessageId: pendingReply ? pendingReply.messageId : 0,
+            draftSnapshot: draftSnapshot,
+            localMessage: localMessage,
+            fileIds: [],
+            uploads: uploads,
+            runtimeFiles: files || [],
+            previewUrls: previewUrls,
+            abortController: null,
+            retrying: false,
+            settled: false
+        };
+    }
+
+    function showPendingSend(entry) {
+        pendingUploads.set(entry.localId, entry);
+        if (String(entry.chatId) === String(currentChatId)) {
+            messages.push(entry.localMessage);
+            appendMessageToView(entry.localMessage).then(scrollToBottom);
+        }
+    }
+
+    function clearComposerForPending() {
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        clearPendingReply();
+    }
+
+    function dispatchPendingSend(entry) {
+        if (entry.settled) return Promise.resolve();
+        setPendingState(entry, 'sending');
+        return BF.api.sendMessage({
+            chatId: entry.chatId,
+            text: entry.caption || entry.text || null,
+            fileIds: entry.fileIds.length ? entry.fileIds : null,
+            replyToMessageId: entry.replyToMessageId,
+            clientOperationId: entry.operationId
+        }).then(function (resp) {
+            if (!resp || !resp.message) throw new Error('send_invalid_response');
+            var msg = resp.message;
+            reconcilePendingUpload(entry.chatId, msg, entry);
+            var chatIdx = chats.findIndex(function (chat) { return chat.id === entry.chatId; });
+            if (chatIdx >= 0) {
+                var chat = chats[chatIdx];
+                chat.lastMessage = msg;
+                chats.splice(chatIdx, 1);
+                chats.unshift(chat);
+                renderChatList();
+            }
+            BF.sound.play('tick');
+        }).catch(function (error) {
+            if (!entry.settled) setPendingState(entry, error && error.outcomeUnknown ? 'unknown' : 'failed');
+        }).finally(function () {
+            sendBtn.disabled = false;
+        });
+    }
+
+    function uploadPendingFiles(entry, retry) {
+        if (entry.settled) return Promise.resolve();
+        entry.abortController = new AbortController();
+        setPendingState(entry, 'uploading');
+
+        var chain = Promise.resolve();
+        entry.uploads.forEach(function (upload, index) {
+            chain = chain.then(function () {
+                if (upload.state === 'completed' && upload.resultFileId) return;
+                var file = entry.runtimeFiles && entry.runtimeFiles[index];
+                if (!file) {
+                    var missing = new Error('upload_file_missing');
+                    missing.kind = 'file-missing';
+                    throw missing;
+                }
+                var progress = function (percent) {
+                    entry.localMessage.content.attachments[index].uploadProgress = percent;
+                    BF.messages.updateAttachmentProgress(entry.localId, index, percent);
+                };
+                var options = {
+                    operationId: upload.operationId,
+                    signal: entry.abortController.signal,
+                    onReserved: function (fileId) {
+                        upload.reservedFileId = fileId;
+                        upload.state = 'processing';
+                        persistPendingEntry(entry);
+                    }
+                };
+                var request = retry
+                    ? BF.files.retryUpload(file, upload.uploadType, upload, progress, options)
+                    : BF.files.uploadFile(file, upload.uploadType, progress, options);
+                return request.then(function (fileId) {
+                    upload.resultFileId = fileId;
+                    upload.state = 'completed';
+                    entry.localMessage.content.attachments[index].fileId = fileId;
+                    if (entry.fileIds.indexOf(fileId) < 0) entry.fileIds.push(fileId);
+                    persistPendingEntry(entry);
+                });
+            });
+        });
+
+        return chain.then(function () {
+            entry.abortController = null;
+            return dispatchPendingSend(entry);
+        }).catch(function (error) {
+            entry.abortController = null;
+            if (entry.settled) return;
+            if (error && error.kind === 'file-missing') setPendingState(entry, 'waiting-file');
+            else if (error && (error.state === 'processing' || error.message === 'upload_processing')) setPendingState(entry, 'processing');
+            else setPendingState(entry, error && error.outcomeUnknown ? 'unknown' : 'failed');
+            sendBtn.disabled = false;
+        });
+    }
+
+    function runPendingSend(entry, retry) {
+        sendBtn.disabled = true;
+        return entry.uploads.length ? uploadPendingFiles(entry, retry) : dispatchPendingSend(entry);
+    }
+
+    function restorePendingComposer(entry) {
+        if (String(entry.chatId) !== String(currentChatId)) return;
+        messageInput.value = entry.caption || entry.text || '';
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+        if (entry.replyToMessageId) {
+            var reply = messages.find(function (message) {
+                return Number(message.id) === Number(entry.replyToMessageId);
+            });
+            if (reply) {
+                setPendingReply(reply, false);
+            } else {
+                pendingReply = {
+                    messageId: entry.replyToMessageId,
+                    authorName: '',
+                    previewText: ''
+                };
+                renderReplyPreview();
+                BF.api.listMessages(entry.chatId, entry.replyToMessageId, 1, 1).then(function (data) {
+                    if (!pendingReply || Number(pendingReply.messageId) !== Number(entry.replyToMessageId)) return;
+                    var loaded = data && data.messages && data.messages.find(function (message) {
+                        return Number(message.id) === Number(entry.replyToMessageId);
+                    });
+                    if (loaded) setPendingReply(loaded, false);
+                }).catch(function () {});
+            }
+        }
+        messageInput.focus();
+    }
+
+    function cancelPendingSend(localId) {
+        var entry = pendingUploads.get(localId);
+        if (!entry || entry.settled || entry.localMessage.pendingState !== 'uploading') return;
+        if (entry.abortController) entry.abortController.abort();
+        restorePendingComposer(entry);
+        removePendingUpload(entry);
+        sendBtn.disabled = false;
+    }
+
+    function retryPendingSend(localId) {
+        var entry = pendingUploads.get(localId);
+        if (!entry || entry.settled || entry.retrying) return;
+        var hasIncompleteUpload = entry.uploads.some(function (upload) { return upload.state !== 'completed'; });
+        if (hasIncompleteUpload && (!entry.runtimeFiles || entry.runtimeFiles.length === 0)) {
+            entry.retrying = true;
+            var needsFile = false;
+            var stillProcessing = false;
+            var checks = entry.uploads.reduce(function (chain, upload, index) {
+                return chain.then(function () {
+                    if (upload.state === 'completed' && upload.resultFileId) return;
+                    if (!upload.reservedFileId) {
+                        needsFile = true;
+                        return;
+                    }
+                    return BF.files.getUploadStatus(upload.reservedFileId).then(function (status) {
+                        if (status.state === 'completed') {
+                            upload.resultFileId = status.fileId;
+                            upload.state = 'completed';
+                            entry.localMessage.content.attachments[index].fileId = status.fileId;
+                            if (entry.fileIds.indexOf(status.fileId) < 0) entry.fileIds.push(status.fileId);
+                        } else if (status.state === 'processing') {
+                            stillProcessing = true;
+                        } else {
+                            needsFile = true;
+                        }
+                    });
+                });
+            }, Promise.resolve());
+            checks.then(function () {
+                if (entry.settled) return;
+                persistPendingEntry(entry);
+                if (stillProcessing) {
+                    setPendingState(entry, 'processing');
+                    return;
+                }
+                if (needsFile) {
+                    restorePendingComposer(entry);
+                    removePendingUpload(entry);
+                    if (fileInput) fileInput.click();
+                    return;
+                }
+                return runPendingSend(entry, true);
+            }).catch(function (error) {
+                if (!entry.settled) setPendingState(entry, error && error.outcomeUnknown ? 'unknown' : 'failed');
+            }).finally(function () {
+                entry.retrying = false;
+            });
+            return;
+        }
+        entry.retrying = true;
+        runPendingSend(entry, true).finally(function () { entry.retrying = false; });
+    }
+
     function sendMessage() {
         var text = messageInput.value.trim();
         if (!currentChatId) return;
@@ -1062,36 +1441,14 @@
 
         if (!text) return;
 
-        sendBtn.disabled = true;
-        var sentChatId = currentChatId;
-        var replyId = pendingReply ? pendingReply.messageId : 0;
-        var draftSnapshot = BF.drafts ? BF.drafts.snapshot(sentChatId) : null;
-
-        BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null, replyToMessageId: replyId }).then(function (resp) {
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-            sendBtn.disabled = false;
-            messageInput.focus();
-            clearPendingReply();
-            if (BF.drafts) BF.drafts.clearSent(sentChatId, draftSnapshot);
-
-            if (resp && resp.message) {
-                var msg = resp.message;
-                BF.sound.play('tick');
-                if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
-                    messages.push(msg);
-                    appendMessageToView(msg).then(scrollToBottom);
-                }
-                var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
-                if (chatIdx >= 0) {
-                    var chat = chats[chatIdx];
-                    chat.lastMessage = msg;
-                    chats.splice(chatIdx, 1);
-                    chats.unshift(chat);
-                    renderChatList();
-                }
-            }
-        }).catch(function () { sendBtn.disabled = false; });
+        var entry = createPendingSend([], false, text, '');
+        if (!persistPendingEntry(entry)) {
+            groupToast(BF.i18n.t('error.pendingStorage'));
+            return;
+        }
+        clearComposerForPending();
+        showPendingSend(entry);
+        runPendingSend(entry, false);
     }
 
     function sendMessageWithFiles(files, asDocuments, caption) {
@@ -1102,110 +1459,15 @@
         }
         stopTypingSend(true);
         var text = (caption != null ? caption : messageInput.value).trim();
-        var sentChatId = currentChatId;
-        var draftSnapshot = BF.drafts ? BF.drafts.snapshot(sentChatId) : null;
-        sendBtn.disabled = true;
-
-        var localId = 'pending-upload-' + Date.now() + '-' + (++pendingUploadCounter);
-        var previewUrls = [];
-        var localAttachments = files.map(function (file, index) {
-            var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
-            var isImage = !asDocuments && (uploadType === IMAGE_UPLOAD_TYPE || uploadType === GIF_UPLOAD_TYPE);
-            var previewUrl = isImage ? URL.createObjectURL(file) : '';
-            if (previewUrl) previewUrls.push(previewUrl);
-            return {
-                type: isImage ? (uploadType === GIF_UPLOAD_TYPE ? 'GIF' : 'IMAGE') : 'DOCUMENT',
-                fileId: '',
-                fileName: file.name,
-                attachmentSize: file.size,
-                localPreviewUrl: previewUrl,
-                uploadProgress: 0,
-                uploadIndex: index,
-                isPending: true
-            };
-        });
-        var pendingMessage = {
-            id: localId,
-            senderId: myUserId,
-            readBy: [],
-            sentAt: Date.now(),
-            type: GENERIC_MESSAGE_TYPE,
-            isPending: true,
-            content: { text: text || '', attachments: localAttachments }
-        };
-        var pendingEntry = {
-            localId: localId,
-            chatId: sentChatId,
-            localMessage: pendingMessage,
-            fileIds: [],
-            previewUrls: previewUrls,
-            settled: false
-        };
-        pendingUploads.set(localId, pendingEntry);
-
-        if (String(sentChatId) === String(currentChatId)) {
-            messages.push(pendingMessage);
-            appendMessageToView(pendingMessage).then(scrollToBottom);
+        var entry = createPendingSend(files, asDocuments, '', text);
+        if (!persistPendingEntry(entry)) {
+            releasePendingPreviews(entry);
+            groupToast(BF.i18n.t('error.pendingStorage'));
+            return;
         }
-
-        var uploadChain = files.reduce(function (chain, file, index) {
-            return chain.then(function (ids) {
-                var uploadType = BF.files.getUploadFileType(file.type, asDocuments, file.name);
-                return BF.files.uploadFile(file, uploadType, function (progress) {
-                    localAttachments[index].uploadProgress = progress;
-                    BF.messages.updateAttachmentProgress(localId, index, progress);
-                })
-                    .then(function (fileId) {
-                        localAttachments[index].fileId = fileId;
-                        pendingEntry.fileIds.push(fileId);
-                        ids.push(fileId);
-                        return ids;
-                    });
-            });
-        }, Promise.resolve([]));
-
-        var replyId = pendingReply ? pendingReply.messageId : 0;
-        var uploadsComplete = false;
-        uploadChain.then(function (fileIds) {
-            if (fileIds.length === 0) {
-                removePendingUpload(pendingEntry);
-                sendBtn.disabled = false;
-                return;
-            }
-            uploadsComplete = true;
-            return BF.api.sendMessage({
-                chatId: sentChatId,
-                text: text || null,
-                fileIds: fileIds,
-                replyToMessageId: replyId
-            }).then(function (resp) {
-                messageInput.value = '';
-                messageInput.style.height = 'auto';
-                sendBtn.disabled = false;
-                messageInput.focus();
-                clearPendingReply();
-                if (BF.drafts) BF.drafts.clearSent(sentChatId, draftSnapshot);
-                if (resp && resp.message) {
-                    var msg = resp.message;
-                    reconcilePendingUpload(sentChatId, msg, pendingEntry);
-                    var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
-                    if (chatIdx >= 0) {
-                        var chat = chats[chatIdx];
-                        chat.lastMessage = msg;
-                        chats.splice(chatIdx, 1);
-                        chats.unshift(chat);
-                        renderChatList();
-                    }
-                } else {
-                    removePendingUpload(pendingEntry);
-                    groupToast(BF.i18n.t('error.sendMessage'));
-                }
-            });
-        }).catch(function () {
-            removePendingUpload(pendingEntry);
-            sendBtn.disabled = false;
-            groupToast(BF.i18n.t(uploadsComplete ? 'error.sendMessage' : 'error.uploadAttachment'));
-        });
+        clearComposerForPending();
+        showPendingSend(entry);
+        runPendingSend(entry, false);
     }
 
     function openAttachModal(files) {
@@ -1214,8 +1476,6 @@
         BF.attach.open(files, function (outFiles, asDocuments, caption) {
             // Если пользователь ввёл подпись в модалке — забираем её из неё, а исходный
             // ввод в чате очищаем, чтобы текст не отправился ещё раз отдельным сообщением.
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
             sendMessageWithFiles(outFiles, asDocuments, caption);
         }, prefill);
     }
@@ -2539,6 +2799,10 @@
 
     BF.settings.init({ myUserId: myUserId });
     BF.attach.init();
+    if (BF.pendingSends) {
+        BF.pendingSends.init(myUserId);
+        restorePendingSends();
+    }
     if (BF.drafts) BF.drafts.init(myUserId);
     if (BF.imageEditor) BF.imageEditor.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });

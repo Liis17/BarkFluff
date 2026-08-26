@@ -13,11 +13,11 @@ public class ChatDraftsStorage
         _context = context;
     }
 
-    public Task<ChatDraft?> GetAsync(Guid chatId, long userId)
+    public Task<ChatDraft?> GetAsync(Guid chatId, long userId, CancellationToken cancellationToken = default)
     {
         return _context.ChatDrafts
             .AsNoTracking()
-            .SingleOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId);
+            .SingleOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId, cancellationToken);
     }
 
     public Task<List<Guid>> GetDraftChatIdsAsync(long userId, IReadOnlyCollection<Guid> chatIds)
@@ -33,15 +33,20 @@ public class ChatDraftsStorage
             .ToListAsync();
     }
 
-    public async Task<ChatDraft> UpsertAsync(Guid chatId, long userId, string text, long? replyToMessageId)
+    public async Task<ChatDraft> UpsertAsync(
+        Guid chatId,
+        long userId,
+        string text,
+        long? replyToMessageId,
+        CancellationToken cancellationToken = default)
     {
         var draft = await _context.ChatDrafts
-            .SingleOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId);
+            .SingleOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId, cancellationToken);
 
         if (draft is null)
         {
             draft = new ChatDraft { ChatId = chatId, UserId = userId };
-            await _context.ChatDrafts.AddAsync(draft);
+            await _context.ChatDrafts.AddAsync(draft, cancellationToken);
         }
 
         draft.Text = text;
@@ -49,14 +54,20 @@ public class ChatDraftsStorage
         draft.UpdatedAt = DateTime.UtcNow;
         draft.Revision = Guid.NewGuid();
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return draft;
     }
 
-    public async Task<bool> DeleteIfRevisionMatchesAsync(Guid chatId, long userId, Guid revision)
+    public async Task<bool> DeleteIfRevisionMatchesAsync(
+        Guid chatId,
+        long userId,
+        Guid revision,
+        CancellationToken cancellationToken = default)
     {
         var draft = await _context.ChatDrafts
-            .SingleOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId && x.Revision == revision);
+            .SingleOrDefaultAsync(
+                x => x.ChatId == chatId && x.UserId == userId && x.Revision == revision,
+                cancellationToken);
 
         if (draft is null)
         {
@@ -64,7 +75,7 @@ public class ChatDraftsStorage
         }
 
         _context.ChatDrafts.Remove(draft);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
 }

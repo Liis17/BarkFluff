@@ -1,15 +1,34 @@
-/* Server-synchronised drafts with a local durable outbox. */
+/* Server-synchronised drafts with a durable local outbox. */
 (function () {
     'use strict';
 
     window.BF = window.BF || {};
     var userId = null;
     var entries = {};
-    var timers = {};
+    var debounceTimers = {};
+    var retryTimers = {};
+    var retryDelays = {};
+    var inFlight = {};
 
     function key() { return BF.node.key('bf_chat_drafts_' + userId); }
-    function save() { if (userId != null) localStorage.setItem(key(), JSON.stringify(entries)); }
-    function hasContent(entry) { return !!(entry && !entry.deleted && ((entry.text || '').trim() || entry.replyToMessageId)); }
+
+    function save() {
+        if (userId == null) return false;
+        try {
+            localStorage.setItem(key(), JSON.stringify(entries));
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function hasDraftContent(entry) {
+        return !!(entry && ((entry.text || '').trim() || entry.replyToMessageId));
+    }
+
+    function hasContent(entry) {
+        return !!(entry && !entry.deleted && hasDraftContent(entry));
+    }
 
     function init(id) {
         userId = id;
@@ -21,67 +40,121 @@
 
     function has(chatId) { return hasContent(entries[chatId]); }
 
+    function scheduleDebounce(chatId, delay) {
+        if (debounceTimers[chatId]) clearTimeout(debounceTimers[chatId]);
+        debounceTimers[chatId] = setTimeout(function () {
+            delete debounceTimers[chatId];
+            flush(chatId);
+        }, delay);
+    }
+
+    function scheduleRetry(chatId) {
+        if (retryTimers[chatId]) return;
+        var delay = retryDelays[chatId] || 2000;
+        retryDelays[chatId] = Math.min(delay * 2, 30000);
+        retryTimers[chatId] = setTimeout(function () {
+            delete retryTimers[chatId];
+            flush(chatId);
+        }, delay);
+    }
+
+    function resetRetry(chatId) {
+        retryDelays[chatId] = 2000;
+        if (retryTimers[chatId]) {
+            clearTimeout(retryTimers[chatId]);
+            delete retryTimers[chatId];
+        }
+    }
+
     function set(chatId, text, replyToMessageId) {
         var entry = entries[chatId] || {};
         entry.text = text || '';
         entry.replyToMessageId = replyToMessageId || 0;
         entry.generation = (entry.generation || 0) + 1;
         entry.dirty = true;
+        entry.deleted = !hasDraftContent(entry);
         entries[chatId] = entry;
-        entry.deleted = !hasContent(entry);
         save();
-        if (timers[chatId]) clearTimeout(timers[chatId]);
-        timers[chatId] = setTimeout(function () { flush(chatId); }, 2000);
+        scheduleDebounce(chatId, 2000);
     }
 
     function flush(chatId) {
-        if (timers[chatId]) { clearTimeout(timers[chatId]); delete timers[chatId]; }
+        if (debounceTimers[chatId]) {
+            clearTimeout(debounceTimers[chatId]);
+            delete debounceTimers[chatId];
+        }
+        if (inFlight[chatId]) return inFlight[chatId];
+
         var entry = entries[chatId];
         if (!entry || !entry.dirty) return Promise.resolve(entry || null);
         var generation = entry.generation;
+        var request;
+
         if (entry.deleted) {
-            if (!entry.revision) { delete entries[chatId]; save(); return Promise.resolve(null); }
-            entry.dirty = false;
-            save();
-            return BF.api.deleteChatDraft(chatId, entry.revision).then(function () {
-                if (entries[chatId] === entry && entry.generation === generation) { delete entries[chatId]; save(); }
-                return null;
-            }).catch(function () { if (entries[chatId] === entry) { entry.dirty = true; save(); } return entry; });
+            if (!entry.revision) {
+                delete entries[chatId];
+                save();
+                return Promise.resolve(null);
+            }
+            request = BF.api.deleteChatDraft(chatId, entry.revision);
+        } else {
+            request = BF.api.upsertChatDraft(chatId, entry.text, entry.replyToMessageId);
         }
-        var text = entry.text;
-        var replyToMessageId = entry.replyToMessageId;
-        entry.dirty = false;
-        save();
-        return BF.api.upsertChatDraft(chatId, text, replyToMessageId).then(function (data) {
-            if (entries[chatId] !== entry) return entries[chatId];
+
+        var failed = false;
+        var task = request.then(function (data) {
+            if (entries[chatId] !== entry) return entries[chatId] || null;
+            if (data && data.draft && data.draft.revision) entry.revision = data.draft.revision;
             if (entry.generation !== generation) {
                 entry.dirty = true;
                 save();
-                flush(chatId);
                 return entry;
             }
-            if (data && data.draft) {
-                entry.revision = data.draft.revision;
-                entry.dirty = false;
+            resetRetry(chatId);
+            if (entry.deleted) {
+                delete entries[chatId];
                 save();
+                return null;
             }
+            entry.dirty = false;
+            save();
             return entry;
         }).catch(function () {
-            if (entries[chatId] === entry) { entry.dirty = true; save(); }
+            failed = true;
+            if (entries[chatId] === entry) {
+                entry.dirty = true;
+                save();
+                scheduleRetry(chatId);
+            }
             return entry;
+        }).finally(function () {
+            if (inFlight[chatId] === task) delete inFlight[chatId];
+            var current = entries[chatId];
+            if (!failed && current && current.dirty && !debounceTimers[chatId] && !retryTimers[chatId]) {
+                scheduleDebounce(chatId, 0);
+            }
         });
+        inFlight[chatId] = task;
+        return task;
     }
 
     function flushAll() { return Promise.all(Object.keys(entries).map(flush)); }
 
     function load(chatId) {
         var local = entries[chatId];
-        if (local && local.dirty) { flush(chatId); return Promise.resolve(local); }
+        if (local && local.dirty) {
+            flush(chatId);
+            return Promise.resolve(local);
+        }
         return BF.api.getChatDraft(chatId).then(function (data) {
             if (!data || !data.draft) return local || null;
             entries[chatId] = {
-                text: data.draft.text || '', replyToMessageId: data.draft.replyToMessageId || 0,
-                revision: data.draft.revision || '', dirty: false
+                text: data.draft.text || '',
+                replyToMessageId: data.draft.replyToMessageId || 0,
+                revision: data.draft.revision || '',
+                generation: local ? local.generation || 0 : 0,
+                dirty: false,
+                deleted: false
             };
             save();
             return entries[chatId];
@@ -90,22 +163,34 @@
 
     function snapshot(chatId) {
         var entry = entries[chatId];
-        return entry ? { generation: entry.generation, revision: entry.revision || '' } : null;
+        return entry ? {
+            generation: entry.generation || 0,
+            revision: entry.revision || '',
+            text: entry.text || '',
+            replyToMessageId: entry.replyToMessageId || 0
+        } : null;
     }
 
     function clearSent(chatId, sent) {
         var entry = entries[chatId];
         if (!entry || !sent || entry.generation !== sent.generation) return;
-        if (!entry.revision) {
-            flush(chatId).then(function () { clearSent(chatId, sent); });
-            return;
-        }
-        BF.api.deleteChatDraft(chatId, entry.revision).then(function () {
-            if (entries[chatId] === entry && entry.generation === sent.generation) { delete entries[chatId]; save(); }
-        }).catch(function () {});
+        entry.generation = (entry.generation || 0) + 1;
+        entry.deleted = true;
+        entry.dirty = true;
+        save();
+        flush(chatId);
     }
 
     function get(chatId) { return entries[chatId] || null; }
 
-    window.BF.drafts = { init: init, has: has, get: get, snapshot: snapshot, set: set, flush: flush, load: load, clearSent: clearSent };
+    window.BF.drafts = {
+        init: init,
+        has: has,
+        get: get,
+        snapshot: snapshot,
+        set: set,
+        flush: flush,
+        load: load,
+        clearSent: clearSent
+    };
 })();

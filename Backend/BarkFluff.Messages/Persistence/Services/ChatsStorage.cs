@@ -387,12 +387,12 @@ public class ChatsStorage
         return await _context.GroupChatInfos.FirstOrDefaultAsync(x => x.ChatId == chatId);
     }
 
-    public async Task<Chat?> GetChat(Guid chatId)
+    public async Task<Chat?> GetChat(Guid chatId, CancellationToken cancellationToken = default)
     {
         return await _context
             .Chats
             .Include(x => x.Members)
-            .FirstOrDefaultAsync(x => x.Id == chatId);
+            .FirstOrDefaultAsync(x => x.Id == chatId, cancellationToken);
     }
 
     public async Task UpdateGroupChat(Guid chatId, string? title, string? picture)
