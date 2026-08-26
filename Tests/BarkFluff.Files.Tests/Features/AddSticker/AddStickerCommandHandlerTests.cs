@@ -120,7 +120,7 @@ public class AddStickerCommandHandlerTests
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.MessageAttachmentSticker)).Returns("message-documents");
         _s3Uploader.Setup(u => u.DownloadAsync("message-documents", $"{file.Id}"))
             .ReturnsAsync(new MemoryStream(imageData));
-        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-preview");
 
         var result = await _handler.Handle(new AddStickerCommand
@@ -153,7 +153,7 @@ public class AddStickerCommandHandlerTests
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.MessageAttachmentSticker)).Returns("message-documents");
         _s3Uploader.Setup(u => u.DownloadAsync("message-documents", $"{file.Id}"))
             .ReturnsAsync(new MemoryStream(imageData));
-        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-preview");
 
         await _handler.Handle(new AddStickerCommand
@@ -165,7 +165,7 @@ public class AddStickerCommandHandlerTests
 
         _s3Uploader.Verify(u => u.DownloadAsync("message-documents", $"{file.Id}"), Times.Once());
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), "image/webp"),
+            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), "image/webp", It.IsAny<CancellationToken>()),
             Times.Once());
     }
 }

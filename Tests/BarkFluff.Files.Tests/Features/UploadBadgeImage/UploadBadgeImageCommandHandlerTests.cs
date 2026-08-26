@@ -34,7 +34,7 @@ public class UploadBadgeImageCommandHandlerTests
     {
         var imageData = new byte[] { 1, 2, 3, 4 };
         _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-badge");
 
         var result = await _handler.Handle(new UploadBadgeImageCommand
@@ -53,7 +53,7 @@ public class UploadBadgeImageCommandHandlerTests
     {
         var imageData = new byte[] { 1, 2, 3, 4 };
         _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-badge");
 
         await _handler.Handle(new UploadBadgeImageCommand
@@ -74,7 +74,7 @@ public class UploadBadgeImageCommandHandlerTests
     {
         var imageData = new byte[] { 1, 2, 3 };
         _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag");
 
         await _handler.Handle(new UploadBadgeImageCommand
@@ -85,7 +85,7 @@ public class UploadBadgeImageCommandHandlerTests
 
         _bucketRegistry.Verify(r => r.GetBadgeImageBucketName(), Times.Once());
         _s3Uploader.Verify(
-            u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/png"),
+            u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/png", It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -94,7 +94,7 @@ public class UploadBadgeImageCommandHandlerTests
     {
         var imageData = new byte[] { 1, 2, 3 };
         _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag");
 
         await _handler.Handle(new UploadBadgeImageCommand
@@ -104,7 +104,7 @@ public class UploadBadgeImageCommandHandlerTests
         }, CancellationToken.None);
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/jpeg"),
+            u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/jpeg", It.IsAny<CancellationToken>()),
             Times.Once());
     }
 }

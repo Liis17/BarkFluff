@@ -56,7 +56,8 @@ public class UploadBadgeImageCommandHandler : IRequestHandler<UploadBadgeImageCo
             bucketName,
             $"{badgeImage.Id}",
             stream,
-            contentType
+            contentType,
+            cancellationToken
         );
 
         badgeImage.Etag = etag;

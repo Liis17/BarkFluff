@@ -98,7 +98,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
         _logger.LogInformation("Начало обработки загрузки файла с ID: {FileId}", request.FileId);
 
-        var file = await _filesStorage.GetFile(request.FileId);
+        var file = await _filesStorage.GetFile(request.FileId, cancellationToken);
 
         if (file is null)
         {
@@ -109,8 +109,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         // Проверяем, не был ли файл уже загружен
         if (!string.IsNullOrEmpty(file.Etag))
         {
-            _logger.LogWarning("Файл с ID {FileId} уже был загружен (Etag: {Etag})", request.FileId, file.Etag);
-            throw new FileAlreadyUploadedException("Файл уже был загружен");
+            _logger.LogInformation(
+                "Файл с ID {FileId} уже загружен, возвращается прежний результат",
+                request.FileId);
+            return file.Id.ToString();
         }
 
         file.Filename = request.FileName;
@@ -182,7 +184,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         // Определяем реальный тип файла по содержимому для MessageAttachment типов
         if (TypesRequiringDetection.Contains(file.Type))
         {
-            var detectedType = await _fileTypeDetector.DetectAsync(originalStream);
+            var detectedType = await _fileTypeDetector.DetectAsync(originalStream, cancellationToken);
             var newFileType = MapDetectedTypeToUploadFileType(detectedType, file.Type);
 
             if (newFileType != file.Type)
@@ -225,14 +227,14 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         originalStream.Position = 0;
 
         // Серверная дедупликация: проверяем, существует ли файл с таким хешем
-        var existingFileId = await _hashesStorage.GetFileIdByHash(fileHash);
+        var existingFileId = await _hashesStorage.GetFileIdByHash(fileHash, cancellationToken);
         if (existingFileId.HasValue)
         {
             _logger.LogInformation(
                 "Файл с хешем {FileHash} уже существует в хранилище (FileId: {ExistingFileId}). Дедупликация.",
                 fileHash, existingFileId.Value);
 
-            var existingFile = await _filesStorage.GetFile(existingFileId.Value);
+            var existingFile = await _filesStorage.GetFile(existingFileId.Value, cancellationToken);
 
             // Дедупликация только если тип совпадает и файл реально загружен в S3.
             // Один и тот же контент может быть отправлен как IMAGE и как DOCUMENT —
@@ -243,13 +245,25 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
             if (canDeduplicate)
             {
-                foreach (var uploaderId in file.Uploaders)
-                    await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId);
+                if (request.LeaseToken.HasValue)
+                {
+                    await _filesStorage.CompleteDeduplicatedUploadAsync(
+                        file.Id,
+                        request.LeaseToken.Value,
+                        existingFileId.Value,
+                        file.Uploaders,
+                        cancellationToken);
+                }
+                else
+                {
+                    foreach (var uploaderId in file.Uploaders)
+                        await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId, cancellationToken);
 
-                await _filesStorage.DeleteFile(file.Id);
-                // Подчищаем возможный висячий хеш для удаляемого file.Id
-                // (защита на случай если запись попала в FileHashes от прошлой попытки загрузки)
-                await _hashesStorage.DeleteHashByFileId(file.Id, cancellationToken);
+                    await _filesStorage.DeleteFile(file.Id, cancellationToken);
+                    // Подчищаем возможный висячий хеш для удаляемого file.Id
+                    // (защита на случай если запись попала в FileHashes от прошлой попытки загрузки)
+                    await _hashesStorage.DeleteHashByFileId(file.Id, cancellationToken);
+                }
                 await originalStream.DisposeAsync();
 
                 processingDuration = processingTimer.Elapsed;
@@ -289,6 +303,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 {
                     imageResult = await _imageCompressor.ProcessImageAllInOneAsync(
                         originalStream, needsEnforceLimits, previewWidth, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -363,6 +381,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                         "Сгенерировано превью видео {FileId}: {Width}x{Height}",
                         file.Id, frameResult.Width, frameResult.Height);
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Не удалось сгенерировать превью видео {FileId}", file.Id);
@@ -381,7 +403,8 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 bucketName, // Имя бакета на основе типа файла
                 $"{file.Id}", // Используем ID файла как ключ
                 originalStream,
-                contentType
+                contentType,
+                cancellationToken
             );
 
             _logger.LogInformation("Файл успешно загружен в S3, получен Etag: {Etag}", etag);
@@ -398,11 +421,16 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                         bucketName,
                         $"{previewId.Value}", // ключ для сжатой версии
                         compressedStream,
-                        "image/jpeg" // сохраняем как JPEG
+                        "image/jpeg", // сохраняем как JPEG
+                        cancellationToken
                     );
 
                     file.PreviewId = previewId.Value;
                     _logger.LogInformation("Превью успешно создано с ID: {PreviewId}", previewId.Value);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -437,7 +465,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         }
 
         // Сохраняем изменения
-        await _filesStorage.UpdateFile(file);
+        await _filesStorage.UpdateFile(file, cancellationToken);
 
         // Save the file hash for deduplication
         var fileHashEntity = new FileHash
