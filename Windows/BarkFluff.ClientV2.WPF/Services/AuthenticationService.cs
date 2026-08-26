@@ -76,9 +76,9 @@ public sealed class AuthenticationService : IAuthenticationService
         {
             var requiresTwoFactor = result.getMeOtpCode;
             return LoginResult.Failure(
-                requiresTwoFactor && !string.IsNullOrWhiteSpace(otpCode)
+                result.Error.ErrorResourceKey ?? (requiresTwoFactor && !string.IsNullOrWhiteSpace(otpCode)
                     ? "Error_LoginTwoFactorInvalid"
-                    : requiresTwoFactor ? "Error_LoginTwoFactorRequired" : "Error_LoginFailed",
+                    : requiresTwoFactor ? "Error_LoginTwoFactorRequired" : "Error_LoginFailed"),
                 requiresTwoFactor);
         }
 
@@ -195,7 +195,7 @@ public sealed class AuthenticationService : IAuthenticationService
         var result = await _webApi.CreateAccount(firstName, lastName, email, username, parameters);
         return result.error.IsSuccess && !string.IsNullOrWhiteSpace(result.userid)
             ? RegistrationStartResult.Success(result.userid)
-            : RegistrationStartResult.Failure("Error_RegistrationFailed");
+            : RegistrationStartResult.Failure(result.error.ErrorResourceKey ?? "Error_RegistrationFailed");
     }
 
     public async Task<AuthenticationOperationResult> ConfirmRegistrationAsync(
@@ -213,7 +213,8 @@ public sealed class AuthenticationService : IAuthenticationService
         var confirmation = await _webApi.ConfirmAccount(codeId, code, parameters);
         if (!confirmation.error.IsSuccess || confirmation.RefreshToken is null)
         {
-            return AuthenticationOperationResult.Failure("Error_RegistrationCodeInvalid");
+            return AuthenticationOperationResult.Failure(
+                confirmation.error.ErrorResourceKey ?? "Error_RegistrationCodeInvalid");
         }
 
         return await ApplyRefreshTokenAsync(parameters, confirmation.RefreshToken);
@@ -252,7 +253,7 @@ public sealed class AuthenticationService : IAuthenticationService
             parameters);
         return result.error.IsSuccess && !string.IsNullOrWhiteSpace(result.resetId)
             ? PasswordResetStartResult.Success(result.resetId)
-            : PasswordResetStartResult.Failure("Error_PasswordResetFailed");
+            : PasswordResetStartResult.Failure(result.error.ErrorResourceKey ?? "Error_PasswordResetFailed");
     }
 
     public async Task<AuthenticationOperationResult> CompletePasswordResetAsync(
@@ -271,7 +272,8 @@ public sealed class AuthenticationService : IAuthenticationService
         var confirmation = await _webApi.ConfirmResetCode(resetId, code, parameters);
         if (!confirmation.error.IsSuccess || confirmation.refreshToken is null)
         {
-            return AuthenticationOperationResult.Failure("Error_PasswordResetCodeInvalid");
+            return AuthenticationOperationResult.Failure(
+                confirmation.error.ErrorResourceKey ?? "Error_PasswordResetCodeInvalid");
         }
 
         var tokenResult = await ApplyRefreshTokenAsync(parameters, confirmation.refreshToken);

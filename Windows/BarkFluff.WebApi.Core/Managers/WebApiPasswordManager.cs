@@ -88,6 +88,18 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Пользователь не найден."), null);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return (new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_PasswordResetRateLimited"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return (new ErrorReturner(false, "Сброс пароля временно заблокирован. Повторите попытку позже", errorResourceKey: "Error_PasswordResetLocked"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return (new ErrorReturner(false, "Защита сброса пароля временно недоступна. Повторите попытку позже", errorResourceKey: "Error_PasswordResetProtectionUnavailable"), null);
+            }
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка сброса пароля"), null);
@@ -114,6 +126,18 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeIncorrectException)
             {
                 return (new ErrorReturner(false, "Неверный код подтверждения."), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return (new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_PasswordResetRateLimited"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return (new ErrorReturner(false, "Код сброса временно заблокирован. Повторите попытку позже", errorResourceKey: "Error_PasswordResetLocked"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return (new ErrorReturner(false, "Защита сброса пароля временно недоступна. Повторите попытку позже", errorResourceKey: "Error_PasswordResetProtectionUnavailable"), null);
             }
             catch (Exception)
             {

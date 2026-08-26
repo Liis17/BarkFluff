@@ -37,7 +37,7 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 - `Domain/ConfigurationItem` — текущая строка: Section, Key, Value, ServiceId, EditedAt/By/From
 - `Domain/ConfigurationRevision` — неизменяемая запись перехода PreviousValue → NewValue, автор/источник/время, вид изменения и optional source revision для rollback
 - `Persistence/Services/ConfigurationStorage` — read/upsert/история/rollback конфигураций + CRUD reserved names
-- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings` (с `Http1Port` для Files, Calls и [[Backend/Bots|Bots]]), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles` (ExpiresAt 60 мин), `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `FederationService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, `LiveKit` (+ `PublicUrl`), базы данных (Identity, Users, Files, Messages, Onliner, Bots, Calls, Federation). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
+- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings` (с `Http1Port` для Files, Calls и [[Backend/Bots|Bots]]), `JwtSettings`, `RabbitMQ`, `Redis`, `IdentitySecurity` (для [[Backend/Identity]]), `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles` (ExpiresAt 60 мин), `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `FederationService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, `LiveKit` (+ `PublicUrl`), базы данных (Identity, Users, Files, Messages, Onliner, Bots, Calls, Federation). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
   - `Federation` (ServiceId=15, задел под федерацию из [Фазы 0 rearch](../../../docs/rearch/phase-0/README.md)): `RunSettings:Port`=7030, `FederationDb`, `Federation:Enabled`=false (дефолт), `Federation:ServerName` и `Federation:ExternalEndpoint` **намеренно не заполняются** — остаются `""`, оператор ноды задаёт сам. `FederationService:Host`/`Token` — глобальные (ServiceId=0), по аналогии с `BotsService`. Сам сервис Federation ещё не существует (Фаза 1).
 - `Persistence/Contexts/ConfigurationContext` — EF Core DbContext: `Configurations` и `ConfigurationRevisions`; ревизии удаляются каскадно вместе со строкой конфигурации
 - `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды; инструментирован `MetricsCollector` (счётчики запросов, ошибок, длительность)
@@ -47,6 +47,8 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 Применяются автоматически при старте (`ctx.Database.Migrate()`) с retry до 5 раз. После миграций запускается `ConfigurationDefaultsPopulator`.
 
 Миграции-seed (например `SeedBeaconServerProps`) добавляют начальные записи через SQL в `Up()` — не через EF-модель. Каждая migration-класс имеет `MigrationAttribute` (из сгенерированного `.Designer.cs` либо явно на классе), иначе EF Core не включит её в `Database.Migrate()`.
+
+`AddIdentitySecurityConfiguration` добавляет для `ServiceId.Identity` строки `Redis` и `IdentitySecurity:*`; пустые значения заполняются production defaults через `ConfigurationDefaultsPopulator`.
 
 ```bash
 dotnet tool restore

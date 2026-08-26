@@ -41,7 +41,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `Infrastructure/ConfigurationDefaultsPopulator.cs` | Авто-заполнение пустых конфигураций при старте. Ищет записи с `Value == ""` и подставляет дефолты. Генерирует `JwtSettings:SecretKey` (64-символьный random). Генерирует JWT-сервисные токены (TTL 10 лет) для межсервисного взаимодействия. Поддерживаемые секции: `RunSettings` (Port, Http1Port), `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles`, `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, `LiveKit` (+ `PublicUrl`), базы данных (Identity, Users, Files, Messages, Onliner, Bots, Calls). Словари: `ContainerNames`, `DefaultPorts`, `SubdomainNames`, `DatabaseNames`. |
+| `Infrastructure/ConfigurationDefaultsPopulator.cs` | Авто-заполнение пустых конфигураций при старте. Ищет записи с `Value == ""` и подставляет дефолты. Генерирует `JwtSettings:SecretKey` (64-символьный random). Генерирует JWT-сервисные токены (TTL 10 лет) для межсервисного взаимодействия. Поддерживаемые секции: `RunSettings` (Port, Http1Port), `JwtSettings`, `RabbitMQ`, `Redis`, `IdentitySecurity`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `TempFiles`, `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, `BotsService`, `AdminPanel`, `CloudMessaging`, `Web`, `FastAuth`, `LiveKit` (+ `PublicUrl`), базы данных (Identity, Users, Files, Messages, Onliner, Bots, Calls). Словари: `ContainerNames`, `DefaultPorts`, `SubdomainNames`, `DatabaseNames`. |
 
 ## Persistence
 
@@ -138,6 +138,7 @@
 | `20260715100000_AddBotsIdentityServiceConfiguration` | Конфигурация Bots → Identity. |
 | `20260715150000_AddLiveKitPublicUrl` | Публичный `wss://`-URL LiveKit для Beacon. |
 | `20260823205922_AddConfigurationRevisions` | Таблица `ConfigurationRevisions`, FK на `Configurations` и индекс выборки истории. |
+| `20260826110000_AddIdentitySecurityConfiguration` | Начальные ключи Redis и лимитов `IdentitySecurity` для Identity. |
 | `ConfigurationContextModelSnapshot.cs` | EF Core снимок модели. |
 | `fix_migration_history.sql` | SQL-скрипт ручного исправления истории миграций. |
 | `manual_add_location.sql` | SQL-скрипт ручного добавления колонки location. |
