@@ -16,7 +16,13 @@ public class UpdateSectionCommandHandler : IRequestHandler<UpdateSectionCommand,
 
     public async Task<DocumentationSection> Handle(UpdateSectionCommand request, CancellationToken cancellationToken)
     {
-        var updated = await _storage.UpdateAsync(request.Key, request.Title, request.Type, request.Order, request.Content)
+        var updated = await _storage.UpdateAsync(
+                request.Key,
+                request.Title,
+                request.Type,
+                request.Order,
+                request.Content,
+                cancellationToken)
             ?? throw new RpcException(new Status(StatusCode.NotFound, $"Section '{request.Key}' not found"));
 
         return new DocumentationSection

@@ -16,7 +16,7 @@ public class GetDocumentationSectionQueryHandler : IRequestHandler<GetDocumentat
 
     public async Task<DocumentationSection> Handle(GetDocumentationSectionQuery request, CancellationToken cancellationToken)
     {
-        var section = await _storage.GetByKeyAsync(request.Key)
+        var section = await _storage.GetByKeyAsync(request.Key, cancellationToken)
             ?? throw new RpcException(new Status(StatusCode.NotFound, $"Section '{request.Key}' not found"));
 
         return new DocumentationSection
