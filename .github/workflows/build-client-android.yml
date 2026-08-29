@@ -90,6 +90,7 @@ jobs:
           echo "Ветка ${{ github.ref_name }} → flavor $FLAVOR, канал $CHANNEL"
 
       - name: Автоподнятие версии
+        id: version
         run: |
           # Версию поднимает только nightly, dev и master переиздают её как есть,
           # поэтому источник правды для всех трёх веток — канал nightly.
@@ -124,8 +125,7 @@ jobs:
           fi
 
           echo "New version: $NEW_VERSION"
-
-          sed -i "s/versionName\s*=\s*\"[^\"]*\"/versionName = \"${NEW_VERSION}\"/" Barkfluff.Client.Android/app/build.gradle.kts
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Восстановление keystore из секрета
         env:
@@ -144,12 +144,12 @@ jobs:
           # CA сервера обновлений — уезжает в APK строкой BuildConfig.STORAGE_CA_PEM_B64,
           # без него система обновлений не пройдёт TLS до storage.barkfluff.com.
           STORAGE_CA_PEM_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
-        run: ./gradlew :app-v1:assemble${{ steps.target.outputs.flavor }}Release --no-daemon
+        run: ./gradlew :app-v1:assemble${{ steps.target.outputs.flavor }}Release --no-daemon -PappVersionName="${{ steps.version.outputs.version }}"
 
       - name: Get version
         id: meta
         run: |
-          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' Barkfluff.Client.Android/app/build.gradle.kts || echo "0.0.0")
+          VERSION="${{ steps.version.outputs.version }}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
