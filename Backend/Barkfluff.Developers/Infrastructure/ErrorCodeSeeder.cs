@@ -49,13 +49,22 @@ public class ErrorCodeSeeder
         var exceptionTypes = typeof(BaseGrpcException).Assembly
             .GetTypes()
             .Where(type => type.IsSubclassOf(typeof(BaseGrpcException)) && !type.IsAbstract)
+            .ToList();
+
+        return DiscoverEntries(exceptionTypes);
+    }
+
+    internal static IReadOnlyList<ErrorCodeEntry> DiscoverEntries(IEnumerable<Type> exceptionTypes)
+    {
+        var orderedExceptionTypes = exceptionTypes
+            .Where(type => type.IsSubclassOf(typeof(BaseGrpcException)) && !type.IsAbstract)
             .OrderBy(type => type.FullName, StringComparer.Ordinal)
             .ToList();
 
-        var entries = new List<ErrorCodeEntry>(exceptionTypes.Count);
+        var entries = new List<ErrorCodeEntry>(orderedExceptionTypes.Count);
         var codes = new Dictionary<string, Type>(StringComparer.Ordinal);
 
-        foreach (var type in exceptionTypes)
+        foreach (var type in orderedExceptionTypes)
         {
             if (type.GetConstructor(Type.EmptyTypes) is null)
             {

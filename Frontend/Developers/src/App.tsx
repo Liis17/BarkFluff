@@ -122,8 +122,8 @@ function getOsName(): string {
   const ua = navigator.userAgent;
   if (ua.includes('Win')) return 'Windows';
   if (ua.includes('Mac')) return 'macOS';
+  if (ua.includes('Linux')) return 'Linux';
   if (ua.includes('Android')) return 'Android';
   if (ua.includes('iOS') || ua.includes('iPhone')) return 'iOS';
-  if (ua.includes('Linux')) return 'Linux';
   return 'Unknown';
 }

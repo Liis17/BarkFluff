@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useAuth } from '../App';
 import { getDocumentationSections, getProtoFiles, getErrorCodes, type DocSection, type ProtoFile as ProtoFileType, type ErrorCode } from '../api/client';
 import { Sidebar } from './Layout/Sidebar';
@@ -10,6 +10,7 @@ import { AuthHeaders } from './Sections/AuthHeaders';
 import { ConnectionFlow } from './Sections/ConnectionFlow';
 import { ErrorCodes } from './Sections/ErrorCodes';
 import { ProtoFileSection } from './Sections/ProtoFile';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export function DocsPage() {
   const { auth, logout } = useAuth();
@@ -74,15 +75,22 @@ export function DocsPage() {
   }, [token]);
 
   const renderSection = (section: DocSection) => {
+    let content: ReactNode;
     switch (section.type) {
-      case 'overview': return <Overview key={section.key} section={section} />;
-      case 'quickstart': return <Quickstart key={section.key} section={section} />;
-      case 'implementation': return <Implementation key={section.key} section={section} />;
-      case 'auth-headers': return <AuthHeaders key={section.key} section={section} />;
-      case 'connection-flow': return <ConnectionFlow key={section.key} section={section} />;
-      case 'error-codes': return <ErrorCodes key={section.key} section={section} errorCodes={errorCodes} />;
-      default: return null;
+      case 'overview': content = <Overview section={section} />; break;
+      case 'quickstart': content = <Quickstart section={section} />; break;
+      case 'implementation': content = <Implementation section={section} />; break;
+      case 'auth-headers': content = <AuthHeaders section={section} />; break;
+      case 'connection-flow': content = <ConnectionFlow section={section} />; break;
+      case 'error-codes': content = <ErrorCodes section={section} errorCodes={errorCodes} />; break;
+      default: content = null;
     }
+
+    return (
+      <ErrorBoundary key={section.key}>
+        {content}
+      </ErrorBoundary>
+    );
   };
 
   if (loadError) {
@@ -118,7 +126,9 @@ export function DocsPage() {
         <main className="main-content">
           {sections.map(renderSection)}
           {protoFiles.map(pf => (
-            <ProtoFileSection key={pf.slug} protoFile={pf} token={token} />
+            <ErrorBoundary key={pf.slug}>
+              <ProtoFileSection protoFile={pf} token={token} />
+            </ErrorBoundary>
           ))}
         </main>
       </div>
