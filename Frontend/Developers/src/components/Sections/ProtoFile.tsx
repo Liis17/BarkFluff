@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ProtoFile as ProtoFileType } from '../../api/client';
 import { getProtoFileContent } from '../../api/client';
+import { parseSectionData } from './sectionData';
 
 interface Props {
   protoFile: ProtoFileType;
@@ -12,18 +13,53 @@ export function ProtoFileSection({ protoFile, token }: Props) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    const element = sectionRef.current;
+    if (!element) return;
+    if (!('IntersectionObserver' in window)) {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '600px 0px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    let cancelled = false;
     setLoading(true);
     setError('');
     getProtoFileContent(token, protoFile.fileName)
-      .then(data => setContent(data.content))
-      .catch(e => {
-        setContent(null);
-        setError(e.message);
+      .then(data => {
+        if (!cancelled) setContent(data.content);
       })
-      .finally(() => setLoading(false));
-  }, [protoFile.fileName, token]);
+      .catch(e => {
+        if (cancelled) return;
+        setContent(null);
+        setError(e instanceof Error ? e.message : 'Не удалось загрузить файл');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isVisible, protoFile.fileName, token]);
 
   const handleCopy = () => {
     if (!content) return;
@@ -43,7 +79,7 @@ export function ProtoFileSection({ protoFile, token }: Props) {
   };
 
   return (
-    <section className="proto-section doc-section" id={protoFile.slug} data-section={protoFile.slug}>
+    <section ref={sectionRef} className="proto-section doc-section" id={protoFile.slug} data-section={protoFile.slug}>
       <div className="section-eyebrow">API Reference</div>
       <h2 className="section-title">{protoFile.displayName}</h2>
 
@@ -71,7 +107,9 @@ export function ProtoFileSection({ protoFile, token }: Props) {
           </div>
         </div>
         <pre className="proto-code">
-          {loading ? (
+          {!isVisible ? (
+            <span style={{ color: 'var(--ink-mute)', fontStyle: 'italic' }}>Загрузка при прокрутке...</span>
+          ) : loading ? (
             <span style={{ color: 'var(--ink-mute)', fontStyle: 'italic' }}>Загрузка...</span>
           ) : error ? (
             <span style={{ color: '#f87171' }}>Ошибка: {error}</span>
@@ -88,90 +126,82 @@ export function ProtoFileSection({ protoFile, token }: Props) {
   );
 
   function getDescription(): string {
-    try {
-      const meta = JSON.parse(protoFile.rpcDescriptions);
-      return meta.description ?? '';
-    } catch {
-      return '';
-    }
+    return parseSectionData(protoFile.rpcDescriptions)?.description ?? '';
   }
 
   function renderMetadata() {
-    try {
-      const meta = JSON.parse(protoFile.rpcDescriptions);
+    const meta = parseSectionData(protoFile.rpcDescriptions);
+    if (!meta) return null;
 
-      return (
-        <>
-          {meta.info && (
-            <div className="info-box">
-              <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1" /></svg>
-              <div>{meta.info}</div>
-            </div>
-          )}
+    return (
+      <>
+        {meta.info && (
+          <div className="info-box">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1" /></svg>
+            <div>{meta.info}</div>
+          </div>
+        )}
 
-          {meta.warning && (
-            <div className="warn-box">
-              <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" /></svg>
-              <div>{meta.warning}</div>
-            </div>
-          )}
+        {meta.warning && (
+          <div className="warn-box">
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" /></svg>
+            <div>{meta.warning}</div>
+          </div>
+        )}
 
-          {meta.rpcs && meta.rpcs.length > 0 && (
-            <>
-              <h3 className="sub-heading">RPC методы</h3>
-              <div className="doc-table-wrap">
-                <table className="doc-table">
-                  <thead><tr><th>Метод</th><th>Тип</th><th>Request</th><th>Response</th><th>Описание</th></tr></thead>
-                  <tbody>
-                    {meta.rpcs.map((rpc: { name: string; req: string; resp: string; stream: boolean; description: string }) => (
-                      <tr key={rpc.name}>
-                        <td className="td-rpc">{rpc.name}</td>
-                        <td><span className={`td-badge ${rpc.stream ? 'badge-stream' : 'badge-unary'}`}>{rpc.stream ? 'stream' : 'unary'}</span></td>
-                        <td className="td-type">{rpc.req}</td>
-                        <td className="td-type">{rpc.resp}</td>
-                        <td>{rpc.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {meta.subsections && meta.subsections.map((sub: { title: string; type: string; items: { name: string; type: string; description: string; num?: string }[] }) => (
-            <div key={sub.title}>
-              <h3 className="sub-heading">{sub.title}</h3>
-              <div className="doc-table-wrap">
-                <table className="doc-table">
-                  <thead>
-                    <tr>
-                      {sub.type === 'enum'
-                        ? <><th>Значение</th><th>Число</th><th>Описание</th></>
-                        : <><th>Поле</th><th>Тип</th><th>Описание</th></>
-                      }
+        {meta.rpcs && meta.rpcs.length > 0 && (
+          <>
+            <h3 className="sub-heading">RPC методы</h3>
+            <div className="doc-table-wrap">
+              <table className="doc-table">
+                <thead><tr><th>Метод</th><th>Тип</th><th>Request</th><th>Response</th><th>Описание</th></tr></thead>
+                <tbody>
+                  {meta.rpcs.map((rpc: { name: string; req: string; resp: string; stream: boolean; description: string }) => (
+                    <tr key={rpc.name}>
+                      <td className="td-rpc">{rpc.name}</td>
+                      <td><span className={`td-badge ${rpc.stream ? 'badge-stream' : 'badge-unary'}`}>{rpc.stream ? 'stream' : 'unary'}</span></td>
+                      <td className="td-type">{rpc.req}</td>
+                      <td className="td-type">{rpc.resp}</td>
+                      <td>{rpc.description}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {sub.items.map((item: { name: string; type: string; description: string; num?: string }) => (
-                      <tr key={item.name}>
-                        <td className="td-name">{item.name}</td>
-                        {sub.type === 'enum'
-                          ? <td className="td-type">{item.num}</td>
-                          : <td className="td-type">{item.type}</td>
-                        }
-                        <td>{item.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </>
-      );
-    } catch {
-      return null;
-    }
+          </>
+        )}
+
+        {meta.subsections && meta.subsections.map((sub: { title: string; type: string; items: { name: string; type: string; description: string; num?: string }[] }) => (
+          <div key={sub.title}>
+            <h3 className="sub-heading">{sub.title}</h3>
+            <div className="doc-table-wrap">
+              <table className="doc-table">
+                <thead>
+                  <tr>
+                    {sub.type === 'enum'
+                      ? <><th>Значение</th><th>Число</th><th>Описание</th></>
+                      : <><th>Поле</th><th>Тип</th><th>Описание</th></>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  {sub.items.map((item: { name: string; type: string; description: string; num?: string }) => (
+                    <tr key={item.name}>
+                      <td className="td-name">{item.name}</td>
+                      {sub.type === 'enum'
+                        ? <td className="td-type">{item.num}</td>
+                        : <td className="td-type">{item.type}</td>
+                      }
+                      <td>{item.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </>
+    );
   }
 }
 

@@ -1,11 +1,13 @@
 import type { DocSection } from '../../api/client';
+import { InvalidSectionContent, parseSectionData } from './sectionData';
 
 interface Props {
   section: DocSection;
 }
 
 export function Overview({ section }: Props) {
-  const data = JSON.parse(section.content);
+  const data = parseSectionData(section.content);
+  if (!data) return <InvalidSectionContent section={section} />;
 
   return (
     <section className="doc-section" id={section.key} data-section={section.key}>

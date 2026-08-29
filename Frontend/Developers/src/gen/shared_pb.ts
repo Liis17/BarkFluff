@@ -65,6 +65,13 @@ export enum MessageAttachmentType {
    * @generated from enum value: STICKER = 7;
    */
   STICKER = 7,
+
+  /**
+   * Пересланное сообщение
+   *
+   * @generated from enum value: FORWARDED_MESSAGE = 8;
+   */
+  FORWARDED_MESSAGE = 8,
 }
 // Retrieve enum metadata with: proto3.getEnumType(MessageAttachmentType)
 proto3.util.setEnumType(MessageAttachmentType, "barkfluff.shared.MessageAttachmentType", [
@@ -76,6 +83,7 @@ proto3.util.setEnumType(MessageAttachmentType, "barkfluff.shared.MessageAttachme
   { no: 5, name: "AUDIO" },
   { no: 6, name: "VOICE" },
   { no: 7, name: "STICKER" },
+  { no: 8, name: "FORWARDED_MESSAGE" },
 ]);
 
 /**
@@ -108,6 +116,70 @@ proto3.util.setEnumType(MessageContentType, "barkfluff.shared.MessageContentType
   { no: 0, name: "MESSAGE_CONTENT_TYPE_UNKNOWN" },
   { no: 1, name: "GENERIC" },
   { no: 2, name: "SYSTEM" },
+]);
+
+/**
+ * Тип чата.
+ *   REGULAR  — обычный чат, plaintext в БД сервера (поведение по умолчанию, существующие чаты).
+ *   PRIVATE  — E2E через общий passphrase: сервер хранит только шифротекст в EncryptedMessages.
+ *              Чат материализуется в БД (Chat-стержень + KdfSalt + PassphraseVerifier).
+ *   SECRET   — E2E Signal Double Ratchet, привязка к устройству-инициатору сессии.
+ *              Сервер НЕ хранит ни сообщения, ни сам Chat — только релэит SecretEnvelope
+ *              и буферизует в Redis на 24ч. Через ListChats секретные чаты НЕ возвращаются —
+ *              клиент держит их в локальном хранилище.
+ *
+ * @generated from enum barkfluff.shared.ChatType
+ */
+export enum ChatType {
+  /**
+   * @generated from enum value: CHAT_TYPE_REGULAR = 0;
+   */
+  REGULAR = 0,
+
+  /**
+   * @generated from enum value: CHAT_TYPE_PRIVATE = 1;
+   */
+  PRIVATE = 1,
+
+  /**
+   * @generated from enum value: CHAT_TYPE_SECRET = 2;
+   */
+  SECRET = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(ChatType)
+proto3.util.setEnumType(ChatType, "barkfluff.shared.ChatType", [
+  { no: 0, name: "CHAT_TYPE_REGULAR" },
+  { no: 1, name: "CHAT_TYPE_PRIVATE" },
+  { no: 2, name: "CHAT_TYPE_SECRET" },
+]);
+
+/**
+ * Состояние приглашения в приватный чат. Нужно клиенту, чтобы не предлагать
+ * отправку до принятия приглашения второй стороной.
+ *
+ * @generated from enum barkfluff.shared.PrivateChatInviteState
+ */
+export enum PrivateChatInviteState {
+  /**
+   * @generated from enum value: PRIVATE_CHAT_INVITE_STATE_PENDING = 0;
+   */
+  PENDING = 0,
+
+  /**
+   * @generated from enum value: PRIVATE_CHAT_INVITE_STATE_ACCEPTED = 1;
+   */
+  ACCEPTED = 1,
+
+  /**
+   * @generated from enum value: PRIVATE_CHAT_INVITE_STATE_REJECTED = 2;
+   */
+  REJECTED = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(PrivateChatInviteState)
+proto3.util.setEnumType(PrivateChatInviteState, "barkfluff.shared.PrivateChatInviteState", [
+  { no: 0, name: "PRIVATE_CHAT_INVITE_STATE_PENDING" },
+  { no: 1, name: "PRIVATE_CHAT_INVITE_STATE_ACCEPTED" },
+  { no: 2, name: "PRIVATE_CHAT_INVITE_STATE_REJECTED" },
 ]);
 
 /**
@@ -197,11 +269,60 @@ export class Message extends Message$1<Message> {
   content?: MessageContent;
 
   /**
-   * Тип сообщения 
+   * Тип сообщения
    *
    * @generated from field: barkfluff.shared.MessageContentType type = 6;
    */
   type = MessageContentType.MESSAGE_CONTENT_TYPE_UNKNOWN;
+
+  /**
+   * Признак того что сообщение было отредактировано
+   *
+   * @generated from field: bool is_edited = 7;
+   */
+  isEdited = false;
+
+  /**
+   * Дата последней правки сообщения
+   *
+   * @generated from field: google.protobuf.Timestamp edited_at = 8;
+   */
+  editedAt?: Timestamp;
+
+  /**
+   * Глобальный ID сообщения в федеративном чате (uuid; пусто для локальных)
+   *
+   * @generated from field: string federated_id = 9;
+   */
+  federatedId = "";
+
+  /**
+   * UUID автора (пусто до включения федерации)
+   *
+   * @generated from field: string sender_uuid = 10;
+   */
+  senderUuid = "";
+
+  /**
+   * UUID remote-участников, прочитавших сообщение (FederatedReadStates; рендер — Фаза 5)
+   *
+   * @generated from field: repeated string federated_read_by = 11;
+   */
+  federatedReadBy: string[] = [];
+
+  /**
+   * Заполнено => сообщение является ответом. Резолвится сервером при выдаче
+   *
+   * @generated from field: barkfluff.shared.ReplyInfo reply_to = 12;
+   */
+  replyTo?: ReplyInfo;
+
+  /**
+   * UUID клиентской операции отправителя; пусто у старых сообщений
+   *
+   * @generated from field: string client_operation_id = 13;
+   */
+  clientOperationId = "";
 
   constructor(data?: PartialMessage<Message>) {
     super();
@@ -217,6 +338,13 @@ export class Message extends Message$1<Message> {
     { no: 4, name: "sent_at", kind: "message", T: Timestamp },
     { no: 5, name: "content", kind: "message", T: MessageContent },
     { no: 6, name: "type", kind: "enum", T: proto3.getEnumType(MessageContentType) },
+    { no: 7, name: "is_edited", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 8, name: "edited_at", kind: "message", T: Timestamp },
+    { no: 9, name: "federated_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "sender_uuid", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "federated_read_by", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 12, name: "reply_to", kind: "message", T: ReplyInfo },
+    { no: 13, name: "client_operation_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Message {
@@ -233,6 +361,97 @@ export class Message extends Message$1<Message> {
 
   static equals(a: Message | PlainMessage<Message> | undefined, b: Message | PlainMessage<Message> | undefined): boolean {
     return proto3.util.equals(Message, a, b);
+  }
+}
+
+/**
+ * Превью цитируемого сообщения для reply. В отличие от ForwardedMessageAttachment это НЕ снапшот:
+ * сервер резолвит его из оригинала на каждой выдаче, поэтому правка оригинала видна сразу,
+ * а удаление скрывает содержимое.
+ *
+ * @generated from message barkfluff.shared.ReplyInfo
+ */
+export class ReplyInfo extends Message$1<ReplyInfo> {
+  /**
+   * ID оригинала
+   *
+   * @generated from field: int64 message_id = 1;
+   */
+  messageId = protoInt64.zero;
+
+  /**
+   * Автор оригинала (0 для remote-автора федеративного чата)
+   *
+   * @generated from field: int64 sender_id = 2;
+   */
+  senderId = protoInt64.zero;
+
+  /**
+   * Актуальное имя автора (не снапшот)
+   *
+   * @generated from field: string sender_name = 3;
+   */
+  senderName = "";
+
+  /**
+   * Актуальный текст оригинала, обрезанный до 200 символов
+   *
+   * @generated from field: string text_preview = 4;
+   */
+  textPreview = "";
+
+  /**
+   * Тип первого вложения оригинала (для «📷 Фото» в превью)
+   *
+   * @generated from field: barkfluff.shared.MessageAttachmentType first_attachment_type = 5;
+   */
+  firstAttachmentType = MessageAttachmentType.MESSAGE_ATTACHMENT_TYPE_UNKNOWN;
+
+  /**
+   * Оригинал удалён: text_preview пуст, клиент рисует «сообщение удалено»
+   *
+   * @generated from field: bool is_deleted = 6;
+   */
+  isDeleted = false;
+
+  /**
+   * UUID оригинала в федеративном чате (пусто для локальных)
+   *
+   * @generated from field: string federated_message_id = 7;
+   */
+  federatedMessageId = "";
+
+  constructor(data?: PartialMessage<ReplyInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.shared.ReplyInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "sender_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "sender_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "text_preview", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "first_attachment_type", kind: "enum", T: proto3.getEnumType(MessageAttachmentType) },
+    { no: 6, name: "is_deleted", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 7, name: "federated_message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ReplyInfo {
+    return new ReplyInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ReplyInfo {
+    return new ReplyInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ReplyInfo {
+    return new ReplyInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ReplyInfo | PlainMessage<ReplyInfo> | undefined, b: ReplyInfo | PlainMessage<ReplyInfo> | undefined): boolean {
+    return proto3.util.equals(ReplyInfo, a, b);
   }
 }
 
@@ -336,6 +555,34 @@ export class MessageAttachment extends Message$1<MessageAttachment> {
    */
   fileName = "";
 
+  /**
+   * нода-владелец байтов (пусто = локальный файл), этап 3.1
+   *
+   * @generated from field: string origin_server = 11;
+   */
+  originServer = "";
+
+  /**
+   * Ширина изображения в пикселях (0 если не изображение)
+   *
+   * @generated from field: int32 image_width = 8;
+   */
+  imageWidth = 0;
+
+  /**
+   * Высота изображения в пикселях (0 если не изображение)
+   *
+   * @generated from field: int32 image_height = 9;
+   */
+  imageHeight = 0;
+
+  /**
+   * Данные пересланного сообщения (только для type = FORWARDED_MESSAGE)
+   *
+   * @generated from field: barkfluff.shared.ForwardedMessageAttachment forwarded_message = 10;
+   */
+  forwardedMessage?: ForwardedMessageAttachment;
+
   constructor(data?: PartialMessage<MessageAttachment>) {
     super();
     proto3.util.initPartial(data, this);
@@ -351,6 +598,10 @@ export class MessageAttachment extends Message$1<MessageAttachment> {
     { no: 5, name: "attachment_size", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 6, name: "preview_file_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "file_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "origin_server", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "image_width", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "image_height", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 10, name: "forwarded_message", kind: "message", T: ForwardedMessageAttachment },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageAttachment {
@@ -367,6 +618,364 @@ export class MessageAttachment extends Message$1<MessageAttachment> {
 
   static equals(a: MessageAttachment | PlainMessage<MessageAttachment> | undefined, b: MessageAttachment | PlainMessage<MessageAttachment> | undefined): boolean {
     return proto3.util.equals(MessageAttachment, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.shared.ForwardedMessageAttachment
+ */
+export class ForwardedMessageAttachment extends Message$1<ForwardedMessageAttachment> {
+  /**
+   * Имя и фамилия автора оригинального сообщения
+   *
+   * @generated from field: string author_name = 1;
+   */
+  authorName = "";
+
+  /**
+   * ID оригинального сообщения
+   *
+   * @generated from field: int64 original_message_id = 2;
+   */
+  originalMessageId = protoInt64.zero;
+
+  /**
+   * Текст оригинального сообщения
+   *
+   * @generated from field: string text = 3;
+   */
+  text = "";
+
+  /**
+   * Вложения оригинального сообщения (без FORWARDED_MESSAGE для исключения рекурсии)
+   *
+   * @generated from field: repeated barkfluff.shared.MessageAttachment attachments = 4;
+   */
+  attachments: MessageAttachment[] = [];
+
+  /**
+   * Чат оригинала (пусто у снапшотов, созданных до разделения reply/forward)
+   *
+   * @generated from field: string original_chat_id = 5;
+   */
+  originalChatId = "";
+
+  /**
+   * Автор оригинала (0 у legacy-снапшотов и у remote-автора)
+   *
+   * @generated from field: int64 original_sender_id = 6;
+   */
+  originalSenderId = protoInt64.zero;
+
+  /**
+   * Время отправки оригинала (пусто у legacy-снапшотов)
+   *
+   * @generated from field: google.protobuf.Timestamp original_sent_at = 7;
+   */
+  originalSentAt?: Timestamp;
+
+  /**
+   * Порядок внутри пересылки нескольких сообщений (0 у legacy-снапшотов)
+   *
+   * @generated from field: int32 order = 8;
+   */
+  order = 0;
+
+  constructor(data?: PartialMessage<ForwardedMessageAttachment>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.shared.ForwardedMessageAttachment";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "author_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "original_message_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "attachments", kind: "message", T: MessageAttachment, repeated: true },
+    { no: 5, name: "original_chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "original_sender_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "original_sent_at", kind: "message", T: Timestamp },
+    { no: 8, name: "order", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ForwardedMessageAttachment {
+    return new ForwardedMessageAttachment().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ForwardedMessageAttachment {
+    return new ForwardedMessageAttachment().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ForwardedMessageAttachment {
+    return new ForwardedMessageAttachment().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ForwardedMessageAttachment | PlainMessage<ForwardedMessageAttachment> | undefined, b: ForwardedMessageAttachment | PlainMessage<ForwardedMessageAttachment> | undefined): boolean {
+    return proto3.util.equals(ForwardedMessageAttachment, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.shared.PinnedMessageInfo
+ */
+export class PinnedMessageInfo extends Message$1<PinnedMessageInfo> {
+  /**
+   * Закреплённое сообщение
+   *
+   * @generated from field: barkfluff.shared.Message message = 1;
+   */
+  message?: Message;
+
+  /**
+   * ID пользователя, закрепившего сообщение
+   *
+   * @generated from field: int64 pinner_user_id = 2;
+   */
+  pinnerUserId = protoInt64.zero;
+
+  /**
+   * Дата закрепления
+   *
+   * @generated from field: google.protobuf.Timestamp pinned_at = 3;
+   */
+  pinnedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<PinnedMessageInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.shared.PinnedMessageInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message", kind: "message", T: Message },
+    { no: 2, name: "pinner_user_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "pinned_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PinnedMessageInfo {
+    return new PinnedMessageInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PinnedMessageInfo {
+    return new PinnedMessageInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PinnedMessageInfo {
+    return new PinnedMessageInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PinnedMessageInfo | PlainMessage<PinnedMessageInfo> | undefined, b: PinnedMessageInfo | PlainMessage<PinnedMessageInfo> | undefined): boolean {
+    return proto3.util.equals(PinnedMessageInfo, a, b);
+  }
+}
+
+/**
+ * Зашифрованное сообщение приватного чата.
+ * Сервер хранит как opaque blob в отдельной таблице EncryptedMessages и
+ * никогда не имеет ключа для расшифровки. Расшифровка только клиентами,
+ * знающими passphrase (через Argon2id(passphrase, Chat.kdf_salt) → AES-256-GCM key).
+ *
+ * @generated from message barkfluff.shared.EncryptedMessage
+ */
+export class EncryptedMessage extends Message$1<EncryptedMessage> {
+  /**
+   * Идентификатор шифрованного сообщения (auto-increment, отдельная последовательность от Message.id)
+   *
+   * @generated from field: int64 id = 1;
+   */
+  id = protoInt64.zero;
+
+  /**
+   * Идентификатор приватного чата
+   *
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  /**
+   * Идентификатор отправителя (известен серверу — нужен для авторизации)
+   *
+   * @generated from field: int64 sender_id = 3;
+   */
+  senderId = protoInt64.zero;
+
+  /**
+   * Идентификатор устройства-отправителя (для UI у получателя)
+   *
+   * @generated from field: string sender_device_id = 4;
+   */
+  senderDeviceId = "";
+
+  /**
+   * Дата отправки (UTC, проставляется сервером)
+   *
+   * @generated from field: google.protobuf.Timestamp sent_at = 5;
+   */
+  sentAt?: Timestamp;
+
+  /**
+   * Шифротекст AES-256-GCM
+   *
+   * @generated from field: bytes ciphertext = 6;
+   */
+  ciphertext = new Uint8Array(0);
+
+  /**
+   * Уникальный nonce для AES-GCM (12 байт), генерируется отправителем
+   *
+   * @generated from field: bytes nonce = 7;
+   */
+  nonce = new Uint8Array(0);
+
+  /**
+   * AAD для AES-GCM (например, привязка к chat_id и message_id)
+   *
+   * @generated from field: bytes associated_data = 8;
+   */
+  associatedData = new Uint8Array(0);
+
+  /**
+   * Признак редактирования
+   *
+   * @generated from field: bool is_edited = 9;
+   */
+  isEdited = false;
+
+  /**
+   * Дата последнего редактирования
+   *
+   * @generated from field: google.protobuf.Timestamp edited_at = 10;
+   */
+  editedAt?: Timestamp;
+
+  /**
+   * Soft-delete: true => сообщение скрыто, ciphertext очищен
+   *
+   * @generated from field: bool is_deleted = 11;
+   */
+  isDeleted = false;
+
+  constructor(data?: PartialMessage<EncryptedMessage>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.shared.EncryptedMessage";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "sender_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "sender_device_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "sent_at", kind: "message", T: Timestamp },
+    { no: 6, name: "ciphertext", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 7, name: "nonce", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 8, name: "associated_data", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 9, name: "is_edited", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "edited_at", kind: "message", T: Timestamp },
+    { no: 11, name: "is_deleted", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EncryptedMessage {
+    return new EncryptedMessage().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EncryptedMessage {
+    return new EncryptedMessage().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EncryptedMessage {
+    return new EncryptedMessage().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EncryptedMessage | PlainMessage<EncryptedMessage> | undefined, b: EncryptedMessage | PlainMessage<EncryptedMessage> | undefined): boolean {
+    return proto3.util.equals(EncryptedMessage, a, b);
+  }
+}
+
+/**
+ * Конверт секретного сообщения (Signal Double Ratchet).
+ * Сервер обращается с envelope как с opaque blob: только релэит указанному
+ * recipient_device_id и буферизует в Redis (TTL 24ч) если получатель оффлайн.
+ * В БД сервер НЕ сохраняет.
+ *
+ * @generated from message barkfluff.shared.SecretEnvelope
+ */
+export class SecretEnvelope extends Message$1<SecretEnvelope> {
+  /**
+   * Уникальный ID сообщения для ack (Guid, генерируется сервером при приёме)
+   *
+   * @generated from field: string message_id = 1;
+   */
+  messageId = "";
+
+  /**
+   * ID пользователя-отправителя (для UX: "от кого")
+   *
+   * @generated from field: int64 sender_user_id = 2;
+   */
+  senderUserId = protoInt64.zero;
+
+  /**
+   * ID устройства-отправителя (нужен получателю для маршрутизации в правильную ratchet-сессию)
+   *
+   * @generated from field: string sender_device_id = 3;
+   */
+  senderDeviceId = "";
+
+  /**
+   * ID устройства-получателя (определяется отправителем при создании секретного чата)
+   *
+   * @generated from field: string recipient_device_id = 4;
+   */
+  recipientDeviceId = "";
+
+  /**
+   * Опаковый payload libsignal (PreKeySignalMessage или SignalMessage), включает ratchet headers + ciphertext
+   *
+   * @generated from field: bytes envelope = 5;
+   */
+  envelope = new Uint8Array(0);
+
+  /**
+   * Дата отправки (UTC, проставляется сервером)
+   *
+   * @generated from field: google.protobuf.Timestamp sent_at = 6;
+   */
+  sentAt?: Timestamp;
+
+  constructor(data?: PartialMessage<SecretEnvelope>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.shared.SecretEnvelope";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "sender_user_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "sender_device_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "recipient_device_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "envelope", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 6, name: "sent_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SecretEnvelope {
+    return new SecretEnvelope().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SecretEnvelope {
+    return new SecretEnvelope().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SecretEnvelope {
+    return new SecretEnvelope().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SecretEnvelope | PlainMessage<SecretEnvelope> | undefined, b: SecretEnvelope | PlainMessage<SecretEnvelope> | undefined): boolean {
+    return proto3.util.equals(SecretEnvelope, a, b);
   }
 }
 
