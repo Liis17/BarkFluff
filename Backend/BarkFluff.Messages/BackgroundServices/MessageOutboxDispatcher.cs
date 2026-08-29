@@ -120,41 +120,45 @@ public class MessageOutboxDispatcher : BackgroundService
         DateTime now,
         CancellationToken cancellationToken)
     {
-        var isNpgsql = context.Database.IsNpgsql();
-        await using var transaction = isNpgsql
-            ? await context.Database.BeginTransactionAsync(cancellationToken)
-            : null;
-
-        List<MessageOutboxEntry> batch;
-        if (isNpgsql)
+        var executionStrategy = context.Database.CreateExecutionStrategy();
+        return await executionStrategy.ExecuteAsync(async () =>
         {
-            batch = await context.MessageOutbox.FromSqlInterpolated($"""
-                SELECT * FROM "MessageOutbox"
-                WHERE "Status" = 0 AND "NextAttemptAt" <= {now}
-                ORDER BY "Id"
-                LIMIT {MaxBatchSize}
-                FOR UPDATE SKIP LOCKED
-                """).ToListAsync(cancellationToken);
-        }
-        else
-        {
-            batch = await context.MessageOutbox
-                .Where(entry => entry.Status == MessageOutboxStatus.Pending && entry.NextAttemptAt <= now)
-                .OrderBy(entry => entry.Id)
-                .Take(MaxBatchSize)
-                .ToListAsync(cancellationToken);
-        }
+            var isNpgsql = context.Database.IsNpgsql();
+            await using var transaction = isNpgsql
+                ? await context.Database.BeginTransactionAsync(cancellationToken)
+                : null;
 
-        foreach (var entry in batch)
-        {
-            entry.Status = MessageOutboxStatus.Processing;
-            entry.NextAttemptAt = now + ProcessingLease;
-        }
+            List<MessageOutboxEntry> batch;
+            if (isNpgsql)
+            {
+                batch = await context.MessageOutbox.FromSqlInterpolated($"""
+                    SELECT * FROM "MessageOutbox"
+                    WHERE "Status" = 0 AND "NextAttemptAt" <= {now}
+                    ORDER BY "Id"
+                    LIMIT {MaxBatchSize}
+                    FOR UPDATE SKIP LOCKED
+                    """).ToListAsync(cancellationToken);
+            }
+            else
+            {
+                batch = await context.MessageOutbox
+                    .Where(entry => entry.Status == MessageOutboxStatus.Pending && entry.NextAttemptAt <= now)
+                    .OrderBy(entry => entry.Id)
+                    .Take(MaxBatchSize)
+                    .ToListAsync(cancellationToken);
+            }
 
-        await context.SaveChangesAsync(cancellationToken);
-        if (transaction is not null)
-            await transaction.CommitAsync(cancellationToken);
-        return batch;
+            foreach (var entry in batch)
+            {
+                entry.Status = MessageOutboxStatus.Processing;
+                entry.NextAttemptAt = now + ProcessingLease;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+                await transaction.CommitAsync(cancellationToken);
+            return batch;
+        });
     }
 
     private void ScheduleRetry(MessageOutboxEntry entry, Exception exception, DateTime now)
