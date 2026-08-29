@@ -8,35 +8,38 @@ namespace Barkfluff.Developers.Features.GetProtoFileContent;
 
 public class GetProtoFileContentQueryHandler : IRequestHandler<GetProtoFileContentQuery, GetProtoFileContentResponse>
 {
-    private readonly ProtoFileProvider _protoProvider;
+    private readonly IPublishedProtoCatalog _catalog;
     private readonly ProtoMetadataStorage _metadataStorage;
 
-    public GetProtoFileContentQueryHandler(ProtoFileProvider protoProvider, ProtoMetadataStorage metadataStorage)
+    public GetProtoFileContentQueryHandler(
+        IPublishedProtoCatalog catalog,
+        ProtoMetadataStorage metadataStorage)
     {
-        _protoProvider = protoProvider;
+        _catalog = catalog;
         _metadataStorage = metadataStorage;
     }
 
     public async Task<GetProtoFileContentResponse> Handle(GetProtoFileContentQuery request, CancellationToken cancellationToken)
     {
-        var content = _protoProvider.GetContent(request.FileName)
+        if (!_catalog.IsPublished(request.FileName))
+            throw new RpcException(new Status(StatusCode.NotFound, $"Proto file '{request.FileName}' not found"));
+
+        var metadata = await _metadataStorage.GetByFileNameAsync(request.FileName, cancellationToken)
             ?? throw new RpcException(new Status(StatusCode.NotFound, $"Proto file '{request.FileName}' not found"));
 
-        var metadata = await _metadataStorage.GetByFileNameAsync(request.FileName);
+        var content = _catalog.GetContent(request.FileName)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, $"Proto file '{request.FileName}' not found"));
 
         var response = new GetProtoFileContentResponse { Content = content };
 
-        if (metadata != null)
+        response.Metadata = new ProtoFileInfo
         {
-            response.Metadata = new ProtoFileInfo
-            {
-                FileName = metadata.FileName,
-                DisplayName = metadata.DisplayName,
-                Slug = metadata.Slug,
-                Order = metadata.Order,
-                RpcDescriptions = metadata.RpcDescriptions
-            };
-        }
+            FileName = metadata.FileName,
+            DisplayName = metadata.DisplayName,
+            Slug = metadata.Slug,
+            Order = metadata.Order,
+            RpcDescriptions = metadata.RpcDescriptions
+        };
 
         return response;
     }

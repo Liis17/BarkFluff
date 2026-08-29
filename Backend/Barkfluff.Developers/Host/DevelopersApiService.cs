@@ -1,5 +1,4 @@
 using BarkFluff.Proto.Developers;
-using BarkFluff.Shared.Identity;
 using Barkfluff.Developers.Features.CreateSection;
 using Barkfluff.Developers.Features.DeleteSection;
 using Barkfluff.Developers.Features.GetErrorCodes;
@@ -8,13 +7,14 @@ using Barkfluff.Developers.Features.GetProtoFiles;
 using Barkfluff.Developers.Features.GetSectionByKey;
 using Barkfluff.Developers.Features.GetSections;
 using Barkfluff.Developers.Features.UpdateSection;
+using Barkfluff.Developers.Infrastructure;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Barkfluff.Developers.Host;
 
-[Authorize(Policy = nameof(TokenType.User))]
+[Authorize(Policy = DevelopersAuthorizationExtensions.ReaderPolicyName)]
 public class DevelopersApiService : DevelopersApi.DevelopersApiBase
 {
     private readonly IMediator _mediator;

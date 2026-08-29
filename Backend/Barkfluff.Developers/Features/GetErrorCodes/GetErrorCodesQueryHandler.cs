@@ -16,7 +16,12 @@ public class GetErrorCodesQueryHandler : IRequestHandler<GetErrorCodesQuery, Get
 
     public async Task<GetErrorCodesResponse> Handle(GetErrorCodesQuery request, CancellationToken cancellationToken)
     {
-        var codes = await _context.ErrorCodes.ToListAsync(cancellationToken);
+        var codes = await _context.ErrorCodes
+            .AsNoTracking()
+            .OrderBy(code => code.Domain)
+            .ThenBy(code => code.ExceptionName)
+            .ThenBy(code => code.Code)
+            .ToListAsync(cancellationToken);
 
         var response = new GetErrorCodesResponse();
         foreach (var c in codes)

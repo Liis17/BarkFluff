@@ -14,7 +14,7 @@ namespace Barkfluff.Developers;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +52,7 @@ public class Program
             builder.Services.AddGrpcReflection();
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
         builder.Services.AddXAuth(builder.Configuration);
+        builder.Services.AddDevelopersAuthorization();
 
         builder.Services.AddDbContext<DevelopersContext>(c
             => c.UseNpgsql(builder.Configuration["DevelopersDb"], npgsql =>
@@ -63,12 +64,17 @@ public class Program
         builder.Services.AddTransient<DocumentationStorage>();
         builder.Services.AddTransient<ProtoMetadataStorage>();
         builder.Services.AddSingleton<ProtoFileProvider>();
+        builder.Services.AddSingleton<IProtoFileSource>(services =>
+            services.GetRequiredService<ProtoFileProvider>());
+        builder.Services.AddSingleton<IPublishedProtoCatalog, PublishedProtoCatalog>();
         builder.Services.AddSingleton<ErrorCodeSeeder>();
+        builder.Services.AddSingleton<DevelopersStartupInitializer>();
 
+        var allowedOrigins = GetAllowedOrigins(builder.Configuration, builder.Environment);
         builder.Services.AddCors(o => o.AddPolicy("DevelopersCors", p =>
         {
-            p.AllowAnyOrigin()
-             .AllowAnyMethod()
+            p.WithOrigins(allowedOrigins)
+             .WithMethods("POST", "OPTIONS")
              .AllowAnyHeader()
              .WithExposedHeaders("grpc-status", "grpc-message", "grpc-status-details-bin", "x-error-code");
         }));
@@ -77,19 +83,19 @@ public class Program
 
         var app = builder.Build();
 
-        using (var scope = app.Services.CreateScope())
+        try
         {
-            var ctx = scope.ServiceProvider.GetRequiredService<DevelopersContext>();
-            ctx.Database.Migrate();
-
-            var seeder = scope.ServiceProvider.GetRequiredService<ErrorCodeSeeder>();
-            seeder.SeedIfNeeded(ctx).GetAwaiter().GetResult();
-
-            var docStorage = scope.ServiceProvider.GetRequiredService<DocumentationStorage>();
-            docStorage.SeedIfNeeded().GetAwaiter().GetResult();
-
-            var protoStorage = scope.ServiceProvider.GetRequiredService<ProtoMetadataStorage>();
-            protoStorage.SeedIfNeeded().GetAwaiter().GetResult();
+            await app.Services
+                .GetRequiredService<DevelopersStartupInitializer>()
+                .InitializeAsync();
+        }
+        catch (Exception exception)
+        {
+            app.Logger.LogCritical(
+                exception,
+                "Developers startup initialization failed; the application will not start");
+            Log.CloseAndFlush();
+            throw;
         }
 
         var staticRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
@@ -123,6 +129,37 @@ public class Program
         app.MapHealthEndpoints();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
-        app.Run();
+        await app.RunAsync();
+    }
+
+    private static string[] GetAllowedOrigins(IConfiguration configuration, IHostEnvironment environment)
+    {
+        var configuredOrigins = configuration
+            .GetSection("Developers:AllowedOrigins")
+            .GetChildren()
+            .Select(section => section.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Cast<string>()
+            .ToArray();
+
+        if (configuredOrigins.Length > 0)
+        {
+            return configuredOrigins
+                .Where(origin => environment.IsDevelopment() || !IsLocalhostOrigin(origin))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        return environment.IsDevelopment()
+            ? ["https://developers.barkfluff.com", "http://localhost:5173"]
+            : ["https://developers.barkfluff.com"];
+    }
+
+    private static bool IsLocalhostOrigin(string origin)
+    {
+        return Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+            && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                || uri.Host.Equals("[::1]", StringComparison.OrdinalIgnoreCase));
     }
 }
