@@ -177,10 +177,15 @@ jobs:
         id: dmg
         run: |
           DMG_PATH="build/BarkFluff-${{ steps.meta.outputs.version }}.dmg"
-          test -f Packaging/dmg-background.png
+          if [ "${{ github.ref_name }}" = "nightly" ]; then
+            test -f Packaging/dmg-background.png
+            BACKGROUND_ARGS=(--background "Packaging/dmg-background.png")
+          else
+            BACKGROUND_ARGS=()
+          fi
           create-dmg \
             --volname "BarkFluff" \
-            --background "Packaging/dmg-background.png" \
+            "${BACKGROUND_ARGS[@]}" \
             --window-size 600 400 \
             --icon-size 128 \
             --icon "Barkfluff.app" 150 200 \
