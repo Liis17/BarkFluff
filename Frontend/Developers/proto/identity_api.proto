@@ -23,8 +23,6 @@ service IdentityApi {
   // Подтвердить создания аккаунта
   rpc ConfirmAccount(ConfirmAccountRequest) returns(ConfirmAccountResponse);
   
-  rpc GenerateTestToken(GenerateTestTokenRequest) returns(GenerateTestTokenResponse);
-  
   // Получить активные сессии
   rpc GetActiveSessions(GetActiveSessionsRequest) returns(GetActiveSessionsResponse);
   
@@ -51,6 +49,9 @@ service IdentityApi {
   
   // Установить пароль
   rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
+
+  // Разлогиниться с текущего устройства
+  rpc Logout(LogoutRequest) returns(LogoutResponse);
 }
 
 // Серверное API для админ-панели
@@ -66,6 +67,34 @@ service IdentityServerApi {
 
   // Удалить активную сессию пользователя
   rpc RemoveActiveSessionServer(RemoveActiveSessionServerRequest) returns(RemoveActiveSessionResponse);
+
+  // Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
+  // Регистрирует устройство в Users, отправляет уведомление о входе.
+  rpc CreateSessionForUserServer(CreateSessionForUserServerRequest) returns(CreateSessionForUserServerResponse);
+
+  // Принудительно сменить пароль пользователя (для админ-панели, без OTP).
+  // Отправляет email-уведомление пользователю.
+  rpc ForceSetPasswordServer(ForceSetPasswordServerRequest) returns(ForceSetPasswordServerResponse);
+
+  // Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
+  rpc CreateBotTokenServer(CreateBotTokenServerRequest) returns(CreateBotTokenServerResponse);
+
+  // Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
+  rpc GetBotTokenServer(GetBotTokenServerRequest) returns(GetBotTokenServerResponse);
+}
+
+message CreateSessionForUserServerRequest {
+  int64 user_id = 1;
+  string device_id = 2;            // GUID нового устройства
+  string device_name = 3;
+  string operation_system = 4;
+  string app_name = 5;             // "AppName v.X.Y.Z" (склеено вызывающим)
+  string ip_address = 6;
+}
+
+message CreateSessionForUserServerResponse {
+  Token access_token = 1;
+  Token refresh_token = 2;
 }
 
 message ListOtpVerificationServerRequest {
@@ -85,6 +114,32 @@ message RemoveActiveSessionServerRequest {
   int64 user_id = 1;
   string device_id = 2;
 }
+
+message CreateBotTokenServerRequest {
+  int64 bot_user_id = 1; // Идентификатор бота (Users.Id)
+}
+
+message CreateBotTokenServerResponse {
+  string token = 1; // JWT бота
+  string token_id = 2; // Идентификатор выпуска токена (для отзыва)
+}
+
+message GetBotTokenServerRequest {
+  int64 bot_user_id = 1; // Идентификатор бота (Users.Id)
+  string token_id = 2; // Существующий идентификатор выпуска токена
+}
+
+message GetBotTokenServerResponse {
+  string token = 1; // JWT бота с тем же token_id
+}
+
+// Принудительная смена пароля (серверный, для админ-панели)
+message ForceSetPasswordServerRequest {
+  int64 user_id = 1;
+  string new_password = 2;
+}
+
+message ForceSetPasswordServerResponse { }
 
 message ConfirmResetPasswordRequest {
   string reset_id = 1; // идентификатор сброса пароля
@@ -253,3 +308,7 @@ message SetPasswordRequest {
 }
 
 message SetPasswordResponse { }
+
+message LogoutRequest { }
+
+message LogoutResponse { }

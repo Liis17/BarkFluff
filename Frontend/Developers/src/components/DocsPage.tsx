@@ -20,20 +20,57 @@ export function DocsPage() {
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [catalogWarnings, setCatalogWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([
+
+    let cancelled = false;
+    setLoadError('');
+    setCatalogWarnings([]);
+    setSections([]);
+    setProtoFiles([]);
+    setErrorCodes([]);
+
+    Promise.allSettled([
       getDocumentationSections(token),
       getProtoFiles(token),
       getErrorCodes(token),
-    ])
-      .then(([s, pf, ec]) => {
-        setSections(s);
-        setProtoFiles(pf);
-        setErrorCodes(ec);
-      })
-      .catch(e => setLoadError(e.message));
+    ]).then(([sectionsResult, protoFilesResult, errorCodesResult]) => {
+      if (cancelled) return;
+
+      const warnings: string[] = [];
+      if (sectionsResult.status === 'fulfilled') {
+        setSections(sectionsResult.value);
+      } else {
+        setSections([]);
+        warnings.push('Основные разделы документации временно недоступны.');
+      }
+
+      if (protoFilesResult.status === 'fulfilled') {
+        setProtoFiles(protoFilesResult.value);
+      } else {
+        setProtoFiles([]);
+        warnings.push('Каталог proto временно недоступен.');
+      }
+
+      if (errorCodesResult.status === 'fulfilled') {
+        setErrorCodes(errorCodesResult.value);
+      } else {
+        setErrorCodes([]);
+        warnings.push('Каталог кодов ошибок временно недоступен.');
+      }
+
+      if (warnings.length === 3) {
+        setLoadError('Сервисы Developer Portal временно недоступны.');
+      } else {
+        setCatalogWarnings(warnings);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const renderSection = (section: DocSection) => {
@@ -61,6 +98,11 @@ export function DocsPage() {
   return (
     <>
       <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} onLogout={logout} />
+      {catalogWarnings.length > 0 && (
+        <div className="warn-box" style={{ margin: '16px 32px 0' }} role="status">
+          {catalogWarnings.map(warning => <div key={warning}>{warning}</div>)}
+        </div>
+      )}
       <div className="layout">
         <Sidebar
           sections={sections}

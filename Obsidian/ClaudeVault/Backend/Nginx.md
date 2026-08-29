@@ -140,6 +140,8 @@ HTTP-сервисы (не gRPC), используют `proxy_pass`:
 - `developers.barkfluff.com`: `/grpc/barkfluff.identity.IdentityApi/` → `identity:7000`,
   `/grpc/barkfluff.developers.DevelopersApi/` → `developers:7020`, health endpoints → `developers:7020`,
   остальные пути → `developers:7021` (SPA)
+- HTTPS server block Developers добавляет security headers `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY` и `Referrer-Policy: strict-origin-when-cross-origin`.
 
 ### `calls.conf`
 gRPC по образцу `updates.conf` (`grpc://calls:7025`), но `grpc_read/send_timeout 3600s` —

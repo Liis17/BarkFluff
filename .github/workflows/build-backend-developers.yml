@@ -9,6 +9,9 @@ on:
     paths:
       - 'Backend/Barkfluff.Developers/**'
       - 'Frontend/Developers/**'
+      - 'Shared/BarkFluff.Proto/**'
+      - 'Shared/BarkFluff.Shared.Exceptions/**'
+      - 'Tests/BarkFluff.Developers.Tests/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
@@ -22,6 +25,22 @@ jobs:
   build:
     name: "🐳 Сборка и публикация Barkfluff.Developers"
     runs-on: ubuntu-latest
+    env:
+      DEVELOPERS_TEST_POSTGRES: Host=localhost;Port=5432;Database=developers_test;Username=postgres;Password=postgres
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: developers_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +48,25 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+
+      - name: "🧪 Тесты Barkfluff.Developers"
+        run: dotnet test Tests/BarkFluff.Developers.Tests/BarkFluff.Developers.Tests.csproj -c Release --verbosity normal
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Frontend/Developers/package-lock.json
+
+      - name: "🔄 Проверка и генерация frontend-контрактов"
+        working-directory: Frontend/Developers
+        run: |
+          npm ci
+          npm run sync-proto:check
+          npm run generate
+          git -C ../.. diff --exit-code -- Frontend/Developers/proto Frontend/Developers/src/gen
+          npm run build
 
       - name: "\u2699\uFE0F dotnet publish (Linux Release)"
         run: |
