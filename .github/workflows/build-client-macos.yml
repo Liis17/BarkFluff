@@ -207,10 +207,34 @@ jobs:
           if [ "${{ github.ref_name }}" = "nightly" ]; then
             RW_DMG="${DMG_PATH%.dmg}-rw.dmg"
             REPACKED_DMG="${DMG_PATH%.dmg}-repacked.dmg"
-            MOUNT_DIR=$(mktemp -d)
-
             hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
-            hdiutil attach "$RW_DMG" -nobrowse -readwrite -mountpoint "$MOUNT_DIR" >/dev/null
+            ATTACH_INFO=$(hdiutil attach -mountrandom /Volumes -nobrowse -readwrite "$RW_DMG")
+            MOUNT_DIR=$(printf '%s\n' "$ATTACH_INFO" | awk '$1 ~ /^\/dev\// && $3 ~ /^\/Volumes\// { print $3; exit }')
+            [ -n "$MOUNT_DIR" ] || { echo "Не удалось найти mountpoint DMG" >&2; exit 1; }
+            DISK_NAME=$(basename "$MOUNT_DIR")
+
+            /usr/bin/osascript <<APPLESCRIPT
+            tell application "Finder"
+              tell disk "${DISK_NAME}"
+                open
+                delay 1
+                tell container window
+                  set current view to icon view
+                  set toolbar visible to false
+                  set statusbar visible to false
+                  set bounds to {10, 60, 690, 485}
+                end tell
+                set opts to icon view options of container window
+                set icon size of opts to 128
+                set text size of opts to 16
+                set arrangement of opts to not arranged
+                set background picture of opts to POSIX file "${MOUNT_DIR}/.background/dmg-background.png"
+                set position of item "Barkfluff.app" of container window to {205, 220}
+                set position of item "Applications" of container window to {515, 220}
+                delay 3
+              end tell
+            end tell
+          APPLESCRIPT
             chflags hidden "$MOUNT_DIR/.background" "$MOUNT_DIR/.DS_Store"
             hdiutil detach "$MOUNT_DIR"
             hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$REPACKED_DMG"
