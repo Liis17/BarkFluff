@@ -13,7 +13,26 @@ message_file="$tmp_dir/message.txt"
 reply_markup_file="$tmp_dir/reply_markup.json"
 
 printf '%s' "$TG_MESSAGE" > "$message_file"
-printf '%s' '{"inline_keyboard":[[{"text":"Открыть GitHub Action","url":"'"$TG_ACTION_URL"'"}]]}' > "$reply_markup_file"
+
+button_text='Открыть GitHub Action'
+button_url="$TG_ACTION_URL"
+if [[ -n "${TG_DOWNLOAD_URL:-}" ]]; then
+  button_text='Скачать последнюю версию'
+  button_url="$TG_DOWNLOAD_URL"
+fi
+
+json_escape() {
+  local value="$1"
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  printf '%s' "$value"
+}
+
+printf '{"inline_keyboard":[[{"text":"%s","url":"%s"}]]}' \
+  "$(json_escape "$button_text")" \
+  "$(json_escape "$button_url")" > "$reply_markup_file"
 
 curl_message_file="$message_file"
 curl_reply_markup_file="$reply_markup_file"
