@@ -183,11 +183,14 @@ jobs:
           else
             BACKGROUND_ARGS=()
           fi
+          # Фон 1200×800 оставляет тёмный запас при расширении окна Finder
+          # за стандартные 600×400, не показывая белую область сразу.
           create-dmg \
             --volname "BarkFluff" \
             "${BACKGROUND_ARGS[@]}" \
             --window-size 600 400 \
             --icon-size 128 \
+            --text-size 16 \
             --icon "Barkfluff.app" 150 200 \
             --app-drop-link 450 200 \
             "$DMG_PATH" \
