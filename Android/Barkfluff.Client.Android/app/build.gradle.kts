@@ -8,6 +8,24 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+private fun versionCodeFrom(versionName: String): Int {
+    val parts = versionName.substringBefore(' ').split('.')
+    require(parts.size == 3 && parts.all { it.toIntOrNull() != null }) {
+        "appVersionName must use MAJOR.MINOR.PATCH format: $versionName"
+    }
+
+    val code = parts[0].toLong() * 1_000_000L +
+        parts[1].toLong() * 1_000L +
+        parts[2].toLong()
+    require(code in 1..Int.MAX_VALUE) {
+        "appVersionName produces an invalid Android versionCode: $versionName"
+    }
+    return code.toInt()
+}
+
+// CI passes -PappVersionName; local builds use the development fallback.
+val appVersionName = providers.gradleProperty("appVersionName").orNull ?: "0.0.1"
+
 fun getSigningProp(envKey: String, propKey: String): String? {
     return System.getenv(envKey) ?: run {
         val f = rootProject.file("local.properties")
@@ -81,8 +99,9 @@ android {
     defaultConfig {
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.1"
+        // Android uses versionCode, rather than versionName, to order upgrades.
+        versionCode = versionCodeFrom(appVersionName)
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

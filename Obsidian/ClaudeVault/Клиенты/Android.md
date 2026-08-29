@@ -3,16 +3,22 @@
 Kotlin + gRPC-OkHttp клиент. Activity-based архитектура.
 
 Расположение: `Android/Barkfluff.Client.Android/`
-Package: `com.barkfluff.client`
+Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` используют отдельные `applicationId` ниже)
 
 > Полная карта файлов и внутреннего строения: [[Android-ProjectMap]]
 > Индекс всех файлов с кратким описанием роли каждого: [[Android-FileIndex]]
 > UI/UX спецификация всех экранов и сценариев: [[Клиенты/DesignDocument]] (источник: `dd.md`)
 
-## Версии
+## Версии и требования
 
-- Kotlin 2.2.20, AGP 8.9.1
-- gRPC-OkHttp 1.60.0 (NOT grpc-netty)
+- **Поддерживаемая ОС:** Android 12 (API 31) и выше (`minSdk = 31`).
+- **Сборочный API:** Android 16 (API 36), то есть `compileSdk = 36` и `targetSdk = 36`.
+- **Тулчейн:** Gradle 9.2.1, AGP 8.9.1, Kotlin 2.2.20, KSP 2.2.20-2.0.3, Java bytecode/JVM target 17. Gradle daemon закреплён на JDK 21; CI стартует с JDK 17 и при необходимости использует этот toolchain.
+- **Публикуемый APK:** только `arm64-v8a`; release собирается с R8 и resource shrinking.
+- **Версия приложения:** локальный fallback — `versionName 0.0.1`; CI передаёт реальную SemVer-версию через `-PappVersionName`. `versionCode` вычисляется из неё как `MAJOR × 1 000 000 + MINOR × 1 000 + PATCH`, чтобы Android видел каждый следующий релиз как обновление.
+- **gRPC:** gRPC-OkHttp 1.60.0 (NOT grpc-netty).
+
+Состояние ClientStorage на **30.08.2026**: `release`, `dev` и `nightly` — `0.0.132` (файл каждого канала загружен 22–23.08.2026), `beta` — устаревший `0.0.121 beta`. Опубликованные APK `0.0.132` ещё содержат исторический `versionCode = 1`; пересборка `0.0.132` после этой правки получит `versionCode = 132`, а следующий nightly `0.0.133` — `133`.
 
 ## Иконка приложения (adaptive, по каналу сборки)
 
@@ -178,8 +184,8 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - **`BuildConfig.UPDATE_CHANNEL`** — канал сборки. По нему `UpdateChecker.hasUpdate()` следит только за своим каналом, а `UpdateActivity` показывает кнопку обновления лишь в своей карточке: APK чужого канала не обновит приложение, а встанет вторым. Канал больше **не** определяется суффиксом « beta» в версии — `AppVersion.isBeta` для этого не используется.
 - **Ресурсы каналов** — `app/src/dev/res/` и `app/src/nightly/res/` перекрывают `main`: `app_name` во всех пяти локалях и adaptive-иконка. Для иконки используется цельный `StoreLogo`-арт канала из `Windows/BarkFluff.Client.WinUI/Assets/{branch}/`, скопированный в `drawable-nodpi/` и помещённый в `layer-list` размером 66dp — в безопасную зону adaptive-иконки. Внешний слой прозрачен, поэтому лаунчер сохраняет исходные скруглённые углы и фактуру вместо собственной маски поверх полноразмерной текстуры.
 - **`google-services.json`** содержит client-записи всех трёх пакетов. Без записи под конкретный `applicationId` плагин `com.google.gms.google-services` роняет сборку флейвора.
-- **Версия.** `versionName` поднимает только сборка ветки `nightly` (patch + 1 от версии в канале `nightly`); `dev` и `master` переиздают ту же версию как есть. В git `versionName` всегда остаётся `0.0.1` — реальное значение `sed`'ом подставляет CI и обратно не коммитит. Следствие: два пуша в `dev` подряд без промежуточной nightly-сборки дают два APK с одинаковой версией, и клиент не увидит второй как обновление.
-- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла.
+- **Версия.** Сборка ветки `nightly` увеличивает patch относительно версии в канале `nightly`; `dev` и `master` переиздают эту же версию. CI передаёт значение в Gradle через `-PappVersionName`, а не переписывает исходник. `versionCode` вычисляется из SemVer (`MAJOR × 1 000 000 + MINOR × 1 000 + PATCH`) и растёт вместе с версией; локальный fallback остаётся `0.0.1`/`1`. Два пуша в `dev` подряд без промежуточной nightly-сборки по-прежнему дают одинаковую версию — это отдельное ограничение схемы каналов.
+- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла (`0.0.121 beta` на момент проверки).
 
 ## Система обновлений и её TLS
 
@@ -745,6 +751,7 @@ Android/
 - **Тулчейн:** AGP 8.9.1, Gradle 9.2.1, Kotlin 2.2.20, Java 17.
 - **Сборка только с JDK 17+:** `JAVA_HOME` = JBR Android Studio (JDK 21). Из `Android/`:
   `./gradlew :core:assembleDebug :app-v1:assembleDebug`
+- **Единая точка входа:** поддерживаемый Gradle-рут — `Android/`; вложенные `Barkfluff.Client.Android/settings.gradle.kts` и его wrapper/каталог версий — историческая копия и не используются CI. Вложенный root сейчас не считается самостоятельным entrypoint: его каталог версий не содержит Hilt-алиасов.
 
 ### Состав `:core`
 
