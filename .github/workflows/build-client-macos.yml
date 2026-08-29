@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - master
+      - nightly
     paths:
       - 'Mac/Barkfluff/**'
       - 'Mac/macos-rebuild.trigger'
@@ -26,7 +27,7 @@ jobs:
     steps:
       - name: "📲 Собрать macOS Client?"
         id: approval
-        if: github.ref_name != 'dev'
+        if: github.ref_name != 'dev' && github.ref_name != 'nightly'
         continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
@@ -43,7 +44,7 @@ jobs:
       - name: Результат
         id: result
         run: |
-          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
+          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ github.ref_name }}" = "nightly" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
             echo "approved=true" >> "$GITHUB_OUTPUT"
           else
             echo "approved=false" >> "$GITHUB_OUTPUT"
@@ -82,9 +83,30 @@ jobs:
           CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
         run: printf '%s' "$CA_BUNDLE_B64" | base64 -D > cloudflare-origin-ca-bundle.pem
 
+      - name: Канал сборки
+        id: target
+        run: |
+          case "${{ github.ref_name }}" in
+            master)  CHANNEL="release"; VERSION_CHANNEL="beta" ;;
+            dev)     CHANNEL="beta";    VERSION_CHANNEL="beta" ;;
+            nightly) CHANNEL="nightly"; VERSION_CHANNEL="nightly" ;;
+            *)
+              echo "Ветка ${{ github.ref_name }} не привязана к каналу обновлений" >&2
+              exit 1
+              ;;
+          esac
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "version_channel=$VERSION_CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Ветка ${{ github.ref_name }} → канал $CHANNEL"
+
       - name: Автоподнятие версии
         run: |
-          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
+          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/${{ steps.target.outputs.version_channel }}/version" || echo "")
+
+          if [ -z "$RESPONSE" ] && [ "${{ steps.target.outputs.version_channel }}" = "nightly" ]; then
+            echo "Канал nightly пуст, пробуем beta"
+            RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
+          fi
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
@@ -105,7 +127,7 @@ jobs:
 
           echo "Server version: $SERVER_VERSION"
 
-          if [ "${{ github.ref_name }}" = "dev" ]; then
+          if [ "${{ github.ref_name }}" = "nightly" ]; then
             MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
             MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
             PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
@@ -155,8 +177,10 @@ jobs:
         id: dmg
         run: |
           DMG_PATH="build/BarkFluff-${{ steps.meta.outputs.version }}.dmg"
+          test -f Packaging/dmg-background.png
           create-dmg \
             --volname "BarkFluff" \
+            --background "Packaging/dmg-background.png" \
             --window-size 600 400 \
             --icon-size 128 \
             --icon "Barkfluff.app" 150 200 \
@@ -167,11 +191,7 @@ jobs:
 
       - name: "📤 Загрузка на сервер обновлений"
         run: |
-          if [ "${{ github.ref_name }}" = "dev" ]; then
-            CHANNEL="beta"
-          else
-            CHANNEL="release"
-          fi
+          CHANNEL="${{ steps.target.outputs.channel }}"
           curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffmacos/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
             -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
