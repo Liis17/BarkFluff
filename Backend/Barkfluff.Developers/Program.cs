@@ -144,10 +144,14 @@ public class Program
 
         if (configuredOrigins.Length > 0)
         {
-            return configuredOrigins
+            var allowedOrigins = configuredOrigins
                 .Where(origin => environment.IsDevelopment() || !IsLocalhostOrigin(origin))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+
+            return allowedOrigins.Length > 0
+                ? allowedOrigins
+                : ["https://developers.barkfluff.com"];
         }
 
         return environment.IsDevelopment()

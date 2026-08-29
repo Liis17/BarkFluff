@@ -82,7 +82,7 @@ public class DocumentationStorage
                         ("id", "key", "title", "type", "order", "content", "created_at", "updated_at")
                     VALUES
                         ({section.Id}, {section.Key}, {section.Title}, {section.Type}, {section.Order},
-                         {section.Content}, {section.CreatedAt}, {section.UpdatedAt})
+                         CAST({section.Content} AS jsonb), {section.CreatedAt}, {section.UpdatedAt})
                     ON CONFLICT ("key") DO NOTHING
                     """, cancellationToken);
             }

@@ -44,7 +44,7 @@ public class ProtoMetadataStorage
                         ("id", "file_name", "display_name", "slug", "order", "rpc_descriptions", "created_at", "updated_at")
                     VALUES
                         ({item.Id}, {item.FileName}, {item.DisplayName}, {item.Slug}, {item.Order},
-                         {item.RpcDescriptions}, {item.CreatedAt}, {item.UpdatedAt})
+                         CAST({item.RpcDescriptions} AS jsonb), {item.CreatedAt}, {item.UpdatedAt})
                     ON CONFLICT ("file_name") DO NOTHING
                     """, cancellationToken);
             }
