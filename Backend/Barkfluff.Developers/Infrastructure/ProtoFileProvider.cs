@@ -28,9 +28,4 @@ internal sealed class ProtoFileProvider : IProtoFileSource
     {
         return _cache.TryGetValue(fileName, out var content) ? content : null;
     }
-
-    public IReadOnlyList<string> GetAvailableFiles()
-    {
-        return _cache.Keys.OrderBy(k => k).ToList();
-    }
 }

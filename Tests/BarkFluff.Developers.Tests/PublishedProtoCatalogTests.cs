@@ -48,7 +48,7 @@ public class PublishedProtoCatalogTests
 
             var provider = new ProtoFileProvider(directory);
 
-            provider.GetAvailableFiles().Should().Equal("shared.proto");
+            provider.GetContent("shared.proto").Should().NotBeNull();
             provider.GetContent("configuration_api.proto").Should().BeNull();
         }
         finally
@@ -69,11 +69,6 @@ public class PublishedProtoCatalogTests
         public string? GetContent(string fileName)
         {
             return _files.TryGetValue(fileName, out var content) ? content : null;
-        }
-
-        public IReadOnlyList<string> GetAvailableFiles()
-        {
-            return _files.Keys.OrderBy(fileName => fileName, StringComparer.Ordinal).ToArray();
         }
     }
 }
