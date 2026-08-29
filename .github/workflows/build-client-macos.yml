@@ -180,8 +180,10 @@ jobs:
           if [ "${{ github.ref_name }}" = "nightly" ]; then
             test -f Packaging/dmg-background.png
             BACKGROUND_ARGS=(--background "Packaging/dmg-background.png")
+            TEXT_SIZE_ARGS=(--text-size 16)
           else
             BACKGROUND_ARGS=()
+            TEXT_SIZE_ARGS=()
           fi
           # Фон 1200×800 оставляет тёмный запас при расширении окна Finder
           # за стандартные 600×400, не показывая белую область сразу.
@@ -190,11 +192,27 @@ jobs:
             "${BACKGROUND_ARGS[@]}" \
             --window-size 600 400 \
             --icon-size 128 \
-            --text-size 16 \
+            "${TEXT_SIZE_ARGS[@]}" \
             --icon "Barkfluff.app" 150 200 \
             --app-drop-link 450 200 \
             "$DMG_PATH" \
             "build/export/Barkfluff.app"
+
+          if [ "${{ github.ref_name }}" = "nightly" ]; then
+            RW_DMG="${DMG_PATH%.dmg}-rw.dmg"
+            REPACKED_DMG="${DMG_PATH%.dmg}-repacked.dmg"
+            MOUNT_DIR=$(mktemp -d)
+
+            hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
+            hdiutil attach "$RW_DMG" -nobrowse -readwrite -mountpoint "$MOUNT_DIR" >/dev/null
+            chflags hidden "$MOUNT_DIR/.background" "$MOUNT_DIR/.DS_Store"
+            hdiutil detach "$MOUNT_DIR"
+            hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$REPACKED_DMG"
+            mv "$REPACKED_DMG" "$DMG_PATH"
+            rm -f "$RW_DMG"
+            rmdir "$MOUNT_DIR"
+          fi
+
           echo "path=$DMG_PATH" >> "$GITHUB_OUTPUT"
 
       - name: "📤 Загрузка на сервер обновлений"
