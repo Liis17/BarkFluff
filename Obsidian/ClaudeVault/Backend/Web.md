@@ -159,7 +159,13 @@ origin вызывающего заранее неизвестен, вести с
 
 ### Устойчивость стримов и catch-up
 
-Сервер (`BarkFluff.Updates`) держит server-streaming подписку на `await Task.Delay(Timeout.Infinite, ct)` и пишет в поток **только** при реальном событии: ни heartbeat, ни replay пропущенного нет (`SubscribeNewMessagesRequest` пустой — отдаются лишь live-события с момента подписки). Поэтому весь учёт «пропущенного за время разрыва» лежит на клиенте.
+Сервер (`BarkFluff.Updates`) держит server-streaming подписку и для `SubscribeNewMessages`
+сразу отправляет пустой event, затем heartbeat каждые 15 секунд. Клиент игнорирует event без
+`message`; heartbeat нужен для немедленного открытия gRPC-Web-ответа и поддержания idle-stream
+через прокси. Для streaming-ответа Web также выставляет `Cache-Control: no-cache, no-transform`,
+чтобы промежуточные прокси не сжимали и не буферизировали поток. Replay пропущенных бизнес-событий по-прежнему не выполняется
+(`SubscribeNewMessagesRequest` пустой — отдаются лишь live-события с момента подписки), поэтому
+весь учёт «пропущенного за время разрыва» лежит на клиенте.
 
 Механизмы клиента (`realtime.js`):
 - **exponential backoff** (2с → 30с) на error/end каждого стрима;

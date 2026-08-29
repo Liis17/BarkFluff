@@ -56,7 +56,11 @@ Messages service → RabbitMQ → Consumer → IMediator.Publish() → Handler �
 ```csharp
 ConcurrentDictionary<long userId, ConcurrentDictionary<Guid subscriptionId, IServerStreamWriter<T>>>
 ```
-Используется для всех «обычных» стримов и приватных чатов: `SubscribeNewMessages`, `SubscribePrivateMessages`, `SubscribePrivateChatInvites` и т.д. Поддерживает несколько подключений одного пользователя (разные устройства).
+Используется для всех «обычных» стримов и приватных чатов, кроме `SubscribeNewMessages`:
+`SubscribePrivateMessages`, `SubscribePrivateChatInvites` и т.д. Поддерживает несколько
+подключений одного пользователя (разные устройства). `SubscribeNewMessages` использует
+специализированный менеджер с тем же user-scope и дополнительной сериализацией записей в
+каждый server-stream.
 
 **Device-scope** (`DeviceStreamSubscriptionsBase<TEvent>` в `Features/Shared/`):
 ```csharp
@@ -65,6 +69,12 @@ ConcurrentDictionary<(long userId, Guid deviceId), ConcurrentDictionary<Guid sub
 Используется для стримов **секретных чатов** (`SubscribeSecretChatInvites`, `SubscribeSecretChatResolutions`, `SubscribeSecretMessages`): событие маршрутизируется только в стрим конкретного устройства (recipient_device_id или sender_device_id для resolution). Если устройство оффлайн — событие в стрим не пишется (envelope/invite остаётся в Redis-буфере Messages-сервиса на 24ч + silent push). DeviceId извлекается из JWT-claim'а; если его нет — `Status.Unauthenticated`.
 
 При разрыве `UpdatesApiService` удаляет подписку через `RemoveSubscription`.
+
+`SubscribeNewMessages` после регистрации отправляет пустой `NewMessageEvent` сразу и затем
+каждые 15 секунд. Клиент игнорирует события без `message`, а heartbeat подтверждает открытие
+server-stream для gRPC-Web/прокси и не даёт idle-соединению превратиться в «чёрную дыру».
+Все записи в одну конкретную подписку проходят через последовательный lock: heartbeat и
+уведомления не вызывают конкурентный `IServerStreamWriter.WriteAsync`.
 
 ### Push-уведомления (отложенная отправка)
 
@@ -105,7 +115,8 @@ rpc SubscribeSecretChatResolutions(...) returns (stream SecretChatInviteResoluti
 rpc SubscribeSecretMessages(...) returns (stream NewSecretMessageEvent)
 ```
 
-Все методы: регистрируют подписку → `await Task.Delay(Infinite, context.CancellationToken)` → при отключении удаляют подписку.
+Все остальные методы: регистрируют подписку → ждут отмены контекста → при отключении удаляют
+подписку. `SubscribeNewMessages` дополнительно выполняет heartbeat, описанный выше.
 Защита: `[Authorize(Policy = nameof(TokenType.User))]`. Device-scope методы дополнительно требуют DeviceId в claim'ах JWT.
 
 ## Добавление нового типа событий

@@ -271,7 +271,9 @@ app.Use(async (ctx, next) =>
         ctx.Response.Headers.Remove("Content-Length");
         // Запрещаем nginx буферизировать ответ — критично для server-streaming
         ctx.Response.Headers["X-Accel-Buffering"] = "no";
-        ctx.Response.Headers["Cache-Control"] = "no-cache";
+        // Нельзя позволять промежуточным прокси сжимать/преобразовывать
+        // gRPC-Web server-stream: это может превратить live-ответ в буфер.
+        ctx.Response.Headers["Cache-Control"] = "no-cache, no-transform";
         return Task.CompletedTask;
     });
 
