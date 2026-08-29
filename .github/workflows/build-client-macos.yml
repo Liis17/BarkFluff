@@ -209,7 +209,19 @@ jobs:
             REPACKED_DMG="${DMG_PATH%.dmg}-repacked.dmg"
             hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
             ATTACH_INFO=$(hdiutil attach -mountrandom /Volumes -nobrowse -readwrite "$RW_DMG")
+            DEV_NAME=$(printf '%s\n' "$ATTACH_INFO" | awk '$1 ~ /^\/dev\/disk[0-9]+$/ { print $1; exit }')
             MOUNT_DIR=$(printf '%s\n' "$ATTACH_INFO" | awk '$1 ~ /^\/dev\// && $3 ~ /^\/Volumes\// { print $3; exit }')
+            cleanup_dmg() {
+              if [ -n "${MOUNT_DIR:-}" ]; then
+                hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1 || true
+                rmdir "$MOUNT_DIR" 2>/dev/null || true
+              elif [ -n "${DEV_NAME:-}" ]; then
+                hdiutil detach "$DEV_NAME" >/dev/null 2>&1 || true
+              fi
+              [ -z "${RW_DMG:-}" ] || rm -f "$RW_DMG"
+              [ -z "${REPACKED_DMG:-}" ] || rm -f "$REPACKED_DMG"
+            }
+            trap cleanup_dmg EXIT
             [ -n "$MOUNT_DIR" ] || { echo "Не удалось найти mountpoint DMG" >&2; exit 1; }
             DISK_NAME=$(basename "$MOUNT_DIR")
 
@@ -240,7 +252,7 @@ jobs:
             hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$REPACKED_DMG"
             mv "$REPACKED_DMG" "$DMG_PATH"
             rm -f "$RW_DMG"
-            rmdir "$MOUNT_DIR"
+            rmdir "$MOUNT_DIR" 2>/dev/null || true
           fi
 
           echo "path=$DMG_PATH" >> "$GITHUB_OUTPUT"
