@@ -181,20 +181,26 @@ jobs:
             test -f Packaging/dmg-background.png
             BACKGROUND_ARGS=(--background "Packaging/dmg-background.png")
             TEXT_SIZE_ARGS=(--text-size 16)
+            DMG_LAYOUT_ARGS=(
+              --window-size 680 425
+              --icon "Barkfluff.app" 205 220
+              --app-drop-link 515 220
+            )
           else
             BACKGROUND_ARGS=()
             TEXT_SIZE_ARGS=()
+            DMG_LAYOUT_ARGS=(
+              --window-size 600 400
+              --icon "Barkfluff.app" 150 200
+              --app-drop-link 450 200
+            )
           fi
-          # Retina-фон 1800×1100 (@144 dpi) оставляет тёмный запас при
-          # расширении окна Finder за рабочую область 720×440.
           create-dmg \
             --volname "BarkFluff" \
             "${BACKGROUND_ARGS[@]}" \
-            --window-size 680 425 \
+            "${DMG_LAYOUT_ARGS[@]}" \
             --icon-size 128 \
             "${TEXT_SIZE_ARGS[@]}" \
-            --icon "Barkfluff.app" 205 220 \
-            --app-drop-link 515 220 \
             "$DMG_PATH" \
             "build/export/Barkfluff.app"
 
