@@ -526,4 +526,4 @@ open Barkfluff.xcodeproj
 
 DMG собирается в `.github/workflows/build-client-macos.yml` через `create-dmg`. Фон ночного неба находится в `Mac/Barkfluff/Packaging/dmg-background.png`; workflow подключает его параметром `--background` только для nightly, а beta/release используют стандартный фон Finder.
 
-Автоматические каналы: `dev` → `beta`, `nightly` → `nightly`, `master` → `release`. Для nightly версия берётся из канала `nightly` (с fallback на `beta`) и увеличивается на patch. В DMG используется окно `600×400`, размер иконок `128`, позиции приложения и Applications — `(150, 200)` и `(450, 200)`.
+Автоматические каналы: `dev` → `beta`, `nightly` → `nightly`, `master` → `release`. Для nightly версия берётся из канала `nightly` (с fallback на `beta`) и увеличивается на patch. После успешной загрузки workflow отправляет в Telegram одну кнопку «Скачать последнюю версию» на `https://storage.barkfluff.com/get/barkfluffmacos/{channel}`; при ошибке — кнопку «Открыть GitHub Action». В DMG используется окно `600×400`, размер иконок `128`, позиции приложения и Applications — `(150, 200)` и `(450, 200)`.

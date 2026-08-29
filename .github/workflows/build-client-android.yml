@@ -179,6 +179,7 @@ jobs:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_DOWNLOAD_URL: https://storage.barkfluff.com/get/barkfluffkotlin/${{ steps.target.outputs.channel }}
           TG_MESSAGE: |
             ✅ *Сборка успешна*
 
