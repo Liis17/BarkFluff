@@ -62,6 +62,8 @@ public static class MetricsCatalog
             Counter("server_registrations", "Регистрации серверов"), Counter("server_lookups", "Поиск серверов")),
         Service("BarkFluff.Configuration", "Configuration", false,
             Counter("config_get_success", "Чтения конфигурации"), Counter("config_update_success", "Успешные изменения конфигурации"), Counter("config_update_errors", "Ошибки изменения конфигурации"), Gauge("configurations_total", "Записи конфигурации")),
+        Service("BarkFluff.Settings", "Settings", false,
+            Counter("config_get_success", "Чтения настроек"), Counter("config_update_success", "Успешные изменения настроек"), Counter("config_update_errors", "Ошибки изменения настроек"), Gauge("settings_rows_total", "Строки настроек"), Gauge("settings_missing_manual_total", "Незаполненные ручные поля")),
         Service("BarkFluff.Beacon", "Beacon", false,
             Counter("server_info_requests", "Запросы server info"), Counter("navigator_registrations", "Регистрации Navigator"), Counter("navigator_registration_errors", "Ошибки регистрации Navigator")),
         Service("BarkFluff.Web", "Web", false, Counter("http_requests_total", "HTTP-запросы"), Counter("http_requests_errors", "HTTP-ошибки")),

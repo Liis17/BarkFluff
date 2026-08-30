@@ -35,6 +35,21 @@ services:
     networks:
       - barkfluff-network
 
+  settings:
+    image: docker.barkfluff.com/barkfluff-settings-nightly:latest
+    container_name: settings
+    restart: always
+    env_file:
+      - .env
+    environment:
+      SETTINGS_DATABASE: "${SETTINGS_DATABASE:-settings}"
+      SETTINGS_ADMIN_DATABASE: "${SETTINGS_ADMIN_DATABASE:-postgres}"
+      SETTINGS_PORT: "${SETTINGS_PORT:-7003}"
+    networks:
+      - barkfluff-network
+    depends_on:
+      - postgres
+
   files:
     image: docker.barkfluff.com/barkfluff-files-nightly:latest
     container_name: files

@@ -13,7 +13,7 @@ public sealed class SettingsReadinessContributorTests
     public async Task Reports_degraded_with_sorted_manual_keys_until_they_are_filled()
     {
         await using var context = CreateContext();
-        await new SettingsSeeder(context, SettingsSeedOptions.ForTests()).SeedAsync();
+        await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest")).SeedAsync();
         var contributor = new SettingsReadinessContributor(context);
 
         var check = await contributor.CheckAsync();

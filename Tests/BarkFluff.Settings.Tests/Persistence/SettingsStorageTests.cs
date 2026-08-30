@@ -17,7 +17,7 @@ public sealed class SettingsStorageTests
     public async Task Service_values_override_global_values_by_configuration_path()
     {
         await using var context = CreateContext();
-        await new SettingsSeeder(context, SettingsSeedOptions.ForTests()).SeedAsync();
+        await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest")).SeedAsync();
         var storage = new SettingsStorage(context, new MetricsCollector());
         await storage.UpdateAsync("ExternalEndpoint", "Host", "https://users.test", ServiceId.Users, "admin", "test");
 
@@ -31,7 +31,7 @@ public sealed class SettingsStorageTests
     public async Task Update_and_rollback_write_atomic_revisions_with_source_link()
     {
         await using var context = CreateContext();
-        await new SettingsSeeder(context, SettingsSeedOptions.ForTests()).SeedAsync();
+        await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest")).SeedAsync();
         var storage = new SettingsStorage(context, new MetricsCollector());
         var initial = (await storage.GetConfigurationAsync(ServiceId.Users))
             .Single(item => item.StorageKey == "RunSettings:Port").Value;
@@ -59,7 +59,7 @@ public sealed class SettingsStorageTests
     public async Task Unknown_key_is_rejected_and_reserved_names_are_normalized()
     {
         await using var context = CreateContext();
-        await new SettingsSeeder(context, SettingsSeedOptions.ForTests()).SeedAsync();
+        await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest")).SeedAsync();
         var storage = new SettingsStorage(context, new MetricsCollector());
 
         await Assert.ThrowsAsync<UnknownSettingException>(() =>

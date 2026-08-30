@@ -16,6 +16,7 @@
 | Файл | Сервис | Порт |
 |------|--------|------|
 | [[Backend/Configuration]] | Централизованная конфигурация | 7003 |
+| [[Backend/Settings]] | Новое хранилище настроек (параллельно с legacy Configuration) | 7003 |
 | [[Backend/Configuration-ProjectMap]] | Карта всех файлов и классов Configuration | — |
 | [[Backend/Configuration-Metrics]] | Реестр метрик Configuration (через ServiceMetrics-логи в Seq) | — |
 | [[Backend/Beacon]] | Точка входа клиентов | 7002 |

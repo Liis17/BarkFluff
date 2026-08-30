@@ -2,6 +2,9 @@ using BarkFluff.Settings.Catalog;
 using BarkFluff.Settings.Domain;
 using BarkFluff.Shared.Identity;
 
+using System.Security.Cryptography;
+using System.Text;
+
 using Xunit;
 
 namespace BarkFluff.Settings.Tests.Catalog;
@@ -24,6 +27,32 @@ public sealed class SettingsCatalogTests
         Assert.Equal(
             SettingsScopes.All.Select(scope => scope.ServiceId).Order(),
             SettingsCatalog.All.Select(entry => entry.ServiceId).Distinct().Order());
+
+        var expectedCounts = new Dictionary<ServiceId, int>
+        {
+            [ServiceId.Unknown] = 20, [ServiceId.Identity] = 14, [ServiceId.Users] = 7,
+            [ServiceId.Beacon] = 10, [ServiceId.Notifications] = 5, [ServiceId.Files] = 44,
+            [ServiceId.Messages] = 6, [ServiceId.FastAuth] = 5, [ServiceId.Updates] = 2,
+            [ServiceId.Onliner] = 12, [ServiceId.CloudMessaging] = 5, [ServiceId.Web] = 2,
+            [ServiceId.Developers] = 4, [ServiceId.Calls] = 10, [ServiceId.Bots] = 13,
+            [ServiceId.Federation] = 33
+        };
+        Assert.Equal(expectedCounts, SettingsCatalog.All.GroupBy(entry => entry.ServiceId)
+            .ToDictionary(group => group.Key, group => group.Count()));
+
+        foreach (var entry in SettingsCatalog.All)
+        {
+            Assert.Same(entry, SettingsCatalog.Resolve(entry.ServiceId, entry.Section, entry.Key));
+            Assert.Same(entry, SettingsCatalog.Resolve(entry.ServiceId, entry.StorageKey));
+        }
+
+        var snapshot = string.Join('\n', SettingsCatalog.All
+            .OrderBy(entry => entry.ServiceId)
+            .ThenBy(entry => entry.Section, StringComparer.Ordinal)
+            .ThenBy(entry => entry.Key, StringComparer.Ordinal)
+            .Select(entry => $"{(int)entry.ServiceId}|{entry.Section}|{entry.Key}|{entry.StorageKey}|{entry.IsSensitive}|{entry.RequiresManualValue}"));
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
+        Assert.Equal("9C62AE9B085D9C86E8045FC14E2654E15A27E224D506BAF36C124B2909E79695", hash);
     }
 
     [Theory]

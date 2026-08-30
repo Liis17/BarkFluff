@@ -25,7 +25,7 @@ public sealed class SettingsSeederTests
             EditedAt = DateTime.UtcNow.AddDays(-1)
         });
         await context.SaveChangesAsync();
-        var seeder = new SettingsSeeder(context, SettingsSeedOptions.ForTests());
+        var seeder = new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest"));
 
         var first = await seeder.SeedAsync();
         var second = await seeder.SeedAsync();
@@ -42,7 +42,7 @@ public sealed class SettingsSeederTests
     public async Task Seed_creates_manual_values_empty_and_generated_secrets_once()
     {
         await using var context = CreateContext();
-        var seeder = new SettingsSeeder(context, SettingsSeedOptions.ForTests());
+        var seeder = new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest"));
 
         await seeder.SeedAsync();
 

@@ -42,7 +42,7 @@ public sealed class LegacyGrpcClientCompatibilityTests
         await using (var scope = server.Services.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<SettingsContext>();
-            await new SettingsSeeder(context, SettingsSeedOptions.ForTests()).SeedAsync();
+            await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest")).SeedAsync();
         }
 
         using var channel = GrpcChannel.ForAddress("http://localhost", new GrpcChannelOptions { HttpHandler = server.GetTestServer().CreateHandler() });

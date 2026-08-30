@@ -13,7 +13,9 @@ public static partial class SensitiveConfigMasker
     private static partial Regex SensitivePattern();
 
     public static bool IsSensitive(string section, string key) =>
-        SensitivePattern().IsMatch(key) || SensitivePattern().IsMatch(section);
+        SensitivePattern().IsMatch(key)
+        || SensitivePattern().IsMatch(section)
+        || section.EndsWith("Db", StringComparison.OrdinalIgnoreCase);
 
     public static string MaskAccessKey(string value)
     {

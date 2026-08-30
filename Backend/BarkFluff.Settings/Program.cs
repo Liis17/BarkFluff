@@ -1,4 +1,5 @@
-using BarkFluff.GrpcServer;
+extern alias GrpcServer;
+
 using BarkFluff.Settings.Infrastructure;
 using BarkFluff.Settings.Host;
 using BarkFluff.Settings.Persistence.Contexts;
@@ -28,9 +29,9 @@ public class Program
         builder.WebHost.ConfigureKestrel(options =>
             options.ListenAnyIP(port, listen => listen.Protocols = HttpProtocols.Http2));
 
-        builder.AddBarkFluffSerilog("BarkFluff.Settings");
-        builder.Services.AddBarkFluffMetrics("BarkFluff.Settings");
-        builder.Services.AddBarkFluffGrpc();
+        GrpcServer::BarkFluff.GrpcServer.SerilogExtensions.AddBarkFluffSerilog(builder, "BarkFluff.Settings");
+        GrpcServer::BarkFluff.GrpcServer.SerilogExtensions.AddBarkFluffMetrics(builder.Services, "BarkFluff.Settings");
+        GrpcServer::BarkFluff.GrpcServer.ServiceCollectionExtensions.AddBarkFluffGrpc(builder.Services);
         if (builder.Environment.IsDevelopment())
             builder.Services.AddGrpcReflection();
         builder.Services.AddMediatR(configuration => configuration.RegisterServicesFromAssemblyContaining<Program>());
@@ -50,9 +51,9 @@ public class Program
         builder.Services.AddScoped<SettingsSeeder>();
         builder.Services.AddScoped<SettingsStorage>();
         builder.Services.AddScoped<SettingsReadinessContributor>();
-        builder.Services.AddScoped<IBarkFluffReadinessContributor>(provider =>
+        builder.Services.AddScoped<GrpcServer::BarkFluff.GrpcServer.IBarkFluffReadinessContributor>(provider =>
             provider.GetRequiredService<SettingsReadinessContributor>());
-        builder.Services.AddBarkFluffHealth();
+        GrpcServer::BarkFluff.GrpcServer.HealthServiceCollectionExtensions.AddBarkFluffHealth(builder.Services);
 
         var app = builder.Build();
 
@@ -71,7 +72,7 @@ public class Program
         if (app.Environment.IsDevelopment())
             app.MapGrpcReflectionService();
         app.MapGrpcService<SettingsApiService>();
-        app.MapHealthEndpoints();
+        GrpcServer::BarkFluff.GrpcServer.HealthEndpointExtensions.MapHealthEndpoints(app);
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         await app.RunAsync();

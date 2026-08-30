@@ -1,10 +1,14 @@
-using BarkFluff.GrpcServer;
-using BarkFluff.GrpcServer.Metrics;
+extern alias GrpcServer;
+
 using BarkFluff.Settings.Catalog;
 using BarkFluff.Settings.Domain;
 using BarkFluff.Settings.Persistence.Contexts;
 
 using Microsoft.EntityFrameworkCore;
+
+using DependencyCheck = GrpcServer::BarkFluff.GrpcServer.DependencyCheck;
+using IBarkFluffReadinessContributor = GrpcServer::BarkFluff.GrpcServer.IBarkFluffReadinessContributor;
+using MetricsCollector = GrpcServer::BarkFluff.GrpcServer.Metrics.MetricsCollector;
 
 namespace BarkFluff.Settings.Infrastructure;
 
