@@ -78,7 +78,8 @@ namespace BarkFluff.Settings.Persistence.Migrations
 
                     b.HasIndex("SourceRevisionId");
 
-                    b.HasIndex("SettingsTable", "Key", "ChangedAt", "Id");
+                    b.HasIndex("SettingsTable", "Key", "ChangedAt", "Id")
+                        .IsDescending(false, false, true, true);
 
                     b.ToTable("SettingsHistory", (string)null);
                 });

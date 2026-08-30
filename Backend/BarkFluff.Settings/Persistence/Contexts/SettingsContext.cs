@@ -41,7 +41,8 @@ public sealed class SettingsContext : DbContext
             entity.Property(revision => revision.ChangedBy).HasColumnType("text").IsRequired();
             entity.Property(revision => revision.ChangedFrom).HasColumnType("text").IsRequired();
             entity.Property(revision => revision.ChangeKind).HasColumnType("text").IsRequired();
-            entity.HasIndex(revision => new { revision.SettingsTable, revision.Key, revision.ChangedAt, revision.Id });
+            entity.HasIndex(revision => new { revision.SettingsTable, revision.Key, revision.ChangedAt, revision.Id })
+                .IsDescending(false, false, true, true);
             entity.HasOne<SettingRevision>()
                 .WithMany()
                 .HasForeignKey(revision => revision.SourceRevisionId)
