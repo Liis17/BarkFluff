@@ -88,6 +88,68 @@ public class ConfigurationStorageTests
         Assert.Equal("Host=new;Database=developers", revisions[0].NewValue);
     }
 
+    [Fact]
+    public async Task UpdateConfiguration_WithEmptyKey_RepairsWhitespaceOnlySectionKey()
+    {
+        await using var context = CreateContext();
+        context.Configurations.Add(new ConfigurationItem
+        {
+            Section = "DevelopersDb",
+            Key = " ",
+            Value = "Host=old;Database=developers",
+            EditedAt = DateTime.UtcNow,
+            EditedBy = "system",
+            EditedFrom = "legacy",
+            ServiceId = ServiceId.Developers
+        });
+        await context.SaveChangesAsync();
+
+        var storage = new ConfigurationStorage(context, new MetricsCollector());
+
+        await storage.UpdateConfigurationAsync(
+            "DevelopersDb",
+            "",
+            "Host=new;Database=developers",
+            ServiceId.Developers,
+            "admin",
+            "test");
+
+        var item = await context.Configurations.SingleAsync();
+        var revisions = await storage.GetConfigurationHistoryAsync(
+            "DevelopersDb",
+            "",
+            ServiceId.Developers,
+            30);
+
+        Assert.Equal("", item.Key);
+        Assert.Equal("Host=new;Database=developers", item.Value);
+        Assert.Single(revisions);
+        Assert.Equal("Host=old;Database=developers", revisions[0].PreviousValue);
+        Assert.Equal("Host=new;Database=developers", revisions[0].NewValue);
+    }
+
+    [Fact]
+    public async Task GetAllConfigurations_CanonicalizesWhitespaceOnlySectionKey()
+    {
+        await using var context = CreateContext();
+        context.Configurations.Add(new ConfigurationItem
+        {
+            Section = "DevelopersDb",
+            Key = "\t",
+            Value = "Host=postgres;Database=developers",
+            EditedAt = DateTime.UtcNow,
+            EditedBy = "system",
+            EditedFrom = "legacy",
+            ServiceId = ServiceId.Developers
+        });
+        await context.SaveChangesAsync();
+
+        var configurations = await new ConfigurationStorage(context, new MetricsCollector())
+            .GetAllConfigurationsAsync();
+
+        Assert.Equal("", Assert.Single(configurations).Key);
+    }
+
     private static ConfigurationContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ConfigurationContext>()
