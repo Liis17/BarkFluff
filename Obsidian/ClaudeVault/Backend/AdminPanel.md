@@ -242,7 +242,7 @@ Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
 | Метод | Путь | Описание |
 |-------|------|----------|
 | GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations`; добавляет `serviceName`, маску секрета и метаданные поля (`fieldType`, required/min/max/hint) |
-| POST | `/api/configuration/update` | Валидирует типизированное значение, затем `{ section, key, serviceId, value }` → rpc `UpdateConfiguration`; маска вместо секрета отклоняется с 400 |
+| POST | `/api/configuration/update` | Валидирует типизированное значение, затем `{ section, key, serviceId, value }` → rpc `UpdateConfiguration`; `key: ""` допустим для section-only строк (`DevelopersDb`, `Redis`, `NavigatorUrl`); маска вместо секрета отклоняется с 400 |
 | GET | `/api/configuration/history` | История ключа по `section`, `key`, `serviceId`; секретные old/new values маскируются |
 | POST | `/api/configuration/rollback` | `{ revisionId }` → rpc `RollbackConfiguration`; `config.write` + step-up |
 | GET | `/api/configuration/s3-configuration` | Конфигурация S3-бакетов без секретов: `accessKeyConfigured`, `accessKeyMasked`, `secretKeyConfigured` |

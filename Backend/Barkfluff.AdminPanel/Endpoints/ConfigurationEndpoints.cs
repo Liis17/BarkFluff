@@ -73,8 +73,9 @@ public static class ConfigurationEndpoints
         {
             var token = context.GetAuthToken()!;
 
-            if (string.IsNullOrWhiteSpace(request.Section) || string.IsNullOrWhiteSpace(request.Key))
-                return Results.BadRequest(new { message = "Section и Key обязательны" });
+            var requestValidationError = ValidateConfigurationUpdateRequest(request);
+            if (requestValidationError is not null)
+                return Results.BadRequest(new { message = requestValidationError });
 
             if (SensitiveConfigMasker.IsSensitive(request.Section, request.Key) &&
                 string.Equals(request.Value, SensitiveConfigMasker.MaskedValue, StringComparison.Ordinal))
@@ -370,6 +371,18 @@ public static class ConfigurationEndpoints
                 .Select(pair => $"{pair.Key}Hash={StepUpService.ComputeParamsHash("s3.value", pair.Value)}");
             return $"bucket={request.BucketId};{string.Join(";", values)}";
         });
+    }
+
+    internal static string? ValidateConfigurationUpdateRequest(ConfigurationValueUpdateRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Section))
+            return "Section обязательна";
+
+        if (request.Key is null ||
+            (!string.IsNullOrEmpty(request.Key) && string.IsNullOrWhiteSpace(request.Key)))
+            return "Key должен быть пустым или содержать непробельные символы";
+
+        return null;
     }
 
     private static string MaskHistoryValue(string value, bool sensitive) =>
