@@ -1,0 +1,70 @@
+using BarkFluff.GrpcServer;
+using BarkFluff.Settings.Infrastructure;
+using BarkFluff.Settings.Persistence.Contexts;
+using BarkFluff.Settings.Settings;
+
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.EntityFrameworkCore;
+
+using Serilog;
+
+namespace BarkFluff.Settings;
+
+public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+
+        var port = 7003;
+        var configuredPort = builder.Configuration["SETTINGS_PORT"]
+            ?? builder.Configuration["CONFIGURATION_PORT"]
+            ?? builder.Configuration["RunSettings__Port"];
+        if (int.TryParse(configuredPort, out var parsedPort))
+            port = parsedPort;
+
+        builder.WebHost.ConfigureKestrel(options =>
+            options.ListenAnyIP(port, listen => listen.Protocols = HttpProtocols.Http2));
+
+        builder.AddBarkFluffSerilog("BarkFluff.Settings");
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Settings");
+        builder.Services.AddBarkFluffGrpc();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
+        builder.Services.AddMediatR(configuration => configuration.RegisterServicesFromAssemblyContaining<Program>());
+
+        var databaseOptions = SettingsDatabaseOptions.FromConfiguration(builder.Configuration);
+        builder.Services.AddSingleton(databaseOptions);
+        builder.Services.AddDbContext<SettingsContext>(options =>
+            options.UseNpgsql(databaseOptions.ConnectionString, npgsql =>
+            {
+                npgsql.UseAdminDatabase(databaseOptions.AdminDatabase);
+                npgsql.EnableRetryOnFailure(3);
+                npgsql.CommandTimeout(30);
+            }));
+
+        builder.Services.AddSingleton<SettingsStartupInitializer>();
+        builder.Services.AddBarkFluffHealth();
+
+        var app = builder.Build();
+
+        try
+        {
+            await app.Services.GetRequiredService<SettingsStartupInitializer>().InitializeAsync();
+        }
+        catch (Exception exception)
+        {
+            app.Logger.LogCritical(exception, "Settings startup initialization failed; the application will not start");
+            await Log.CloseAndFlushAsync();
+            throw;
+        }
+
+        app.UseRouting();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
+        app.MapHealthEndpoints();
+
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
+        await app.RunAsync();
+    }
+}
