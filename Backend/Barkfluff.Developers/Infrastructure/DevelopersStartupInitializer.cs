@@ -29,42 +29,52 @@ internal sealed class DevelopersStartupInitializer
 
         _logger.LogInformation("Developers startup initialization started");
 
-        if (context.Database.IsRelational())
+        var isRelational = context.Database.IsRelational();
+        if (isRelational)
             await context.Database.MigrateAsync(cancellationToken);
 
-        await using var transaction = context.Database.IsRelational()
-            ? await context.Database.BeginTransactionAsync(cancellationToken)
-            : null;
+        var (documentationInserted, protoMetadataInserted, errorCodesInserted) = isRelational
+            ? await context.Database.CreateExecutionStrategy().ExecuteAsync(SeedAndValidateAsync)
+            : await SeedAndValidateAsync();
 
-        try
+        _logger.LogInformation(
+            "Developers startup initialization completed; inserted documentation sections: {DocumentationSectionsInserted}, proto metadata: {ProtoMetadataInserted}, error codes: {ErrorCodesInserted}",
+            documentationInserted,
+            protoMetadataInserted,
+            errorCodesInserted);
+
+        async Task<(int DocumentationInserted, int ProtoMetadataInserted, int ErrorCodesInserted)> SeedAndValidateAsync()
         {
-            var documentationInserted = await scope.ServiceProvider
-                .GetRequiredService<DocumentationStorage>()
-                .SeedMissingAsync(cancellationToken);
-            var protoMetadataInserted = await scope.ServiceProvider
-                .GetRequiredService<ProtoMetadataStorage>()
-                .SeedMissingAsync(cancellationToken);
-            var errorCodesInserted = await scope.ServiceProvider
-                .GetRequiredService<ErrorCodeSeeder>()
-                .SeedMissingAsync(context, cancellationToken);
+            await using var transaction = isRelational
+                ? await context.Database.BeginTransactionAsync(cancellationToken)
+                : null;
 
-            await ValidateInvariantsAsync(context, cancellationToken);
+            try
+            {
+                var documentationInserted = await scope.ServiceProvider
+                    .GetRequiredService<DocumentationStorage>()
+                    .SeedMissingAsync(cancellationToken);
+                var protoMetadataInserted = await scope.ServiceProvider
+                    .GetRequiredService<ProtoMetadataStorage>()
+                    .SeedMissingAsync(cancellationToken);
+                var errorCodesInserted = await scope.ServiceProvider
+                    .GetRequiredService<ErrorCodeSeeder>()
+                    .SeedMissingAsync(context, cancellationToken);
 
-            if (transaction is not null)
-                await transaction.CommitAsync(cancellationToken);
+                await ValidateInvariantsAsync(context, cancellationToken);
 
-            _logger.LogInformation(
-                "Developers startup initialization completed; inserted documentation sections: {DocumentationSectionsInserted}, proto metadata: {ProtoMetadataInserted}, error codes: {ErrorCodesInserted}",
-                documentationInserted,
-                protoMetadataInserted,
-                errorCodesInserted);
-        }
-        catch
-        {
-            if (transaction is not null)
-                await transaction.RollbackAsync(CancellationToken.None);
+                if (transaction is not null)
+                    await transaction.CommitAsync(cancellationToken);
 
-            throw;
+                return (documentationInserted, protoMetadataInserted, errorCodesInserted);
+            }
+            catch
+            {
+                if (transaction is not null)
+                    await transaction.RollbackAsync(CancellationToken.None);
+
+                throw;
+            }
         }
     }
 
