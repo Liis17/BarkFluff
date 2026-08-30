@@ -152,7 +152,7 @@ Logout строится по «server-first, fail-loud» схеме: если с
 - ViewModel: `Features/FastAuth/ViewModels/FastAuthViewModel.swift` — `@Observable @MainActor`, держит `sessionTask` и `timerTask`, авто-перезапуск при rejected/expired.
 - Репозиторий: `Packages/BFNetworking/.../Repositories/FastAuthRepository.swift` — `generateFastAuthToken` + server-streaming `subscribeFastAuthResult`. Остальные методы (Scan/Accept/Reject/connectDevice…) — заглушки: это мобильный сценарий, на macOS-клиенте не используется.
 - Сервис: `Packages/BFCore/.../Services/Implementations/AuthService.swift` метод `applyFastAuthTokens` — сохраняет уже выданные токены через `tokenProvider.saveTokens`, без серверного шага.
-- Интеграция в логин: `Features/Auth/Views/LoginView.swift` — `HStack` из `formCard(viewModel)` слева и `QRPanelView(viewModel: fastAuthViewModel)` справа.
+- Интеграция в логин: `Features/Auth/Views/LoginView.swift` — единая адаптивная системная панель. На широком окне `ViewThatFits` показывает `formColumn(viewModel)` и `QRPanelView(viewModel: fastAuthViewModel)` в двух колонках с разделителем; на узком окне они складываются вертикально.
 
 Ошибки/edge-cases:
 - Если эндпоинт `.fastauth` не получен из Beacon (`mapServiceEndpoints`), `withPublicClient` бросит `ConnectionError.serviceNotConfigured(.fastauth)` — `FastAuthViewModel` покажет это через `errorMessage`, паролёвая форма продолжает работать.

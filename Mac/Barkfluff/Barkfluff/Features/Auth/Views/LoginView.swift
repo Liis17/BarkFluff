@@ -10,29 +10,37 @@ import SwiftUI
 struct LoginView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(DependencyContainer.self) private var container
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @State private var viewModel: LoginViewModel?
     @State private var fastAuthViewModel: FastAuthViewModel?
     @State private var appeared = false
+
+    private enum Metrics {
+        static let contentWidth: CGFloat = 760
+        static let panelPadding: CGFloat = 28
+        static let columnSpacing: CGFloat = 28
+        static let formWidth: CGFloat = 320
+        static let qrWidth: CGFloat = 280
+    }
 
     var body: some View {
         ZStack {
             loginBackground
 
-            VStack(spacing: Theme.Spacing.xxl) {
-                logoSection
-                if let viewModel {
-                    HStack(alignment: .center, spacing: Theme.Spacing.xxl) {
-                        formCard(viewModel)
-                        if let fastAuthViewModel {
-                            QRPanelView(viewModel: fastAuthViewModel)
-                                .opacity(appeared ? 1 : 0)
-                                .offset(y: appeared ? 0 : 12)
-                                .animation(.easeOut(duration: 0.4).delay(0.25), value: appeared)
-                        }
+            ScrollView {
+                VStack(spacing: Theme.Spacing.xl) {
+                    logoSection
+
+                    if let viewModel {
+                        authPanel(viewModel)
                     }
                 }
+                .frame(maxWidth: Metrics.contentWidth)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, Theme.Spacing.xxl)
+                .padding(.vertical, 36)
             }
-            .padding(Theme.Spacing.xxl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
@@ -42,6 +50,7 @@ struct LoginView: View {
                     coordinator: coordinator
                 )
             }
+
             if fastAuthViewModel == nil {
                 let vm = FastAuthViewModel(
                     fastAuthService: container.fastAuthService,
@@ -58,9 +67,9 @@ struct LoginView: View {
                 }
                 fastAuthViewModel = vm
             }
-            appeared = false
-            Task {
-                try? await Task.sleep(for: .milliseconds(40))
+
+            guard !appeared else { return }
+            withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) {
                 appeared = true
             }
         }
@@ -69,134 +78,229 @@ struct LoginView: View {
     // MARK: - Background
 
     private var loginBackground: some View {
-        LinearGradient(
-            colors: [
-                Color.accentColor.opacity(0.18),
-                Color.accentColor.opacity(0.05),
-                Color(nsColor: .windowBackgroundColor)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        ZStack {
+            Color(nsColor: .windowBackgroundColor)
+
+            RadialGradient(
+                colors: [
+                    Color.accentColor.opacity(0.08),
+                    Color.clear
+                ],
+                center: .top,
+                startRadius: 0,
+                endRadius: 520
+            )
+        }
         .ignoresSafeArea()
     }
 
-    // MARK: - Logo
+    // MARK: - Header
 
     private var logoSection: some View {
         VStack(spacing: Theme.Spacing.md) {
-            ZStack {
-                Circle()
-                    .fill(Color.accentColor.opacity(0.12))
-                    .frame(width: 96, height: 96)
-                Circle()
-                    .fill(Color.accentColor.opacity(0.07))
-                    .frame(width: 76, height: 76)
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 38, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                    .symbolRenderingMode(.hierarchical)
-            }
-            .scaleEffect(appeared ? 1 : 0.7)
-            .opacity(appeared ? 1 : 0)
-            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: appeared)
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 64, height: 64)
+                .background(
+                    Color.accentColor.opacity(0.11),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color.accentColor.opacity(0.12), lineWidth: 1)
+                }
+                .accessibilityHidden(true)
 
-            VStack(spacing: 3) {
+            VStack(spacing: Theme.Spacing.xs) {
                 Text(verbatim: "BarkFluff")
-                    .font(.title.bold())
+                    .font(.largeTitle)
+                    .fontWeight(.semibold)
+
                 Text("auth.login.subtitle")
-                    .font(.subheadline)
+                    .font(.callout)
                     .foregroundStyle(.secondary)
             }
-            .opacity(appeared ? 1 : 0)
-            .offset(y: appeared ? 0 : 6)
-            .animation(.easeOut(duration: 0.4).delay(0.1), value: appeared)
+        }
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 8)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: appeared)
+    }
+
+    // MARK: - Auth Panel
+
+    @ViewBuilder
+    private func authPanel(_ viewModel: LoginViewModel) -> some View {
+        ViewThatFits(in: .horizontal) {
+            wideAuthContent(viewModel)
+            narrowAuthContent(viewModel)
+        }
+        .padding(Metrics.panelPadding)
+        .frame(maxWidth: Metrics.contentWidth)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.regularMaterial)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 10)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 8)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: appeared)
+        .animation(
+            reduceMotion ? nil : .smooth(duration: 0.2),
+            value: viewModel.needsOTP
+        )
+        .animation(
+            reduceMotion ? nil : .smooth(duration: 0.2),
+            value: viewModel.errorMessage
+        )
+    }
+
+    private func wideAuthContent(_ viewModel: LoginViewModel) -> some View {
+        HStack(alignment: .top, spacing: Metrics.columnSpacing) {
+            formColumn(viewModel)
+                .frame(width: Metrics.formWidth, alignment: .topLeading)
+
+            Divider()
+                .frame(minHeight: 368)
+
+            if let fastAuthViewModel {
+                QRPanelView(viewModel: fastAuthViewModel)
+                    .frame(width: Metrics.qrWidth, alignment: .top)
+            }
         }
     }
 
-    // MARK: - Form Card
+    private func narrowAuthContent(_ viewModel: LoginViewModel) -> some View {
+        VStack(spacing: Theme.Spacing.xl) {
+            formColumn(viewModel)
 
-    @ViewBuilder
-    private func formCard(_ viewModel: LoginViewModel) -> some View {
-        VStack(spacing: Theme.Spacing.lg) {
-            // Поля ввода
-            VStack(spacing: Theme.Spacing.sm) {
-                TextField("auth.login.username_or_email", text: Bindable(viewModel).usernameOrEmail)
-                    .textFieldStyle(.roundedBorder)
-                    .controlSize(.large)
-                    .disabled(viewModel.isLoading)
+            if fastAuthViewModel != nil {
+                Divider()
+            }
 
-                SecureField("auth.login.password", text: Bindable(viewModel).password)
-                    .textFieldStyle(.roundedBorder)
-                    .controlSize(.large)
-                    .disabled(viewModel.isLoading)
+            if let fastAuthViewModel {
+                QRPanelView(viewModel: fastAuthViewModel)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
 
-                if viewModel.needsOTP {
-                    TextField("auth.login.otp", text: Bindable(viewModel).otpCode)
+    // MARK: - Password Form
+
+    private func formColumn(_ viewModel: LoginViewModel) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+            Text("auth.login.title")
+                .font(.title3)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("auth.login.username_or_email")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    TextField("", text: Bindable(viewModel).usernameOrEmail)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .disabled(viewModel.isLoading)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .accessibilityLabel(Text("auth.login.username_or_email"))
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("auth.login.password")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    SecureField("", text: Bindable(viewModel).password)
+                        .textFieldStyle(.roundedBorder)
+                        .controlSize(.large)
+                        .disabled(viewModel.isLoading)
+                        .accessibilityLabel(Text("auth.login.password"))
+                }
+
+                if viewModel.needsOTP {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        Text("auth.login.otp")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        TextField("", text: Bindable(viewModel).otpCode)
+                            .textFieldStyle(.roundedBorder)
+                            .controlSize(.large)
+                            .disabled(viewModel.isLoading)
+                            .accessibilityLabel(Text("auth.login.otp"))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
             }
 
             if let errorMessage = viewModel.errorMessage {
-                ErrorBannerView(message: errorMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                Label {
+                    Text(errorMessage)
+                        .font(.callout)
+                        .multilineTextAlignment(.leading)
+                } icon: {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundStyle(.red)
+                }
+                .foregroundStyle(.primary)
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.vertical, Theme.Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    Color.red.opacity(0.1),
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            // Кнопка входа — показывается только когда оба поля заполнены
-            let canAttemptLogin = !viewModel.usernameOrEmail.isEmpty && !viewModel.password.isEmpty
-            if canAttemptLogin || viewModel.isLoading {
+            let canAttemptLogin = !viewModel.usernameOrEmail.isEmpty
+                && !viewModel.password.isEmpty
+
+            Button {
+                Task { await viewModel.login() }
+            } label: {
                 ZStack {
-                    Button(viewModel.needsOTP ? "auth.login.submit_otp" : "auth.login.submit") {
-                        Task { await viewModel.login() }
-                    }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                    .frame(maxWidth: .infinity)
-                    .disabled(viewModel.isLoading)
-                    .opacity(viewModel.isLoading ? 0 : 1)
+                    Text(viewModel.needsOTP ? "auth.login.submit_otp" : "auth.login.submit")
+                        .opacity(viewModel.isLoading ? 0 : 1)
 
                     if viewModel.isLoading {
                         ProgressView()
-                            .progressViewStyle(.circular)
-                            .controlSize(.regular)
+                            .controlSize(.small)
                     }
                 }
-                .frame(height: 36)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            .disabled(viewModel.isLoading || !canAttemptLogin)
 
             Divider()
 
-            // Нижние действия
             HStack {
-                Button("auth.login.create_account") { viewModel.goToRegister() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor)
-                    .font(.callout.weight(.medium))
+                Button("auth.login.create_account") {
+                    viewModel.goToRegister()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+                .font(.callout.weight(.medium))
 
                 Spacer()
 
-                Button("auth.login.choose_server") { coordinator.currentState = .serverSelection }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor.opacity(0.7))
-                    .font(.callout)
+                Button("auth.login.choose_server") {
+                    coordinator.currentState = .serverSelection
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .font(.callout)
             }
         }
-        .padding(Theme.Spacing.xxl)
-        .animation(.easeInOut(duration: 0.22), value: viewModel.usernameOrEmail.isEmpty || viewModel.password.isEmpty)
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 8)
-                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
-        )
-        .frame(width: 360)
-        .opacity(appeared ? 1 : 0)
-        .offset(y: appeared ? 0 : 12)
-        .animation(.easeOut(duration: 0.4).delay(0.2), value: appeared)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
@@ -204,4 +308,5 @@ struct LoginView: View {
     LoginView()
         .environment(AppCoordinator())
         .environment(DependencyContainer())
+        .frame(width: 900, height: 700)
 }
