@@ -25,7 +25,7 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 **Конфигурация:**
 - `GetConfiguration` — возвращает конфигурацию для `ServiceId`. Загружает записи с `ServiceId == запрошенный || ServiceId == Unknown`; при дублях по Section+Key приоритет у записи с конкретным ServiceId.
 - `GetAllConfigurations` — возвращает **все** строки таблицы без фильтров и дедупликации (для вкладки «Конфигурация» в [[Backend/AdminPanel|AdminPanel]]).
-- `UpdateConfiguration` — upsert по Section+Key+ServiceId. `EditedAt` ставится сервером (`DateTime.UtcNow`), `EditedBy`/`EditedFrom` передаёт клиент; в той же транзакции создаётся `ConfigurationRevision` с переходом old → new.
+- `UpdateConfiguration` — upsert по Section+Key+ServiceId. Для section-only секций (`DevelopersDb`, `Redis`, `NavigatorUrl`) пустой ключ канонический; legacy-ключ, состоящий только из пробелов, при обновлении исправляется на `""`. `EditedAt` ставится сервером (`DateTime.UtcNow`), `EditedBy`/`EditedFrom` передаёт клиент; в той же транзакции создаётся `ConfigurationRevision` с переходом old → new.
 - `GetConfigurationHistory` — последние 1–100 ревизий конкретного Section+Key+ServiceId, новые первыми.
 - `RollbackConfiguration` — по id ревизии восстанавливает её `PreviousValue` и создаёт новую ревизию `ChangeKind=Rollback` со ссылкой `SourceRevisionId`. История содержит прошлые значения, включая секретные; AdminPanel маскирует их до ответа браузеру.
 

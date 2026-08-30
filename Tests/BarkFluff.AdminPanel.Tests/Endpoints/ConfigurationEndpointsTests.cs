@@ -53,4 +53,13 @@ public class ConfigurationEndpointsTests
             "Key должен быть пустым или содержать непробельные символы",
             ConfigurationEndpoints.ValidateConfigurationUpdateRequest(request));
     }
+
+    [Theory]
+    [InlineData("DevelopersDb", " ")]
+    [InlineData("Redis", "\t")]
+    [InlineData("NavigatorUrl", "\r\n")]
+    public void NormalizeConfigurationKey_CanonicalizesWhitespaceOnlySectionKeys(string section, string key)
+    {
+        Assert.Equal("", ConfigurationEndpoints.NormalizeConfigurationKey(section, key));
+    }
 }

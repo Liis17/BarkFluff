@@ -14,6 +14,9 @@ namespace Barkfluff.AdminPanel.Endpoints;
 /// </summary>
 public static class ConfigurationEndpoints
 {
+    private static readonly HashSet<string> SectionOnlyConfigurationSections =
+        ["DevelopersDb", "Redis", "NavigatorUrl"];
+
     public static void MapConfigurationEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/configuration")
@@ -29,12 +32,13 @@ public static class ConfigurationEndpoints
 
                 var items = response.Configurations.Select(c =>
                 {
-                    var masked = SensitiveConfigMasker.IsSensitive(c.Section, c.Key) && !string.IsNullOrEmpty(c.Value);
-                    var field = ConfigurationFieldCatalog.Describe(c.Section, c.Key, c.Value);
+                    var key = NormalizeConfigurationKey(c.Section, c.Key);
+                    var masked = SensitiveConfigMasker.IsSensitive(c.Section, key) && !string.IsNullOrEmpty(c.Value);
+                    var field = ConfigurationFieldCatalog.Describe(c.Section, key, c.Value);
                     return new
                     {
                         section = c.Section,
-                        key = c.Key,
+                        key,
                         value = masked ? SensitiveConfigMasker.MaskedValue : c.Value,
                         masked,
                         serviceId = c.ServiceId,
@@ -384,6 +388,11 @@ public static class ConfigurationEndpoints
 
         return null;
     }
+
+    internal static string NormalizeConfigurationKey(string section, string? key) =>
+        key is null || (SectionOnlyConfigurationSections.Contains(section) && string.IsNullOrWhiteSpace(key))
+            ? string.Empty
+            : key;
 
     private static string MaskHistoryValue(string value, bool sensitive) =>
         sensitive && !string.IsNullOrEmpty(value) ? SensitiveConfigMasker.MaskedValue : value;

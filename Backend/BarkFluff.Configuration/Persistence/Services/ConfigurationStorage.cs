@@ -8,6 +8,9 @@ namespace BarkFluff.Configuration.Persistence;
 
 public class ConfigurationStorage
 {
+    private static readonly HashSet<string> SectionOnlyConfigurationSections =
+        ["DevelopersDb", "Redis", "NavigatorUrl"];
+
     private readonly ConfigurationContext _context;
     private readonly MetricsCollector _metrics;
 
@@ -24,7 +27,7 @@ public class ConfigurationStorage
             .Where(x => x.ServiceId == serviceId || x.ServiceId == ServiceId.Unknown)
             .ToListAsync();
 
-        return configurations;
+        return NormalizeSectionOnlyKeys(configurations);
     }
 
     public async Task<List<ConfigurationItem>> GetAllConfigurationsAsync()
@@ -33,13 +36,26 @@ public class ConfigurationStorage
             .AsNoTracking()
             .ToListAsync();
 
-        return configurations;
+        return NormalizeSectionOnlyKeys(configurations);
     }
 
     public async Task UpdateConfigurationAsync(string section, string key, string value, ServiceId serviceId, string editedBy, string editedFrom)
     {
+        var normalizedKey = NormalizeConfigurationKey(section, key);
         var existing = await _context.Configurations
-            .FirstOrDefaultAsync(x => x.Section == section && x.Key == key && x.ServiceId == serviceId);
+            .FirstOrDefaultAsync(x => x.Section == section && x.Key == normalizedKey && x.ServiceId == serviceId);
+
+        if (existing is null && IsSectionOnlyConfigurationSection(section) && normalizedKey.Length == 0)
+        {
+            existing = await _context.Configurations
+                .FirstOrDefaultAsync(x => x.Section == section &&
+                    x.ServiceId == serviceId &&
+                    x.Key != null &&
+                    x.Key.Trim() == string.Empty);
+
+            if (existing is not null)
+                existing.Key = normalizedKey;
+        }
 
         var changedAt = DateTime.UtcNow;
         var previousValue = existing?.Value ?? string.Empty;
@@ -56,7 +72,7 @@ public class ConfigurationStorage
             var newItem = new ConfigurationItem
             {
                 Section = section,
-                Key = key,
+                Key = normalizedKey,
                 Value = value,
                 EditedAt = changedAt,
                 EditedBy = editedBy,
@@ -71,7 +87,7 @@ public class ConfigurationStorage
         {
             ConfigurationItem = existing,
             Section = section,
-            Key = key,
+            Key = normalizedKey,
             ServiceId = serviceId,
             PreviousValue = previousValue,
             NewValue = value,
@@ -96,9 +112,17 @@ public class ConfigurationStorage
         ServiceId serviceId,
         int count)
     {
+        var normalizedKey = NormalizeConfigurationKey(section, key);
+
         return await _context.ConfigurationRevisions
             .AsNoTracking()
-            .Where(x => x.Section == section && x.Key == key && x.ServiceId == serviceId)
+            .Where(x => x.Section == section &&
+                x.ServiceId == serviceId &&
+                (x.Key == normalizedKey ||
+                    (IsSectionOnlyConfigurationSection(section) &&
+                     normalizedKey.Length == 0 &&
+                     x.Key != null &&
+                     x.Key.Trim() == string.Empty)))
             .OrderByDescending(x => x.ChangedAt)
             .ThenByDescending(x => x.Id)
             .Take(Math.Clamp(count, 1, 100))
@@ -142,6 +166,22 @@ public class ConfigurationStorage
         await _context.SaveChangesAsync();
         _metrics.Increment("configurations_db_writes");
     }
+
+    private static List<ConfigurationItem> NormalizeSectionOnlyKeys(List<ConfigurationItem> configurations)
+    {
+        foreach (var configuration in configurations)
+            configuration.Key = NormalizeConfigurationKey(configuration.Section, configuration.Key);
+
+        return configurations;
+    }
+
+    private static string NormalizeConfigurationKey(string section, string? key) =>
+        key is null || (IsSectionOnlyConfigurationSection(section) && string.IsNullOrWhiteSpace(key))
+            ? string.Empty
+            : key;
+
+    private static bool IsSectionOnlyConfigurationSection(string section) =>
+        SectionOnlyConfigurationSections.Contains(section);
 
     // ─── Reserved Names ─────────────────────────────────────────────────────────
     // Хранится как одна строка: Section="ReservedNames", Key="Usernames", Value="admin,support,help,..."
