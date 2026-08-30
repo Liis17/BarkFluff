@@ -177,9 +177,28 @@ jobs:
         id: dmg
         run: |
           DMG_PATH="build/BarkFluff-${{ steps.meta.outputs.version }}.dmg"
-          if [ "${{ github.ref_name }}" = "nightly" ]; then
-            test -f Packaging/dmg-background.png
-            BACKGROUND_ARGS=(--background "Packaging/dmg-background.png")
+          CUSTOM_DMG=false
+          case "${{ github.ref_name }}" in
+            nightly)
+              BACKGROUND_FILE="Packaging/dmg-background.png"
+              CUSTOM_DMG=true
+              ;;
+            dev)
+              BACKGROUND_FILE="Packaging/dmg-background-dev.png"
+              CUSTOM_DMG=true
+              ;;
+            master)
+              BACKGROUND_FILE="Packaging/dmg-background-master.png"
+              CUSTOM_DMG=true
+              ;;
+            *)
+              BACKGROUND_FILE=""
+              ;;
+          esac
+
+          if [ "$CUSTOM_DMG" = true ]; then
+            test -f "$BACKGROUND_FILE"
+            BACKGROUND_ARGS=(--background "$BACKGROUND_FILE")
             TEXT_SIZE_ARGS=(--text-size 16)
             DMG_LAYOUT_ARGS=(
               --window-size 680 425
@@ -204,7 +223,7 @@ jobs:
             "$DMG_PATH" \
             "build/export/Barkfluff.app"
 
-          if [ "${{ github.ref_name }}" = "nightly" ]; then
+          if [ "$CUSTOM_DMG" = true ]; then
             RW_DMG="${DMG_PATH%.dmg}-rw.dmg"
             REPACKED_DMG="${DMG_PATH%.dmg}-repacked.dmg"
             hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
@@ -224,6 +243,7 @@ jobs:
             trap cleanup_dmg EXIT
             [ -n "$MOUNT_DIR" ] || { echo "Не удалось найти mountpoint DMG" >&2; exit 1; }
             DISK_NAME=$(basename "$MOUNT_DIR")
+            BACKGROUND_BASENAME=$(basename "$BACKGROUND_FILE")
 
             /usr/bin/osascript <<APPLESCRIPT
             tell application "Finder"
@@ -240,7 +260,7 @@ jobs:
                 set icon size of opts to 128
                 set text size of opts to 16
                 set arrangement of opts to not arranged
-                set background picture of opts to POSIX file "${MOUNT_DIR}/.background/dmg-background.png"
+                set background picture of opts to POSIX file "${MOUNT_DIR}/.background/${BACKGROUND_BASENAME}"
                 set position of item "Barkfluff.app" of container window to {205, 220}
                 set position of item "Applications" of container window to {515, 220}
                 delay 3
