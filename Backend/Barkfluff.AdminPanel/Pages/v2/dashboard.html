@@ -583,15 +583,20 @@
         while (sized >= 1024 && index < units.length - 1) { sized /= 1024; index++; }
         return `${sized.toLocaleString('ru-RU', {maximumFractionDigits:index ? 1 : 0})} ${units[index]}`;
     }
-    const lastUploadMetricIds = new Set([
-        'files_last_upload_total_ms',
-        'files_last_upload_buffering_ms',
-        'files_last_upload_hashing_ms',
-        'files_last_upload_processing_ms',
-        'files_last_upload_s3_ms'
-    ]);
+    const lastUploadMetricFields = [
+        ['files_last_upload_total_ms', 'totalMs'],
+        ['files_last_upload_buffering_ms', 'bufferingMs'],
+        ['files_last_upload_hashing_ms', 'hashingMs'],
+        ['files_last_upload_processing_ms', 'processingMs'],
+        ['files_last_upload_s3_ms', 's3Ms']
+    ];
+    const lastUploadMetricIds = new Set(lastUploadMetricFields.map(([id]) => id));
+    let lastUploadRefreshPending = false;
     function getLastMetricValue(metric) {
         return [...(metric.points || [])].reverse().find(point => point.value != null)?.value;
+    }
+    function metricsFromLastUploadSnapshot(snapshot) {
+        return lastUploadMetricFields.map(([id, field]) => ({ id, points: [{ value: snapshot?.[field] }] }));
     }
     function renderLastUploadCard(metrics) {
         const values = Object.fromEntries(metrics.map(metric => [metric.id, getLastMetricValue(metric)]));
@@ -606,6 +611,7 @@
         ];
         const card = document.createElement('article');
         card.className = 'upload-timing-card';
+        card.dataset.snapshot = stages.map(([, value]) => value ?? '').concat(total).join(':');
         const stageMarkup = stages.map(([title, value]) => {
             const duration = value ?? 0;
             const width = total > 0 ? Math.min(duration / total * 100, 100) : 0;
@@ -613,6 +619,24 @@
         }).join('');
         card.innerHTML = `<div class="upload-timing-head"><span class="upload-timing-title">Последняя загрузка файла</span><span class="upload-timing-total">${formatMetricValue(total, 'ms')}<small>мс</small></span></div><div class="upload-timing-stages">${stageMarkup}</div>`;
         return card;
+    }
+    async function refreshLastUploadCard(section = document.querySelector('.metric-service[data-service="BarkFluff.Files"]')) {
+        if (!section?.classList.contains('open') || !section.dataset.loaded || lastUploadRefreshPending) return;
+        lastUploadRefreshPending = true;
+        try {
+            const snapshot = await BF.request('/api/seq/dashboard/files/last-upload', { errorToast: false, cache: 'no-store' });
+            const freshCard = renderLastUploadCard(metricsFromLastUploadSnapshot(snapshot));
+            if (!freshCard) return;
+
+            const currentCard = section.querySelector('.upload-timing-card');
+            if (currentCard?.dataset.snapshot === freshCard.dataset.snapshot) return;
+            if (currentCard) currentCard.replaceWith(freshCard);
+            else section.querySelector('.service-grid')?.prepend(freshCard);
+        } catch {
+            // Keep the latest cached value visible while Seq is temporarily unavailable.
+        } finally {
+            lastUploadRefreshPending = false;
+        }
     }
     function renderMetricGroup(group) {
         const section = document.createElement('section');
@@ -625,7 +649,9 @@
     async function toggleMetricGroup(section, group) {
         const isOpen = section.classList.toggle('open');
         section.querySelector('.metric-service-toggle').setAttribute('aria-expanded', isOpen);
-        if (isOpen && !section.dataset.loaded) await loadMetricGroup(section, group);
+        if (!isOpen) return;
+        if (!section.dataset.loaded) await loadMetricGroup(section, group);
+        else if (group.serviceName === 'BarkFluff.Files') refreshLastUploadCard(section);
     }
     async function loadMetricGroup(section, group) {
         const grid = section.querySelector('.service-grid');
@@ -654,6 +680,7 @@
                 });
             });
             section.dataset.loaded = 'true';
+            if (group.serviceName === 'BarkFluff.Files') refreshLastUploadCard(section);
         } catch {
             grid.innerHTML = '<div style="color:var(--md-error);padding:16px">Не удалось загрузить метрики</div>';
         }
@@ -722,6 +749,9 @@
         BF.pageReady();
 
         setInterval(loadDashboardData, 30000);
+        setInterval(() => {
+            if (!document.hidden) refreshLastUploadCard();
+        }, 10000);
     })();
 </script>
 </body>
