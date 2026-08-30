@@ -1,3 +1,4 @@
+using BarkFluff.Configuration.Domain;
 using BarkFluff.Configuration.Persistence;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
@@ -46,6 +47,45 @@ public class ConfigurationStorageTests
         Assert.Equal(source.Id, revisions[0].SourceRevisionId);
         Assert.Equal("false", revisions[0].PreviousValue);
         Assert.Equal("true", revisions[0].NewValue);
+    }
+
+    [Fact]
+    public async Task UpdateConfiguration_WithEmptyKey_UpdatesExistingRowAndCreatesRevision()
+    {
+        await using var context = CreateContext();
+        context.Configurations.Add(new ConfigurationItem
+        {
+            Section = "DevelopersDb",
+            Key = "",
+            Value = "Host=old;Database=developers",
+            EditedAt = DateTime.UtcNow,
+            EditedBy = "system",
+            EditedFrom = "migration",
+            ServiceId = ServiceId.Developers
+        });
+        await context.SaveChangesAsync();
+
+        var storage = new ConfigurationStorage(context, new MetricsCollector());
+
+        await storage.UpdateConfigurationAsync(
+            "DevelopersDb",
+            "",
+            "Host=new;Database=developers",
+            ServiceId.Developers,
+            "admin",
+            "test");
+
+        var item = await context.Configurations.SingleAsync();
+        var revisions = await storage.GetConfigurationHistoryAsync(
+            "DevelopersDb",
+            "",
+            ServiceId.Developers,
+            30);
+
+        Assert.Equal("Host=new;Database=developers", item.Value);
+        Assert.Single(revisions);
+        Assert.Equal("Host=old;Database=developers", revisions[0].PreviousValue);
+        Assert.Equal("Host=new;Database=developers", revisions[0].NewValue);
     }
 
     private static ConfigurationContext CreateContext()
