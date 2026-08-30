@@ -166,10 +166,21 @@ public class ReadinessMonitorService : BackgroundService
                 }
             }
 
-            var failed = checks.Count(c => c.Status != "healthy");
-            var status = checks.Count == 0 || failed == 0
+            foreach (var contributor in sp.GetServices<IBarkFluffReadinessContributor>())
+            {
+                try
+                {
+                    checks.Add(await contributor.CheckAsync(ct));
+                }
+                catch (Exception ex)
+                {
+                    checks.Add(new DependencyCheck(contributor.GetType().Name, "down", null, ex.Message));
+                }
+            }
+
+            var status = checks.Count == 0 || checks.All(c => c.Status == "healthy")
                 ? "healthy"
-                : failed == checks.Count
+                : checks.All(c => c.Status == "down")
                     ? "down"
                     : "degraded";
 
