@@ -5,7 +5,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <NoWarn>$(NoWarn);CS0436</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,7 +32,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Identity\BarkFluff.Shared.Identity.csproj" />
-    <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
+    <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" Aliases="GrpcServer" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,9 +1,10 @@
+extern alias GrpcServer;
+
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Settings.Catalog;
 using BarkFluff.Settings.Domain;
 using BarkFluff.Settings.Persistence.Contexts;
@@ -12,6 +13,8 @@ using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+
+using MetricsCollector = GrpcServer::BarkFluff.GrpcServer.Metrics.MetricsCollector;
 
 namespace BarkFluff.Settings.Infrastructure;
 
@@ -31,7 +34,6 @@ public sealed record SettingsSeedOptions(
             configuration["RABBITMQ_DEFAULT_USER"] ?? "guest",
             configuration["RABBITMQ_DEFAULT_PASS"] ?? "guest");
 
-    public static SettingsSeedOptions ForTests() => new("postgres", "postgres", "postgres", "guest", "guest");
 }
 
 public sealed class SettingsSeeder

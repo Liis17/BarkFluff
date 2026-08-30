@@ -21,6 +21,7 @@ public class DeployJobService : BackgroundService
     public static readonly string[] DeployOrder =
     [
         "configuration",
+        "settings",
         "beacon",
         "files",
         "identity",

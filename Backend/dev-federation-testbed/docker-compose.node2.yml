@@ -7,7 +7,7 @@ version: '3.8'
 #
 # Запуск (из Backend/):
 #   docker compose -f docker-compose-dev.yml -f dev-federation-testbed/docker-compose.node2.yml \
-#     up -d postgres configuration federation postgres2 configuration2 federation2
+#     up -d postgres configuration settings federation postgres2 configuration2 settings2 federation2
 #
 # Плейнтекст (http://) — до этапа 1.6 (nginx + self-signed + SPKI). Порты наружу не публикуются:
 # см. README.md этой папки — доступ только изнутри сети barkfluff-network (fedping, docker exec).
@@ -37,6 +37,23 @@ services:
       CONFIGURATION_USERNAME: barkfluff
       CONFIGURATION_PASSWORD: barkfluff
       CONFIGURATION_PORT: "7003"
+    depends_on:
+      - postgres2
+    networks:
+      - barkfluff-network
+
+  settings2:
+    image: docker.barkfluff.com/barkfluff-settings-dev:latest
+    container_name: settings2
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      SETTINGS_HOST: postgres2
+      SETTINGS_DATABASE: settings2
+      SETTINGS_ADMIN_DATABASE: postgres
+      SETTINGS_USERNAME: barkfluff
+      SETTINGS_PASSWORD: barkfluff
+      SETTINGS_PORT: "7003"
     depends_on:
       - postgres2
     networks:

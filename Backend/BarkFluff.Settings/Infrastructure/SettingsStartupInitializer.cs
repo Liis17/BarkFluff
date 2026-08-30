@@ -1,7 +1,10 @@
-using BarkFluff.GrpcServer.Metrics;
+extern alias GrpcServer;
+
 using BarkFluff.Settings.Persistence.Contexts;
 
 using Microsoft.EntityFrameworkCore;
+
+using MetricsCollector = GrpcServer::BarkFluff.GrpcServer.Metrics.MetricsCollector;
 
 namespace BarkFluff.Settings.Infrastructure;
 

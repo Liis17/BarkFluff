@@ -1,0 +1,30 @@
+services:
+  beacon: &settings-consumer
+    environment:
+      CONFIGURATION_SERVICE_URL: "http://settings:7003"
+    depends_on: [configuration, settings]
+  files: *settings-consumer
+  identity: *settings-consumer
+  messages: *settings-consumer
+  notification: *settings-consumer
+  users: *settings-consumer
+  fast-auth: *settings-consumer
+  updates: *settings-consumer
+  onliner: *settings-consumer
+  federation: *settings-consumer
+  cloud-messaging: *settings-consumer
+  developers: *settings-consumer
+  calls: *settings-consumer
+  web:
+    environment:
+      CONFIGURATION_SERVICE_URL: "http://settings:7003"
+    depends_on: [configuration, settings, identity, users, messages, files, updates, onliner]
+  bots:
+    environment:
+      CONFIGURATION_SERVICE_URL: "http://settings:7003"
+    depends_on: [configuration, settings, users, messages, files]
+  admin-panel:
+    environment:
+      CONFIGURATION_SERVICE_URL: "http://settings:7003"
+      ConfigurationService__Host: "http://settings:7003"
+    depends_on: [configuration, settings, seq, messages]

@@ -293,6 +293,7 @@ public class DockerService
         {
             { "beacon", "beacon" },
             { "configuration", "configuration" },
+            { "settings", "settings" },
             { "files", "files" },
             { "identity", "identity" },
             { "messages", "messages" },

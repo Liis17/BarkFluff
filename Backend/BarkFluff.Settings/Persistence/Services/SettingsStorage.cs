@@ -1,4 +1,5 @@
-using BarkFluff.GrpcServer.Metrics;
+extern alias GrpcServer;
+
 using BarkFluff.Settings.Catalog;
 using BarkFluff.Settings.Domain;
 using BarkFluff.Settings.Persistence.Contexts;
@@ -6,6 +7,8 @@ using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+
+using MetricsCollector = GrpcServer::BarkFluff.GrpcServer.Metrics.MetricsCollector;
 
 namespace BarkFluff.Settings.Persistence.Services;
 
