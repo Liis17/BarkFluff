@@ -40,6 +40,10 @@ public sealed class SettingsStartupInitializer
                 if (context.Database.IsRelational())
                     await context.Database.MigrateAsync(cancellationToken);
 
+                var seeder = scope.ServiceProvider.GetRequiredService<SettingsSeeder>();
+                await seeder.SeedAsync(cancellationToken);
+                await seeder.ValidateAsync(cancellationToken);
+
                 _metrics.Increment("db_migration_succeeded");
                 _metrics.Set("db_healthy", 1);
                 _logger.LogInformation("Settings database migrations applied successfully");
@@ -48,6 +52,7 @@ public sealed class SettingsStartupInitializer
             catch (Exception exception) when (attempt < MaxAttempts && !cancellationToken.IsCancellationRequested)
             {
                 _metrics.Increment("db_migration_failed");
+                _metrics.Increment("settings_bootstrap_errors_total");
                 _logger.LogWarning(
                     exception,
                     "Settings database initialization failed; retrying in {DelaySeconds} seconds ({Attempt}/{MaxAttempts})",
@@ -60,6 +65,7 @@ public sealed class SettingsStartupInitializer
             catch
             {
                 _metrics.Increment("db_migration_failed");
+                _metrics.Increment("settings_bootstrap_errors_total");
                 _metrics.Set("db_healthy", 0);
                 throw;
             }

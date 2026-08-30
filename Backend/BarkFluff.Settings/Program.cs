@@ -35,6 +35,7 @@ public class Program
 
         var databaseOptions = SettingsDatabaseOptions.FromConfiguration(builder.Configuration);
         builder.Services.AddSingleton(databaseOptions);
+        builder.Services.AddSingleton(SettingsSeedOptions.FromConfiguration(databaseOptions, builder.Configuration));
         builder.Services.AddDbContext<SettingsContext>(options =>
             options.UseNpgsql(databaseOptions.ConnectionString, npgsql =>
             {
@@ -44,6 +45,10 @@ public class Program
             }));
 
         builder.Services.AddSingleton<SettingsStartupInitializer>();
+        builder.Services.AddScoped<SettingsSeeder>();
+        builder.Services.AddScoped<SettingsReadinessContributor>();
+        builder.Services.AddScoped<IBarkFluffReadinessContributor>(provider =>
+            provider.GetRequiredService<SettingsReadinessContributor>());
         builder.Services.AddBarkFluffHealth();
 
         var app = builder.Build();

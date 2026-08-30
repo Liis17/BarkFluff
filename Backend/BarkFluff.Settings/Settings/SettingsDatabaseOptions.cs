@@ -39,7 +39,7 @@ public sealed record SettingsDatabaseOptions(
             Get(configuration, "SETTINGS_DATABASE", "CONFIGURATION_DATABASE") ?? "settings",
             username,
             password,
-            Get(configuration, "SETTINGS_ADMIN_DATABASE") ?? "postgres");
+            Get(configuration, "SETTINGS_ADMIN_DATABASE", "CONFIGURATION_ADMIN_DATABASE") ?? "postgres");
     }
 
     private static string? Get(IConfiguration configuration, params string[] keys)
