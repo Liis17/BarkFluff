@@ -46,7 +46,9 @@ dotnet build Barkfluff.Developers.csproj
 
 **Асинхронная инициализация при старте**: `DevelopersStartupInitializer` выполняет
 `MigrateAsync`, затем в одной транзакции добавляет отсутствующие defaults из `SeedData` и
-проверяет инварианты. Seed аддитивный и идемпотентный: ключ документации — `Key`, proto —
+проверяет инварианты. Для реляционной БД этот блок выполняется через
+`Database.CreateExecutionStrategy()`, поэтому ручная транзакция совместима с
+`NpgsqlRetryingExecutionStrategy`. Seed аддитивный и идемпотентный: ключ документации — `Key`, proto —
 `FileName`, ошибка — `Code`; существующие значения не обновляются и не удаляются. В PostgreSQL
 вставки используют `ON CONFLICT DO NOTHING`, поэтому параллельный старт реплик не создаёт
 дубликаты. При нарушении инварианта (битый JSON, duplicate error code, отсутствие

@@ -9,7 +9,7 @@ namespace Barkfluff.Developers.Tests;
 public class PostgresConcurrentSeedTests
 {
     [PostgresFact]
-    public async Task Two_startup_initializers_do_not_create_duplicate_defaults()
+    public async Task Two_startup_initializers_with_retrying_execution_strategy_do_not_create_duplicate_defaults()
     {
         var connectionString = Environment.GetEnvironmentVariable("DEVELOPERS_TEST_POSTGRES")!;
 
@@ -38,7 +38,9 @@ public class PostgresConcurrentSeedTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<DevelopersContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<DevelopersContext>(options => options.UseNpgsql(
+            connectionString,
+            npgsql => npgsql.EnableRetryOnFailure(3)));
         services.AddTransient<DocumentationStorage>();
         services.AddTransient<ProtoMetadataStorage>();
         services.AddSingleton<ErrorCodeSeeder>();
