@@ -1,6 +1,8 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.Settings.Infrastructure;
+using BarkFluff.Settings.Host;
 using BarkFluff.Settings.Persistence.Contexts;
+using BarkFluff.Settings.Persistence.Services;
 using BarkFluff.Settings.Settings;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -46,6 +48,7 @@ public class Program
 
         builder.Services.AddSingleton<SettingsStartupInitializer>();
         builder.Services.AddScoped<SettingsSeeder>();
+        builder.Services.AddScoped<SettingsStorage>();
         builder.Services.AddScoped<SettingsReadinessContributor>();
         builder.Services.AddScoped<IBarkFluffReadinessContributor>(provider =>
             provider.GetRequiredService<SettingsReadinessContributor>());
@@ -67,6 +70,7 @@ public class Program
         app.UseRouting();
         if (app.Environment.IsDevelopment())
             app.MapGrpcReflectionService();
+        app.MapGrpcService<SettingsApiService>();
         app.MapHealthEndpoints();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
