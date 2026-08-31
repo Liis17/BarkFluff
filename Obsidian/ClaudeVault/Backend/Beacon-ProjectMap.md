@@ -9,7 +9,7 @@
 ### `Program.cs`
 Точка входа сервиса. Настраивает DI-контейнер и Kestrel.
 
-- Читает порт из env-переменных `BEACON_PORT` / `RunSettings__Port`, иначе из `RunSettings:Port` (7002)
+- Читает порт из `RunSettings:Port`, загруженного через Settings service (по умолчанию 7002)
 - Загружает параметры через `LoadConfiguration(ServiceId.Beacon)` из Settings service
 - Регистрирует: MediatR, gRPC reflection только в Development, Serilog, метрики (`AddBarkFluffMetrics`)
 - Регистрирует gRPC-клиенты: `NavigatorApiClient` (по ключу `NavigatorUrl`) и wire-compatible `ConfigurationApiClient` (по ключу `SettingsServiceAddr`)

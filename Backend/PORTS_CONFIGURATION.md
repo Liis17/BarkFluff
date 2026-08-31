@@ -11,7 +11,7 @@
 | Setup UI | — | — | 7032 | `SETUP_PORT` |
 | Identity | 1 | 7000 | — | `IDENTITY_PORT` |
 | Users | 2 | 7001 | — | `USERS_PORT` |
-| Beacon | 3 | 7002 | — | `BEACON_PORT` |
+| Beacon | 3 | 7002 | — | Settings: `RunSettings:Port` |
 | Notification | 4 | 7004 | — | `NOTIFICATION_PORT` |
 | Files | 5 | 7005 | 7006 | `FILES_PORT`, `FILES_HTTP1PORT` |
 | Messages | 6 | 7007 | — | `MESSAGES_PORT` |
