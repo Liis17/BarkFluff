@@ -31,7 +31,7 @@ PostgreSQL БД по умолчанию — `settings`. Startup initializer де
 
 `SettingsCatalog` — единственный разрешённый список параметров и обратимое соответствие legacy `ServiceId + Section + Key` → `SettingsTable + storage Key`. Произвольные ключи отклоняются; новый параметр добавляется кодом и тестом. При старте вставляются только отсутствующие строки, существующие значения не перезаписываются. JWT secret и service-токены создаются один раз.
 
-Поля без безопасного default создаются пустыми. `SettingsReadinessContributor` возвращает `degraded` и отсортированный список незаполненных или невалидных полей. Основные setup-поля: Beacon `ServerProps`/`ServerColor`, SMTP `Email`, Files `ExternalEndpoint:MediaHost`, federation domain/TLS/window parameters. Каталог setup содержит 19 полей: 18 обязательных manual-полей и переключатель федерации; federation-поля становятся обязательными только при `Federation:Enabled=true`.
+Поля без безопасного default создаются пустыми. `SettingsReadinessContributor` возвращает `degraded` и отсортированный список незаполненных или невалидных полей. Основные setup-поля: Beacon `ServerProps`/`ServerColor`, SMTP `Email`, Files `ExternalEndpoint:MediaHost`, S3/MinIO credentials, LiveKit credentials и federation domain/TLS/window parameters. Каталог setup содержит 37 полей: 36 обязательных manual-полей и переключатель федерации; federation-поля становятся обязательными только при `Federation:Enabled=true`.
 
 ## Первичная настройка
 
@@ -39,8 +39,9 @@ PostgreSQL БД по умолчанию — `settings`. Startup initializer де
 `Settings`. `SettingsSetupApi` предоставляет `GetSetupState`, `SaveSetupGroup` и
 `CompleteSetup`; значения валидируются на сервере и чувствительные поля маскируются.
 После завершения в `SetupState` сохраняется fingerprint каталога и время операции.
-Совпадающий fingerprint означает необратимую блокировку setup API; дальнейшие
-изменения выполняются AdminPanel. Bootstrap создаёт только БД `settings`, старые
+Наличие записи `SetupState` означает необратимую блокировку setup API; fingerprint
+остаётся для аудита и диагностики и не открывает setup повторно при добавлении новых
+полей. Дальнейшие изменения выполняются AdminPanel. Bootstrap создаёт только БД `settings`, старые
 данные Configuration не импортируются.
 
 ## Переменные окружения

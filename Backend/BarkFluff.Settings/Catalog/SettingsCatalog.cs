@@ -129,8 +129,8 @@ public static class SettingsCatalog
         {
             var section = $"S3Buckets:{bucket}";
             AddLiteral(entries, ServiceId.Files, section, "ServiceUrl", "http://minio:9000");
-            AddLiteral(entries, ServiceId.Files, section, "AccessKey", "minioadmin", true);
-            AddLiteral(entries, ServiceId.Files, section, "SecretKey", "minioadmin", true);
+            AddManual(entries, ServiceId.Files, section, "AccessKey", SettingsSetupMetadata.Storage(bucket, "AccessKey"));
+            AddManual(entries, ServiceId.Files, section, "SecretKey", SettingsSetupMetadata.Storage(bucket, "SecretKey"));
             AddLiteral(entries, ServiceId.Files, section, "BucketName", bucket);
         }
         AddServiceClient(entries, ServiceId.Files, "MessagesService", ServiceId.Messages);
@@ -170,8 +170,8 @@ public static class SettingsCatalog
         AddServiceClient(entries, ServiceId.Calls, "MessagesService", ServiceId.Messages);
         AddLiteral(entries, ServiceId.Calls, "LiveKit", "Url", "ws://livekit:7880");
         AddLiteral(entries, ServiceId.Calls, "LiveKit", "PublicUrl", "wss://calls.example.com");
-        AddLiteral(entries, ServiceId.Calls, "LiveKit", "ApiKey", "devkey", true);
-        AddLiteral(entries, ServiceId.Calls, "LiveKit", "ApiSecret", "devsecret_change_me_in_production_0123456789", true);
+        AddManual(entries, ServiceId.Calls, "LiveKit", "ApiKey", SettingsSetupMetadata.Calls("ApiKey"));
+        AddManual(entries, ServiceId.Calls, "LiveKit", "ApiSecret", SettingsSetupMetadata.Calls("ApiSecret"));
 
         AddServiceBase(entries, ServiceId.Bots, "BotsDb");
         AddLiteral(entries, ServiceId.Bots, "RunSettings", "Http1Port", "7028");
@@ -244,6 +244,6 @@ public static class SettingsCatalog
         };
 
     private static bool IsSensitive(string section, string key) =>
-        key is "SecretKey" or "Password" or "Token" or "ApiSecret" or "AccessKey" or "SenderPassword"
+        key is "SecretKey" or "Password" or "Token" or "ApiSecret" or "ApiKey" or "AccessKey" or "SenderPassword"
         || section.EndsWith("Db", StringComparison.Ordinal);
 }

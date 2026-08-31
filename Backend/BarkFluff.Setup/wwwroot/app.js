@@ -224,7 +224,12 @@
                 `/api/setup/groups/${encodeURIComponent(group.id)}`,
                 { method: "PUT", body: { values }, csrf: true },
             );
+            const wasApplicable = group.applicable;
             applyResponse(response);
+            const currentGroup = state.groups[state.current];
+            if (currentGroup && currentGroup.applicable !== wasApplicable) {
+                render();
+            }
             setMessage(
                 $("#action-message"),
                 advance && state.current < state.groups.length - 1

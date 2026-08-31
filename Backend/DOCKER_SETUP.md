@@ -11,15 +11,15 @@ Bootstrap-compose поднимает только `setup`, `settings` и Postgre
 
 ```bash
 docker network create barkfluff-network
-mkdir -p secrets data/postgres
-openssl rand -base64 32 > secrets/setup_token
-chmod 600 secrets/setup_token
+mkdir -p Docker/nightly/barkfluff/secrets Docker/nightly/barkfluff/data/postgres
+openssl rand -base64 32 > Docker/nightly/barkfluff/secrets/setup_token
+chmod 600 Docker/nightly/barkfluff/secrets/setup_token
 
 docker compose -f Docker/nightly/barkfluff/docker-compose.setup.yml up -d
 ```
 
 Откройте `http://127.0.0.1:7032` (или адрес из `SETUP_PORT`) и введите содержимое
-`secrets/setup_token`. Форма последовательно показывает группы Settings, сохраняет
+`Docker/nightly/barkfluff/secrets/setup_token`. Форма последовательно показывает группы Settings, сохраняет
 их через внутренний gRPC API и после завершения блокируется. Для публичного доступа
 используйте `Docker/setup/settings-setup.nginx.conf` с TLS.
 
@@ -39,6 +39,13 @@ docker compose -f Docker/nightly/barkfluff/docker-compose.yml up -d
 Settings использует базу `settings` и учётные данные `POSTGRES_USER` /
 `POSTGRES_PASSWORD`. При первом старте Settings создаёт собственную базу и применяет
 миграции. Остальные базы сервисов создаются их собственными миграциями.
+
+До запуска bootstrap задайте в `.env` непредсказуемые
+`RABBITMQ_DEFAULT_USER` и `RABBITMQ_DEFAULT_PASS`: Compose передаёт их Settings и
+RabbitMQ без небезопасного `guest/guest` fallback. Значения S3/MinIO и LiveKit
+заполняются в форме Setup; перед запуском основного стека используйте те же значения
+в `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` и `livekit/livekit.yaml`. В шаблоне
+LiveKit ключи пустые намеренно: без ручной синхронизации с Settings звонки не стартуют.
 
 ## Проверка
 

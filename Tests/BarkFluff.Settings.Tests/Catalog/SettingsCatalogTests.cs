@@ -46,13 +46,16 @@ public sealed class SettingsCatalogTests
             Assert.Same(entry, SettingsCatalog.Resolve(entry.ServiceId, entry.StorageKey));
         }
 
+        Assert.True(SettingsCatalog.Resolve(ServiceId.Calls, "LiveKit:ApiKey").IsSensitive);
+        Assert.True(SettingsCatalog.Resolve(ServiceId.Calls, "LiveKit:ApiSecret").IsSensitive);
+
         var snapshot = string.Join('\n', SettingsCatalog.All
             .OrderBy(entry => entry.ServiceId)
             .ThenBy(entry => entry.Section, StringComparer.Ordinal)
             .ThenBy(entry => entry.Key, StringComparer.Ordinal)
             .Select(entry => $"{(int)entry.ServiceId}|{entry.Section}|{entry.Key}|{entry.StorageKey}|{entry.IsSensitive}|{entry.RequiresManualValue}"));
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
-        Assert.Equal("A5F5EC788AA3BA636F718640A05B911CACB45BEED32875AD936AD09535C78175", hash);
+        Assert.Equal("3FED757F8F442BDF2591E776AC69048C6EC27858C35ED810A8A4739FF1C467C8", hash);
     }
 
     [Theory]

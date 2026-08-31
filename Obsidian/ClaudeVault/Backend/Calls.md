@@ -85,9 +85,10 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 | `LiveKit:Url` | WSS-адрес (дублируется в [[Backend/Beacon]].`livekit_url`) |
 | `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `docker/{dev,nightly,master}/barkfluff/livekit/livekit.yaml`) |
 
-В Git заданы development-defaults LiveKit: `devkey` и
-`devsecret_change_me_in_production_0123456789`; production secrets оператор должен
-переопределить согласованно в Settings и `livekit.yaml`.
+Ключ и секрет LiveKit не имеют общего development-default и создаются пустыми.
+Оператор вводит непредсказуемую пару через Setup UI и использует те же значения в
+`keys` файла `livekit.yaml`; после завершения первичной настройки изменения
+выполняются через AdminPanel.
 
 ## Внешний доступ ([[Backend/Nginx]])
 
