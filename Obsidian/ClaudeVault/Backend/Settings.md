@@ -1,6 +1,6 @@
 # BarkFluff.Settings
 
-Новый сервис настроек, который постепенно заменяет [[Backend/Configuration]]. Работает параллельно с legacy Configuration на внутреннем адресе `settings:7003`, не публикуется наружу и не использует XAuth.
+Новый сервис настроек, который заменяет [[Backend/Configuration]]. На этапе cutover сохраняет wire-совместимые имена `configuration_api.proto`/`ConfigurationApi`, но рабочее хранилище — только `Settings`. Внутренний listener — `settings:7003`; setup API защищён отдельным токеном.
 
 Расположение: `Backend/BarkFluff.Settings/`.
 
@@ -28,13 +28,24 @@ PostgreSQL БД по умолчанию — `settings`. Startup initializer де
 
 `SettingsCatalog` — единственный разрешённый список параметров и обратимое соответствие legacy `ServiceId + Section + Key` → `SettingsTable + storage Key`. Произвольные ключи отклоняются; новый параметр добавляется кодом и тестом. При старте вставляются только отсутствующие строки, существующие значения не перезаписываются. JWT secret и service-токены создаются один раз.
 
-Поля без безопасного default создаются пустыми. `SettingsReadinessContributor` возвращает `degraded` и отсортированный список незаполненных полей. Основные manual-поля: Beacon `ServerProps`/`ServerColor`, SMTP `Email`, Files `ExternalEndpoint:MediaHost`, federation domain/TLS/window parameters.
+Поля без безопасного default создаются пустыми. `SettingsReadinessContributor` возвращает `degraded` и отсортированный список незаполненных или невалидных полей. Основные setup-поля: Beacon `ServerProps`/`ServerColor`, SMTP `Email`, Files `ExternalEndpoint:MediaHost`, federation domain/TLS/window parameters. Каталог setup содержит 19 полей: 18 обязательных manual-полей и переключатель федерации; federation-поля становятся обязательными только при `Federation:Enabled=true`.
+
+## Первичная настройка
+
+[[Backend/Setup]] поднимается отдельным Compose только вместе с PostgreSQL и
+`Settings`. `SettingsSetupApi` предоставляет `GetSetupState`, `SaveSetupGroup` и
+`CompleteSetup`; значения валидируются на сервере и чувствительные поля маскируются.
+После завершения в `SetupState` сохраняется fingerprint каталога и время операции.
+Совпадающий fingerprint означает необратимую блокировку setup API; дальнейшие
+изменения выполняются AdminPanel. Bootstrap создаёт только БД `settings`, старые
+данные Configuration не импортируются.
 
 ## Переменные окружения
 
 - `SETTINGS_HOST`, `SETTINGS_DBPORT`, `SETTINGS_DATABASE`, `SETTINGS_USERNAME`, `SETTINGS_PASSWORD`
 - `SETTINGS_ADMIN_DATABASE` (по умолчанию `postgres`), `SETTINGS_PORT` (по умолчанию `7003`)
-- старые `CONFIGURATION_*` поддерживаются как fallback; compose явно задаёт `SETTINGS_DATABASE=settings`, чтобы не подключиться к legacy БД
+- на переходном этапе `CONFIGURATION_*` поддерживаются как fallback; после удаления legacy их нужно убрать из deployment-конфигураций
+- `SETTINGS_SETUP_MODE`, `SETTINGS_SETUP_SECRET_FILE`/`SETTINGS_SETUP_TOKEN` — включение и секрет setup gRPC API
 
 ## Переключение
 
