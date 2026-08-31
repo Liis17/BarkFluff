@@ -190,11 +190,10 @@ services:
     image: docker.barkfluff.com/barkfluff-developers:latest
     container_name: developers
     restart: always
-    expose:
-      - "7020"
-      - "7021"
     environment:
       <<: *common-variables
+      DEVELOPERS_PORT: ${DEVELOPERS_PORT:-7020}
+      DEVELOPERS_HTTP1PORT: ${DEVELOPERS_HTTP1PORT:-7021}
     networks:
       - barkfluff-network
     depends_on:
