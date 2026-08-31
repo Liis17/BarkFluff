@@ -13,7 +13,7 @@ Shared-библиотека инфраструктуры. Подключаетс
 
 | Файл | Назначение |
 |------|-----------|
-| `WebApplicationBuilderExtensions.cs` | Extension-методы для `WebApplicationBuilder`: `LoadConfiguration(ServiceId)` — загружает конфиг из Configuration service по gRPC; `SetRunningAddress()` — настраивает Kestrel (порт, TLS, HTTP/2, опциональный HTTP/1). |
+| `WebApplicationBuilderExtensions.cs` | Extension-методы для `WebApplicationBuilder`: `LoadConfiguration(ServiceId)` — загружает параметры из Settings service по wire-compatible gRPC API; `SetRunningAddress()` — настраивает Kestrel (порт, TLS, HTTP/2, опциональный HTTP/1). |
 | `PingEndpointExtensions.cs` | `MapPingEndpoint()` — регистрирует анонимный `GET /ping`, возвращающий `200 text/plain` с телом `pong`. |
 | `ServiceCollectionExtensions.cs` | Extension-методы для `IServiceCollection`: `AddSettings<T>()` — регистрирует `IOptions<T>` и `T` как singleton; `AddBarkFluffGrpc()` — регистрирует gRPC с двумя interceptors (`ServerExceptionInterceptor`, `RequestContextInterceptor`), scoped `IRequestContextAccessor` (writer) и scoped-фабрику `RequestContext`, делегирующую accessor'у. |
 | `SerilogExtensions.cs` | Extension-методы для Serilog: `AddBarkFluffSerilog(serviceName)` — настраивает Serilog → Console + Seq (дуральный sink с файловым буфером `logs/seq-buffer`, лимит 100MB); `AddBarkFluffMetrics(serviceName)` — регистрирует `MetricsCollector` (singleton) и `MetricsReporterService` (HostedService). |
@@ -68,7 +68,7 @@ Shared-библиотека инфраструктуры. Подключаетс
 | [[Shared/Exceptions]] | `BaseGrpcException` в `ServerExceptionInterceptor` |
 | [[Shared/Auth]] | `MetadataKeys` в `RequestContextInterceptor` |
 | [[Shared/Identity]] | `ServiceId`, `TokenType`, `IdentityClaims` в XAuth и UserContext |
-| `configuration_api.proto` | gRPC-клиент для загрузки конфигурации из Configuration service |
+| `configuration_api.proto` | Wire-compatible gRPC-клиент для загрузки параметров из Settings service |
 | `Serilog`, `Serilog.Sinks.Seq` | Структурированное логирование |
 | `Grpc.AspNetCore` | gRPC сервер + interceptors |
 | `Microsoft.AspNetCore.Authentication.JwtBearer` | JWT аутентификация |

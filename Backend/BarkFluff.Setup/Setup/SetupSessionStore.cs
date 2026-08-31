@@ -71,6 +71,7 @@ public sealed class SetupSessionStore
 
         session = current with { LastSeenAtUtc = now, ExpiresAtUtc = now.Add(_options.SessionLifetime) };
         _sessions[id] = session;
+        SetCookie(context, session);
         return true;
     }
 

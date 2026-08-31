@@ -92,7 +92,7 @@ SSH-параметры больше не передаются через `.env` 
 
 ### MassTransit (RabbitMQ publisher)
 
-AdminPanel зарегистрирован как **publisher** в MassTransit (без consumers), чтобы публиковать админские RabbitMQ-события — например `AdminBroadcastNotificationEvent` (страница «Уведомления»). Конфигурация `RabbitMQ:Host/Username/Password` приходит из Configuration service. Используется через `IPublishEndpoint` в endpoint-методах.
+AdminPanel зарегистрирован как **publisher** в MassTransit (без consumers), чтобы публиковать админские RabbitMQ-события — например `AdminBroadcastNotificationEvent` (страница «Уведомления»). Параметры `RabbitMQ:Host/Username/Password` приходят из Settings service. Используется через `IPublishEndpoint` в endpoint-методах.
 
 ### Endpoint Groups
 
@@ -236,7 +236,7 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 
 ## Вкладка «Конфигурация» (`/configuration`)
 
-`Pages/v2/configuration.html` — просмотр и правка всех строк базы конфигурации [[Backend/Configuration]]. Группировка по сервису, клиентский поиск и **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL (`http(s)` и `ws(s)` для LiveKit), секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет». История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Configuration-сервис, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
+`Pages/v2/configuration.html` (маршрут `/settings`, старый `/configuration` оставлен alias) — просмотр и правка строк Settings через wire-compatible `ConfigurationApi`. Группировка по сервису, клиентский поиск и **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL (`http(s)` и `ws(s)` для LiveKit), секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет». История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Settings, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
 
 Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
 

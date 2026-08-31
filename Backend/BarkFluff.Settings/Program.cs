@@ -21,7 +21,6 @@ public class Program
 
         var port = 7003;
         var configuredPort = builder.Configuration["SETTINGS_PORT"]
-            ?? builder.Configuration["CONFIGURATION_PORT"]
             ?? builder.Configuration["RunSettings__Port"];
         if (int.TryParse(configuredPort, out var parsedPort))
             port = parsedPort;

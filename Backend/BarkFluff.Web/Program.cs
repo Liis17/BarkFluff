@@ -26,14 +26,14 @@ var webMode = builder.Configuration["Web:Mode"];
 var isShellMode = string.Equals(webMode, "Shell", StringComparison.OrdinalIgnoreCase);
 var isProxyMode = string.Equals(webMode, "Proxy", StringComparison.OrdinalIgnoreCase);
 
-// Шелл и прокси живут вне ноды, рядом с ними нет Configuration-сервиса, а
+// Шелл и прокси живут вне ноды, рядом с ними нет Settings-сервиса, а
 // LoadConfiguration падает без ретраев при недоступном сервисе — поэтому в этих
 // режимах его пропускаем и берём конфигурацию только из env/appsettings (тот же
 // осознанный выход из платформенного шаблона, что у BarkFluff.Navigator).
 if (!isShellMode && !isProxyMode)
     builder.LoadConfiguration(ServiceId.Web);
 
-// Env-переменные контейнера должны иметь приоритет над Configuration service
+// Env-переменные контейнера должны иметь приоритет над Settings service
 builder.Configuration.AddEnvironmentVariables();
 
 // В Proxy-режиме адрес origin-ноды обязателен — fail fast, а не 502 на первом запросе.

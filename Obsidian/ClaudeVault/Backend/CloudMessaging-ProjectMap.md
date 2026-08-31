@@ -10,7 +10,7 @@
 
 ### `Program.cs`
 Точка входа приложения. Отвечает за:
-- Загрузку конфигурации через `builder.LoadConfiguration(ServiceId.CloudMessaging)` (централизованный Configuration-сервис)
+- Загрузку конфигурации через `builder.LoadConfiguration(ServiceId.CloudMessaging)` (централизованный Settings-сервис)
 - Регистрацию Serilog
 - Регистрацию singleton `FirebaseService`
 - Настройку gRPC-клиентов к `UsersService` и `MessagesService` с интерцепторами `JwtClientInterceptor` + `ExceptionClientInterceptor`
@@ -47,7 +47,7 @@ Singleton-сервис-обёртка над **Firebase Admin SDK**. Отвеч�
 ---
 
 ### `appsettings.json` / `appsettings.Development.json`
-Конфигурационные файлы. Базовые ключи (заполняются через Configuration-сервис или переменные окружения):
+Конфигурационные файлы. Базовые ключи (заполняются через Settings-сервис или переменные окружения):
 
 | Ключ | Описание |
 |------|----------|

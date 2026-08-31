@@ -28,7 +28,7 @@ dotnet build BarkFluff.Proto.csproj
 | `fast_auth_api.proto` | `BarkFluff.Proto.FastAuth` | QR/текстовая авторизация |
 | `beacon_api.proto` | `BarkFluff.Proto.Beacon` | Описание сервера и адреса микросервисов |
 | `navigator_api.proto` | `BarkFluff.Proto.Navigator` | Глобальный реестр серверов |
-| `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Централизованная конфигурация: чтение/update, история ревизий и rollback; Reserved Names |
+| `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Wire-compatible API Settings: чтение/update, история ревизий и rollback; Reserved Names |
 | `settings_setup_api.proto` | `BarkFluff.Proto.SettingsSetup` | Первичная настройка Settings: состояние, сохранение групп, завершение и блокировка |
 | `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
 | `calls_api.proto` | `BarkFluff.Proto.Calls` | Звонки (1-на-1 и групповые) поверх LiveKit SFU: инициация, подписка на события, история, качество голоса |
@@ -49,7 +49,7 @@ dotnet build BarkFluff.Proto.csproj
 - `shared.proto` импортируется в `messages_api.proto`, `updates_api.proto`, `users_api.proto` — общие типы сюда
 - `MessageAttachmentType` enum — в `shared.proto` (не в `messages_api.proto`), т.к. используется и в `files_api.proto`
 - `CreateTokenResponse.access_token` имеет **field_number=2** (не 1) — важно при ручной десериализации
-- `ConfigurationApi.GetConfigurationHistory` возвращает переходы `previous_value → new_value`; `RollbackConfiguration` восстанавливает `previous_value` выбранной ревизии и записывает новый rollback-переход. Контракт аддитивный, существующие field numbers не менялись.
+- `ConfigurationApi.GetConfigurationHistory` возвращает переходы `previous_value → new_value`; `RollbackConfiguration` восстанавливает `previous_value` выбранной ревизии и записывает новый rollback-переход. Контракт аддитивный, существующие field numbers не менялись; реализация API находится в Settings.
 - `SettingsSetupApi` используется только [[Backend/Setup]] и [[Backend/Settings]]: `GetSetupState`, `SaveSetupGroup`, `CompleteSetup`; gRPC вызовы требуют `x-settings-setup-token`.
 - `AuthRequest` и `FindByLoginRequest` используют `oneof login` (username ИЛИ email)
 - `SendMessageRequest` использует `oneof source_id` (chat_id ИЛИ user_id); `client_operation_id` (field 5, UUID) даёт [[Backend/Messages]] идемпотентную корреляцию ручного retry
@@ -89,7 +89,7 @@ dotnet build BarkFluff.Proto.csproj
 - `messages_api.proto`: `SendMessageRequest.source_id` oneof + `user_uuid` (4); `GetPersonChatIdRequest.user_uuid` (2); `ChatMember.user_uuid` (5) + `server_name` (6); `MessagesServerApi` — 7 новых RPC федеративного импорта/экспорта (Фаза 2: ImportFederatedChat/Message, ApplyFederatedEdit/Delete/Read, ExportChatEvents, CheckFileFederationAccess) с плоскими DTO (`FederatedFileRefFlat`, `FederatedChatEvent`) — файл **не импортирует** `federation_api.proto`, поля продублированы плоско
 - `onliner_api.proto`: `user_uuids`/`user_uuid` в Subscribe/Change/Status/Typing-сообщениях; новый сервис `OnlinerServerApi` (Фаза 4) — UpsertRemoteStatus/InjectRemoteTyping
 - `navigator_api.proto`: `ServerInfo` +5 полей (server_name, federation_endpoint, signing_keys, tls_spki_sha256, federation_protocol_versions) + `NavigatorSigningKey`; `NavigatorApi.GetServerByName` (Фаза 1)
-- `beacon_api.proto`: `GetServerInfoResponse.server_name` (16), `federation_enabled` (17) — **реализовано** (не заглушка): Beacon читает `Federation:ServerName`/`Federation:Enabled` из Configuration, см. [[Backend/Beacon]]
+- `beacon_api.proto`: `GetServerInfoResponse.server_name` (16), `federation_enabled` (17) — **реализовано** (не заглушка): Beacon читает `Federation:ServerName`/`Federation:Enabled` из Settings, см. [[Backend/Beacon]]
 - `users_api.proto`: `PushPlatform` (`ANDROID`, `WEB`) в `SetFirebaseTokenRequest` и `DeviceFirebaseToken`; `UsersApi.ClearFirebaseToken` очищает FCM-привязку текущего устройства. Это позволяет [[Backend/CloudMessaging]] отправлять Android и PWA разные, privacy-safe payload.
 - `federation_api.proto`/`federation_internal_api.proto` пока **не подключены** ни в один сервисный `.csproj` (Federation-сервиса ещё нет, Фаза 1) — только в `BarkFluff.Proto.csproj` (см. ниже), чтобы codegen валидировал синтаксис при сборке
 

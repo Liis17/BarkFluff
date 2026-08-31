@@ -37,7 +37,7 @@
 В Federation, пайплайн `DeliverEvents` (2.2), перед маршрутизацией `ChatCreatedPayload`:
 
 - счётчик в Redis: ключ `fed:chatcreated:{origin}:{часовое окно}`, инкремент с TTL;
-- лимит из конфигурации `Federation:ChatCreatedHourlyLimit` (default 100; добавь в `ConfigurationDefaultsPopulator` по образцу ключей 0.1);
+- лимит из конфигурации `Federation:ChatCreatedHourlyLimit` (default 100; добавь в каталог Settings по образцу ключей 0.1);
 - превышение → ответ `RETRY` (троттлинг: временное состояние, не порча события) + метрика `chatcreated_quota_exceeded{origin}` + warning-лог. Блок ноды при злоупотреблении — вручную из AdminPanel (страница 1.7, кнопка блока уже есть); автоалерт-UI — Фаза 6.
 
 Дополнительно (если ещё не сделано в 1.3/1.6): базовый прикладной rate-limit per-origin на `DeliverEvents` (батчей/мин) — проверь, что nginx-зоны 1.6 покрывают, прикладной слой добавляй только при пробеле.

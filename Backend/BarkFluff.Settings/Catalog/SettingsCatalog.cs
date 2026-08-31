@@ -97,8 +97,7 @@ public static class SettingsCatalog
         AddServiceClient(entries, ServiceId.Unknown, "IdentityService", ServiceId.Identity);
         AddServiceClient(entries, ServiceId.Unknown, "BotsService", ServiceId.Bots);
         AddServiceClient(entries, ServiceId.Unknown, "FederationService", ServiceId.Federation);
-        AddDefault(entries, ServiceId.Unknown, "ConfigurationService", "Host", _ => "http://settings:7003");
-        AddDefault(entries, ServiceId.Unknown, "ConfigurationService", "Token", v => v.ServiceTokenFactory("ConfigurationServiceClient"), true);
+        AddDefault(entries, ServiceId.Unknown, "SettingsService", "Host", _ => "http://settings:7003");
 
         AddServiceBase(entries, ServiceId.Identity, "IdentityDb");
         AddLiteral(entries, ServiceId.Identity, "Redis", "", "redis:6379");

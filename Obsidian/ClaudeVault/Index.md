@@ -15,11 +15,8 @@
 
 | Файл | Сервис | Порт |
 |------|--------|------|
-| [[Backend/Configuration]] | Legacy-конфигурация (удаляется после cutover) | 7003 |
 | [[Backend/Settings]] | Хранилище настроек и setup gRPC API | 7003 |
 | [[Backend/Setup]] | Первичная настройка Settings через web-консоль | 7032 |
-| [[Backend/Configuration-ProjectMap]] | Карта всех файлов и классов Configuration | — |
-| [[Backend/Configuration-Metrics]] | Реестр метрик Configuration (через ServiceMetrics-логи в Seq) | — |
 | [[Backend/Beacon]] | Точка входа клиентов | 7002 |
 | [[Backend/Beacon-ProjectMap]] | Карта всех файлов и классов Beacon | — |
 | [[Backend/Beacon-Metrics]] | Реестр метрик Beacon (через ServiceMetrics-логи в Seq) | — |
@@ -97,7 +94,6 @@
 | [[Клиенты/Windows-WPF-V2-ProjectMap]] | Карта классов и ресурсов WPF-клиента V2 |
 | [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
 | [[Клиенты/Windows-WebApiCore-ProjectMap]] | Карта всех файлов и менеджеров WebApi.Core |
-| [[Клиенты/Windows-DBEditor]] | Редактор конфигурации БД (WPF) |
 | [[Клиенты/Windows-UpdaterCLI]] | Консольный инсталлятор/апдейтер WPF-клиента (.NET 8, отдельный от основного приложения) |
 | [[Клиенты/Linux-Qt]] | Qt 6 / C++20 — авторизация, мессенджер, настройки, PIN-защита и восстановление сессии |
 | [[Клиенты/macOS]] | SwiftUI + gRPC-Swift (macOS 26) |

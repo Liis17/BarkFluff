@@ -8,7 +8,7 @@
 
 Фаза 0 должна быть завершена целиком:
 
-- 0.1 — выполнен (коммит `f8f792ad`): `ServiceId.Federation = 15`, дефолты конфигурации (`RunSettings`, `FederationDb`, `Federation:Enabled`, `FederationService:Host/Token`) уже в `ConfigurationDefaultsPopulator`.
+- 0.1 — выполнен (коммит `f8f792ad`): `ServiceId.Federation = 15`, дефолты конфигурации (`RunSettings`, `FederationDb`, `Federation:Enabled`, `FederationService:Host/Token`) уже в каталоге Settings.
 - 0.4 — файлы `Shared/BarkFluff.Proto/federation_api.proto` и `federation_internal_api.proto` должны существовать. Если их нет — Фаза 0 не закончена, остановись.
 - 0.5 — отчёт `../phase-0/step-0.5-report.md` с выбранной Ed25519-библиотекой должен существовать (нужен этапам 1.2/1.3). Если его нет — остановись.
 

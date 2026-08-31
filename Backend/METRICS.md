@@ -133,11 +133,18 @@ They are sent to Seq and can be queried by `Application` property or metric name
 | `active_subscriptions` | counter | Online status stream subscriptions |
 | `offline_detections` | counter | Users detected as offline by OfflineDetectionService |
 
-## Configuration (BarkFluff.Configuration)
+## Settings (BarkFluff.Settings)
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `config_requests` | counter | GetConfiguration RPC calls |
+| `setup_group_fields_changed` | counter | Number of setup fields changed in a saved group |
+| `setup_completions` | counter | Initial setup completion events |
+
+## Setup (BarkFluff.Setup)
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| — | — | Setup UI currently exposes health and access logs; business counters are emitted by Settings. |
 
 ## Seq Access
 

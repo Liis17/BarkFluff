@@ -53,9 +53,8 @@ docker compose -f docker-compose.setup.yml down
 docker compose -f docker-compose.yml up -d
 ```
 
-Основной Compose создаст бизнес-базы при старте соответствующих сервисов. Для
-переключения потребителей на Settings используйте compose override
-`docker-compose.settings-cutover.yml` до удаления legacy-слоя.
+Основной Compose создаст бизнес-базы при старте соответствующих сервисов: потребители
+уже настроены на Settings, поэтому отдельный cutover-override не нужен.
 
 После переключения удалите setup secret и не оставляйте порт `7032` доступным
 напрямую из интернета. Дальнейшие исправления выполняются через AdminPanel.

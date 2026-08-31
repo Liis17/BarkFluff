@@ -18,7 +18,8 @@
 |--------|------|
 | BarkFluff.Beacon | `Backend/BarkFluff.Beacon/` |
 | BarkFluff.ClientStorage | `Backend/BarkFluff.ClientStorage/` |
-| BarkFluff.Configuration | `Backend/BarkFluff.Configuration/` |
+| BarkFluff.Settings | `Backend/BarkFluff.Settings/` |
+| BarkFluff.Setup | `Backend/BarkFluff.Setup/` |
 | BarkFluff.FastAuth | `Backend/BarkFluff.FastAuth/` |
 | BarkFluff.Files | `Backend/BarkFluff.Files/` |
 | BarkFluff.GrpcServer | `Backend/BarkFluff.GrpcServer/` |

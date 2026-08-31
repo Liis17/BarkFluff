@@ -20,7 +20,7 @@
   const SERVICES = [
     'BarkFluff.Identity','BarkFluff.Users','BarkFluff.Messages','BarkFluff.Files',
     'BarkFluff.Updates','BarkFluff.Notification','BarkFluff.Beacon','BarkFluff.FastAuth',
-    'BarkFluff.Onliner','BarkFluff.Configuration','BarkFluff.Web','BarkFluff.ClientStorage'
+    'BarkFluff.Onliner','BarkFluff.Settings','BarkFluff.Web','BarkFluff.ClientStorage'
   ];
 
   const FIRST_NAMES = ['Алексей','Мария','Дмитрий','Анна','Иван','Екатерина','Сергей','Ольга','Никита','Ксения','Артём','Полина','Кирилл','Виктория','Максим','Дарья','Илья','Юлия','Роман','София'];

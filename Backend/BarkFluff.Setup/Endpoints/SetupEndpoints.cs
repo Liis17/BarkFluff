@@ -34,12 +34,14 @@ public static class SetupEndpoints
 
         app.MapGet("/api/setup/state", async (HttpContext http, SetupSessionStore sessions, ISettingsSetupClient client, CancellationToken cancellationToken) =>
         {
-            if (!sessions.TryGet(http, out _))
+            if (!sessions.TryGet(http, out var session))
                 return Results.Unauthorized();
 
             try
             {
-                return Results.Ok(await client.GetStateAsync(cancellationToken));
+                var state = await client.GetStateAsync(cancellationToken);
+                http.Response.Headers[SetupSessionStore.CsrfHeaderName] = session.CsrfToken;
+                return Results.Ok(state);
             }
             catch (RpcException exception)
             {

@@ -20,7 +20,8 @@
 | **BarkFluff.Users** | 10 | 5 | 9 | 🔴 Критическое |
 | **BarkFluff.Files** | 4 | 6 | 5 | 🔴 Критическое |
 | **BarkFluff.Messages** | 3 | 7 | 4 | 🔴 Критическое |
-| **BarkFluff.Configuration** | 3 | 1 | 0 | 🔴 Критическое |
+| **BarkFluff.Settings** | — | — | — | ✅ Settings API защищён setup-токеном |
+| **BarkFluff.Setup** | — | — | — | ✅ Отдельный bootstrap UI, rate limit и CSRF |
 | **BarkFluff.FastAuth** | 4 | 3 | 1 | 🔴 Не готов |
 | **BarkFluff.Beacon** | 0 | 2 | 2 | 🟠 Требует улучшений |
 | **BarkFluff.Onliner** | 0 | 2 | 2 | 🟠 Требует улучшений |
@@ -41,11 +42,9 @@
 - **Риск:** Компрометация всех паролей при утечке БД
 - **Исправление:** PBKDF2/bcrypt/Argon2
 
-### 2. Отсутствие авторизации (Configuration)
-- **Файл:** `Configuration/Host/ConfigurationApiService.cs`
-- **Проблема:** Все конфигурации доступны без авторизации
-- **Риск:** Утечка всех секретов (пароли БД, токены, JWT ключи)
-- **Исправление:** Добавить `[Authorize]` и RBAC
+### 2. Первичная настройка Settings
+- **Файл:** `BarkFluff.Settings/Host/SettingsSetupApiService.cs`, `BarkFluff.Setup/Setup/SetupSessionStore.cs`
+- **Решение:** Setup API доступен только в bootstrap-режиме и требует отдельный секрет; web-консоль ограничивает попытки входа, использует HttpOnly/SameSite cookie и CSRF-токен.
 
 ### 3. Docker socket доступ (AdminPanel)
 - **Файл:** `AdminPanel/Services/DockerService.cs`
@@ -162,7 +161,7 @@
 
 1. **Identity:** Исправить баг с OTP сравнением
 2. **Identity:** Заменить PasswordHasher на PBKDF2/bcrypt
-3. **Configuration:** Добавить авторизацию для всех методов
+3. **Settings/Setup:** хранить setup secret в Docker secrets и публиковать Setup UI только через TLS nginx
 4. **AdminPanel:** Ограничить Docker операции
 5. **Files:** Исправить IDOR в DownloadFile
 6. **Files:** Убрать публичную политику S3
@@ -199,7 +198,7 @@
 | Users | ⏳ Ожидает | - | - |
 | Files | ⏳ Ожидает | - | - |
 | Messages | ⏳ Ожидает | - | - |
-| Configuration | ⏳ Ожидает | - | Немедленно |
+| Settings / Setup | ✅ Реализовано | — | Проверить TLS и ротацию setup secret |
 | FastAuth | ⏳ Ожидает | - | Не развертывать |
 | Beacon | ⏳ Ожидает | - | - |
 | Onliner | ⏳ Ожидает | - | - |
@@ -218,7 +217,7 @@
 - `Backend/BarkFluff.Users/SECURITY_AUDIT.md`
 - `Backend/BarkFluff.Files/SECURITY_AUDIT.md`
 - `Backend/BarkFluff.Messages/SECURITY_AUDIT.md`
-- `Backend/BarkFluff.Configuration/SECURITY_AUDIT.md`
+- `Backend/BarkFluff.Settings/` и `Backend/BarkFluff.Setup/` покрыты отдельными тестами
 - `Backend/BarkFluff.FastAuth/SECURITY_AUDIT.md`
 - `Backend/BarkFluff.Beacon/SECURITY_AUDIT.md`
 - `Backend/BarkFluff.Onliner/SECURITY_AUDIT.md`

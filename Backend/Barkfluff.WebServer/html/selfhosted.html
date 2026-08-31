@@ -84,7 +84,7 @@
       <a href="#compose">docker-compose.yml</a>
       <a href="#env">.env</a>
       <a href="#zapusk">Первый запуск</a>
-      <a href="#configuration">Заполнить в Configuration</a>
+      <a href="#settings">Заполнить в Settings</a>
       <a href="#federaciya">Федерация</a>
       <a href="#obsluzhivanie">Обслуживание</a>
     </nav>
@@ -148,25 +148,28 @@
       <figure class="code tall">
         <figcaption><b>docker-compose.yml</b><button class="copy" type="button">Копировать</button></figcaption>
         <pre><code>x-common-variables: &amp;common-variables
-  CONFIGURATION_SERVICE_URL: "${CONFIGURATION_SERVICE_URL}"
+  SETTINGS_SERVICE_URL: "${SETTINGS_SERVICE_URL}"
   ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
 
 services:
   # === Основные микросервисы ===
 
-  configuration:
-    image: docker.barkfluff.com/barkfluff-configuration:latest
-    container_name: configuration
+  settings:
+    image: docker.barkfluff.com/barkfluff-settings:latest
+    container_name: settings
     restart: always
     env_file:
       - .env
     environment:
       &lt;&lt;: *common-variables
-      CONFIGURATION_HOST: ${CONFIGURATION_HOST}
-      CONFIGURATION_DATABASE: ${CONFIGURATION_DATABASE}
-      CONFIGURATION_USERNAME: ${CONFIGURATION_USERNAME}
-      CONFIGURATION_PASSWORD: ${CONFIGURATION_PASSWORD}
-      CONFIGURATION_PORT: ${CONFIGURATION_PORT}
+      SETTINGS_HOST: ${SETTINGS_HOST}
+      SETTINGS_DBPORT: ${SETTINGS_DBPORT}
+      SETTINGS_DATABASE: ${SETTINGS_DATABASE}
+      SETTINGS_ADMIN_DATABASE: ${SETTINGS_ADMIN_DATABASE}
+      SETTINGS_USERNAME: ${SETTINGS_USERNAME}
+      SETTINGS_PASSWORD: ${SETTINGS_PASSWORD}
+      SETTINGS_PORT: ${SETTINGS_PORT}
+      SETTINGS_SETUP_MODE: "false"
     networks:
       - barkfluff-network
 
@@ -180,7 +183,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   identity:
     image: docker.barkfluff.com/barkfluff-identity:latest
@@ -191,7 +194,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   users:
     image: docker.barkfluff.com/barkfluff-users:latest
@@ -202,7 +205,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   messages:
     image: docker.barkfluff.com/barkfluff-messages:latest
@@ -213,7 +216,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   files:
     image: docker.barkfluff.com/barkfluff-files:latest
@@ -224,7 +227,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   notification:
     image: docker.barkfluff.com/barkfluff-notification:latest
@@ -235,7 +238,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   fast-auth:
     image: docker.barkfluff.com/barkfluff-fast-auth:latest
@@ -247,7 +250,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   updates:
     image: docker.barkfluff.com/barkfluff-updates:latest
@@ -258,7 +261,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   onliner:
     image: docker.barkfluff.com/barkfluff-onliner:latest
@@ -269,7 +272,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   federation:
     image: docker.barkfluff.com/barkfluff-federation:latest
@@ -280,7 +283,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   cloud-messaging:
     image: docker.barkfluff.com/barkfluff-cloud-messaging:latest
@@ -296,7 +299,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   calls:
     image: docker.barkfluff.com/barkfluff-calls:latest
@@ -307,7 +310,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   bots:
     image: docker.barkfluff.com/barkfluff-bots:latest
@@ -318,7 +321,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
       - users
       - messages
       - files
@@ -337,7 +340,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
       - identity
       - users
       - messages
@@ -354,8 +357,7 @@ services:
     user: root
     environment:
       &lt;&lt;: *common-variables
-      ConfigurationService__Host: "${CONFIGURATION_SERVICE_HOST}"
-      ConfigurationService__Token: "${CONFIGURATION_SERVICE_TOKEN}"
+      SettingsService__Host: "${SETTINGS_SERVICE_HOST}"
       Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
       Telegram__Admins: "${TELEGRAM_ADMINS}"
       Seq__ServerUrl: "http://seq:80"
@@ -377,7 +379,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
       - seq
 
   # === Инфраструктура ===
@@ -510,16 +512,16 @@ volumes:
 
     <section id="env">
       <h2><span class="num">4</span>.env</h2>
-      <p>Файл лежит рядом с <code>docker-compose.yml</code>. Здесь только то, без чего стек не поднимется: остальная конфигурация живёт в базе Configuration (шаг 6).</p>
+      <p>Файл лежит рядом с <code>docker-compose.yml</code>. Здесь только то, без чего стек не поднимется: остальная конфигурация живёт в базе Settings (шаг 6).</p>
       <figure class="code tall">
         <figcaption><b>.env</b><button class="copy" type="button">Копировать</button></figcaption>
         <pre><code># Имя инстанса в служебных заголовках и логах. Обычно — имя хоста.
 HOSTNAME=node-1
 
-# Адрес Configuration для остальных сервисов. Они идут к нему при старте
+# Адрес Settings для остальных сервисов. Они идут к нему при старте
 # за своей конфигурацией, поэтому адрес внутренний и порт совпадает
-# с CONFIGURATION_PORT ниже.
-CONFIGURATION_SERVICE_URL=http://configuration:7003
+# с SETTINGS_PORT ниже.
+SETTINGS_SERVICE_URL=http://settings:7003
 
 # Production включает боевые уровни логирования и отключает dev-заглушки.
 ASPNETCORE_ENVIRONMENT=Production
@@ -532,26 +534,29 @@ POSTGRES_PASSWORD=смените-меня
 POSTGRES_DB=postgres
 POSTGRES_PORT=5432
 
-# --- База самого Configuration ---
-# Единственный сервис, которому строку подключения нельзя взять из Configuration.
-CONFIGURATION_HOST=postgres_barkfluff:5432
-CONFIGURATION_DATABASE=configuration
-CONFIGURATION_USERNAME=barkfluff
-CONFIGURATION_PASSWORD=смените-меня
+# --- База самого Settings ---
+# Единственный сервис, которому строку подключения нельзя взять из Settings.
+SETTINGS_HOST=postgres_barkfluff
+SETTINGS_DBPORT=5432
+SETTINGS_DATABASE=settings
+SETTINGS_ADMIN_DATABASE=postgres
+SETTINGS_USERNAME=barkfluff
+SETTINGS_PASSWORD=смените-меня
 
 # --- RabbitMQ (шина событий между сервисами) ---
 RABBITMQ_DEFAULT_USER=barkfluff
 RABBITMQ_DEFAULT_PASS=смените-меня
 
 # --- MinIO (S3-совместимое хранилище файлов) ---
-# Эти же значения пойдут в S3Buckets:*:AccessKey / SecretKey в Configuration.
+# Эти же значения пойдут в S3Buckets:*:AccessKey / SecretKey в Settings.
 MINIO_ROOT_USER=смените-меня
 MINIO_ROOT_PASSWORD=смените-меня
 
 # --- Порты сервисов ---
 # Читаются только теми сервисами, что берут порт из окружения;
-# остальные получают его из Configuration.
-CONFIGURATION_PORT=7003
+# остальные получают его из Settings.
+SETTINGS_PORT=7003
+SETUP_PORT=7032
 BEACON_PORT=7002
 FASTAUTH_PORT=7008
 
@@ -566,17 +571,15 @@ TELEGRAM_BOT_TOKEN=токен-вашего-бота
 TELEGRAM_ADMINS=123456789:вашusername
 
 # Хосты сервисов для панели (внутренние адреса Docker-сети).
-CONFIGURATION_SERVICE_HOST=http://configuration:7003
+SETTINGS_SERVICE_HOST=http://settings:7003
 USERS_SERVICE_HOST=http://users:7001
 FILES_SERVICE_HOST=http://files:7005
 IDENTITY_SERVICE_HOST=http://identity:7000
 BOTS_SERVICE_HOST=http://bots:7027
 
-# Сервисные токены для панели. Configuration генерирует их сам при первом
+# Сервисные токены для панели. Settings генерирует их сам при первом
 # старте — после шага 5 скопируйте значения из панели или из БД сюда
-# и перезапустите admin-panel. Configuration XAuth не проверяет,
-# поэтому CONFIGURATION_SERVICE_TOKEN может остаться пустым.
-CONFIGURATION_SERVICE_TOKEN=
+# и перезапустите admin-panel.
 USERS_SERVICE_TOKEN=
 FILES_SERVICE_TOKEN=
 IDENTITY_SERVICE_TOKEN=
@@ -593,36 +596,36 @@ FIREBASE_CLIENT_ID=</code></pre>
       </figure>
       <div class="callout warn">
         <span class="tag">Пароли</span>
-        <p>Все значения <code>смените-меня</code> — обязательны к замене до первого запуска. Пароль PostgreSQL после старта менять больно: он уже записан в строки подключения внутри базы Configuration.</p>
+        <p>Все значения <code>смените-меня</code> — обязательны к замене до первого запуска. Пароль PostgreSQL после старта менять больно: он уже записан в строки подключения внутри базы Settings.</p>
       </div>
     </section>
 
     <section id="zapusk">
       <h2><span class="num">5</span>Первый запуск</h2>
-      <p>Порядок важен: Configuration должен подняться первым — он накатывает свои миграции и заполняет конфигурацию остальных сервисов значениями по умолчанию. Без этого другие сервисы не стартуют.</p>
+      <p>Сначала поднимите bootstrap-compose с PostgreSQL, Settings в режиме настройки и Setup UI. Остальные сервисы запускаются только после завершения формы.</p>
       <figure class="code">
         <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
         <pre><code>docker login docker.barkfluff.com
 docker compose pull
 
-# 1. Сначала база и Configuration
-docker compose up -d postgres
-docker compose up -d configuration
-docker compose logs -f configuration     # ждём "Авто-заполнение завершено"
+# 1. Поднимаем только Settings и Setup UI
+docker compose -f docker-compose.setup.yml up -d
+open http://127.0.0.1:7032
 
-# 2. Затем всё остальное
-docker compose up -d
+# 2. После заполнения формы запускаем основной стек
+docker compose -f docker-compose.setup.yml down
+docker compose -f docker-compose.yml up -d
 docker compose ps</code></pre>
       </figure>
-      <p>При старте Configuration заполняет пустые записи: генерирует JWT-ключ (64 символа), сервисные токены со сроком 10 лет, строки подключения к базам, внутренние адреса RabbitMQ, Redis и Seq. Всё это трогать не нужно. А вот то, что он заполнить не может, — в следующем шаге.</p>
+      <p>Settings применяет миграции, создаёт базу и показывает только значения, которые нужно ввести вручную. После завершения форма блокируется отпечатком каталога полей.</p>
     </section>
 
-    <section id="configuration">
-      <h2><span class="num">6</span>Что заполнить в Configuration</h2>
-      <p>Конфигурация хранится в базе <code>configuration</code>, таблица <code>Configurations</code> (поля <code>Section</code>, <code>Key</code>, <code>Value</code>, <code>ServiceId</code>). Править удобнее всего через вкладку «Конфигурация» в панели администратора — она пишет туда же. Изменения читаются сервисами при старте, поэтому после правок нужен перезапуск затронутого контейнера.</p>
+    <section id="settings">
+      <h2><span class="num">6</span>Что заполнить в Settings</h2>
+      <p>Setup UI последовательно показывает группы полей Settings и поясняет назначение каждого значения. Сохранение группы валидирует поля на сервере, а ошибки отображаются рядом с конкретным вводом.</p>
 
       <h3>Обязательно: остаются пустыми после установки</h3>
-      <p>Автозаполнение эти ключи не трогает — без них сервисы работать не будут.</p>
+      <p>Setup UI отмечает эти поля как обязательные — без них сервисы работать не будут.</p>
       <div class="scroll-x">
       <table>
         <thead><tr><th>Section</th><th>Key</th><th>Сервис</th><th>Что вписать</th></tr></thead>
@@ -634,8 +637,8 @@ docker compose ps</code></pre>
       </table>
       </div>
 
-      <h3>Обязательно: автозаполнение поставило заглушку</h3>
-      <p>Значения есть, но они из примера — с ними нода будет ссылаться на несуществующий домен и пускать кого угодно в хранилище.</p>
+      <h3>Поля с безопасными значениями по умолчанию</h3>
+      <p>Проверьте значения в Setup UI: адреса из примера нужно заменить на домены вашей ноды, а секреты MinIO и LiveKit — на собственные.</p>
       <div class="scroll-x">
       <table>
         <thead><tr><th>Section</th><th>Key</th><th>Стоит по умолчанию</th><th>Что вписать</th></tr></thead>
@@ -650,7 +653,7 @@ docker compose ps</code></pre>
       </table>
       </div>
 
-      <h3>Заполняется само — не трогать</h3>
+      <h3>Settings заполняет автоматически</h3>
       <ul>
         <li><code>JwtSettings:SecretKey</code>, <code>Issuer</code>, <code>Audience</code>, <code>ExpiryMinutes</code> — ключ генерируется при первом старте. Смена ключа разлогинит всех.</li>
         <li><code>UsersService</code>, <code>FilesService</code>, <code>MessagesService</code>, <code>IdentityService</code>, <code>OnlinerService</code>, <code>BotsService</code>, <code>FederationService</code> — внутренние адреса и токены межсервисного доступа.</li>
@@ -658,7 +661,7 @@ docker compose ps</code></pre>
         <li><code>RabbitMQ</code>, <code>Redis</code>, <code>Seq</code>, <code>RunSettings:Port</code>, <code>TempFiles:ExpiresAt</code> — внутренние адреса и порты.</li>
       </ul>
       <div class="callout">
-        <p>Токены из <code>*Service:Token</code> нужно скопировать в <code>.env</code> (<code>USERS_SERVICE_TOKEN</code>, <code>FILES_SERVICE_TOKEN</code>, <code>IDENTITY_SERVICE_TOKEN</code>, <code>BOTS_SERVICE_TOKEN</code>) и перезапустить <code>admin-panel</code> — панель ходит в сервисы с ними и без совпадения получит отказ.</p>
+        <p>Токены из <code>*Service:Token</code> Settings выдаёт сервисам автоматически. После изменения операторских значений перезапустите затронутый контейнер.</p>
       </div>
     </section>
 
@@ -724,7 +727,7 @@ docker compose up -d</code></pre>
       <h3>Безопасность</h3>
       <ul>
         <li>Наружу открыты только 80, 443 и медиапорты LiveKit — остальное закройте фаерволом.</li>
-        <li>Пароли из <code>.env</code> и токены из Configuration — это доступ ко всем перепискам ноды. Файл <code>.env</code> держите с правами <code>600</code> и вне репозитория.</li>
+        <li>Пароли из <code>.env</code> и секреты Settings — это доступ ко всем перепискам ноды. Файл <code>.env</code> держите с правами <code>600</code> и вне репозитория.</li>
         <li>Смена <code>JwtSettings:SecretKey</code> инвалидирует все сессии и межсервисные токены разом — годится как аварийная мера при утечке.</li>
         <li>Доступ к сокету Docker есть у панели администратора: кто получил панель, тот получил хост.</li>
       </ul>
@@ -733,7 +736,7 @@ docker compose up -d</code></pre>
     <section id="podderzhka">
       <h2><span class="num">9</span>Если что-то не поднялось</h2>
       <ul>
-        <li>Сервис перезапускается в цикле — смотрите его логи первым делом: чаще всего он не смог достучаться до Configuration либо не нашёл свою запись в конфигурации.</li>
+        <li>Сервис перезапускается в цикле — смотрите его логи первым делом: чаще всего он не смог достучаться до Settings либо не нашёл свою запись в конфигурации.</li>
         <li>Клиенты не видят ноду — проверьте <code>ExternalEndpoint:Host</code> и то, что nginx проксирует gRPC, а не обычный HTTP.</li>
         <li>Исходники и сборочные конфиги: <a href="https://github.com/Liis17/BarkFluff">github.com/Liis17/BarkFluff</a>, вопросы по коду — <a href="https://github.com/Liis17/BarkFluff/issues">issues</a>.</li>
         <li>Уязвимости в коде и протоколе — security@barkfluff.com. Данные пользователей вашей ноды разработчики не видят и запросы по ним не обрабатывают.</li>

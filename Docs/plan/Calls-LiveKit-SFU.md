@@ -204,7 +204,7 @@ service CallsApi {
 
 **Фаза 0 — Инфраструктура LiveKit**
 1. `livekit/livekit-server` в `docker-compose-dev.yml` + конфиг (api_key/secret, Redis, TURN-порты UDP). → проверка: `livekit-cli` подключается, тестовая комната создаётся.
-2. `ServiceId.Calls`, регистрация в Configuration, провижн ключей. → проверка: сервис стартует и тянет конфиг.
+2. `ServiceId.Calls`, регистрация в Settings, провижн ключей. → проверка: сервис стартует и тянет конфиг.
 
 **Фаза 1 — Backend, 1-на-1**
 3. `calls_api.proto` (раздел 4) + подключение в `BarkFluff.Proto.csproj` (Server) и клиентских проектах. → проверка: генерится, solution билдится.

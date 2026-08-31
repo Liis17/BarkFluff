@@ -40,7 +40,7 @@ public class Program
         builder.SetRunningAddress(builder.Configuration);
 
         // Второй листенер HTTP/1 для /.well-known/barkfluff — gRPC-порт настроен под h2c (SetRunningAddress),
-        // GET по HTTP/1 на нём не живёт. Дефолт порта — 7031 (см. ConfigurationDefaultsPopulator: свободен).
+        // GET по HTTP/1 на нём не живёт. Дефолт порта — 7031 (свободен в каталоге Settings).
         var wellKnownPortRaw = builder.Configuration["Federation:WellKnownPort"];
         var wellKnownPort = !string.IsNullOrWhiteSpace(wellKnownPortRaw) && int.TryParse(wellKnownPortRaw, out var parsedWellKnownPort)
             ? parsedWellKnownPort

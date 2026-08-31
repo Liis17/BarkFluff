@@ -8,7 +8,7 @@
       "applicationUrl": "http://localhost:5087",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "CONFIGURATION_SERVICE_URL": "https://configuration.barkfluff.com:443"
+        "SETTINGS_SERVICE_URL": "http://localhost:7003"
       }
     },
     "https": {

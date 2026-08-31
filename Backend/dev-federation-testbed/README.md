@@ -4,7 +4,7 @@
 SPKI-пиннингом (этап 1.6). Discovery (KnownServers наполняется кодом) — этап 1.4; здесь пиры
 сидируются вручную SQL-скриптом (`Source = Manual`).
 
-Нода 1 — обычный dev-стек (`docker/backend/docker-compose-dev-backend.yml`, сервисы `postgres`/`configuration`/
+Нода 1 — обычный dev-стек (`docker/backend/docker-compose-dev-backend.yml`, сервисы `postgres`/`settings`/
 `federation`). Нода 2 — `docker-compose.node2.yml` в этой папке (отдельные контейнеры, общая сеть
 `barkfluff-network`). nginx перед каждой нодой — `docker-compose.nginx.yml`.
 
@@ -18,23 +18,18 @@ bash dev-federation-testbed/certs/make-certs.sh   # выведет SPKI sha256 �
 docker compose -f docker-compose-dev.yml \
   -f dev-federation-testbed/docker-compose.node2.yml \
   -f dev-federation-testbed/docker-compose.nginx.yml \
-  up -d postgres configuration federation postgres2 configuration2 federation2 nginx-node1 nginx-node2
+  up -d postgres settings federation postgres2 settings2 federation2 nginx-node1 nginx-node2
 ```
 
 ## 2. Задать Federation:ServerName обеим нодам
 
 Federation-сервис при пустом `Federation:ServerName` стартует, но не генерирует пригодную для
 пиров идентичность полноценно (ключ создаётся, well-known отвечает 503). Задай имя ноды прямой
-записью в БД Configuration (проще, чем через AdminPanel, для одноразового дев-стенда):
+записью в БД Settings (проще, чем через AdminPanel, для одноразового дев-стенда):
 
 ```bash
-# Нода 1 — БД configuration (основной стек)
-docker exec -it postgres_barkfluff psql -U "$POSTGRES_USER" -d barkfluff_configuration -c \
-  "UPDATE \"Configurations\" SET \"Value\" = 'node1.test' WHERE \"ServiceId\" = 15 AND \"Section\" = 'Federation' AND \"Key\" = 'ServerName';"
-
-# Нода 2 — БД configuration2
-docker exec -it postgres2_barkfluff psql -U barkfluff -d barkfluff_configuration -c \
-  "UPDATE \"Configurations\" SET \"Value\" = 'node2.test' WHERE \"ServiceId\" = 15 AND \"Section\" = 'Federation' AND \"Key\" = 'ServerName';"
+# Для стенда задайте значения через Setup UI либо внутренний Settings API.
+# Прямое редактирование таблиц Settings не рекомендуется для production.
 ```
 
 Перезапусти `federation`/`federation2`, чтобы `LoadConfiguration` подхватил новое значение:

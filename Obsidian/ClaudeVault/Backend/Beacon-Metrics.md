@@ -28,10 +28,10 @@
 | -------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `server_info_requests`                 | `Host/BeaconApiService.cs` → `GetServerInfo`                                         | Сколько раз клиенты вызвали `GetServerInfo` (включая ошибки). Базовый счётчик трафика.                            |
 | `server_info_success`                  | `Host/BeaconApiService.cs` → `GetServerInfo`                                         | Сколько вызовов `GetServerInfo` завершились успешно. Соотношение к `server_info_requests` = success rate.         |
-| `server_info_errors`                   | `Host/BeaconApiService.cs` → `GetServerInfo` (catch)                                 | Сколько вызовов `GetServerInfo` упали с исключением (Configuration недоступен, серверная ошибка и т.п.).          |
+| `server_info_errors`                   | `Host/BeaconApiService.cs` → `GetServerInfo` (catch)                                 | Сколько вызовов `GetServerInfo` упали с исключением (Settings недоступен, серверная ошибка и т.п.).          |
 | `server_info_duration_ms_total`        | `Host/BeaconApiService.cs` → `GetServerInfo`                                         | Сумма времени обработки успешных вызовов `GetServerInfo` за окно. Среднее = `total / server_info_success`.        |
-| `configuration_fetch_success`          | `Features/GetServerInfo/GetServerInfoCommandHandler.cs`                              | Сколько отдельных запросов в Configuration service завершились успешно (`Add(9)` на каждый `GetServerInfo` — 9 сервисов; при ошибке `Add(9 - failed)`). |
-| `configuration_fetch_errors`           | `Features/GetServerInfo/GetServerInfoCommandHandler.cs`                              | Сколько запросов в Configuration service упали. Маркер проблем со связью Beacon ↔ Configuration.                  |
+| `configuration_fetch_success`          | `Features/GetServerInfo/GetServerInfoCommandHandler.cs`                              | Сколько отдельных запросов в Settings API завершились успешно (`Add(9)` на каждый `GetServerInfo` — 9 сервисов; при ошибке `Add(9 - failed)`). |
+| `configuration_fetch_errors`           | `Features/GetServerInfo/GetServerInfoCommandHandler.cs`                              | Сколько запросов в Settings API упали. Маркер проблем со связью Beacon ↔ Settings.                  |
 | `navigator_registrations`              | `Features/RegisterServer/ServerRegistrationService.cs`                               | Сколько раз сервер успешно зарегистрировался в Navigator (раз в 5 минут при штатной работе).                      |
 | `navigator_registration_errors`        | `Features/RegisterServer/ServerRegistrationService.cs` (catch)                       | Сколько попыток регистрации в Navigator упали. Маркер проблем со связью Beacon ↔ Navigator.                       |
 | `navigator_registration_duration_ms_total` | `Features/RegisterServer/ServerRegistrationService.cs`                           | Сумма длительности успешных RegisterServer-запросов. Среднее = `total / navigator_registrations`.                 |
@@ -69,7 +69,7 @@
 
 Любая ветка кода, которая:
 - обрабатывает gRPC-запрос (вход → счётчик, успех → счётчик, ошибка → счётчик, длительность → `_duration_ms_total`),
-- ходит во внешний сервис (Configuration / Navigator) — счётчики успехов/ошибок,
+- ходит во внешний сервис (Settings / Navigator) — счётчики успехов/ошибок,
 - стартует периодическую работу — gauge времени последнего успешного цикла,
 
 должна писать метрики через `MetricsCollector`. Не дублируем в общий `LogInformation` — для метрик используется только формат `ServiceMetrics {@Metrics}` через `MetricsReporterService`.

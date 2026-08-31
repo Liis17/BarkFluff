@@ -39,7 +39,7 @@ Target framework: `net10.0`
 | `Developers` | 12 | Портал документации |
 | `Calls` | 13 | Звонки (аудио/видео на LiveKit SFU) |
 
-> При добавлении нового сервиса — добавить значение сюда, затем зарегистрировать в БД [[Backend/Configuration]].
+> При добавлении нового сервиса — добавить значение сюда, затем зарегистрировать в каталоге [[Backend/Settings]].
 
 ---
 
@@ -95,4 +95,4 @@ GrpcServer (проверяет JWT)
 - [[Shared/Identity]] — краткое описание библиотеки
 - [[Backend/Identity]] — сервис аутентификации
 - [[Backend/GrpcServer]] — использует TokenType и IdentityClaims для XAuth
-- [[Backend/Configuration]] — хранит конфигурацию по ServiceId
+- [[Backend/Settings]] — хранит конфигурацию по ServiceId

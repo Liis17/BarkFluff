@@ -108,7 +108,7 @@
 - `GetServerInfoResponse`: + `server_name` (клиент должен знать имя своей ноды: рендер FID, отличение «своих» от remote), + `federation_enabled`.
 - Регистрация в Navigator — расширенным запросом (federation-поля берёт из Configuration/Federation).
 
-## `BarkFluff.Configuration` — S
+## `BarkFluff.Settings` — S
 
 - Регистрация `ServiceId.Federation` + секция конфигурации ([04](04-federation-service.md)).
 - Ключи `FederationService:Host/Token` для сервисов-клиентов (Users, Files, Onliner, AdminPanel).

@@ -11,7 +11,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `Program.cs` | Точка входа. Регистрация сервисов: EF Core, MediatR, XAuth, gRPC, CORS, MassTransit, gRPC-клиент UsersServerApi, Redis `IConnectionMultiplexer`, `IdentitySecurityOptions` и `IdentityAbuseGuardBehavior`. Автоматическое применение миграций при старте. |
-| `appsettings.json` | Базовая конфигурация (заглушка, реальные значения приходят от [[Backend/Configuration]]) |
+| `appsettings.json` | Базовая конфигурация (заглушка, реальные значения приходят от [[Backend/Settings]]) |
 | `appsettings.Development.json` | Конфигурация для локальной разработки |
 | `Dockerfile.slim` | Docker-образ сервиса, используемый CI и production. |
 

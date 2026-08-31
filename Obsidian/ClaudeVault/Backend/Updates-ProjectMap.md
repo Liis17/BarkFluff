@@ -13,7 +13,7 @@
 |------|-----------|
 | `Program.cs` | Точка запуска сервиса. Регистрирует gRPC, XAuth, MassTransit (17 consumer-ов), Serilog, Metrics. Монтирует `UpdatesApiService`. |
 | `DependencyInjection.cs` | Extension-метод `AddUpdatesServices()`. Регистрирует **16 `StreamSubscriptionsManager`** (7 базовых + 6 user-scope для приватных + 3 device-scope для секретных) и `PendingPushTracker` как Singleton, подключает MediatR. |
-| `appsettings.json` | Базовая конфигурация: порт `7015`, адрес Configuration-сервиса. |
+| `appsettings.json` | Базовая конфигурация: порт `7015`, адрес Settings-сервиса. |
 | `appsettings.Development.json` | Переопределения для разработки. |
 | `Properties/launchSettings.json` | Профили запуска (IDE). |
 | `Dockerfile.slim` | Образ для Docker-деплоя, используемый CI. |

@@ -3,7 +3,7 @@
 
 ## Сводка
 
-Инфраструктурный слой содержит несколько критических проблем, каждая из которых масштабируется на **все** микросервисы, потому что весь бэкенд использует одну и ту же библиотеку `BarkFluff.GrpcServer` для аутентификации (XAuth) и загрузки конфигурации. Самое серьёзное: сервис `Configuration` раздаёт все секреты платформы (включая общий ключ подписи JWT, пароли БД, ключи S3, пароль почты) **без какой-либо аутентификации и по открытому каналу** — а `LoadConfiguration` именно так их и забирает на старте. Модель JWT построена на **едином симметричном HMAC-ключе** для всех сервисов и на **бессрочных, неотзываемых сервисных токенах**, что превращает компрометацию любого одного сервиса в полную компрометацию платформы. Дополнительно: сервер доверяет клиентскому заголовку `x-ip-address` (спуфинг IP для аудита/геолокации) и протекает текст внутренних исключений клиенту.
+Инфраструктурный слой содержит несколько критических проблем, каждая из которых масштабируется на **все** микросервисы, потому что весь бэкенд использует одну и ту же библиотеку `BarkFluff.GrpcServer` для аутентификации (XAuth) и загрузки параметров Settings. Первоначальный аудит Configuration устарел: runtime-хранилище заменено Settings, а первичная настройка вынесена в отдельный токенизированный Setup UI. Оставшиеся замечания ниже относятся к общему gRPC/JWT-слою и требуют отдельной проверки.
 
 | Критичность | Безопасность | Производительность |
 |-------------|:------------:|:------------------:|
@@ -17,15 +17,12 @@
 
 ## Безопасность
 
-### S1. Configuration-сервис отдаёт все секреты без аутентификации и без TLS — Critical
-**Файл:** `Backend/BarkFluff.GrpcServer/WebApplicationBuilderExtensions.cs:61-93` (клиент `LoadConfiguration`), `Backend/BarkFluff.Configuration/Host/ConfigurationApiService.cs:30-55` (сервер, нет `[Authorize]`), `Backend/BarkFluff.Configuration/Program.cs:142-145` (нет `UseXAuth`/`UseAuthorization`, включён `MapGrpcReflectionService`).
-**Проблема:** `LoadConfiguration` создаёт канал `GrpcChannel.ForAddress(configurationServiceAddress)` (по умолчанию `http://localhost:7003`, в docker — `http://...`) и вызывает `GetConfiguration` **без токена, без `JwtClientInterceptor`, без TLS**. На стороне сервера `ConfigurationApiService` не помечен `[Authorize]`, в `Program.cs` отсутствуют `AddXAuth`/`UseAuthentication`/`UseAuthorization`, а gRPC-reflection включён и в проде. В `docker-compose-master.yml:21-24` порт Configuration публикуется на хост (`ports: ["${CONFIGURATION_PORT}:${CONFIGURATION_PORT}"]`). Ответ `GetConfiguration` содержит секции `JwtSettings:SecretKey`, пароли БД, `Minio/S3 SecretKey`, `Email:SenderPassword` и т.д.
-**Почему это проблема:** любой, кто имеет сетевой доступ к порту Configuration (а в master он проброшен на хост), одним неаутентифицированным gRPC-вызовом (reflection помогает перечислить методы) выкачивает **все секреты всей платформы**, включая ключ подписи JWT. Это разом обходит S2/S3 и даёт полную компрометацию. **Затрагивает все сервисы** — это единая точка раздачи секретов.
-**Рекомендация:** закрыть `ConfigurationApiService` политикой `Service` (`[Authorize(Policy = nameof(TokenType.Service))]`) + `UseXAuth`; передавать сервисный токен из `LoadConfiguration` через `JwtClientInterceptor`; пускать трафик к Configuration по TLS (mTLS предпочтительно); не публиковать порт Configuration на хост; отключить gRPC-reflection в проде. Возникает курица-яйцо (токен лежит в Configuration) — решается bootstrap-секретом из переменной окружения/секрет-стора, а не из самой Configuration.
+### S1. Settings API и bootstrap-контур — resolved
+`SettingsApi` сохраняет wire-compatible RPC-контракт для потребителей и не публикует setup-методы без `SETTINGS_SETUP_MODE=true` и отдельного `x-settings-setup-token`. Setup UI получает секрет только из Docker secret, использует HttpOnly/SameSite cookie, CSRF-защиту и rate limit. Порт Settings не публикуется наружу в основном compose; Setup UI рекомендуется проксировать через TLS nginx.
 
 ### S2. Единый симметричный HMAC-ключ подписи JWT на все сервисы — Critical
-**Файл:** `Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:25-26` (валидация), `Backend/BarkFluff.Identity/Services/JwtService.cs:50-51` (подпись `HmacSha256`), ключ генерируется единожды в `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:163-184` и раздаётся всем.
-**Проблема:** все сервисы валидируют токены одним и тем же `JwtSettings:SecretKey` (симметричный `SymmetricSecurityKey`), и этот же ключ доступен каждому сервису (он его получает из Configuration для проверки подписи). Симметричный ключ = ключ проверки совпадает с ключом подписи.
+**Файл:** `Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:25-26` (валидация), `Backend/BarkFluff.Identity/Services/JwtService.cs:50-51` (подпись `HmacSha256`), ключ генерируется при seed Settings и раздаётся потребителям.
+**Проблема:** все сервисы валидируют токены одним и тем же `JwtSettings:SecretKey` (симметричный `SymmetricSecurityKey`), и этот же ключ доступен каждому сервису через Settings для проверки подписи. Симметричный ключ = ключ проверки совпадает с ключом подписи.
 **Почему это проблема:** любой сервис (и любой, кто прочитал ключ через S1) может **выпустить валидный токен любого типа от имени любого сервиса или пользователя** — нет криптографического разделения доверия между сервисами. Компрометация одного сервиса = возможность подделать Identity, выписать себе `Service`-токен и ходить в любой эндпоинт. **Затрагивает все сервисы.**
 **Рекомендация:** перейти на асимметричную подпись (RS256/ES256): Identity подписывает приватным ключом, остальные сервисы валидируют только публичным. Тогда утечка ключа проверки у рядового сервиса не даёт права подписи. Как минимум — пометить, что ключ проверки не должен совпадать с ключом выпуска.
 
@@ -55,7 +52,7 @@
 
 ### S7. Межсервисный трафик и секреты в открытом виде (h2c, без TLS) — High
 **Файл:** `Backend/BarkFluff.GrpcServer/WebApplicationBuilderExtensions.cs:34-56` (TLS только если задан `runSettings.Tls`, иначе чистый HTTP/2), `:69` (`GrpcChannel.ForAddress` по `http://...`); сервисные токены передаются через `Shared/BarkFluff.Shared.Auth/JwtClientInterceptor.cs:59` в заголовке `x-auth-token`.
-**Проблема:** внутри docker-сети сервисы общаются по чистому HTTP/2 (TLS включается только при наличии `Tls`-секции, которой по умолчанию нет). По этому же каналу в каждом запросе летят `x-auth-token` (в т.ч. вечные сервисные токены) и ответ Configuration со всеми секретами (S1).
+**Проблема:** внутри docker-сети сервисы общаются по чистому HTTP/2 (TLS включается только при наличии `Tls`-секции, которой по умолчанию нет). По этому же каналу в каждом запросе летят `x-auth-token` (в т.ч. долгоживущие сервисные токены) и ответы Settings с параметрами.
 **Почему это проблема:** любой, кто получил доступ к сети контейнеров (скомпрометированный sidecar, mirror порта, неверная сетевая политика), пассивно перехватывает сервисные токены и секреты. С учётом S2/S3 один перехваченный токен — это бессрочный полный доступ. **Затрагивает все сервисы.**
 **Рекомендация:** включить TLS (желательно mTLS) для межсервисного gRPC; не полагаться на «доверенную» сеть Docker для передачи долгоживущих секретов.
 
@@ -88,7 +85,7 @@
 **Рекомендация:** сделать поле приватным `static readonly Lazy<List<BaseGrpcException>>` (потокобезопасная одноразовая инициализация) или инициализировать в статическом конструкторе.
 
 ### P3. Аллокация `Stopwatch` на каждый вызов — Low
-**Файл:** `Backend/BarkFluff.GrpcServer/ServerExceptionInterceptor.cs:32` (и аналогично в `Configuration/Host/ConfigurationApiService.cs` в каждом методе).
+**Файл:** `Backend/BarkFluff.GrpcServer/ServerExceptionInterceptor.cs:32` и gRPC-методы Settings.
 **Проблема:** `Stopwatch.StartNew()` создаёт объект на каждый gRPC-вызов исключительно ради замера длительности.
 **Почему это проблема:** на горячем пути это лишняя heap-аллокация на каждый запрос; для простого замера достаточно `Stopwatch.GetTimestamp()` (структурный, без аллокаций).
 **Рекомендация:** заменить на пару `var ts = Stopwatch.GetTimestamp(); ... Stopwatch.GetElapsedTime(ts)`.
@@ -97,6 +94,6 @@
 
 ## Примечания (вне находок)
 
-- **Положительное:** `ClockSkew = TimeSpan.Zero`, `ValidateLifetime/Issuer/Audience/IssuerSigningKey = true` — строгая валидация JWT; `alg: none` отклоняется. Serilog настроен корректно (Seq — асинхронный батч-синк с буфер-файлом; Console в проде ограничен Warning — горячий путь не блокируется). `MetricsCollector` использует `ConcurrentDictionary` без явных локов (lock-конкуренции нет). Ключ JWT генерируется криптостойко (`RandomNumberGenerator`, 64 символа) в `ConfigurationDefaultsPopulator`.
+- **Положительное:** `ClockSkew = TimeSpan.Zero`, `ValidateLifetime/Issuer/Audience/IssuerSigningKey = true` — строгая валидация JWT; `alg: none` отклоняется. Serilog настроен корректно (Seq — асинхронный батч-синк с буфер-файлом; Console в проде ограничен Warning — горячий путь не блокируется). `MetricsCollector` использует `ConcurrentDictionary` без явных локов (lock-конкуренции нет). Ключ JWT генерируется криптостойко (`RandomNumberGenerator`, 64 символа) в seed-логике Settings.
 - **SecurityUtilities** (`Shared/BarkFluff.Shared.SecurityUtilities/SecurityUtilities.cs`) содержит только оценку сложности пароля — никакого хеширования, RNG или сравнения секретов здесь нет, поэтому timing-проблем в этом файле нет (название библиотеки шире её содержимого).
 - **Shared.Queue** — простые DTO событий (например, `SessionRevokedEvent`), без логики; проблем не выявлено. Стоит учесть, что отзыв сессии (`SessionRevokedConsumer`) работает только если событие доезжает до каждого инстанса сервиса (fanout); при горизонтальном масштабировании кэш отзыва у каждой реплики свой — это функциональный нюанс, не уязвимость данной библиотеки.

@@ -61,7 +61,7 @@ Barkfluff.AdminPanel/
 │   ├── LogsClearService.cs            ← async job: count → DELETE Seq events, TTL-cleanup
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
-│   ├── ConfigurationService.cs        ← gRPC-клиент конфигурации
+│   ├── ConfigurationService.cs        ← wire-compatible gRPC-клиент Settings
 │   ├── ConfigurationFieldCatalog.cs   ← типы и validation rules для редактора конфигурации
 │   ├── UserSessionRevocationService.cs ← массовый отзыв пользовательских сессий с частичным результатом
 │   ├── MailService.cs                 ← IMAP/SMTP клиент (MailKit) для служебных ящиков
@@ -316,7 +316,7 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 **TTL cleanup:** `Timer` каждые 5 минут удаляет job'ы в состоянии `Done`/`Error` старше 30 минут.
 
 ### S3BrowserService
-AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из `ConfigurationService` (gRPC).
+AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из Settings (wire-compatible gRPC API).
 
 | Метод | Описание |
 |-------|---------|
@@ -624,7 +624,7 @@ Async-job очистка логов в Seq. Обе ручки требуют в�
   "UsersService": { "Host": "...", "Token": "..." },
   "FilesService":  { "Host": "...", "Token": "..." },
   "IdentityService": { "Host": "...", "Token": "..." },
-  "ConfigurationService": { "Host": "...", "Token": "..." },
+  "SettingsService": { "Host": "..." },
   "FederationService": { "Host": "...", "Token": "..." }
 }
 ```

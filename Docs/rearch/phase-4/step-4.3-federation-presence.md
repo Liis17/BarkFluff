@@ -81,7 +81,7 @@ message SetPresenceInterestResponse {
 ## Изменение 4 — инфраструктура
 
 - gRPC-клиент `OnlinerServerApi` в Federation (образец — существующие клиенты Users/Messages) + ключи `OnlinerService:Host/Token` в бакете **`ServiceId.Federation = 15`** (миграция Configuration по образцу; помни правило «ключ в бакете потребителя»).
-- Конфигурация Federation (дефолты в `ConfigurationDefaultsPopulator` + документация в [../04-federation-service.md](../04-federation-service.md)): `Federation:MaxPresenceSubscriptionSize`, `Federation:PresenceInterestTtlSeconds`, `Federation:PresenceReconcileSeconds`, `Federation:PresenceResubscribeMinSeconds`, `Federation:PresenceCoalesceSeconds`, `Federation:PresenceResyncSeconds`.
+- Конфигурация Federation (дефолты в каталоге Settings + документация в [../04-federation-service.md](../04-federation-service.md)): `Federation:MaxPresenceSubscriptionSize`, `Federation:PresenceInterestTtlSeconds`, `Federation:PresenceReconcileSeconds`, `Federation:PresenceResubscribeMinSeconds`, `Federation:PresenceCoalesceSeconds`, `Federation:PresenceResyncSeconds`.
 
 ## Изменение 5 — capability `presence` в `Ping`
 

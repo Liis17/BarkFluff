@@ -95,7 +95,7 @@ public static class SettingsSetupMetadata
     };
 
     public static bool IsApplicable(SetupRequirement requirement, bool federationEnabled) =>
-        requirement is SetupRequirement.Always
+        requirement is SetupRequirement.None or SetupRequirement.Always
         || requirement is SetupRequirement.FederationEnabled && federationEnabled;
 
     public static string GetFieldId(SettingsCatalogEntry entry) =>

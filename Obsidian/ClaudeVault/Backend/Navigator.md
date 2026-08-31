@@ -146,4 +146,4 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 4. Обновить маппинг в `ListServersQueryHandler.cs`/`GetServerByNameQueryHandler.cs` (domain → response) — учти правило «не менять контракт `ListServers`» для существующих полей
 # Метрики
 
-Navigator экспортирует в Seq через [[Backend/GrpcServer]] число успешных регистраций и запросов списка/поиска серверов. Поскольку сервис не использует [[Backend/Configuration]], адрес Seq берётся из локальной конфигурации или стандартного `http://seq:5341`.
+Navigator экспортирует в Seq через [[Backend/GrpcServer]] число успешных регистраций и запросов списка/поиска серверов. Поскольку сервис не использует [[Backend/Settings]], адрес Seq берётся из локальной конфигурации или стандартного `http://seq:5341`.

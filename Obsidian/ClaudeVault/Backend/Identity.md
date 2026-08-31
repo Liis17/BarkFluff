@@ -17,7 +17,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 Миграции применяются автоматически при старте.
 
-## Конфигурация (от Configuration-сервиса)
+## Конфигурация (от Settings-сервиса)
 
 | Ключ | Описание |
 |------|----------|
