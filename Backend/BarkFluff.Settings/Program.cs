@@ -37,7 +37,9 @@ public class Program
         builder.Services.AddMediatR(configuration => configuration.RegisterServicesFromAssemblyContaining<Program>());
 
         var databaseOptions = SettingsDatabaseOptions.FromConfiguration(builder.Configuration);
+        var setupOptions = SettingsSetupOptions.FromConfiguration(builder.Configuration);
         builder.Services.AddSingleton(databaseOptions);
+        builder.Services.AddSingleton(setupOptions);
         builder.Services.AddSingleton(SettingsSeedOptions.FromConfiguration(databaseOptions, builder.Configuration));
         builder.Services.AddDbContext<SettingsContext>(options =>
             options.UseNpgsql(databaseOptions.ConnectionString, npgsql =>
@@ -50,6 +52,7 @@ public class Program
         builder.Services.AddSingleton<SettingsStartupInitializer>();
         builder.Services.AddScoped<SettingsSeeder>();
         builder.Services.AddScoped<SettingsStorage>();
+        builder.Services.AddScoped<SettingsSetupCoordinator>();
         builder.Services.AddScoped<SettingsReadinessContributor>();
         builder.Services.AddScoped<GrpcServer::BarkFluff.GrpcServer.IBarkFluffReadinessContributor>(provider =>
             provider.GetRequiredService<SettingsReadinessContributor>());
@@ -72,6 +75,7 @@ public class Program
         if (app.Environment.IsDevelopment())
             app.MapGrpcReflectionService();
         app.MapGrpcService<SettingsApiService>();
+        app.MapGrpcService<SettingsSetupApiService>();
         GrpcServer::BarkFluff.GrpcServer.HealthEndpointExtensions.MapHealthEndpoints(app);
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);

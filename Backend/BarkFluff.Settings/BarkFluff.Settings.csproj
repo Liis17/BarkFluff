@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\configuration_api.proto" GrpcServices="Server" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\settings_setup_api.proto" GrpcServices="Server" />
   </ItemGroup>
 
 </Project>

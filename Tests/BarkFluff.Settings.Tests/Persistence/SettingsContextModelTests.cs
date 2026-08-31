@@ -64,6 +64,10 @@ public sealed class SettingsContextModelTests
         var reservedName = context.Model.FindEntityType(typeof(ReservedName))!;
         Assert.Equal("ReservedNames", reservedName.GetTableName());
         Assert.Equal("Name", Assert.Single(reservedName.FindPrimaryKey()!.Properties).Name);
+
+        var setupState = context.Model.FindEntityType(typeof(SetupState))!;
+        Assert.Equal("SetupState", setupState.GetTableName());
+        Assert.Equal("Id", Assert.Single(setupState.FindPrimaryKey()!.Properties).Name);
     }
 
     private static SettingsContext CreateContext()

@@ -12,6 +12,8 @@ public sealed class SettingsContext : DbContext
 
     public DbSet<ReservedName> ReservedNames => Set<ReservedName>();
 
+    public DbSet<SetupState> SetupStates => Set<SetupState>();
+
     public DbSet<SettingRow> Settings(SettingsScope scope) => Set<SettingRow>(scope.EntityName);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -54,6 +56,16 @@ public sealed class SettingsContext : DbContext
             entity.ToTable("ReservedNames");
             entity.HasKey(name => name.Name);
             entity.Property(name => name.Name).HasColumnType("text");
+        });
+
+        modelBuilder.Entity<SetupState>(entity =>
+        {
+            entity.ToTable("SetupState");
+            entity.HasKey(state => state.Id);
+            entity.Property(state => state.CatalogFingerprint).HasColumnType("text").IsRequired();
+            entity.Property(state => state.CompletedAtUtc).HasColumnType("timestamp with time zone");
+            entity.Property(state => state.CompletedBy).HasColumnType("text").IsRequired();
+            entity.Property(state => state.CompletedFrom).HasColumnType("text").IsRequired();
         });
     }
 }
