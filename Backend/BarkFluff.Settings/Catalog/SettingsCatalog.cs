@@ -132,6 +132,7 @@ public static class SettingsCatalog
             AddManual(entries, ServiceId.Files, section, "AccessKey", SettingsSetupMetadata.Storage(bucket, "AccessKey"));
             AddManual(entries, ServiceId.Files, section, "SecretKey", SettingsSetupMetadata.Storage(bucket, "SecretKey"));
             AddLiteral(entries, ServiceId.Files, section, "BucketName", bucket);
+            AddLiteral(entries, ServiceId.Files, section, "Region", "auto");
         }
         AddServiceClient(entries, ServiceId.Files, "MessagesService", ServiceId.Messages);
         AddServiceClient(entries, ServiceId.Files, "FederationService", ServiceId.Federation);

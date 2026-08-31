@@ -31,7 +31,7 @@ public sealed class SettingsCatalogTests
         var expectedCounts = new Dictionary<ServiceId, int>
         {
             [ServiceId.Unknown] = 19, [ServiceId.Identity] = 14, [ServiceId.Users] = 7,
-            [ServiceId.Beacon] = 10, [ServiceId.Notifications] = 5, [ServiceId.Files] = 44,
+            [ServiceId.Beacon] = 10, [ServiceId.Notifications] = 5, [ServiceId.Files] = 52,
             [ServiceId.Messages] = 6, [ServiceId.FastAuth] = 5, [ServiceId.Updates] = 2,
             [ServiceId.Onliner] = 12, [ServiceId.CloudMessaging] = 5, [ServiceId.Web] = 2,
             [ServiceId.Developers] = 4, [ServiceId.Calls] = 10, [ServiceId.Bots] = 13,
@@ -55,7 +55,7 @@ public sealed class SettingsCatalogTests
             .ThenBy(entry => entry.Key, StringComparer.Ordinal)
             .Select(entry => $"{(int)entry.ServiceId}|{entry.Section}|{entry.Key}|{entry.StorageKey}|{entry.IsSensitive}|{entry.RequiresManualValue}"));
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
-        Assert.Equal("3FED757F8F442BDF2591E776AC69048C6EC27858C35ED810A8A4739FF1C467C8", hash);
+        Assert.Equal("6FE41D35DEE70AFC6C1FA3BBA65DC1D1AD5A1F72175DC6EA2F11B98BE4D75C49", hash);
     }
 
     [Theory]
