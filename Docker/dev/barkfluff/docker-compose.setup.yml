@@ -36,6 +36,8 @@ services:
       SETTINGS_PORT: "7003"
       SETTINGS_SETUP_MODE: "true"
       SETTINGS_SETUP_SECRET_FILE: "/run/secrets/setup_token"
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-guest}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-guest}"
     secrets:
       - setup_token
     expose:
