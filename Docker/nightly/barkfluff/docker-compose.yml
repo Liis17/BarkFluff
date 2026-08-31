@@ -14,7 +14,6 @@ services:
     restart: always
     environment:
       <<: *common-variables
-      BEACON_PORT: ${BEACON_PORT}
     networks:
       - barkfluff-network
     depends_on:
@@ -102,7 +101,6 @@ services:
     restart: always
     environment:
       <<: *common-variables
-      FASTAUTH_PORT: ${FASTAUTH_PORT}
     networks:
       - barkfluff-network
     depends_on:
@@ -192,8 +190,6 @@ services:
     restart: always
     environment:
       <<: *common-variables
-      DEVELOPERS_PORT: ${DEVELOPERS_PORT:-7020}
-      DEVELOPERS_HTTP1PORT: ${DEVELOPERS_HTTP1PORT:-7021}
     networks:
       - barkfluff-network
     depends_on:

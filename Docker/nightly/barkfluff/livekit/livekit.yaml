@@ -1,3 +1,4 @@
+
 port: 7880
 
 rtc:
@@ -7,10 +8,14 @@ rtc:
   use_external_ip: true
 
 keys:
-  # Заполните после Setup UI той же парой, что и Calls:LiveKit:ApiKey/ApiSecret.
-  # Пустая конфигурация намеренно не даёт использовать общий development-secret.
-  {}
+  keyname: ///
+
+# Webhooks LiveKit → сервис Calls (HTTP/1.1-листенер на 7026).
 webhook:
-  api_key: ""
+  api_key: keyname
   urls:
     - http://calls:7026/livekit/webhook
+
+
+
+
