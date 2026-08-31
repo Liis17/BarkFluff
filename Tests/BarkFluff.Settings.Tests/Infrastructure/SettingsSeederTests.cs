@@ -67,6 +67,22 @@ public sealed class SettingsSeederTests
     }
 
     [Fact]
+    public async Task Seed_creates_auto_region_for_every_s3_bucket()
+    {
+        await using var context = CreateContext();
+        var seeder = new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest"));
+
+        await seeder.SeedAsync();
+
+        var regions = await context.Settings(SettingsScopes.Get(ServiceId.Files))
+            .Where(row => row.Key.StartsWith("S3Buckets:") && row.Key.EndsWith(":Region"))
+            .ToDictionaryAsync(row => row.Key, row => row.Value);
+
+        Assert.Equal(8, regions.Count);
+        Assert.All(regions.Values, value => Assert.Equal("auto", value));
+    }
+
+    [Fact]
     public async Task Seed_clears_legacy_storage_and_livekit_credentials_but_preserves_custom_values()
     {
         await using var context = CreateContext();

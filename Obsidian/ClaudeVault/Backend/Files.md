@@ -96,7 +96,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 ## Конфигурация
 
-- `S3Buckets` — секция с настройками каждого бакета (может быть на разных S3-хранилищах)
+- `S3Buckets` — секция с настройками каждого бакета (может быть на разных S3-хранилищах); `Region` по умолчанию равен `auto` для совместимости с Cloudflare R2 и используется как signing region, `ServiceUrl` остаётся адресом S3 endpoint
 - `FilesDb`, `UsersService:Host/Token`
 
 ## Proto

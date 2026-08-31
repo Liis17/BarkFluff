@@ -21,7 +21,7 @@ CONFIGURATION_SERVICE_URL=http://settings:7003
 
 PostgreSQL БД по умолчанию — `settings`. Startup initializer делает до пяти попыток, через Npgsql создаёт отсутствующую БД, применяет EF migrations, дополняет каталог и проверяет инварианты. Ошибка bootstrap останавливает запуск.
 
-16 таблиц (`GlobalSettings`, `IdentitySettings`, …, `FederationSettings`) используют один shared CLR-тип `SettingRow`. В каждой только `Key` (полный IConfiguration-путь, PK), `Value`, `EditedBy`, `EditedAt`. Section-only параметры хранятся одним ключом (`Redis`, `DevelopersDb`, `NavigatorUrl`), вложенные — полным путём (`S3Buckets:message-audio:SecretKey`).
+16 таблиц (`GlobalSettings`, `IdentitySettings`, …, `FederationSettings`) используют один shared CLR-тип `SettingRow`. В каждой только `Key` (полный IConfiguration-путь, PK), `Value`, `EditedBy`, `EditedAt`. Section-only параметры хранятся одним ключом (`Redis`, `DevelopersDb`, `NavigatorUrl`), вложенные — полным путём (`S3Buckets:message-audio:SecretKey`). Для каждого S3-бакета seed добавляет `S3Buckets:{bucket}:Region` со значением `auto`, подходящим для Cloudflare R2; оператор может изменить его через AdminPanel.
 
 `SettingsHistory` бессрочно хранит old/new value, автора, источник, вид изменения и optional self-reference `SourceRevisionId` для rollback. Индекс: `(SettingsTable, Key, ChangedAt DESC, Id DESC)`. `EditedFrom` в рабочих строках отсутствует и для compatibility-ответа берётся из последней revision. Seed не создаёт историю.
 
