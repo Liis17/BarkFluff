@@ -19,7 +19,7 @@
 | Onliner | 9 | 7009 | — | `ONLINER_PORT` |
 | Navigator | — | 7010 | — | `NAVIGATOR_PORT` |
 | Updates | 8 | 7015 | — | `UPDATES_PORT` |
-| Developers | 12 | 7020 | 7021 | `DEVELOPERS_PORT`, `DEVELOPERS_HTTP1PORT` |
+| Developers | 12 | 7020 | 7021 | Settings: `RunSettings:Port`, `RunSettings:Http1Port` |
 
 ## Инфраструктура
 
