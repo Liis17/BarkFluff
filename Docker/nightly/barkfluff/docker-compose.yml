@@ -34,6 +34,8 @@ services:
       SETTINGS_PASSWORD: "${POSTGRES_PASSWORD}"
       SETTINGS_PORT: "${SETTINGS_PORT:-7003}"
       SETTINGS_SETUP_MODE: "false"
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-guest}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-guest}"
     networks:
       - barkfluff-network
     depends_on:
