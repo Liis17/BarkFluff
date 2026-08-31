@@ -229,8 +229,8 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - `Android/core/src/main/proto/beacon_api.proto` синхронизирован с `Shared/BarkFluff.Proto/beacon_api.proto`: добавлен `Service calls = 14` рядом с `livekit_url = 13`.
 - `GlobalParam` хранит `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
 - При применении ответа Beacon V1 не превращает пустой/offline Calls endpoint в URL, по умолчанию добавляет `https://` к адресам без схемы и пишет в Logcat raw-диагностику `Beacon calls: has/host/port/tls/livekit`.
-- `utils/ServerInfoPrefs.kt` централизует сохранение [[Backend/Beacon|Beacon]] `GetServerInfo` в `GlobalParam`; `SplashActivity` при запуске требует только сохранённый `socketBeacon`, обновляет остальные endpoint'ы из Beacon и продолжает вход только если после refresh есть Identity. `AboutActivity` показывает сохранённый список сервисов, а проверка доступности запускает параллельный анонимный `GET /ping` по каждому настроенному endpoint'у.
-- `utils/ServicePingChecker.kt` использует тот же `TlsTransportFactory`: принимает сервис только при `HTTP 200`, `text/plain` и теле `pong`, измеряет время каждого запроса в миллисекундах и показывает в строке `Доступен`/`Недоступен` вместе с временем. HTTPS следует системному trust-store или явному host pin; h2c (`H2_PRIOR_KNOWLEDGE`) доступен только в debug. `LiveKit` отображается только как внешний адрес и не проверяется через endpoint liveness из [[Архитектура]].
+- `utils/ServerInfoPrefs.kt` централизует сохранение [[Backend/Beacon|Beacon]] `GetServerInfo` в `GlobalParam`; `SplashActivity` при запуске требует только сохранённый `socketBeacon`, обновляет остальные endpoint'ы из Beacon и продолжает вход только если после refresh есть Identity. Если старый Beacon не прислал уже сохранённый media-origin, он сохраняется. `AboutActivity` показывает сохранённый список сервисов: для обычных endpoint'ов запускается параллельный анонимный `GET /ping`, для Files HTTP — `GET /web/download/{UUID}`.
+- `utils/ServicePingChecker.kt` использует тот же `TlsTransportFactory`: обычные сервисы принимаются только при `HTTP 200`, `text/plain` и теле `pong`, а Files HTTP — при любом HTTP-ответе на случайный GUID; измеряется время каждого запроса в миллисекундах и показывается в строке `Доступен`/`Недоступен` вместе со временем. HTTPS следует системному trust-store или явному host pin; h2c (`H2_PRIOR_KNOWLEDGE`) доступен только в debug для gRPC `/ping`, а cleartext Files HTTP проверяется обычным HTTP/1.1. `LiveKit` отображается только как внешний адрес и не проверяется через endpoint liveness из [[Архитектура]].
 - `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
 - `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`, `ListCallHistory`, `GetActiveCalls`.
 - `core/calls/CallEventsService.kt` подключается в `BarkFluffApplication` вместе с `RealtimeService`: держит lifecycle-подписку на `SubscribeCallEvents`, публикует raw events через `SharedFlow`, текущее состояние звонка через `StateFlow`, делает reconnect/backoff и auto-reject второго входящего звонка при уже активном звонке.
@@ -345,17 +345,22 @@ Backend заполняет эти поля при доставке сообще�
 
 ## Отдельный файловый адрес ноды (мимо CDN)
 
-Beacon отдаёт `files_media_endpoint` — второй публичный origin файлового HTTP ноды
+Beacon и Navigator отдают `files_media_endpoint` — второй публичный origin файлового HTTP ноды
 (`files2.barkfluff.com`, [[Backend/Nginx]]), не проходящий через CDN с его лимитом на размер файла.
 
-- Хранится в `GlobalParam.socketFilesMedia` (prefs-ключ `socket_files_media`, переживает
+- При выборе сервера поле `files_media_endpoint` приходит из Navigator и сохраняется вместе с
+  данными Beacon; для ручного адреса остаётся fallback на значение из Beacon.
+  Хранится в `GlobalParam.socketFilesMedia` (prefs-ключ `socket_files_media`, переживает
   `clearUserData` наравне с остальными адресами), заполняется в `ServerInfoPrefs.applyServerInfo`
   из `GrpcManager.ServerInfo.filesMediaEndpoint`.
 - `FileMediaUrl.rewrite(url, origin)` (`core/utils/`) меняет в ссылке только схему/хост/порт — путь
   `/web/...` тот же; обёртка `GrpcManager.toMediaUrl(url)` подставляет текущий адрес.
 - Применяется в `GrpcManager.getUploadUrl` / `getFileDownloadUrl` / `getFileDownloadUrls` и в
-  `ChatRepository.getUploadUrl` / `uploadFile` (там свой прямой вызов `filesClient`). Аватары из
-  профилей остаются на основном адресе Files.
+  `ChatRepository.getUploadUrl` / `uploadFile` (там свой прямой вызов `filesClient`), поэтому
+  отправка, загрузка и встроенные ссылки на файлы идут через отдельный origin.
+- В диагностике «О приложении» media-origin проверяется запросом
+  `GET /web/download/{случайный UUID}`; любой полученный HTTP-ответ (включая ожидаемый 404)
+  считается признаком живого HTTP listener.
 - `TlsServerCertificatePreflight` проверяет серт нового хоста наравне с остальными эндпоинтами —
   иначе self-signed нода упала бы на первой же загрузке без внятного диалога.
 - Пустое значение (нода не объявила адрес) = поведение как раньше.
@@ -594,7 +599,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 | Свойство `GlobalParam` | Ключ prefs | Что включает |
 |---|---|---|
 | `showIdsInProfile` | `testing_show_ids_in_profile` | ID-строки в `UserProfileActivity` и ChatId-карточка в `GroupInfoActivity`. В профиле пользователя показывает `UserId: <otherUserId>` и `ChatId: <chatId>`, в профиле группы — `ChatId: <chatId>`. Тап по строке копирует значение в `ClipboardManager` + Toast. |
-| `showServerAddressesInAbout` | `testing_show_server_addresses_in_about` | Карточка диагностических адресов в `AboutActivity`. Кнопка «Проверить доступность» параллельно вызывает анонимный `GET /ping` на настроенных [[Backend/Beacon|Beacon]], [[Backend/Identity|Identity]], [[Backend/Users|Users]], [[Backend/Files|Files]], [[Backend/Messages|Messages]], [[Backend/Updates|Updates]], [[Backend/Onliner|Onliner]], [[Backend/FastAuth|FastAuth]] и [[Backend/Calls|Calls]]; каждая строка показывает доступность и время запроса. |
+| `showServerAddressesInAbout` | `testing_show_server_addresses_in_about` | Карточка диагностических адресов в `AboutActivity`. Кнопка «Проверить доступность» параллельно вызывает анонимный `GET /ping` на настроенных [[Backend/Beacon|Beacon]], [[Backend/Identity|Identity]], [[Backend/Users|Users]], [[Backend/Files|Files]], [[Backend/Messages|Messages]], [[Backend/Updates|Updates]], [[Backend/Onliner|Onliner]], [[Backend/FastAuth|FastAuth]] и [[Backend/Calls|Calls]], а для отдельного Files HTTP origin — `GET /web/download/{UUID}`; каждая строка показывает доступность и время запроса. |
 | `secretChatsEnabled` | `testing_secret_chats_enabled` | `encryptedChatButton` в шапке `ChatsFragment` (иконка `ic_hood`, открывает `CreateEncryptedChatActivity`). По умолчанию кнопка `View.GONE`; видимость переоценивается в `onViewCreated` и `onResume`, чтобы переключение в TestingSettings подхватывалось при возврате. |
 
 Оба флага по умолчанию `false` — обычная сборка не показывает ни блок ID, ни кнопку скрытых чатов.

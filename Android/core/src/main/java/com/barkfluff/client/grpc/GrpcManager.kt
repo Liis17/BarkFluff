@@ -836,7 +836,8 @@ class GrpcManager(context: Context) {
                     userCount = server.accountsCount.toString(),
                     publicName = server.serverPublicName,
                     location = server.location,
-                    hexColor = server.color.mainHex
+                    hexColor = server.color.mainHex,
+                    filesMediaEndpoint = server.filesMediaEndpoint
                 )
             }
 
