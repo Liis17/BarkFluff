@@ -52,9 +52,7 @@ public class OldVersionsCleanupService : BackgroundService
             var s3 = scope.ServiceProvider.GetRequiredService<S3StorageService>();
             var cutoff = DateTime.UtcNow - StartupRetention;
 
-            var files = await db.ClientFiles
-                .Where(f => f.UploadedAt < cutoff)
-                .OrderBy(f => f.UploadedAt)
+            var files = await SelectStartupFilesForDeletion(db.ClientFiles, cutoff)
                 .ToListAsync(ct);
 
             var totalDeleted = await DeleteFilesAsync(db, s3, files, ct);
@@ -193,6 +191,18 @@ public class OldVersionsCleanupService : BackgroundService
         int deletedCount,
         CancellationToken ct)
         => deletedCount > 0 ? db.SaveChangesAsync(ct) : Task.CompletedTask;
+
+    internal static IQueryable<ClientFile> SelectStartupFilesForDeletion(
+        IQueryable<ClientFile> files,
+        DateTime cutoff)
+        => files
+            .Where(f => f.UploadedAt < cutoff)
+            .Where(f => files.Any(newer =>
+                newer.ClientType == f.ClientType &&
+                newer.ReleaseChannel == f.ReleaseChannel &&
+                (newer.UploadedAt > f.UploadedAt ||
+                 newer.UploadedAt == f.UploadedAt && newer.Id > f.Id)))
+            .OrderBy(f => f.UploadedAt);
 
     private static TimeSpan GetDelayUntilNextDailyCleanup(DateTime utcNow)
     {
