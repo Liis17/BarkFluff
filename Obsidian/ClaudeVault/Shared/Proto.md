@@ -29,6 +29,7 @@ dotnet build BarkFluff.Proto.csproj
 | `beacon_api.proto` | `BarkFluff.Proto.Beacon` | Описание сервера и адреса микросервисов |
 | `navigator_api.proto` | `BarkFluff.Proto.Navigator` | Глобальный реестр серверов |
 | `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Централизованная конфигурация: чтение/update, история ревизий и rollback; Reserved Names |
+| `settings_setup_api.proto` | `BarkFluff.Proto.SettingsSetup` | Первичная настройка Settings: состояние, сохранение групп, завершение и блокировка |
 | `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
 | `calls_api.proto` | `BarkFluff.Proto.Calls` | Звонки (1-на-1 и групповые) поверх LiveKit SFU: инициация, подписка на события, история, качество голоса |
 | `bots_api.proto` | `BarkFluff.Proto.Bots` | Bot API: `BotsServerApi` (AdminPanel — создание/список/профиль/аватары через Users+Files/удаление/токены) + `BotsExternalApi` (внешние программы, bot-JWT в `x-auth-token`, политика `TokenType.Bot`) |
@@ -49,6 +50,7 @@ dotnet build BarkFluff.Proto.csproj
 - `MessageAttachmentType` enum — в `shared.proto` (не в `messages_api.proto`), т.к. используется и в `files_api.proto`
 - `CreateTokenResponse.access_token` имеет **field_number=2** (не 1) — важно при ручной десериализации
 - `ConfigurationApi.GetConfigurationHistory` возвращает переходы `previous_value → new_value`; `RollbackConfiguration` восстанавливает `previous_value` выбранной ревизии и записывает новый rollback-переход. Контракт аддитивный, существующие field numbers не менялись.
+- `SettingsSetupApi` используется только [[Backend/Setup]] и [[Backend/Settings]]: `GetSetupState`, `SaveSetupGroup`, `CompleteSetup`; gRPC вызовы требуют `x-settings-setup-token`.
 - `AuthRequest` и `FindByLoginRequest` используют `oneof login` (username ИЛИ email)
 - `SendMessageRequest` использует `oneof source_id` (chat_id ИЛИ user_id); `client_operation_id` (field 5, UUID) даёт [[Backend/Messages]] идемпотентную корреляцию ручного retry
 - `Message.client_operation_id` (field 13) возвращает тот же UUID в ACK, realtime и history; пустая строка у legacy-сообщений

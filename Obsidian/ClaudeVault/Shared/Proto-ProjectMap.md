@@ -338,6 +338,23 @@
 
 ---
 
+### `settings_setup_api.proto`
+**Namespace:** `BarkFluff.Proto.SettingsSetup`
+**Одноразовый контракт первичной настройки между [[Backend/Setup]] и [[Backend/Settings]].**
+
+#### `SettingsSetupApi`
+| RPC | Описание |
+|-----|----------|
+| `GetSetupState` | Вернуть группы, поля, применимость, ошибки, fingerprint и lock-состояние |
+| `SaveSetupGroup` | Валидировать и атомарно сохранить одну группу полей |
+| `CompleteSetup` | Проверить обязательные поля и установить необратимую setup-блокировку |
+
+`SetupField` содержит тип ввода и объяснение; секреты возвращаются только как
+`configured=true` без значения. Каждый вызов требует metadata
+`x-settings-setup-token`, доступен только при `SETTINGS_SETUP_MODE=true`.
+
+---
+
 ### `developers_api.proto`
 **Namespace:** `BarkFluff.Proto.Developers`
 **Портал документации для разработчиков.**

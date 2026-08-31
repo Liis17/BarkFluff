@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>BarkFluff — первичная настройка</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="side-panel" aria-label="Шаги настройки">
+      <a class="brand" href="/" aria-label="BarkFluff">
+        <span class="brand-mark">B</span>
+        <span><strong>BarkFluff</strong><small>Первичная настройка</small></span>
+      </a>
+      <div class="side-copy">
+        <span class="eyebrow">SETUP CONSOLE</span>
+        <h1>Соберите основу сервера</h1>
+        <p>Заполните группы по порядку. После завершения сервис Settings зафиксирует первичную настройку.</p>
+      </div>
+      <nav id="steps" class="steps"></nav>
+      <div class="side-footer">
+        <span class="secure-dot"></span>
+        <span>Соединение защищено<br><small>Сессия хранится только в памяти</small></span>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">BARKFLUFF / SETTINGS</span>
+          <h2 id="page-title">Вход в консоль</h2>
+        </div>
+        <div class="topbar-actions">
+          <span id="progress" class="progress-pill" hidden></span>
+          <button id="logout" class="button button-quiet" type="button" hidden>Выйти</button>
+        </div>
+      </header>
+
+      <section id="login-view" class="view login-view">
+        <div class="hero-card">
+          <div class="hero-icon">✦</div>
+          <span class="eyebrow">ПЕРВЫЙ ЗАПУСК</span>
+          <h3>Добро пожаловать в BarkFluff</h3>
+          <p>Введите одноразовый setup-токен из секретного файла Compose. Он нужен только для этой консоли и не сохраняется в базе.</p>
+          <form id="login-form" class="login-form">
+            <label class="field-label" for="token">Setup-токен</label>
+            <div class="secret-input">
+              <input id="token" name="token" type="password" autocomplete="current-password" required placeholder="Вставьте токен">
+              <button id="toggle-token" class="icon-button" type="button" aria-label="Показать токен">◉</button>
+            </div>
+            <button class="button button-primary button-wide" type="submit">Открыть настройку <span>→</span></button>
+          </form>
+          <p id="login-error" class="message error" role="alert" hidden></p>
+        </div>
+      </section>
+
+      <section id="setup-view" class="view" hidden>
+        <div id="locked-banner" class="notice success" hidden>
+          <span class="notice-icon">✓</span>
+          <div><strong>Первичная настройка завершена</strong><p>Значения заблокированы для этой консоли. Для дальнейших изменений используйте AdminPanel.</p></div>
+        </div>
+        <div id="service-error" class="notice error" hidden></div>
+        <div id="group-content"></div>
+        <div class="bottom-actions">
+          <button id="previous" class="button button-secondary" type="button">← Назад</button>
+          <div class="bottom-actions-right">
+            <button id="save" class="button button-secondary" type="button">Сохранить группу</button>
+            <button id="next" class="button button-primary" type="button">Сохранить и продолжить <span>→</span></button>
+            <button id="complete" class="button button-primary" type="button" hidden>Завершить настройку <span>✓</span></button>
+          </div>
+        </div>
+        <p id="action-message" class="message" role="status" hidden></p>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
