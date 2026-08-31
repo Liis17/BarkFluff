@@ -21,9 +21,9 @@ public sealed record SettingsDatabaseOptions(
 
     public static SettingsDatabaseOptions FromConfiguration(IConfiguration configuration)
     {
-        var host = Get(configuration, "SETTINGS_HOST", "CONFIGURATION_HOST");
-        var username = Get(configuration, "SETTINGS_USERNAME", "CONFIGURATION_USERNAME");
-        var password = Get(configuration, "SETTINGS_PASSWORD", "CONFIGURATION_PASSWORD");
+        var host = configuration["SETTINGS_HOST"];
+        var username = configuration["SETTINGS_USERNAME"];
+        var password = configuration["SETTINGS_PASSWORD"];
 
         if (string.IsNullOrWhiteSpace(host)
             || string.IsNullOrWhiteSpace(username)
@@ -35,11 +35,11 @@ public sealed record SettingsDatabaseOptions(
 
         return new SettingsDatabaseOptions(
             host,
-            GetInt(configuration, 5432, "SETTINGS_DBPORT", "CONFIGURATION_DBPORT"),
-            Get(configuration, "SETTINGS_DATABASE", "CONFIGURATION_DATABASE") ?? "settings",
+            GetInt(configuration, 5432, "SETTINGS_DBPORT"),
+            configuration["SETTINGS_DATABASE"] ?? "settings",
             username,
             password,
-            Get(configuration, "SETTINGS_ADMIN_DATABASE", "CONFIGURATION_ADMIN_DATABASE") ?? "postgres");
+            configuration["SETTINGS_ADMIN_DATABASE"] ?? "postgres");
     }
 
     private static string? Get(IConfiguration configuration, params string[] keys)

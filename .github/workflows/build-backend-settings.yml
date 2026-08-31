@@ -7,6 +7,7 @@ on:
       - 'Backend/BarkFluff.Settings/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - 'Shared/BarkFluff.Proto/configuration_api.proto'
+      - 'Shared/BarkFluff.Proto/settings_setup_api.proto'
       - 'Shared/BarkFluff.Shared.Identity/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:

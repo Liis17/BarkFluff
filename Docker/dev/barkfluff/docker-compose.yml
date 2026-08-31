@@ -1,7 +1,8 @@
 version: '3.8'
 
 x-common-variables: &common-variables
-  CONFIGURATION_SERVICE_URL: "${CONFIGURATION_SERVICE_URL}"
+  SETTINGS_SERVICE_URL: "${SETTINGS_SERVICE_URL:-http://settings:7003}"
+  CONFIGURATION_SERVICE_URL: "${SETTINGS_SERVICE_URL:-http://settings:7003}"
   ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
 
 services:
@@ -17,34 +18,22 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
-
-  configuration:
-    image: docker.barkfluff.com/barkfluff-configuration-dev:latest
-    container_name: configuration
-    restart: always
-    env_file:
-      - .env
-    environment:
-      <<: *common-variables
-      CONFIGURATION_HOST: ${CONFIGURATION_HOST}
-      CONFIGURATION_DATABASE: ${CONFIGURATION_DATABASE}
-      CONFIGURATION_USERNAME: ${CONFIGURATION_USERNAME}
-      CONFIGURATION_PASSWORD: ${CONFIGURATION_PASSWORD}
-      CONFIGURATION_PORT: ${CONFIGURATION_PORT}
-    networks:
-      - barkfluff-network
+      - settings
 
   settings:
     image: docker.barkfluff.com/barkfluff-settings-dev:latest
     container_name: settings
     restart: always
-    env_file:
-      - .env
     environment:
+      <<: *common-variables
+      SETTINGS_HOST: "postgres"
+      SETTINGS_DBPORT: "5432"
       SETTINGS_DATABASE: "${SETTINGS_DATABASE:-settings}"
       SETTINGS_ADMIN_DATABASE: "${SETTINGS_ADMIN_DATABASE:-postgres}"
+      SETTINGS_USERNAME: "${POSTGRES_USER}"
+      SETTINGS_PASSWORD: "${POSTGRES_PASSWORD}"
       SETTINGS_PORT: "${SETTINGS_PORT:-7003}"
+      SETTINGS_SETUP_MODE: "false"
     networks:
       - barkfluff-network
     depends_on:
@@ -59,7 +48,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   identity:
     image: docker.barkfluff.com/barkfluff-identity-dev:latest
@@ -70,7 +59,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   messages:
     image: docker.barkfluff.com/barkfluff-messages-dev:latest
@@ -81,7 +70,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   notification:
     image: docker.barkfluff.com/barkfluff-notification-dev:latest
@@ -92,7 +81,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   users:
     image: docker.barkfluff.com/barkfluff-users-dev:latest
@@ -103,7 +92,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   fast-auth:
     image: docker.barkfluff.com/barkfluff-fast-auth-dev:latest
@@ -115,7 +104,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   updates:
     image: docker.barkfluff.com/barkfluff-updates-dev:latest
@@ -126,7 +115,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   onliner:
     image: docker.barkfluff.com/barkfluff-onliner-dev:latest
@@ -137,7 +126,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   federation:
     image: docker.barkfluff.com/barkfluff-federation-dev:latest
@@ -148,7 +137,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   cloud-messaging:
     image: docker.barkfluff.com/barkfluff-cloud-messaging-dev:latest
@@ -164,7 +153,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   web:
     image: docker.barkfluff.com/barkfluff-web-dev:latest
@@ -187,7 +176,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
       - identity
       - users
       - messages
@@ -207,7 +196,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   calls:
     image: docker.barkfluff.com/barkfluff-calls-dev:latest
@@ -218,7 +207,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
 
   bots:
     image: docker.barkfluff.com/barkfluff-bots-dev:latest
@@ -229,7 +218,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
       - users
       - messages
       - files
@@ -243,8 +232,7 @@ services:
     user: root
     environment:
       <<: *common-variables
-      ConfigurationService__Host: "${CONFIGURATION_SERVICE_HOST}"
-      ConfigurationService__Token: "${CONFIGURATION_SERVICE_TOKEN}"
+      SettingsService__Host: "${SETTINGS_SERVICE_URL:-http://settings:7003}"
       Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
       Telegram__Admins: "${TELEGRAM_ADMINS}"
       Telegram__Proxy__Url: "${TELEGRAM_PROXY_URL:-}"
@@ -287,7 +275,7 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - configuration
+      - settings
       - seq
       - messages
 

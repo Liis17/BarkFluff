@@ -6,7 +6,7 @@
 Автономный микросервис для хранения и раздачи клиентских дистрибутивов BarkFluff (Windows, WinUI, Android, macOS, iOS).
 REST API на ASP.NET Core 10.0, файлы в S3/Minio, метаданные в SQLite.
 
-**Не входит** в основную микросервисную инфраструктуру — нет gRPC, нет MassTransit, нет XAuth, нет Configuration service. Работает изолированно.
+**Не входит** в основную микросервисную инфраструктуру — нет gRPC, нет MassTransit, нет XAuth, нет Settings service. Работает изолированно.
 
 Расположение: `Backend/BarkFluff.ClientStorage/`
 

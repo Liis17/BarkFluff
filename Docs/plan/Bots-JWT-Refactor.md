@@ -80,7 +80,7 @@ message CreateBotTokenServerResponse { string token = 1; string token_id = 2; }
 
 ### Конфигурация
 
-`ConfigurationDefaultsPopulator.cs` уже умеет секцию `IdentityService` generically (Host=`http://identity:7000`, Token=сервисный JWT) — правка популятора **не нужна**. Нужна только идемпотентная миграция Configuration, добавляющая ключи `IdentityService:Host` / `IdentityService:Token` для ServiceId=14 — точный образец `Backend/BarkFluff.Configuration/Persistence/Migrations/20260429000000_AddFastAuthIdentityServiceConfiguration.cs` (там ровно эти два ключа для FastAuth, ServiceId=7).
+`SettingsCatalog.cs` уже умеет секцию `IdentityService` generically (Host=`http://identity:7000`, Token=сервисный JWT) — правка популятора **не нужна**. Нужна только идемпотентная запись в Settings catalog, добавляющая ключи `IdentityService:Host` / `IdentityService:Token` для ServiceId=14.
 
 ---
 
@@ -110,10 +110,10 @@ message CreateBotTokenServerResponse { string token = 1; string token_id = 2; }
 7. `Host/Http/BotApiEndpoints.cs` — группа `/bot`: `.RequireAuthorization(nameof(TokenType.Bot)).AddEndpointFilter<BotAuthEndpointFilter>()` вместо `.AddEndpointFilter<BotTokenEndpointFilter>().AllowAnonymous()`. Заголовок — стандартный `x-auth-token` (JwtBearer `OnMessageReceived` уже читает его; HTTP-порт 7028 проходит `UseXAuth`).
 8. Выпуск токенов через `BotTokenIssuer.IssueAsync` + `bot.TokenId = tokenId`: `Features/CreateSystemBot/CreateSystemBotCommandHandler.cs`, `Features/RegenerateToken/RegenerateTokenCommandHandler.cs`, `Services/BotFather/BotFatherService.cs` (`/token`, создание в `/newbot`).
 9. Удалить: `Services/BotTokenService.cs`, `Services/BotTokenAuthenticator.cs`, `Host/BotTokenInterceptor.cs`, `Host/Http/BotTokenEndpointFilter.cs` (вместе с extension-методами `GetBot`).
-10. Миграция Configuration: ключи `IdentityService:Host/Token` для ServiceId=14 (образец — FastAuth-миграция, см. раздел 1).
+10. Settings: ключи `IdentityService:Host/Token` для ServiceId=14 (образец — FastAuth-миграция, см. раздел 1).
 11. `docker/nginx/bots.conf` — только комментарии (`X-Bot-Token` → `x-auth-token`); маршрутизация не меняется.
 
-**Проверка:** build; dev-компоуз; Configuration отдаёт `IdentityService` для ServiceId=14; grpcurl `CreateSystemBot` → в ответе JWT; grpcurl `GetMe` и `curl /bot/getMe` с `x-auth-token: <bot-jwt>` работают; после `RegenerateToken` старый JWT → 401 сразу и после рестарта Bots; Service-токен на `BotsExternalApi` → PermissionDenied; bot-JWT на `BotsServerApi` → PermissionDenied.
+**Проверка:** build; dev-компоуз; Settings отдаёт `IdentityService` для ServiceId=14; grpcurl `CreateSystemBot` → в ответе JWT; grpcurl `GetMe` и `curl /bot/getMe` с `x-auth-token: <bot-jwt>` работают; после `RegenerateToken` старый JWT → 401 сразу и после рестарта Bots; Service-токен на `BotsExternalApi` → PermissionDenied; bot-JWT на `BotsServerApi` → PermissionDenied.
 
 ### Фаза 3 — Bots: Host → Features (CQRS) + Mapping + папки
 

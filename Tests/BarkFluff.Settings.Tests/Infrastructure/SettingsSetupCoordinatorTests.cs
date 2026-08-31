@@ -25,6 +25,8 @@ public sealed class SettingsSetupCoordinatorTests
         Assert.Equal(12, snapshot.Groups.SelectMany(group => group.Fields).Count(field => field.Required));
         Assert.False(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Applicable);
         Assert.All(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Fields, field => Assert.False(field.Required));
+        Assert.True(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Fields
+            .Single(field => field.Key == "Enabled").Applicable);
     }
 
     [Fact]

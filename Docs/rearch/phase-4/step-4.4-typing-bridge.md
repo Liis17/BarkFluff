@@ -70,7 +70,7 @@ message DeliverTypingOutboundResponse { }
 
 ## Изменение 5 — конфигурация
 
-Ключи Federation (дефолты в `ConfigurationDefaultsPopulator`, документация — [../04-federation-service.md](../04-federation-service.md)): `Federation:TypingCoalesceSeconds`, `Federation:TypingDeadlineMs`, `Federation:TypingRateLimitPerOriginPerMinute`, `Federation:TypingValidationCacheSeconds`.
+Ключи Federation (дефолты в каталоге Settings, документация — [../04-federation-service.md](../04-federation-service.md)): `Federation:TypingCoalesceSeconds`, `Federation:TypingDeadlineMs`, `Federation:TypingRateLimitPerOriginPerMinute`, `Federation:TypingValidationCacheSeconds`.
 
 ## Изменение 6 — capability `typing`
 

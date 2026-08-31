@@ -41,7 +41,7 @@ public sealed class SettingsSetupApiService : SettingsSetupApi.SettingsSetupApiB
             var state = await _coordinator.SaveGroupAsync(
                 request.GroupId,
                 values,
-                string.IsNullOrWhiteSpace(request.EditedBy) ? "setup" : request.EditedBy,
+                "setup",
                 request.EditedFrom,
                 context.CancellationToken);
             return new SaveSetupGroupResponse
@@ -69,7 +69,7 @@ public sealed class SettingsSetupApiService : SettingsSetupApi.SettingsSetupApiB
         try
         {
             var state = await _coordinator.CompleteAsync(
-                string.IsNullOrWhiteSpace(request.CompletedBy) ? "setup" : request.CompletedBy,
+                "setup",
                 request.CompletedFrom,
                 context.CancellationToken);
             return new CompleteSetupResponse
@@ -94,7 +94,8 @@ public sealed class SettingsSetupApiService : SettingsSetupApi.SettingsSetupApiB
         if (!_options.Enabled)
             throw new RpcException(new Status(StatusCode.FailedPrecondition, "Settings setup mode is disabled."));
 
-        var candidate = context.RequestHeaders.FirstOrDefault(item => item.Key == SetupTokenHeader)?.Value;
+        var candidate = context.RequestHeaders.FirstOrDefault(item =>
+            string.Equals(item.Key, SetupTokenHeader, StringComparison.OrdinalIgnoreCase))?.Value;
         if (!_options.IsValid(candidate))
             throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid settings setup token."));
     }

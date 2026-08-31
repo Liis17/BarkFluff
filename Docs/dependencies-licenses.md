@@ -23,8 +23,8 @@
 | Grpc.Tools | 2.80.0 | Apache-2.0 | почти все сервисы (build-time, codegen) |
 | MediatR | 12.5.0 | Apache-2.0 | GrpcServer |
 | MassTransit.RabbitMQ | 8.5.9 | Apache-2.0 | Calls, Bots, Updates, CloudMessaging, Notification, Files, Users, Onliner, Identity, Messages, AdminPanel |
-| Microsoft.EntityFrameworkCore (+ Design/Tools/Sqlite) | 10.0.8 | MIT | ClientStorage, Calls, Bots, Developers, Files, Users, Navigator, Configuration, Onliner, Identity, Messages |
-| Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.2 | PostgreSQL License | Calls, Bots, Developers, Files, Users, Navigator, Configuration, Onliner, Identity, Messages |
+| Microsoft.EntityFrameworkCore (+ Design/Tools/Sqlite) | 10.0.8 | MIT | ClientStorage, Calls, Bots, Developers, Files, Users, Navigator, Settings, Onliner, Identity, Messages |
+| Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.2 | PostgreSQL License | Calls, Bots, Developers, Files, Users, Navigator, Settings, Onliner, Identity, Messages |
 | Microsoft.AspNetCore.OpenApi | 10.0.8 | MIT | Beacon, Notification, Files, FastAuth, Users, Onliner, Identity, Messages, WebServer, AdminPanel |
 | Microsoft.AspNetCore.Authentication.JwtBearer | 10.0.8 | MIT | GrpcServer |
 | Microsoft.Extensions.Caching.StackExchangeRedis | 10.0.8 | MIT | Messages |
@@ -125,15 +125,6 @@ NuGet-зависимостей нет (только .NET SDK / WPF).
 |---|---|---|
 | AWSSDK.Core | 4.0.7.4 | Apache-2.0 |
 | SharpZipLib | 1.4.2 | MIT |
-
-### BarkFluff.DBEditor
-
-| Пакет | Версия | Лицензия |
-|---|---|---|
-| AWSSDK.Core | 4.0.7.4 | Apache-2.0 |
-| CommunityToolkit.Mvvm | 8.4.2 | MIT |
-| Npgsql | 10.0.3 | PostgreSQL License |
-| WPF-UI | 4.3.0 | MIT |
 
 ### BarkFluff.WebApi.Core
 

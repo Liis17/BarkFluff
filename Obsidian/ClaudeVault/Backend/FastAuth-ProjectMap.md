@@ -133,7 +133,7 @@ gRPC сервис для серверных клиентов (`FastAuthServerApi
 
 | Файл | Роль |
 |------|------|
-| `appsettings.json` | Базовые настройки: порт (`RunSettings:Port = 7008`), адрес ConfigurationService, IdentityService host/token |
+| `appsettings.json` | Базовые настройки: порт (`RunSettings:Port = 7008`), адрес Settings, IdentityService host/token |
 | `appsettings.Development.json` | Переопределения для разработки |
 | `Properties/launchSettings.json` | Профили запуска Visual Studio |
 | `Dockerfile.slim` | Образ на основе `mcr.microsoft.com/dotnet/aspnet`, используемый CI и production. |

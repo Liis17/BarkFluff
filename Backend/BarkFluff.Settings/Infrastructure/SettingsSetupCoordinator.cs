@@ -207,7 +207,8 @@ public sealed class SettingsSetupCoordinator
                     .OrderBy(entry => entry.Setup!.Order)
                     .Select(entry => BuildFieldSnapshot(entry, values, federationEnabled, applicable))
                     .ToArray();
-                var complete = !applicable || fields.All(field => !field.Applicable || field.Error is null && (!field.Required || field.Configured));
+                var complete = !applicable || fields.All(field =>
+                    !field.Applicable || (field.Error is null && (!field.Required || field.Configured)));
                 return new SetupGroupSnapshot(group, applicable, complete, fields);
             })
             .ToArray();
@@ -228,7 +229,8 @@ public sealed class SettingsSetupCoordinator
     {
         var metadata = entry.Setup!;
         var value = values.GetValueOrDefault((entry.ServiceId, entry.StorageKey), string.Empty);
-        var applicable = groupApplicable && SettingsSetupMetadata.IsApplicable(metadata.Requirement, federationEnabled);
+        var applicable = (metadata.Requirement is SetupRequirement.None || groupApplicable)
+            && SettingsSetupMetadata.IsApplicable(metadata.Requirement, federationEnabled);
         var required = applicable && metadata.Requirement is not SetupRequirement.None;
         var validation = string.IsNullOrEmpty(value) && !required
             ? SetupValidationResult.Success(value)

@@ -1,12 +1,15 @@
 # BarkFluff.Settings
 
-Новый сервис настроек, который заменяет [[Backend/Configuration]]. На этапе cutover сохраняет wire-совместимые имена `configuration_api.proto`/`ConfigurationApi`, но рабочее хранилище — только `Settings`. Внутренний listener — `settings:7003`; setup API защищён отдельным токеном.
+Сервис настроек, который является единственным источником runtime-конфигурации. Для
+совместимости сохраняет wire-имена `configuration_api.proto`/`ConfigurationApi`, но
+рабочее хранилище — только `Settings`. Внутренний listener — `settings:7003`; setup
+API защищён отдельным токеном.
 
 Расположение: `Backend/BarkFluff.Settings/`.
 
 ## Совместимость
 
-Settings использует без изменений `Shared/BarkFluff.Proto/configuration_api.proto`: package, `ConfigurationApi`, RPC, сообщения и номера полей сохранены. Старые сервисы продолжают вызывать `LoadConfiguration(ServiceId)` и переключаются без перекомпиляции через:
+Settings использует без изменений `Shared/BarkFluff.Proto/configuration_api.proto`: package, `ConfigurationApi`, RPC, сообщения и номера полей сохранены. Клиенты, собранные со старым generated-контрактом, могут переключиться без перекомпиляции через:
 
 ```env
 CONFIGURATION_SERVICE_URL=http://settings:7003
@@ -44,18 +47,16 @@ PostgreSQL БД по умолчанию — `settings`. Startup initializer де
 
 - `SETTINGS_HOST`, `SETTINGS_DBPORT`, `SETTINGS_DATABASE`, `SETTINGS_USERNAME`, `SETTINGS_PASSWORD`
 - `SETTINGS_ADMIN_DATABASE` (по умолчанию `postgres`), `SETTINGS_PORT` (по умолчанию `7003`)
-- на переходном этапе `CONFIGURATION_*` поддерживаются как fallback; после удаления legacy их нужно убрать из deployment-конфигураций
+- `CONFIGURATION_SERVICE_URL` поддерживается только как runtime-fallback для старых образов; новые deployment-конфигурации используют `SETTINGS_SERVICE_URL`
 - `SETTINGS_SETUP_MODE`, `SETTINGS_SETUP_SECRET_FILE`/`SETTINGS_SETUP_TOKEN` — включение и секрет setup gRPC API
+- `SETTINGS_SERVICE_URL` — адрес Settings, который используют потребители
 
-## Переключение
+## Deployment
 
-Во всех `docker/{dev,nightly,master}/barkfluff` Settings запускается параллельно с Configuration. Базовый compose оставляет потребителей на Configuration. После заполнения manual-полей и при необходимости переноса пользовательских reserved names используется override:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.settings-cutover.yml up -d --force-recreate
-```
-
-Override меняет только URL и startup dependency. Старые контейнер и БД Configuration остаются доступны для длительной отладки и отката.
+Bootstrap-compose (`Docker/{dev,nightly,master}/barkfluff/docker-compose.setup.yml`)
+поднимает только PostgreSQL, Settings и [[Backend/Setup]]. После заполнения формы
+оператор останавливает bootstrap-compose и запускает основной compose. Основной стек
+использует Settings напрямую; отдельной базы или контейнера Configuration больше нет.
 
 ## Проверка
 

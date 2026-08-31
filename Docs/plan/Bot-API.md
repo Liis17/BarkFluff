@@ -89,8 +89,8 @@
 **Фаза 2 — Messages + Files**: `SendMessageServer` (`Features/SendMessage/SendMessageCommand.cs` +SenderId, хендлер, `Host/MessagesServerApiService.cs`); `UploadFileServer` в Files (переиспользовать пайплайн загрузки: компрессия+превью). Files уже принимает 20 МБ gRPC-сообщения.
 Проверка: grpcurl SendMessageServer (sender=бот из ф.1) — сообщение доходит юзеру; UploadFileServer с PNG → file_id.
 
-**Фаза 3 — инфраструктура конфигурации**: `ServiceId.Bots = 14` (`Shared/BarkFluff.Shared.Identity/ServiceId.cs`); миграция Configuration `AddBotsConfiguration` (образец `AddCallsConfiguration`): `RunSettings:Port/Http1Port`, `BotsDb`, `ExternalEndpoint:Host`, `UsersService/MessagesService/FilesService:Host+Token`; `ConfigurationDefaultsPopulator.cs`: порты 7027/7028, контейнер `bots`, сабдомен, БД, секция `BotsService` для AdminPanel.
-Проверка: Configuration заполняет дефолты, `GetConfiguration(14)` отдаёт значения.
+**Фаза 3 — инфраструктура Settings**: `ServiceId.Bots = 14` (`Shared/BarkFluff.Shared.Identity/ServiceId.cs`); каталог Settings содержит `RunSettings:Port/Http1Port`, `BotsDb`, `ExternalEndpoint:Host`, `UsersService/MessagesService/FilesService:Host+Token`; значения по умолчанию задаются в каталоге Settings.
+Проверка: Settings заполняет дефолты, wire-compatible `GetConfiguration(14)` отдаёт значения.
 
 **Фаза 4 — каркас BarkFluff.Bots**: проект по образцу Calls (`Backend/BarkFluff.Calls/Program.cs`); Domain (Bot, BotUpdate, BotFatherSession, SystemBotRole); BotsContext + Initial-миграция; `BotTokenService`, `BotRegistryCache`; Features + `Host/BotsServerApiService.cs` (`DeleteBot`: удаляет `Bots`+токен+BotUpdates каскадом, вызывает Users для освобождения username и пометки аккаунта удалённым — чат сохраняется); `SystemBotsSeeder` (после Migrate: BotFather `botfather` bypass, LoginNotifier `login_notifier_bot`; идемпотентен через CreateBotUser); Dockerfile'ы, appsettings, launchSettings, в .sln.
 Проверка: сервис стартует, сидит двух ботов (в Users появляются `is_bot=true`), grpcurl ListBots.
@@ -127,7 +127,7 @@
 
 - `Backend/BarkFluff.Messages/Features/SendMessage/SendMessageCommandHandler.cs` — параметризация sender
 - `Backend/BarkFluff.Users/Persistence/Services/UsersStorage.cs` — CreateUser/CreateBotUser
-- `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs` — дефолты нового сервиса
+- `Backend/BarkFluff.Settings/Catalog/SettingsCatalog.cs` — defaults нового сервиса
 - `Backend/BarkFluff.Calls/` — шаблон нового сервиса (Program.cs, csproj, Dockerfile)
 - `Shared/BarkFluff.Proto/users_api.proto`, `messages_api.proto`, `files_api.proto`, `beacon_api.proto`, новый `bots_api.proto`
 - `Backend/Barkfluff.AdminPanel/Endpoints/`, `Pages/badges.html` — образцы для страницы ботов

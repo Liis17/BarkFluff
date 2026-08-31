@@ -10,7 +10,7 @@ Backend BarkFluff — крупная событийно-ориентирован
 
 В текущем виде систему нельзя считать готовой к безопасному горизонтальному масштабированию и эксплуатации в недоверенной production-сети. Самые серьёзные причины:
 
-1. **P0 — Configuration является общей точкой компрометации.** Внутренний gRPC API не аутентифицирует вызывающего, доверяет переданному `ServiceId` и позволяет читать и менять конфигурацию, включая глобальные секреты. Через этот же сервис приложения получают общий HMAC-ключ, RabbitMQ/DB credentials и долгоживущие service tokens.
+1. **P0 — Settings и AdminPanel остаются критичными trust boundaries.** Settings выдаёт runtime-параметры через wire-compatible gRPC API, а Setup UI имеет отдельный bootstrap-токен; общий HMAC-ключ, RabbitMQ/DB credentials и service tokens всё ещё требуют изоляции и ротации.
 2. **P0 — AdminPanel совмещает публичную плоскость управления с root-доступом к Docker host.** Контейнер получает `/var/run/docker.sock`, compose-файл и `.env`; компрометация панели практически равна компрометации узла и всех секретов.
 3. **P1 — нет общей гарантии “запись в БД + публикация события”.** В большинстве доменных сервисов транзакция БД завершается до RabbitMQ publish. Сбой между действиями даёт сохранённую сущность без события, а повтор RPC — дубликат. Полноценный outbox реализован только внутри Federation.
 4. **P1 — текущая схема Updates дублирует push при нескольких репликах и не контролирует backpressure.** Каждая реплика получает копию события, запускает локальный отложенный `Task.Run` и публикует push. Потоки пишутся конкурентно в `IServerStreamWriter`, без bounded-очереди и единого writer loop.
@@ -20,7 +20,7 @@ Backend BarkFluff — крупная событийно-ориентирован
 8. **P1 — обнаружены транзитивные зависимости с High advisories:** `Microsoft.OpenApi 2.0.0`, `SQLitePCLRaw.lib.e_sqlite3 2.1.11`, `SSH.NET 2025.1.0`.
 9. **P1 — ClientStorage может выдавать старый binary как актуальный release.** Cache key содержит только platform/channel, тогда как новая DB-запись публикуется до фонового обновления cache; окно гонки или ошибка прогрева смешивает новые metadata со старыми bytes.
 
-Рекомендуемый порядок: сначала закрыть доверенную границу Configuration/AdminPanel и секреты, затем внедрить outbox/idempotency и исправить delivery-модель Updates, после этого укрепить auth/file/discovery границы, deployment и наблюдаемость.
+Рекомендуемый порядок: сначала закрыть доверенную границу Settings/Setup/AdminPanel и секреты, затем внедрить outbox/idempotency и исправить delivery-модель Updates, после этого укрепить auth/file/discovery границы, deployment и наблюдаемость.
 
 ## 2. Методика и ограничения
 
@@ -51,11 +51,12 @@ Backend BarkFluff — крупная событийно-ориентирован
 
 | Сервис | Роль | Основное состояние и интеграции |
 |---|---|---|
-| `BarkFluff.Beacon` | Публикация сведений о локальном узле и регистрация в глобальном каталоге | Configuration, Navigator; собственного долговременного состояния нет |
+| `BarkFluff.Beacon` | Публикация сведений о локальном узле и регистрация в глобальном каталоге | Settings, Navigator; собственного долговременного состояния нет |
 | `BarkFluff.Bots` | Жизненный цикл ботов, bot API, получение событий сообщений | PostgreSQL, Redis, RabbitMQ; Users, Messages, Files, Identity |
 | `BarkFluff.Calls` | Сигналинг и состояние звонков поверх LiveKit | PostgreSQL, RabbitMQ, LiveKit; Messages; часть quality-state в памяти |
 | `BarkFluff.ClientStorage` | Хранилище и раздача клиентских сборок | SQLite, S3/MinIO, локальный кэш |
-| `BarkFluff.Configuration` | Bootstrap-конфигурация и секреты всех локальных сервисов | PostgreSQL; внутренний gRPC API |
+| `BarkFluff.Settings` | Bootstrap-конфигурация и секреты всех локальных сервисов | PostgreSQL; внутренний gRPC API |
+| `BarkFluff.Setup` | Последовательное заполнение ручных полей Settings | HTTP UI; внутренний gRPC API |
 | `BarkFluff.FastAuth` | QR/быстрое связывание сессий | Память процесса; Identity gRPC |
 | `BarkFluff.Federation` | Межсерверные XFed-запросы и репликация событий | PostgreSQL, RabbitMQ, HTTP/gRPC; Navigator и локальные доменные сервисы |
 | `BarkFluff.Files` | Метаданные файлов, upload/download URL, федеративная передача | PostgreSQL, S3/MinIO, RabbitMQ; Users, Messages, Federation |
@@ -69,7 +70,7 @@ Backend BarkFluff — крупная событийно-ориентирован
 | `BarkFluff.Web` | Web-клиент и YARP/gRPC-Web gateway | Browser storage; проксирование к локальным сервисам |
 | `Barkfluff.AdminPanel` | Операционная и административная плоскость | gRPC ко многим сервисам, RabbitMQ, Docker socket, SMTP/Telegram/SSH/S3 |
 | `Barkfluff.CloudMessaging` | Firebase push и dismiss/call/admin notifications | RabbitMQ, Firebase; Users, Messages |
-| `Barkfluff.Developers` | Developer-документация, proto-каталог и справочник ошибок | PostgreSQL; Configuration bootstrap |
+| `Barkfluff.Developers` | Developer-документация, proto-каталог и справочник ошибок | PostgreSQL; Settings bootstrap |
 | `Barkfluff.WebServer` | Публичные web-страницы и support chat | Users gRPC; support-state в памяти, Telegram |
 
 Дополнительно:
@@ -80,7 +81,7 @@ Backend BarkFluff — крупная событийно-ориентирован
 
 ### 3.2. Граница deployment
 
-Актуальный `docker/barkfluff/docker-compose.yml` запускает 17 приложений узла: Beacon, Configuration, Files, Identity, Messages, Notification, Users, FastAuth, Updates, Onliner, Federation, CloudMessaging, Web, Developers, Calls, Bots и AdminPanel, а также инфраструктуру.
+Актуальный `Docker/{dev,nightly,master}/barkfluff/docker-compose.yml` запускает 17 приложений узла: Beacon, Settings, Files, Identity, Messages, Notification, Users, FastAuth, Updates, Onliner, Federation, CloudMessaging, Web, Developers, Calls, Bots и AdminPanel, а также инфраструктуру.
 
 Navigator, WebServer и ClientStorage относятся к глобальному/внешнему контуру и в этом compose отсутствуют. Это допустимое разделение, но в репозитории нет единого проверяемого deployment manifest, показывающего их совместимую production-топологию, readiness и порядок обновления.
 
@@ -121,8 +122,8 @@ flowchart LR
     Federation --> Navigator[(Navigator)]
     Beacon --> Navigator
 
-    Config[(Configuration)] -. bootstrap .-> Domain
-    Config -. bootstrap .-> Edge
+    Settings[(Settings)] -. bootstrap .-> Domain
+    Settings -. bootstrap .-> Edge
     Domain --> Pg[(PostgreSQL)]
     Domain --> Redis[(Redis)]
     Files --> S3[(S3 / MinIO)]
@@ -133,11 +134,11 @@ flowchart LR
 
 | Вызывающий сервис | Синхронные зависимости | Назначение |
 |---|---|---|
-| Beacon | Configuration, Navigator | Сведения об узле и регистрация |
+| Beacon | Settings, Navigator | Сведения об узле и регистрация |
 | Bots | Users, Messages, Files, Identity | bot account, отправка/чтение сообщений и файлов, токены |
 | Calls | Messages | Проверка/состояние чата при звонке |
 | CloudMessaging | Users, Messages | Устройства, параметры уведомлений, контекст сообщений |
-| AdminPanel | Users, Files, Identity, Messages, Configuration, Bots, Federation | Администрирование узла |
+| AdminPanel | Users, Files, Identity, Messages, Settings, Bots, Federation | Администрирование узла |
 | FastAuth | Identity | Создание сессии пользователя после QR-flow |
 | Federation | Navigator, Users, Messages, Files, Onliner | Discovery и применение входящих/исходящих XFed операций |
 | Files | Users, Messages, FederationInternal | Авторизация, контекст чатов, федеративные файлы |
@@ -148,7 +149,7 @@ flowchart LR
 | WebServer | Users | Публичные страницы пользователей |
 | Web | Почти все client-facing сервисы | YARP/gRPC-Web proxy, а не доменный вызов |
 
-Configuration, Navigator, Notification, Updates, ClientStorage и Developers в основном не вызывают другие доменные gRPC API в рабочем пути.
+Settings, Navigator, Notification, Updates, ClientStorage и Developers в основном не вызывают другие доменные gRPC API в рабочем пути.
 
 У большинства клиентов настраиваются адрес, JWT/XAuth и exception interceptor, но нет общей политики deadline, retry, circuit breaker или bulkhead. Особенно чувствителен цикл `Users ↔ Messages ↔ Files`: деградация одного участника увеличивает latency и каскадно исчерпывает ресурсы остальных. Retry для mutating RPC без idempotency key дополнительно опасен.
 
@@ -191,7 +192,7 @@ Per-instance auto-delete очереди подходят для локально
 1. Клиент обращается к Identity через edge/gRPC-Web.
 2. Identity читает собственную БД и синхронно вызывает Users для пользовательского домена.
 3. Identity выдаёт access JWT и refresh token; revocation распространяется через RabbitMQ.
-4. Остальные сервисы валидируют JWT общим HMAC-ключом, полученным из Configuration.
+4. Остальные сервисы валидируют JWT общим HMAC-ключом, полученным из Settings.
 
 Слабые места: общий signing secret, plaintext refresh tokens, отсутствие rotation/reuse detection, почти бессрочный refresh TTL и отсутствие rate limit на анонимных auth/reset методах.
 
@@ -256,7 +257,7 @@ Calls проверяет chat context через Messages, создаёт сос
 
 | ID | Приоритет | Область | Итог |
 |---|---|---|---|
-| BF-01 | P0 | Configuration | Неаутентифицированное чтение/изменение общей конфигурации и секретов |
+| BF-01 | P0 | Settings / Setup | Bootstrap trust boundary и выдача секретов требуют изоляции |
 | BF-02 | P0 | AdminPanel / host | Публичная management plane имеет root-equivalent Docker socket и `.env` |
 | BF-03 | P1 | Auth/XAuth | Общий HMAC-ключ и слишком широкие policies дают большой lateral-movement radius |
 | BF-04 | P1 | Identity | Нет rate limit; практически бессрочные plaintext refresh tokens без rotation |
@@ -284,11 +285,11 @@ Calls проверяет chat context через Messages, создаёт сос
 
 ## 8. Подробные замечания и рекомендации
 
-### BF-01 — Configuration не имеет надёжной границы доверия
+### BF-01 — Settings и bootstrap должны иметь надёжную границу доверия
 
-**Подтверждение.** `Backend/BarkFluff.Configuration/Program.cs:41-46,148-151` регистрирует и публикует gRPC API/reflection без XAuth. В `Backend/BarkFluff.Configuration/Host/ConfigurationApiService.cs:31-40,58-70,82-97` вызывающий сам передаёт `ServiceId`, может получить всю конфигурацию и вызвать update; audit identity также берётся из request. `Backend/BarkFluff.Configuration/Persistence/Services/ConfigurationStorage.cs:20-25,30-36,39-66` объединяет requested service с глобальным `Unknown` и выполняет изменения без выведенной из соединения identity. Общий bootstrap в `Backend/BarkFluff.GrpcServer/WebApplicationBuilderExtensions.cs:61-92` синхронно обращается к этому API до настройки обычной auth-модели.
+**Подтверждение.** Runtime-хранилище находится в `Backend/BarkFluff.Settings/` и отдаёт wire-compatible API потребителям. Setup-методы Settings доступны только при `SETTINGS_SETUP_MODE=true` и требуют `x-settings-setup-token`; web-консоль `Backend/BarkFluff.Setup/` дополнительно использует сессионный cookie, CSRF и rate limit. Общий bootstrap в `Backend/BarkFluff.GrpcServer/WebApplicationBuilderExtensions.cs` обращается к Settings до настройки обычной auth-модели.
 
-**Последствие.** Порт Configuration не опубликован на host, поэтому это не прямой Internet exposure. Но плоская docker network означает, что компрометация любого контейнера или пригодный SSRF позволяют:
+**Последствие.** Порт Settings не опубликован на host, поэтому это не прямой Internet exposure. Но плоская docker network означает, что компрометация любого контейнера или пригодный SSRF позволяют:
 
 - прочитать глобальный JWT HMAC secret, DB/Rabbit/S3 credentials и service tokens;
 - выдать себя за любой `ServiceId`;
@@ -297,17 +298,17 @@ Calls проверяет chat context через Messages, создаёт сос
 
 Секреты хранятся в БД как обычные значения и один раз загружаются в память при старте; rotation/reload протокола нет. Долгоживущие service tokens усиливают последствия утечки.
 
-В модели не видно уникального ограничения на `(ServiceId, Section, Key)`. Handler группирует global/service-local значения и правильно предпочитает локальное, поэтому сам конфликт override не роняет bootstrap. Однако при двух дубликатах одного уровня используется недетерминированный `First()`: сервис может получить случайное значение, а последующее update изменит только одну из записей.
+В Settings каталог задаётся кодом и уникален по `(SettingsTable, Key)`; значения проходят серверную валидацию и историю изменений. При изменении параметров live reload не выполняется — потребителей требуется перезапустить.
 
-`docs/Audit/BarkFluff.Configuration.md` помечает близкие замечания как «неактуальные», хотя текущий код сохраняет проблему. Этот аудит нуждается в повторной верификации после исправления.
+Старый аудит удалён вместе с legacy-реализацией; этот раздел описывает только актуальные границы Settings/Setup.
 
-**Рекомендация.** Простого `AddXAuth` недостаточно: возникает цикл — XAuth secret сам получается из Configuration. Нужна отдельная bootstrap identity:
+**Рекомендация.** Простого `AddXAuth` недостаточно: возникает цикл — XAuth secret сам получается из Settings. Нужна отдельная bootstrap identity:
 
 1. mTLS/SPIFFE identity либо короткоживущий per-service bootstrap credential, выданный оркестратором;
 2. `ServiceId` выводится из аутентифицированной identity, а не из request;
 3. read API выдаёт только allowlist конкретного сервиса;
 4. mutation API отделён, доступен только административной identity и ведёт неизменяемый audit log;
-5. секреты переносятся в secret manager/envelope encryption, в Configuration остаются ссылки/несекретные параметры;
+5. секреты переносятся в secret manager/envelope encryption, в Settings остаются ссылки/несекретные параметры;
 6. уникальный индекс `(ServiceId, Section, Key)`, очистка существующих дубликатов и сохранение детерминированного override global/service values;
 7. network policy запрещает обращаться к bootstrap API неавторизованным workload.
 
@@ -401,10 +402,10 @@ Revocation consumers заполняют локальный cache, но не за
 
 Подтверждены как минимум два несовпадения:
 
-1. `Backend/BarkFluff.Configuration/Infrastructure/ConfigurationDefaultsPopulator.cs:475-484` создаёт LiveKit `devkey/devsecret_change_me...`, тогда как `docker/barkfluff/livekit/livekit.yaml:9-13` использует `barkfluffkeys/your_key`. Calls подписывает token/webhook конфигурационными ключами (`Backend/BarkFluff.Calls/Program.cs:49-68,134-174`, `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`), поэтому чистый deployment не сможет нормально соединиться с LiveKit.
-2. `ServiceId.Developers = 12` (`Shared/BarkFluff.Shared.Identity/ServiceId.cs:29`), Developers запрашивает `DevelopersDb` (`Backend/Barkfluff.Developers/Program.cs:21,41-46`), но для него нет migration/default/populator entry в Configuration. В `Backend/Barkfluff.Developers/appsettings.json:10` сервис слушает 7020, а `docker/barkfluff/docker-compose.yml:183-194` публикует `4425:4425`; актуального nginx site для Developers также нет.
+1. Settings catalog/seed и `docker/livekit/livekit.yaml` должны использовать одну пару LiveKit credentials. Calls подписывает token/webhook конфигурационными ключами (`Backend/BarkFluff.Calls/Program.cs:49-68,134-174`, `Backend/BarkFluff.Calls/Services/LiveKitTokenService.cs:27-41`), поэтому чистый deployment не сможет нормально соединиться с LiveKit при расхождении значений.
+2. `ServiceId.Developers = 12` (`Shared/BarkFluff.Shared.Identity/ServiceId.cs:29`), Developers запрашивает `DevelopersDb` (`Backend/Barkfluff.Developers/Program.cs:21,41-46`), а Settings catalog должен содержать соответствующие defaults. В `Backend/Barkfluff.Developers/appsettings.json:10` сервис слушает 7020; актуальный compose и nginx должны публиковать согласованный endpoint.
 
-Дополнительно многие сервисы вызывают `Database.Migrate()` при старте каждой реплики. Одновременный rollout создаёт гонки и связывает application startup с DDL permissions. Bootstrap Configuration выполняется синхронно без общей deadline/retry политики. `/ping` возвращает только `pong`, а Web `/health` проверяет главным образом сам процесс, не критические зависимости.
+Дополнительно многие сервисы вызывают `Database.Migrate()` при старте каждой реплики. Одновременный rollout создаёт гонки и связывает application startup с DDL permissions. Bootstrap Settings выполняется синхронно без общей deadline/retry политики. `/ping` возвращает только `pong`, а Web `/health` проверяет главным образом сам процесс, не критические зависимости.
 
 **Рекомендация.** Добавить clean-environment smoke test, который поднимает compose, ждёт readiness и выполняет auth/send/update/file/call probes. Все credentials генерировать/передавать одним источником. Миграции выполнять отдельным singleton job до rollout. Ввести startup/liveness/readiness: readiness проверяет DB/Rabbit/critical bootstrap, но не создаёт thundering herd. Зафиксировать версии images/digests.
 
@@ -522,7 +523,7 @@ HTTP controller принимает multipart до 512 MB (`Backend/BarkFluff.Fil
 
 ### 9.1. Beacon
 
-Небольшой stateless service с понятной ответственностью: собрать описание узла и зарегистрировать его в Navigator. nginx rate limit для публичного API присутствует. Основной недостаток — несовместимость с защищённым Navigator flow: `Backend/BarkFluff.Beacon/BackgroundServices/ServerRegistrationService.cs` отправляет legacy payload без server identity/proof. Получение server info также хрупкое: `Backend/BarkFluff.Beacon/Features/GetServerInfo/GetServerInfoCommandHandler.cs:47-81` требует успеха серии примерно из десяти запросов Configuration; один сбой рушит ответ. `ParseService` (`:139-167`) считает сервис healthy по наличию external endpoint, а не по probe.
+Небольшой stateless service с понятной ответственностью: собрать описание узла и зарегистрировать его в Navigator. nginx rate limit для публичного API присутствует. Основной недостаток — несовместимость с защищённым Navigator flow: `Backend/BarkFluff.Beacon/BackgroundServices/ServerRegistrationService.cs` отправляет legacy payload без server identity/proof. Получение server info также хрупкое: `Backend/BarkFluff.Beacon/Features/GetServerInfo/GetServerInfoCommandHandler.cs:47-81` требует успеха серии примерно из десяти запросов Settings; один сбой рушит ответ. `ParseService` (`:139-167`) считает сервис healthy по наличию external endpoint, а не по probe.
 
 **Итог:** код прост, но Beacon сейчас поддерживает небезопасный discovery protocol и выдаёт декларативное, а не фактическое здоровье.
 
@@ -548,11 +549,11 @@ HTTP controller принимает multipart до 512 MB (`Backend/BarkFluff.Fil
 
 **Итог:** пригодно как внутренний distribution service, но не как высокодоверенный production software-update root без hardening и подписи artifacts.
 
-### 9.5. Configuration
+### 9.5. Settings
 
-Сервис централизует bootstrap и уменьшает дублирование конфигурации, но одновременно является самым крупным trust bottleneck. Помимо BF-01, defaults содержат production-небезопасные placeholder credentials, включая LiveKit и `minioadmin`; runtime reload/rotation нет.
+Сервис централизует bootstrap и уменьшает дублирование конфигурации, но одновременно является самым крупным trust bottleneck. Помимо BF-01, defaults содержат production-небезопасные placeholder credentials, включая LiveKit и `minioadmin`; runtime reload/rotation нет. Setup UI ограничивает первичную настройку отдельным токеном и блокирует её после завершения.
 
-**Итог:** P0 до переработки bootstrap identity, secret distribution и mutation plane.
+**Итог:** P0 до переработки bootstrap identity, secret distribution и mutation plane; текущая реализация Settings/Setup закрывает базовый доступ, но не заменяет полноценный secret manager.
 
 ### 9.6. FastAuth
 
@@ -697,11 +698,11 @@ YARP/gRPC-Web gateway централизует web access, security headers ча
 
 - `BarkFluff.Users.Tests.Features.Prekeys.FetchPrekeyBundleQueryHandlerTests.Handle_ValidRequest_ReturnsBundle` — raw `DELETE ... RETURNING` несовместим с EF InMemory provider.
 
-Сервисы без отдельного test project: Beacon, Configuration, ClientStorage, Web, WebServer и Developers. Именно среди них находятся Configuration P0, deployment mismatches и публичные web/storage границы, поэтому пробел существенный.
+Сервисы без отдельного test project: Beacon, Settings, Setup, ClientStorage, Web, WebServer и Developers. Именно среди них находятся deployment mismatches и публичные web/storage границы, поэтому пробел существенный.
 
 ### 10.3. Что добавить в test pyramid
 
-1. **Configuration security tests:** anonymous/foreign `ServiceId`, secret allowlists, duplicate/override keys, audit identity, rotation.
+1. **Settings/Setup security tests:** setup-token authentication, secret allowlists, duplicate/override keys, audit identity, rotation.
 2. **Outbox fault injection:** broker down после DB commit, dispatcher restart, duplicate delivery, poison event.
 3. **Scale-out Updates:** 2–3 реплики, один push, локальная доставка каждой реплике, slow stream, reconnect/replay, revoke во время stream.
 4. **Auth abuse tests:** IP/account/device quotas, reset attempt exhaustion, refresh rotation/reuse.
@@ -780,7 +781,7 @@ Dispatcher публикует at-least-once; consumer inbox/idempotency прев
 
 | Действие | Критерий завершения |
 |---|---|
-| Изолировать Configuration network ACL и временно запретить mutation всем, кроме отдельной admin identity | Компрометированный обычный контейнер не может прочитать чужие/global secrets или изменить config |
+| Изолировать Settings network ACL и запретить mutation всем, кроме отдельной admin identity; Setup включать только на время bootstrap | Компрометированный обычный контейнер не может прочитать чужие/global secrets или изменить параметры |
 | Убрать Docker socket, `.env` и compose из AdminPanel; временно закрыть панель VPN/allowlist | Web-контейнер не способен создавать контейнеры и читать host secrets |
 | Восстановить SMTP TLS validation | Invalid/hostname-mismatched certificate приводит к отказу отправки |
 | Добавить Identity rate limits и reset attempt lockout | Нагрузочный abuse test получает 429/lockout в заданных пределах |
@@ -837,7 +838,7 @@ Dispatcher публикует at-least-once; consumer inbox/idempotency прев
 - slow client не блокирует Rabbit consumer и не вызывает unbounded memory growth;
 - reconnect восстанавливает события по cursor или запускает детерминированную reconciliation;
 - revoke действует на все реплики и уже открытые streams, включая реплику, отсутствовавшую во время события;
-- clean deployment с пустыми volumes поднимается без ручного редактирования Configuration DB;
+- clean deployment с пустыми volumes поднимается без ручного редактирования Settings DB;
 - release download всегда соответствует заявленным version/checksum, включая cache refresh failure;
 - XFed повтор одного `request_id` отклоняется, а federation history gap автоматически обнаруживается и восстанавливается;
 - readiness отражает невозможность обслуживать трафик, а liveness не зависит от краткого сбоя downstream;
@@ -858,7 +859,7 @@ Dispatcher публикует at-least-once; consumer inbox/idempotency прев
 | Синхронная устойчивость | Требует доработки | Циклы зависимостей, нет общей deadline/circuit-breaker политики |
 | RabbitMQ delivery | Требует серьёзной доработки | Нет общей retry/outbox/idempotency модели; локальные patterns смешаны с global side effects |
 | Realtime scale-out | Не готово | Дубли push, concurrent writers, нет cursor/replay/backpressure |
-| Security trust boundaries | Критично | Configuration и AdminPanel — P0; общий HMAC увеличивает blast radius |
+| Security trust boundaries | Критично | Settings/Setup и AdminPanel требуют отдельного hardening; общий HMAC увеличивает blast radius |
 | Deployment | Требует доработки | Fresh-deploy mismatches, startup migrations, слабая readiness/immutability |
 | Тестирование | Средне/хорошо | Большой объём tests, но критические сервисы и provider-realistic paths имеют пробелы |
 | Наблюдаемость | Требует доработки | Логи есть, сквозных traces/SLO/queue-age/outbox-lag нет |

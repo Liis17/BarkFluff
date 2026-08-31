@@ -1,5 +1,4 @@
 x-common-variables: &common-variables
-  CONFIGURATION_SERVICE_URL: "http://192.168.1.177:7003"
   ASPNETCORE_ENVIRONMENT: Production
 
 services:
@@ -16,7 +15,7 @@ services:
       NavigatorAdmin__Username: ${NAVIGATOR_ADMIN_USERNAME}
       NavigatorAdmin__Password: ${NAVIGATOR_ADMIN_PASSWORD}
       # Этап 1.5 rearch: Navigator вне платформенного шаблона (без LoadConfiguration) — локальная
-      # SQLite-БД, путь через переменную окружения напрямую, не через Configuration-сервис.
+      # SQLite-БД, путь через переменную окружения напрямую.
       NAVIGATOR_DB: "Data Source=/app/db/navigator.db"
     volumes:
       - ./db:/app/db
@@ -41,7 +40,6 @@ services:
 networks:
   barkfluff-navigator-network:
     external: true
-
 
 
 

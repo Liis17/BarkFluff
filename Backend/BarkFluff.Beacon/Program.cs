@@ -55,7 +55,9 @@ public class Program
         });
         builder.Services.AddGrpcClient<ConfigurationApi.ConfigurationApiClient>(o =>
         {
-            o.Address = new Uri(builder.Configuration["ConfigurationServiceAddr"]);
+            o.Address = new Uri(builder.Configuration["SettingsServiceAddr"]
+                ?? builder.Configuration["ConfigurationServiceAddr"]
+                ?? "http://settings:7003");
         });
         builder.Services.AddHostedService<ServerRegistrationService>();
 

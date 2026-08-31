@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace BarkFluff.Bots.Persistence;
 
 /// <summary>
-/// Design-time фабрика для `dotnet ef migrations` (рантайм использует строку из Configuration).
+/// Design-time фабрика для `dotnet ef migrations` (рантайм использует строку из Settings).
 /// </summary>
 public class BotsContextFactory : IDesignTimeDbContextFactory<BotsContext>
 {

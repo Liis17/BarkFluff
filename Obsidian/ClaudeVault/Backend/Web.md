@@ -26,7 +26,7 @@ docker-compose -f docker-compose-dev.yml up web
 | `Proxy` | отдельный стек `docker/proxy`, доступный из РФ хост | статика + pass-through всего трафика на Web-шлюз ноды за Cloudflare + media-relay (см. [[#Режим Proxy (зеркало ноды для РФ)]]) |
 
 `Web:Mode` читается **до** `LoadConfiguration` (env-переменные `CreateBuilder` подхватывает
-сам); в `Shell` и `Proxy` этот вызов пропускается: рядом с ними нет Configuration-сервиса,
+сам); в `Shell` и `Proxy` этот вызов пропускается: рядом с ними нет Settings-сервиса,
 а `LoadConfiguration` падает без ретраев. Тот же осознанный выход из платформенного шаблона,
 что у [[Backend/Navigator]]. Serilog (durable Seq-буфер на диске) и метрики недоступный Seq
 переживают, их отключать не нужно.

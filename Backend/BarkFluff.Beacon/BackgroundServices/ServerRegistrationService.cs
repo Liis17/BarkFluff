@@ -49,7 +49,7 @@ public class ServerRegistrationService : BackgroundService
                 externalHost = NormalizeHost(externalHost);
 
                 // gRPC-Web шлюз ноды — то, к чему браузер подключается напрямую с глобального
-                // web.barkfluff.com. Берём внешний адрес BarkFluff.Web из Configuration; если
+                // web.barkfluff.com. Берём внешний адрес BarkFluff.Web из Settings; если
                 // он не задан, нода просто не попадёт в список выбора веб-клиента.
                 var webEndpoint = await GetWebEndpointAsync(configurationApiClient, stoppingToken);
 

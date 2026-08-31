@@ -200,6 +200,8 @@
     }
     if (options.csrf) init.headers['X-CSRF-Token'] = state.csrf;
     const response = await fetch(url, init);
+    const csrf = response.headers.get('X-CSRF-Token');
+    if (csrf) state.csrf = csrf;
     let payload = null;
     try { payload = await response.json(); } catch { /* empty response */ }
     if (!response.ok) {

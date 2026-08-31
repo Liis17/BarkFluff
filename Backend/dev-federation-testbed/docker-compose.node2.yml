@@ -2,12 +2,12 @@ version: '3.8'
 
 # Второй узел для двух-нодового стенда XFed (docs/rearch/phase-1/step-1.3-xfed-signing.md,
 # Изменение 7.2). Нода 1 — обычный dev-стек (docker/backend/docker-compose-dev-backend.yml, сервисы postgres/
-# configuration/federation). Нода 2 — этот файл, отдельные контейнеры/volume/порты, общая сеть
+# settings/federation). Нода 2 — этот файл, отдельные контейнеры/volume/порты, общая сеть
 # barkfluff-network (объявлена в основном файле — здесь не переопределяется).
 #
 # Запуск (из Backend/):
 #   docker compose -f docker-compose-dev.yml -f dev-federation-testbed/docker-compose.node2.yml \
-#     up -d postgres configuration settings federation postgres2 configuration2 settings2 federation2
+#     up -d postgres settings federation postgres2 settings2 federation2
 #
 # Плейнтекст (http://) — до этапа 1.6 (nginx + self-signed + SPKI). Порты наружу не публикуются:
 # см. README.md этой папки — доступ только изнутри сети barkfluff-network (fedping, docker exec).
@@ -26,22 +26,6 @@ services:
     networks:
       - barkfluff-network
 
-  configuration2:
-    image: docker.barkfluff.com/barkfluff-configuration-dev:latest
-    container_name: configuration2
-    restart: always
-    environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
-      CONFIGURATION_HOST: postgres2
-      CONFIGURATION_DATABASE: barkfluff_configuration
-      CONFIGURATION_USERNAME: barkfluff
-      CONFIGURATION_PASSWORD: barkfluff
-      CONFIGURATION_PORT: "7003"
-    depends_on:
-      - postgres2
-    networks:
-      - barkfluff-network
-
   settings2:
     image: docker.barkfluff.com/barkfluff-settings-dev:latest
     container_name: settings2
@@ -54,6 +38,7 @@ services:
       SETTINGS_USERNAME: barkfluff
       SETTINGS_PASSWORD: barkfluff
       SETTINGS_PORT: "7003"
+      SETTINGS_SETUP_MODE: "false"
     depends_on:
       - postgres2
     networks:
@@ -64,10 +49,10 @@ services:
     container_name: federation2
     restart: always
     environment:
-      CONFIGURATION_SERVICE_URL: "http://configuration2:7003"
+      SETTINGS_SERVICE_URL: "http://settings2:7003"
       ASPNETCORE_ENVIRONMENT: "Development"
     depends_on:
-      - configuration2
+      - settings2
     networks:
       - barkfluff-network
 

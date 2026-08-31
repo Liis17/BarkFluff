@@ -13,7 +13,7 @@ BarkFluff.Updates — сервис real-time доставки событий ч�
 | Low | 6 |
 | **Итого** | **16** |
 
-Проверено и проблем не найдено: `[Authorize]` присутствует на каждом из 15 gRPC-методов (атрибут на классе `UpdatesApiService`, методов вне класса нет); подписка на чужие обновления невозможна (userId/deviceId только из claims, события маршрутизируются по `ChatMembers`/`RecipientUserId` из серверных событий); хардкод секретов отсутствует (конфигурация загружается из Configuration-сервиса, в `appsettings.json` только порт); БД у сервиса нет (N+1/AsNoTracking неприменимы); `GrpcChannel` на запрос не создаётся; Dockerfile корректен (chiseled-образ, non-root `USER $APP_UID`). Замечание вне области (аудит XAuth делает другой агент): политика `User` принимает и `Service`-токены (`Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:79-80`), при отсутствии claim UserId такой токен подпишется как userId=0.
+Проверено и проблем не найдено: `[Authorize]` присутствует на каждом из 15 gRPC-методов (атрибут на классе `UpdatesApiService`, методов вне класса нет); подписка на чужие обновления невозможна (userId/deviceId только из claims, события маршрутизируются по `ChatMembers`/`RecipientUserId` из серверных событий); хардкод секретов отсутствует (конфигурация загружается из Settings-сервиса, в `appsettings.json` только порт); БД у сервиса нет (N+1/AsNoTracking неприменимы); `GrpcChannel` на запрос не создаётся; Dockerfile корректен (chiseled-образ, non-root `USER $APP_UID`). Замечание вне области (аудит XAuth делает другой агент): политика `User` принимает и `Service`-токены (`Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:79-80`), при отсутствии claim UserId такой токен подпишется как userId=0.
 
 ## Безопасность
 

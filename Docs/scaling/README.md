@@ -55,7 +55,7 @@
 | Сервис | Причина / состояние |
 |--------|---------------------|
 | Navigator | Работает на отдельном ПК, всегда один экземпляр. Локальная SQLite + in-memory `RegistrationThrottle` |
-| Configuration | Один экземпляр (по решению). Технически stateless на PostgreSQL |
+| Settings | Один экземпляр (по решению). Технически stateless на PostgreSQL |
 | ClientStorage | Один экземпляр. Локальная SQLite + локальный файловый кэш (`LocalFileCache`) + 2 воркера |
 | AdminPanel | Один экземпляр. LiteDB (файловая БД) + in-memory job/pending-dicts + singleton Telegram-бот |
 | Beacon | Один экземпляр. `ServerRegistrationService` регистрирует сервер в Navigator |

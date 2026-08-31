@@ -7,7 +7,7 @@
 ## Контекст
 
 - Полное описание сервиса — [../04-federation-service.md](../04-federation-service.md): порт 7030, единственная точка входа/выхода федеративного трафика.
-- Конфигурация уже заведена этапом 0.1 (коммит `f8f792ad`): `ConfigurationDefaultsPopulator` знает `ServiceId.Federation` (контейнер `federation`, порт 7030, `FederationDb`), ключи `Federation:Enabled` (false), `FederationService:Host/Token`. Ничего в populator добавлять не нужно.
+- Конфигурация уже заведена этапом 0.1 (коммит `f8f792ad`): каталог Settings знает `ServiceId.Federation` (контейнер `federation`, порт 7030, `FederationDb`), ключи `Federation:Enabled` (false), `FederationService:Host/Token`. Ничего в каталог добавлять не нужно.
 - **Образец сервиса** — `Backend/BarkFluff.Onliner/` (компактный, свежий): смотри его `Program.cs`, `.csproj`, структуру папок и повторяй стиль. Всё, что ниже названо «по образцу Onliner», означает: открой соответствующее место в Onliner и сделай так же.
 
 ## Изменение 1 — проект

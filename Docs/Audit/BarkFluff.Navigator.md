@@ -27,7 +27,7 @@ Navigator — публичный реестр серверов BarkFluff (`navig
 ### S2. Захардкоженный JWT-секрет XAuth в репозитории — действует в проде — High
 
 **Файл:** `Backend/BarkFluff.Navigator/appsettings.json:13`
-**Проблема:** `JwtSettings:SecretKey = "JKASDFHJKKEF8w7728JHFDWHJJWEF23423489FJJFD7#&@93hHFHFF"` закоммичен в git. В отличие от остальных сервисов, Navigator не вызывает `LoadConfiguration(...)` (в `Program.cs` его нет — конфигурация из Configuration-сервиса не подтягивается, переменная `CONFIGURATION_SERVICE_URL` из compose просто игнорируется), поэтому XAuth (`Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:26`) валидирует токены именно этим публично известным ключом.
+**Проблема:** `JwtSettings:SecretKey = "JKASDFHJKKEF8w7728JHFDWHJJWEF23423489FJJFD7#&@93hHFHFF"` закоммичен в git. В отличие от остальных сервисов, Navigator не вызывает `LoadConfiguration(...)` (в `Program.cs` его нет — параметры из Settings не подтягиваются), поэтому XAuth (`Backend/BarkFluff.GrpcServer/XAuth/XAuthExtensions.cs:26`) валидирует токены именно этим публично известным ключом.
 **Почему это проблема:** любой, у кого есть доступ к репозиторию, может подписать валидный JWT (Issuer `BarkFluffNavigator`, Audience `BarkFluffMicroservices`) с произвольными claims — в том числе `TokenType=Service` и любым `UserId`. Сейчас это даёт лишь подделку поля `AddedBy`, но как только на любом методе Navigator появится `[Authorize]`, защита будет полностью обойдена. Кроме того, секрет выглядит как «дефолтный» и может совпадать с дев-окружениями других сервисов.
 **Рекомендация:** убрать секрет из `appsettings.json`, подключить `LoadConfiguration(ServiceId...)` как в остальных сервисах либо передавать секрет через переменную окружения/секрет-хранилище; ротировать скомпрометированный ключ.
 
@@ -98,12 +98,12 @@ Navigator — публичный реестр серверов BarkFluff (`navig
 **Почему это проблема:** если nginx на хосте не настроен или порт доступен в обход него (а он опубликован), весь трафик — включая `x-auth-token` аутентифицированных вызовов — идёт открытым текстом; конфигурация прокси не под контролем версий и теряется при переезде хоста.
 **Рекомендация:** добавить `docker/nginx/navigator.conf` (grpc_pass + TLS) в репозиторий, в compose привязать публикацию порта к loopback (`127.0.0.1:${NAVIGATOR_PORT}:${NAVIGATOR_PORT}`) или убрать её, оставив доступ только через nginx.
 
-### D2. Захардкоженный внутренний IP Configuration-сервиса в compose — и он не используется — Medium
+### D2. Захардкоженный внутренний IP Settings-сервиса в compose — и он не используется — Medium
 
 **Файл:** `docker/navigator/docker-compose-dev.yml:2`
-**Проблема:** `CONFIGURATION_SERVICE_URL: "http://192.168.1.177:7003"` захардкожен в обоих compose-файлах (в остальных сервисах это `${CONFIGURATION_SERVICE_URL}` из `.env`). При этом Navigator не вызывает `LoadConfiguration`, так что переменная мёртвая — но раскрывает внутренний LAN-адрес Configuration-сервиса в репозитории и вводит в заблуждение, будто конфигурация централизована (на деле действует локальный `appsettings.json` с секретом из S2).
+**Проблема:** старый `CONFIGURATION_SERVICE_URL` был захардкожен в compose-файлах. Navigator по-прежнему не вызывает `LoadConfiguration`, поэтому адрес Settings для него не используется; актуальные compose-файлы не содержат этого хардкода.
 **Почему это проблема:** утечка внутренней топологии (адрес сервиса, раздающего секреты всей платформы без аутентификации) + рассинхронизация с реальным источником конфигурации.
-**Рекомендация:** убрать хардкод (заменить на `${CONFIGURATION_SERVICE_URL}`), а после подключения `LoadConfiguration` (см. S2) переменная станет рабочей.
+**Рекомендация:** подключить Settings через `LoadConfiguration(ServiceId...)` или передавать секрет через переменную окружения/секрет-хранилище.
 
 ### D3. Образ собран корректно (положительное наблюдение)
 

@@ -24,7 +24,7 @@ using Moq;
 
 namespace BarkFluff.Federation.Tests.Infrastructure;
 
-// In-proc хост FederationS2SApi (TestServer) без внешних зависимостей (Postgres/Configuration-сервис) —
+// In-proc хост FederationS2SApi (TestServer) без внешних зависимостей (Postgres/Settings-сервис) —
 // см. критерий готовности этапа 1.3: "через in-proc хост (WebApplicationFactory или два Kestrel)".
 public sealed class FederationTestHost : IAsyncDisposable
 {

@@ -38,4 +38,4 @@
 - `InitiateCall` проверяет членство инициатора для группового звонка, а `AcceptCall`/`JoinCall`/`EndCall`/`SetCallAudioQuality` — участие или членство (`Services/CallsService.cs:79-98,152-220,268-319,616-649`).
 - Webhook проверяет подпись `WebhookReceiver`; неподписанные запросы получают `401` (`Program.cs:102-141`). SSRF не найден.
 - Dockerfile использует chiseled runtime и непривилегированного пользователя (`Dockerfile:1-22`); порт webhook не опубликован Calls в `docker-compose-dev.yml:178-187`; `calls.conf` проксирует gRPC через TLS.
-- Dev-ключ LiveKit уже отражён в `docs/Audit/BarkFluff.Configuration.md`; общие замечания о rate/connection limiting и gRPC reflection уже есть в других аудитах и не дублируются.
+- Dev-ключ LiveKit и его ротация должны быть проверены через Settings setup-поля; общие замечания о rate/connection limiting и gRPC reflection уже есть в других аудитах и не дублируются.

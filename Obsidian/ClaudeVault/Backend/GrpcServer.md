@@ -1,6 +1,6 @@
 # BarkFluff.GrpcServer
 
-Shared-библиотека (.NET 10.0), подключаемая всеми backend-микросервисами. Предоставляет единую инфраструктуру: аутентификацию (XAuth/JWT), gRPC interceptors, Serilog-логирование, метрики и загрузку конфигурации.
+Shared-библиотека (.NET 10.0), подключаемая всеми backend-микросервисами. Предоставляет единую инфраструктуру: аутентификацию (XAuth/JWT), gRPC interceptors, Serilog-логирование, метрики и загрузку параметров из Settings.
 
 Расположение: `Backend/BarkFluff.GrpcServer/`
 
@@ -15,7 +15,7 @@ Shared-библиотека (.NET 10.0), подключаемая всеми bac
 ## Startup-конвейер (порядок вызовов в Program.cs)
 
 ```csharp
-builder.LoadConfiguration(ServiceId.Xxx);            // 1. Загрузка конфига из Configuration service
+builder.LoadConfiguration(ServiceId.Xxx);            // 1. Загрузка параметров из Settings service
 builder.SetRunningAddress(builder.Configuration);    // 2. Настройка Kestrel (порт, TLS, HTTP/2)
 builder.AddBarkFluffSerilog("ServiceName");          // 3. Serilog + Seq (ПОСЛЕ LoadConfiguration)
 builder.Services.AddBarkFluffMetrics("ServiceName"); // 4. Метрики
@@ -49,7 +49,7 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Конфигурация (`WebApplicationBuilderExtensions`)
 
-- `LoadConfiguration(ServiceId)` — gRPC-вызов к Configuration service (адрес из `CONFIGURATION_SERVICE_URL` env или `ConfigurationServiceAddr`). Результат в `IConfiguration` как in-memory collection.
+- `LoadConfiguration(ServiceId)` — wire-compatible gRPC-вызов к Settings service (адрес из `SETTINGS_SERVICE_URL` env или `SettingsServiceAddr`). Результат в `IConfiguration` как in-memory collection.
 - `SetRunningAddress()` — настраивает Kestrel из `RunSettings` (порт, опциональный HTTP/1 порт, TLS).
 - `AddSettings<T>(configuration, sectionName)` — регистрирует `IOptions<T>` и `T` как singleton.
 
@@ -67,4 +67,4 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 - [[Shared/Exceptions]] — `BaseGrpcException`
 - [[Shared/Auth]] — `MetadataKeys`
 - [[Shared/Identity]] — `ServiceId`, `TokenType`, `IdentityClaims`
-- `configuration_api.proto` — gRPC-клиент для Configuration service
+- `configuration_api.proto` — wire-compatible gRPC-клиент для Settings service

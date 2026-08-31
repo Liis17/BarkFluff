@@ -94,7 +94,7 @@ parameterless-конструктора exception или физического �
 
 Для чистого deployment миграция `AddDevelopersConfiguration` идемпотентно создаёт
 строки `RunSettings`, `DevelopersDb` и `ExternalEndpoint` для `ServiceId=12`.
-ConfigurationDefaultsPopulator заполняет пустые значения: БД `developers`, API `7020`
+Каталог Settings заполняет пустые значения: БД `developers`, API `7020`
 и SPA `7021`; заранее заданные оператором значения сохраняются.
 
 ## Proto

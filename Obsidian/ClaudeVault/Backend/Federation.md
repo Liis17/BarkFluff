@@ -144,7 +144,7 @@ Privacy-отказ (`invitee.DenyFederatedDm=true` на удалённой но�
 
 Федерация по умолчанию выключена (`Federation:Enabled = false`); при пустом `Federation:ServerName` сервис стартует нормально, но ключ всё равно генерируется (безвредно, лог-warning).
 
-Единый выключатель — `FederationSwitch` (`IsActive = Enabled && ServerName задан`, P1-04). Гейчит **все** federation-пути: входящий S2S (XFed-интерсептор, до IsExempt — покрывает и bootstrap `GetServerKeys`, P1-05), публикацию well-known (`503`), фоновый peer-refresh и исходящий outbox-диспетчер. Internal API (`GetFederationStatus` и пр.) остаётся доступным оператору независимо. При неактивной ноде S2S отвечает `FailedPrecondition` (`FederationNotConfigured`). Чтобы нода федерировала — задать `Federation:Enabled=true` в Configuration.
+Единый выключатель — `FederationSwitch` (`IsActive = Enabled && ServerName задан`, P1-04). Гейчит **все** federation-пути: входящий S2S (XFed-интерсептор, до IsExempt — покрывает и bootstrap `GetServerKeys`, P1-05), публикацию well-known (`503`), фоновый peer-refresh и исходящий outbox-диспетчер. Internal API (`GetFederationStatus` и пр.) остаётся доступным оператору независимо. При неактивной ноде S2S отвечает `FailedPrecondition` (`FederationNotConfigured`). Чтобы нода федерировала — задать `Federation:Enabled=true` в Settings.
 
 ## Сборка
 
@@ -171,7 +171,7 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 ## Ed25519-ключи (`SigningKeyService`)
 
 - Библиотека — `BouncyCastle.Cryptography` 2.6.2 (managed, снимает chiseled-риск конструктивно; выбор и бенчмарки — [[../../../docs/rearch/phase-0/step-0.5-report|docs/rearch/phase-0/step-0.5-report.md]]).
-- Таблица `SigningKeys` в `FederationDb`: `KeyId` (PK, `"ed25519:N"`), `PublicKey`/`PrivateKeySeed` (raw 32 байта), `CreatedAt`, `ExpiredAt`, `RevokedAt`. Приватный ключ хранится без шифрования (MVP, тот же уровень доверия, что у прочих секретов в конфиг-БД соседей) — **отличие от исходной рекомендации дока 02**: не Configuration-сервис, а `FederationDb` (см. правки доков ниже).
+- Таблица `SigningKeys` в `FederationDb`: `KeyId` (PK, `"ed25519:N"`), `PublicKey`/`PrivateKeySeed` (raw 32 байта), `CreatedAt`, `ExpiredAt`, `RevokedAt`. Приватный ключ хранится без шифрования (MVP, тот же уровень доверия, что у прочих секретов в конфиг-БД соседей) — **отличие от исходной рекомендации дока 02**: не Settings-сервис, а `FederationDb` (см. правки доков ниже).
 - При старте: если нет ключа с `ExpiredAt IS NULL AND RevokedAt IS NULL` — генерируется `ed25519:1`. Идемпотентно (рестарт не плодит ключи).
 - `RotateSigningKey` (internal RPC, `TokenType.Service`): новый ключ `ed25519:{N+1}` становится активным, у старого `ExpiredAt = now + Federation:KeyRotationOverlapDays` (дефолт 30 дней в коде). Well-known после ротации публикует оба ключа, подписан новым. Публикуется `SigningKeyRotatedEvent` → fan-out-очередь на каждый инстанс → каждый перезагружает `ActiveSigningKeyCache` и well-known (масштабирование, docs/scaling/federation.md — иначе остальные инстансы подписывают исходящие старым ключом до рестарта).
 
@@ -179,7 +179,7 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 
 - `Services/WellKnownDocumentService.cs`: JSON по схеме [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]] («Источник 1»), подписан активным ключом. Канонизация — JCS/RFC 8785 через NuGet-пакет `JsonCanonicalizer` 1.0.0 (управляемый порт `Org.Webpki.JsonCanonicalizer` от cyberphone/json-canonicalization, проверено по исходникам GitHub).
 - Кеш в памяти: пересобирается при старте и после `RotateSigningKey`, на GET отдаётся без пересборки.
-- **Второй Kestrel-листенер HTTP/1** на порту `Federation:WellKnownPort` (дефолт 7031 в коде — свободен, проверено по `ConfigurationDefaultsPopulator`; тот же механизм, что `RunSettings:Http1Port` у Bots/Calls/Files, но отдельный конфиг-ключ по плану этапа). Основной gRPC-порт 7030 настроен под h2c и HTTP/1-GET не принимает.
+- **Второй Kestrel-листенер HTTP/1** на порту `Federation:WellKnownPort` (дефолт 7031 в коде — свободен в каталоге Settings; тот же механизм, что `RunSettings:Http1Port` у Bots/Calls/Files, но отдельный конфиг-ключ по плану этапа). Основной gRPC-порт 7030 настроен под h2c и HTTP/1-GET не принимает.
 - `GET /.well-known/barkfluff` → `200` с документом, либо `503` с телом-пояснением, если `Federation:ServerName`/`ExternalEndpoint` пусты.
 - `public_name` пока всегда пустая строка: источник (`ServerProps:PublicName`) принадлежит Beacon — другому `ServiceId`, вне конфиг-скоупа Federation; кросс-сервисное чтение не входит в этап 1.2.
 - Независимая проверка (JCS-канонизация без `signature` + Ed25519-verify) — офлайн-прогон BouncyCastle+JsonCanonicalizer подтвердил корректность (roundtrip + порча байта ловится); Python-скрипт `verify-wellknown.py` для проверки на живом стенде лежит в scratchpad сессии этапа 1.2, на живом инстансе не прогонялся (нужен docker-стек, вне скоупа ассистента в этой сессии).
@@ -239,7 +239,7 @@ dotnet build Backend/BarkFluff.Federation/BarkFluff.Federation.csproj
 - `Federation:Insecure:AllowUntrustedWellKnownTls` — dev-флаг отключения CA-валидации well-known-фетча, действует только при `ASPNETCORE_ENVIRONMENT=Development`.
 - `NavigatorUrl` — адрес Navigator (`http://navigator:7010` по умолчанию); ключ раньше был только у Beacon (ServiceId=3), этапом 1.4 заведён и для Federation (ServiceId=15).
 - `FederationService:Host/Token` — ключи для клиентов сервиса Federation (populator, этап 0.1).
-- `UsersService:Host/Token` — ключи для gRPC-клиента к [[Backend/Users]] (нужен с этапа 2.1 для `GetUserProfile` → `GetFederatedProfile`). Глобальные (ServiceId=0), уже раздаются `ConfigurationDefaultsPopulator`.
+- `UsersService:Host/Token` — ключи для gRPC-клиента к [[Backend/Users]] (нужен с этапа 2.1 для `GetUserProfile` → `GetFederatedProfile`). Глобальные (ServiceId=0), уже раздаются каталогом Settings.
 
 ## Метрики
 

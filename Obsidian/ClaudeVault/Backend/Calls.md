@@ -75,7 +75,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 - **Голос — общий для звонка.** Любой участник вызывает `SetCallAudioQuality`; текущее значение хранит `CallQualityStore` (in-memory Singleton — состояние транзиентное, как подписки, поэтому колонки в CDR нет), сервер рассылает `CallAudioQualityChanged` всем (включая инициатора смены — единый источник истины). Текущее качество отдаётся в ответах `Initiate/Accept/Join` (`audio_quality`) — late-join получает актуальное. Применение пресета к публикации — на клиенте (LiveKit `audioPreset`).
 - **Видео — локально у публикующего.** Качество своего видео-стрима (разрешение+битрейт) клиент меняет сам через LiveKit; на backend не ходит. См. [[Клиенты/Web]].
 
-## Конфигурация (секция в [[Backend/Configuration]], ServiceId=13)
+## Конфигурация (секция в [[Backend/Settings]], ServiceId=13)
 
 | Ключ | Назначение |
 |------|-----------|
@@ -87,7 +87,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 В Git заданы development-defaults LiveKit: `devkey` и
 `devsecret_change_me_in_production_0123456789`; production secrets оператор должен
-переопределить согласованно в Configuration и `livekit.yaml`.
+переопределить согласованно в Settings и `livekit.yaml`.
 
 ## Внешний доступ ([[Backend/Nginx]])
 

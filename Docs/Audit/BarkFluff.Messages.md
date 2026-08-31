@@ -146,5 +146,5 @@
 
 ## Замечания по конфигурации (для сведения)
 
-- Секретов в `appsettings.json`/`appsettings.Development.json` сервиса нет — конфигурация (`MessagesDb`, `Redis`, `RabbitMQ:*`, `JwtSettings:SecretKey`, `*Service:Token`) подгружается из Configuration-сервиса (`LoadConfiguration`). Хардкод найден только в design-time factory `MessagesContextFactory.cs:12` (`Username=postgres;Password=postgres`) — это только для `dotnet ef` миграций локально, в рантайм не используется; держать осознанно.
+- Секретов в `appsettings.json`/`appsettings.Development.json` сервиса нет — конфигурация (`MessagesDb`, `Redis`, `RabbitMQ:*`, `JwtSettings:SecretKey`, `*Service:Token`) подгружается из Settings-сервиса (`LoadConfiguration`). Хардкод найден только в design-time factory `MessagesContextFactory.cs:12` (`Username=postgres;Password=postgres`) — это только для `dotnet ef` миграций локально, в рантайм не используется; держать осознанно.
 - `AllowedHosts: "*"` в `appsettings.json:8` — стандартно для gRPC за nginx, не проблема.
