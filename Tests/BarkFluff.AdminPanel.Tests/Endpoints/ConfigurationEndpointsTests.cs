@@ -1,4 +1,5 @@
 using Barkfluff.AdminPanel.Endpoints;
+using BarkFluff.Shared.Identity;
 
 using Xunit;
 
@@ -61,5 +62,25 @@ public class ConfigurationEndpointsTests
     public void NormalizeConfigurationKey_CanonicalizesWhitespaceOnlySectionKeys(string section, string key)
     {
         Assert.Equal("", ConfigurationEndpoints.NormalizeConfigurationKey(section, key));
+    }
+
+    [Theory]
+    [InlineData(ServiceId.Unknown, "GlobalSettings")]
+    [InlineData(ServiceId.Identity, "IdentitySettings")]
+    [InlineData(ServiceId.Notifications, "NotificationsSettings")]
+    [InlineData(ServiceId.CloudMessaging, "CloudMessagingSettings")]
+    [InlineData(ServiceId.Federation, "FederationSettings")]
+    public void GetSettingsTableName_MapsCompatibilityServiceIdToCurrentTable(ServiceId serviceId, string expected)
+    {
+        Assert.Equal(expected, ConfigurationEndpoints.GetSettingsTableName(serviceId));
+    }
+
+    [Theory]
+    [InlineData("Redis", "", "Redis")]
+    [InlineData("RunSettings", "Port", "RunSettings:Port")]
+    [InlineData("S3Buckets:message-audio", "SecretKey", "S3Buckets:message-audio:SecretKey")]
+    public void GetStorageKey_ReconstructsCurrentSettingsKey(string section, string key, string expected)
+    {
+        Assert.Equal(expected, ConfigurationEndpoints.GetStorageKey(section, key));
     }
 }

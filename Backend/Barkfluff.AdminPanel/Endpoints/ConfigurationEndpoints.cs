@@ -37,6 +37,8 @@ public static class ConfigurationEndpoints
                     var field = ConfigurationFieldCatalog.Describe(c.Section, key, c.Value);
                     return new
                     {
+                        settingsTable = GetSettingsTableName((ServiceId)c.ServiceId),
+                        storageKey = GetStorageKey(c.Section, key),
                         section = c.Section,
                         key,
                         value = masked ? SensitiveConfigMasker.MaskedValue : c.Value,
@@ -393,6 +395,16 @@ public static class ConfigurationEndpoints
         key is null || (SectionOnlyConfigurationSections.Contains(section) && string.IsNullOrWhiteSpace(key))
             ? string.Empty
             : key;
+
+    internal static string GetSettingsTableName(ServiceId serviceId)
+    {
+        return serviceId == ServiceId.Unknown
+            ? "GlobalSettings"
+            : $"{serviceId}Settings";
+    }
+
+    internal static string GetStorageKey(string section, string key) =>
+        string.IsNullOrEmpty(key) ? section : $"{section}:{key}";
 
     private static string MaskHistoryValue(string value, bool sensitive) =>
         sensitive && !string.IsNullOrEmpty(value) ? SensitiveConfigMasker.MaskedValue : value;
