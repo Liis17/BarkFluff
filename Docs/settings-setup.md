@@ -16,8 +16,14 @@ openssl rand -base64 32 > secrets/setup_token
 chmod 600 secrets/setup_token
 ```
 
-В `.env` задайте как минимум `POSTGRES_PASSWORD`. Для публичного доступа через
+В `.env` задайте как минимум `POSTGRES_PASSWORD`,
+`RABBITMQ_DEFAULT_USER` и `RABBITMQ_DEFAULT_PASS`. Для публичного доступа через
 host-Nginx задайте `SETUP_PUBLIC_ORIGIN=https://setup.example.com`.
+
+Заранее подготовьте непредсказуемые значения S3/MinIO и LiveKit. Их нужно будет
+ввести в Setup UI и затем использовать в `MINIO_ROOT_USER`/
+`MINIO_ROOT_PASSWORD` и `livekit/livekit.yaml` основного стека. Шаблон LiveKit
+намеренно содержит пустые `keys`, поэтому без этой синхронизации звонки не стартуют.
 
 ## 2. Запустить bootstrap
 
@@ -58,3 +64,7 @@ docker compose -f docker-compose.yml up -d
 
 После переключения удалите setup secret и не оставляйте порт `7032` доступным
 напрямую из интернета. Дальнейшие исправления выполняются через AdminPanel.
+
+Bootstrap рассчитан на чистую установку. Для существующего стека сначала сделайте
+резервную копию и подготовьте отдельную миграцию: старые строки Configuration и
+старую базу автоматически не импортируются и не удаляются.

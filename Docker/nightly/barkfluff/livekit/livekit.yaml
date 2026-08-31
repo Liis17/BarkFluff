@@ -7,8 +7,10 @@ rtc:
   use_external_ip: true
 
 keys:
-  devkey: devsecret_change_me_in_production_0123456789
+  # Заполните после Setup UI той же парой, что и Calls:LiveKit:ApiKey/ApiSecret.
+  # Пустая конфигурация намеренно не даёт использовать общий development-secret.
+  {}
 webhook:
-  api_key: devkey
+  api_key: ""
   urls:
     - http://calls:7026/livekit/webhook

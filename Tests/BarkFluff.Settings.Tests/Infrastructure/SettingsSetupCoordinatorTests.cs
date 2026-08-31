@@ -1,4 +1,5 @@
 using BarkFluff.Settings.Catalog;
+using BarkFluff.Settings.Domain;
 using BarkFluff.Settings.Infrastructure;
 using BarkFluff.Settings.Persistence.Contexts;
 using BarkFluff.Shared.Identity;
@@ -12,7 +13,7 @@ namespace BarkFluff.Settings.Tests.Infrastructure;
 public sealed class SettingsSetupCoordinatorTests
 {
     [Fact]
-    public async Task Fresh_snapshot_requires_twelve_fields_and_skips_disabled_federation()
+    public async Task Fresh_snapshot_requires_thirty_fields_and_skips_disabled_federation()
     {
         await using var context = CreateContext();
         await new SettingsSeeder(context, SeedOptions()).SeedAsync();
@@ -21,8 +22,8 @@ public sealed class SettingsSetupCoordinatorTests
 
         Assert.False(snapshot.Complete);
         Assert.False(snapshot.Locked);
-        Assert.Equal(19, SettingsCatalog.All.Count(entry => entry.Setup is not null));
-        Assert.Equal(12, snapshot.Groups.SelectMany(group => group.Fields).Count(field => field.Required));
+        Assert.Equal(37, SettingsCatalog.All.Count(entry => entry.Setup is not null));
+        Assert.Equal(30, snapshot.Groups.SelectMany(group => group.Fields).Count(field => field.Required));
         Assert.False(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Applicable);
         Assert.All(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Fields, field => Assert.False(field.Required));
         Assert.True(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Fields
@@ -30,7 +31,7 @@ public sealed class SettingsSetupCoordinatorTests
     }
 
     [Fact]
-    public async Task Complete_setup_normalizes_values_masks_secret_and_locks_current_catalog()
+    public async Task Complete_setup_normalizes_values_masks_secret_and_locks_setup()
     {
         await using var context = CreateContext();
         await new SettingsSeeder(context, SeedOptions()).SeedAsync();
@@ -57,6 +58,16 @@ public sealed class SettingsSetupCoordinatorTests
         {
             [Field(ServiceId.Files, "ExternalEndpoint:MediaHost")] = "https://files.example.com/"
         }, "setup", "127.0.0.1");
+        await coordinator.SaveGroupAsync("storage", SettingsCatalog.All
+            .Where(entry => entry.Setup?.GroupId == "storage")
+            .ToDictionary(
+                entry => SettingsSetupMetadata.GetFieldId(entry),
+                entry => (string?)(entry.Key == "AccessKey" ? "minio-user" : "minio-secret")), "setup", "127.0.0.1");
+        await coordinator.SaveGroupAsync("calls", new Dictionary<string, string?>
+        {
+            [Field(ServiceId.Calls, "LiveKit:ApiKey")] = "livekit-user",
+            [Field(ServiceId.Calls, "LiveKit:ApiSecret")] = "livekit-secret"
+        }, "setup", "127.0.0.1");
 
         var completed = await coordinator.CompleteAsync("setup", "127.0.0.1");
 
@@ -64,10 +75,33 @@ public sealed class SettingsSetupCoordinatorTests
         Assert.True(completed.Locked);
         Assert.Equal("#AABBCC", FieldValue(completed, ServiceId.Beacon, "ServerColor:Lite"));
         Assert.Equal(string.Empty, FieldValue(completed, ServiceId.Notifications, "Email:SenderPassword"));
+        Assert.Equal(string.Empty, FieldValue(completed, ServiceId.Calls, "LiveKit:ApiKey"));
+        Assert.Equal(string.Empty, FieldValue(completed, ServiceId.Calls, "LiveKit:ApiSecret"));
         Assert.True(completed.Groups.SelectMany(group => group.Fields)
             .Single(field => field.StorageKey == "Email:SenderPassword").Configured);
         await Assert.ThrowsAsync<SetupLockedException>(() => coordinator.SaveGroupAsync(
             "server", new Dictionary<string, string?> { [Field(ServiceId.Beacon, "ServerProps:Name")] = "Changed" }, "setup", "127.0.0.1"));
+    }
+
+    [Fact]
+    public async Task Existing_completion_remains_locked_when_catalog_fingerprint_changes()
+    {
+        await using var context = CreateContext();
+        await new SettingsSeeder(context, SeedOptions()).SeedAsync();
+        context.SetupStates.Add(new SetupState
+        {
+            Id = 1,
+            CatalogFingerprint = "old-catalog",
+            CompletedAtUtc = DateTime.UtcNow,
+            CompletedBy = "setup",
+            CompletedFrom = "127.0.0.1"
+        });
+        await context.SaveChangesAsync();
+
+        var snapshot = await new SettingsSetupCoordinator(context).GetSnapshotAsync();
+
+        Assert.True(snapshot.Locked);
+        Assert.Equal("old-catalog", (await context.SetupStates.SingleAsync()).CatalogFingerprint);
     }
 
     [Fact]

@@ -163,8 +163,8 @@ Android-клиент забирает `.md` на этапе сборки gradle-
 | `docker-compose.yml` | `docker/backend/docker-compose-dev-backend.yml`, образы без `-dev` (реальное имя релизного образа — `image:` в `.github/workflows/build-backend-*.yml`) |
 | `.env` | `docker/backend/sample-backend.env` |
 | Таблица субдоменов | `server_name` в `docker/nginx/*.conf` + каталог Settings |
-| «Остаются пустыми» (`Email`, `ServerProps`, `ServerColor`) | seed-миграции Configuration; `ResolveDefault` эти секции не обрабатывает |
-| «Автозаполнение поставило заглушку» | `ResolveDefault`: `ExternalEndpoint:Host` → `*.example.com`, `S3Buckets:*` → `minioadmin`, `LiveKit` → `devkey`/`devsecret_change_me…`, `NavigatorUrl` → `http://navigator:7010` |
+| «Остаются пустыми» (`Email`, `ServerProps`, `ServerColor`, S3/LiveKit credentials) | каталог Settings; эти значения вводятся через Setup UI |
+| «Автозаполнение поставило значение» | `SettingsCatalog`: `ExternalEndpoint:Host` → `*.example.com`, S3/LiveKit credentials остаются пустыми, `NavigatorUrl` → `http://navigator:7010` |
 | Федерация | `Federation:ServerName`/`ExternalEndpoint`/`TlsSpkiSha256` пустые по замыслу, `Enabled=false` — см. [[Backend/Federation]] |
 
 Отличия релизного compose на странице от dev-варианта: образы без `-dev`; порт postgres не публикуется; `seq`/`minio` без проброса портов; `minio` раскомментирован; у `livekit` 7880 не публикуется (за nginx); убраны сервисы и переменные, специфичные для инфраструктуры barkfluff.com (`developers`, `Mail__*`, `TELEGRAM_PROXY_*`). Удалённые SSH-серверы настраиваются в AdminPanel и не относятся к Compose/.env.

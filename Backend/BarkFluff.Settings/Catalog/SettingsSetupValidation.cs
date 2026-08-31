@@ -36,8 +36,9 @@ public static class SettingsSetupValidation
             "smtp-host" => ValidateSmtpHost(value),
             "port" => ValidateInteger(value, 1, 65535, "Порт должен быть целым числом от 1 до 65535."),
             "email" => ValidateEmail(value),
+            "access-key" => ValidateText(value, 1, 128, "Ключ доступа обязателен и должен содержать не более 128 символов."),
             "secret" => string.IsNullOrWhiteSpace(value)
-                ? SetupValidationResult.Failure("Пароль отправителя не может быть пустым.")
+                ? SetupValidationResult.Failure("Секретное значение не может быть пустым.")
                 : SetupValidationResult.Success(value),
             "public-https-origin" => ValidateHttpsOrigin(value),
             "federation-server-name" => ValidateFederationServerName(value),
@@ -154,19 +155,24 @@ public static class SettingsSetupValidation
         {
             try
             {
-                var bytes = Convert.FromBase64String(part);
+                var bytes = IsHexDigest(part)
+                    ? Convert.FromHexString(part)
+                    : Convert.FromBase64String(part);
                 if (bytes.Length != 32)
                     return SetupValidationResult.Failure("Каждый SPKI SHA-256 отпечаток должен декодироваться ровно в 32 байта.");
                 normalized.Add(Convert.ToBase64String(bytes));
             }
             catch (FormatException)
             {
-                return SetupValidationResult.Failure("SPKI SHA-256 отпечатки должны быть корректными Base64-строками.");
+                return SetupValidationResult.Failure("SPKI SHA-256 отпечатки должны быть корректными Base64-строками или 64-символьным hex.");
             }
         }
 
         return SetupValidationResult.Success(string.Join(',', normalized.Distinct(StringComparer.Ordinal)));
     }
+
+    private static bool IsHexDigest(string value) =>
+        value.Length == 64 && value.All(Uri.IsHexDigit);
 
     private static SetupValidationResult ValidateBoolean(string value) =>
         bool.TryParse(value.Trim(), out var parsed)

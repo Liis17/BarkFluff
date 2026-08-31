@@ -51,13 +51,70 @@ public sealed class SettingsSeederTests
         var token = await context.Settings(global).SingleAsync(row => row.Key == "UsersService:Token");
         var federation = SettingsScopes.Get(ServiceId.Federation);
         var manual = await context.Settings(federation).SingleAsync(row => row.Key == "Federation:ServerName");
+        var files = SettingsScopes.Get(ServiceId.Files);
+        var storageKey = await context.Settings(files).SingleAsync(row => row.Key == "S3Buckets:barkfluff-uploads:AccessKey");
+        var calls = SettingsScopes.Get(ServiceId.Calls);
+        var liveKitKey = await context.Settings(calls).SingleAsync(row => row.Key == "LiveKit:ApiKey");
         Assert.Equal(64, secret.Value.Length);
         Assert.NotEmpty(token.Value);
         Assert.Empty(manual.Value);
+        Assert.Empty(storageKey.Value);
+        Assert.Empty(liveKitKey.Value);
 
         var oldSecret = secret.Value;
         await seeder.SeedAsync();
         Assert.Equal(oldSecret, secret.Value);
+    }
+
+    [Fact]
+    public async Task Seed_clears_legacy_storage_and_livekit_credentials_but_preserves_custom_values()
+    {
+        await using var context = CreateContext();
+        var files = SettingsScopes.Get(ServiceId.Files);
+        context.Settings(files).AddRange(
+            new SettingRow
+            {
+                Key = "S3Buckets:barkfluff-uploads:AccessKey",
+                Value = "minioadmin",
+                EditedBy = "legacy",
+                EditedAt = DateTime.UtcNow
+            },
+            new SettingRow
+            {
+                Key = "S3Buckets:barkfluff-uploads:SecretKey",
+                Value = "operator-secret",
+                EditedBy = "operator",
+                EditedAt = DateTime.UtcNow
+            });
+        var calls = SettingsScopes.Get(ServiceId.Calls);
+        context.Settings(calls).AddRange(
+            new SettingRow
+            {
+                Key = "LiveKit:ApiKey",
+                Value = "devkey",
+                EditedBy = "legacy",
+                EditedAt = DateTime.UtcNow
+            },
+            new SettingRow
+            {
+                Key = "LiveKit:ApiSecret",
+                Value = "operator-livekit-secret",
+                EditedBy = "operator",
+                EditedAt = DateTime.UtcNow
+            });
+        await context.SaveChangesAsync();
+
+        await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest"))
+            .SeedAsync();
+
+        var storageAccess = await context.Settings(files).SingleAsync(row => row.Key == "S3Buckets:barkfluff-uploads:AccessKey");
+        var storageSecret = await context.Settings(files).SingleAsync(row => row.Key == "S3Buckets:barkfluff-uploads:SecretKey");
+        var liveKitKey = await context.Settings(calls).SingleAsync(row => row.Key == "LiveKit:ApiKey");
+        var liveKitSecret = await context.Settings(calls).SingleAsync(row => row.Key == "LiveKit:ApiSecret");
+        Assert.Empty(storageAccess.Value);
+        Assert.Equal("operator-secret", storageSecret.Value);
+        Assert.Empty(liveKitKey.Value);
+        Assert.Equal("operator-livekit-secret", liveKitSecret.Value);
     }
 
     private static SettingsContext CreateContext()

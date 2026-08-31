@@ -59,6 +59,8 @@ public sealed class SetupFieldValidationException : ArgumentException
 public sealed class SettingsSetupCoordinator
 {
     private const int CompletionStateId = 1;
+    private const long SetupAdvisoryLockKey = 0x42465345545550;
+    private static readonly SemaphoreSlim SetupGate = new(1, 1);
 
     private readonly SettingsContext _context;
     private readonly MetricsCollector? _metrics;
@@ -69,20 +71,8 @@ public sealed class SettingsSetupCoordinator
         _metrics = metrics;
     }
 
-    public async Task<SetupSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default)
-    {
-        var values = await ReadSetupValuesAsync(cancellationToken);
-        var snapshot = BuildSnapshot(values);
-        var completion = await _context.SetupStates.AsNoTracking()
-            .SingleOrDefaultAsync(state => state.Id == CompletionStateId, cancellationToken);
-
-        return snapshot with
-        {
-            Locked = completion is not null
-                && string.Equals(completion.CatalogFingerprint, snapshot.CatalogFingerprint, StringComparison.Ordinal),
-            CompletedAtUtc = completion?.CompletedAtUtc
-        };
-    }
+    public Task<SetupSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default) =>
+        GetSnapshotCoreAsync(cancellationToken);
 
     public async Task<SetupSnapshot> SaveGroupAsync(
         string groupId,
@@ -91,7 +81,44 @@ public sealed class SettingsSetupCoordinator
         string editedFrom,
         CancellationToken cancellationToken = default)
     {
-        var before = await GetSnapshotAsync(cancellationToken);
+        await SetupGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await SaveGroupCoreAsync(groupId, values, editedBy, editedFrom, cancellationToken);
+        }
+        finally
+        {
+            SetupGate.Release();
+        }
+    }
+
+    public async Task<SetupSnapshot> CompleteAsync(
+        string completedBy,
+        string completedFrom,
+        CancellationToken cancellationToken = default)
+    {
+        await SetupGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await CompleteCoreAsync(completedBy, completedFrom, cancellationToken);
+        }
+        finally
+        {
+            SetupGate.Release();
+        }
+    }
+
+    private async Task<SetupSnapshot> SaveGroupCoreAsync(
+        string groupId,
+        IReadOnlyDictionary<string, string?> values,
+        string editedBy,
+        string editedFrom,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await BeginTransactionAsync(cancellationToken);
+        await AcquireDatabaseLockAsync(cancellationToken);
+
+        var before = await GetSnapshotCoreAsync(cancellationToken);
         if (before.Locked)
             throw new SetupLockedException();
 
@@ -113,7 +140,6 @@ public sealed class SettingsSetupCoordinator
             && bool.TryParse(enabledValue, out var requestedFederationEnabled))
             federationEnabled = requestedFederationEnabled;
 
-        await using var transaction = await BeginTransactionAsync(cancellationToken);
         var changed = 0;
         foreach (var (fieldId, rawValue) in values)
         {
@@ -155,15 +181,18 @@ public sealed class SettingsSetupCoordinator
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
         _metrics?.Add("setup_group_fields_changed", changed);
-        return await GetSnapshotAsync(cancellationToken);
+        return await GetSnapshotCoreAsync(cancellationToken);
     }
 
-    public async Task<SetupSnapshot> CompleteAsync(
+    private async Task<SetupSnapshot> CompleteCoreAsync(
         string completedBy,
         string completedFrom,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        var snapshot = await GetSnapshotAsync(cancellationToken);
+        await using var transaction = await BeginTransactionAsync(cancellationToken);
+        await AcquireDatabaseLockAsync(cancellationToken);
+
+        var snapshot = await GetSnapshotCoreAsync(cancellationToken);
         if (snapshot.Locked)
             return snapshot;
 
@@ -190,8 +219,26 @@ public sealed class SettingsSetupCoordinator
         state.CompletedBy = NormalizeActor(completedBy);
         state.CompletedFrom = completedFrom ?? string.Empty;
         await _context.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
         _metrics?.Increment("setup_completions");
-        return await GetSnapshotAsync(cancellationToken);
+        return await GetSnapshotCoreAsync(cancellationToken);
+    }
+
+    private async Task<SetupSnapshot> GetSnapshotCoreAsync(CancellationToken cancellationToken)
+    {
+        var values = await ReadSetupValuesAsync(cancellationToken);
+        var snapshot = BuildSnapshot(values);
+        var completion = await _context.SetupStates.AsNoTracking()
+            .SingleOrDefaultAsync(state => state.Id == CompletionStateId, cancellationToken);
+
+        return snapshot with
+        {
+            // Completion is intentionally permanent. The fingerprint is retained for
+            // audit/diagnostics; adding a catalog field must not silently reopen setup.
+            Locked = completion is not null,
+            CompletedAtUtc = completion?.CompletedAtUtc
+        };
     }
 
     private SetupSnapshot BuildSnapshot(IReadOnlyDictionary<(ServiceId ServiceId, string StorageKey), string> values)
@@ -294,6 +341,19 @@ public sealed class SettingsSetupCoordinator
 
     private async Task<IDbContextTransaction?> BeginRelationalTransactionAsync(CancellationToken cancellationToken) =>
         await _context.Database.BeginTransactionAsync(cancellationToken);
+
+    private Task<int> AcquireDatabaseLockAsync(CancellationToken cancellationToken)
+    {
+        if (!string.Equals(
+                _context.Database.ProviderName,
+                "Npgsql.EntityFrameworkCore.PostgreSQL",
+                StringComparison.Ordinal))
+            return Task.FromResult(0);
+
+        return _context.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({SetupAdvisoryLockKey})",
+            cancellationToken);
+    }
 
     private static string NormalizeActor(string? actor) => string.IsNullOrWhiteSpace(actor) ? "setup" : actor.Trim();
 }

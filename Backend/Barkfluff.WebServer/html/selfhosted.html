@@ -548,7 +548,7 @@ RABBITMQ_DEFAULT_USER=barkfluff
 RABBITMQ_DEFAULT_PASS=смените-меня
 
 # --- MinIO (S3-совместимое хранилище файлов) ---
-# Эти же значения пойдут в S3Buckets:*:AccessKey / SecretKey в Settings.
+# Те же значения после Setup UI пойдут в S3Buckets:*:AccessKey / SecretKey в Settings.
 MINIO_ROOT_USER=смените-меня
 MINIO_ROOT_PASSWORD=смените-меня
 
@@ -638,15 +638,15 @@ docker compose ps</code></pre>
       </div>
 
       <h3>Поля с безопасными значениями по умолчанию</h3>
-      <p>Проверьте значения в Setup UI: адреса из примера нужно заменить на домены вашей ноды, а секреты MinIO и LiveKit — на собственные.</p>
+      <p>Проверьте значения в Setup UI: адреса из примера нужно заменить на домены вашей ноды, а секреты MinIO и LiveKit — на собственные. Ключи S3 и LiveKit намеренно остаются пустыми до первичной настройки.</p>
       <div class="scroll-x">
       <table>
         <thead><tr><th>Section</th><th>Key</th><th>Стоит по умолчанию</th><th>Что вписать</th></tr></thead>
         <tbody>
           <tr><td><code>ExternalEndpoint</code></td><td><code>Host</code></td><td><code>https://identity.example.com</code> и т.д.</td><td>Ваши субдомены — по записи на каждый сервис из таблицы в шаге 2. Отсюда клиенты узнают, куда ходить</td></tr>
-          <tr><td><code>S3Buckets:*</code></td><td><code>AccessKey</code>, <code>SecretKey</code></td><td><code>minioadmin</code></td><td><code>MINIO_ROOT_USER</code> и <code>MINIO_ROOT_PASSWORD</code> из <code>.env</code>. Ключи прописываются отдельно для каждого из шести бакетов</td></tr>
+          <tr><td><code>S3Buckets:*</code></td><td><code>AccessKey</code>, <code>SecretKey</code></td><td>пусто до Setup</td><td><code>MINIO_ROOT_USER</code> и <code>MINIO_ROOT_PASSWORD</code> из <code>.env</code>. Ключи прописываются отдельно для каждого из восьми бакетов</td></tr>
           <tr><td><code>S3Buckets:*</code></td><td><code>ServiceUrl</code></td><td><code>http://minio:9000</code></td><td>Оставить, если MinIO из этого же compose; заменить на адрес внешнего S3, если хранилище своё</td></tr>
-          <tr><td><code>LiveKit</code></td><td><code>ApiKey</code>, <code>ApiSecret</code></td><td><code>devkey</code> / <code>devsecret_change_me…</code></td><td>Свою пару — она же прописывается в <code>keys</code> в <code>livekit/livekit.yaml</code>. Иначе звонки сможет инициировать посторонний</td></tr>
+          <tr><td><code>LiveKit</code></td><td><code>ApiKey</code>, <code>ApiSecret</code></td><td>пусто до Setup</td><td>Свою пару — она же прописывается в <code>keys</code> в <code>livekit/livekit.yaml</code>. Иначе звонки сможет инициировать посторонний</td></tr>
           <tr><td><code>LiveKit</code></td><td><code>PublicUrl</code></td><td><code>wss://calls.example.com</code></td><td>Ваш субдомен LiveKit — по нему клиенты подключаются к медиасерверу</td></tr>
           <tr><td><code>NavigatorUrl</code></td><td>—</td><td><code>http://navigator:7010</code></td><td>Адрес каталога нод. Свой Navigator в compose не входит: укажите <code>https://navigator.barkfluff.com</code>, чтобы попасть в общий список, или свой каталог</td></tr>
         </tbody>
@@ -684,7 +684,8 @@ docker compose ps</code></pre>
         <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
         <pre><code>openssl x509 -in fullchain.pem -pubkey -noout \
   | openssl pkey -pubin -outform der \
-  | openssl dgst -sha256 -hex</code></pre>
+  | openssl dgst -sha256 -binary \
+  | base64</code></pre>
       </figure>
       <p>Проверить, что нода видна снаружи: <code>curl https://example.com/.well-known/barkfluff</code> должен вернуть подписанный документ с именем ноды, её адресом и ключами. Если вместо него <code>503</code> — не заполнены <code>ServerName</code> или <code>ExternalEndpoint</code>.</p>
       <div class="callout warn">

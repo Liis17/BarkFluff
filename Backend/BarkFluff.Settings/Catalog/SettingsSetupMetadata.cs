@@ -48,7 +48,9 @@ public static class SettingsSetupMetadata
         new("server", 10, "Сведения о сервере", "Эти данные увидят пользователи при выборе вашей ноды."),
         new("email", 20, "Почтовая доставка", "SMTP нужен для системных писем и уведомлений."),
         new("media", 30, "Публичный адрес медиа", "Адрес, по которому клиенты будут получать медиафайлы."),
-        new("federation", 40, "Федерация", "Параметры связи с другими нодами BarkFluff.")
+        new("storage", 40, "Объектное хранилище", "Учётные данные S3/MinIO для бакетов файлов."),
+        new("calls", 50, "Звонки", "Ключи LiveKit для выдачи токенов и проверки webhook."),
+        new("federation", 60, "Федерация", "Параметры связи с другими нодами BarkFluff.")
     ];
 
     public static SetupFieldMetadata Server(string key) => key switch
@@ -82,6 +84,32 @@ public static class SettingsSetupMetadata
         "HTTPS-origin без пути и query. Этот адрес используется клиентами для загрузки медиа.",
         SetupInputType.Url, SetupRequirement.Always, "public-https-origin", "https://files.example.com");
 
+    public static SetupFieldMetadata Storage(string bucket, string key) => key switch
+    {
+        "AccessKey" => new(
+            "storage", StorageOrder(bucket, key), $"S3 access key — {bucket}",
+            "Имя пользователя S3/MinIO для этого бакета. Для локального MinIO используйте MINIO_ROOT_USER.",
+            SetupInputType.Text, SetupRequirement.Always, "access-key", "MINIO_ROOT_USER"),
+        "SecretKey" => new(
+            "storage", StorageOrder(bucket, key), $"S3 secret key — {bucket}",
+            "Секрет S3/MinIO для этого бакета. Для локального MinIO используйте MINIO_ROOT_PASSWORD.",
+            SetupInputType.Secret, SetupRequirement.Always, "secret", "MINIO_ROOT_PASSWORD"),
+        _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown storage setup field.")
+    };
+
+    public static SetupFieldMetadata Calls(string key) => key switch
+    {
+        "ApiKey" => new(
+            "calls", 10, "LiveKit API key",
+            "Публичная часть пары LiveKit. Она должна совпадать с ключом в livekit/livekit.yaml.",
+            SetupInputType.Text, SetupRequirement.Always, "access-key", "Например, сгенерированный livekit-key"),
+        "ApiSecret" => new(
+            "calls", 20, "LiveKit API secret",
+            "Секрет LiveKit для подписи токенов и webhook. Он должен совпадать с livekit/livekit.yaml.",
+            SetupInputType.Secret, SetupRequirement.Always, "secret"),
+        _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown calls setup field.")
+    };
+
     public static SetupFieldMetadata Federation(string key) => key switch
     {
         "Enabled" => new("federation", 10, "Включить федерацию", "Включайте только если сервер должен обмениваться данными с другими нодами.", SetupInputType.Boolean, SetupRequirement.None, "boolean"),
@@ -100,6 +128,24 @@ public static class SettingsSetupMetadata
 
     public static string GetFieldId(SettingsCatalogEntry entry) =>
         $"{(int)entry.ServiceId}:{entry.StorageKey}";
+
+    private static int StorageOrder(string bucket, string key)
+    {
+        var bucketIndex = bucket switch
+        {
+            "barkfluff-uploads" => 0,
+            "profile-pictures" => 1,
+            "message-documents" => 2,
+            "message-videos" => 3,
+            "message-images" => 4,
+            "chat-pictures" => 5,
+            "badge-images" => 6,
+            "message-audio" => 7,
+            _ => throw new ArgumentOutOfRangeException(nameof(bucket), bucket, "Unknown storage bucket.")
+        };
+
+        return bucketIndex * 20 + (key == "AccessKey" ? 10 : 20);
+    }
 
     public static string ComputeFingerprint(IEnumerable<SettingsCatalogEntry> entries)
     {

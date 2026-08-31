@@ -33,7 +33,7 @@
 ## Оглавление
 
 1. [Общие типы](#общие-типы)
-2. [Инфраструктура и discovery](#1-инфраструктура-и-discovery) — Configuration, Navigator, Beacon
+2. [Инфраструктура и discovery](#1-инфраструктура-и-discovery) — Settings, Navigator, Beacon
 3. [Идентификация и устройства](#2-идентификация-и-устройства) — Identity, FastAuth, Users
 4. [Сообщения и коммуникация](#3-сообщения-и-коммуникация) — Messages, Updates, Onliner, Files
 5. [Звонки](#4-звонки) — Calls
@@ -68,9 +68,12 @@
 
 ## 1. Инфраструктура и discovery
 
-### 1.1 Configuration (порт 7003)
+### 1.1 Settings (порт 7003; wire-имя `ConfigurationApi`)
 
-Централизованная конфигурация всех сервисов. Proto: `configuration_api.proto` → сервис **`ConfigurationApi`**.
+Централизованные настройки всех сервисов хранятся в `BarkFluff.Settings`. Для
+совместимости старых клиентов proto, package, RPC и типы по-прежнему называются
+`configuration_api.proto`/`ConfigurationApi`; runtime endpoint обслуживает Settings.
+Для нового deployment используйте `SETTINGS_SERVICE_URL`.
 
 | RPC | Вход | Выход |
 |---|---|---|
@@ -606,8 +609,8 @@ ASP.NET Minimal API дашборд администратора. Аутенти�
 | POST | `/api/auth/request` | `username` | инициирует запрос подтверждения в Telegram |
 | GET | `/api/auth/status/{requestId}` | — | статус подтверждения (polling) |
 | GET | `/api/auth/me` / `/api/auth/me/avatar` | — | профиль/аватар текущего Telegram-админа |
-| GET | `/api/configuration/all` | — | все строки конфигурации (проксирует `ConfigurationApi.GetAllConfigurations`) |
-| POST | `/api/configuration/update` | `{section, key, serviceId, value}` | проксирует `ConfigurationApi.UpdateConfiguration` |
+| GET | `/api/configuration/all` | — | все строки Settings (legacy route; проксирует wire-compatible `ConfigurationApi.GetAllConfigurations`) |
+| POST | `/api/configuration/update` | `{section, key, serviceId, value}` | обновляет Settings через wire-compatible `ConfigurationApi.UpdateConfiguration` |
 | GET | `/api/configuration/s3-configuration` | — | конфигурация S3-бакетов |
 | POST | `/api/configuration/s3/update` | конфиг S3 | — |
 | POST | `/api/notifications/broadcast/all` | `{title, body, imageUrl?, confirm: true}` | `{enqueued: true}` → публикует `AdminBroadcastNotificationEvent` |
@@ -634,7 +637,7 @@ ASP.NET Minimal API дашборд администратора. Аутенти�
 | `FaviconController` | `GET /favicon.ico` | — | иконка |
 | `FallbackController` | `GET /{**catchAll}` | путь | `legal/*` → юр. документы; `selfhosted` → инструкция; иначе → страница профиля пользователя или `404.html` |
 
-### 8.4 ClientStorage (без указанного порта в конфиге; автономный, вне XAuth/Configuration)
+### 8.4 ClientStorage (без указанного порта в конфиге; автономный, вне XAuth/Settings)
 
 Хранилище клиентских дистрибутивов (Windows/WinUI/Android/macOS/iOS). REST на ASP.NET Core, S3 + SQLite.
 
