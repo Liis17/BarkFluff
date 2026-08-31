@@ -24,6 +24,18 @@ public sealed class SettingsReadinessContributorTests
         Assert.Equal(keys.Order(StringComparer.Ordinal), keys);
     }
 
+    [Fact]
+    public async Task Disabled_federation_does_not_block_readiness()
+    {
+        await using var context = CreateContext();
+        await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest")).SeedAsync();
+
+        var check = await new SettingsReadinessContributor(context).CheckAsync();
+
+        Assert.DoesNotContain("FederationSettings:Federation:ServerName", check.Error ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain("FederationSettings:Federation:ExternalEndpoint", check.Error ?? string.Empty, StringComparison.Ordinal);
+    }
+
     private static SettingsContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<SettingsContext>()

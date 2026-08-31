@@ -84,6 +84,34 @@ namespace BarkFluff.Settings.Persistence.Migrations
                     b.ToTable("SettingsHistory", (string)null);
                 });
 
+            modelBuilder.Entity("BarkFluff.Settings.Domain.SetupState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CatalogFingerprint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CompletedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CompletedFrom")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SetupState", (string)null);
+                });
+
             modelBuilder.Entity("BeaconSettings", b =>
                 {
                     b.Property<string>("Key")

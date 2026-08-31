@@ -9,7 +9,10 @@ public sealed record SettingsCatalogEntry(
     string StorageKey,
     Func<SettingsSeedValues, string> DefaultFactory,
     bool IsSensitive,
-    bool RequiresManualValue);
+    bool RequiresManualValue)
+{
+    public SetupFieldMetadata? Setup { get; init; }
+}
 
 public sealed record SettingsSeedValues(
     string PostgresHost,
@@ -113,15 +116,15 @@ public static class SettingsCatalog
 
         AddServiceBase(entries, ServiceId.Beacon);
         AddLiteral(entries, ServiceId.Beacon, "NavigatorUrl", "", "http://navigator:7010");
-        foreach (var key in new[] { "Name", "Description", "PublicName", "Location" }) AddManual(entries, ServiceId.Beacon, "ServerProps", key);
-        foreach (var key in new[] { "Lite", "Main", "Hard" }) AddManual(entries, ServiceId.Beacon, "ServerColor", key);
+        foreach (var key in new[] { "Name", "Description", "PublicName", "Location" }) AddManual(entries, ServiceId.Beacon, "ServerProps", key, SettingsSetupMetadata.Server(key));
+        foreach (var key in new[] { "Lite", "Main", "Hard" }) AddManual(entries, ServiceId.Beacon, "ServerColor", key, SettingsSetupMetadata.Color(key));
 
         AddPort(entries, ServiceId.Notifications);
-        foreach (var key in new[] { "Host", "Port", "SenderEmail", "SenderPassword" }) AddManual(entries, ServiceId.Notifications, "Email", key);
+        foreach (var key in new[] { "Host", "Port", "SenderEmail", "SenderPassword" }) AddManual(entries, ServiceId.Notifications, "Email", key, SettingsSetupMetadata.Email(key));
 
         AddServiceBase(entries, ServiceId.Files, "FilesDb");
         AddLiteral(entries, ServiceId.Files, "RunSettings", "Http1Port", "7006");
-        AddManual(entries, ServiceId.Files, "ExternalEndpoint", "MediaHost");
+        AddManual(entries, ServiceId.Files, "ExternalEndpoint", "MediaHost", SettingsSetupMetadata.Media());
         AddLiteral(entries, ServiceId.Files, "TempFiles", "ExpiresAt", "60");
         foreach (var bucket in new[] { "barkfluff-uploads", "profile-pictures", "message-documents", "message-videos", "message-images", "chat-pictures", "badge-images", "message-audio" })
         {
@@ -181,9 +184,9 @@ public static class SettingsCatalog
 
         AddPort(entries, ServiceId.Federation);
         AddDatabase(entries, ServiceId.Federation, "FederationDb");
-        AddLiteral(entries, ServiceId.Federation, "Federation", "Enabled", "false");
+        AddSetupControl(entries, ServiceId.Federation, "Federation", "Enabled", "false", SettingsSetupMetadata.Federation("Enabled"));
         foreach (var key in new[] { "ServerName", "ExternalEndpoint", "TlsSpkiSha256", "WellKnownPort", "KeyRotationOverlapDays", "SignatureWindowSeconds" })
-            AddManual(entries, ServiceId.Federation, "Federation", key);
+            AddManual(entries, ServiceId.Federation, "Federation", key, SettingsSetupMetadata.Federation(key));
         foreach (var (key, value) in new Dictionary<string, string>
         {
             ["ChatCreatedHourlyLimit"] = "100", ["MaxPresenceSubscriptionSize"] = "500",
@@ -226,14 +229,20 @@ public static class SettingsCatalog
     private static void AddLiteral(List<SettingsCatalogEntry> entries, ServiceId serviceId, string section, string key, string value, bool sensitive = false) =>
         AddDefault(entries, serviceId, section, key, _ => value, sensitive);
 
-    private static void AddManual(List<SettingsCatalogEntry> entries, ServiceId serviceId, string section, string key) =>
-        entries.Add(Create(serviceId, section, key, _ => string.Empty, IsSensitive(section, key), true));
+    private static void AddManual(List<SettingsCatalogEntry> entries, ServiceId serviceId, string section, string key, SetupFieldMetadata setup) =>
+        entries.Add(Create(serviceId, section, key, _ => string.Empty, IsSensitive(section, key), true, setup));
+
+    private static void AddSetupControl(List<SettingsCatalogEntry> entries, ServiceId serviceId, string section, string key, string value, SetupFieldMetadata setup) =>
+        entries.Add(Create(serviceId, section, key, _ => value, IsSensitive(section, key), false, setup));
 
     private static void AddDefault(List<SettingsCatalogEntry> entries, ServiceId serviceId, string section, string key, Func<SettingsSeedValues, string> factory, bool sensitive = false) =>
         entries.Add(Create(serviceId, section, key, factory, sensitive || IsSensitive(section, key), false));
 
-    private static SettingsCatalogEntry Create(ServiceId serviceId, string section, string key, Func<SettingsSeedValues, string> factory, bool sensitive, bool manual) =>
-        new(serviceId, section, key, string.IsNullOrEmpty(key) ? section : $"{section}:{key}", factory, sensitive, manual);
+    private static SettingsCatalogEntry Create(ServiceId serviceId, string section, string key, Func<SettingsSeedValues, string> factory, bool sensitive, bool manual, SetupFieldMetadata? setup = null) =>
+        new(serviceId, section, key, string.IsNullOrEmpty(key) ? section : $"{section}:{key}", factory, sensitive, manual)
+        {
+            Setup = setup
+        };
 
     private static bool IsSensitive(string section, string key) =>
         key is "SecretKey" or "Password" or "Token" or "ApiSecret" or "AccessKey" or "SenderPassword"
