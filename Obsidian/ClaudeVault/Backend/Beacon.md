@@ -15,7 +15,7 @@
 dotnet build Backend/BarkFluff.Beacon/BarkFluff.Beacon.csproj
 ```
 
-Порт задаётся через `BEACON_PORT` / `RunSettings__Port` env-переменные.
+Порт задаётся в Settings через `RunSettings:Port`.
 
 ## Архитектура
 

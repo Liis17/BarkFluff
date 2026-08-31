@@ -6,8 +6,6 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
 
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-
 using Serilog;
 
 namespace BarkFluff.Beacon;
@@ -22,24 +20,7 @@ public class Program
 
         builder.LoadConfiguration(ServiceId.Beacon);
         builder.AddBarkFluffSerilog("BarkFluff.Beacon");
-
-        var envPort = Environment.GetEnvironmentVariable("BEACON_PORT")
-                      ?? Environment.GetEnvironmentVariable("RunSettings__Port");
-
-        if (int.TryParse(envPort, out var dynamicPort))
-        {
-            builder.WebHost.ConfigureKestrel(options =>
-            {
-                options.ListenAnyIP(dynamicPort, o =>
-                {
-                    o.Protocols = HttpProtocols.Http2;
-                });
-            });
-        }
-        else
-        {
-            builder.SetRunningAddress(builder.Configuration);
-        }
+        builder.SetRunningAddress(builder.Configuration);
 
         builder.Services.AddMemoryCache();
         builder.Services.AddBarkFluffGrpc();
