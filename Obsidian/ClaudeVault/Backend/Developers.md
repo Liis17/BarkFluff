@@ -113,8 +113,8 @@ docker build -t barkfluff-developers .
 
 CI собирает сервис из `Dockerfile.slim`, как и [[Backend/Users]]. Dockerfile собирает
 `Frontend/Developers` через Node/Vite и копирует `dist/` в `/app/wwwroot` образа.
-Переменные `DEVELOPERS_PORT` и `DEVELOPERS_HTTP1PORT` позволяют переопределить API- и
-static-порты.
+API- и static-порты задаются в Settings через `RunSettings:Port` и
+`RunSettings:Http1Port`.
 
 ## Связанные файлы
 

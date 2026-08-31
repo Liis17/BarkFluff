@@ -22,13 +22,9 @@ public class Program
         builder.AddBarkFluffSerilog("BarkFluff.Developers");
 
         var port = builder.Configuration.GetValue<int>("RunSettings:Port");
-        if (int.TryParse(Environment.GetEnvironmentVariable("DEVELOPERS_PORT"), out var configuredPort))
-            port = configuredPort;
         if (port <= 0) port = 7020;
 
         var staticPort = builder.Configuration.GetValue<int>("RunSettings:Http1Port");
-        if (int.TryParse(Environment.GetEnvironmentVariable("DEVELOPERS_HTTP1PORT"), out var configuredStaticPort))
-            staticPort = configuredStaticPort;
         if (staticPort <= 0) staticPort = 7021;
         if (staticPort == port)
             throw new InvalidOperationException("Developers API and static ports must be different.");
