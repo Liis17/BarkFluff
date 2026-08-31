@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="360" viewBox="0 0 1600 360" role="img" aria-labelledby="title description">
+  <title id="title">BarkFluff project status</title>
+  <desc id="description">BarkFluff is under active development.</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#181818"/><stop offset="1" stop-color="#321d4b"/></linearGradient><linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#bb86fc"/><stop offset="1" stop-color="#7c4dff"/></linearGradient></defs>
+  <rect width="1600" height="360" rx="32" fill="url(#bg)"/>
+  <circle cx="1324" cy="-20" r="242" fill="#bb86fc" fill-opacity=".16"/>
+  <circle cx="1380" cy="175" r="92" fill="none" stroke="#d9c2ff" stroke-opacity=".52" stroke-width="12"/>
+  <path d="M1339 175l28 28 56-64" fill="none" stroke="#d9c2ff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="104" y="108" width="142" height="34" rx="17" fill="url(#accent)"/>
+  <text x="104" y="205" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="700">Active development</text>
+  <text x="104" y="260" fill="#d9c2ff" font-family="Arial, Helvetica, sans-serif" font-size="27" letter-spacing="2">BUILDING THE DISTRIBUTED MESSENGER IN THE OPEN</text>
+</svg>
