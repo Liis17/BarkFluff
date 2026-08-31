@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="460" height="132" viewBox="0 0 460 132" role="img" aria-labelledby="title">
-  <title id="title">Download BarkFluff for Windows</title>
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#252525"/><stop offset="1" stop-color="#3a2358"/></linearGradient></defs>
-  <rect x="2" y="2" width="456" height="128" rx="22" fill="url(#bg)" stroke="#c9a7ff" stroke-opacity=".55" stroke-width="3"/>
-  <g fill="#bb86fc"><path d="M42 33l30-4v32H42V33zm36-5l40-6v39H78V28zM42 68h30v32l-30-4V68zm36 0h40v42l-40-6V68z"/></g>
-  <text x="146" y="52" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="20" letter-spacing="2">DOWNLOAD FOR</text>
-  <text x="146" y="91" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="700">Windows</text>
-  <path d="M405 53v29m0 0l-13-13m13 13l13-13" fill="none" stroke="#d9c2ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
