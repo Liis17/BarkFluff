@@ -13,6 +13,7 @@ public class SensitiveConfigMaskerTests
     [InlineData("JwtSettings", "SecretKey", true)]
     [InlineData("Mail", "Password", true)]
     [InlineData("Identity", "ServiceToken", true)]
+    [InlineData("LiveKit", "ApiKey", true)]
     [InlineData("IdentityDb", "", true)]
     [InlineData("FederationDb", "", true)]
     [InlineData("S3Buckets:profile-pictures", "ServiceUrl", false)]

@@ -68,7 +68,7 @@ SSH-параметры больше не передаются через `.env` 
 | `UsersServerApi` | Пользователи, бейджи |
 | `FilesServerApi` | Файлы, S3 |
 | `IdentityServerApi` | Авторизация |
-| `ConfigurationApi` | Конфигурация |
+| `ConfigurationApi` | Runtime-настройки из [[Backend/Settings]] (wire-compatible имя старого API) |
 | `BotsServerApi` | Боты ([[Backend/Bots]]): создание, профиль, preview-аватары, токены, удаление |
 
 Ключи: `{Service}Service:Host` и `{Service}Service:Token`.
@@ -236,13 +236,13 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 
 ## Вкладка «Конфигурация» (`/configuration`)
 
-`Pages/v2/configuration.html` (маршрут `/settings`, старый `/configuration` оставлен alias) — просмотр и правка строк Settings через wire-compatible `ConfigurationApi`. Группировка по сервису, клиентский поиск и **серверная маскировка секретов** (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL (`http(s)` и `ws(s)` для LiveKit), секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет». История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Settings, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
+`Pages/v2/configuration.html` (маршрут `/settings`, старый `/configuration` оставлен alias) — просмотр и правка строк [[Backend/Settings]] через wire-compatible `ConfigurationApi`. UI группирует строки по 16 физическим таблицам (`GlobalSettings`, `IdentitySettings`, …, `FederationSettings`) и показывает фактический storage key из колонки `Key`; legacy `serviceId/section/key` остаются только транспортными координатами update/history RPC. Поиск работает по имени таблицы, storage key, legacy section и значению. Секреты маскируются на сервере (`Services/SensitiveConfigMasker`: ключ/секция содержит `token|secret|password|accesskey|apikey` → значение заменяется на `••••••••`). `ConfigurationFieldCatalog` консервативно определяет тип существующего значения/ключа: boolean → select, integer/port → number (порт 1–65535), URL/Host/Endpoint → URL (`http(s)` и `ws(s)` для LiveKit), секрет → password, остальное → text; те же правила повторно проверяются endpoint-ом. Перед записью UI обязательно показывает diff «было → станет» с именем таблицы и storage key. История открывается из каждой строки; rollback восстанавливает `PreviousValue` выбранной ревизии, требует `config.write` + Telegram step-up и сам записывается новой ревизией. Значения секретов в diff и истории не возвращаются браузеру. `EditedAt` ставит Settings, `EditedBy` = имя админа из сессии, `EditedFrom` = IP.
 
 Endpoints (`Endpoints/ConfigurationEndpoints.cs`):
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations`; добавляет `serviceName`, маску секрета и метаданные поля (`fieldType`, required/min/max/hint) |
+| GET | `/api/configuration/all` | Все строки через rpc `GetAllConfigurations`; восстанавливает текущие `settingsTable` и `storageKey`, добавляет legacy `serviceName`, маску секрета и метаданные поля (`fieldType`, required/min/max/hint) |
 | POST | `/api/configuration/update` | Валидирует типизированное значение, затем `{ section, key, serviceId, value }` → rpc `UpdateConfiguration`; `key: ""` допустим для section-only строк (`DevelopersDb`, `Redis`, `NavigatorUrl`), а legacy-пробелы в таких строках выдаются как пустой ключ; маска вместо секрета отклоняется с 400 |
 | GET | `/api/configuration/history` | История ключа по `section`, `key`, `serviceId`; секретные old/new values маскируются |
 | POST | `/api/configuration/rollback` | `{ revisionId }` → rpc `RollbackConfiguration`; `config.write` + step-up |

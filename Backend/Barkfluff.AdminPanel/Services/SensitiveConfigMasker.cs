@@ -9,7 +9,7 @@ public static partial class SensitiveConfigMasker
 {
     public const string MaskedValue = "••••••••";
 
-    [GeneratedRegex("token|secret|password|accesskey", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("token|secret|password|accesskey|apikey", RegexOptions.IgnoreCase)]
     private static partial Regex SensitivePattern();
 
     public static bool IsSensitive(string section, string key) =>
