@@ -52,12 +52,20 @@ suspend fun refreshServerInfoFromBeacon(
 
     val infoResult = grpcManager.getServerInfo()
     val serverInfo = infoResult.getOrNull() ?: return ServerInfoRefreshResult.Unavailable
+    val effectiveServerInfo = if (
+        serverInfo.filesMediaEndpoint.isBlank() && globalParam.socketFilesMedia.isNotBlank()
+    ) {
+        // Старый Beacon может не вернуть поле, уже полученное из Navigator.
+        serverInfo.copy(filesMediaEndpoint = globalParam.socketFilesMedia)
+    } else {
+        serverInfo
+    }
     val approvalRequired = try {
         withContext(Dispatchers.IO) {
             TlsServerCertificatePreflight(
                 TlsTrustStore(context.applicationContext),
                 TlsCertificateProbe()
-            ).approvalRequired(serverInfo)
+            ).approvalRequired(effectiveServerInfo)
         }
     } catch (_: TlsEndpointSecurityException) {
         return ServerInfoRefreshResult.CertificateRejected
@@ -65,7 +73,7 @@ suspend fun refreshServerInfoFromBeacon(
     if (approvalRequired != null) {
         return ServerInfoRefreshResult.CertificateApprovalRequired
     }
-    globalParam.applyServerInfo(serverInfo)
+    globalParam.applyServerInfo(effectiveServerInfo)
     return ServerInfoRefreshResult.Refreshed
 }
 

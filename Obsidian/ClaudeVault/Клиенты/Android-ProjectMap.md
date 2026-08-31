@@ -126,7 +126,7 @@ DeepLinkActivity (перехват bf:// ссылок)
 Выбор сервера. Загружает список серверов через `GrpcManager.getServerList()` (Navigator API). При ручном вводе адреса — валидирует формат `host:port`. При выборе:
 
 1. Создаёт Beacon-клиент → запрашивает `getServerInfo()`
-2. Сохраняет все endpoint-адреса в `GlobalParam` (`socketIdentity`, `socketUsers`, `socketFiles`, `socketMessages`, `socketUpdates`, `socketOnliner`)
+2. Сохраняет все endpoint-адреса в `GlobalParam` (`socketIdentity`, `socketUsers`, `socketFiles`, `socketFilesMedia`, `socketMessages`, `socketUpdates`, `socketOnliner`); `socketFilesMedia` берётся из Navigator, а при пустом значении — из Beacon
 3. → `LoginActivity`
 
 **Связи:** `GlobalParam`, `GrpcManager`, `ServerAdapter`, `LoginActivity`
@@ -434,7 +434,9 @@ Toggle уведомлений, настройки каналов Android.
 
 **Тип:** AppCompatActivity
 
-"О приложении": версия, лицензии, ссылки.
+"О приложении": версия, лицензии, ссылки. В диагностической карточке сервисов отдельный
+Files HTTP проверяется запросом `GET /web/download/{случайный UUID}`: любой HTTP-ответ
+считается признаком доступного media listener.
 
 **Связи:** `AppVersionUtil`
 
@@ -608,7 +610,7 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 
 ### `data/ServerDataElement.kt`
 
-Data class для элемента списка серверов (ip, title, description, userCount, publicName, location, hexColor).
+Data class для элемента списка серверов (ip, title, description, userCount, publicName, location, hexColor, filesMediaEndpoint).
 
 ---
 
