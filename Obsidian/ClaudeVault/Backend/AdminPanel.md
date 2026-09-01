@@ -99,6 +99,8 @@ SSH-параметры больше не передаются через `.env` 
 
 Статические HTML-файлы в `Pages/` (`CopyToOutputDirectory=Always`). Шаблонизация: `{{SERVER_STARTED_AT_UTC}}` заменяется в `ServeHtmlFile()`. Маршруты страниц явно в `Program.cs`. Для актуального RBAC UI в publish входят `Pages/v2/admins.html`, `Pages/v2/audit.html`, `assets/api.js`, `assets/command-palette.js` и `assets/preview-mode.js`.
 
+Страницы ожидания `/restarting` и `/updating` используют `assets/admin-panel-wait.js` и проверяют именно `GET /services`: редирект выполняется только после трёх последовательных ответов `200` от нового экземпляра AdminPanel. Проверки выполняются последовательно, сбой сбрасывает счётчик, а маркер `X-Admin-Panel-Started-At` не позволяет засчитать ответы старого процесса во время загрузки нового образа. До подтверждения стабильности браузер остаётся на странице ожидания; HTML-страницы отдаются с `Cache-Control: no-store`.
+
 ### Services
 
 - `DockerService` — управление Docker-контейнерами

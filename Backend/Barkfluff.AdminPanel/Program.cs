@@ -408,6 +408,9 @@ public class Program
         var pagesPath = Path.Combine(AppContext.BaseDirectory, "Pages");
         var filePath = Path.Combine(pagesPath, fileName);
 
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers["X-Admin-Panel-Started-At"] = StartedAtUtc.ToString("o");
+
         if (!File.Exists(filePath))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
