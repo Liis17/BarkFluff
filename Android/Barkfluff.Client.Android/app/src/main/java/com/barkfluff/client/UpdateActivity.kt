@@ -304,13 +304,23 @@ class UpdateActivity : AppCompatActivity() {
     }
 
     private suspend fun downloadApk(url: HttpUrl, destFile: File) = withContext(Dispatchers.IO) {
+        UpdateServerTls.withFallback { trust ->
+            downloadApkOnce(url, destFile, trust)
+        }
+    }
+
+    private suspend fun downloadApkOnce(
+        url: HttpUrl,
+        destFile: File,
+        trust: UpdateServerTls.Trust?
+    ) {
         val builder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             // APK крупный — общий таймаут на вызов выключен, ограничиваемся паузами в чтении.
             .callTimeout(0, TimeUnit.MILLISECONDS)
-        UpdateServerTls.trust?.let { trust ->
-            builder.sslSocketFactory(trust.socketFactory, trust.trustManager)
+        trust?.let { embeddedTrust ->
+            builder.sslSocketFactory(embeddedTrust.socketFactory, embeddedTrust.trustManager)
         }
         val client = builder.build()
 

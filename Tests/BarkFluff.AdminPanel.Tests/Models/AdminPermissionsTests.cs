@@ -51,8 +51,16 @@ public class AdminPermissionsTests
     }
 
     [Fact]
-    public void IsAllowed_UnknownPermission_Denied()
+    public void IsAllowed_UnknownPermission_DeniedForDynamicAndAllowedForOwner()
     {
         Assert.False(AdminPermissions.IsAllowed("does.not.exist", AdminRoles.ActiveRoles.ToHashSet()));
+        Assert.True(AdminPermissions.IsAllowed("does.not.exist", [AdminRole.Owner]));
+    }
+
+    [Fact]
+    public void Owner_IsAllowedForEveryKnownPermission()
+    {
+        foreach (var permission in MatrixCases.Select(m => (string)m[0]).Distinct())
+            Assert.True(AdminPermissions.IsAllowed(permission, [AdminRole.Owner]));
     }
 }

@@ -350,11 +350,18 @@
 
     <x:String x:Key="Settings_Update_Title">Update</x:String>
     <x:String x:Key="Settings_Update_CurrentVersion">Current version</x:String>
+    <x:String x:Key="Settings_Update_Channel">Update channel</x:String>
     <x:String x:Key="Settings_Update_ChannelRelease">Release</x:String>
-    <x:String x:Key="Settings_Update_ChannelBeta">Beta</x:String>
+    <x:String x:Key="Settings_Update_ChannelDev">Dev</x:String>
+    <x:String x:Key="Settings_Update_ChannelNightly">Nightly</x:String>
+    <x:String x:Key="Settings_Update_ChannelUnavailable">Unavailable for this package</x:String>
     <x:String x:Key="Settings_Update_Check">Check for updates</x:String>
     <x:String x:Key="Settings_Update_Download">Update</x:String>
     <x:String x:Key="Settings_Update_Checking">Checking for updates…</x:String>
+    <x:String x:Key="Settings_Update_Downloading">Downloading update…</x:String>
+    <x:String x:Key="Settings_Update_DownloadFailed">The update package could not be downloaded.</x:String>
+    <x:String x:Key="Settings_Update_LaunchFailed">App Installer could not be opened.</x:String>
+    <x:String x:Key="Settings_Update_Launched">Opening App Installer…</x:String>
     <x:String x:Key="Settings_Update_UpToDate">You are on the latest version</x:String>
     <x:String x:Key="Settings_Update_Available">Version {0} is available</x:String>
     <x:String x:Key="Settings_Update_OpenSite">Open barkfluff.com</x:String>

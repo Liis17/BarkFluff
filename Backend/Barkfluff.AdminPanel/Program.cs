@@ -68,8 +68,9 @@ public class Program
         // Register Services
         builder.Services.AddSingleton<PendingAuthService>();
         builder.Services.AddSingleton<TokenService>();
-        builder.Services.AddSingleton<AuthService>();
         builder.Services.AddSingleton<AdminService>();
+        builder.Services.AddSingleton<AdminInvitationService>();
+        builder.Services.AddSingleton<AuthService>();
         builder.Services.AddSingleton<StepUpService>();
         builder.Services.AddSingleton<AuditService>();
         builder.Services.AddScoped<UserSessionRevocationService>();
@@ -212,7 +213,13 @@ public class Program
                 {
                     throw new InvalidOperationException(
                         "No admins configured. Please set 'Telegram:Admins' in appsettings.json or via environment variable 'Telegram__Admins'. " +
-                        "Format: 'userId1:username1,userId2:username2'");
+                        "Format: 'userId:username'");
+                }
+
+                if (settings.ParsedAdmins.Count != 1)
+                {
+                    throw new InvalidOperationException(
+                        "Exactly one 'Telegram:Admins' entry is required; it is the immutable owner identity.");
                 }
 
                 // Check for duplicate usernames
@@ -244,7 +251,8 @@ public class Program
 
         var app = builder.Build();
 
-        // Bootstrap admin role records from Telegram:Admins (idempotent)
+        // Bootstrap the immutable owner from Telegram:Admins (idempotent).
+        // Accepted administrators are persisted in LiteDB and are not removed here.
         app.Services.GetRequiredService<AdminService>().EnsureBootstrapped();
 
         // Configure the pipeline
@@ -400,6 +408,9 @@ public class Program
         var pagesPath = Path.Combine(AppContext.BaseDirectory, "Pages");
         var filePath = Path.Combine(pagesPath, fileName);
 
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers["X-Admin-Panel-Started-At"] = StartedAtUtc.ToString("o");
+
         if (!File.Exists(filePath))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -422,7 +433,9 @@ public class TelegramSettings
     public TelegramProxySettings Proxy { get; set; } = new();
 
     /// <summary>
-    /// String containing admins in format "userId1:username1,userId2:username2"
+    /// String containing the single owner in format "userId:username".
+    /// The parser still accepts the historical comma-separated form so startup
+    /// can report a clear multiple-owner configuration error.
     /// </summary>
     public string Admins { get; set; } = string.Empty;
 
@@ -457,7 +470,7 @@ public class AdminUser
     }
 
     /// <summary>
-    /// Parse a string in format "userId1:username1,userId2:username2"
+    /// Parse a string in format "userId:username" (or the historical comma-separated form).
     /// </summary>
     public static List<AdminUser> Parse(string adminsString)
     {

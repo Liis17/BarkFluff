@@ -19,9 +19,16 @@ CONFIGURATION_SERVICE_URL=http://settings:7003
 
 ## Persistence
 
-PostgreSQL БД по умолчанию — `settings`. Startup initializer делает до пяти попыток, через Npgsql создаёт отсутствующую БД, применяет EF migrations, дополняет каталог и проверяет инварианты. Ошибка bootstrap останавливает запуск.
+PostgreSQL БД по умолчанию — `settings`. Docker `postgres-bootstrap` до запуска
+Settings идемпотентно создаёт отсутствующие базы, включая `settings`; существующие
+базы не удаляет и не пересоздаёт. Сам startup initializer делает до пяти попыток
+подключения, применяет EF migrations, дополняет каталог и проверяет инварианты.
+Если Settings запущен вне этого bootstrap и БД отсутствует, запуск останавливается
+без создания новой БД.
+Записи конфигурации, история и setup-операции с явной транзакцией выполняются через EF execution strategy, чтобы совместить `EnableRetryOnFailure` с блокировкой строк и атомарным commit.
 
 16 таблиц (`GlobalSettings`, `IdentitySettings`, …, `FederationSettings`) используют один shared CLR-тип `SettingRow`. В каждой только `Key` (полный IConfiguration-путь, PK), `Value`, `EditedBy`, `EditedAt`. Section-only параметры хранятся одним ключом (`Redis`, `DevelopersDb`, `NavigatorUrl`), вложенные — полным путём (`S3Buckets:message-audio:SecretKey`). Для каждого S3-бакета seed добавляет `S3Buckets:{bucket}:Region` со значением `auto`, подходящим для Cloudflare R2; оператор может изменить его через AdminPanel.
+`SettingsSeeder` работает только в режиме insert-only: при старте он добавляет отсутствующие строки каталога и не изменяет уже сохранённые значения. Изменения существующих значений выполняются только явными операциями AdminPanel (update/setup/rollback).
 
 `SettingsHistory` бессрочно хранит old/new value, автора, источник, вид изменения и optional self-reference `SourceRevisionId` для rollback. Индекс: `(SettingsTable, Key, ChangedAt DESC, Id DESC)`. `EditedFrom` в рабочих строках отсутствует и для compatibility-ответа берётся из последней revision. Seed не создаёт историю.
 
@@ -41,13 +48,13 @@ PostgreSQL БД по умолчанию — `settings`. Startup initializer де
 После завершения в `SetupState` сохраняется fingerprint каталога и время операции.
 Наличие записи `SetupState` означает необратимую блокировку setup API; fingerprint
 остаётся для аудита и диагностики и не открывает setup повторно при добавлении новых
-полей. Дальнейшие изменения выполняются AdminPanel. Bootstrap создаёт только БД `settings`, старые
-данные Configuration не импортируются.
+полей. Дальнейшие изменения выполняются AdminPanel. Bootstrap создаёт только отсутствующие
+сервисные БД, старые данные Configuration не импортируются.
 
 ## Переменные окружения
 
 - `SETTINGS_HOST`, `SETTINGS_DBPORT`, `SETTINGS_DATABASE`, `SETTINGS_USERNAME`, `SETTINGS_PASSWORD`
-- `SETTINGS_ADMIN_DATABASE` (по умолчанию `postgres`), `SETTINGS_PORT` (по умолчанию `7003`)
+- `SETTINGS_PORT` (по умолчанию `7003`)
 - `CONFIGURATION_SERVICE_URL` поддерживается только как runtime-fallback для старых образов; новые deployment-конфигурации используют `SETTINGS_SERVICE_URL`
 - `SETTINGS_SETUP_MODE`, `SETTINGS_SETUP_SECRET_FILE`/`SETTINGS_SETUP_TOKEN` — включение и секрет setup gRPC API
 - `SETTINGS_SERVICE_URL` — адрес Settings, который используют потребители

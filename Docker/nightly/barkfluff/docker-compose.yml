@@ -28,7 +28,6 @@ services:
       SETTINGS_HOST: "postgres"
       SETTINGS_DBPORT: "5432"
       SETTINGS_DATABASE: "${SETTINGS_DATABASE:-settings}"
-      SETTINGS_ADMIN_DATABASE: "${SETTINGS_ADMIN_DATABASE:-postgres}"
       SETTINGS_USERNAME: "${POSTGRES_USER}"
       SETTINGS_PASSWORD: "${POSTGRES_PASSWORD}"
       SETTINGS_PORT: "${SETTINGS_PORT:-7003}"
@@ -38,7 +37,10 @@ services:
     networks:
       - barkfluff-network
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      postgres-bootstrap:
+        condition: service_completed_successfully
 
   files:
     image: docker.barkfluff.com/barkfluff-files-nightly:latest
@@ -378,13 +380,40 @@ services:
     environment:
       POSTGRES_USER: "${POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_DB: "${POSTGRES_DB:-postgres}"
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./data/postgres:/var/lib/postgresql
       - ./backups:/backup
     ports:
       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - barkfluff-network
+
+  postgres-bootstrap:
+    image: postgres:18
+    restart: "no"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for database in "$${SETTINGS_DATABASE:-settings}" identity users messages files onliner calls bots federation developers; do
+          echo "Ensuring PostgreSQL database exists: $$database"
+          createdb --if-not-exists --maintenance-db=postgres "$$database"
+        done
+    environment:
+      PGHOST: "postgres"
+      PGPORT: "5432"
+      PGUSER: "${POSTGRES_USER}"
+      PGPASSWORD: "${POSTGRES_PASSWORD}"
+      SETTINGS_DATABASE: "${SETTINGS_DATABASE:-settings}"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - barkfluff-network
 

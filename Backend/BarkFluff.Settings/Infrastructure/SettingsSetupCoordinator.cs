@@ -115,71 +115,75 @@ public sealed class SettingsSetupCoordinator
         string editedFrom,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await BeginTransactionAsync(cancellationToken);
-        await AcquireDatabaseLockAsync(cancellationToken);
-
-        var before = await GetSnapshotCoreAsync(cancellationToken);
-        if (before.Locked)
-            throw new SetupLockedException();
-
-        var group = SettingsSetupMetadata.Groups.SingleOrDefault(item => item.Id == groupId)
-            ?? throw new KeyNotFoundException($"Unknown setup group '{groupId}'.");
-        var entries = SettingsCatalog.All
-            .Where(entry => entry.Setup?.GroupId == group.Id)
-            .OrderBy(entry => entry.Setup!.Order)
-            .ToArray();
-        var knownIds = entries.ToDictionary(SettingsSetupMetadata.GetFieldId, StringComparer.Ordinal);
-        var unknown = values.Keys.Where(key => !knownIds.ContainsKey(key)).Order(StringComparer.Ordinal).ToArray();
-        if (unknown.Length > 0)
-            throw new ArgumentException($"Unknown fields in setup group '{groupId}': {string.Join(", ", unknown)}.");
-
-        var current = await ReadSetupValuesAsync(cancellationToken);
-        var federationEnabled = IsFederationEnabled(current);
-        if (group.Id == "federation"
-            && values.TryGetValue(SettingsSetupMetadata.GetFieldId(knownIds.Values.Single(entry => entry.Key == "Enabled")), out var enabledValue)
-            && bool.TryParse(enabledValue, out var requestedFederationEnabled))
-            federationEnabled = requestedFederationEnabled;
-
-        var changed = 0;
-        foreach (var (fieldId, rawValue) in values)
+        var changed = await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            var entry = knownIds[fieldId];
-            if (entry.Setup!.Requirement == SetupRequirement.FederationEnabled && !federationEnabled
-                && entry.StorageKey != "Federation:Enabled")
-                continue;
+            await using var transaction = await BeginTransactionAsync(cancellationToken);
+            await AcquireDatabaseLockAsync(cancellationToken);
 
-            var scope = SettingsScopes.Get(entry.ServiceId);
-            var row = await GetLockedRowAsync(scope, entry.StorageKey, cancellationToken)
-                ?? throw new InvalidOperationException($"Catalog row {scope.TableName}.{entry.StorageKey} is missing.");
-            var currentValue = row.Value;
-            var result = SettingsSetupValidation.Validate(entry, rawValue, currentValue);
-            if (!result.IsValid)
-                throw new SetupFieldValidationException(fieldId, result.Error ?? "Invalid setup value.");
+            var before = await GetSnapshotCoreAsync(cancellationToken);
+            if (before.Locked)
+                throw new SetupLockedException();
 
-            if (string.Equals(result.Value, currentValue, StringComparison.Ordinal))
-                continue;
+            var group = SettingsSetupMetadata.Groups.SingleOrDefault(item => item.Id == groupId)
+                ?? throw new KeyNotFoundException($"Unknown setup group '{groupId}'.");
+            var entries = SettingsCatalog.All
+                .Where(entry => entry.Setup?.GroupId == group.Id)
+                .OrderBy(entry => entry.Setup!.Order)
+                .ToArray();
+            var knownIds = entries.ToDictionary(SettingsSetupMetadata.GetFieldId, StringComparer.Ordinal);
+            var unknown = values.Keys.Where(key => !knownIds.ContainsKey(key)).Order(StringComparer.Ordinal).ToArray();
+            if (unknown.Length > 0)
+                throw new ArgumentException($"Unknown fields in setup group '{groupId}': {string.Join(", ", unknown)}.");
 
-            var changedAt = DateTime.UtcNow;
-            row.Value = result.Value;
-            row.EditedBy = NormalizeActor(editedBy);
-            row.EditedAt = changedAt;
-            _context.SettingsHistory.Add(new SettingRevision
+            var current = await ReadSetupValuesAsync(cancellationToken);
+            var federationEnabled = IsFederationEnabled(current);
+            if (group.Id == "federation"
+                && values.TryGetValue(SettingsSetupMetadata.GetFieldId(knownIds.Values.Single(entry => entry.Key == "Enabled")), out var enabledValue)
+                && bool.TryParse(enabledValue, out var requestedFederationEnabled))
+                federationEnabled = requestedFederationEnabled;
+
+            var changed = 0;
+            foreach (var (fieldId, rawValue) in values)
             {
-                SettingsTable = scope.TableName,
-                Key = entry.StorageKey,
-                PreviousValue = currentValue,
-                NewValue = result.Value,
-                ChangedAt = changedAt,
-                ChangedBy = NormalizeActor(editedBy),
-                ChangedFrom = editedFrom ?? string.Empty,
-                ChangeKind = "Setup"
-            });
-            changed++;
-        }
+                var entry = knownIds[fieldId];
+                if (entry.Setup!.Requirement == SetupRequirement.FederationEnabled && !federationEnabled
+                    && entry.StorageKey != "Federation:Enabled")
+                    continue;
 
-        await _context.SaveChangesAsync(cancellationToken);
-        if (transaction is not null)
-            await transaction.CommitAsync(cancellationToken);
+                var scope = SettingsScopes.Get(entry.ServiceId);
+                var row = await GetLockedRowAsync(scope, entry.StorageKey, cancellationToken)
+                    ?? throw new InvalidOperationException($"Catalog row {scope.TableName}.{entry.StorageKey} is missing.");
+                var currentValue = row.Value;
+                var result = SettingsSetupValidation.Validate(entry, rawValue, currentValue);
+                if (!result.IsValid)
+                    throw new SetupFieldValidationException(fieldId, result.Error ?? "Invalid setup value.");
+
+                if (string.Equals(result.Value, currentValue, StringComparison.Ordinal))
+                    continue;
+
+                var changedAt = DateTime.UtcNow;
+                row.Value = result.Value;
+                row.EditedBy = NormalizeActor(editedBy);
+                row.EditedAt = changedAt;
+                _context.SettingsHistory.Add(new SettingRevision
+                {
+                    SettingsTable = scope.TableName,
+                    Key = entry.StorageKey,
+                    PreviousValue = currentValue,
+                    NewValue = result.Value,
+                    ChangedAt = changedAt,
+                    ChangedBy = NormalizeActor(editedBy),
+                    ChangedFrom = editedFrom ?? string.Empty,
+                    ChangeKind = "Setup"
+                });
+                changed++;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+                await transaction.CommitAsync(cancellationToken);
+            return changed;
+        });
         _metrics?.Add("setup_group_fields_changed", changed);
         return await GetSnapshotCoreAsync(cancellationToken);
     }
@@ -189,39 +193,44 @@ public sealed class SettingsSetupCoordinator
         string completedFrom,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await BeginTransactionAsync(cancellationToken);
-        await AcquireDatabaseLockAsync(cancellationToken);
-
-        var snapshot = await GetSnapshotCoreAsync(cancellationToken);
-        if (snapshot.Locked)
-            return snapshot;
-
-        if (!snapshot.Complete)
+        var completed = await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            var missing = snapshot.Groups
-                .SelectMany(group => group.Fields)
-                .Where(field => field.Applicable && field.Required && (!field.Configured || field.Error is not null))
-                .Select(field => field.Id)
-                .ToArray();
-            throw new SetupIncompleteException(missing);
-        }
+            await using var transaction = await BeginTransactionAsync(cancellationToken);
+            await AcquireDatabaseLockAsync(cancellationToken);
 
-        var state = await _context.SetupStates.SingleOrDefaultAsync(state => state.Id == CompletionStateId, cancellationToken);
-        var now = DateTime.UtcNow;
-        if (state is null)
-        {
-            state = new SetupState { Id = CompletionStateId };
-            _context.SetupStates.Add(state);
-        }
+            var snapshot = await GetSnapshotCoreAsync(cancellationToken);
+            if (snapshot.Locked)
+                return false;
 
-        state.CatalogFingerprint = snapshot.CatalogFingerprint;
-        state.CompletedAtUtc = now;
-        state.CompletedBy = NormalizeActor(completedBy);
-        state.CompletedFrom = completedFrom ?? string.Empty;
-        await _context.SaveChangesAsync(cancellationToken);
-        if (transaction is not null)
-            await transaction.CommitAsync(cancellationToken);
-        _metrics?.Increment("setup_completions");
+            if (!snapshot.Complete)
+            {
+                var missing = snapshot.Groups
+                    .SelectMany(group => group.Fields)
+                    .Where(field => field.Applicable && field.Required && (!field.Configured || field.Error is not null))
+                    .Select(field => field.Id)
+                    .ToArray();
+                throw new SetupIncompleteException(missing);
+            }
+
+            var state = await _context.SetupStates.SingleOrDefaultAsync(state => state.Id == CompletionStateId, cancellationToken);
+            var now = DateTime.UtcNow;
+            if (state is null)
+            {
+                state = new SetupState { Id = CompletionStateId };
+                _context.SetupStates.Add(state);
+            }
+
+            state.CatalogFingerprint = snapshot.CatalogFingerprint;
+            state.CompletedAtUtc = now;
+            state.CompletedBy = NormalizeActor(completedBy);
+            state.CompletedFrom = completedFrom ?? string.Empty;
+            await _context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+                await transaction.CommitAsync(cancellationToken);
+            return true;
+        });
+        if (completed)
+            _metrics?.Increment("setup_completions");
         return await GetSnapshotCoreAsync(cancellationToken);
     }
 

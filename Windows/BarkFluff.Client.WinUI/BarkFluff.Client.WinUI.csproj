@@ -29,6 +29,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--  CI временно подставляет сюда Cloudflare Origin CA для встроенного загрузчика обновлений.  -->
+    <Content Include="Resources\Update\storage-ca.pem" Condition="Exists('Resources\Update\storage-ca.pem')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
@@ -79,7 +87,7 @@
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <PackageCertificateThumbprint>4D67ADA3360093961E50E9673A791187EE7B43B0</PackageCertificateThumbprint>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
-    <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+    <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
     <AppxPackageDir>C:\Users\daske\Desktop\barkfluff\</AppxPackageDir>
     <GenerateTestArtifacts>False</GenerateTestArtifacts>
     <AppxBundle>Never</AppxBundle>

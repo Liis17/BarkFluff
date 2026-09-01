@@ -39,9 +39,8 @@ function buildHeaders(token: string): Headers {
     'x-device-id': btoa(getDeviceId()),
     'x-device-name': btoa(getBrowserName()),
     'x-os-name': btoa(getOsName()),
-    'x-app-name': btoa('BarkFluff Developers'),
+    'x-app-name': btoa('BarkFluff Developers Portal'),
     'x-app-version': btoa('1.0.0'),
-    'x-ip-address': btoa('0.0.0.0'),
   });
 }
 

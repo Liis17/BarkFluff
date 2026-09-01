@@ -5,7 +5,9 @@ using BarkFluff.Settings.Persistence.Contexts;
 using BarkFluff.Settings.Persistence.Services;
 using BarkFluff.Shared.Identity;
 
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 using Xunit;
 
@@ -25,6 +27,29 @@ public sealed class SettingsStorageTests
 
         Assert.Equal("https://users.test", result.Single(item => item.StorageKey == "ExternalEndpoint:Host").Value);
         Assert.Contains(result, item => item.StorageKey == "JwtSettings:Issuer" && item.ServiceId == ServiceId.Unknown);
+    }
+
+    [Fact]
+    public async Task Update_with_retrying_execution_strategy_commits_transaction()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateSqliteContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        await new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest")).SeedAsync();
+        var storage = new SettingsStorage(context, new MetricsCollector());
+
+        await storage.UpdateAsync(
+            "ExternalEndpoint",
+            "Host",
+            "https://identity.test",
+            ServiceId.Identity,
+            "admin",
+            "test");
+
+        var setting = (await storage.GetConfigurationAsync(ServiceId.Identity))
+            .Single(item => item.StorageKey == "ExternalEndpoint:Host");
+        Assert.Equal("https://identity.test", setting.Value);
     }
 
     [Fact]
@@ -75,5 +100,20 @@ public sealed class SettingsStorageTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         return new SettingsContext(options);
+    }
+
+    private static SettingsContext CreateSqliteContext(SqliteConnection connection)
+    {
+        var options = new DbContextOptionsBuilder<SettingsContext>()
+            .UseSqlite(connection, sqlite => sqlite.ExecutionStrategy(
+                dependencies => new RetryingExecutionStrategy(dependencies)))
+            .Options;
+        return new SettingsContext(options);
+    }
+
+    private sealed class RetryingExecutionStrategy(ExecutionStrategyDependencies dependencies)
+        : ExecutionStrategy(dependencies, 1, TimeSpan.Zero)
+    {
+        protected override bool ShouldRetryOn(Exception exception) => false;
     }
 }
