@@ -588,7 +588,7 @@ class UpdateActivity : AppCompatActivity() {
         binding.cardInstallError.visibility = View.VISIBLE
         Toast.makeText(
             this,
-            getString(R.string.update_install_error, message.ifBlank { "неизвестная ошибка" }),
+            getString(R.string.update_install_error, message.ifBlank { getString(R.string.unknown_error) }),
             Toast.LENGTH_LONG
         ).show()
     }
