@@ -280,10 +280,14 @@
             } else if (lm) {
                 var text = (lm.content && lm.content.text) || '';
                 var ac = (lm.content && lm.content.attachments && lm.content.attachments.length) || 0;
+                var plainText = u.markdownToPlainText(text);
+                var plainTextPreview = plainText
+                    ? '<span class="preview-text">' + u.escapeHtml(u.truncate(plainText, 50)) + '</span>'
+                    : '';
                 if (lm.type === 2 || lm.type === 'SYSTEM') {
-                    previewHtml = u.callPreviewHtml(text, lm.senderId === myUserId) || u.escapeHtml(u.truncate(text, 50));
+                    previewHtml = u.callPreviewHtml(text, lm.senderId === myUserId) || plainTextPreview;
                 } else if (text) {
-                    previewHtml = u.escapeHtml(u.truncate(text, 50));
+                    previewHtml = plainTextPreview;
                 } else if (ac > 0) {
                     previewHtml = u.attachmentPreviewHtml(lm.content.attachments[0].type);
                 }

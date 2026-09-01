@@ -6,6 +6,7 @@
     "build:app": "node build-app.js",
     "build:shell-version": "node build-shell-version.js",
     "test:chat-background-refresh": "node test-chat-background-refresh.js",
+    "test:markdown-preview": "node test-markdown-preview.js",
     "test:network": "node test-network.js",
     "test:refresh-session": "node test-refresh-session.js",
     "test:legal-network": "node test-legal-network.js",

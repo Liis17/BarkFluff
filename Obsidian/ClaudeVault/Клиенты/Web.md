@@ -104,6 +104,7 @@ origin, сопоставить ключ нечем — вход потребуе
 
 - `js/app/folders.js` (`BF.folders`) рендерит горизонтальные вкладки `#folderTabs` и показывает на каждой папке сумму `countUnread` её чатов; при значении больше 99 отображается `99+`.
 - `main.js::renderChatList()` передаёт актуальный список чатов в рендер вкладок, поэтому realtime-сообщение и событие прочтения сразу обновляют бейдж папки.
+- Текст последнего сообщения в превью списка проходит через `BF.utils.markdownToPlainText`: Markdown-маркеры удаляются, переносы схлопываются в одну строку, затем результат обрезается до 50 символов и выводится через `.preview-text` с ellipsis. Полный Markdown в пузыре сообщения по-прежнему рендерит `BF.utils.renderMarkdown`.
 
 ### Файлы и медиа
 - `js/app/files.js` (`BF.files`) — загрузка (`uploadFile` → REST `/api/files/upload/{fileId}`) и кэш presigned-ссылок (`getFileUrls`/`getCachedFileUrl`, `Map` `fileId → {url, previewUrl}`) через gRPC `GetTempDownloadUrl` ([[Backend/Files]]).

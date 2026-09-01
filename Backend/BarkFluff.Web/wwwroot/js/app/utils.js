@@ -411,6 +411,40 @@
         return out.join('');
     }
 
+    function isHorizontalRule(line) {
+        return line.length >= 3 && (/^-+$/.test(line) || /^\*+$/.test(line) || /^_+$/.test(line));
+    }
+
+    // Убирает Markdown для мест, где сообщение показывается одной строкой.
+    // Использует тот же безопасный рендер, что и пузырь, чтобы не дублировать
+    // правила разбора inline-разметки и сохранять literal-текст в code blocks.
+    function markdownToPlainText(text) {
+        if (!text) return '';
+
+        var lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+        var filteredLines = [];
+        var inCodeBlock = false;
+        lines.forEach(function (line) {
+            var trimmed = line.trim();
+            if (/^```/.test(trimmed)) {
+                inCodeBlock = !inCodeBlock;
+                filteredLines.push(line);
+            } else if (!inCodeBlock && isHorizontalRule(trimmed)) {
+                return;
+            } else {
+                filteredLines.push(line);
+            }
+        });
+
+        var html = renderMarkdown(filteredLines.join('\n'))
+            .replace(/<img\b[^>]*\balt="([^"]*)"[^>]*>/gi, '$1')
+            .replace(/<br\s*\/?>/gi, ' ')
+            .replace(/<\/(?:p|h[1-6]|li|blockquote|pre|ul|ol|tr|th|td|div)>/gi, ' ');
+        var container = document.createElement('div');
+        container.innerHTML = html;
+        return (container.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
     function formatDuration(sec) {
         if (!sec || isNaN(sec)) return '0:00';
         var m = Math.floor(sec / 60);
@@ -625,6 +659,7 @@
         truncate: truncate,
         escapeHtml: escapeHtml,
         renderMarkdown: renderMarkdown,
+        markdownToPlainText: markdownToPlainText,
         formatDuration: formatDuration,
         attachmentEmoji: attachmentEmoji,
         attachmentPreviewHtml: attachmentPreviewHtml,
