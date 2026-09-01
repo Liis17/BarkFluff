@@ -7,8 +7,7 @@ public sealed record SettingsDatabaseOptions(
     int Port,
     string Database,
     string Username,
-    string Password,
-    string AdminDatabase)
+    string Password)
 {
     public string ConnectionString => new NpgsqlConnectionStringBuilder
     {
@@ -38,8 +37,7 @@ public sealed record SettingsDatabaseOptions(
             GetInt(configuration, 5432, "SETTINGS_DBPORT"),
             configuration["SETTINGS_DATABASE"] ?? "settings",
             username,
-            password,
-            configuration["SETTINGS_ADMIN_DATABASE"] ?? "postgres");
+            password);
     }
 
     private static string? Get(IConfiguration configuration, params string[] keys)

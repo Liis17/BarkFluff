@@ -29,8 +29,7 @@ services:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
       SETTINGS_HOST: "postgres"
       SETTINGS_DBPORT: "5432"
-      SETTINGS_DATABASE: "settings"
-      SETTINGS_ADMIN_DATABASE: "postgres"
+      SETTINGS_DATABASE: "${SETTINGS_DATABASE:-settings}"
       SETTINGS_USERNAME: "${POSTGRES_USER:-postgres}"
       SETTINGS_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
       SETTINGS_PORT: "7003"
@@ -47,6 +46,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-bootstrap:
+        condition: service_completed_successfully
 
   postgres:
     image: postgres:18
@@ -64,6 +65,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+    networks:
+      - barkfluff-network
+
+  postgres-bootstrap:
+    image: postgres:18
+    restart: "no"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for database in "$${SETTINGS_DATABASE:-settings}" identity users messages files onliner calls bots federation developers; do
+          echo "Ensuring PostgreSQL database exists: $$database"
+          createdb --if-not-exists --maintenance-db=postgres "$$database"
+        done
+    environment:
+      PGHOST: "postgres"
+      PGPORT: "5432"
+      PGUSER: "${POSTGRES_USER:-postgres}"
+      PGPASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+      SETTINGS_DATABASE: "${SETTINGS_DATABASE:-settings}"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - barkfluff-network
 

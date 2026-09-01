@@ -83,7 +83,7 @@ public sealed class SettingsSeederTests
     }
 
     [Fact]
-    public async Task Seed_clears_legacy_storage_and_livekit_credentials_but_preserves_custom_values()
+    public async Task Seed_preserves_all_existing_storage_and_livekit_credentials()
     {
         await using var context = CreateContext();
         var files = SettingsScopes.Get(ServiceId.Files);
@@ -127,9 +127,9 @@ public sealed class SettingsSeederTests
         var storageSecret = await context.Settings(files).SingleAsync(row => row.Key == "S3Buckets:barkfluff-uploads:SecretKey");
         var liveKitKey = await context.Settings(calls).SingleAsync(row => row.Key == "LiveKit:ApiKey");
         var liveKitSecret = await context.Settings(calls).SingleAsync(row => row.Key == "LiveKit:ApiSecret");
-        Assert.Empty(storageAccess.Value);
+        Assert.Equal("minioadmin", storageAccess.Value);
         Assert.Equal("operator-secret", storageSecret.Value);
-        Assert.Empty(liveKitKey.Value);
+        Assert.Equal("devkey", liveKitKey.Value);
         Assert.Equal("operator-livekit-secret", liveKitSecret.Value);
     }
 

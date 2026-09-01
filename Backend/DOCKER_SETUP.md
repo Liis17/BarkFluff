@@ -36,9 +36,16 @@ docker compose -f Docker/nightly/barkfluff/docker-compose.yml up -d
 
 ## PostgreSQL
 
-Settings использует базу `settings` и учётные данные `POSTGRES_USER` /
-`POSTGRES_PASSWORD`. При первом старте Settings создаёт собственную базу и применяет
-миграции. Остальные базы сервисов создаются их собственными миграциями.
+`postgres-bootstrap` перед запуском Settings идемпотентно создаёт отсутствующие базы
+`settings`, `identity`, `users`, `messages`, `files`, `onliner`, `calls`, `bots`,
+`federation` и `developers`. Он использует `createdb --if-not-exists`: существующие
+базы не удаляются, не пересоздаются и не перезаписываются. Сам сервис Settings также
+заполняет только отсутствующие ключи каталога.
+
+Перед запуском проверьте путь `./data/postgres`: он должен указывать на прежний
+каталог данных. Не используйте `docker compose down -v` и не удаляйте этот каталог.
+
+Миграции применяются после успешного подключения к нужным базам.
 
 До запуска bootstrap задайте в `.env` непредсказуемые
 `RABBITMQ_DEFAULT_USER` и `RABBITMQ_DEFAULT_PASS`: Compose передаёт их Settings и

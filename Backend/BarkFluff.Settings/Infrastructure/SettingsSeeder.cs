@@ -47,10 +47,6 @@ public sealed record SettingsSeedOptions(
 
 public sealed class SettingsSeeder
 {
-    private const string LegacyMinioCredential = "minioadmin";
-    private const string LegacyLiveKitApiKey = "devkey";
-    private const string LegacyLiveKitApiSecret = "devsecret_change_me_in_production_0123456789";
-
     private static readonly string[] BuiltInReservedNames =
     [
         "admin", "support", "help", "system", "moderator", "mod", "root",
@@ -78,8 +74,6 @@ public sealed class SettingsSeeder
                     .ToListAsync(cancellationToken))
                 .ToHashSet(StringComparer.Ordinal);
         }
-
-        await ClearKnownUnsafeDefaultsAsync(cancellationToken);
 
         var globalRows = await _context.Settings(SettingsScopes.Get(ServiceId.Unknown))
             .ToDictionaryAsync(row => row.Key, row => row.Value, StringComparer.Ordinal, cancellationToken);
@@ -124,37 +118,6 @@ public sealed class SettingsSeeder
         _metrics?.Set("settings_rows_total", SettingsCatalog.All.Count);
         return inserted;
     }
-
-    private async Task ClearKnownUnsafeDefaultsAsync(CancellationToken cancellationToken)
-    {
-        var unsafeEntries = SettingsCatalog.All.Where(entry =>
-            entry.ServiceId == ServiceId.Files
-                && (entry.StorageKey.EndsWith(":AccessKey", StringComparison.Ordinal)
-                    || entry.StorageKey.EndsWith(":SecretKey", StringComparison.Ordinal))
-            || entry.ServiceId == ServiceId.Calls
-                && entry.StorageKey is "LiveKit:ApiKey" or "LiveKit:ApiSecret");
-
-        foreach (var entry in unsafeEntries)
-        {
-            var scope = SettingsScopes.Get(entry.ServiceId);
-            var row = await _context.Settings(scope)
-                .SingleOrDefaultAsync(item => item.Key == entry.StorageKey, cancellationToken);
-            if (row is null || !IsKnownUnsafeDefault(entry, row.Value))
-                continue;
-
-            row.Value = string.Empty;
-            row.EditedBy = "system";
-            row.EditedAt = DateTime.UtcNow;
-        }
-    }
-
-    private static bool IsKnownUnsafeDefault(SettingsCatalogEntry entry, string value) =>
-        entry.ServiceId == ServiceId.Files
-            && value == LegacyMinioCredential
-        || entry.ServiceId == ServiceId.Calls
-            && entry.StorageKey == "LiveKit:ApiKey" && value == LegacyLiveKitApiKey
-        || entry.ServiceId == ServiceId.Calls
-            && entry.StorageKey == "LiveKit:ApiSecret" && value == LegacyLiveKitApiSecret;
 
     public async Task ValidateAsync(CancellationToken cancellationToken = default)
     {
