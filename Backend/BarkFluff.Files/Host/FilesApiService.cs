@@ -36,12 +36,21 @@ public class FilesApiService : FilesApi.FilesApiBase
 
     public override Task<GetUploadUrlResponse> GetUploadUrl(GetUploadUrlRequest request, ServerCallContext context)
     {
+        Guid? clientOperationId = null;
+        if (!string.IsNullOrWhiteSpace(request.ClientOperationId))
+        {
+            if (!Guid.TryParse(request.ClientOperationId, out var parsed))
+                throw new ClientOperationIdNotValidException();
+            clientOperationId = parsed;
+        }
+
         var command = new GetUploadUrlCommand()
         {
-            Type = (UploadFileType)(int)request.FileType
+            Type = (UploadFileType)(int)request.FileType,
+            ClientOperationId = clientOperationId,
         };
 
-        return _mediator.Send(command);
+        return _mediator.Send(command, context.CancellationToken);
     }
 
 

@@ -47,7 +47,7 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 
 ## What is inside
 
-**One entry point.** Beacon gives clients one trusted way to discover the platform; Configuration supplies the service registry and runtime settings.
+**One entry point.** Beacon gives clients one trusted way to discover the platform; Settings supplies the service registry and runtime settings.
 
 **Independent product services.** Identity, profiles, messaging, files, presence, calls, bots, federation, and more run as focused .NET services, with CQRS and MediatR where they fit.
 

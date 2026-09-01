@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
@@ -29,11 +30,12 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
     private readonly LocationClient _locationClient;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<EnableOtpVerificationCommandHandler> _logger;
+    private readonly IIdentityAbuseGuard _abuseGuard;
 
     public EnableOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage,
         UsersServerApi.UsersServerApiClient usersClient, NotificationQueueSender notificationQueueSender,
         RequestContext requestContext, LocationClient locationClient, MetricsCollector metrics,
-        ILogger<EnableOtpVerificationCommandHandler> logger)
+        ILogger<EnableOtpVerificationCommandHandler> logger, IIdentityAbuseGuard abuseGuard)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
@@ -43,6 +45,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
         _locationClient = locationClient;
         _metrics = metrics;
         _logger = logger;
+        _abuseGuard = abuseGuard;
     }
 
     public async Task<EnableOtpVerificationResponse> Handle(EnableOtpVerificationCommand request, CancellationToken cancellationToken)
@@ -52,6 +55,11 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             _userContext.UserId,
             request.OptType
         );
+
+        await _abuseGuard.EnsureOtpOperationAllowedAsync(
+            IdentityOtpOperation.Setup,
+            _userContext.UserId,
+            cancellationToken);
         if (string.IsNullOrEmpty(_requestContext.DeviceName))
         {
             throw new XDeviceNameIsRequiredException();

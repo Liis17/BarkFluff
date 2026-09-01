@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
@@ -20,7 +21,7 @@ namespace BarkFluff.Identity.Features.ConfirmAccount;
 public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationCodesStorage,
     UsersServerApi.UsersServerApiClient usersClient, RefreshTokensStorage refreshTokensStorage, RequestContext requestContext,
     NotificationQueueSender notificationQueueSender, LocationClient locationClient, MetricsCollector metrics,
-    ILogger<ConfirmAccountCommandHandler> logger)
+    ILogger<ConfirmAccountCommandHandler> logger, IIdentityAbuseGuard abuseGuard)
     : IRequestHandler<ConfirmAccountCommand, ConfirmAccountResponse>
 {
 
@@ -39,6 +40,11 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
         }
 
         var codeId = Guid.Parse(request.CodeId);
+
+        await abuseGuard.EnsureCodeAllowedAsync(
+            IdentityCodeKind.Registration,
+            codeId,
+            cancellationToken);
 
         logger.LogDebug("Получение кода подтверждения {CodeId}", codeId);
 
@@ -81,6 +87,13 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         if (!equals)
         {
+            var failure = await abuseGuard.RegisterCodeFailureAsync(
+                IdentityCodeKind.Registration,
+                codeId,
+                code.Expires,
+                cancellationToken);
+            await abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
             metrics.Increment("account_confirmation_failed");
             metrics.Increment("account_confirmation_failed_incorrect");
             logger.LogWarning(
@@ -88,8 +101,20 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
                 codeId,
                 code.OwnerId
             );
+
+            if (failure.Locked)
+            {
+                await confirmationCodesStorage.DeleteCode(codeId);
+                throw new IdentityLockoutException();
+            }
+
             throw new ConfirmationCodeIncorrectException();
         }
+
+        await abuseGuard.ClearCodeFailuresAsync(
+            IdentityCodeKind.Registration,
+            codeId,
+            cancellationToken);
 
         logger.LogDebug("Подтверждение пользователя {UserId}", code.OwnerId!.Value);
 

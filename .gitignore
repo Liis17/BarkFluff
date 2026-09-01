@@ -428,6 +428,9 @@ default.profraw
 
 # Docker local environment: secrets and host-mounted data
 docker/**/.env
+!docker/nightly/barkfluff/.env
+!docker/dev/barkfluff/.env
+!docker/master/barkfluff/.env
 docker/**/admindata/
 docker/**/data/
 docker/**/backups/

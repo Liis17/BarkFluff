@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BarkFluff Admin — Конфигурация</title>
+    <title>BarkFluff Admin — Settings</title>
     <link rel="stylesheet" href="assets/md3.css?v=4">
     <style>
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
         .toolbar input { flex: 1; max-width: 420px; }
 
-        .service-card {
+        .settings-card {
             background: var(--md-surface-container-lowest);
             border: 1px solid var(--md-outline-variant);
             border-radius: var(--md-shape-lg);
             margin-bottom: 12px;
             overflow: hidden;
         }
-        .service-head {
+        .settings-head {
             display: flex; align-items: center; gap: 12px;
             padding: 14px 20px;
             cursor: pointer; user-select: none;
         }
-        .service-head:hover { background: var(--md-surface-container); }
-        .service-icon {
+        .settings-head:hover { background: var(--md-surface-container); }
+        .settings-icon {
             width: 40px; height: 40px;
             border-radius: var(--md-shape-md);
             background: var(--md-secondary-container);
@@ -30,10 +30,10 @@
             display: inline-flex; align-items: center; justify-content: center;
             flex-shrink: 0;
         }
-        .service-name { font-size: 15px; font-weight: 600; color: var(--md-on-surface); flex: 1; }
-        .service-count { font-size: 12px; color: var(--md-on-surface-variant); }
-        .service-chevron { transition: transform .2s; color: var(--md-on-surface-variant); }
-        .service-card.open .service-chevron { transform: rotate(180deg); }
+        .settings-name { font-size: 15px; font-weight: 600; color: var(--md-on-surface); flex: 1; }
+        .settings-count { font-size: 12px; color: var(--md-on-surface-variant); }
+        .settings-chevron { transition: transform .2s; color: var(--md-on-surface-variant); }
+        .settings-card.open .settings-chevron { transform: rotate(180deg); }
 
         .config-table { width: 100%; border-collapse: collapse; }
         .config-table th {
@@ -53,7 +53,6 @@
         .config-table tr:last-child td { border-bottom: none; }
         .config-table tr:hover td { background: var(--md-surface-container); }
 
-        .cell-section { color: var(--md-on-surface-variant); white-space: nowrap; }
         .cell-key { font-family: 'Roboto Mono', monospace; font-size: 12px; white-space: nowrap; }
         .cell-value { max-width: 340px; }
         .value-text { font-family: 'Roboto Mono', monospace; font-size: 12px; overflow-wrap: anywhere; word-break: break-all; }
@@ -95,13 +94,13 @@
 </div>
 
 <div class="md-app-shell">
-    <div id="md-nav-root" data-active="configuration"></div>
+    <div id="md-nav-root" data-active="settings"></div>
 
     <main class="md-main">
         <header class="md-app-bar">
             <div style="display:flex;align-items:center;gap:12px;">
-                <h1>Конфигурация</h1>
-                <span class="md-status md-status-info"><span class="dot"></span>База конфигурации</span>
+                <h1>Settings</h1>
+                <span class="md-status md-status-info"><span class="dot"></span>Таблицы Settings</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="msr">refresh</span></button>
@@ -111,23 +110,23 @@
 
         <div class="md-page">
             <div class="toolbar">
-                <input type="text" id="search-input" class="md-input-outlined" placeholder="Поиск по секции, ключу, значению...">
-                <span class="service-count" id="total-count"></span>
+                <input type="text" id="search-input" class="md-input-outlined" placeholder="Поиск по таблице, ключу или значению...">
+                <span class="settings-count" id="total-count"></span>
             </div>
 
-            <div id="services-list"></div>
+            <div id="settings-tables-list"></div>
 
             <div id="empty-state" class="md-empty" style="display:none;">
                 <span class="msr size-48">tune</span>
                 <h3>Ничего не найдено</h3>
-                <p>Нет строк конфигурации, подходящих под фильтр.</p>
+                <p>Нет настроек, подходящих под фильтр.</p>
             </div>
 
             <div id="error-state" class="md-empty" style="display:none;color:var(--md-error);">
                 <span class="msr size-48">error</span>
                 <h3 style="color:var(--md-error);">Ошибка загрузки</h3>
                 <p id="error-message"></p>
-                <button class="md-btn md-btn-filled md-btn-square-press" onclick="loadConfigurations()">
+                <button class="md-btn md-btn-filled md-btn-square-press" onclick="loadSettings()">
                     <span class="msr size-18">refresh</span>
                     Попробовать снова
                 </button>
@@ -142,7 +141,7 @@
         <div class="md-dialog-body">
             <div>
                 <strong id="diff-key"></strong>
-                <div class="field-hint" id="diff-service"></div>
+                <div class="field-hint" id="diff-table"></div>
             </div>
             <div class="diff-grid">
                 <div class="diff-value"><span class="diff-label">Было</span><span id="diff-before"></span></div>
@@ -161,7 +160,7 @@
     <div class="md-dialog md-dialog-lg">
         <div class="md-dialog-header">
             <div>
-                <h3>История конфигурации</h3>
+                <h3>История настройки</h3>
                 <div class="field-hint" id="history-title"></div>
             </div>
             <button class="md-icon-btn" title="Закрыть" onclick="closeHistory()"><span class="msr">close</span></button>
@@ -175,9 +174,8 @@
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
-    let allItems = [];               // все строки из /api/configuration/all
-    const openGroups = new Set();    // раскрытые сервисы
-    const revealed = new Set();      // индексы строк с раскрытым секретом
+    let allItems = [];               // строки физических таблиц Settings
+    const openTables = new Set();    // раскрытые таблицы
     let editingIdx = null;           // индекс редактируемой строки
     let searchQuery = '';
     let canWriteConfig = false;
@@ -194,16 +192,15 @@
     function formatDate(s) { if (!s) return '—'; const d = new Date(s); if (isNaN(d.getTime())) return '—'; return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
     function isSecret(item) { return item.fieldType === 'secret' || item.masked; }
 
-    async function loadConfigurations() {
+    async function loadSettings() {
         const err = document.getElementById('error-state');
         try {
             allItems = await BF.request('/api/configuration/all', { errorToast: false });
-            revealed.clear();
             editingIdx = null;
             err.style.display = 'none';
             render();
         } catch (e) {
-            document.getElementById('services-list').innerHTML = '';
+            document.getElementById('settings-tables-list').innerHTML = '';
             document.getElementById('empty-state').style.display = 'none';
             err.style.display = 'flex';
             document.getElementById('error-message').textContent = e.message;
@@ -214,24 +211,24 @@
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return item.section.toLowerCase().includes(q)
-            || item.key.toLowerCase().includes(q)
-            || item.value.toLowerCase().includes(q)
-            || item.serviceName.toLowerCase().includes(q);
+            || item.settingsTable.toLowerCase().includes(q)
+            || item.storageKey.toLowerCase().includes(q)
+            || item.value.toLowerCase().includes(q);
     }
 
     function render() {
-        const list = document.getElementById('services-list');
+        const list = document.getElementById('settings-tables-list');
         const empty = document.getElementById('empty-state');
 
         const groups = new Map();
         allItems.forEach((item, idx) => {
             if (!matchesSearch(item)) return;
-            if (!groups.has(item.serviceName)) groups.set(item.serviceName, []);
-            groups.get(item.serviceName).push(idx);
+            if (!groups.has(item.settingsTable)) groups.set(item.settingsTable, []);
+            groups.get(item.settingsTable).push(idx);
         });
 
         const shown = [...groups.values()].reduce((n, a) => n + a.length, 0);
-        document.getElementById('total-count').textContent = `Строк: ${shown} из ${allItems.length}`;
+        document.getElementById('total-count').textContent = `Таблиц: ${groups.size} · Параметров: ${shown} из ${allItems.length}`;
 
         if (groups.size === 0) {
             list.innerHTML = '';
@@ -243,14 +240,14 @@
         const names = [...groups.keys()].sort((a, b) => a.localeCompare(b));
         list.innerHTML = names.map(name => {
             const idxs = groups.get(name);
-            const open = searchQuery ? true : openGroups.has(name);
+            const open = searchQuery ? true : openTables.has(name);
             return `
-                <div class="service-card${open ? ' open' : ''}" data-group="${escapeHtml(name)}">
-                    <div class="service-head" onclick="toggleGroup('${escapeHtml(name)}')">
-                        <div class="service-icon"><span class="msr">dns</span></div>
-                        <div class="service-name">${escapeHtml(name)}</div>
-                        <span class="service-count">${idxs.length} параметров</span>
-                        <span class="msr service-chevron">expand_more</span>
+                <div class="settings-card${open ? ' open' : ''}" data-table="${escapeHtml(name)}">
+                    <div class="settings-head" onclick="toggleTable('${escapeHtml(name)}')">
+                        <div class="settings-icon"><span class="msr">table</span></div>
+                        <div class="settings-name">${escapeHtml(name)}</div>
+                        <span class="settings-count">${idxs.length} параметров</span>
+                        <span class="msr settings-chevron">expand_more</span>
                     </div>
                     ${open ? renderTable(idxs) : ''}
                 </div>
@@ -263,7 +260,6 @@
             <table class="config-table">
                 <thead>
                     <tr>
-                        <th>Секция</th>
                         <th>Ключ</th>
                         <th>Значение</th>
                         <th>Изменено</th>
@@ -291,12 +287,11 @@
                 <button class="md-icon-btn" title="Отмена" onclick="cancelEdit()"><span class="msr size-20">close</span></button>
             `;
         } else {
-            const masked = item.masked || (secret && !!item.value && !revealed.has(idx));
+            const masked = item.masked;
             valueCell = masked
                 ? `<span class="value-text value-masked">••••••••</span>`
                 : `<span class="value-text">${escapeHtml(item.value)}</span>`;
             actionsCell = `
-                ${secret && !item.masked && item.value ? `<button class="md-icon-btn" title="${masked ? 'Показать' : 'Скрыть'}" onclick="toggleReveal(${idx})"><span class="msr size-20">${masked ? 'visibility' : 'visibility_off'}</span></button>` : ''}
                 <button class="md-icon-btn" title="История" onclick="openHistory(${idx})"><span class="msr size-20">history</span></button>
                 ${canWriteConfig ? `<button class="md-icon-btn" title="Изменить" onclick="startEdit(${idx})"><span class="msr size-20">edit</span></button>` : ''}
             `;
@@ -304,8 +299,7 @@
 
         return `
             <tr data-idx="${idx}">
-                <td class="cell-section">${escapeHtml(item.section)}</td>
-                <td class="cell-key">${escapeHtml(item.key)}</td>
+                <td class="cell-key">${escapeHtml(item.storageKey)}</td>
                 <td class="cell-value">${valueCell}</td>
                 <td class="cell-meta" title="${escapeHtml(item.editedFrom || '')}">${formatDate(item.editedAt)}</td>
                 <td class="cell-meta">${escapeHtml(item.editedBy || '—')}</td>
@@ -342,13 +336,8 @@
         return `<div class="value-edit-wrap">${control}${item.hint ? `<span class="field-hint">${escapeHtml(item.hint)}</span>` : ''}</div>`;
     }
 
-    window.toggleGroup = function (name) {
-        if (openGroups.has(name)) openGroups.delete(name); else openGroups.add(name);
-        render();
-    };
-
-    window.toggleReveal = function (idx) {
-        if (revealed.has(idx)) revealed.delete(idx); else revealed.add(idx);
+    window.toggleTable = function (name) {
+        if (openTables.has(name)) openTables.delete(name); else openTables.add(name);
         render();
     };
 
@@ -390,8 +379,8 @@
         }
 
         pendingSave = { idx, newValue };
-        document.getElementById('diff-key').textContent = `${item.section}.${item.key}`;
-        document.getElementById('diff-service').textContent = item.serviceName;
+        document.getElementById('diff-key').textContent = item.storageKey;
+        document.getElementById('diff-table').textContent = item.settingsTable;
         document.getElementById('diff-before').textContent = item.masked ? '•••••••• (текущее значение)' : (item.value || '∅ пусто');
         document.getElementById('diff-after').textContent = isSecret(item) ? '•••••••• (новое значение)' : (newValue || '∅ пусто');
         document.getElementById('diff-scrim').classList.add('open');
@@ -447,19 +436,19 @@
                     value: newValue
                 }),
                 loading: button,
-                successToast: 'Конфигурация сохранена'
+                successToast: 'Настройка сохранена'
             });
             pendingSave = null;
             document.getElementById('diff-scrim').classList.remove('open');
             editingIdx = null;
-            await loadConfigurations();
+            await loadSettings();
         } catch (_) {}
     };
 
     window.openHistory = async function (idx) {
         const item = allItems[idx];
         historyTarget = { section: item.section, key: item.key, serviceId: item.serviceId };
-        document.getElementById('history-title').textContent = `${item.serviceName} · ${item.section}.${item.key}`;
+        document.getElementById('history-title').textContent = `${item.settingsTable} · ${item.storageKey}`;
         const body = document.getElementById('history-body');
         body.innerHTML = '<div class="md-empty"><div class="md-loader-expressive"></div><p>Загрузка истории...</p></div>';
         document.getElementById('history-scrim').classList.add('open');
@@ -511,10 +500,10 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ revisionId }),
-                successToast: 'Конфигурация откачена'
+                successToast: 'Настройка восстановлена'
             });
             const target = historyTarget;
-            await loadConfigurations();
+            await loadSettings();
             if (target) {
                 const idx = allItems.findIndex(item => item.section === target.section && item.key === target.key && item.serviceId === target.serviceId);
                 if (idx >= 0) await openHistory(idx);
@@ -533,7 +522,7 @@
         render();
     });
 
-    document.getElementById('refresh-btn').addEventListener('click', loadConfigurations);
+    document.getElementById('refresh-btn').addEventListener('click', loadSettings);
 
     document.getElementById('logout-btn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
@@ -543,7 +532,7 @@
     (async function () {
         const auth = await checkAuth(); if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
-        await loadConfigurations();
+        await loadSettings();
         BF.pageReady();
     })();
 </script>

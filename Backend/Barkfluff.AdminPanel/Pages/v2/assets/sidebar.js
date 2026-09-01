@@ -15,7 +15,7 @@
     { id: 'federation',    href: '/federation',    label: 'Федерация',  icon: 'federation', permission: 'federation.manage' },
     { id: 'notifications', href: '/notifications', label: 'Уведомления',icon: 'notifications', permission: 'notifications.manage' },
     { id: 'mail',          href: '/mail',          label: 'Почта',      icon: 'mail',       permission: 'mail.manage' },
-    { id: 'configuration', href: '/configuration', label: 'Конфигурация', icon: 'tune',    permission: 'config.read' },
+    { id: 'settings',      href: '/settings',      label: 'Settings',      icon: 'tune',    permission: 'config.read' },
     { id: 's3-browser',    href: '/s3-browser',    label: 'Хранилище S3', icon: 'cloud',   expandable: true, permission: 's3.browse' },
     { id: 's3-storage',   href: '/s3-storage',    label: 'Настройки S3', icon: 'tune',    permission: 'config.read' },
     { id: 'admins',        href: '/admins',        label: 'Админы',     icon: 'security',   permission: 'admins.roles' },

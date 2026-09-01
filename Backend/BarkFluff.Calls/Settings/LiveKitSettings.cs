@@ -1,7 +1,7 @@
 namespace BarkFluff.Calls.Settings;
 
 /// <summary>
-/// Конфигурация LiveKit (секция "LiveKit" в Configuration-сервисе).
+/// Конфигурация LiveKit (секция "LiveKit" в Settings-сервисе).
 /// Креды должны совпадать с keys в конфиге самого LiveKit-сервера.
 /// </summary>
 public class LiveKitSettings

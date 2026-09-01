@@ -35,11 +35,11 @@ public class FileHashesStorage
     /// <summary>
     /// Gets the FileId associated with a given hash, or null if not found.
     /// </summary>
-    public async Task<Guid?> GetFileIdByHash(string hash)
+    public async Task<Guid?> GetFileIdByHash(string hash, CancellationToken cancellationToken = default)
     {
         var fileHash = await _context.FileHashes
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Hash == hash);
+            .FirstOrDefaultAsync(x => x.Hash == hash, cancellationToken);
 
         return fileHash?.FileId;
     }

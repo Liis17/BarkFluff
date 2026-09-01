@@ -4,6 +4,9 @@ namespace BarkFluff.Shared.Queue.Messages;
 
 public class NewMessageEvent
 {
+    /// <summary>Стабильный ID outbox-события для корреляции at-least-once доставки.</summary>
+    public Guid EventId { get; set; }
+
     public Guid ChatId { get; set; }
 
     public List<long> ChatMembers { get; set; }

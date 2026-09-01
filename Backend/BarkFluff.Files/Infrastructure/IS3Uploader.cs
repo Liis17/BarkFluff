@@ -2,7 +2,12 @@ namespace BarkFluff.Files.Infrastructure;
 
 public interface IS3Uploader
 {
-    Task<string> UploadAsync(string bucket, string key, Stream data, string contentType);
+    Task<string> UploadAsync(
+        string bucket,
+        string key,
+        Stream data,
+        string contentType,
+        CancellationToken cancellationToken);
     Task<Stream> DownloadAsync(string bucket, string key);
 
     /// <summary>

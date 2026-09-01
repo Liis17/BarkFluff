@@ -63,6 +63,11 @@ class AboutActivity : AppCompatActivity() {
         ServiceDefinition(getString(R.string.about_service_identity), globalParam.socketIdentity),
         ServiceDefinition(getString(R.string.about_service_users), globalParam.socketUsers),
         ServiceDefinition(getString(R.string.about_service_files), globalParam.socketFiles),
+        ServiceDefinition(
+            getString(R.string.about_service_files_media),
+            globalParam.socketFilesMedia,
+            fileEndpoint = true
+        ),
         ServiceDefinition(getString(R.string.about_service_messages), globalParam.socketMessages),
         ServiceDefinition(getString(R.string.about_service_updates), globalParam.socketUpdates),
         ServiceDefinition(getString(R.string.about_service_onliner), globalParam.socketOnliner),
@@ -198,7 +203,7 @@ class AboutActivity : AppCompatActivity() {
                 val results = supervisorScope {
                     servicesToCheck.map { service ->
                         async(Dispatchers.IO) {
-                            service.name to servicePingChecker.check(service.address)
+                            service.name to servicePingChecker.check(service.address, service.fileEndpoint)
                         }
                     }.awaitAll().toMap()
                 }
@@ -234,7 +239,8 @@ class AboutActivity : AppCompatActivity() {
     private data class ServiceDefinition(
         val name: String,
         val address: String,
-        val pingable: Boolean = true
+        val pingable: Boolean = true,
+        val fileEndpoint: Boolean = false
     )
 
     private fun getColorFromAttr(attr: Int): Int {

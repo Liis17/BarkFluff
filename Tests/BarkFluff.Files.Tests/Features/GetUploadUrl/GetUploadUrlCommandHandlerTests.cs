@@ -1,5 +1,6 @@
 using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.GrpcServer.Settings;
+using BarkFluff.Shared.Exceptions.Files;
 
 namespace BarkFluff.Files.Tests.Features.GetUploadUrl;
 
@@ -60,5 +61,42 @@ public class GetUploadUrlCommandHandlerTests : IAsyncLifetime
         var fileId = Guid.Parse(result.FileId);
         var file = await _helper.UploadedFilesStorage.GetFile(fileId);
         file!.Type.Should().Be(Domain.UploadFileType.MessageAttachmentVideo);
+    }
+
+    [Fact]
+    public async Task Handle_SameClientOperationId_ReturnsSameReservation()
+    {
+        var operationId = Guid.NewGuid();
+        var command = new GetUploadUrlCommand
+        {
+            Type = Domain.UploadFileType.MessageAttachmentDocument,
+            ClientOperationId = operationId,
+        };
+
+        var first = await _handler.Handle(command, CancellationToken.None);
+        var second = await _handler.Handle(command, CancellationToken.None);
+
+        second.FileId.Should().Be(first.FileId);
+        _helper.DbContext.UploadOperations.Should().ContainSingle();
+        _helper.DbContext.UploadedFiles.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Handle_SameClientOperationIdWithDifferentType_IsRejected()
+    {
+        var operationId = Guid.NewGuid();
+        await _handler.Handle(new GetUploadUrlCommand
+        {
+            Type = Domain.UploadFileType.MessageAttachmentImage,
+            ClientOperationId = operationId,
+        }, CancellationToken.None);
+
+        var action = async () => await _handler.Handle(new GetUploadUrlCommand
+        {
+            Type = Domain.UploadFileType.MessageAttachmentDocument,
+            ClientOperationId = operationId,
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<UploadOperationTypeMismatchException>();
     }
 }

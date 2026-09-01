@@ -40,6 +40,7 @@ gRPC-клиентская библиотека для WPF-клиента. Еди
 ErrorReturner
 ├── bool IsSuccess
 ├── string? ErrorMessage
+├── string? ErrorResourceKey — ключ локализации для доменных ошибок Identity
 └── int ErrorCode    — 0: ок; 1: список сообщений пустой
 ```
 

@@ -16,7 +16,7 @@ public class GetDocumentationSectionsQueryHandler : IRequestHandler<GetDocumenta
 
     public async Task<GetDocumentationSectionsResponse> Handle(GetDocumentationSectionsQuery request, CancellationToken cancellationToken)
     {
-        var sections = await _storage.GetAllAsync();
+        var sections = await _storage.GetAllAsync(cancellationToken);
 
         var response = new GetDocumentationSectionsResponse();
         foreach (var s in sections)

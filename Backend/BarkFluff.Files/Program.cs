@@ -38,7 +38,8 @@ public class Program
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -131,7 +132,8 @@ public class Program
             bucketInitializer.InitializeBucketsAsync().GetAwaiter().GetResult();
         }
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
 
         app.UseXAuth();
         app.MapHealthEndpoints();

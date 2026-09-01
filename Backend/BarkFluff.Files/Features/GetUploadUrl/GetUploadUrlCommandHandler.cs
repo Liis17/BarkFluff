@@ -39,30 +39,28 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
             _userContext.UserId
         );
 
-        var uploadFile = new Domain.UploadFile()
-        {
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow + UploadSlotTtl,
-            Type = request.Type,
-            Uploaders = new List<long> { _userContext.UserId },
-        };
-
-        var file = await _uploadedFilesStorage.AddToStorage(uploadFile);
+        var reservation = await _uploadedFilesStorage.ReserveUploadAsync(
+            _userContext.UserId,
+            request.ClientOperationId,
+            request.Type,
+            DateTime.UtcNow,
+            UploadSlotTtl,
+            cancellationToken);
 
         var baseUrl = FileUrlHelper.GetPublicBaseUrl(_configuration, _runSettings);
-        var uploadUrl = FileUrlHelper.GenerateUploadUrl(baseUrl, file.Id);
+        var uploadUrl = FileUrlHelper.GenerateUploadUrl(baseUrl, reservation.FileId);
 
         _logger.LogInformation(
             "URL для загрузки создан. FileId: {FileId}, Тип: {FileType}, Token: {MaskedToken}",
-            file.Id,
+            reservation.FileId,
             request.Type,
-            FileUrlHelper.MaskCapabilityToken(file.Id)
+            FileUrlHelper.MaskCapabilityToken(reservation.FileId)
         );
 
         return new GetUploadUrlResponse()
         {
             Url = uploadUrl,
-            FileId = file.Id.ToString()
+            FileId = reservation.FileId.ToString()
         };
     }
 }

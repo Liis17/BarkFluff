@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AuthRequest, AuthResponse, ConfirmAccountRequest, ConfirmAccountResponse, ConfirmOtpVerificationRequest, ConfirmOtpVerificationResponse, ConfirmResetPasswordRequest, ConfirmResetPasswordResponse, CreateAccountRequest, CreateAccountResponse, CreateTokenRequest, CreateTokenResponse, DisableOtpVerificationRequest, DisableOtpVerificationResponse, DisableOtpVerificationServerRequest, EnableOtpVerificationRequest, EnableOtpVerificationResponse, FastAuthRequest, GenerateTestTokenRequest, GenerateTestTokenResponse, GetActiveSessionsRequest, GetActiveSessionsResponse, GetActiveSessionsServerRequest, ListOtpVerificationRequest, ListOtpVerificationResponse, ListOtpVerificationServerRequest, RemoveActiveSessionRequest, RemoveActiveSessionResponse, RemoveActiveSessionServerRequest, ResetPasswordRequest, ResetPasswordResponse, SetPasswordRequest, SetPasswordResponse } from "./identity_api_pb.js";
+import { AuthRequest, AuthResponse, ConfirmAccountRequest, ConfirmAccountResponse, ConfirmOtpVerificationRequest, ConfirmOtpVerificationResponse, ConfirmResetPasswordRequest, ConfirmResetPasswordResponse, CreateAccountRequest, CreateAccountResponse, CreateBotTokenServerRequest, CreateBotTokenServerResponse, CreateSessionForUserServerRequest, CreateSessionForUserServerResponse, CreateTokenRequest, CreateTokenResponse, DisableOtpVerificationRequest, DisableOtpVerificationResponse, DisableOtpVerificationServerRequest, EnableOtpVerificationRequest, EnableOtpVerificationResponse, FastAuthRequest, ForceSetPasswordServerRequest, ForceSetPasswordServerResponse, GetActiveSessionsRequest, GetActiveSessionsResponse, GetActiveSessionsServerRequest, GetBotTokenServerRequest, GetBotTokenServerResponse, ListOtpVerificationRequest, ListOtpVerificationResponse, ListOtpVerificationServerRequest, LogoutRequest, LogoutResponse, RemoveActiveSessionRequest, RemoveActiveSessionResponse, RemoveActiveSessionServerRequest, ResetPasswordRequest, ResetPasswordResponse, SetPasswordRequest, SetPasswordResponse } from "./identity_api_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -65,15 +65,6 @@ export const IdentityApi = {
       name: "ConfirmAccount",
       I: ConfirmAccountRequest,
       O: ConfirmAccountResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc barkfluff.identity.IdentityApi.GenerateTestToken
-     */
-    generateTestToken: {
-      name: "GenerateTestToken",
-      I: GenerateTestTokenRequest,
-      O: GenerateTestTokenResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -175,6 +166,17 @@ export const IdentityApi = {
       O: SetPasswordResponse,
       kind: MethodKind.Unary,
     },
+    /**
+     * Разлогиниться с текущего устройства
+     *
+     * @generated from rpc barkfluff.identity.IdentityApi.Logout
+     */
+    logout: {
+      name: "Logout",
+      I: LogoutRequest,
+      O: LogoutResponse,
+      kind: MethodKind.Unary,
+    },
   }
 } as const;
 
@@ -228,6 +230,52 @@ export const IdentityServerApi = {
       name: "RemoveActiveSessionServer",
       I: RemoveActiveSessionServerRequest,
       O: RemoveActiveSessionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
+     * Регистрирует устройство в Users, отправляет уведомление о входе.
+     *
+     * @generated from rpc barkfluff.identity.IdentityServerApi.CreateSessionForUserServer
+     */
+    createSessionForUserServer: {
+      name: "CreateSessionForUserServer",
+      I: CreateSessionForUserServerRequest,
+      O: CreateSessionForUserServerResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Принудительно сменить пароль пользователя (для админ-панели, без OTP).
+     * Отправляет email-уведомление пользователю.
+     *
+     * @generated from rpc barkfluff.identity.IdentityServerApi.ForceSetPasswordServer
+     */
+    forceSetPasswordServer: {
+      name: "ForceSetPasswordServer",
+      I: ForceSetPasswordServerRequest,
+      O: ForceSetPasswordServerResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
+     *
+     * @generated from rpc barkfluff.identity.IdentityServerApi.CreateBotTokenServer
+     */
+    createBotTokenServer: {
+      name: "CreateBotTokenServer",
+      I: CreateBotTokenServerRequest,
+      O: CreateBotTokenServerResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
+     *
+     * @generated from rpc barkfluff.identity.IdentityServerApi.GetBotTokenServer
+     */
+    getBotTokenServer: {
+      name: "GetBotTokenServer",
+      I: GetBotTokenServerRequest,
+      O: GetBotTokenServerResponse,
       kind: MethodKind.Unary,
     },
   }

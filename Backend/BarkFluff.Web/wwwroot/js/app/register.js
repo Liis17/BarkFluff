@@ -3,7 +3,7 @@
  * Mirrors the 9-step flow of the mobile/desktop clients (Android RegisterActivity,
  * macOS/iOS RegisterView).
  *
- * Requires: barkfluff.bundle.js (window.barkfluff / window.proto), BF.metadata, BF.tokens, BF.device
+ * Requires: barkfluff.bundle.js (window.barkfluff / window.proto), BF.metadata, BF.tokens, BF.device, BF.network
  * Exposes: BF.register
  *
  * Auth model (mirrors auth.js): dedicated gRPC-Web clients, metadata built manually.
@@ -84,6 +84,10 @@
 
     function meta(token) { return BF.metadata.build(token); }
 
+    function rpc(method, request, token, policy) {
+        return BF.network.unary(method, request, meta(token), policy || BF.network.POLICIES.MUTATION);
+    }
+
     function errorCodeOf(err) {
         return (err && err.metadata && err.metadata['x-error-code']) || null;
     }
@@ -91,23 +95,15 @@
     function checkUsername(username) {
         var req = new (usrPb().CheckExistUsernameRequest)();
         req.setUsername(username);
-        return new Promise(function (resolve, reject) {
-            usersClient.checkExistUsername(req, meta(), function (err, resp) {
-                if (err) return reject(err);
-                resolve(resp.getExist());
-            });
-        });
+        return rpc(usersClient.checkExistUsername, req, null, BF.network.POLICIES.READ)
+            .then(function (resp) { return resp.getExist(); });
     }
 
     function checkEmail(email) {
         var req = new (usrPb().CheckExistEmailRequest)();
         req.setEmail(email);
-        return new Promise(function (resolve, reject) {
-            usersClient.checkExistEmail(req, meta(), function (err, resp) {
-                if (err) return reject(err);
-                resolve(resp.getExist());
-            });
-        });
+        return rpc(usersClient.checkExistEmail, req, null, BF.network.POLICIES.READ)
+            .then(function (resp) { return resp.getExist(); });
     }
 
     function createAccount() {
@@ -116,34 +112,29 @@
         req.setLastName(state.lastName);
         req.setUsername(state.username);
         req.setEmail(state.email);
-        return new Promise(function (resolve, reject) {
-            identityClient.createAccount(req, meta(), function (err, resp) {
-                if (err) return reject(err);
+        return rpc(identityClient.createAccount, req).then(function (resp) {
                 state.codeId = resp.getCodeId();
-                resolve();
             });
-        });
     }
 
     function confirmAccount(code) {
         var req = new (identPb().ConfirmAccountRequest)();
         req.setCodeId(state.codeId);
         req.setCodeValue(code);
-        return new Promise(function (resolve, reject) {
-            identityClient.confirmAccount(req, meta(), function (err, resp) {
-                if (err) return reject(err);
+        return rpc(identityClient.confirmAccount, req).then(function (resp) {
                 var rt = resp.getRefreshToken();
-                if (!rt) return reject(new Error('no_refresh'));
+                if (!rt) throw new Error('no_refresh');
                 state.refreshToken = rt.getValue();
                 state.refreshTokenExpiration = rt.getExpirationDate().toDate().getTime();
 
                 // Exchange refresh token for an access token.
                 var treq = new (identPb().CreateTokenRequest)();
                 treq.setRefreshToken(state.refreshToken);
-                identityClient.createToken(treq, meta(), function (terr, tresp) {
-                    if (terr || !tresp) return reject(terr || new Error('no_token'));
+                return rpc(identityClient.createToken, treq, null, BF.network.POLICIES.REFRESH);
+            }).then(function (tresp) {
+                    if (!tresp) throw new Error('no_token');
                     var at = tresp.getAccessToken();
-                    if (!at) return reject(new Error('no_token'));
+                    if (!at) throw new Error('no_token');
                     state.accessToken = at.getValue();
                     state.accessTokenExpiration = at.getExpirationDate().toDate().getTime();
                     BF.tokens.save({
@@ -155,34 +146,24 @@
                     // Первый момент, когда согласие (данное на странице входа) можно
                     // зафиксировать в профиле: до этого шага токена не было.
                     BF.legal.flushConsent();
-                    resolve();
-                });
             });
-        });
     }
 
     function setPassword(password) {
         var req = new (identPb().SetPasswordRequest)();
         req.setPassword(password);
         req.setOldPassword('');
-        return new Promise(function (resolve, reject) {
-            identityClient.setPassword(req, meta(state.accessToken), function (err) {
-                if (err) return reject(err);
-                resolve();
-            });
-        });
+        return rpc(identityClient.setPassword, req, state.accessToken).then(function () {});
     }
 
     function uploadAvatar(blob) {
         var req = new (filePb().GetUploadUrlRequest)();
         req.setFileType(filePb().UploadFileType.USER_AVATAR);
-        return new Promise(function (resolve, reject) {
-            filesClient.getUploadUrl(req, meta(state.accessToken), function (err, resp) {
-                if (err) return reject(err);
+        return rpc(filesClient.getUploadUrl, req, state.accessToken).then(function (resp) {
                 var fileId = resp.getFileId();
                 var fd = new FormData();
                 fd.append('file', blob, 'avatar.jpg');
-                fetch(BF.node.origin() + '/api/files/upload/' + fileId, { method: 'POST', body: fd })
+                return fetch(BF.node.origin() + '/api/files/upload/' + fileId, { method: 'POST', body: fd })
                     .then(function (r) {
                         if (!r.ok) throw new Error('upload_' + r.status);
                         return r.json();
@@ -191,48 +172,30 @@
                         var fid = (body && body.fileId) || fileId;
                         var sreq = new (usrPb().SetProfilePictureRequest)();
                         sreq.setFileId(fid);
-                        usersClient.setProfilePicture(sreq, meta(state.accessToken), function (serr) {
-                            if (serr) return reject(serr);
+                        return rpc(usersClient.setProfilePicture, sreq, state.accessToken).then(function () {
                             state.avatarFileId = fid;
-                            resolve();
                         });
-                    })
-                    .catch(reject);
+                    });
             });
-        });
     }
 
     function setBio(bio) {
         var req = new (usrPb().ChangeBioRequest)();
         req.setBio(bio);
-        return new Promise(function (resolve, reject) {
-            usersClient.changeBio(req, meta(state.accessToken), function (err) {
-                if (err) return reject(err);
-                resolve();
-            });
-        });
+        return rpc(usersClient.changeBio, req, state.accessToken).then(function () {});
     }
 
     function enable2fa() {
         var req = new (identPb().EnableOtpVerificationRequest)();
         req.setOtpType(identPb().OtpTypeId.AUTHENTICATOR);
-        return new Promise(function (resolve, reject) {
-            identityClient.enableOtpVerification(req, meta(state.accessToken), function (err, resp) {
-                if (err) return reject(err);
-                resolve({ qr: resp.getOtpQr(), secret: resp.getOtpCode() });
-            });
-        });
+        return rpc(identityClient.enableOtpVerification, req, state.accessToken)
+            .then(function (resp) { return { qr: resp.getOtpQr(), secret: resp.getOtpCode() }; });
     }
 
     function confirm2fa(code) {
         var req = new (identPb().ConfirmOtpVerificationRequest)();
         req.setOtpCode(code);
-        return new Promise(function (resolve, reject) {
-            identityClient.confirmOtpVerification(req, meta(state.accessToken), function (err) {
-                if (err) return reject(err);
-                resolve();
-            });
-        });
+        return rpc(identityClient.confirmOtpVerification, req, state.accessToken).then(function () {});
     }
 
     // ─────────────── DOM refs ───────────────

@@ -129,6 +129,13 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Message = request.Message.ToCommandMessage(),
         };
 
+        if (!string.IsNullOrWhiteSpace(request.ClientOperationId))
+        {
+            if (!Guid.TryParse(request.ClientOperationId, out var clientOperationId))
+                throw new BarkFluff.Shared.Exceptions.Messages.ClientOperationIdNotValidException();
+            command.ClientOperationId = clientOperationId;
+        }
+
         switch (request.SourceIdCase)
         {
             case SendMessageRequest.SourceIdOneofCase.ChatId when Guid.TryParse(request.ChatId, out Guid chatId):
@@ -146,7 +153,7 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
                 throw new ChatIdNotValidException();
         }
 
-        return await _mediator.Send(command);
+        return await _mediator.Send(command, context.CancellationToken);
     }
 
     public override async Task<CreateGroupChatResponse> CreateGroupChat(CreateGroupChatRequest request, ServerCallContext context)
@@ -296,7 +303,9 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             throw new ChatIdNotValidException();
         }
 
-        return await _mediator.Send(new GetChatDraftQuery { ChatId = chatId });
+        return await _mediator.Send(
+            new GetChatDraftQuery { ChatId = chatId },
+            context.CancellationToken);
     }
 
     public override async Task<UpsertChatDraftResponse> UpsertChatDraft(UpsertChatDraftRequest request, ServerCallContext context)
@@ -306,12 +315,14 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             throw new ChatIdNotValidException();
         }
 
-        return await _mediator.Send(new UpsertChatDraftCommand
-        {
-            ChatId = chatId,
-            Text = request.Text,
-            ReplyToMessageId = request.ReplyToMessageId == 0 ? null : request.ReplyToMessageId
-        });
+        return await _mediator.Send(
+            new UpsertChatDraftCommand
+            {
+                ChatId = chatId,
+                Text = request.Text,
+                ReplyToMessageId = request.ReplyToMessageId == 0 ? null : request.ReplyToMessageId
+            },
+            context.CancellationToken);
     }
 
     public override async Task<DeleteChatDraftResponse> DeleteChatDraft(DeleteChatDraftRequest request, ServerCallContext context)
@@ -325,11 +336,13 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             return new DeleteChatDraftResponse();
         }
 
-        var deleted = await _mediator.Send(new DeleteChatDraftCommand
-        {
-            ChatId = chatId,
-            Revision = revision
-        });
+        var deleted = await _mediator.Send(
+            new DeleteChatDraftCommand
+            {
+                ChatId = chatId,
+                Revision = revision
+            },
+            context.CancellationToken);
 
         return new DeleteChatDraftResponse { Deleted = deleted };
     }

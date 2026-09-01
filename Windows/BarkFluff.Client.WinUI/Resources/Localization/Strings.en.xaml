@@ -49,6 +49,9 @@
     <x:String x:Key="Error_LoginFailed">Unable to sign in. Check your username and password.</x:String>
     <x:String x:Key="Error_LoginTwoFactorRequired">Enter your two-factor authentication code.</x:String>
     <x:String x:Key="Error_LoginTwoFactorInvalid">The two-factor authentication code is invalid.</x:String>
+    <x:String x:Key="Error_LoginRateLimited">Too many sign-in attempts. Try again later.</x:String>
+    <x:String x:Key="Error_LoginLocked">Sign-in is temporarily locked. Try again later.</x:String>
+    <x:String x:Key="Error_LoginProtectionUnavailable">Sign-in protection is temporarily unavailable. Try again later.</x:String>
     <x:String x:Key="FastAuth_Creating">Creating a new QR code…</x:String>
     <x:String x:Key="FastAuth_WaitingConfirmation">Waiting for confirmation on your other device.</x:String>
     <x:String x:Key="FastAuth_Scanned">QR code scanned. Confirm the sign-in on your other device.</x:String>
@@ -81,6 +84,9 @@
     <x:String x:Key="Error_RegistrationFieldsRequired">Enter your first name, username, and email.</x:String>
     <x:String x:Key="Error_RegistrationFailed">Unable to create the profile. Check the details and try again.</x:String>
     <x:String x:Key="Error_RegistrationCodeInvalid">The confirmation code is invalid or expired.</x:String>
+    <x:String x:Key="Error_RegistrationRateLimited">Too many registration requests. Try again later.</x:String>
+    <x:String x:Key="Error_RegistrationLocked">Registration confirmation is temporarily locked.</x:String>
+    <x:String x:Key="Error_RegistrationProtectionUnavailable">Registration protection is temporarily unavailable. Try again later.</x:String>
     <x:String x:Key="Error_PasswordMismatch">Passwords do not match.</x:String>
     <x:String x:Key="Error_PasswordInvalid">Unable to set the password. Try a different password.</x:String>
     <x:String x:Key="PasswordRecovery_Title">Reset your password</x:String>
@@ -96,6 +102,12 @@
     <x:String x:Key="Error_RecoveryIdentifierRequired">Enter your username or email.</x:String>
     <x:String x:Key="Error_PasswordResetFailed">Unable to start password recovery. Try again later.</x:String>
     <x:String x:Key="Error_PasswordResetCodeInvalid">The reset code is invalid or expired.</x:String>
+    <x:String x:Key="Error_PasswordResetRateLimited">Too many password reset requests. Try again later.</x:String>
+    <x:String x:Key="Error_PasswordResetLocked">Password reset is temporarily locked. Try again later.</x:String>
+    <x:String x:Key="Error_PasswordResetProtectionUnavailable">Password reset protection is temporarily unavailable. Try again later.</x:String>
+    <x:String x:Key="Error_TwoFactorRateLimited">Too many two-factor requests. Try again later.</x:String>
+    <x:String x:Key="Error_TwoFactorLocked">The two-factor operation is temporarily locked.</x:String>
+    <x:String x:Key="Error_TwoFactorProtectionUnavailable">Two-factor protection is temporarily unavailable. Try again later.</x:String>
     <x:String x:Key="Messenger_Search">Search chats and people</x:String>
     <x:String x:Key="Messenger_SearchResults">People</x:String>
     <x:String x:Key="Messenger_Reconnecting">Reconnecting…</x:String>

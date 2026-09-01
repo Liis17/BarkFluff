@@ -53,7 +53,8 @@ public class UploadPosterServerCommandHandler : IRequestHandler<UploadPosterServ
         var processedBytes = await _imageCompressor.ProcessAvatarAsync(rawStream, maxSide: 1920, quality: 85);
 
         using var fileStream = new MemoryStream(processedBytes);
-        var etag = await _s3Uploader.UploadAsync(bucketName, $"{fileId}", fileStream, "image/jpeg");
+        var etag = await _s3Uploader.UploadAsync(
+            bucketName, $"{fileId}", fileStream, "image/jpeg", cancellationToken);
 
         var domainFile = new DomainUploadFile
         {

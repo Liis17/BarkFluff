@@ -312,6 +312,25 @@ public static class SeqEndpoints
         .WithName("GetDashboardTraffic")
         .WithOpenApi();
 
+        group.MapGet("/dashboard/files/last-upload", async (
+            MetricsCacheDbContext cache,
+            SeqService seqService) =>
+        {
+            var snapshot = await GetLastUploadTimingAsync(cache, seqService);
+            return Results.Ok(new
+            {
+                observedAtUtc = snapshot?.ObservedAtUtc,
+                totalMs = snapshot?.TotalMs,
+                bufferingMs = snapshot?.BufferingMs,
+                hashingMs = snapshot?.HashingMs,
+                processingMs = snapshot?.ProcessingMs,
+                s3Ms = snapshot?.S3Ms,
+                source = snapshot?.Source
+            });
+        })
+        .WithName("GetDashboardFilesLastUpload")
+        .WithOpenApi();
+
         group.MapGet("/dashboard/metric-groups", () =>
         {
             return Results.Ok(new
@@ -538,6 +557,83 @@ public static class SeqEndpoints
 
     private static string EscapeSeq(string value) => value.Replace("'", "''");
 
+    private static async Task<LastUploadTimingSnapshot?> GetLastUploadTimingAsync(
+        MetricsCacheDbContext cache,
+        SeqService seqService)
+    {
+        string[] metricIds =
+        [
+            "files_last_upload_total_ms",
+            "files_last_upload_buffering_ms",
+            "files_last_upload_hashing_ms",
+            "files_last_upload_processing_ms",
+            "files_last_upload_s3_ms"
+        ];
+        var values = new Dictionary<string, long>(StringComparer.Ordinal);
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+
+        foreach (var row in cache.HourlyServiceMetrics
+                     .Find(x => x.ServiceName == "BarkFluff.Files" && x.HourUtc >= cutoff && x.SchemaVersion == 2)
+                     .OrderByDescending(x => x.HourUtc))
+        {
+            foreach (var metricId in metricIds)
+                if (!values.ContainsKey(metricId) && row.Gauges.TryGetValue(metricId, out var value))
+                    values[metricId] = value;
+
+            if (values.Count == metricIds.Length) break;
+        }
+
+        var liveGaugeFilter = string.Join(" or ", metricIds.Select(metricId =>
+            $"Metrics.Gauges.{metricId} is not null"));
+        var events = await seqService.GetAllEventsListAsync(
+            filter: $"Application = 'BarkFluff.Files' and Metrics.SchemaVersion = 2 and ({liveGaugeFilter})",
+            fromDateUtc: cutoff,
+            maxEvents: 1000);
+
+        DateTime? observedAtUtc = null;
+        var liveValues = new Dictionary<string, (DateTime Timestamp, long Value)>(StringComparer.Ordinal);
+        if (events is not null)
+        {
+            foreach (var evt in events)
+            {
+                if (!ServiceMetricsEventParser.TryParse(evt, out var metrics) ||
+                    !metrics.ServiceName.Equals("BarkFluff.Files", StringComparison.OrdinalIgnoreCase) ||
+                    metrics.Timestamp == DateTime.MinValue)
+                    continue;
+
+                foreach (var metricId in metricIds)
+                {
+                    if (metrics.Gauges.TryGetValue(metricId, out var value) &&
+                        (!liveValues.TryGetValue(metricId, out var current) || metrics.Timestamp >= current.Timestamp))
+                    {
+                        liveValues[metricId] = (metrics.Timestamp, value);
+                    }
+                }
+            }
+
+            foreach (var (metricId, liveValue) in liveValues)
+                values[metricId] = liveValue.Value;
+
+            if (liveValues.Count > 0)
+                observedAtUtc = liveValues.Values.Max(value => value.Timestamp);
+        }
+
+        if (!values.TryGetValue("files_last_upload_total_ms", out var totalMs))
+            return null;
+
+        return new LastUploadTimingSnapshot(
+            observedAtUtc,
+            totalMs,
+            GetValue("files_last_upload_buffering_ms"),
+            GetValue("files_last_upload_hashing_ms"),
+            GetValue("files_last_upload_processing_ms"),
+            GetValue("files_last_upload_s3_ms"),
+            liveValues.Count > 0 ? "seq" : "cache");
+
+        long? GetValue(string metricId) =>
+            values.TryGetValue(metricId, out var value) ? value : null;
+    }
+
     private static string? GetEventId(JsonElement evt)
     {
         if (evt.ValueKind != JsonValueKind.Object) return null;
@@ -717,3 +813,12 @@ public static class SeqEndpoints
 
     #endregion
 }
+
+internal sealed record LastUploadTimingSnapshot(
+    DateTime? ObservedAtUtc,
+    long TotalMs,
+    long? BufferingMs,
+    long? HashingMs,
+    long? ProcessingMs,
+    long? S3Ms,
+    string Source);

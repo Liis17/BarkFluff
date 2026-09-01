@@ -36,20 +36,25 @@ public class UpsertChatDraftCommandHandler : IRequestHandler<UpsertChatDraftComm
         if (request.Text.Length > MaxTextLength)
             throw new MessageTextTooLongException();
 
-        var chat = await _chatsStorage.GetChat(request.ChatId) ?? throw new ChatNotFoundException();
+        var chat = await _chatsStorage.GetChat(request.ChatId, cancellationToken) ?? throw new ChatNotFoundException();
         if (chat.Type != ChatType.Regular)
             throw new ChatNotRegularException();
-        if (!await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId))
+        if (!await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId, cancellationToken))
             throw new NoAccessToChatException();
 
         if (request.ReplyToMessageId.HasValue)
-            await Shared.ReplyTargetValidator.ValidateAsync(_messagesStorage, request.ChatId, request.ReplyToMessageId.Value);
+            await Shared.ReplyTargetValidator.ValidateAsync(
+                _messagesStorage,
+                request.ChatId,
+                request.ReplyToMessageId.Value,
+                cancellationToken);
 
         var draft = await _chatDraftsStorage.UpsertAsync(
             request.ChatId,
             _userContext.UserId,
             request.Text,
-            request.ReplyToMessageId);
+            request.ReplyToMessageId,
+            cancellationToken);
 
         return new UpsertChatDraftResponse
         {

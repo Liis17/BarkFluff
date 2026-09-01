@@ -40,7 +40,7 @@
 | `BadgesEndpoints.cs` | `/api/badges` | CRUD бейджей пользователей через gRPC Users + Files (загрузка изображения). |
 | `StickersEndpoints.cs` | `/api/stickers` | Управление стикерпаками: CRUD пака, CRUD стикеров, смена обложки, прокси S3. gRPC Files. |
 | `UsersEndpoints.cs` | `/api/users` | Поиск пользователей, полный профиль (параллельные gRPC-вызовы), назначение бейджей, лимит хранилища, отключение 2FA, аватар, удаление сессий. |
-| `SeqEndpoints.cs` | `/api/seq` | Проксирование логов из Seq, KPI-дашборд, трафик, метрики сервисов, статус сервисов (Seq + Docker). |
+| `SeqEndpoints.cs` | `/api/seq` | Проксирование логов из Seq, KPI-дашборд, трафик, метрики сервисов, статус сервисов (Seq + Docker). `/dashboard/files/last-upload` объединяет свежие gauge-значения последней загрузки из Seq с cache fallback из LiteDB. |
 | `LogsClearEndpoints.cs` | `/api/seq/clear` | Запуск и статус удаления логов из Seq (scope=all/old). |
 | `LogsExportEndpoints.cs` | `/api/seq/export` | Запуск, статус и скачивание ZIP-архива экспорта логов. |
 | `LogsCompressionEndpoints.cs` | `/api/seq/compress-metrics` | Ручной запуск ежедневного сжатия логов-метрик за конкретную дату, история прогонов. |
@@ -112,7 +112,7 @@
 | Файл | Страница | Назначение |
 |------|---------|-----------|
 | `Login.html` | `/` (без токена) | Форма входа: поле nickname → polling статуса Telegram-подтверждения |
-| `dashboard.html` | `/` | Главная: KPI, трафик, метрики сервисов из Seq-кеша |
+| `dashboard.html` | `/` | Главная: KPI, трафик, метрики сервисов; раскрытая карточка последней загрузки [[Backend/Files|Files]] обновляется каждые 10 секунд через live Seq endpoint |
 | `services.html` | `/services` | Управление Docker-контейнерами: статус, start/stop/restart/update; интерактивная SSH-консоль для дополнительных серверов |
 | `logs.html` | `/logs` | Просмотр логов Seq с фильтрацией по сервису, уровню, тексту |
 | `badges.html` | `/badges` | CRUD бейджей: создание с картинкой, редактирование, удаление |
@@ -128,10 +128,9 @@
 
 Общие UI-ресурсы `Pages/v2/assets/`: `md3.css` содержит токены и размеры
 иконок, `icons.js` — helper `bfIcon()`/`bfSetIcon()`, `sidebar.js` — общий
-сайдбар. SVG-каталог из корневого `icons/` копируется в `assets/icons/` при
-сборке AdminPanel; контейнерные иконки берутся из `icons/services`, специфичные
-действия панели — из `icons/admin`, общие edit/delete/download — из
-`icons/message-actions`.
+сайдбар. SVG-каталог из корневого `Icons/` копируется в `assets/icons/` при
+сборке AdminPanel; контейнерные иконки, специфичные действия панели и общие
+edit/delete/download берутся из этого плоского каталога.
 
 ---
 

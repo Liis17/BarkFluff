@@ -6,6 +6,7 @@ using BarkFluff.Identity.Host;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
 using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Users;
@@ -18,6 +19,8 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 using Serilog;
+
+using StackExchange.Redis;
 
 namespace BarkFluff.Identity;
 
@@ -33,7 +36,8 @@ public class Program
 
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.Identity");
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<IdentityContext>(c
             => c.UseNpgsql(builder.Configuration["IdentityDb"], npgsql =>
@@ -43,8 +47,24 @@ public class Program
             }));
 
         builder.Services.AddSettings<JwtSettings>(builder.Configuration, "JwtSettings");
+        builder.Services.AddSettings<IdentitySecurityOptions>(builder.Configuration, "IdentitySecurity");
 
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+        var redisConnectionString = builder.Configuration["Redis"]
+            ?? throw new InvalidOperationException("Redis configuration is required for Identity protection");
+
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+        {
+            var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+            redisOptions.AbortOnConnectFail = false;
+            return ConnectionMultiplexer.Connect(redisOptions);
+        });
+        builder.Services.AddSingleton<IIdentityAbuseGuard, RedisIdentityAbuseGuard>();
+
+        builder.Services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssemblyContaining<Program>();
+            cfg.AddOpenBehavior(typeof(IdentityAbuseGuardBehavior<,>));
+        });
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -109,7 +129,8 @@ public class Program
         app.UseRouting();
         app.UseCors("IdentityCors");
         app.UseGrpcWeb();
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
 
         app.UseXAuth();
         app.MapHealthEndpoints();

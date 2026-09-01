@@ -1245,6 +1245,7 @@
     <string name="about_service_identity" translatable="false">Identity</string>
     <string name="about_service_users" translatable="false">Users</string>
     <string name="about_service_files" translatable="false">Files</string>
+    <string name="about_service_files_media" translatable="false">Files HTTP</string>
     <string name="about_service_messages" translatable="false">Messages</string>
     <string name="about_service_updates" translatable="false">Updates</string>
     <string name="about_service_onliner" translatable="false">Onliner</string>

@@ -6,6 +6,12 @@ public class RequestContext
 
     public string? IpAddress { get; init; }
 
+    /// <summary>
+    /// Адрес, полученный от reverse proxy или TCP-соединения.
+    /// В отличие от IpAddress не использует клиентские gRPC-метаданные.
+    /// </summary>
+    public string? TrustedIpAddress { get; init; }
+
     public string? DeviceName { get; init; }
 
     public string? AppName { get; init; }

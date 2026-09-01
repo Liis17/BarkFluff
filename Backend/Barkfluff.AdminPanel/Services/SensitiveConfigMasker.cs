@@ -9,11 +9,13 @@ public static partial class SensitiveConfigMasker
 {
     public const string MaskedValue = "••••••••";
 
-    [GeneratedRegex("token|secret|password|accesskey", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("token|secret|password|accesskey|apikey", RegexOptions.IgnoreCase)]
     private static partial Regex SensitivePattern();
 
     public static bool IsSensitive(string section, string key) =>
-        SensitivePattern().IsMatch(key) || SensitivePattern().IsMatch(section);
+        SensitivePattern().IsMatch(key)
+        || SensitivePattern().IsMatch(section)
+        || section.EndsWith("Db", StringComparison.OrdinalIgnoreCase);
 
     public static string MaskAccessKey(string value)
     {

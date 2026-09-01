@@ -36,4 +36,5 @@ builder.Services.AddGrpcClient<SomeApi.SomeApiClient>(o =>
 
 - Только `JwtClientInterceptor` передаёт значение **без Base64** — JWT идёт напрямую
 - Серверная сторона проверяет через XAuth в [[Backend/GrpcServer]]
+- `x-ip-address` — клиентская metadata для legacy-совместимости и не является доверенным адресом: защита Identity использует `RequestContext.TrustedIpAddress`, полученный от reverse proxy или TCP-соединения
 - Добавить новый заголовок: константа в `MetadataKeys` + новый interceptor по образцу

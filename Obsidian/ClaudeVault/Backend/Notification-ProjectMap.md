@@ -58,7 +58,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `appsettings.json` | Базовая конфигурация: порт `7004`, адрес ConfigurationService `http://localhost:7003`. |
+| `appsettings.json` | Базовая конфигурация: порт `7004`, адрес Settings `http://localhost:7003`. |
 | `appsettings.Development.json` | Конфигурация для dev-окружения (SMTP, RabbitMQ). |
 | `Properties/launchSettings.json` | Профили запуска для VS/dotnet run. |
 

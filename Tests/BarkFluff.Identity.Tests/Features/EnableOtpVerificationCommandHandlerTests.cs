@@ -83,7 +83,8 @@ public class EnableOtpVerificationCommandHandlerTests
     {
         return new EnableOtpVerificationCommandHandler(
             _userContext, _authPropsStorage, _usersClient.Object,
-            _notificationSender, ctx ?? _requestContext, _locationClient, _metrics, _logger.Object);
+            _notificationSender, ctx ?? _requestContext, _locationClient, _metrics, _logger.Object,
+            TestHelper.CreateAbuseGuard());
     }
 
     [Fact]

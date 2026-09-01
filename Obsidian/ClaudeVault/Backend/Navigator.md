@@ -7,6 +7,8 @@
 
 Расположение: `Backend/BarkFluff.Navigator/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 Роль в федерации — вторичный канал (источник 2 discovery, [[../../../docs/rearch/03-discovery|docs/rearch/03-discovery.md]]): каталог публичных нод + кросс-проверка ключей при первом контакте + фолбэк-резолв, когда `/.well-known` недоступен. Сеть обязана работать при лежащем Navigator — уже знакомые ноды (`KnownServers` в [[Backend/Federation]]) продолжают общаться напрямую.
 
 **Вне платформенного шаблона** (публичная инфраструктура вне ноды): без `LoadConfiguration`/Serilog/метрик — осознанное решение фазы 1.
@@ -144,4 +146,4 @@ GitHub Actions workflow `build-backend-navigator.yml` перед `dotnet publish
 4. Обновить маппинг в `ListServersQueryHandler.cs`/`GetServerByNameQueryHandler.cs` (domain → response) — учти правило «не менять контракт `ListServers`» для существующих полей
 # Метрики
 
-Navigator экспортирует в Seq через [[Backend/GrpcServer]] число успешных регистраций и запросов списка/поиска серверов. Поскольку сервис не использует [[Backend/Configuration]], адрес Seq берётся из локальной конфигурации или стандартного `http://seq:5341`.
+Navigator экспортирует в Seq через [[Backend/GrpcServer]] число успешных регистраций и запросов списка/поиска серверов. Поскольку сервис не использует [[Backend/Settings]], адрес Seq берётся из локальной конфигурации или стандартного `http://seq:5341`.

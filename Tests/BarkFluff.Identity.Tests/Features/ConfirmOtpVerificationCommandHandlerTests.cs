@@ -7,6 +7,7 @@ using BarkFluff.Identity.Features.ConfirmOtpVerification;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 
@@ -68,11 +69,12 @@ public class ConfirmOtpVerificationCommandHandlerTests
                 Task.FromResult(new Grpc.Core.Metadata()), () => Grpc.Core.Status.DefaultSuccess, () => new Grpc.Core.Metadata(), () => { }));
     }
 
-    private ConfirmOtpVerificationCommandHandler CreateHandler()
+    private ConfirmOtpVerificationCommandHandler CreateHandler(TestHelper.TestIdentityAbuseGuard? abuseGuard = null)
     {
         return new ConfirmOtpVerificationCommandHandler(
             _userContext, _authPropsStorage, _usersClient.Object,
-            _notificationSender, _requestContext, _locationClient, _metrics, _logger.Object);
+            _notificationSender, _requestContext, _locationClient, _metrics, _logger.Object,
+            abuseGuard ?? TestHelper.CreateAbuseGuard());
     }
 
     [Fact]
@@ -117,6 +119,55 @@ public class ConfirmOtpVerificationCommandHandlerTests
         var cmd = new ConfirmOtpVerificationCommand { OtpCode = "000000" };
 
         await Assert.ThrowsAsync<NotValidOtpCodeException>(() => handler.Handle(cmd, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Handle_FifthWrongOtp_LocksSetupAndDoesNotNotify()
+    {
+        _context.AuthUserProperties.Add(new AuthUserProperty
+        {
+            UserId = 1,
+            SelectedOtpType = DomainOtpType.Authenticator,
+            OtpSecret = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20))
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        abuseGuard.OtpFailureResult = new IdentityFailureResult(5, true);
+        var handler = CreateHandler(abuseGuard);
+
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(
+            new ConfirmOtpVerificationCommand { OtpCode = "000000" },
+            CancellationToken.None));
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(
+            new ConfirmOtpVerificationCommand { OtpCode = "000000" },
+            CancellationToken.None));
+
+        _publishEndpoint.Verify(
+            p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Assert.Equal(1, abuseGuard.OtpFailureCalls);
+    }
+
+    [Fact]
+    public async Task Handle_MissingOtp_DoesNotRegisterFailure()
+    {
+        _context.AuthUserProperties.Add(new AuthUserProperty
+        {
+            UserId = 1,
+            SelectedOtpType = DomainOtpType.Authenticator,
+            OtpSecret = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20))
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        var handler = CreateHandler(abuseGuard);
+
+        await Assert.ThrowsAsync<OtpCodeNeedException>(() => handler.Handle(
+            new ConfirmOtpVerificationCommand(),
+            CancellationToken.None));
+
+        Assert.Equal(0, abuseGuard.OtpFailureCalls);
     }
 
     [Fact]

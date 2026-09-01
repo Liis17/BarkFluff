@@ -10,6 +10,8 @@ public class Message
     // NULL для импортированных fed-сообщений (этап 2.3) — автор на другой ноде, см. SenderUuid.
     public long? SenderId { get; set; }
 
+    public Guid? ClientOperationId { get; set; }
+
     public List<long> ReadBy { get; set; }
 
     public Guid ChatId { get; set; }

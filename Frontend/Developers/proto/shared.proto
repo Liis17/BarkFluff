@@ -26,7 +26,41 @@ message Message {
 
   MessageContent content = 5; // Содержимое сообщения
 
-  MessageContentType type = 6; // Тип сообщения 
+  MessageContentType type = 6; // Тип сообщения
+
+  bool is_edited = 7; // Признак того что сообщение было отредактировано
+
+  google.protobuf.Timestamp edited_at = 8; // Дата последней правки сообщения
+
+  string federated_id = 9; // Глобальный ID сообщения в федеративном чате (uuid; пусто для локальных)
+
+  string sender_uuid = 10; // UUID автора (пусто до включения федерации)
+
+  repeated string federated_read_by = 11; // UUID remote-участников, прочитавших сообщение (FederatedReadStates; рендер — Фаза 5)
+
+  ReplyInfo reply_to = 12; // Заполнено => сообщение является ответом. Резолвится сервером при выдаче
+
+  string client_operation_id = 13; // UUID клиентской операции отправителя; пусто у старых сообщений
+}
+
+// Превью цитируемого сообщения для reply. В отличие от ForwardedMessageAttachment это НЕ снапшот:
+// сервер резолвит его из оригинала на каждой выдаче, поэтому правка оригинала видна сразу,
+// а удаление скрывает содержимое.
+message ReplyInfo {
+
+  int64 message_id = 1; // ID оригинала
+
+  int64 sender_id = 2; // Автор оригинала (0 для remote-автора федеративного чата)
+
+  string sender_name = 3; // Актуальное имя автора (не снапшот)
+
+  string text_preview = 4; // Актуальный текст оригинала, обрезанный до 200 символов
+
+  MessageAttachmentType first_attachment_type = 5; // Тип первого вложения оригинала (для «📷 Фото» в превью)
+
+  bool is_deleted = 6; // Оригинал удалён: text_preview пуст, клиент рисует «сообщение удалено»
+
+  string federated_message_id = 7; // UUID оригинала в федеративном чате (пусто для локальных)
 }
 
 message MessageContent {
@@ -43,14 +77,41 @@ message MessageAttachment {
   MessageAttachmentType type = 2; // Тип вложения
 
   string file_id = 3; // Индетификатор файла
-  
+
   string preview_url = 4; // Ссылка на превью файла (может быть пустым)
-  
+
   int64 attachment_size = 5; // Размер файла в байтах
-  
+
   string preview_file_id = 6; // Идентификатор файла превью (может быть пустым)
-  
+
   string file_name = 7; // Оригинальное имя файла
+
+  string origin_server = 11; // нода-владелец байтов (пусто = локальный файл), этап 3.1
+
+  int32 image_width = 8; // Ширина изображения в пикселях (0 если не изображение)
+
+  int32 image_height = 9; // Высота изображения в пикселях (0 если не изображение)
+
+  ForwardedMessageAttachment forwarded_message = 10; // Данные пересланного сообщения (только для type = FORWARDED_MESSAGE)
+}
+
+message ForwardedMessageAttachment {
+
+  string author_name = 1; // Имя и фамилия автора оригинального сообщения
+
+  int64 original_message_id = 2; // ID оригинального сообщения
+
+  string text = 3; // Текст оригинального сообщения
+
+  repeated MessageAttachment attachments = 4; // Вложения оригинального сообщения (без FORWARDED_MESSAGE для исключения рекурсии)
+
+  string original_chat_id = 5; // Чат оригинала (пусто у снапшотов, созданных до разделения reply/forward)
+
+  int64 original_sender_id = 6; // Автор оригинала (0 у legacy-снапшотов и у remote-автора)
+
+  google.protobuf.Timestamp original_sent_at = 7; // Время отправки оригинала (пусто у legacy-снапшотов)
+
+  int32 order = 8; // Порядок внутри пересылки нескольких сообщений (0 у legacy-снапшотов)
 }
 
 enum MessageAttachmentType {
@@ -70,6 +131,8 @@ enum MessageAttachmentType {
   VOICE = 6; // Голосовое сообщение
 
   STICKER = 7; // Стикер (WebP)
+
+  FORWARDED_MESSAGE = 8; // Пересланное сообщение
 }
 
 enum MessageContentType {
@@ -81,3 +144,81 @@ enum MessageContentType {
   SYSTEM = 2; // Системное содержимое
 }
 
+message PinnedMessageInfo {
+
+  Message message = 1; // Закреплённое сообщение
+
+  int64 pinner_user_id = 2; // ID пользователя, закрепившего сообщение
+
+  google.protobuf.Timestamp pinned_at = 3; // Дата закрепления
+}
+
+// Тип чата.
+//   REGULAR  — обычный чат, plaintext в БД сервера (поведение по умолчанию, существующие чаты).
+//   PRIVATE  — E2E через общий passphrase: сервер хранит только шифротекст в EncryptedMessages.
+//              Чат материализуется в БД (Chat-стержень + KdfSalt + PassphraseVerifier).
+//   SECRET   — E2E Signal Double Ratchet, привязка к устройству-инициатору сессии.
+//              Сервер НЕ хранит ни сообщения, ни сам Chat — только релэит SecretEnvelope
+//              и буферизует в Redis на 24ч. Через ListChats секретные чаты НЕ возвращаются —
+//              клиент держит их в локальном хранилище.
+enum ChatType {
+  CHAT_TYPE_REGULAR = 0;
+  CHAT_TYPE_PRIVATE = 1;
+  CHAT_TYPE_SECRET = 2;
+}
+
+// Состояние приглашения в приватный чат. Нужно клиенту, чтобы не предлагать
+// отправку до принятия приглашения второй стороной.
+enum PrivateChatInviteState {
+  PRIVATE_CHAT_INVITE_STATE_PENDING = 0;
+  PRIVATE_CHAT_INVITE_STATE_ACCEPTED = 1;
+  PRIVATE_CHAT_INVITE_STATE_REJECTED = 2;
+}
+
+// Зашифрованное сообщение приватного чата.
+// Сервер хранит как opaque blob в отдельной таблице EncryptedMessages и
+// никогда не имеет ключа для расшифровки. Расшифровка только клиентами,
+// знающими passphrase (через Argon2id(passphrase, Chat.kdf_salt) → AES-256-GCM key).
+message EncryptedMessage {
+
+  int64 id = 1; // Идентификатор шифрованного сообщения (auto-increment, отдельная последовательность от Message.id)
+
+  string chat_id = 2; // Идентификатор приватного чата
+
+  int64 sender_id = 3; // Идентификатор отправителя (известен серверу — нужен для авторизации)
+
+  string sender_device_id = 4; // Идентификатор устройства-отправителя (для UI у получателя)
+
+  google.protobuf.Timestamp sent_at = 5; // Дата отправки (UTC, проставляется сервером)
+
+  bytes ciphertext = 6; // Шифротекст AES-256-GCM
+
+  bytes nonce = 7; // Уникальный nonce для AES-GCM (12 байт), генерируется отправителем
+
+  bytes associated_data = 8; // AAD для AES-GCM (например, привязка к chat_id и message_id)
+
+  bool is_edited = 9; // Признак редактирования
+
+  google.protobuf.Timestamp edited_at = 10; // Дата последнего редактирования
+
+  bool is_deleted = 11; // Soft-delete: true => сообщение скрыто, ciphertext очищен
+}
+
+// Конверт секретного сообщения (Signal Double Ratchet).
+// Сервер обращается с envelope как с opaque blob: только релэит указанному
+// recipient_device_id и буферизует в Redis (TTL 24ч) если получатель оффлайн.
+// В БД сервер НЕ сохраняет.
+message SecretEnvelope {
+
+  string message_id = 1; // Уникальный ID сообщения для ack (Guid, генерируется сервером при приёме)
+
+  int64 sender_user_id = 2; // ID пользователя-отправителя (для UX: "от кого")
+
+  string sender_device_id = 3; // ID устройства-отправителя (нужен получателю для маршрутизации в правильную ratchet-сессию)
+
+  string recipient_device_id = 4; // ID устройства-получателя (определяется отправителем при создании секретного чата)
+
+  bytes envelope = 5; // Опаковый payload libsignal (PreKeySignalMessage или SignalMessage), включает ratchet headers + ciphertext
+
+  google.protobuf.Timestamp sent_at = 6; // Дата отправки (UTC, проставляется сервером)
+}
