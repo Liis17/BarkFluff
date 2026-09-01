@@ -39,6 +39,7 @@
   };
 
   BF.can = function (permission) {
+    if (BF.hasRole('Owner')) return true;
     const allowed = PERMISSION_ROLES[permission];
     if (!allowed) return false;
     return allowed.some(function (r) { return BF.roles.indexOf(r) !== -1; });

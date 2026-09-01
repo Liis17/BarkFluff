@@ -30,4 +30,7 @@ public class AdminRecord
 
     [BsonIgnore]
     public HashSet<AdminRole> RoleSet => AdminRoles.ParseNames(Roles);
+
+    [BsonIgnore]
+    public bool IsOwner => RoleSet.Contains(AdminRole.Owner);
 }

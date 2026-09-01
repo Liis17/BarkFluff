@@ -16,11 +16,12 @@ Barkfluff.AdminPanel/
 ├── Dockerfile.slim                        ← образ для CI и production
 ├── dotnet-tools.json                      ← манифест .NET инструментов
 ├── Data/
-│   ├── TokenDbContext.cs              ← LiteDB: auth-токены
+│   ├── TokenDbContext.cs              ← LiteDB: auth-токены, админы, приглашения
 │   ├── MetricsCacheDbContext.cs       ← LiteDB: кеш метрик
 │   └── RemoteDockerDbContext.cs       ← LiteDB: удалённые серверы и контейнеры
 ├── Endpoints/
 │   ├── AuthEndpoints.cs               ← /api/auth/*
+│   ├── AdminsEndpoints.cs             ← /api/admins/*
 │   ├── DockerEndpoints.cs             ← /api/docker/*
 │   ├── BadgesEndpoints.cs             ← /api/badges/*
 │   ├── StickersEndpoints.cs           ← /api/stickers/*
@@ -41,6 +42,8 @@ Barkfluff.AdminPanel/
 │   └── RequireAdminReasonFilter.cs    ← обязательная причина чувствительного действия
 ├── Models/
 │   ├── AuthToken.cs                   ← сессионный токен
+│   ├── AdminRecord.cs                 ← динамический администратор и роли
+│   ├── AdminInvitation.cs             ← deep-link-приглашение и статус
 │   ├── PendingAuthRequest.cs          ← запрос подтверждения (in-memory)
 │   ├── SeqSettings.cs                 ← конфиг Seq
 │   ├── LogsExportJob.cs               ← состояние job экспорта логов
@@ -51,6 +54,8 @@ Barkfluff.AdminPanel/
 │       └── AuthStatusResponse.cs      ← статус запроса
 ├── Services/
 │   ├── AuthService.cs                 ← создание auth-запросов
+│   ├── AdminService.cs                ← Owner bootstrap и роли админов
+│   ├── AdminInvitationService.cs      ← жизненный цикл приглашений
 │   ├── TokenService.cs                ← CRUD токенов в LiteDB
 │   ├── PendingAuthService.cs          ← in-memory очередь запросов
 │   ├── TelegramBotService.cs          ← Telegram-бот (IHostedService)
@@ -91,7 +96,7 @@ Barkfluff.AdminPanel/
 
 | Класс | Назначение |
 |-------|-----------|
-| `TelegramSettings` | Конфиг Telegram-бота: `BotToken`, `Admins` (строка `"id:name,id:name"`) |
+| `TelegramSettings` | Конфиг Telegram-бота: `BotToken`, ровно один `Admins` (`"id:name"`) — immutable Owner |
 | `TelegramProxySettings` | Proxy для бота: `Url`, `Username`, `Password` |
 | `AdminUser` | Парсированный админ: `TelegramUserId` (long), `Username` |
 | `TelegramSettingsExtensions` | `IsAdmin(userId)`, `GetAdminByUsername(name)`, `GetAdminByTelegramId(id)`, `GetUsername(id)` |
@@ -115,6 +120,8 @@ GET /s3-browser        → v2/s3-browser.html
 GET /configuration     → v2/configuration.html
 GET /bots              → v2/bots.html
 GET /federation        → v2/federation.html
+GET /admins            → v2/admins.html
+GET /audit             → v2/audit.html
 GET /restarting        → v2/restarting.html (публичный)
 GET /updating          → v2/updating.html (публичный)
 GET /v2/               → Redesigned/index.html (отдельный SPA-эксперимент, не трогать)
@@ -128,7 +135,7 @@ GET /v2/               → Redesigned/index.html (отдельный SPA-экс�
 
 ### TokenDbContext
 - LiteDB, путь: `db/tokens.db` (из `LiteDbSettings.Path`)
-- Коллекция `Tokens` с индексом по `LastActivity`
+- Коллекции `Tokens` (индекс `LastActivity`), `Admins` (индекс `Username`) и `AdminInvitations` (уникальный payload и Telegram ID)
 - Singleton, создаёт директорию если не существует
 
 ### MetricsCacheDbContext
@@ -171,6 +178,16 @@ long? TargetTelegramUserId
 DateTime? CompletedAt
 ```
 
+### AdminRecord и AdminInvitation
+
+`AdminRecord` хранит динамического администратора (`TelegramUserId`, `Username`, роли,
+`CreatedAt`/`UpdatedAt`, `UpdatedBy`). Единственная config-запись получает только
+`Owner`; этот Owner вычисляется сервером из `Telegram:Admins` и не редактируется.
+
+`AdminInvitation` хранится в `TokenDbContext.AdminInvitations` и содержит одноразовый
+`Payload`, целевой ID/username, автора, сроки и `AdminInvitationStatus`:
+`Pending`, `Accepted`, `Rejected`, `Expired`. Payload живёт 10 минут.
+
 ### Docker DTOs (ContainerDtos.cs)
 ```
 ContainerStatusDto       Name, Id, Image, State, Status, Ports, CreatedAt
@@ -196,7 +213,17 @@ ImageInfoDto             Id, Repository, Tag, Size, CreatedAt
 ## Сервисы
 
 ### AuthService
-Создаёт `PendingAuthRequest`, находит цель-админа в `TelegramSettings.ParsedAdmins`, делегирует отправку `TelegramBotService`.
+Создаёт `PendingAuthRequest`, находит активного админа через `AdminService`/LiteDB, делегирует отправку `TelegramBotService`.
+
+### AdminService
+При старте требует ровно одну запись `Telegram:Admins`, создаёт или восстанавливает
+её как Owner, сохраняет остальные LiteDB-записи и не даёт назначить/изменить/удалить
+Owner. Обычные администраторы имеют Viewer baseline и редактируемые роли.
+
+### AdminInvitationService
+Создаёт deep-link `https://t.me/<bot>?start=<payload>`, истекающий через 10 минут,
+заменяет старое pending-приглашение для того же Telegram ID и атомарно проверяет
+Telegram ID + username при принятии или отказе.
 
 ### TokenService
 CRUD поверх `TokenDbContext.Tokens`.
@@ -219,6 +246,8 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 - Инициализирует `TelegramBotClient` (с optional proxy)
 - `SendAuthRequestAsync(request, targetTelegramUserId)` — отправляет сообщение с кнопками Approve/Reject
 - `CheckBotReachabilityAsync(adminId)` — проверяет доступность бота для конкретного админа
+- `/start <payload>` — проверяет статус приглашения и личность пользователя, после чего отправляет inline-кнопки «Принять»/«Отказаться»
+- callback invitation — принимает/отклоняет приглашение только от целевого Telegram-пользователя; принятие сразу создаёт Viewer-admin
 
 **UpdateHandler.HandleCallbackQueryAsync():**
 - Кнопка "Разрешить" → `TokenService.CreateToken()` + `PendingAuthService.UpdateRequestStatus(Approved)` + редактирует сообщение Telegram
@@ -380,6 +409,17 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | GET | `/api/auth/tokens` | ✅ Token | — |
 | POST | `/api/auth/tokens/{id}/rename` | ✅ Token | `{ name }` |
 | DELETE | `/api/auth/tokens/{id}` | ✅ Token | — |
+
+### /api/admins — AdminsEndpoints.cs
+
+| Метод | Путь | Auth | Тело / Описание |
+|-------|------|------|----------------|
+| GET | `/api/admins` | ✅ SecurityAdmin/Owner | Список с `isOwner`, ролями и `avatarUrl` |
+| POST | `/api/admins/invitations` | ✅ SecurityAdmin/Owner + step-up | `{ telegramUserId, username }`; deep-link на 10 минут |
+| GET | `/api/admins/invitations/{id}` | ✅ SecurityAdmin/Owner | Статус `pending/accepted/rejected/expired` |
+| POST | `/api/admins/{telegramUserId}/roles` | ✅ SecurityAdmin/Owner + step-up | `{ roles }`; Owner назначить нельзя |
+| DELETE | `/api/admins/{telegramUserId}` | ✅ SecurityAdmin/Owner + step-up | Удаляет обычного админа и отзывает его токены |
+| GET | `/api/admins/{telegramUserId}/avatar` | ✅ SecurityAdmin/Owner | Telegram-аватар или 404 |
 
 ### /api/docker — DockerEndpoints.cs
 
