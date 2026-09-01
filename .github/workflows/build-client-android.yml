@@ -141,8 +141,8 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
-          # CA сервера обновлений — уезжает в APK строкой BuildConfig.STORAGE_CA_PEM_B64,
-          # без него система обновлений не пройдёт TLS до storage.barkfluff.com.
+          # Резервный CA сервера обновлений — уезжает в APK строкой BuildConfig.STORAGE_CA_PEM_B64.
+          # Сначала клиент использует системный trust store, этот CA нужен для fallback.
           STORAGE_CA_PEM_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
         run: ./gradlew :app-v1:assemble${{ steps.target.outputs.flavor }}Release --no-daemon -PappVersionName="${{ steps.version.outputs.version }}"
 
