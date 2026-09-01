@@ -180,10 +180,13 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
     public override async Task<ConfirmResetPasswordResponse> ConfirmResetPassword(ConfirmResetPasswordRequest request, ServerCallContext context)
     {
+        // Даже некорректный reset-id должен пройти через MediatR, чтобы high-risk
+        // Redis-лимит применился до обработки запроса.
+        Guid.TryParse(request.ResetId, out var resetId);
         var command = new ConfirmResetPasswordCommand
         {
             OtpCode = request.OtpCode,
-            ResetId = Guid.Parse(request.ResetId)
+            ResetId = resetId
         };
 
         var result = await _mediator.Send(command);

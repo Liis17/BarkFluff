@@ -6,6 +6,7 @@ using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
@@ -87,12 +88,14 @@ public class AuthCommandHandlerTests
         IpAddress = ipAddress
     };
 
-    private AuthCommandHandler CreateHandler(RequestContext? ctx = null)
+    private AuthCommandHandler CreateHandler(
+        RequestContext? ctx = null,
+        TestHelper.TestIdentityAbuseGuard? abuseGuard = null)
     {
         return new AuthCommandHandler(
             _usersClient.Object, _mediator.Object, _authPropsStorage,
             _notificationSender, _refreshTokensStorage, ctx ?? _requestContext,
-            _passwordsStorage, _locationClient, _metrics, _logger.Object);
+            _passwordsStorage, _locationClient, _metrics, _logger.Object, abuseGuard ?? TestHelper.CreateAbuseGuard());
     }
 
     [Fact]
@@ -188,10 +191,12 @@ public class AuthCommandHandlerTests
         _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, OtpEnabled = true, OtpSecret = "SECRET" });
         _context.SaveChanges();
 
-        var handler = CreateHandler();
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        var handler = CreateHandler(abuseGuard: abuseGuard);
         var command = new AuthCommand { Username = "user", Password = "pass" };
 
         await Assert.ThrowsAsync<OtpCodeNeedException>(() => handler.Handle(command, CancellationToken.None));
+        Assert.Equal(0, abuseGuard.LoginFailureCalls);
     }
 
     [Fact]
@@ -255,6 +260,70 @@ public class AuthCommandHandlerTests
 
         await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => handler.Handle(command, CancellationToken.None));
         _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_FifthWrongPassword_LocksUserAndLaterAttemptSkipsUsersAndNotifications()
+    {
+        var user = new FindByLoginResponse { User = new User { Id = 1, Username = "user" } };
+        _usersClient
+            .Setup(c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None))
+            .Returns(() => new AsyncUnaryCall<FindByLoginResponse>(
+                Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess,
+                () => new Metadata(), () => { }));
+
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("correctpassword") });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        abuseGuard.LoginFailureResult = new IdentityFailureResult(5, true);
+        var handler = CreateHandler(abuseGuard: abuseGuard);
+        var command = new AuthCommand { Username = "user", Password = "wrongpassword" };
+
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(command, CancellationToken.None));
+
+        _usersClient.Verify(
+            c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None),
+            Times.Once);
+        _usersClient.Verify(
+            c => c.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), null, null, CancellationToken.None),
+            Times.Never);
+        _publishEndpoint.Verify(
+            p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_FifthWrongOtp_LocksUserAndLaterAttemptSkipsUsers()
+    {
+        var user = new FindByLoginResponse { User = new User { Id = 1, Username = "user" } };
+        _usersClient
+            .Setup(c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None))
+            .Returns(() => new AsyncUnaryCall<FindByLoginResponse>(
+                Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess,
+                () => new Metadata(), () => { }));
+
+        _context.AuthUserProperties.Add(new AuthUserProperty
+        {
+            UserId = 1,
+            OtpEnabled = true,
+            OtpSecret = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20))
+        });
+        _context.SaveChanges();
+
+        var abuseGuard = TestHelper.CreateAbuseGuard();
+        abuseGuard.LoginFailureResult = new IdentityFailureResult(5, true);
+        var handler = CreateHandler(abuseGuard: abuseGuard);
+        var command = new AuthCommand { Username = "user", Password = "password", OtpCode = "000000" };
+
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => handler.Handle(command, CancellationToken.None));
+
+        _usersClient.Verify(
+            c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None),
+            Times.Once);
+        Assert.Equal(1, abuseGuard.LoginFailureCalls);
     }
 
     [Fact]

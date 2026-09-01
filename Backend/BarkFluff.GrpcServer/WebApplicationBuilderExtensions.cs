@@ -60,7 +60,9 @@ public static class WebApplicationBuilderExtensions
 
     public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId)
     {
-        var configurationServiceAddress = Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL")
+        var configurationServiceAddress = Environment.GetEnvironmentVariable("SETTINGS_SERVICE_URL")
+                                          ?? Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL")
+                                          ?? builder.Configuration["SettingsServiceAddr"]
                                           ?? builder.Configuration["ConfigurationServiceAddr"]
                                           ?? "http://localhost:7003";
 
@@ -85,6 +87,7 @@ public static class WebApplicationBuilderExtensions
             configurationDictionary.Add(key, configurationItem.Value);
         }
 
+        configurationDictionary.Add("SettingsServiceAddr", configurationServiceAddress);
         configurationDictionary.Add("ConfigurationServiceAddr", configurationServiceAddress);
 
         builder.Configuration.AddInMemoryCollection(configurationDictionary);

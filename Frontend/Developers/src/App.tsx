@@ -5,7 +5,8 @@ import { IdentityApi } from './gen/identity_api_connect';
 import { AuthRequest } from './gen/identity_api_pb';
 import { LoginPage } from './auth/LoginPage';
 import { DocsPage } from './components/DocsPage';
-import { type AuthState, AUTH_CHANGED_EVENT, loadAuth, saveAuth } from './auth/tokenManager';
+import { type AuthState, AUTH_CHANGED_EVENT, loadAuth, saveAuth, timestampToMilliseconds } from './auth/tokenManager';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 interface AuthContextValue {
   auth: AuthState | null;
@@ -52,15 +53,19 @@ export function App() {
 
     try {
       const resp = await identityClient.auth(request, { headers: new Headers(metadata) });
+      const accessToken = resp.accessToken?.value.trim();
+      const refreshToken = resp.refreshToken?.value.trim();
+      const accessTokenExpiration = timestampToMilliseconds(resp.accessToken?.expirationDate);
+      const refreshTokenExpiration = timestampToMilliseconds(resp.refreshToken?.expirationDate);
+      if (!accessToken || !refreshToken || accessTokenExpiration === null || refreshTokenExpiration === null) {
+        throw new Error('Identity service returned incomplete authentication data');
+      }
+
       const newAuth: AuthState = {
-        accessToken: resp.accessToken?.value ?? '',
-        refreshToken: resp.refreshToken?.value ?? '',
-        accessTokenExpiration: resp.accessToken?.expirationDate
-          ? Number(resp.accessToken.expirationDate.seconds) * 1000
-          : Date.now() + 3_600_000,
-        refreshTokenExpiration: resp.refreshToken?.expirationDate
-          ? Number(resp.refreshToken.expirationDate.seconds) * 1000
-          : Date.now() + 86_400_000 * 9999,
+        accessToken,
+        refreshToken,
+        accessTokenExpiration,
+        refreshTokenExpiration,
       };
       saveAuth(newAuth);
       setAuth(newAuth);
@@ -80,9 +85,11 @@ export function App() {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ auth, login, logout }}>
-      {auth ? <DocsPage /> : <LoginPage />}
-    </AuthContext.Provider>
+    <ErrorBoundary>
+      <AuthContext.Provider value={{ auth, login, logout }}>
+        {auth ? <DocsPage /> : <LoginPage />}
+      </AuthContext.Provider>
+    </ErrorBoundary>
   );
 }
 

@@ -53,6 +53,18 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Имя пользователя или почта не установлены"), null);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return (new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_RegistrationRateLimited"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return (new ErrorReturner(false, "Регистрация временно заблокирована. Повторите попытку позже", errorResourceKey: "Error_RegistrationLocked"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return (new ErrorReturner(false, "Защита регистрации временно недоступна. Повторите попытку позже", errorResourceKey: "Error_RegistrationProtectionUnavailable"), null);
+            }
         }
 
         /// <summary>
@@ -83,6 +95,18 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeNotFoundException)
             {
                 return (new ErrorReturner(false, "Код подтверждения не найден"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return (new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_RegistrationRateLimited"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return (new ErrorReturner(false, "Подтверждение регистрации временно заблокировано. Повторите попытку позже", errorResourceKey: "Error_RegistrationLocked"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return (new ErrorReturner(false, "Защита регистрации временно недоступна. Повторите попытку позже", errorResourceKey: "Error_RegistrationProtectionUnavailable"), null);
             }
             catch (Exception)
             {

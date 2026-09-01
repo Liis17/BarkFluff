@@ -73,6 +73,16 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         // Серверный путь (SendMessageServer от сервиса Bots) передаёт отправителя явно, клиентский — из токена.
         var senderId = request.SenderId ?? _userContext.UserId;
 
+        if (request.ClientOperationId is { } clientOperationId)
+        {
+            var existing = await _messagesStorage.GetByClientOperationIdAsync(
+                senderId,
+                clientOperationId,
+                cancellationToken);
+            if (existing is not null)
+                return new SendMessageResponse { Message = existing.ToGrpc() };
+        }
+
         _logger.LogInformation(
             "Начало отправки сообщения от пользователя {UserId} в чат {ChatId} или пользователю {TargetUserId}",
             senderId,
@@ -155,7 +165,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
             // Резолв: это локальный пользователь → ordinary personal чат; remote → fed-DM.
             var byUuidResp = await _usersServerApiClient.GetUsersByUuidAsync(
-                new GetUsersByUuidRequest { Uuids = { targetUuid.ToString() } });
+                new GetUsersByUuidRequest { Uuids = { targetUuid.ToString() } },
+                cancellationToken: cancellationToken);
             var target = byUuidResp.Users.FirstOrDefault();
             if (target is null || !target.Found)
                 throw new RemoteUserNotResolvedException();
@@ -172,7 +183,9 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                     throw new RemoteUserNotResolvedException();
 
                 // Свой UUID — из Users.GetById (локальный профиль отправителя).
-                var selfResp = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
+                var selfResp = await _usersServerApiClient.GetByIdAsync(
+                    new GetByIdRequest { UserId = senderId },
+                    cancellationToken: cancellationToken);
                 if (!Guid.TryParse(selfResp.User.Uuid, out senderUuid) || senderUuid == Guid.Empty)
                     throw new RemoteUserNotResolvedException();
 
@@ -180,7 +193,10 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
                 var (uuidLow, uuidHigh) = Features.Federation.FederatedUuidPair.Normalize(senderUuid, targetUuid);
 
-                var existing = await _chatsStorage.FindActiveFederatedChatByUuidPairAsync(uuidLow, uuidHigh);
+                var existing = await _chatsStorage.FindActiveFederatedChatByUuidPairAsync(
+                    uuidLow,
+                    uuidHigh,
+                    cancellationToken);
                 if (existing is not null)
                 {
                     chatId = existing.Id;
@@ -195,7 +211,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                         targetUuid,
                         target.ServerName,
                         uuidLow,
-                        uuidHigh);
+                        uuidHigh,
+                        cancellationToken);
                     chatId = raceResult.Id;
 
                     if (raceResult.Id == newChatId)
@@ -223,7 +240,10 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogDebug("Проверка доступа пользователя {UserId} к чату {ChatId}", senderId, chatId.Value);
 
-            var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, senderId);
+            var hasAccess = await _chatsStorage.CheckAccessToChat(
+                chatId.Value,
+                senderId,
+                cancellationToken);
 
             if (!hasAccess)
             {
@@ -237,7 +257,9 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
             // Fed-чат, отклонённый partner-нодой (privacy DenyFederatedDm, этап 2.5) — понятная
             // ошибка вместо тихой отправки в чат, который вторая сторона никогда не увидит.
-            var federatedStatus = await _chatsStorage.GetFederatedStatusAsync(chatId.Value);
+            var federatedStatus = await _chatsStorage.GetFederatedStatusAsync(
+                chatId.Value,
+                cancellationToken);
             if (federatedStatus == FederatedStatus.Rejected)
             {
                 _logger.LogWarning(
@@ -256,9 +278,14 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             );
 
             // Получаем пользователя по ID
-            var personRepose = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = request.UserId!.Value });
+            var personRepose = await _usersServerApiClient.GetByIdAsync(
+                new GetByIdRequest { UserId = request.UserId!.Value },
+                cancellationToken: cancellationToken);
 
-            var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(personRepose.User.Id, senderId);
+            var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(
+                personRepose.User.Id,
+                senderId,
+                cancellationToken);
 
             if (chatIdWithPerson is null && request.SenderId is not null && !request.AllowChatCreation)
             {
@@ -279,11 +306,16 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                     personRepose.User.Id
                 );
 
-                var createdChat = await _chatsStorage.CreatePersonChat(senderId, personRepose.User.Id);
+                var createdChat = await _chatsStorage.CreatePersonChat(
+                    senderId,
+                    personRepose.User.Id,
+                    cancellationToken);
 
                 chatId = createdChat.Id;
 
-                var userResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
+                var userResponse = await _usersServerApiClient.GetByIdAsync(
+                    new GetByIdRequest { UserId = senderId },
+                    cancellationToken: cancellationToken);
 
                 // Кэшируем аватарочки и имена
                 await _chatCache.SetChatName(chatId.Value, senderId, $"{personRepose.User.FirstName} {personRepose.User.LastName}");
@@ -316,7 +348,11 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         // быть создан выше), иначе reply в новый чат сравнивался бы с пустым chatId.
         if (request.Message.ReplyToMessageId is { } replyToMessageId)
         {
-            await Features.Shared.ReplyTargetValidator.ValidateAsync(_messagesStorage, chatId.Value, replyToMessageId);
+            await Features.Shared.ReplyTargetValidator.ValidateAsync(
+                _messagesStorage,
+                chatId.Value,
+                replyToMessageId,
+                cancellationToken);
 
             _logger.LogDebug(
                 "Сообщение является ответом на {ReplyToMessageId} в чате {ChatId}",
@@ -335,7 +371,9 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 request.Message.FileIds.Count()
             );
 
-            var filesInfo = await _filesServerApiClient.GetFilesDataAsync(new GetFilesDataRequest { FileIds = { request.Message.FileIds.Select(x => x.ToString()) } });
+            var filesInfo = await _filesServerApiClient.GetFilesDataAsync(
+                new GetFilesDataRequest { FileIds = { request.Message.FileIds.Select(x => x.ToString()) } },
+                cancellationToken: cancellationToken);
 
             if (filesInfo.FilesInfos.Any(x => !_attachmentMap.ContainsKey(x.Type)))
             {
@@ -363,15 +401,19 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             );
         }
 
+        var forwardedMessageCount = 0;
         if (request.Message.ForwardedMessageIds is { Count: > 0 } forwardSourceIds)
         {
+            forwardedMessageCount = forwardSourceIds.Count;
             _logger.LogDebug(
                 "Обработка {ForwardCount} пересланных сообщений от пользователя {UserId}",
                 forwardSourceIds.Count,
                 senderId
             );
 
-            var originalMessages = await _messagesStorage.GetMessagesByIds(forwardSourceIds);
+            var originalMessages = await _messagesStorage.GetMessagesByIds(
+                forwardSourceIds,
+                cancellationToken);
             var originalsById = originalMessages.ToDictionary(m => m.Id);
 
             if (forwardSourceIds.Any(id => !originalsById.ContainsKey(id)))
@@ -388,7 +430,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             // одного чата иначе давала бы N одинаковых запросов.
             foreach (var sourceChatId in originalMessages.Select(m => m.ChatId).Distinct())
             {
-                if (!await _chatsStorage.CheckAccessToChat(sourceChatId, senderId))
+                if (!await _chatsStorage.CheckAccessToChat(sourceChatId, senderId, cancellationToken))
                 {
                     _logger.LogWarning(
                         "Пользователь {UserId} не имеет доступа к чату {ChatId} оригинального сообщения",
@@ -399,7 +441,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 }
             }
 
-            var authorNames = await ResolveForwardAuthorNamesAsync(originalMessages);
+            var authorNames = await ResolveForwardAuthorNamesAsync(originalMessages, cancellationToken);
 
             // Один GetFilesData на вложения всех пересылаемых сообщений разом.
             var forwardedAttachmentsBySource = new Dictionary<long, List<Domain.ForwardedMessageAttachment>>();
@@ -433,7 +475,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             if (allForwardedFileIds.Count > 0)
             {
                 var forwardedFilesInfo = await _filesServerApiClient.GetFilesDataAsync(
-                    new GetFilesDataRequest { FileIds = { allForwardedFileIds.Distinct() } });
+                    new GetFilesDataRequest { FileIds = { allForwardedFileIds.Distinct() } },
+                    cancellationToken: cancellationToken);
 
                 foreach (var fi in forwardedFilesInfo.FilesInfos)
                 {
@@ -462,8 +505,6 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 });
             }
 
-            _metrics.Add("messages_forwarded", forwardSourceIds.Count);
-
             _logger.LogInformation(
                 "Добавлено {ForwardCount} пересланных сообщений",
                 forwardSourceIds.Count
@@ -472,7 +513,11 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
         _logger.LogDebug("Получение списка участников чата {ChatId}", chatId.Value);
 
-        var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
+        var members = await _chatsStorage.GetChatMembers(
+            chatId.Value,
+            0,
+            int.MaxValue,
+            cancellationToken);
 
         // Отправка последующих сообщений в уже существующий fed-DM через chat_id (docs/rearch/05,
         // «Отправка последующих сообщений»): признак федеративности берём из состава участников —
@@ -490,7 +535,9 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 // senderFid для этой ветки не резолвится выше (та ветка — только для нового fed-чата
                 // через UserUuid) — без него удалённая нода получает пустой Sender.Username на каждое
                 // сообщение после первого в чате.
-                var selfResp = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = senderId });
+                var selfResp = await _usersServerApiClient.GetByIdAsync(
+                    new GetByIdRequest { UserId = senderId },
+                    cancellationToken: cancellationToken);
                 senderFid = $"@{selfResp.User.Username}:{remoteParticipants[0].ServerName}";
             }
         }
@@ -505,6 +552,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             },
             ReadBy = [senderId],
             SenderId = senderId,
+            ClientOperationId = request.ClientOperationId,
             SentAt = DateTime.UtcNow,
             Type = MessageContentType.Generic,
             ReplyToMessageId = request.Message.ReplyToMessageId
@@ -523,29 +571,18 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             members.Count
         );
 
-        message = await _messagesStorage.AddMessage(message);
+        Guid? replyToFederatedMessageId = null;
+        if (isFederated && message.ReplyToMessageId is { } replyTargetId)
+        {
+            var replyTarget = await _messagesStorage.GetMessageById(replyTargetId, cancellationToken);
+            replyToFederatedMessageId = replyTarget?.FederatedId;
+        }
 
-        _logger.LogInformation(
-            "Сообщение {MessageId} сохранено в чат {ChatId}. Отправка в очередь для {MemberCount} участников",
-            message.Id,
-            chatId.Value,
-            members.Count
-        );
-
+        Func<Message, BarkFluff.Shared.Queue.Messages.NewMessageEvent> eventFactory;
         if (isFederated)
         {
-            // Ответ уезжает межнодовым uuid оригинала. Если оригинал не федеративный (например,
-            // сообщение из этого чата, созданное до его федерализации), партнёру ссылаться не на что —
-            // отправляем сообщение без цитаты, а не отказываем в отправке.
-            Guid? replyToFederatedMessageId = null;
-            if (message.ReplyToMessageId is { } replyTargetId)
-            {
-                var replyTarget = await _messagesStorage.GetMessageById(replyTargetId);
-                replyToFederatedMessageId = replyTarget?.FederatedId;
-            }
-
-            await _messageQueueSender.SendFederatedMessage(
-                message,
+            eventFactory = savedMessage => _messageQueueSender.CreateFederatedMessageEvent(
+                savedMessage,
                 chatId.Value,
                 members.LocalUserIds(),
                 filesInfoMap,
@@ -556,20 +593,40 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 fedInitiatorUuid,
                 fedInviteeUuid,
                 senderFid,
-                lastChangeAt: message.LastChangeAt,
-                // Снапшот метаданных вложений (этап 3.1): переиспользуем уже полученный
-                // ответ Files, второго вызова ради федерации не делаем.
+                lastChangeAt: savedMessage.LastChangeAt,
                 federatedAttachments: Features.Federation.FederatedAttachmentMapper.Build(
-                    message.Content?.Attachments,
+                    savedMessage.Content?.Attachments,
                     filesInfoMap,
                     _configuration["Federation:ServerName"] ?? string.Empty),
                 replyToFederatedMessageId: replyToFederatedMessageId);
         }
         else
         {
-            await _messageQueueSender.SendMessage(message, chatId.Value, members.LocalUserIds(), filesInfoMap);
+            eventFactory = savedMessage => _messageQueueSender.CreateMessageEvent(
+                savedMessage,
+                chatId.Value,
+                members.LocalUserIds(),
+                filesInfoMap);
         }
 
+        var saveResult = await _messagesStorage.AddMessageWithOutboxAsync(
+            message,
+            eventFactory,
+            cancellationToken);
+        message = saveResult.Message;
+
+        _logger.LogInformation(
+            "Сообщение {MessageId} сохранено в чат {ChatId} и поставлено в outbox для {MemberCount} участников",
+            message.Id,
+            chatId.Value,
+            members.Count
+        );
+
+        if (!saveResult.Created)
+            return new SendMessageResponse { Message = message.ToGrpc(filesInfoMap) };
+
+        if (forwardedMessageCount > 0)
+            _metrics.Add("messages_forwarded", forwardedMessageCount);
         _metrics.Increment("messages_sent");
         if (!string.IsNullOrEmpty(request.Message.Text))
             _metrics.Increment("messages_sent_with_text");
@@ -588,7 +645,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         );
 
         // Отправитель должен увидеть свою цитату сразу, не дожидаясь перезагрузки истории.
-        var replyPreviews = await _replyPreviewResolver.ResolveAsync([message]);
+        var replyPreviews = await _replyPreviewResolver.ResolveAsync([message], cancellationToken);
 
         return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap, replyPreviews: replyPreviews) };
     }
@@ -597,7 +654,9 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     /// Имена авторов пересылаемых сообщений: два батч-вызова (локальные и remote) вместо запроса
     /// на каждое сообщение. До пересылки пачками разница была незаметна — с ней это был бы N+1.
     /// </summary>
-    private async Task<Dictionary<long, string>> ResolveForwardAuthorNamesAsync(List<Message> originals)
+    private async Task<Dictionary<long, string>> ResolveForwardAuthorNamesAsync(
+        List<Message> originals,
+        CancellationToken cancellationToken)
     {
         var names = new Dictionary<long, string>();
 
@@ -611,7 +670,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         if (localSenderIds.Count > 0)
         {
             var usersResponse = await _usersServerApiClient.ListByIdsAsync(
-                new ListByIdsRequest { Ids = { localSenderIds } });
+                new ListByIdsRequest { Ids = { localSenderIds } },
+                cancellationToken: cancellationToken);
 
             foreach (var user in usersResponse.Users)
                 localNamesById[user.Id] = $"{user.FirstName} {user.LastName}";
@@ -628,7 +688,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         if (remoteUuids.Count > 0)
         {
             var remoteResponse = await _usersServerApiClient.GetUsersByUuidAsync(
-                new GetUsersByUuidRequest { Uuids = { remoteUuids } });
+                new GetUsersByUuidRequest { Uuids = { remoteUuids } },
+                cancellationToken: cancellationToken);
 
             foreach (var profile in remoteResponse.Users)
             {

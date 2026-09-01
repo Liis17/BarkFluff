@@ -22,5 +22,5 @@ Target framework: `net10.0`, без внешних зависимостей.
 ## Добавление нового сервиса
 
 1. Добавить значение в `ServiceId` enum
-2. Зарегистрировать в БД [[Backend/Configuration]]
+2. Зарегистрировать в каталоге [[Backend/Settings]]
 3. Использовать `builder.LoadConfiguration(ServiceId.NewService)` в `Program.cs`

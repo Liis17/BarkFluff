@@ -40,7 +40,8 @@ public class Program
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Onliner");
 
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<OnlineStatusContext>(c
             => c.UseNpgsql(builder.Configuration["OnlinerDb"], npgsql =>
@@ -141,7 +142,8 @@ public class Program
             ctx.Database.Migrate();
         }
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
 
         // Настраиваем middleware pipeline
         app.UseRouting();

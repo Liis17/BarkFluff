@@ -1,6 +1,5 @@
 using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Features.DownloadFile;
-using BarkFluff.Files.Features.UploadFile;
 using BarkFluff.Files.Persistence;
 using BarkFluff.Proto.Users;
 using BarkFluff.GrpcServer.Metrics;
@@ -37,44 +36,6 @@ public class FilesController : Controller
         _configuration = configuration;
         _metrics = metrics;
         _logger = logger;
-    }
-
-    [HttpPost("upload/{uploadId}")]
-    [RequestSizeLimit(536_870_912)]
-    [RequestFormLimits(MultipartBodyLengthLimit = 536_870_912)]
-    public async Task<IActionResult> UploadFile([FromRoute] Guid uploadId, [FromForm] IFormFile? file)
-    {
-        if (file == null || file.Length == 0)
-        {
-            return BadRequest("Файл не выбран или пустой.");
-        }
-
-        using var command = new UploadFileCommand()
-        {
-            FileId = uploadId,
-            FileStream = file.OpenReadStream(),
-            FileName = file.FileName,
-            FileSize = file.Length
-        };
-
-        try
-        {
-            var resultFileId = await _mediator.Send(command);
-            _metrics.Increment("files_uploaded");
-            _metrics.Add("upload_bytes_total", file.Length);
-            _metrics.Add("file_traffic_bytes_total", file.Length);
-            return Ok(new { fileId = resultFileId });
-        }
-        catch (FileAlreadyUploadedException ex)
-        {
-            _metrics.Increment("files_upload_errors");
-            return BadRequest(ex.Message);
-        }
-        catch
-        {
-            _metrics.Increment("files_upload_errors");
-            throw;
-        }
     }
 
     /// <summary>

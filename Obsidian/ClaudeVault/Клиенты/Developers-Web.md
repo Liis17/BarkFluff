@@ -20,6 +20,8 @@ React-фронтенд портала документации BarkFluff для 
 ```bash
 cd Frontend/Developers
 npm install
+npm run sync-proto:check
+npm run generate
 npm run build     # → dist/
 npm run dev       # → http://localhost:5173
 ```
@@ -32,7 +34,7 @@ npm run dev       # → http://localhost:5173
 - Auth flow через `IdentityApi.Auth` с транспортом `createGrpcWebTransport` (`Content-Type: application/grpc-web+proto`)
 - Типизированный клиент: `createClient(IdentityApi, identityTransport)` из `src/gen/identity_api_connect`
 - OTP ошибка детектируется через `ConnectError.metadata.get('x-error-code')`
-- Токен JWT хранится в `AuthContext` + персистится в `localStorage` под ключом **`barkfluff_dev_auth`** (JSON с `accessToken`/`refreshToken`/`accessTokenExpiration`/`refreshTokenExpiration`). При старте App.tsx проверяет expiration и автоматически очищает просроченные токены.
+- Токен JWT хранится в `AuthContext` + персистится в `localStorage` под ключом **`barkfluff_dev_auth`** (JSON с `accessToken`/`refreshToken`/`accessTokenExpiration`/`refreshTokenExpiration`). При чтении выполняется runtime-валидация формы и дат; повреждённая запись очищается. Refresh без даты истечения не принимается, долгий fallback не используется.
 - `deviceId` (UUID) генерируется один раз и сохраняется в `localStorage` под ключом **`barkfluff_device_id`** — используется для `x-device-id` header в gRPC-метаданных.
 - Передаётся во все API-вызовы через заголовок `x-auth-token` (plaintext, без base64)
 
@@ -55,6 +57,7 @@ src/
 │   └── tokenManager.ts  # get/save/clear токенов в localStorage (ключ barkfluff_dev_auth) — фактическая логика хранения токенов (не в App.tsx)
 ├── components/
 │   ├── DocsPage.tsx     # Главная страница документации
+│   ├── ErrorBoundary.tsx # Безопасный fallback рендера
 │   ├── Layout/
 │   │   ├── Header.tsx   # Навигация + logout
 │   │   └── Sidebar.tsx  # Collapsible nav groups
@@ -65,7 +68,8 @@ src/
 │       ├── AuthHeaders.tsx
 │       ├── ConnectionFlow.tsx
 │       ├── ErrorCodes.tsx
-│       └── ProtoFile.tsx   # Proto viewer с подсветкой
+│       ├── ProtoFile.tsx   # Proto viewer с подсветкой
+│       └── sectionData.tsx # Безопасный JSON parsing секций/metadata
 └── styles/
     └── global.css       # Полный CSS (Manrope + JetBrains Mono)
 ```
@@ -87,15 +91,26 @@ src/
 Конфигурация: `buf.gen.yaml` + `buf.yaml`. Генерирует TypeScript-клиенты из `.proto` файлов.
 
 ```bash
+npm run sync-proto:check
 npm run generate   # = buf generate
 ```
 
-Proto-файлы скопированы в `Frontend/Developers/proto/`.
+Три frontend snapshot-файла (`developers_api.proto`, `identity_api.proto`, `shared.proto`)
+синхронизируются из канонического `Shared/BarkFluff.Proto/` скриптом
+`npm run sync-proto`. `npm run sync-proto:check` завершается ошибкой при drift и выполняется
+в Developers CI перед генерацией.
 Сгенерированные файлы: `src/gen/` (identity_api_pb.ts, identity_api_connect.ts, developers_api_pb.ts, developers_api_connect.ts).
 
 ## Деплой
 
-`npm run build` → `dist/` монтируется к существующему nginx-контейнеру.
+`Dockerfile.slim` запускает `npm ci` и `npm run build`, затем копирует `dist/` в
+`/app/wwwroot` контейнера `Barkfluff.Developers`. Сервис раздаёт SPA на HTTP-порту
+`7021`, а gRPC-Web API остаётся на `7020`; внешний Nginx маршрутизирует `/grpc/...`
+к API, остальные пути — к SPA.
+
+`DocsPage` загружает три read-endpoint через `Promise.allSettled`: отказ одного каталога
+показывается как предупреждение, остальные данные остаются доступны. Содержимое proto
+запрашивается лениво при приближении секции к viewport.
 
 ## Связанные файлы
 

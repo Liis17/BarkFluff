@@ -37,7 +37,8 @@ public class Program
             options.Interceptors.Add<ServerExceptionInterceptor>();
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Calls");
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<CallsContext>(c
             => c.UseNpgsql(builder.Configuration["CallsDb"], npgsql =>
@@ -125,7 +126,8 @@ public class Program
             ctx.Database.Migrate();
         }
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
         app.UseRouting();
 
         app.UseXAuth();

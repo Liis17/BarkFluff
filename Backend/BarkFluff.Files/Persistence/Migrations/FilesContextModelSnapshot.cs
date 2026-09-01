@@ -134,20 +134,20 @@ namespace BarkFluff.Files.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int?>("AttachmentType")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FileName")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("OriginalFileId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("OriginServer")
                         .HasColumnType("text");
+
+                    b.Property<Guid>("OriginalFileId")
+                        .HasColumnType("uuid");
 
                     b.Property<long?>("SizeBytes")
                         .HasColumnType("bigint");
@@ -209,6 +209,56 @@ namespace BarkFluff.Files.Persistence.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Uploaders"), "gin");
 
                     b.ToTable("UploadedFiles");
+                });
+
+            modelBuilder.Entity("BarkFluff.Files.Domain.UploadOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClientOperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LeaseToken")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReservedFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ResultFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReservedFileId")
+                        .IsUnique();
+
+                    b.HasIndex("State", "LeaseExpiresAt");
+
+                    b.HasIndex("UserId", "ClientOperationId")
+                        .IsUnique()
+                        .HasFilter("\"ClientOperationId\" IS NOT NULL");
+
+                    b.ToTable("UploadOperations");
                 });
 
             modelBuilder.Entity("BarkFluff.Files.Domain.Sticker", b =>

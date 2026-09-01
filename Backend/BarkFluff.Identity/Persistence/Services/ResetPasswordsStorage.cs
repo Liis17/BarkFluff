@@ -35,4 +35,19 @@ public class ResetPasswordsStorage(IdentityContext context)
             await context.SaveChangesAsync();
         }
     }
+
+    /// <summary>
+    /// Закрывает запрос после превышения числа неверных OTP-кодов.
+    /// </summary>
+    public async Task InvalidateResetPassword(Guid resetId)
+    {
+        var resetPassword = await context.ResetPasswords.FirstOrDefaultAsync(x => x.Id == resetId);
+
+        if (resetPassword is not null)
+        {
+            resetPassword.IsApproved = true;
+            resetPassword.OtpCode = null;
+            await context.SaveChangesAsync();
+        }
+    }
 }

@@ -39,6 +39,120 @@ proto3.util.setEnumType(OtpTypeId, "barkfluff.identity.OtpTypeId", [
 ]);
 
 /**
+ * @generated from message barkfluff.identity.CreateSessionForUserServerRequest
+ */
+export class CreateSessionForUserServerRequest extends Message<CreateSessionForUserServerRequest> {
+  /**
+   * @generated from field: int64 user_id = 1;
+   */
+  userId = protoInt64.zero;
+
+  /**
+   * GUID нового устройства
+   *
+   * @generated from field: string device_id = 2;
+   */
+  deviceId = "";
+
+  /**
+   * @generated from field: string device_name = 3;
+   */
+  deviceName = "";
+
+  /**
+   * @generated from field: string operation_system = 4;
+   */
+  operationSystem = "";
+
+  /**
+   * "AppName v.X.Y.Z" (склеено вызывающим)
+   *
+   * @generated from field: string app_name = 5;
+   */
+  appName = "";
+
+  /**
+   * @generated from field: string ip_address = 6;
+   */
+  ipAddress = "";
+
+  constructor(data?: PartialMessage<CreateSessionForUserServerRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.CreateSessionForUserServerRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "device_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "device_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "operation_system", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "app_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "ip_address", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSessionForUserServerRequest {
+    return new CreateSessionForUserServerRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSessionForUserServerRequest {
+    return new CreateSessionForUserServerRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSessionForUserServerRequest {
+    return new CreateSessionForUserServerRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateSessionForUserServerRequest | PlainMessage<CreateSessionForUserServerRequest> | undefined, b: CreateSessionForUserServerRequest | PlainMessage<CreateSessionForUserServerRequest> | undefined): boolean {
+    return proto3.util.equals(CreateSessionForUserServerRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.CreateSessionForUserServerResponse
+ */
+export class CreateSessionForUserServerResponse extends Message<CreateSessionForUserServerResponse> {
+  /**
+   * @generated from field: barkfluff.identity.Token access_token = 1;
+   */
+  accessToken?: Token;
+
+  /**
+   * @generated from field: barkfluff.identity.Token refresh_token = 2;
+   */
+  refreshToken?: Token;
+
+  constructor(data?: PartialMessage<CreateSessionForUserServerResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.CreateSessionForUserServerResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "access_token", kind: "message", T: Token },
+    { no: 2, name: "refresh_token", kind: "message", T: Token },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSessionForUserServerResponse {
+    return new CreateSessionForUserServerResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSessionForUserServerResponse {
+    return new CreateSessionForUserServerResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSessionForUserServerResponse {
+    return new CreateSessionForUserServerResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateSessionForUserServerResponse | PlainMessage<CreateSessionForUserServerResponse> | undefined, b: CreateSessionForUserServerResponse | PlainMessage<CreateSessionForUserServerResponse> | undefined): boolean {
+    return proto3.util.equals(CreateSessionForUserServerResponse, a, b);
+  }
+}
+
+/**
  * @generated from message barkfluff.identity.ListOtpVerificationServerRequest
  */
 export class ListOtpVerificationServerRequest extends Message<ListOtpVerificationServerRequest> {
@@ -195,6 +309,254 @@ export class RemoveActiveSessionServerRequest extends Message<RemoveActiveSessio
 
   static equals(a: RemoveActiveSessionServerRequest | PlainMessage<RemoveActiveSessionServerRequest> | undefined, b: RemoveActiveSessionServerRequest | PlainMessage<RemoveActiveSessionServerRequest> | undefined): boolean {
     return proto3.util.equals(RemoveActiveSessionServerRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.CreateBotTokenServerRequest
+ */
+export class CreateBotTokenServerRequest extends Message<CreateBotTokenServerRequest> {
+  /**
+   * Идентификатор бота (Users.Id)
+   *
+   * @generated from field: int64 bot_user_id = 1;
+   */
+  botUserId = protoInt64.zero;
+
+  constructor(data?: PartialMessage<CreateBotTokenServerRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.CreateBotTokenServerRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "bot_user_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateBotTokenServerRequest {
+    return new CreateBotTokenServerRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateBotTokenServerRequest {
+    return new CreateBotTokenServerRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateBotTokenServerRequest {
+    return new CreateBotTokenServerRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateBotTokenServerRequest | PlainMessage<CreateBotTokenServerRequest> | undefined, b: CreateBotTokenServerRequest | PlainMessage<CreateBotTokenServerRequest> | undefined): boolean {
+    return proto3.util.equals(CreateBotTokenServerRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.CreateBotTokenServerResponse
+ */
+export class CreateBotTokenServerResponse extends Message<CreateBotTokenServerResponse> {
+  /**
+   * JWT бота
+   *
+   * @generated from field: string token = 1;
+   */
+  token = "";
+
+  /**
+   * Идентификатор выпуска токена (для отзыва)
+   *
+   * @generated from field: string token_id = 2;
+   */
+  tokenId = "";
+
+  constructor(data?: PartialMessage<CreateBotTokenServerResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.CreateBotTokenServerResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "token_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateBotTokenServerResponse {
+    return new CreateBotTokenServerResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateBotTokenServerResponse {
+    return new CreateBotTokenServerResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateBotTokenServerResponse {
+    return new CreateBotTokenServerResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateBotTokenServerResponse | PlainMessage<CreateBotTokenServerResponse> | undefined, b: CreateBotTokenServerResponse | PlainMessage<CreateBotTokenServerResponse> | undefined): boolean {
+    return proto3.util.equals(CreateBotTokenServerResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.GetBotTokenServerRequest
+ */
+export class GetBotTokenServerRequest extends Message<GetBotTokenServerRequest> {
+  /**
+   * Идентификатор бота (Users.Id)
+   *
+   * @generated from field: int64 bot_user_id = 1;
+   */
+  botUserId = protoInt64.zero;
+
+  /**
+   * Существующий идентификатор выпуска токена
+   *
+   * @generated from field: string token_id = 2;
+   */
+  tokenId = "";
+
+  constructor(data?: PartialMessage<GetBotTokenServerRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.GetBotTokenServerRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "bot_user_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "token_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetBotTokenServerRequest {
+    return new GetBotTokenServerRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetBotTokenServerRequest {
+    return new GetBotTokenServerRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetBotTokenServerRequest {
+    return new GetBotTokenServerRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetBotTokenServerRequest | PlainMessage<GetBotTokenServerRequest> | undefined, b: GetBotTokenServerRequest | PlainMessage<GetBotTokenServerRequest> | undefined): boolean {
+    return proto3.util.equals(GetBotTokenServerRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.GetBotTokenServerResponse
+ */
+export class GetBotTokenServerResponse extends Message<GetBotTokenServerResponse> {
+  /**
+   * JWT бота с тем же token_id
+   *
+   * @generated from field: string token = 1;
+   */
+  token = "";
+
+  constructor(data?: PartialMessage<GetBotTokenServerResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.GetBotTokenServerResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetBotTokenServerResponse {
+    return new GetBotTokenServerResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetBotTokenServerResponse {
+    return new GetBotTokenServerResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetBotTokenServerResponse {
+    return new GetBotTokenServerResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetBotTokenServerResponse | PlainMessage<GetBotTokenServerResponse> | undefined, b: GetBotTokenServerResponse | PlainMessage<GetBotTokenServerResponse> | undefined): boolean {
+    return proto3.util.equals(GetBotTokenServerResponse, a, b);
+  }
+}
+
+/**
+ * Принудительная смена пароля (серверный, для админ-панели)
+ *
+ * @generated from message barkfluff.identity.ForceSetPasswordServerRequest
+ */
+export class ForceSetPasswordServerRequest extends Message<ForceSetPasswordServerRequest> {
+  /**
+   * @generated from field: int64 user_id = 1;
+   */
+  userId = protoInt64.zero;
+
+  /**
+   * @generated from field: string new_password = 2;
+   */
+  newPassword = "";
+
+  constructor(data?: PartialMessage<ForceSetPasswordServerRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.ForceSetPasswordServerRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "new_password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ForceSetPasswordServerRequest {
+    return new ForceSetPasswordServerRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ForceSetPasswordServerRequest {
+    return new ForceSetPasswordServerRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ForceSetPasswordServerRequest {
+    return new ForceSetPasswordServerRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ForceSetPasswordServerRequest | PlainMessage<ForceSetPasswordServerRequest> | undefined, b: ForceSetPasswordServerRequest | PlainMessage<ForceSetPasswordServerRequest> | undefined): boolean {
+    return proto3.util.equals(ForceSetPasswordServerRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.ForceSetPasswordServerResponse
+ */
+export class ForceSetPasswordServerResponse extends Message<ForceSetPasswordServerResponse> {
+  constructor(data?: PartialMessage<ForceSetPasswordServerResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.ForceSetPasswordServerResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ForceSetPasswordServerResponse {
+    return new ForceSetPasswordServerResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ForceSetPasswordServerResponse {
+    return new ForceSetPasswordServerResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ForceSetPasswordServerResponse {
+    return new ForceSetPasswordServerResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ForceSetPasswordServerResponse | PlainMessage<ForceSetPasswordServerResponse> | undefined, b: ForceSetPasswordServerResponse | PlainMessage<ForceSetPasswordServerResponse> | undefined): boolean {
+    return proto3.util.equals(ForceSetPasswordServerResponse, a, b);
   }
 }
 
@@ -1632,6 +1994,68 @@ export class SetPasswordResponse extends Message<SetPasswordResponse> {
 
   static equals(a: SetPasswordResponse | PlainMessage<SetPasswordResponse> | undefined, b: SetPasswordResponse | PlainMessage<SetPasswordResponse> | undefined): boolean {
     return proto3.util.equals(SetPasswordResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.LogoutRequest
+ */
+export class LogoutRequest extends Message<LogoutRequest> {
+  constructor(data?: PartialMessage<LogoutRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.LogoutRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogoutRequest {
+    return new LogoutRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogoutRequest {
+    return new LogoutRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogoutRequest {
+    return new LogoutRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogoutRequest | PlainMessage<LogoutRequest> | undefined, b: LogoutRequest | PlainMessage<LogoutRequest> | undefined): boolean {
+    return proto3.util.equals(LogoutRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.LogoutResponse
+ */
+export class LogoutResponse extends Message<LogoutResponse> {
+  constructor(data?: PartialMessage<LogoutResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.LogoutResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogoutResponse {
+    return new LogoutResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogoutResponse {
+    return new LogoutResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogoutResponse {
+    return new LogoutResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogoutResponse | PlainMessage<LogoutResponse> | undefined, b: LogoutResponse | PlainMessage<LogoutResponse> | undefined): boolean {
+    return proto3.util.equals(LogoutResponse, a, b);
   }
 }
 

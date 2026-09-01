@@ -19,6 +19,15 @@ builder.Services.AddBarkFluffMetrics("BarkFluff.Identity");
 
 ## Реестр метрик
 
+### Защита Identity
+
+| Метрика | Источник | Описание |
+|---|---|---|
+| `identity_rate_limited` | `RedisIdentityAbuseGuard` | Запрос отклонён из-за Redis rate limit |
+| `identity_lockouts` | `RedisIdentityAbuseGuard` | Создана блокировка пользователя, кода или OTP-операции |
+| `identity_code_invalidated` | `RedisIdentityAbuseGuard` | Регистрационный/reset-код инвалидирован после пятой ошибки |
+| `identity_protection_unavailable` | `RedisIdentityAbuseGuard` | Redis недоступен; high-risk запрос отклонён fail-closed |
+
 ### Gauges (последнее значение, не сбрасывается)
 
 | Метрика | Источник | Описание |

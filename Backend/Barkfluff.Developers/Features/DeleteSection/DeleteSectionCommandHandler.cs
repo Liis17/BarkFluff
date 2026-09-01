@@ -15,7 +15,7 @@ public class DeleteSectionCommandHandler : IRequestHandler<DeleteSectionCommand,
 
     public async Task<bool> Handle(DeleteSectionCommand request, CancellationToken cancellationToken)
     {
-        var deleted = await _storage.DeleteAsync(request.Key);
+        var deleted = await _storage.DeleteAsync(request.Key, cancellationToken);
         if (!deleted) throw new RpcException(new Status(StatusCode.NotFound, $"Section '{request.Key}' not found"));
         return true;
     }

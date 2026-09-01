@@ -41,7 +41,7 @@
 
   <!-- Общий пакет иконок платформы используется веб-клиентом напрямую из /icons. -->
   <ItemGroup>
-    <Content Include="..\..\icons\**\*.svg"
+    <Content Include="..\..\Icons\**\*.svg"
              Link="wwwroot\icons\%(RecursiveDir)%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />

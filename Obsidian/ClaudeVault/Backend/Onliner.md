@@ -10,6 +10,8 @@
 
 Расположение: `Backend/BarkFluff.Onliner/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 📁 **[[Backend/Onliner-ProjectMap]]** — карта всех файлов и классов проекта
 
 ## Сборка
@@ -134,7 +136,7 @@ Client → SetOnlineStatus (gRPC)
 - `Redis` — connection string общего presence-стора и распределённого single-runner (**новая зависимость** при масштабировании)
 - `RabbitMQ:Host/Username/Password` — fan-out доставка статусов/typing между инстансами
 - `UsersService:Host/Token` — gRPC-клиент для проверки `OnlineVisibility`
-- `MessagesService:Host/Token` — gRPC-клиент для проверки членства в чате (typing). **Должны быть провижены в Configuration-сервисе** (новая зависимость Onliner → Messages)
+- `MessagesService:Host/Token` — gRPC-клиент для проверки членства в чате (typing). **Должны быть провижены в Settings-сервисе** (новая зависимость Onliner → Messages)
 
 ## Proto
 

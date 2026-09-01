@@ -32,6 +32,9 @@ public static class MessageMapping
         if (message.SenderUuid.HasValue)
             grpc.SenderUuid = message.SenderUuid.Value.ToString();
 
+        if (message.ClientOperationId.HasValue)
+            grpc.ClientOperationId = message.ClientOperationId.Value.ToString();
+
         if (federatedReadBy is { Count: > 0 })
             grpc.FederatedReadBy.Add(federatedReadBy.Select(u => u.ToString()));
 
@@ -62,6 +65,9 @@ public static class MessageMapping
 
         if (message.SenderUuid.HasValue)
             grpc.SenderUuid = message.SenderUuid.Value.ToString();
+
+        if (message.ClientOperationId.HasValue)
+            grpc.ClientOperationId = message.ClientOperationId.Value.ToString();
 
         if (federatedReadBy is { Count: > 0 })
             grpc.FederatedReadBy.Add(federatedReadBy.Select(u => u.ToString()));

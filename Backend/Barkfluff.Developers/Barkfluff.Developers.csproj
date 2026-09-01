@@ -38,7 +38,16 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="..\..\Shared\BarkFluff.Proto\*.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\%(Filename)%(Extension)" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\shared.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\shared.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\beacon_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\beacon_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\identity_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\identity_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\users_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\users_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\messages_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\files_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\files_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\updates_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\updates_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\onliner_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\onliner_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\fast_auth_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\fast_auth_api.proto" />
+      <Content Include="..\..\Shared\BarkFluff.Proto\navigator_api.proto" CopyToOutputDirectory="PreserveNewest" Link="Proto\navigator_api.proto" />
     </ItemGroup>
 
 </Project>

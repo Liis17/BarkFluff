@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
@@ -22,14 +23,17 @@ namespace BarkFluff.Identity.Features.Auth;
 public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
     RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage,
-    LocationClient locationClient, MetricsCollector metrics, ILogger<AuthCommandHandler> logger) : IRequestHandler<AuthCommand, AuthResponse>
+    LocationClient locationClient, MetricsCollector metrics, ILogger<AuthCommandHandler> logger,
+    IIdentityAbuseGuard abuseGuard) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
     private const int ExpDaysRefreshToken = 9999;
 
     public async Task<AuthResponse> Handle(AuthCommand request, CancellationToken cancellationToken)
     {
-        var login = request.Username ?? request.Email;
+        var login = string.IsNullOrWhiteSpace(request.Username)
+            ? request.Email?.Trim()
+            : request.Username.Trim();
 
         logger.LogInformation(
             "Попытка входа: {Login} с устройства {DeviceName}",
@@ -64,6 +68,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             throw new XAppInfoIsRequiedException();
         }
 
+        await abuseGuard.EnsureLoginAllowedAsync(
+            login!,
+            requestContext.TrustedIpAddress,
+            cancellationToken);
+
         // Если DeviceId не передан, генерируем временный для обратной совместимости
         var deviceId = string.IsNullOrEmpty(requestContext.DeviceId)
             ? Guid.NewGuid().ToString()
@@ -86,6 +95,13 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         if (user.User is null)
         {
+            var failure = await abuseGuard.RegisterLoginFailureAsync(
+                login!,
+                requestContext.TrustedIpAddress,
+                null,
+                cancellationToken);
+            await abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
             metrics.Increment("auth_login_failed");
             metrics.Increment("auth_login_failed_user_not_found");
             logger.LogWarning(
@@ -93,6 +109,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 login,
                 requestContext.IpAddress
             );
+
+            if (failure.Locked)
+                throw new IdentityLockoutException();
+
             throw new InvalidLoginOrPasswordException();
         }
 
@@ -103,10 +123,17 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             throw new InvalidLoginOrPasswordException();
         }
 
+        await abuseGuard.EnsureUserAllowedAsync(user.User.Id, cancellationToken);
+
         var optOptions = await authPropertiesStorage.GetUserAuthProperties(user.User.Id);
 
-        if (optOptions != null && (optOptions.EmailOtpEnabled || optOptions.OtpEnabled) && string.IsNullOrEmpty(request.OtpCode))
+        if (optOptions != null && (optOptions.EmailOtpEnabled || optOptions.OtpEnabled) && string.IsNullOrWhiteSpace(request.OtpCode))
         {
+            await abuseGuard.EnsureSubjectRequestAllowedAsync(
+                IdentityAbuseOperation.Auth,
+                login!,
+                cancellationToken);
+
             logger.LogInformation(
                 "Требуется OTP код для пользователя {UserId}. Email OTP: {EmailOtp}, App OTP: {AppOtp}",
                 user.User.Id,
@@ -167,6 +194,13 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
             if (!isValid)
             {
+                var failure = await abuseGuard.RegisterLoginFailureAsync(
+                    login!,
+                    requestContext.TrustedIpAddress,
+                    user.User.Id,
+                    cancellationToken);
+                await abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
                 metrics.Increment("auth_login_failed");
                 metrics.Increment("otp_authenticator_failed");
                 logger.LogWarning(
@@ -174,6 +208,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     user.User.Id,
                     requestContext.IpAddress
                 );
+
+                if (failure.Locked)
+                    throw new IdentityLockoutException();
+
                 throw new NotValidOtpCodeException();
             }
 
@@ -188,6 +226,13 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             if (!string.Equals(optOptions.LastEmailAuthCode, request.OtpCode,
                     StringComparison.InvariantCultureIgnoreCase))
             {
+                var failure = await abuseGuard.RegisterLoginFailureAsync(
+                    login!,
+                    requestContext.TrustedIpAddress,
+                    user.User.Id,
+                    cancellationToken);
+                await abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
                 metrics.Increment("auth_login_failed");
                 metrics.Increment("otp_email_failed");
                 logger.LogWarning(
@@ -195,6 +240,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     user.User.Id,
                     requestContext.IpAddress
                 );
+
+                if (failure.Locked)
+                    throw new IdentityLockoutException();
+
                 throw new NotValidOtpCodeException();
             }
 
@@ -208,6 +257,13 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         if (!PasswordHasher.VerifyPassword(request.Password, currentPasswordHash))
         {
+            var failure = await abuseGuard.RegisterLoginFailureAsync(
+                login!,
+                requestContext.TrustedIpAddress,
+                user.User.Id,
+                cancellationToken);
+            await abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
             metrics.Increment("auth_login_failed");
             metrics.Increment("auth_login_failed_invalid_password");
             logger.LogWarning(
@@ -216,6 +272,9 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 login,
                 requestContext.IpAddress
             );
+
+            if (failure.Locked)
+                throw new IdentityLockoutException();
 
             // Отправка уведомления о неудачной попытке входа
             var userContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
@@ -246,6 +305,12 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
             throw new InvalidLoginOrPasswordException();
         }
+
+        await abuseGuard.ClearLoginFailuresAsync(
+            login!,
+            requestContext.TrustedIpAddress,
+            user.User.Id,
+            cancellationToken);
 
         logger.LogInformation(
             "Успешная аутентификация пользователя {UserId} ({Login}) с устройства {DeviceName}, IP: {IpAddress}",

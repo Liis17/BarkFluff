@@ -14,37 +14,44 @@ struct QRPanelView: View {
     var body: some View {
         VStack(spacing: Theme.Spacing.md) {
             Text("fast_auth.qr.title")
-                .font(.headline)
+                .font(.title3)
+                .fontWeight(.semibold)
 
             Text("fast_auth.qr.instruction")
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
             qrContent
                 .frame(width: 220, height: 220)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.white)
+                    Color.white,
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                 )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text("fast_auth.qr.title"))
 
             statusLine
+                .frame(minHeight: 22)
 
             if let message = viewModel.errorMessage {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
+                Label {
+                    Text(message)
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                } icon: {
+                    Image(systemName: "exclamationmark.circle.fill")
+                }
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity)
             }
         }
-        .padding(Theme.Spacing.xxl)
-        .frame(width: 280)
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 8)
-                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
-        )
+        .frame(maxWidth: .infinity, alignment: .top)
         .onAppear { viewModel.startSession() }
         .onDisappear { viewModel.cancel() }
     }
@@ -56,7 +63,7 @@ struct QRPanelView: View {
                 .interpolation(.none)
                 .resizable()
                 .scaledToFit()
-                .padding(8)
+                .padding(10)
         } else if viewModel.isLoading {
             ProgressView()
         } else {
@@ -70,33 +77,33 @@ struct QRPanelView: View {
     private var statusLine: some View {
         switch viewModel.currentStatus {
         case .pending:
-            HStack(spacing: 6) {
-                ProgressView().scaleEffect(0.6)
-                Group {
-                    if viewModel.timeRemaining > 0 {
-                        Text("fast_auth.qr.status.valid_for \(viewModel.timeRemaining)")
-                    } else {
-                        Text("fast_auth.qr.status.waiting")
-                    }
+            HStack(spacing: Theme.Spacing.xs) {
+                ProgressView()
+                    .controlSize(.small)
+
+                if viewModel.timeRemaining > 0 {
+                    Text("fast_auth.qr.status.valid_for \(viewModel.timeRemaining)")
+                } else {
+                    Text("fast_auth.qr.status.waiting")
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
         case .accepted:
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text("fast_auth.qr.status.accepted").font(.caption.weight(.medium))
-            }
+            Label("fast_auth.qr.status.accepted", systemImage: "checkmark.circle.fill")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.green)
+
         case .rejected:
-            HStack(spacing: 6) {
-                Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
-                Text("fast_auth.qr.status.rejected").font(.caption)
-            }
+            Label("fast_auth.qr.status.rejected", systemImage: "xmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.red)
+
         case .expired:
-            HStack(spacing: 6) {
-                Image(systemName: "clock.fill").foregroundStyle(.orange)
-                Text("fast_auth.qr.status.expired").font(.caption)
-            }
+            Label("fast_auth.qr.status.expired", systemImage: "clock.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
         }
     }
 }

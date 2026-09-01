@@ -42,6 +42,7 @@ public class RequestContextInterceptor : Interceptor
             AppVersion = GetMetadataValue(metadata, MetadataKeys.AppVersion),
             DeviceId = GetMetadataValue(metadata, MetadataKeys.DeviceId),
             IpAddress = ResolveIpAddress(metadata, httpContext),
+            TrustedIpAddress = ResolveTrustedIpAddress(httpContext),
         };
 
         accessor.Set(requestContext);
@@ -67,11 +68,8 @@ public class RequestContextInterceptor : Interceptor
     }
 
     /// <summary>
-    /// Определяет IP-адрес клиента по нескольким источникам в порядке приоритета:
-    /// 1. Заголовок метаданных x-ip-address (явно передан клиентом)
-    /// 2. HTTP-заголовок X-Forwarded-For (reverse proxy / load balancer)
-    /// 3. HTTP-заголовок X-Real-IP (nginx)
-    /// 4. Реальный IP TCP-соединения (RemoteIpAddress)
+    /// Определяет адрес, отображаемый клиенту и используемый для совместимости.
+    /// Исторически этот адрес может приходить из gRPC-метаданных x-ip-address.
     /// </summary>
     private string? ResolveIpAddress(Metadata metadata, HttpContext? httpContext)
     {
@@ -114,6 +112,41 @@ public class RequestContextInterceptor : Interceptor
             remoteIp = remoteIp.MapToIPv4();
 
         _logger.LogDebug("IP определён из соединения (RemoteIpAddress): {IpAddress}", remoteIp);
+        return remoteIp.ToString();
+    }
+
+    /// <summary>
+    /// Определяет адрес для security-ключей только из HTTP reverse proxy или TCP-соединения.
+    /// Клиентские gRPC-метаданные намеренно не участвуют.
+    /// </summary>
+    private string? ResolveTrustedIpAddress(HttpContext? httpContext)
+    {
+        var realIp = httpContext?.Request.Headers["X-Real-IP"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(realIp))
+        {
+            _logger.LogDebug("Доверенный IP определён из X-Real-IP: {IpAddress}", realIp);
+            return realIp.Trim();
+        }
+
+        var forwardedFor = httpContext?.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwardedFor))
+        {
+            var firstIp = forwardedFor.Split(',')[0].Trim();
+            if (!string.IsNullOrWhiteSpace(firstIp))
+            {
+                _logger.LogDebug("Доверенный IP определён из X-Forwarded-For: {IpAddress}", firstIp);
+                return firstIp;
+            }
+        }
+
+        var remoteIp = httpContext?.Connection?.RemoteIpAddress;
+        if (remoteIp == null)
+            return null;
+
+        if (remoteIp.IsIPv4MappedToIPv6)
+            remoteIp = remoteIp.MapToIPv4();
+
+        _logger.LogDebug("Доверенный IP определён из соединения: {IpAddress}", remoteIp);
         return remoteIp.ToString();
     }
 

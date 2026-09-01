@@ -7,6 +7,8 @@
 
 Расположение: `Backend/BarkFluff.Files/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 > 📁 Детальная карта всех файлов проекта: [[Backend/Files-ProjectMap]]
 
 ## Сборка
@@ -24,6 +26,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 **FilesApiService** (`TokenType.User`) — клиентский API:
 - `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`
+- `GetUploadUrl.client_operation_id` — опциональный UUID логической операции. Повтор того же user/operation ID возвращает прежний зарезервированный `fileId`; другой `UploadFileType` для того же ключа отклоняется. Пустое поле сохраняет прежнее поведение старых клиентов
 - Стикеры (только чтение): `ListStickerPacks`, `GetStickerPack`, `GetStickerPackByFile` (резолвит пак по `file_id` стикера из вложения сообщения — клик по стикеру в чате открывает его пак; внутри делегирует `GetStickerPack`, «файл не стикер» и «стикер удалён» наружу неразличимы — `Exception("Стикер не найден")`)
 - `GetTempDownloadUrl` валидирует `file_ids` через `Guid.TryParse` и на невалидном значении бросает `NotValidFileIdException` (логируя само значение). Раньше `Guid.Parse` ронял вызов `FormatException` — в логах это выглядело как «КРИТИЧЕСКАЯ ОШИБКА», хотя виноват клиент, приславший вместо идентификатора, например, готовый URL картинки
 
@@ -39,10 +42,11 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 ### REST-контроллер
 
-- `POST /upload/{uploadId}` — загрузка файла (multipart, лимит 512 MB)
+- `POST /upload/{uploadId}` — загрузка файла (multipart, лимит 512 MB). Операция атомарно claim'ится на 35 минут: свободная или просроченная переходит `Pending → Processing`; занятая возвращает `409` + `Retry-After`; уже завершённая — `200 {fileId}` с итоговым ID. При ошибке/отмене lease освобождается обратно в `Pending`
+- `GET /upload/{uploadId}/status` — `{fileId, state: pending|processing|completed, retryAfterSeconds}`. Для `completed` `fileId` — фактический результат, который может отличаться от слота после hash-dedup. Истёкший `Processing` lease автоматически reclaim'ится в `Pending`
 - `GET /download/{fileId}` — скачивание. `DownloadFileCommandHandler` отдаёт `FileName = file.Filename` (оригинальное имя), ASP.NET `File(stream, contentType, fileName)` ставит `Content-Disposition: attachment; filename*=UTF-8''…` (кириллица ок). Раньше отдавался `{file.Id}{extension}` — браузер сохранял файл с именем-GUID.
 
-Поток: клиент получает uploadId через gRPC `GetUploadUrl`, затем загружает по HTTP.
+Поток: клиент получает uploadId через gRPC `GetUploadUrl`, затем загружает по HTTP. [[Клиенты/Web]] видит эти маршруты как `/api/files/upload/{id}` и `/api/files/upload/{id}/status` через YARP либо `/web/upload/{id}` и `/web/upload/{id}/status` на прямом files-media host.
 
 ### URL-маршрутизация (FileUrlHelper)
 
@@ -61,7 +65,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 - **S3BucketRegistry** (singleton) — реестр бакетов, маппинг `UploadFileType → bucketId`, S3-клиенты с кешированием
 - **S3BucketInitializer** — автосоздание бакетов при старте. Публичная политика чтения удалена (security fix, коммит `03a8dd5e`); ошибки S3 при старте логируются и не роняют сервис; 403 Forbidden при проверке/создании бакета трактуется как «бакет уже создан вручную» (нужно для R2-токенов с правами только на объекты)
-- **S3Uploader** — upload/download через `IAmazonS3`
+- **S3Uploader** — upload/download через `IAmazonS3`; `UploadAsync` принимает `CancellationToken` и передаёт его в AWS `PutObjectAsync`
 
 Бакеты: `profile-pictures`, `message-images`, `message-videos`, `message-documents`, `message-audio`, `chat-pictures`, `badge-images`, `barkfluff-uploads` (fallback).
 
@@ -72,6 +76,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 | Сущность | Назначение |
 |----------|-----------|
 | `UploadFile` | Основная таблица. `Uploaders` (List\<long\>) — дедупликация (GIN-индекс). `PreviewId` — ссылка на превью (частичный индекс). `ExpiresAt` — TTL слота незагруженного файла (~2 ч, чистится `TempFileCleanupService`). `ImageWidth`/`ImageHeight` — размеры изображения в пикселях (nullable int, только для графических типов). |
+| `UploadOperation` | Идемпотентная операция: nullable `ClientOperationId`, `UserId`, `ReservedFileId`, nullable `ResultFileId`, `Type`, `Pending/Processing/Completed`, lease token/expiry и timestamps. Filtered unique index `(UserId, ClientOperationId)`; unique `ReservedFileId`; индекс `(State, LeaseExpiresAt)` для reclaim. Миграция создаёт completed-операции для legacy-файлов с `Etag` и pending для незавершённых |
 | `TempFile` | Временные файлы с `ExpiresAt`. Индекс по `OriginalFileId`. |
 | `FileHash` | SHA256-хеши для дедупликации. **Уникальный** индекс `IX_FileHashes_Hash` (с 2026-07-16). |
 | `BadgeImage` | Отдельная таблица (не `UploadFile`). Бакет `badge-images`. PNG без сжатия. |
@@ -83,6 +88,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 - **ImageCompressor** — SixLabors.ImageSharp. Превью: ресайз до 1024px, JPEG 75%. Оригинал: макс. 2500px, макс. 2 МБ, JPEG 90%. Для `MessageAttachmentGif` также создаётся JPEG-preview первого кадра: веб-профиль показывает его статично, не запуская GIF-анимацию.
 - **FileTypeDetector** — тип по magic bytes (JPEG, PNG, WebP, GIF, MP4, WebM, AVI, MOV, MP3, WAV, FLAC, M4A, OGG). OGG → `Voice`, остальное аудио → `Audio`.
 - **VideoThumbnailExtractor** — FFMpegCore, статический бинарь `ffmpeg`/`ffprobe` (`mwader/static-ffmpeg`, копируется в образ в `Dockerfile.slim`, путь `/usr/local/bin` через `GlobalFFOptions`/`Ffmpeg:BinaryFolder`). Для `MessageAttachmentVideo`: кадр на 5-й секунде (или середина, если короче) → тот же `ImageCompressor`-пайплайн превью (1024px JPEG). Видео всегда буферизуется на диск при загрузке (FFmpeg читает файл по пути, не по стриму). Длительность видео не извлекается и не хранится (нет поля в proto).
+- `HttpContext.RequestAborted` протянут через MediatR в буферизацию, SHA-256, magic-byte/image/video processing, S3 и EF Core. Отмена/ошибка освобождает lease; внутренний поток и временный файл удаляются в `finally` на любой стадии, включая раннюю hash-dedup
 
 ### Метаданные изображений
 
@@ -90,7 +96,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 ## Конфигурация
 
-- `S3Buckets` — секция с настройками каждого бакета (может быть на разных S3-хранилищах)
+- `S3Buckets` — секция с настройками каждого бакета (может быть на разных S3-хранилищах); `Region` по умолчанию равен `auto` для совместимости с Cloudflare R2 и используется как signing region, `ServiceUrl` остаётся адресом S3 endpoint
 - `FilesDb`, `UsersService:Host/Token`
 
 ## Proto

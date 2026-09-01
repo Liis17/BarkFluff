@@ -6,7 +6,7 @@
 Автономный микросервис для хранения и раздачи клиентских дистрибутивов BarkFluff (Windows, WinUI, Android, macOS, iOS).
 REST API на ASP.NET Core 10.0, файлы в S3/Minio, метаданные в SQLite.
 
-**Не входит** в основную микросервисную инфраструктуру — нет gRPC, нет MassTransit, нет XAuth, нет Configuration service. Работает изолированно.
+**Не входит** в основную микросервисную инфраструктуру — нет gRPC, нет MassTransit, нет XAuth, нет Settings service. Работает изолированно.
 
 Расположение: `Backend/BarkFluff.ClientStorage/`
 
@@ -64,7 +64,7 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - `Infrastructure/LocalFileCache` — локальный дисковый кеш (`CACHE_DIR`, default `/app/cache`)
 - `Infrastructure/HashingReadStream` — ~~класса не существует~~; SHA-256 вычисляется инлайн в контроллере через `IncrementalHash` (один проход до отправки в S3)
 - `Services/CacheWarmupService` — `IHostedService`, прогревает кеш при старте контейнера
-- `Services/OldVersionsCleanupService` — `IHostedService`, выполняет стартовую чистку файлов старше 7 дней, каждые 3 часа оставляет максимум 3 версии и ежедневно в 03:00 по Москве оставляет только последнюю версию по каждой паре `ClientType × ReleaseChannel`
+- `Services/OldVersionsCleanupService` — `IHostedService`, выполняет стартовую чистку файлов старше 7 дней (сохраняя последнюю версию каждой пары `ClientType × ReleaseChannel`), каждые 3 часа оставляет максимум 3 версии и ежедневно в 03:00 по Москве оставляет только последнюю версию по каждой паре `ClientType × ReleaseChannel`
 - `Middleware/TokenAuthMiddleware` — Bearer-токен только для `/set/*`
 - `Persistence/` — EF Core + SQLite
 
@@ -88,9 +88,10 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - После ответа клиенту фоновая задача сначала обновляет кеш из temp-файла, а при неудаче скачивает файл из S3
 
 ### Автоочистка версий
-- При старте контейнера удаляются записи SQLite и соответствующие S3-объекты с `UploadedAt` старше 7 дней. Стартовая очистка завершается до запуска прогрева локального кеша.
+- При старте контейнера удаляются записи SQLite и соответствующие S3-объекты с `UploadedAt` старше 7 дней, только если в той же паре `ClientType × ReleaseChannel` есть более новая запись. Последняя версия ветки сохраняется даже если ветка давно не обновлялась. Стартовая очистка завершается до запуска прогрева локального кеша.
 - Каждые 3 часа удаляются самые старые версии, если для одной пары `ClientType × ReleaseChannel` накопилось больше 3 записей; остаются 3 последние по `UploadedAt`.
 - Ежедневно в 03:00 по московскому времени (00:00 UTC) удаляются все версии, кроме последней по каждой паре `ClientType × ReleaseChannel`.
+- Последняя версия определяется по `UploadedAt`, а при совпадении времени — по большему `Id`.
 - Очистка работает по записям SQLite и их `S3Key`; orphan-объекты в бакете без записи `ClientFiles` не сканируются и не удаляются.
 - Retention и расписание заданы в коде `OldVersionsCleanupService`, отдельные переменные конфигурации для них не предусмотрены.
 

@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - master
+      - nightly
     paths:
       - 'Mac/Barkfluff/**'
       - 'Mac/macos-rebuild.trigger'
@@ -26,7 +27,7 @@ jobs:
     steps:
       - name: "📲 Собрать macOS Client?"
         id: approval
-        if: github.ref_name != 'dev'
+        if: github.ref_name != 'dev' && github.ref_name != 'nightly'
         continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
@@ -43,7 +44,7 @@ jobs:
       - name: Результат
         id: result
         run: |
-          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
+          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ github.ref_name }}" = "nightly" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
             echo "approved=true" >> "$GITHUB_OUTPUT"
           else
             echo "approved=false" >> "$GITHUB_OUTPUT"
@@ -82,9 +83,30 @@ jobs:
           CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
         run: printf '%s' "$CA_BUNDLE_B64" | base64 -D > cloudflare-origin-ca-bundle.pem
 
+      - name: Канал сборки
+        id: target
+        run: |
+          case "${{ github.ref_name }}" in
+            master)  CHANNEL="release"; VERSION_CHANNEL="beta" ;;
+            dev)     CHANNEL="beta";    VERSION_CHANNEL="beta" ;;
+            nightly) CHANNEL="nightly"; VERSION_CHANNEL="nightly" ;;
+            *)
+              echo "Ветка ${{ github.ref_name }} не привязана к каналу обновлений" >&2
+              exit 1
+              ;;
+          esac
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "version_channel=$VERSION_CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Ветка ${{ github.ref_name }} → канал $CHANNEL"
+
       - name: Автоподнятие версии
         run: |
-          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
+          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/${{ steps.target.outputs.version_channel }}/version" || echo "")
+
+          if [ -z "$RESPONSE" ] && [ "${{ steps.target.outputs.version_channel }}" = "nightly" ]; then
+            echo "Канал nightly пуст, пробуем beta"
+            RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
+          fi
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
@@ -105,7 +127,7 @@ jobs:
 
           echo "Server version: $SERVER_VERSION"
 
-          if [ "${{ github.ref_name }}" = "dev" ]; then
+          if [ "${{ github.ref_name }}" = "nightly" ]; then
             MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
             MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
             PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
@@ -155,23 +177,109 @@ jobs:
         id: dmg
         run: |
           DMG_PATH="build/BarkFluff-${{ steps.meta.outputs.version }}.dmg"
+          CUSTOM_DMG=false
+          case "${{ github.ref_name }}" in
+            nightly)
+              BACKGROUND_FILE="Packaging/dmg-background.png"
+              CUSTOM_DMG=true
+              ;;
+            dev)
+              BACKGROUND_FILE="Packaging/dmg-background-dev.png"
+              CUSTOM_DMG=true
+              ;;
+            master)
+              BACKGROUND_FILE="Packaging/dmg-background-master.png"
+              CUSTOM_DMG=true
+              ;;
+            *)
+              BACKGROUND_FILE=""
+              ;;
+          esac
+
+          if [ "$CUSTOM_DMG" = true ]; then
+            test -f "$BACKGROUND_FILE"
+            BACKGROUND_ARGS=(--background "$BACKGROUND_FILE")
+            TEXT_SIZE_ARGS=(--text-size 16)
+            DMG_LAYOUT_ARGS=(
+              --window-size 680 425
+              --icon "Barkfluff.app" 205 220
+              --app-drop-link 515 220
+            )
+          else
+            BACKGROUND_ARGS=()
+            TEXT_SIZE_ARGS=()
+            DMG_LAYOUT_ARGS=(
+              --window-size 600 400
+              --icon "Barkfluff.app" 150 200
+              --app-drop-link 450 200
+            )
+          fi
           create-dmg \
             --volname "BarkFluff" \
-            --window-size 600 400 \
+            "${BACKGROUND_ARGS[@]}" \
+            "${DMG_LAYOUT_ARGS[@]}" \
             --icon-size 128 \
-            --icon "Barkfluff.app" 150 200 \
-            --app-drop-link 450 200 \
+            "${TEXT_SIZE_ARGS[@]}" \
             "$DMG_PATH" \
             "build/export/Barkfluff.app"
+
+          if [ "$CUSTOM_DMG" = true ]; then
+            RW_DMG="${DMG_PATH%.dmg}-rw.dmg"
+            REPACKED_DMG="${DMG_PATH%.dmg}-repacked.dmg"
+            hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
+            ATTACH_INFO=$(hdiutil attach -mountrandom /Volumes -nobrowse -readwrite "$RW_DMG")
+            DEV_NAME=$(printf '%s\n' "$ATTACH_INFO" | awk '$1 ~ /^\/dev\/disk[0-9]+$/ { print $1; exit }')
+            MOUNT_DIR=$(printf '%s\n' "$ATTACH_INFO" | awk '$1 ~ /^\/dev\// && $3 ~ /^\/Volumes\// { print $3; exit }')
+            cleanup_dmg() {
+              if [ -n "${MOUNT_DIR:-}" ]; then
+                hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1 || true
+                rmdir "$MOUNT_DIR" 2>/dev/null || true
+              elif [ -n "${DEV_NAME:-}" ]; then
+                hdiutil detach "$DEV_NAME" >/dev/null 2>&1 || true
+              fi
+              [ -z "${RW_DMG:-}" ] || rm -f "$RW_DMG"
+              [ -z "${REPACKED_DMG:-}" ] || rm -f "$REPACKED_DMG"
+            }
+            trap cleanup_dmg EXIT
+            [ -n "$MOUNT_DIR" ] || { echo "Не удалось найти mountpoint DMG" >&2; exit 1; }
+            DISK_NAME=$(basename "$MOUNT_DIR")
+            BACKGROUND_BASENAME=$(basename "$BACKGROUND_FILE")
+
+            /usr/bin/osascript <<APPLESCRIPT
+            tell application "Finder"
+              tell disk "${DISK_NAME}"
+                open
+                delay 1
+                tell container window
+                  set current view to icon view
+                  set toolbar visible to false
+                  set statusbar visible to false
+                  set bounds to {10, 60, 690, 485}
+                end tell
+                set opts to icon view options of container window
+                set icon size of opts to 128
+                set text size of opts to 16
+                set arrangement of opts to not arranged
+                set background picture of opts to POSIX file "${MOUNT_DIR}/.background/${BACKGROUND_BASENAME}"
+                set position of item "Barkfluff.app" of container window to {205, 220}
+                set position of item "Applications" of container window to {515, 220}
+                delay 3
+              end tell
+            end tell
+          APPLESCRIPT
+            chflags hidden "$MOUNT_DIR/.background" "$MOUNT_DIR/.DS_Store"
+            hdiutil detach "$MOUNT_DIR"
+            hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$REPACKED_DMG"
+            mv "$REPACKED_DMG" "$DMG_PATH"
+            rm -f "$RW_DMG"
+            rmdir "$MOUNT_DIR" 2>/dev/null || true
+          fi
+
           echo "path=$DMG_PATH" >> "$GITHUB_OUTPUT"
 
       - name: "📤 Загрузка на сервер обновлений"
         run: |
-          if [ "${{ github.ref_name }}" = "dev" ]; then
-            CHANNEL="beta"
-          else
-            CHANNEL="release"
-          fi
+          CHANNEL="${{ steps.target.outputs.channel }}"
           curl -f --cacert cloudflare-origin-ca-bundle.pem -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffmacos/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
             -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
@@ -183,6 +291,7 @@ jobs:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_DOWNLOAD_URL: https://storage.barkfluff.com/get/barkfluffmacos/${{ steps.target.outputs.channel }}
           TG_MESSAGE: |
             ✅ *Сборка успешна*
 

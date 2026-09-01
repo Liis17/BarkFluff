@@ -4,7 +4,7 @@
  * Показывается, пока BF.node.origin() пуст, то есть на глобальном шелле до первого
  * выбора. На самой ноде (BF_NODE_CONFIG.pinned) не используется вовсе.
  *
- * Requires: barkfluff.bundle.js (NavigatorApiClient/BeaconApiClient), BF.node, BF.i18n
+ * Requires: barkfluff.bundle.js (NavigatorApiClient/BeaconApiClient), BF.node, BF.i18n, BF.network
  * Exposes: BF.nodePicker
  */
 (function () {
@@ -53,13 +53,15 @@
         var client = BF.node.navigatorClient();
         if (!client) return Promise.resolve([]);
 
-        return new Promise(function (resolve) {
-            var req = new window.proto.barkfluff.navigator.ListServersRequest();
-            // Анонимный вызов, но с device-метаданными — как fast-auth: по ним
-            // работает анти-абузный лимит на публичных эндпоинтах.
-            client.listServers(req, BF.metadata.build(), function (err, resp) {
-                if (err || !resp) { resolve([]); return; }
-                resolve(resp.getServersList().map(function (s) {
+        var req = new window.proto.barkfluff.navigator.ListServersRequest();
+        return BF.network.unary(
+            client.listServers.bind(client),
+            req,
+            BF.metadata.build(),
+            BF.network.POLICIES.READ
+        ).then(function (resp) {
+                if (!resp) return [];
+                return resp.getServersList().map(function (s) {
                     var color = s.getColor();
                     return {
                         origin: BF.node.normalize(s.getWebEndpoint()),
@@ -68,9 +70,8 @@
                         location: s.getLocation(),
                         color: color ? color.getMainHex() : ''
                     };
-                }));
-            });
-        });
+                });
+            }).catch(function () { return []; });
     }
 
     /**
@@ -82,17 +83,24 @@
         var bf = window.barkfluff;
         if (!bf || !bf.BeaconApiClient) return Promise.resolve(null);
 
-        return new Promise(function (resolve) {
-            var settled = false;
-            var finish = function (value) { if (!settled) { settled = true; resolve(value); } };
-            setTimeout(function () { finish(null); }, PROBE_TIMEOUT);
-
-            var client = new bf.BeaconApiClient(origin);
-            var req = new window.proto.barkfluff.beacon.GetServerInfoRequest();
-            client.getServerInfo(req, BF.metadata.build(), function (err, resp) {
-                if (err || !resp) { finish(null); return; }
+        var client = new bf.BeaconApiClient(origin);
+        var req = new window.proto.barkfluff.beacon.GetServerInfoRequest();
+        return BF.network.unary(
+            client.getServerInfo.bind(client),
+            req,
+            BF.metadata.build(),
+            {
+                attemptTimeoutMs: PROBE_TIMEOUT,
+                overallTimeoutMs: PROBE_TIMEOUT,
+                maxAttempts: 1,
+                retryCodes: [],
+                retryTransport: false,
+                outcomeUnknown: false
+            }
+        ).then(function (resp) {
+                if (!resp) return null;
                 var color = resp.getColor();
-                finish({
+                return {
                     name: resp.getPublicName() || resp.getName(),
                     description: resp.getDescription(),
                     location: resp.getLocation(),
@@ -100,9 +108,8 @@
                     serverName: resp.getServerName(),
                     filesMediaEndpoint: resp.getFilesMediaEndpoint(),
                     color: color ? color.getMainHex() : ''
-                });
-            });
-        });
+                };
+            }).catch(function () { return null; });
     }
 
     function connect(value) {

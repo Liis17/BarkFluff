@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
@@ -29,11 +30,12 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
     private readonly LocationClient _locationClient;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<ConfirmOtpVerificationCommandHandler> _logger;
+    private readonly IIdentityAbuseGuard _abuseGuard;
 
     public ConfirmOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage,
         UsersServerApi.UsersServerApiClient usersClient, NotificationQueueSender notificationQueueSender,
         RequestContext requestContext, LocationClient locationClient, MetricsCollector metrics,
-        ILogger<ConfirmOtpVerificationCommandHandler> logger)
+        ILogger<ConfirmOtpVerificationCommandHandler> logger, IIdentityAbuseGuard abuseGuard)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
@@ -43,6 +45,7 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
         _locationClient = locationClient;
         _metrics = metrics;
         _logger = logger;
+        _abuseGuard = abuseGuard;
     }
 
     public async Task<ConfirmOtpVerificationResponse> Handle(ConfirmOtpVerificationCommand request, CancellationToken cancellationToken)
@@ -51,6 +54,14 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
             "Начало подтверждения OTP для пользователя {UserId}",
             _userContext.UserId
         );
+
+        await _abuseGuard.EnsureOtpOperationAllowedAsync(
+            IdentityOtpOperation.Setup,
+            _userContext.UserId,
+            cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(request.OtpCode))
+            throw new OtpCodeNeedException();
 
         string confirmedMethod;
         string oldMethod = "Отключена";
@@ -75,12 +86,22 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
 
                 if (!isValid)
                 {
+                    var failure = await _abuseGuard.RegisterOtpFailureAsync(
+                        IdentityOtpOperation.Setup,
+                        _userContext.UserId,
+                        cancellationToken);
+                    await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
                     _metrics.Increment("otp_authenticator_failed");
                     _metrics.Increment("otp_confirmation_failed");
                     _logger.LogWarning(
                         "Неверный Authenticator OTP код для пользователя {UserId}",
                         _userContext.UserId
                     );
+
+                    if (failure.Locked)
+                        throw new IdentityLockoutException();
+
                     throw new NotValidOtpCodeException();
                 }
 
@@ -104,12 +125,22 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
                 if (!string.Equals(otpConfigs.LastEmailAuthCode, request.OtpCode,
                         StringComparison.InvariantCultureIgnoreCase))
                 {
+                    var failure = await _abuseGuard.RegisterOtpFailureAsync(
+                        IdentityOtpOperation.Setup,
+                        _userContext.UserId,
+                        cancellationToken);
+                    await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
                     _metrics.Increment("otp_email_failed");
                     _metrics.Increment("otp_confirmation_failed");
                     _logger.LogWarning(
                         "Неверный Email OTP код для пользователя {UserId}",
                         _userContext.UserId
                     );
+
+                    if (failure.Locked)
+                        throw new IdentityLockoutException();
+
                     throw new NotValidOtpCodeException();
                 }
 
@@ -140,6 +171,11 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
             );
             throw new BarkFluff.Shared.Exceptions.Identity.OtpNotCreatedException();
         }
+
+        await _abuseGuard.ClearOtpFailuresAsync(
+            IdentityOtpOperation.Setup,
+            _userContext.UserId,
+            cancellationToken);
 
         // Отправка уведомления об изменении метода 2FA после успешного подтверждения
         await SendTwoFactorChangedNotification(confirmedMethod, oldMethod);

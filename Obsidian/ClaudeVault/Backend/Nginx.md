@@ -51,7 +51,7 @@ Nginx выступает **reverse proxy** перед всеми микросе�
 | `updates.conf` | `updates.barkfluff.com` → [[Updates]] | 7015 | gRPC |
 | `web.conf` | `web.barkfluff.com` → [[Web]] | 7016 | HTTP (YARP proxy) |
 | `admin-panel.conf` | `panel.barkfluff.com` → [[AdminPanel]] | 51888 | HTTP + WSS (WebSocket) |
-| `developers.conf` | `developers.barkfluff.com` → [[Developers]] | 7020 | HTTP (gRPC-Web) |
+| `developers.conf` | `developers.barkfluff.com` → [[Developers]] | 7020 (API) + 7021 (SPA) | HTTP + gRPC-Web |
 | `calls.conf` | `calls.barkfluff.com` → [[Calls]] | 7025 (gRPC) | gRPC |
 | `bots.conf` | `bots.barkfluff.com` → [[Bots]] | 7027 (gRPC) + 7028 (HTTP REST) | gRPC + HTTP |
 | `federation.conf` | `federation.barkfluff.com` → [[Federation]] | 7030 (gRPC) + 7031 (well-known, только apex) | gRPC |
@@ -137,7 +137,11 @@ origin напрямую, минуя Cloudflare** с его жёстким лим
 HTTP-сервисы (не gRPC), используют `proxy_pass`:
 - `panel.barkfluff.com` → `admin-panel:51888`
 - `/api/remote/` на `panel.barkfluff.com` проксируется как HTTP/1.1 WebSocket Upgrade; для этого server block не включает HTTP/2, а консольный location отключает proxy buffering и держит таймаут 3600s.
-- `developers.barkfluff.com` → `developers:7020`
+- `developers.barkfluff.com`: `/grpc/barkfluff.identity.IdentityApi/` → `identity:7000`,
+  `/grpc/barkfluff.developers.DevelopersApi/` → `developers:7020`, health endpoints → `developers:7020`,
+  остальные пути → `developers:7021` (SPA)
+- HTTPS server block Developers добавляет security headers `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY` и `Referrer-Policy: strict-origin-when-cross-origin`.
 
 ### `calls.conf`
 gRPC по образцу `updates.conf` (`grpc://calls:7025`), но `grpc_read/send_timeout 3600s` —

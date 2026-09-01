@@ -1,6 +1,6 @@
 /**
  * Login / 2FA / refresh flows for the login page (index.html).
- * Requires: barkfluff.bundle.js, BF.metadata, BF.tokens
+ * Requires: barkfluff.bundle.js, BF.metadata, BF.tokens, BF.network
  * Exposes: BF.auth
  */
 (function () {
@@ -54,39 +54,34 @@
 
         var meta = BF.metadata.build(); // no token
 
-        return new Promise(function (resolve) {
-            identityClient.auth(req, meta, function (err, resp) {
-                if (err) {
-                    var errorCode = err.metadata && err.metadata['x-error-code'];
-
-                    if (errorCode === ERROR_CODES.OTP_REQUIRED) {
-                        return resolve({ success: false, needOtp: true });
-                    }
-                    if (errorCode === ERROR_CODES.INVALID_OTP) {
-                        return resolve({ success: false, error: 'invalid_otp' });
-                    }
-                    if (errorCode === ERROR_CODES.INVALID_CREDENTIALS) {
-                        return resolve({ success: false, error: 'invalid_credentials' });
-                    }
-                    return resolve({ success: false, error: 'server_error' });
-                }
-
+        return BF.network.unary(
+            identityClient.auth.bind(identityClient),
+            req,
+            meta,
+            BF.network.POLICIES.MUTATION
+        ).then(function (resp) {
+                if (!resp) return { success: false, error: 'server_error' };
                 var at = resp.getAccessToken();
                 var rt = resp.getRefreshToken();
-                if (!at || !rt) {
-                    return resolve({ success: false, error: 'server_error' });
-                }
+                if (!at || !rt) return { success: false, error: 'server_error' };
 
-                var data = {
-                    accessToken: at.getValue(),
-                    accessTokenExpiration: at.getExpirationDate().toDate().getTime(),
-                    refreshToken: rt.getValue(),
-                    refreshTokenExpiration: rt.getExpirationDate().toDate().getTime()
+                return {
+                    success: true,
+                    data: {
+                        accessToken: at.getValue(),
+                        accessTokenExpiration: at.getExpirationDate().toDate().getTime(),
+                        refreshToken: rt.getValue(),
+                        refreshTokenExpiration: rt.getExpirationDate().toDate().getTime()
+                    }
                 };
+            }).catch(function (err) {
+                    var errorCode = err.metadata && err.metadata['x-error-code'];
 
-                resolve({ success: true, data: data });
+                    if (errorCode === ERROR_CODES.OTP_REQUIRED) return { success: false, needOtp: true };
+                    if (errorCode === ERROR_CODES.INVALID_OTP) return { success: false, error: 'invalid_otp' };
+                    if (errorCode === ERROR_CODES.INVALID_CREDENTIALS) return { success: false, error: 'invalid_credentials' };
+                    return { success: false, error: 'server_error' };
             });
-        });
     }
 
     /**
@@ -102,22 +97,25 @@
         req.setRefreshToken(rt);
 
         var meta = BF.metadata.build();
-        return new Promise(function (resolve) {
-            identityClient.createToken(req, meta, function (err, resp) {
-                if (err || !resp) {
-                    if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
-                    return resolve(null);
-                }
+        return BF.network.unary(
+            identityClient.createToken.bind(identityClient),
+            req,
+            meta,
+            BF.network.POLICIES.REFRESH
+        ).then(function (resp) {
+                if (!resp) return null;
                 var at = resp.getAccessToken();
-                if (!at) return resolve(null);
+                if (!at) return null;
 
                 var stored = BF.tokens.get() || {};
                 stored.accessToken = at.getValue();
                 stored.accessTokenExpiration = at.getExpirationDate().toDate().getTime();
                 BF.tokens.save(stored);
-                resolve(at.getValue());
+                return at.getValue();
+            }).catch(function (err) {
+                if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
+                return null;
             });
-        });
     }
 
     function getValidAccessToken() {

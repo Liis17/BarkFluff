@@ -105,7 +105,7 @@ Bot-JWT — в заголовке **`x-auth-token`** (НЕ в URL — не те�
 | `GET /bot/getUpdates` | `offset?`, `limit?=100`, `timeout?≤50` (long-poll) | массив update'ов |
 | `GET /bot/getUserInfo` | `user_id=` / `username=` | публичный профиль |
 
-## Конфигурация (секция в [[Backend/Configuration]], ServiceId=14)
+## Конфигурация (секция в [[Backend/Settings]], ServiceId=14)
 
 | Ключ | Назначение |
 |------|-----------|

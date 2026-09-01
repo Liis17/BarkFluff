@@ -862,7 +862,8 @@
             req.setUserIdsList(userIds);
             BF.clients.authCall(
                 BF.clients.onliner.changeUsersInSubscription.bind(BF.clients.onliner),
-                req
+                req,
+                BF.network.POLICIES.MUTATION
             ).catch(function () {
                 // Fallback: reopen the stream with updated IDs
                 subscribeOnline(userIds);

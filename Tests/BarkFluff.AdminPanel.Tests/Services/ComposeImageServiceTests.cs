@@ -13,7 +13,7 @@ public class ComposeImageServiceTests
 version: '3.8'
 
 x-common-variables: &common-variables
-  CONFIGURATION_SERVICE_URL: "${CONFIGURATION_SERVICE_URL}"
+  SETTINGS_SERVICE_URL: "${SETTINGS_SERVICE_URL}"
 
 services:
   beacon:

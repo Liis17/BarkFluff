@@ -24,19 +24,19 @@ public sealed class SecuritySettingsService : SessionScopedService, ISecuritySet
         var result = await WebApi.OtpReceipt(Parameters, ToOtpType(method));
         return result.error.IsSuccess
             ? (null, result.qrBase64 ?? string.Empty, result.justCode ?? string.Empty)
-            : ("Error_TwoFactorFailed", string.Empty, string.Empty);
+            : (result.error.ErrorResourceKey ?? "Error_TwoFactorFailed", string.Empty, string.Empty);
     }
 
     public async Task<string?> ConfirmTwoFactorAsync(string code, CancellationToken cancellationToken = default)
     {
         var result = await WebApi.OtpAccept(Parameters, code);
-        return result.IsSuccess ? null : "Error_TwoFactorCodeInvalid";
+        return result.IsSuccess ? null : result.ErrorResourceKey ?? "Error_TwoFactorCodeInvalid";
     }
 
     public async Task<string?> DisableTwoFactorAsync(TwoFactorMethod method, string code, CancellationToken cancellationToken = default)
     {
         var result = await WebApi.OtpDisable(Parameters, ToOtpType(method), code);
-        return result.IsSuccess ? null : "Error_TwoFactorFailed";
+        return result.IsSuccess ? null : result.ErrorResourceKey ?? "Error_TwoFactorFailed";
     }
 
     public async Task<(string? ErrorKey, string ResetId)> RequestPasswordCodeAsync(CancellationToken cancellationToken = default)
@@ -45,7 +45,7 @@ public sealed class SecuritySettingsService : SessionScopedService, ISecuritySet
         var result = await WebApi.ResetPassword(string.Empty, parameters.UserName, parameters);
         return result.error.IsSuccess && result.resetId is { Length: > 0 }
             ? (null, result.resetId)
-            : ("Error_PasswordResetFailed", string.Empty);
+            : (result.error.ErrorResourceKey ?? "Error_PasswordResetFailed", string.Empty);
     }
 
     /// <summary>
@@ -56,7 +56,7 @@ public sealed class SecuritySettingsService : SessionScopedService, ISecuritySet
     public async Task<string?> ConfirmPasswordCodeAsync(string resetId, string code, CancellationToken cancellationToken = default)
     {
         var result = await WebApi.ConfirmResetCode(resetId, code, Parameters);
-        return result.error.IsSuccess ? null : "Error_PasswordResetCodeInvalid";
+        return result.error.IsSuccess ? null : result.error.ErrorResourceKey ?? "Error_PasswordResetCodeInvalid";
     }
 
     /// <summary>

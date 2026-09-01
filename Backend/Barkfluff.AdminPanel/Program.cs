@@ -34,10 +34,10 @@ public class Program
         // Allow larger uploads for mail attachments (default Kestrel limit is 30 MB; bump to 25 MB explicit for clarity)
         builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 25 * 1024 * 1024);
 
-        // Загружаем конфигурацию из сервиса конфигурации
+        // Загружаем параметры из Settings service
         builder.LoadConfiguration(ServiceId.Unknown);
 
-        // Env-переменные контейнера должны иметь приоритет над Configuration service
+        // Env-переменные контейнера должны иметь приоритет над Settings service
         builder.Configuration.AddEnvironmentVariables();
 
         // Configure Settings
@@ -172,8 +172,10 @@ public class Program
 
         builder.Services.AddGrpcClient<BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient>(o =>
         {
-            o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7003");
-        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["ConfigurationService:Token"] ?? string.Empty));
+            o.Address = new Uri(builder.Configuration["SettingsService:Host"]
+                ?? builder.Configuration["ConfigurationService:Host"]
+                ?? "http://settings:7003");
+        });
 
         builder.Services.AddGrpcClient<BotsServerApi.BotsServerApiClient>(o =>
         {
@@ -367,6 +369,7 @@ public class Program
         app.MapGet("/notifications", RequirePagePermission(AdminPermissions.NotificationsManage, "notifications.html"));
         app.MapGet("/mail", RequirePagePermission(AdminPermissions.MailManage, "mail.html"));
         app.MapGet("/configuration", RequirePagePermission(AdminPermissions.ConfigRead, "configuration.html"));
+        app.MapGet("/settings", RequirePagePermission(AdminPermissions.ConfigRead, "configuration.html"));
         app.MapGet("/s3-storage", RequirePagePermission(AdminPermissions.ConfigRead, "s3-storage.html"));
         app.MapGet("/s3-browser", RequirePagePermission(AdminPermissions.S3Browse, "s3-browser.html"));
         app.MapGet("/admins", RequirePagePermission(AdminPermissions.AdminsRoles, "admins.html"));

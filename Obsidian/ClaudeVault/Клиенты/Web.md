@@ -76,7 +76,8 @@ HTTP/2 без такого лимита. Симптом на стенде: `GetU
 пока не остановить стримы.
 
 **Неймспейс хранилища.** Привязаны к ноде: `barkfluff_auth`, `barkfluff_temp`,
-`bf_private_chat_keys`, `bf_web_push_enabled`, `bf_chat_drafts_{userId}` — все с суффиксом
+`bf_private_chat_keys`, `bf_web_push_enabled`, `bf_chat_drafts_{userId}`,
+`bf_pending_sends_{userId}` — все с суффиксом
 `@{origin}`. Общие (без суффикса): `barkfluff_device_id` (одно устройство на все ноды, как
 в [[Клиенты/Android]]), `bf_theme`, `bf_lang`, `bf_pers_*`, `bf_legal_accepted`.
 `migrateLegacy()` в `node.js` один раз переносит домультинодовые ключи под неймспейс
@@ -85,9 +86,11 @@ origin'а страницы — обновление ноды на своём д�
 origin, сопоставить ключ нечем — вход потребуется заново.
 
 ### Транспорт и авторизация
+- `js/app/network.js` (`BF.network.unary`) — единый bounded primitive для callback-style gRPC-Web unary. Он пересчитывает абсолютный `deadline` на каждую попытку, уважает общий бюджет, связывает `AbortSignal` с `call.cancel()` и нормализует ошибки в `timeout | cancelled | transport | grpc` с `code`, `retryable` и `outcomeUnknown`. Promise сначала reject'ится, затем call отменяется; поздний callback игнорируется.
+- Политики явные: `READ` — 12 с на попытку, 35 с общий бюджет, до 3 попыток для 2/4/14 и transport error с full jitter 250 мс→2 с; `REFRESH` — 10 с, до 2 попыток только transport/14; `DRAFT` — 8 с, до 3 попыток; `MUTATION` — 15 с и одна попытка. Все unary в `api.js` классифицированы; server-streaming остаётся на своём watchdog/reconnect.
 - gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(BF.node.origin())`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`). Без выбранной ноды модуль редиректит на `/` до создания клиентов.
-- `auth.js`, `fast-auth.js` и `register.js` держат **собственные** клиенты и строят их лениво: на шелле ноду выбирают на той же странице, поэтому origin известен только к моменту первого вызова.
-- `BF.clients.authCall(method, req)` — унарный вызов с авто-рефрешем токена и ретраем при `UNAUTHENTICATED` (код 16). Временная ошибка refresh (сеть, таймаут, 5xx) сохраняет локальную сессию; [[Backend/Identity|Identity]] очищает её только через `x-error-code` невалидного refresh token (`7E6A31C5-3C4D-412E-87BC-0A387617A5D3`).
+- `auth.js`, `fast-auth.js`, `register.js`, `nodepicker.js`, `node.js` и `legal.js` держат **собственные** клиенты, но тоже вызывают их через `BF.network.unary`. На шелле ноду выбирают на той же странице, поэтому origin известен только к моменту первого вызова.
+- `BF.clients.authCall(method, req, policy)` — унарный вызов с авто-рефрешем токена и единичным повтором после `UNAUTHENTICATED` (код 16). Coalesced `refreshPromise` ограничен `REFRESH`-политикой и всегда освобождается. Временная ошибка refresh (сеть, таймаут, 5xx) сохраняет локальную сессию; [[Backend/Identity|Identity]] очищает её только через `x-error-code` невалидного refresh token (`7E6A31C5-3C4D-412E-87BC-0A387617A5D3`).
 - `js/app/metadata.js` (`BF.metadata.build(token)`) формирует метаданные: `x-auth-token` (plain) + base64 `x-device-id`/`x-device-name`/`x-os-name`/`x-app-name`/`x-app-version`. Device-id — из `js/app/device.js` (localStorage `barkfluff_device_id`); его методы `getBrowserName()` и `getOsName()` также выводятся в «О BarkFluff».
 - `js/app/health.js` (`BF.health`) — параллельная проверка `/ping` шлюза Web и `/ping/{service}` сервисов выбранной ноды; каталог Navigator намеренно не входит в список проверки; успешен только ответ `200` с телом `pong`, таймаут — 8 секунд, результат содержит время каждого запроса.
 - `js/app/tokens.js` (`BF.tokens`) — хранение/refresh токенов.
@@ -109,7 +112,9 @@ origin, сопоставить ключ нечем — вход потребуе
   - ⚠️ **Не только `GetTempDownloadUrl`.** Chat/Users/Messages встраивают готовые ссылки на Files прямо в свои ответы — `Chat.picture`, `User.profile_picture(_preview)`, `MessageAttachment.preview_url`, `Badge.image_url` — эти поля идут мимо `getFileUrls`, их сервис формирует сам через `ExternalEndpoint:Host` (всегда старый `files.barkfluff.com`). `api.js` подменяет хост и в них — та же `mediaUrl()` из `files.js` (экспортирована как `BF.files.mediaUrl`), вызывается прямо в `mapChat`/`mapUser`/`mapAttachment`/`getChatInfo`/`updateGroupChat` при маппинге ответа. Забыть это место и чинить только `getTempDownloadUrl` — типичная ошибка: аватары и превью в списке чатов продолжат идти на `files.barkfluff.com`, хотя полноразмерное скачивание уже уйдёт на `files2`.
 - `js/app/messages.js` рендерит вложения: `renderImageGrid` (сетка превью), `renderVideos`, `renderAudios`, `renderDocs`. Клик по картинке/видео зовёт `onMediaClick(type, url, fileId)`.
 - Видеосообщение без текстовой подписи выводится без полей облачка: время и статус накладываются на превью. При подписи между превью и текстом остаётся только нижний отступ.
-- **Optimistic upload.** При отправке картинок и файлов `main.js` сразу добавляет локальное исходящее сообщение со статусом часов. Картинки используют локальные `ObjectURL`, сохраняют финальную раскладку сетки, размываются и показывают круговой прогресс для каждого файла; документы показывают линейный прогресс под именем. `files.js/uploadFile` использует `XMLHttpRequest.upload.progress`, поэтому UI отражает реально переданные браузером байты. После `SendMessage` или собственного realtime-эха локальный bubble заменяется серверным: корреляция идёт по уже зарезервированному набору `fileId`, что поддерживает оба порядка прихода и не создаёт дубликат. Активные pending-сообщения хранятся по чатам и возвращаются в список после переключения между чатами или полного realtime-resync. Набор вложений отправляется целиком: при сбое любого upload сообщение снимается и показывается ошибка, а не отправляется неполная версия. `ObjectURL` освобождаются после замены или ошибки; галочки появляются только у серверного сообщения.
+- **Optimistic/pending send.** `main.js` сразу рисует bubble со статусом часов и для текста, и для вложений. До сети снимок `{operationId, chatId, generation, text/caption, replyToMessageId, fileIds, uploads}` синхронно пишется в node/user-namespaced `BF.pendingSends`; ошибка `localStorage` запрещает запуск сети. ACK, realtime или history с тем же `clientOperationId` заменяет bubble серверным и удаляет pending-запись.
+- **Отмена и ручной retry upload.** Вся группа вложений делит один `AbortController`; до dispatch `SendMessage` bubble показывает «Отменить». XHR имеет 30-минутный wall timeout и 60-секундный watchdog без upload-progress; после 100% байт watchdog отключается, чтобы не обрывать серверную обработку видео. Сетевой сбой оставляет `failed/unknown` bubble; «Повторить» сначала читает `GET .../status`: `completed` продолжает send с итоговым `fileId`, `pending` повторяет POST, `processing` только обновляет статус. После dispatch отмены нет; retry использует тот же `operationId`.
+- `File`/`Blob` не сериализуются. После reload восстанавливаются текст/подпись/reply и уже полученные `fileId`; незавершённый upload просит выбрать файл заново. `ObjectURL` освобождаются после ACK/отмены; галочки появляются только у серверного сообщения.
 - ⚠️ **Презайнед-ссылки протухают**, если чат долго открыт. Inline-превью переживают это (картинка уже загружена браузером), но full-версия грузится только по клику → 404. Поэтому `showMediaOverlay(type, url, fileId)` в `js/app/media-viewer.js` (`BF.mediaViewer`) при открытии lightbox принудительно перезапрашивает свежую ссылку через `BF.files.refreshFileUrl(fileId)` (обход кэша) и подменяет `src`; защита от гонки — `overlayFileToken` (сбрасывается при закрытии оверлея).
 - `js/app/imageeditor.js` (`BF.imageEditor`) — редактор изображения перед отправкой (crop/rotate/flip/кисть/пикселизация/ластик). Инициализируется в `main.js` (`BF.imageEditor.init()`), открывается из `attach.js` (`BF.imageEditor.open(...)`).
 
@@ -148,9 +153,9 @@ origin, сопоставить ключ нечем — вход потребуе
 - Ограничения: только текст (attach/стикеры/контекст-меню/звонки скрыты классом `.private-chat` и guard'ами `currentChatType === 1`), read-чек всегда серый (у `EncryptedMessage` нет `read_by`), превью в списке — «Сообщения зашифрованы», сортировка по `last_activity_at`. Стримы invite/resolution/edit/delete приватных не подключены — инвайт появляется при перечитке списка чатов.
 
 ### Черновики обычных чатов
-- `js/app/drafts.js` (`BF.drafts`) держит локальный durable outbox в `localStorage` на пользователя и синхронизирует текст/reply с [[Backend/Messages]] через 2 секунды бездействия, при смене чата и после `online`.
-- При внезапном закрытии сохраняется локальная запись; после перезапуска она синхронизируется с сервером. Список чатов показывает «Черновик» через `Chat.has_draft` или несинхронизированную локальную запись.
-- Вложения, диалог прикрепления и незавершённые загрузки не восстанавливаются. Private/Secret-чаты исключены, чтобы не нарушать E2E-модель.
+- `js/app/drafts.js` (`BF.drafts`) держит локальный durable outbox в `localStorage` на пользователя и синхронизирует текст/reply с [[Backend/Messages]] через 2 секунды бездействия, при смене чата и после `online`. Запись остаётся `dirty=true` до server ACK; на чат разрешён максимум один memory-only in-flight RPC.
+- ACK очищает только совпавшую generation; более новая правка остаётся dirty. После исчерпания bounded `DRAFT`-попыток фоновый backoff растёт 2→30 с; `online` лишь ускоряет flush. При reload dirty-версия не заменяется старой серверной. Список чатов показывает «Черновик» через `Chat.has_draft` или несинхронизированную локальную запись.
+- Binary outbox нет: `File`/`Blob`, диалог прикрепления и незавершённые байты не восстанавливаются. Private/Secret-чаты исключены, чтобы не нарушать E2E-модель.
 
 ### Создание чатов
 - `js/app/newchat.js` (`BF.newchat`) — FAB (карандаш) в сайдбаре над навигацией → меню из трёх пунктов → оверлей `#newChatOverlay` с поиском пользователей (`SearchUsers`, исключается сам пользователь):
@@ -161,7 +166,7 @@ origin, сопоставить ключ нечем — вход потребуе
 
 ### Хост и маршрутизация
 - [[Backend/BarkFluff.Web]] (`Program.cs`) — YARP: на каждый gRPC-сервис маршрут `/{package}.{Service}/{**catchall}` → cluster (`http://<service>:<port>`), CORS под gRPC-Web, раздача статики, fallback `/messenger`. Долгоживущие стримы (`updates/onliner/fast-auth/calls`) — с `ActivityTimeout 24ч`.
-- Два режима: **Node** (по умолчанию) — все кластеры ноды + Beacon + Navigator + `/api/files/upload`; **Shell** — только статика и прокси Navigator.
+- Два режима: **Node** (по умолчанию) — все кластеры ноды + Beacon + Navigator + POST `/api/files/upload/{id}` + GET `/api/files/upload/{id}/status`; **Shell** — только статика и прокси Navigator.
 - CORS открытый (`AllowAnyOrigin` + `AllowAnyHeader`, без `AllowCredentials`): origin страницы заранее неизвестен, токен идёт заголовком `x-auth-token`, куки в API не участвуют.
 
 ### Темы
@@ -171,14 +176,14 @@ origin, сопоставить ключ нечем — вход потребуе
 - Вкладка без открытого чата называется «Мессенджер». Для личного чата — «Чат • Имя Фамилия»; favicon заменяется на круглую, центрированно обрезанную аватарку собеседника.
 
 ### Общий пакет иконок
-Веб-клиент использует общий каталог `icons/`, чтобы визуальные идентификаторы совпадали с остальными клиентами:
+Веб-клиент использует общий каталог `Icons/`, чтобы визуальные идентификаторы совпадали с остальными клиентами:
 
-- MSBuild подключает `../../icons/**/*.svg` в `wwwroot/icons/` (пак плоский, без категорий), поэтому и нода, и web-shell раздают файлы по `/icons/{name}.svg`.
+- MSBuild подключает `../../Icons/**/*.svg` в `wwwroot/icons/` (пак плоский, без категорий), поэтому и нода, и web-shell раздают файлы по `/icons/{name}.svg`.
 - `wwwroot/js/app/icons.js` предоставляет `BF.icons` (`html`, `element`, `url`) с одиночным именем иконки (`BF.icons.html('send')`), а `wwwroot/css/icons.css` окрашивает монохромные SVG через CSS mask и `currentColor`.
 - Общий пакет уже используется в навигации, composer, настройках, меню действий сообщения, превью вложений, папках чатов и кнопках звонка. Динамические элементы создаются через `BF.icons`, статические — через `data-bf-icon`.
 - Новые папки сохраняют ключи иконок в `folderIcon` (например, `favorites`, `work`); старые значения-эмодзи продолжают отображаться до редактирования папки.
 - Service worker включает helper и его CSS в shell-cache, а запрошенные файлы `/icons/` кэширует во время работы.
-- CI workflow веб-сервиса также отслеживает `icons/**`, поэтому обновление общего пакета запускает новую веб-сборку.
+- CI workflow веб-сервиса также отслеживает `Icons/**`, поэтому обновление общего пакета запускает новую веб-сборку.
 
 ### Скользящее окно ленты
 

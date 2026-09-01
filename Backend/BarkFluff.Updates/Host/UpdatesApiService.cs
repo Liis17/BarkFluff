@@ -20,6 +20,8 @@ using System.Threading.Tasks;
 [Authorize(Policy = nameof(TokenType.User))]
 public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBase
 {
+    private static readonly TimeSpan NewMessagesHeartbeatInterval = TimeSpan.FromSeconds(15);
+
     private readonly UserContext _userContext;
     private readonly StreamSubscriptionsManager _newMessagesSubscriptionsManager;
     private readonly Features.SubscribeMessagesRead.StreamSubscriptionsManager _newReadBySubscriptionsManager;
@@ -114,6 +116,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         long userId = _userContext.UserId;
 
         var subscriptionId = _newMessagesSubscriptionsManager.RegisterSubscription(userId, responseStream);
+        var subscription = _newMessagesSubscriptionsManager.GetSubscription(userId, subscriptionId);
         _metrics.Increment("new_messages_subscriptions_opened");
         _metrics.Increment("active_subscriptions"); // обратная совместимость
         _metrics.Set("new_messages_subscriptions_active", _newMessagesSubscriptionsManager.ActiveCount);
@@ -121,7 +124,14 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
 
         try
         {
-            await Task.Delay(Timeout.Infinite, context.CancellationToken);
+            // Отправляем пустой event сразу после регистрации: клиент и прокси
+            // видят, что server-stream действительно открыт. Затем heartbeat
+            // не даёт Cloudflare/nginx считать idle-stream неактивным.
+            await subscription.WriteAsync(new NewMessageEvent(), context.CancellationToken);
+
+            using var heartbeat = new PeriodicTimer(NewMessagesHeartbeatInterval);
+            while (await heartbeat.WaitForNextTickAsync(context.CancellationToken))
+                await subscription.WriteAsync(new NewMessageEvent(), context.CancellationToken);
         }
         catch (OperationCanceledException)
         {
