@@ -552,6 +552,7 @@ jobs:
 
       - name: "✅ Уведомление об успехе"
         if: success()
+        continue-on-error: true
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -571,6 +572,7 @@ jobs:
 
       - name: "❌ Уведомление об ошибке"
         if: failure()
+        continue-on-error: true
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
