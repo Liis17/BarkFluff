@@ -36,24 +36,6 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Восстановление CA-бандла Cloudflare Origin CA
-        shell: pwsh
-        env:
-          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:CA_BUNDLE_B64)) {
-            throw 'Не задан секрет CLOUDFLARE_ORIGIN_CA_BUNDLE_B64'
-          }
-
-          $caPath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
-          [System.IO.File]::WriteAllBytes(
-            $caPath,
-            [Convert]::FromBase64String($env:CA_BUNDLE_B64))
-
-          if (-not (Test-Path -LiteralPath $caPath -PathType Leaf)) {
-            throw "Не удалось восстановить CA-бандл: $caPath"
-          }
-
       - name: Определение канала обновлений
         id: target
         shell: pwsh
@@ -118,11 +100,9 @@ jobs:
         run: |
           $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
           $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
-          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
           $backupDirectory = Join-Path $env:RUNNER_TEMP "BarkFluffWinUI-manifest-$($env:GITHUB_RUN_ID)"
-          $packageCaPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Resources\Update\storage-ca.pem'
 
-          foreach ($path in @($manifestPath, $applicationManifestPath, $caBundlePath)) {
+          foreach ($path in @($manifestPath, $applicationManifestPath)) {
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
               throw "Не найден обязательный файл: $path"
             }
@@ -182,9 +162,10 @@ jobs:
             param([string]$Url)
 
             try {
-              $jsonText = & curl.exe --fail --silent --show-error --cacert $caBundlePath $Url
+              $jsonText = & curl.exe --fail --silent --show-error $Url
               $curlExitCode = $LASTEXITCODE
               if ($curlExitCode -ne 0) {
+                $global:LASTEXITCODE = 0
                 return $null
               }
 
@@ -276,16 +257,13 @@ jobs:
             $preparedApplicationManifest,
             [System.Text.UTF8Encoding]::new($false))
 
-          New-Item -ItemType Directory -Path (Split-Path -Parent $packageCaPath) -Force | Out-Null
-          Copy-Item -LiteralPath $caBundlePath -Destination $packageCaPath -Force
-
           @(
             "version=$packageVersion"
             "manifest_version=$manifestVersion"
             "backup_directory=$backupDirectory"
-            "package_ca_path=$packageCaPath"
           ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
+          $global:LASTEXITCODE = 0
           Write-Host "Канал: $($env:CHANNEL)"
           Write-Host "Identity: $($env:IDENTITY_NAME)"
           Write-Host "Версия хранения: $packageVersion"
@@ -494,10 +472,6 @@ jobs:
             }
           }
 
-          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
-          if (-not (Test-Path -LiteralPath $caBundlePath -PathType Leaf)) {
-            throw "CA-бандл не найден: $caBundlePath"
-          }
           if (-not (Test-Path -LiteralPath $env:ARCHIVE_PATH -PathType Leaf)) {
             throw "Архив не найден: $env:ARCHIVE_PATH"
           }
@@ -505,7 +479,6 @@ jobs:
           $url = "$($env:CLIENT_STORAGE_URL.TrimEnd('/'))/$($env:UPLOAD_PATH)"
           & curl.exe `
             --fail `
-            --cacert $caBundlePath `
             --request POST `
             $url `
             --header "Authorization: Bearer $($env:CLIENT_STORAGE_TOKEN)" `
@@ -524,7 +497,6 @@ jobs:
           CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
           CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
           MANIFEST_BACKUP_DIRECTORY: ${{ runner.temp }}\BarkFluffWinUI-manifest-${{ github.run_id }}
-          PACKAGE_CA_PATH: ${{ github.workspace }}\Windows\BarkFluff.Client.WinUI\Resources\Update\storage-ca.pem
         run: |
           $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
           $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
@@ -543,8 +515,7 @@ jobs:
               Remove-Item -Force -ErrorAction SilentlyContinue
           }
 
-          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
-          foreach ($path in @($env:CERTIFICATE_PATH, $caBundlePath, $env:PACKAGE_CA_PATH)) {
+          foreach ($path in @($env:CERTIFICATE_PATH)) {
             if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
               Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
             }
