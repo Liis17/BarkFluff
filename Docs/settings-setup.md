@@ -32,8 +32,10 @@ docker compose -f docker-compose.setup.yml up -d
 docker compose -f docker-compose.setup.yml logs -f settings
 ```
 
-Initializer создаёт только базу `settings`, применяет миграции и заполняет безопасные
-значения. Базы Identity/Users/Files и прочих бизнес-сервисов на этом шаге не создаются.
+`postgres-bootstrap` создаёт только отсутствующие базы `settings`, `identity`, `users`,
+`messages`, `files`, `onliner`, `calls`, `bots`, `federation` и `developers`. Операция
+идемпотентна: существующие базы не удаляются и не пересоздаются. После этого
+Initializer применяет миграции к `settings` и добавляет только отсутствующие ключи.
 
 ## 3. Подключить внешний Nginx
 
@@ -59,8 +61,10 @@ docker compose -f docker-compose.setup.yml down
 docker compose -f docker-compose.yml up -d
 ```
 
-Основной Compose создаст бизнес-базы при старте соответствующих сервисов: потребители
-уже настроены на Settings, поэтому отдельный cutover-override не нужен.
+Перед запуском основного Compose проверьте host-mounted data directory. Не удаляйте
+его и не используйте `docker compose down -v`: bootstrap при каждом запуске создаёт
+только отсутствующие базы, а существующие оставляет без изменений. Потребители уже
+настроены на Settings, поэтому отдельный cutover-override не нужен.
 
 После переключения удалите setup secret и не оставляйте порт `7032` доступным
 напрямую из интернета. Дальнейшие исправления выполняются через AdminPanel.

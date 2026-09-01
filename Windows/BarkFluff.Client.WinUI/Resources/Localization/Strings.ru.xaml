@@ -350,11 +350,18 @@
 
     <x:String x:Key="Settings_Update_Title">Обновление</x:String>
     <x:String x:Key="Settings_Update_CurrentVersion">Текущая версия</x:String>
+    <x:String x:Key="Settings_Update_Channel">Канал обновлений</x:String>
     <x:String x:Key="Settings_Update_ChannelRelease">Release</x:String>
-    <x:String x:Key="Settings_Update_ChannelBeta">Beta</x:String>
+    <x:String x:Key="Settings_Update_ChannelDev">Dev</x:String>
+    <x:String x:Key="Settings_Update_ChannelNightly">Nightly</x:String>
+    <x:String x:Key="Settings_Update_ChannelUnavailable">Недоступен для этого пакета</x:String>
     <x:String x:Key="Settings_Update_Check">Проверить обновления</x:String>
     <x:String x:Key="Settings_Update_Download">Обновить</x:String>
     <x:String x:Key="Settings_Update_Checking">Проверяем обновления…</x:String>
+    <x:String x:Key="Settings_Update_Downloading">Скачиваем обновление…</x:String>
+    <x:String x:Key="Settings_Update_DownloadFailed">Не удалось скачать пакет обновления.</x:String>
+    <x:String x:Key="Settings_Update_LaunchFailed">Не удалось открыть App Installer.</x:String>
+    <x:String x:Key="Settings_Update_Launched">Открываем App Installer…</x:String>
     <x:String x:Key="Settings_Update_UpToDate">Установлена последняя версия</x:String>
     <x:String x:Key="Settings_Update_Available">Доступна версия {0}</x:String>
     <x:String x:Key="Settings_Update_OpenSite">Открыть сайт barkfluff.com</x:String>

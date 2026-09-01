@@ -21,7 +21,8 @@ public sealed class RequirePermissionFilterTests : IDisposable
     private readonly TokenService _tokenService;
     private readonly AdminService _adminService;
 
-    private const long AdminId = 100;
+    private const long OwnerId = 100;
+    private const long AdminId = 200;
 
     public RequirePermissionFilterTests()
     {
@@ -32,7 +33,7 @@ public sealed class RequirePermissionFilterTests : IDisposable
         builder.Services.AddSingleton<AdminService>();
         builder.Services.Configure<TelegramSettings>(settings =>
         {
-            settings.ParsedAdmins = [new AdminUser(AdminId, "alice"), new AdminUser(200, "bob")];
+            settings.ParsedAdmins = [new AdminUser(OwnerId, "alice")];
         });
         builder.Services.Configure<AuthSettings>(_ => { });
 
@@ -44,7 +45,9 @@ public sealed class RequirePermissionFilterTests : IDisposable
             .RequirePermission(AdminPermissions.ConfigRead);
 
         var services = app.Services;
-        services.GetRequiredService<AdminService>().EnsureBootstrapped();
+        var adminService = services.GetRequiredService<AdminService>();
+        adminService.EnsureBootstrapped();
+        Assert.True(adminService.AddAcceptedAdmin(AdminId, "bobuser", "test"));
         _tokenService = services.GetRequiredService<TokenService>();
         _adminService = services.GetRequiredService<AdminService>();
 
@@ -62,7 +65,7 @@ public sealed class RequirePermissionFilterTests : IDisposable
 
     private HttpClient ClientWithSession()
     {
-        var tokenId = _tokenService.CreateToken(null, null, "test", "alice", AdminId);
+        var tokenId = _tokenService.CreateToken(null, null, "test", "bobuser", AdminId);
         var client = _app.GetTestClient();
         client.DefaultRequestHeaders.Add("Cookie", $"auth_token={tokenId}");
         return client;
@@ -102,6 +105,18 @@ public sealed class RequirePermissionFilterTests : IDisposable
     {
         Assert.True(_adminService.UpdateRoles(AdminId, new[] { AdminRole.OperationsAdmin }, "test"));
         using var client = ClientWithSession();
+
+        var response = await client.GetAsync("/api/restricted");
+
+        Assert.True(response.IsSuccessStatusCode);
+    }
+
+    [Fact]
+    public async Task OwnerRole_RestrictedEndpoint_Returns200()
+    {
+        var tokenId = _tokenService.CreateToken(null, null, "owner", "alice", OwnerId);
+        using var client = _app.GetTestClient();
+        client.DefaultRequestHeaders.Add("Cookie", $"auth_token={tokenId}");
 
         var response = await client.GetAsync("/api/restricted");
 

@@ -71,11 +71,12 @@ abstract class CopyLegalDocsTask : DefaultTask() {
 }
 
 /**
- * CA сервера обновлений (storage.barkfluff.com) — уезжает в APK строкой BuildConfig и
- * разворачивается в сертификат в UpdateServerTls. Источник — переменная окружения
- * STORAGE_CA_PEM_B64 (в CI это секрет CLOUDFLARE_ORIGIN_CA_BUNDLE_B64, тот же, которым воркфлоу
- * ходит на storage через curl --cacert). Без переменной строка пустая: локальные сборки
- * обновления не проверяют.
+ * Резервный CA сервера обновлений (storage.barkfluff.com) — уезжает в APK строкой BuildConfig и
+ * разворачивается в сертификат в UpdateServerTls только после неудачной системной TLS-проверки.
+ * Источник — переменная окружения STORAGE_CA_PEM_B64 (в CI это секрет
+ * CLOUDFLARE_ORIGIN_CA_BUNDLE_B64, тот же, которым воркфлоу ходит на storage через curl
+ * --cacert). Без переменной резервная попытка недоступна, но публичный сертификат через
+ * системное хранилище продолжает работать.
  * Пробелы и переносы строк вырезаются, чтобы значение безопасно вставлялось в строковый литерал.
  */
 val storageCaPemB64: String = (System.getenv("STORAGE_CA_PEM_B64") ?: "")

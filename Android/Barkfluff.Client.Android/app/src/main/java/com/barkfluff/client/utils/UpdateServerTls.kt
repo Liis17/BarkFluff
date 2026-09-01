@@ -3,11 +3,14 @@ package com.barkfluff.client.utils
 import android.util.Base64
 import android.util.Log
 import com.barkfluff.client.BuildConfig
+import kotlinx.coroutines.CancellationException
 import java.io.ByteArrayInputStream
 import java.security.KeyStore
+import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
@@ -15,10 +18,11 @@ import javax.net.ssl.X509TrustManager
 /**
  * Доверие CA сервера обновлений.
  *
- * storage.barkfluff.com отдаётся за Cloudflare Origin CA, которого нет в системном хранилище
- * Android. Сертификат приезжает в APK строкой [BuildConfig.STORAGE_CA_PEM_B64] — её заполняет
- * воркфлоу из секрета CLOUDFLARE_ORIGIN_CA_BUNDLE_B64, того же, которым он ходит на storage
- * через `curl --cacert`.
+ * CA для старого TLS-сценария storage.barkfluff.com приезжает в APK строкой
+ * [BuildConfig.STORAGE_CA_PEM_B64] — её заполняет воркфлоу из секрета
+ * CLOUDFLARE_ORIGIN_CA_BUNDLE_B64, того же, которым он ходит на storage через
+ * `curl --cacert`. Он используется только как fallback после неудачной проверки через
+ * системное хранилище Android.
  *
  * Доверие расширяется точечно, только для клиентов системы обновлений. `network_security_config`
  * намеренно не трогаем: появление там любого `domain-config` ломает [
@@ -27,8 +31,8 @@ import javax.net.ssl.X509TrustManager
  * наличии per-domain конфигураций бросает CertificateException, то есть отвалился бы весь
  * остальной трафик приложения.
  *
- * Если сертификат не задан (локальная сборка без переменной окружения) — [trust] равен null,
- * и вызывающий код работает на платформенном хранилище, как раньше.
+ * Если сертификат не задан (локальная сборка без переменной окружения), fallback недоступен,
+ * но первая попытка всё равно работает через платформенное хранилище.
  */
 object UpdateServerTls {
 
@@ -40,6 +44,49 @@ object UpdateServerTls {
     )
 
     val trust: Trust? by lazy { createTrust() }
+
+    /**
+     * Выполняет операцию сначала с системным trust store. Embedded CA разрешается лениво и
+     * используется только после TLS-ошибки. [operation] получает null для первой попытки и
+     * подготовленный [Trust] для fallback.
+     */
+    internal suspend fun <T> withFallback(
+        operation: suspend (Trust?) -> T
+    ): T = withFallback(
+        embeddedTrustProvider = { trust },
+        operation = operation
+    )
+
+    /**
+     * Тестируемая форма [withFallback]. Provider нужен, чтобы тесты не зависели от BuildConfig,
+     * а production-путь не разбирал сертификат до первой TLS-ошибки.
+     */
+    internal suspend fun <T> withFallback(
+        embeddedTrustProvider: () -> Trust?,
+        operation: suspend (Trust?) -> T
+    ): T {
+        try {
+            return operation(null)
+        } catch (error: Exception) {
+            if (error is CancellationException || !isTlsFailure(error)) {
+                throw error
+            }
+
+            val embeddedTrust = embeddedTrustProvider() ?: throw error
+            return operation(embeddedTrust)
+        }
+    }
+
+    private fun isTlsFailure(error: Throwable): Boolean {
+        var current: Throwable? = error
+        while (current != null) {
+            if (current is SSLException || current is CertificateException) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
+    }
 
     private fun createTrust(): Trust? {
         val encoded = BuildConfig.STORAGE_CA_PEM_B64

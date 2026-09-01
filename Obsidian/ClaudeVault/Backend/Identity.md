@@ -126,6 +126,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 7. Регистрация/обновление устройства в Users-сервисе (`RegisterDevice`)
 8. Email-уведомления через RabbitMQ: успех (`SuccessfulLogin`) или неудача (`FailedLogin`)
 
+Для геолокации, login-уведомлений и данных зарегистрированной сессии `Auth` использует trusted IP от reverse proxy (`X-Real-IP` / `X-Forwarded-For`), с fallback на старую клиентскую metadata для совместимости. Для Developers Portal отображаемое имя приложения — ровно `BarkFluff Developers Portal`; `x-app-version` остаётся обязательным техническим metadata-полем, но в этих данных не показывается.
+
 ### Распределённая защита Identity
 
 Для публичных high-risk RPC (`Auth`, `CreateAccount`, `ConfirmAccount`, `ResetPassword`, `ConfirmResetPassword`, `EnableOtpVerification`, `ConfirmOtpVerification`, `DisableOtpVerification`) MediatR-поведение проверяет Redis-состояние до handler'а. Счётчик high-risk запросов общий для доверенного IP и ограничен `60/мин`; создание кодов и сбросов дополнительно ограничены `5/15 мин` на субъект.

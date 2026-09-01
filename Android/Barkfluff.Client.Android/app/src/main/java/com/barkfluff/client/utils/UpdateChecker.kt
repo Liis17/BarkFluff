@@ -24,10 +24,22 @@ object UpdateChecker {
 
     suspend fun getVersionInfo(channel: String): ChannelVersionInfo? = withContext(Dispatchers.IO) {
         try {
-            val url = URL("$BASE_URL/get/$CLIENT_NAME/$channel/version")
-            val connection = url.openConnection() as HttpURLConnection
-            // storage.barkfluff.com за приватным CA — системному хранилищу он не известен.
-            val trust = UpdateServerTls.trust
+            UpdateServerTls.withFallback { trust ->
+                getVersionInfoOnce(channel, trust)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking $channel version", e)
+            null
+        }
+    }
+
+    private fun getVersionInfoOnce(
+        channel: String,
+        trust: UpdateServerTls.Trust?
+    ): ChannelVersionInfo? {
+        val url = URL("$BASE_URL/get/$CLIENT_NAME/$channel/version")
+        val connection = url.openConnection() as HttpURLConnection
+        try {
             if (trust != null && connection is HttpsURLConnection) {
                 connection.sslSocketFactory = trust.socketFactory
             }
@@ -35,21 +47,20 @@ object UpdateChecker {
             connection.connectTimeout = TIMEOUT
             connection.readTimeout = TIMEOUT
 
-            if (connection.responseCode == 200) {
-                val body = connection.inputStream.bufferedReader().readText()
-                val json = JSONObject(body)
-                ChannelVersionInfo(
-                    version = if (json.has("version") && !json.isNull("version")) json.getString("version") else null,
-                    uploadedAt = if (json.has("uploadedAt") && !json.isNull("uploadedAt")) json.getString("uploadedAt") else null,
-                    fileName = if (json.has("fileName") && !json.isNull("fileName")) json.getString("fileName") else null
-                )
-            } else {
+            if (connection.responseCode != 200) {
                 Log.w(TAG, "Failed to get $channel version: ${connection.responseCode}")
-                null
+                return null
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking $channel version", e)
-            null
+
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val json = JSONObject(body)
+            return ChannelVersionInfo(
+                version = if (json.has("version") && !json.isNull("version")) json.getString("version") else null,
+                uploadedAt = if (json.has("uploadedAt") && !json.isNull("uploadedAt")) json.getString("uploadedAt") else null,
+                fileName = if (json.has("fileName") && !json.isNull("fileName")) json.getString("fileName") else null
+            )
+        } finally {
+            connection.disconnect()
         }
     }
 
