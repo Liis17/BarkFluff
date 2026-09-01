@@ -19,24 +19,33 @@ public class TelegramBotService : IHostedService, IStepUpSender
     private readonly IOptions<TelegramSettings> _settings;
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
+    private readonly AdminService _adminService;
+    private readonly AdminInvitationService _adminInvitationService;
     private readonly StepUpService _stepUpService;
     private readonly AuditService _auditService;
     private readonly IOptions<AuthSettings> _authSettings;
     private readonly ILogger<TelegramBotService> _logger;
     private readonly CancellationTokenSource _cts = new();
+    private readonly SemaphoreSlim _botInfoLock = new(1, 1);
+    private string? _botUsername;
 
     public TelegramBotService(
         IOptions<TelegramSettings> settings,
         PendingAuthService pendingAuthService,
         TokenService tokenService,
+        AdminService adminService,
+        AdminInvitationService adminInvitationService,
         StepUpService stepUpService,
         AuditService auditService,
         IOptions<AuthSettings> authSettings,
-        ILogger<TelegramBotService> logger)
+        ILogger<TelegramBotService> logger,
+        ITelegramBotClient? botClient = null)
     {
         _settings = settings;
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
+        _adminService = adminService;
+        _adminInvitationService = adminInvitationService;
         _stepUpService = stepUpService;
         _auditService = auditService;
         _authSettings = authSettings;
@@ -48,7 +57,7 @@ public class TelegramBotService : IHostedService, IStepUpSender
                 "Telegram bot token is not configured. Please set 'Telegram:BotToken' in appsettings.json or via environment variable 'Telegram__BotToken'.");
         }
 
-        _botClient = CreateBotClient(settings.Value, logger);
+        _botClient = botClient ?? CreateBotClient(settings.Value, logger);
     }
 
     private static ITelegramBotClient CreateBotClient(TelegramSettings settings, ILogger logger)
@@ -105,17 +114,18 @@ public class TelegramBotService : IHostedService, IStepUpSender
             _logger.LogWarning("Telegram proxy URL is invalid. The bot will start without a proxy. Configure 'Telegram:Proxy:Url' or 'Telegram__Proxy__Url' as a valid absolute URI.");
         }
 
-        // Validate that admins are configured
-        if (_settings.Value.ParsedAdmins.Count == 0)
+        // Validate the single configured owner identity.
+        if (_settings.Value.ParsedAdmins.Count != 1)
         {
-            throw new InvalidOperationException("No admins configured. Please set 'Telegram:Admins' with format 'userId1:username1,userId2:username2'");
+            throw new InvalidOperationException("Exactly one Telegram:Admins entry is required; it is the immutable owner identity.");
         }
 
         var updateHandler = new UpdateHandler(
             _botClient,
-            _settings,
             _pendingAuthService,
             _tokenService,
+            _adminService,
+            _adminInvitationService,
             _stepUpService,
             _auditService,
             _authSettings,
@@ -133,8 +143,8 @@ public class TelegramBotService : IHostedService, IStepUpSender
 
         try
         {
-            var me = await _botClient.GetMe(cancellationToken);
-            _logger.LogInformation("Telegram bot connected: @{BotUsername}", me.Username);
+            var botUsername = await GetBotUsernameAsync(cancellationToken);
+            _logger.LogInformation("Telegram bot connected: @{BotUsername}", botUsername);
             _logger.LogInformation("Configured admins: {AdminCount}", _settings.Value.ParsedAdmins.Count);
             foreach (var admin in _settings.Value.ParsedAdmins)
             {
@@ -152,6 +162,32 @@ public class TelegramBotService : IHostedService, IStepUpSender
         _logger.LogInformation("Stopping Telegram Bot Service...");
         _cts.Cancel();
         await Task.CompletedTask;
+    }
+
+    public async Task<string?> GetBotUsernameAsync(CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(_botUsername))
+            return _botUsername;
+
+        await _botInfoLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_botUsername))
+                return _botUsername;
+
+            var me = await _botClient.GetMe(cancellationToken);
+            _botUsername = me.Username?.TrimStart('@');
+            return _botUsername;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not resolve Telegram bot username");
+            return null;
+        }
+        finally
+        {
+            _botInfoLock.Release();
+        }
     }
 
     /// <summary>
@@ -289,7 +325,7 @@ public class TelegramBotService : IHostedService, IStepUpSender
 
     private async Task SendAuthRequestToAdmin(PendingAuthRequest request, long targetUserId)
     {
-        var targetAdmin = _settings.Value.GetAdminByTelegramId(targetUserId);
+        var targetAdmin = _adminService.GetRecord(targetUserId);
         var nickname = WebUtility.HtmlEncode(request.Nickname ?? "Unknown");
         var browser = WebUtility.HtmlEncode(request.Browser ?? "Unknown");
         var os = WebUtility.HtmlEncode(request.Os ?? "Unknown");
@@ -391,9 +427,10 @@ public interface IStepUpSender
 public class UpdateHandler : IUpdateHandler
 {
     private readonly ITelegramBotClient _botClient;
-    private readonly IOptions<TelegramSettings> _settings;
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
+    private readonly AdminService _adminService;
+    private readonly AdminInvitationService _adminInvitationService;
     private readonly StepUpService _stepUpService;
     private readonly AuditService _auditService;
     private readonly IOptions<AuthSettings> _authSettings;
@@ -401,18 +438,20 @@ public class UpdateHandler : IUpdateHandler
 
     public UpdateHandler(
         ITelegramBotClient botClient,
-        IOptions<TelegramSettings> settings,
         PendingAuthService pendingAuthService,
         TokenService tokenService,
+        AdminService adminService,
+        AdminInvitationService adminInvitationService,
         StepUpService stepUpService,
         AuditService auditService,
         IOptions<AuthSettings> authSettings,
         ILogger logger)
     {
         _botClient = botClient;
-        _settings = settings;
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
+        _adminService = adminService;
+        _adminInvitationService = adminInvitationService;
         _stepUpService = stepUpService;
         _auditService = auditService;
         _authSettings = authSettings;
@@ -443,7 +482,18 @@ public class UpdateHandler : IUpdateHandler
     private async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
     {
         var userId = callbackQuery.From.Id;
-        if (!_settings.Value.IsAdmin(userId))
+        var data = callbackQuery.Data;
+        if (string.IsNullOrEmpty(data))
+            return;
+
+        var parts = data.Split(':');
+        if (parts.Length >= 3 && parts[0] == "admininvite")
+        {
+            await HandleAdminInvitationCallbackAsync(botClient, callbackQuery, userId, parts[1], parts[2], cancellationToken);
+            return;
+        }
+
+        if (!_adminService.IsActiveAdmin(userId))
         {
             await botClient.AnswerCallbackQuery(
                 callbackQuery.Id,
@@ -453,10 +503,6 @@ public class UpdateHandler : IUpdateHandler
             return;
         }
 
-        var data = callbackQuery.Data;
-        if (string.IsNullOrEmpty(data)) return;
-
-        var parts = data.Split(':');
         if (parts.Length >= 3 && parts[0] == "auth")
         {
             var requestId = parts[1];
@@ -487,7 +533,7 @@ public class UpdateHandler : IUpdateHandler
             var browser = request.Browser ?? "Unknown";
             var os = request.Os ?? "Unknown";
             var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-            var adminUsername = _settings.Value.GetUsername(userId) ?? "Unknown";
+            var adminUsername = _adminService.GetRecord(userId)?.Username ?? "Unknown";
 
             if (action == "approve")
             {
@@ -591,10 +637,189 @@ public class UpdateHandler : IUpdateHandler
         }
     }
 
+    private async Task HandleAdminInvitationStartAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        string token,
+        CancellationToken cancellationToken)
+    {
+        var invitation = _adminInvitationService.GetByToken(token);
+        if (invitation == null)
+        {
+            await botClient.SendMessage(
+                message.Chat.Id,
+                "Приглашение не найдено или уже недействительно.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (invitation.Status != AdminInvitationStatus.Pending)
+        {
+            var statusMessage = invitation.Status switch
+            {
+                AdminInvitationStatus.Accepted => "Это приглашение уже принято.",
+                AdminInvitationStatus.Rejected => "Это приглашение уже отклонено.",
+                AdminInvitationStatus.Expired => "Срок действия приглашения истёк.",
+                _ => "Приглашение недействительно."
+            };
+            await botClient.SendMessage(message.Chat.Id, statusMessage, cancellationToken: cancellationToken);
+            return;
+        }
+
+        var actualUsername = AdminService.NormalizeUsername(message.From?.Username ?? string.Empty);
+        if (message.From?.Id != invitation.TelegramUserId ||
+            !string.Equals(actualUsername, invitation.Username, StringComparison.OrdinalIgnoreCase))
+        {
+            await botClient.SendMessage(
+                message.Chat.Id,
+                "Эта ссылка предназначена для другого Telegram-пользователя. Запросите новую ссылку у администратора.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        var text = $"👋 <b>Вас приглашают в админ-панель BarkFluff</b>\n\n" +
+                   $"Аккаунт: @{WebUtility.HtmlEncode(invitation.Username)}\n" +
+                   "Подтвердите, что хотите стать администратором.";
+        var keyboard = new InlineKeyboardMarkup(new[]
+        {
+            new[]
+            {
+                    InlineKeyboardButton.WithCallbackData("✅ Принять", $"admininvite:{invitation.Payload}:accept"),
+                    InlineKeyboardButton.WithCallbackData("❌ Отказаться", $"admininvite:{invitation.Payload}:reject")
+            }
+        });
+
+        await botClient.SendMessage(
+            message.Chat.Id,
+            text,
+            parseMode: ParseMode.Html,
+            replyMarkup: keyboard,
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task HandleAdminInvitationCallbackAsync(
+        ITelegramBotClient botClient,
+        CallbackQuery callbackQuery,
+        long userId,
+        string token,
+        string action,
+        CancellationToken cancellationToken)
+    {
+        if (action is not ("accept" or "reject"))
+        {
+            await botClient.AnswerCallbackQuery(
+                callbackQuery.Id,
+                "Неизвестное действие.",
+                showAlert: true,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        var username = callbackQuery.From.Username;
+        var result = action == "accept"
+            ? _adminInvitationService.Accept(token, userId, username)
+            : _adminInvitationService.Reject(token, userId, username);
+
+        switch (result.Status)
+        {
+            case AdminInvitationActionStatus.IdentityMismatch:
+                await botClient.AnswerCallbackQuery(
+                    callbackQuery.Id,
+                    "Это приглашение адресовано другому пользователю.",
+                    showAlert: true,
+                    cancellationToken: cancellationToken);
+                return;
+
+            case AdminInvitationActionStatus.NotFound:
+                await botClient.AnswerCallbackQuery(
+                    callbackQuery.Id,
+                    "Приглашение не найдено.",
+                    showAlert: true,
+                    cancellationToken: cancellationToken);
+                return;
+
+            case AdminInvitationActionStatus.Expired:
+                await botClient.AnswerCallbackQuery(
+                    callbackQuery.Id,
+                    "Срок действия приглашения истёк.",
+                    showAlert: true,
+                    cancellationToken: cancellationToken);
+                return;
+
+            case AdminInvitationActionStatus.Conflict:
+                await botClient.AnswerCallbackQuery(
+                    callbackQuery.Id,
+                    "Не удалось добавить администратора. Запросите новую ссылку.",
+                    showAlert: true,
+                    cancellationToken: cancellationToken);
+                return;
+
+            case AdminInvitationActionStatus.AlreadyResolved:
+                await botClient.AnswerCallbackQuery(
+                    callbackQuery.Id,
+                    "Приглашение уже обработано.",
+                    cancellationToken: cancellationToken);
+                return;
+        }
+
+        var invitation = result.Invitation;
+        var resolvedUsername = WebUtility.HtmlEncode(invitation?.Username ?? username ?? "пользователь");
+        var resolvedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+        var accepted = result.Status == AdminInvitationActionStatus.Accepted;
+        var message = accepted
+            ? $"✅ <b>Приглашение принято</b>\n\n@{resolvedUsername} добавлен в админ-панель с ролью Viewer.\n🕐 {resolvedAt} UTC"
+            : $"❌ <b>Приглашение отклонено</b>\n\n@{resolvedUsername} отказался от приглашения.\n🕐 {resolvedAt} UTC";
+
+        if (callbackQuery.Message != null)
+        {
+            try
+            {
+                await botClient.EditMessageText(
+                    callbackQuery.Message.Chat.Id,
+                    callbackQuery.Message.MessageId,
+                    message,
+                    parseMode: ParseMode.Html,
+                    cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not edit admin invitation message for {TelegramUserId}", userId);
+            }
+        }
+
+        _auditService.Log(new AuditLogEntry
+        {
+            AdminUsername = invitation?.Username ?? "Unknown",
+            TelegramUserId = userId,
+            Action = accepted ? "admins.invitation.accept" : "admins.invitation.reject",
+            Details = accepted
+                ? "Приглашение администратора принято"
+                : "Приглашение администратора отклонено",
+            Outcome = "ok"
+        });
+
+        await botClient.AnswerCallbackQuery(
+            callbackQuery.Id,
+            accepted ? "Вы стали администратором." : "Приглашение отклонено.",
+            cancellationToken: cancellationToken);
+    }
+
     private async Task HandleMessageAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
     {
         var userId = message.From!.Id;
-        if (!_settings.Value.IsAdmin(userId))
+        var text = message.Text!;
+        var args = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (args.Length == 0)
+            return;
+
+        var command = args[0].Split('@')[0];
+        if (string.Equals(command, "/start", StringComparison.OrdinalIgnoreCase) && args.Length >= 2)
+        {
+            await HandleAdminInvitationStartAsync(botClient, message, args[1], cancellationToken);
+            return;
+        }
+
+        if (!_adminService.IsActiveAdmin(userId))
         {
             await botClient.SendMessage(
                 message.Chat.Id,
@@ -603,10 +828,7 @@ public class UpdateHandler : IUpdateHandler
             return;
         }
 
-        var text = message.Text!;
-        var args = text.Split(' ');
-
-        switch (args[0])
+        switch (command)
         {
             case "/start":
                 await SendMainMenuAsync(botClient, message.Chat.Id, cancellationToken);
@@ -779,7 +1001,7 @@ public class UpdateHandler : IUpdateHandler
 
         _auditService.Log(new AuditLogEntry
         {
-            AdminUsername = _settings.Value.GetUsername(userId) ?? "Unknown",
+            AdminUsername = _adminService.GetRecord(userId)?.Username ?? "Unknown",
             TelegramUserId = userId,
             Action = request.ActionKey,
             Details = StepUpActions.AuditDetails(request.ActionKey, request.Params),

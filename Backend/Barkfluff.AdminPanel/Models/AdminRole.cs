@@ -6,7 +6,8 @@ public enum AdminRole
     Support = 1,
     ContentAdmin = 2,
     OperationsAdmin = 3,
-    SecurityAdmin = 4
+    SecurityAdmin = 4,
+    Owner = 5
 }
 
 public static class AdminRoles
@@ -52,6 +53,7 @@ public static class AdminRoles
             AdminRole.ContentAdmin => "ContentAdmin",
             AdminRole.OperationsAdmin => "OperationsAdmin",
             AdminRole.SecurityAdmin => "SecurityAdmin",
+            AdminRole.Owner => "Owner",
             _ => role.ToString()
         };
     }

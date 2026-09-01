@@ -1,8 +1,6 @@
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
 
-using Microsoft.Extensions.Options;
-
 namespace Barkfluff.AdminPanel.Services;
 
 /// <summary>
@@ -34,18 +32,18 @@ public class AuthService
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
     private readonly TelegramBotService _telegramBotService;
-    private readonly IOptions<TelegramSettings> _telegramSettings;
+    private readonly AdminService _adminService;
 
     public AuthService(
         PendingAuthService pendingAuthService,
         TokenService tokenService,
         TelegramBotService telegramBotService,
-        IOptions<TelegramSettings> telegramSettings)
+        AdminService adminService)
     {
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
         _telegramBotService = telegramBotService;
-        _telegramSettings = telegramSettings;
+        _adminService = adminService;
     }
 
     public async Task<CreateAuthRequestResult> CreateAuthRequestAsync(AuthRequestDto dto)
@@ -58,7 +56,8 @@ public class AuthService
         }
 
         // Find the admin by username
-        var targetAdmin = _telegramSettings.Value.GetAdminByUsername(nickname);
+        nickname = AdminService.NormalizeUsername(nickname);
+        var targetAdmin = _adminService.GetByUsername(nickname);
         if (targetAdmin == null)
         {
             return CreateAuthRequestResult.Fail("unknown_user", "Пользователь не найден");

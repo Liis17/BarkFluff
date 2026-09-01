@@ -23,7 +23,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `TokenDbContext.cs` | LiteDB-контекст `db/tokens.db`. Коллекция `Tokens` с индексом по `LastActivity`. Singleton. Создаёт директорию при первом запуске. |
+| `TokenDbContext.cs` | LiteDB-контекст `db/tokens.db`. Коллекции `Tokens`, `Admins` и `AdminInvitations`; индексы по активности, username, invitation payload и Telegram ID. Singleton. Создаёт директорию при первом запуске. |
 | `MetricsCacheDbContext.cs` | LiteDB-контекст `db/metrics_cache.db`. Коллекции: `HourlyStats` (события Seq за час), `HourlyTraffic` (трафик для графиков), `HourlyServiceMetrics` (CPU/memory/запросы по сервисам), `CompressionRuns` (история ежедневного сжатия логов-метрик). Singleton. |
 | `RemoteDockerDbContext.cs` | LiteDB-контекст `db/remote_docker.db`: коллекции удалённых серверов и отслеживаемых контейнеров, индексы по имени сервера и серверу контейнера. |
 
@@ -36,6 +36,7 @@
 | Файл | Эндпоинт-группа | Что делает |
 |------|----------------|-----------|
 | `AuthEndpoints.cs` | `/api/auth` | Запрос входа через Telegram, polling статуса, me, logout, управление токенами (список, rename, delete). |
+| `AdminsEndpoints.cs` | `/api/admins` | Owner и динамические администраторы: список/аватары, приглашения и статус, роли и удаление. |
 | `DockerEndpoints.cs` | `/api/docker` | Список контейнеров, start/stop/restart, деплой-операции через очередь `DeployJobService` (pull, branch, restart-all, update-all, update-many + статусы задач `/deploy/jobs`), self-restart/update AdminPanel. |
 | `BadgesEndpoints.cs` | `/api/badges` | CRUD бейджей пользователей через gRPC Users + Files (загрузка изображения). |
 | `StickersEndpoints.cs` | `/api/stickers` | Управление стикерпаками: CRUD пака, CRUD стикеров, смена обложки, прокси S3. gRPC Files. |
@@ -67,6 +68,8 @@
 | Файл | Назначение |
 |------|-----------|
 | `AuthToken.cs` | Сессионный токен: `Id`, `Name`, `CreatedAt`, `LastActivity`, `IpAddress`, `UserAgent`, `AdminUsername`, `ApprovedByTelegramUserId`. Методы `IsExpired()`, `IsVisibleToAdmin()`. |
+| `AdminRecord.cs` | Динамический администратор: Telegram ID, username, роли и данные изменения. Роль `Owner` вычисляется отдельно и неизменяема. |
+| `AdminInvitation.cs` | LiteDB-приглашение через deep-link: payload, целевой ID/username, TTL и статусы `Pending` / `Accepted` / `Rejected` / `Expired`. |
 | `PendingAuthRequest.cs` | In-memory запрос авторизации ожидающий подтверждения в Telegram. Статусы: Pending / Approved / Rejected / Expired. |
 | `SeqSettings.cs` | POCO-конфиг Seq: `ServerUrl`, `ApiKey`. |
 | `LogsClearJob.cs` | DTO для job'а удаления логов: `LogsClearScope` (All/Old), `LogsClearState`, счётчики. |
@@ -85,10 +88,12 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `AuthService.cs` | Создаёт `PendingAuthRequest`, находит целевого админа в `TelegramSettings.ParsedAdmins`, делегирует отправку `TelegramBotService`. |
+| `AuthService.cs` | Создаёт `PendingAuthRequest`, находит активного админа через `AdminService`/LiteDB, делегирует отправку `TelegramBotService`. |
+| `AdminService.cs` | Bootstrap единственного Owner из `Telegram:Admins`, хранение/изменение ролей динамических администраторов, удаление без Owner. |
+| `AdminInvitationService.cs` | Создание и разрешение одноразовых приглашений, замена pending-приглашений, проверка ID/username и истечения. |
 | `TokenService.cs` | CRUD токенов поверх `TokenDbContext`: создание, валидация + обновление LastActivity, удаление, переименование, очистка истекших. |
 | `PendingAuthService.cs` | In-memory словарь pending-запросов. Таймер каждые 60 сек удаляет истёкшие (> `PendingRequestTimeoutMinutes`). |
-| `TelegramBotService.cs` | `IHostedService` + Singleton. Инициализирует `TelegramBotClient` (optional proxy). Отправляет запрос подтверждения с кнопками Approve/Reject. Обрабатывает callback-кнопки и команды `/start`, `/tokens`, `/kill`, `/rename`, `/pending`. |
+| `TelegramBotService.cs` | `IHostedService` + Singleton. Инициализирует `TelegramBotClient` (optional proxy), обрабатывает auth/step-up и invitation deep-link `/start <payload>` с callback-кнопками «Принять»/«Отказаться», а также команды `/start`, `/tokens`, `/kill`, `/rename`, `/pending`. |
 | `DockerService.cs` | Запускает `docker` и `docker compose` через `Process` с `ArgumentList` (защита от shell injection). Примитивы для очереди деплоя: `ComposePullAsync`/`ComposeUpAsync`/`PruneImagesAsync`, health-inspect, image ID/reference, `TagImageAsync` (retag при откате). Self-управление через ephemeral helper-контейнер с docker.sock. |
 | `DeployJobService.cs` | Singleton + HostedService. Серверная очередь деплоя (`Channel<DeployJob>`, один потребитель): последовательные задачи Update/Restart/SwitchBranch c health-check'ом после recreate, автоматическим откатом при crash-loop/unhealthy и отложенным `image prune`. Порядок — `DeployOrder` (configuration первым). |
 | `ComposeImageService.cs` | Разбор и правка строк `image:` в `docker-compose.yml`: определение текущей ветки сервиса, переключение суффикса репозитория, бэкап в `/app/db/compose-backups`, откат. Запись в тот же inode (bind mount одного файла). |
@@ -122,6 +127,7 @@
 | `s3-browser.html` | `/s3-browser` | Файловый браузер S3: листинг объектов, presigned URL |
 | `notifications.html` | `/notifications` | Публикация push-рассылок всем устройствам или по списку deviceId |
 | `mail.html` | `/mail` | Просмотр/отправка писем служебных почтовых ящиков (IMAP/SMTP) |
+| `admins.html` | `/admins` | Owner и динамические администраторы, редактирование ролей, удаление, invitation-модалка с polling и реальные Telegram-аватары |
 | `restarting.html` | `/restarting` | Заглушка «сервер перезагружается» |
 | `updating.html` | `/updating` | Заглушка «сервер обновляется» |
 | `favicon.ico` | — | Иконка сайта |

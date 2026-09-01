@@ -48,6 +48,8 @@ public static class StepUpActions
     public const string FederationPeerBlock = "federation.peer.block";
     public const string SeqClear = "seq.clear";
     public const string AdminsRolesUpdate = "admins.roles.update";
+    public const string AdminsInvite = "admins.invite";
+    public const string AdminsDelete = "admins.delete";
 
     private static readonly IReadOnlyDictionary<string, string> PermissionByAction =
         new Dictionary<string, string>(StringComparer.Ordinal)
@@ -70,7 +72,9 @@ public static class StepUpActions
             [FederationPeerAdd] = AdminPermissions.FederationManage,
             [FederationPeerBlock] = AdminPermissions.FederationManage,
             [SeqClear] = AdminPermissions.SeqDelete,
-            [AdminsRolesUpdate] = AdminPermissions.AdminsRoles
+            [AdminsRolesUpdate] = AdminPermissions.AdminsRoles,
+            [AdminsInvite] = AdminPermissions.AdminsRoles,
+            [AdminsDelete] = AdminPermissions.AdminsRoles
         };
 
     public static bool TryGetPermission(string actionKey, out string permission)
@@ -101,6 +105,8 @@ public static class StepUpActions
             FederationPeerBlock => "Блокировка пира федерации",
             SeqClear => "Очистка логов Seq",
             AdminsRolesUpdate => "Изменение ролей администратора",
+            AdminsInvite => "Приглашение администратора",
+            AdminsDelete => "Удаление администратора",
             _ => actionKey
         };
     }

@@ -155,6 +155,11 @@ public class TokenService
             .ToList();
     }
 
+    public int DeleteTokensByAdmin(long telegramUserId)
+    {
+        return _db.Tokens.DeleteMany(x => x.ApprovedByTelegramUserId == telegramUserId);
+    }
+
     /// <summary>
     /// Gets non-expired sessions for an administrator and removes stale records.
     /// </summary>

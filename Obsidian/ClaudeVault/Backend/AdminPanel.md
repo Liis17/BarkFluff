@@ -18,18 +18,39 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 Вход без пароля — через подтверждение в Telegram:
 1. Пользователь вводит username → `POST /api/auth/request`
-2. `AuthService` находит админа по username в `TelegramSettings.ParsedAdmins`
+2. `AuthService` находит активного админа по username через `AdminService` и LiteDB
 3. `TelegramBotService` отправляет запрос подтверждения
 4. Фронтенд поллит `GET /api/auth/status/{requestId}`
 5. После approve — `TokenService` создаёт токен в LiteDB, устанавливает cookie `auth_token`
 
 `TokenAuthMiddleware` проверяет cookie на каждый запрос. Публичные: `/api/auth/request`, `/api/auth/status`.
 
-`Telegram:Admins` — строка формата `"userId1:username1,userId2:username2"`.
+`Telegram:Admins` — ровно одна запись формата `"userId:username"`. Эта запись является
+неизменяемым Owner; если записей нет или больше одной, приложение завершается с понятной
+ошибкой, не выбирая владельца молча.
 
-После подтверждения токен хранит только привязку к Telegram-пользователю; роли в токен не копируются. `AdminService` разрешает роли из LiteDB на каждом запросе, поэтому понижение роли действует немедленно. При первом старте каждый пользователь из `Telegram:Admins` получает полный набор `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin`; последующие запуски сохраняют роли, изменённые через `/admins`. Пользователь без записи в коллекции `admins` имеет пустое множество ролей (`Viewer` baseline).
+После подтверждения токен хранит только привязку к Telegram-пользователю; роли в токен не копируются. `AdminService` разрешает роли из LiteDB на каждом запросе, поэтому понижение роли действует немедленно. При первом старте config-admin получает единственную роль `Owner`; Owner имеет полный доступ и не может быть удалён или изменён. Остальные записи LiteDB сохраняются, а приглашённые администраторы начинают с пустым набором ролей (`Viewer` baseline).
 
 `GET /api/auth/me` возвращает текущие роли. `AdminPermissions` — единая матрица серверного доступа; endpoint filter отвечает `401` без токена и `403` при недостаточной роли. Страничные маршруты с ограничением роли редиректят на `/`.
+
+### Owner и приглашения администраторов
+
+`AdminService` поддерживает единственного Owner из `Telegram:Admins` и динамических
+администраторов из коллекции `admins`. Роль `Owner` не назначается через API ролей и
+не попадает в список редактируемых ролей. Обычный администратор может иметь Viewer
+или любую комбинацию `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin`;
+наличие отдельного `SecurityAdmin` не требуется. Управлять администраторами могут
+`SecurityAdmin` и Owner.
+
+`AdminInvitationService` хранит в LiteDB коллекции `admin_invitations` одноразовый
+случайный deep-link payload, целевой Telegram ID, username, автора, время создания,
+срок действия и статус `Pending` / `Accepted` / `Rejected` / `Expired`. Срок ссылки —
+10 минут; новая ссылка для того же ID переводит предыдущую pending-ссылку в `Expired`.
+Существование и принадлежность аккаунта подтверждаются только переходом по ссылке
+`https://t.me/<bot>?start=<payload>`: Bot API не позволяет боту первым начать диалог
+с произвольным пользователем. При `/start` и callback проверяются Telegram ID и
+username без учёта регистра. После принятия создаётся динамический администратор с
+Viewer baseline и он сразу участвует в авторизации и bot-командах.
 
 ### Telegram-бот: сессии админ-панели
 
@@ -45,6 +66,7 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 - `TokenDbContext` — auth-токены (`db/tokens.db`)
 - коллекция `admins` в `TokenDbContext` — Telegram ID, username, множество ролей и данные изменения
+- коллекция `admin_invitations` в `TokenDbContext` — одноразовые приглашения и их статусы
 - `MetricsCacheDbContext` — кеш метрик из Seq: `HourlyStats`, `HourlyTraffic`, `HourlyServiceMetrics`, `CompressionRuns` (история ежедневного сжатия логов-метрик) (`db/metrics_cache.db`)
 - `RemoteDockerDbContext` — удалённые SSH-серверы и отслеживаемые Docker-контейнеры (`db/remote_docker.db`)
 - `AuditDbContext` — append-only аудит критических действий (`db/audit.db`, retention 90 дней)
@@ -88,7 +110,9 @@ SSH-параметры больше не передаются через `.env` 
 - `MetricsCollectorService` — каждые 5 минут строит почасовые rollup из структурированных `ServiceMetrics schema v2`: counters суммируются, gauges берутся последними. Текущий и предыдущий час пересчитываются всегда; отсутствующие часы последних 72 часов догоняются по шесть за цикл. `MetricRollupHours` отмечает только полностью прочитанные часы, поэтому ошибка или лимит Seq не заменяют витрину частичным результатом. История — 30 дней. Для [[Backend/Files]] также показывает одну карточку последней загрузки: полный pipeline и этапы буферизации, SHA-256, обработки и S3 (ms); это не почасовые графики. Карточка обновляется отдельно от тяжёлого rollup: `GET /api/seq/dashboard/files/last-upload` накладывает свежие gauge-значения из Seq на последнее состояние из LiteDB, а UI опрашивает endpoint раз в 10 секунд, пока секция Files раскрыта; при недоступности Seq остаётся видимым cache fallback.
 - `MetricsLogCompressorService` — фоновое сжатие логов-метрик в Seq: ежедневно в **03:00 UTC** один сводный CLEF-лог `MetricsDailySummary` на сервис (sum/avg/min/max/last/count) + удаление исходных `ServiceMetrics`-логов. Перед удалением проверяет `MetricRollupHours` для каждого исходного часа; counters и gauges лежат в разных namespace архива. Идемпотентность через `CompressionRuns`. Ручной триггер: `POST /api/seq/compress-metrics/run?date=YYYY-MM-DD`.
 - `HealthCollectorService` — фоновый сбор состояния сервисов платформы (цикл 30 c): liveness-проба `GET /health/live` (fallback `/ping` для образов без health-endpoint'ов; h2c prior-knowledge для HTTP/2-only портов, HTTP/1.1 для mixed listener'ов без TLS — сейчас это [[Backend/Web|Web]] и [[Backend/Developers|Developers]], потому что такие listener'ы не принимают h2c), readiness-проба `GET /health/ready` (кэш проверок зависимостей на стороне сервиса, см. [[Backend/GrpcServer]]), статусы Docker-контейнеров, свежесть логов в Seq для сервисов без HTTP-listener ([[Backend/CloudMessaging]]). Инфраструктура: RabbitMQ — MassTransit-бин панели, S3 — прямая проверка `S3BrowserService.CheckHealthAsync()` (ListObjects MaxKeys=1), PostgreSQL/Redis — агрегат readiness-чеков сервисов (EF-контексты / Redis-чеки) с fallback на docker-state. Снимок в памяти singleton'а — API отвечает мгновенно. Статусы per-service: `healthy | degraded | down | unknown`; `degraded` = жив, но readiness частично провален; `down` = мёртв или все зависимости недоступны. Общий `systemStatus`: `down` если упал критичный сервис ([[Backend/Beacon|Beacon]], [[Backend/Identity|Identity]], [[Backend/Updates|Updates]]), иначе `degraded` при любом не-healthy, иначе `healthy`
-- `TelegramBotService` — Telegram-бот для авторизации (IHostedService + Singleton)
+- `AdminService` — bootstrap Owner из `Telegram:Admins`, роли и жизненный цикл динамических администраторов
+- `AdminInvitationService` — LiteDB-приглашения, TTL 10 минут, замена pending-ссылок и строгая проверка Telegram ID/username
+- `TelegramBotService` — Telegram-бот для авторизации, step-up и принятия/отказа приглашений (IHostedService + Singleton)
 
 ### MassTransit (RabbitMQ publisher)
 
@@ -130,7 +154,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 | `notifications.html` | Рассылка push на Android: форма + Android-preview + send-all / send-by-deviceId |
 | `s3-storage.html` | Настройки S3-бакетов |
 | `s3-browser.html` | Браузер S3-объектов |
-| `admins.html` | Список администраторов и редактирование ролей (SecurityAdmin) |
+| `admins.html` | Owner и динамические администраторы: роли, удаление, приглашения через Telegram и аватары |
 | `audit.html` | Журнал критических действий (SecurityAdmin) |
 | `Redesigned/` | (устарел, superseded) SPA-версия — index.html + app.js + screen-*.js, доступна только по `/v2/` |
 | `v2/` | **Актуальная версия** (MD3-дизайн) — многостраничная, `dashboard.html`/`services.html`/`s3-storage.html`/и т.д. |
@@ -139,7 +163,7 @@ AdminPanel зарегистрирован как **publisher** в MassTransit (�
 
 ### Актуальная версия — Pages/v2 (MD3)
 
-`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/admins`, `/audit`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`; оставшиеся контентные иконки используют `msr`/Material Symbols). Общие навигационные и контейнерные иконки подключаются из корневого каталога `Icons/` (плоская структура — все SVG в одной папке, без подпапок): пак публикуется через `/assets/icons`, а `assets/icons.js` предоставляет `bfIcon()`/`bfSetIcon()`; иконки адресуются по имени файла без папки (`bfIcon('restart')`). `assets/` (`md3.css`, `icons.js`, `sidebar.js`, `api.js`, `command-palette.js`) отдаётся статикой на `/assets`. `api.js` скрывает разделы по ролям и повторяет критичный запрос после step-up. Ассеты подключаются с cache-buster `?v=`: панель за Cloudflare, который ставит статике `Cache-Control: max-age=14400` — без версионирования браузеры до 4 часов держат старые JS/CSS после деплоя.
+`Pages/v2/*.html` — то, что реально видит пользователь. Все именованные маршруты (`/`, `/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/bots`, `/notifications`, `/mail`, `/configuration`, `/s3-storage`, `/s3-browser`, `/admins`, `/audit`, `/restarting`, `/updating`) отдают файлы из этой папки (`Program.cs:282-304`). Дизайн — Material Design 3 (классы `md-input-outlined`, `md-btn-filled`; оставшиеся контентные иконки используют `msr`/Material Symbols). Общие навигационные и контейнерные иконки подключаются из корневого каталога `Icons/` (плоская структура — все SVG в одной папке, без подпапок): пак публикуется через `/assets/icons`, а `assets/icons.js` предоставляет `bfIcon()`/`bfSetIcon()`; иконки адресуются по имени файла без папки (`bfIcon('restart')`). `assets/` (`md3.css`, `icons.js`, `sidebar.js`, `api.js`, `command-palette.js`) отдаётся статикой на `/assets`. `api.js` скрывает разделы по ролям, считает Owner имеющим все известные разрешения и повторяет критичный запрос после step-up. Ассеты подключаются с cache-buster `?v=`: панель за Cloudflare, который ставит статике `Cache-Control: max-age=14400` — без версионирования браузеры до 4 часов держат старые JS/CSS после деплоя.
 
 В таблице **BarkFluff Server** у каждого BarkFluff-сервиса есть выпадающий список **ветки обновлений** (`master` / `nightly` / `dev`), такой же — в шапке страницы для самой админ-панели. Выбор ветки ставит задачу в серверную очередь `DeployJobService`: правка строки `image:` в `docker-compose.yml` → pull → recreate → health-check; при явном падении контейнера (crash-loop/unhealthy) переключение откатывается на прежнюю ветку. Перед постановкой в очередь панель проверяет, что репозиторий с таким суффиксом есть в реестре (`DockerRegistryService.RepositoryExistsAsync`). Для этого `docker-compose.yml` монтируется в admin-panel как `:rw` (см. `docker/{dev,master,nightly}/barkfluff/docker-compose.yml`). Если запущенный образ не совпадает с записанной в compose веткой, рядом со списком показывается бейдж «не применена». Инфраструктурные контейнеры (Seq/Redis/RabbitMQ/PostgreSQL) списка веток не имеют.
 
@@ -190,6 +214,21 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 
 `Pages/v2/s3-storage.html` — редактор параметров бакетов включает поле `Region` (для Cloudflare R2 обычно `auto`, для MinIO/S3 необязательно). Соответствует `S3_REGION`/`AuthenticationRegion` в [[Backend/ClientStorage]] и [[Backend/Files]]. Ключи доступа не возвращаются в браузер: API отдаёт только `accessKeyConfigured`/`accessKeyMasked` (маска вида `AKI…LE`) и `secretKeyConfigured`; замена — ввод нового значения в `POST /s3/update` (пустое поле = «не менять»), после обновления инвалидируется кэш `S3BrowserService` по бакету.
 
+### Admin API
+
+Все маршруты ниже требуют авторизованного `SecurityAdmin` или Owner; критические изменения
+дополнительно проходят Telegram step-up и пишутся в аудит:
+
+- `GET /api/admins` — список с `isOwner`, ролями и `avatarUrl`;
+- `POST /api/admins/invitations` — создать 10-минутное deep-link-приглашение;
+- `GET /api/admins/invitations/{id}` — получить актуальный статус приглашения;
+- `POST /api/admins/{telegramUserId}/roles` — заменить роли обычного администратора;
+- `DELETE /api/admins/{telegramUserId}` — удалить обычного администратора, отозвать его токены и истечь pending-приглашения;
+- `GET /api/admins/{telegramUserId}/avatar` — проксировать Telegram-аватар (404, если фотографии нет).
+
+Owner возвращается отдельной строкой с заблокированным чипом `Owner`; для него операции
+ролей и удаления сервером отклоняются независимо от состояния UI.
+
 ## Безопасность
 
 Полный аудит в `SECURITY_AUDIT.md` (проект). Критические проблемы:
@@ -198,11 +237,11 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 
 Реализованные контроли AdminPanel:
 - секреты конфигурации не покидают сервер: строки с ключом/секцией по эвристике `token|secret|password|accesskey` маскируются в API (`SensitiveConfigMasker`), S3-эндпоинты отдают только `configured`-флаги и маску access key, замена секрета — write-only через `POST /s3/update`;
-- роли `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin` разрешаются на каждый запрос; неизвестный администратор получает Viewer baseline;
+- роли `Support`, `ContentAdmin`, `OperationsAdmin`, `SecurityAdmin`, `Owner` разрешаются на каждый запрос; Owner получает полный доступ, неизвестный администратор получает Viewer baseline;
 - все критичные изменения требуют step-up: запрос в Telegram, TTL 5 минут, single-use, привязка к токену, action key и hash параметров; идентификатор передаётся в `X-Confirmation-Id` (для WebSocket также query `confirmation`);
 - смена пароля пользователя и отключение 2FA требуют непустую причину до 500 символов; причина входит в step-up и сохраняется в деталях аудита, но новый пароль представлен только хешем параметров;
 - approve/reject, успешные и невалидные step-up, смена ролей и другие критичные действия пишутся в отдельный `db/audit.db`; просмотр доступен через `/audit` только `SecurityAdmin`;
-- `/admins` доступен `SecurityAdmin`, изменение ролей также защищено step-up; система не позволяет удалить последнего `SecurityAdmin`.
+- `/admins` доступен `SecurityAdmin` и Owner; приглашение, изменение ролей и удаление защищены step-up; Owner неизменяем и не удаляется, отдельный `SecurityAdmin` не обязателен.
 
 ### Матрица RBAC
 
@@ -215,6 +254,8 @@ Auth: `App.checkAuth()` дёргает `/api/auth/me`; при 401 → Telegram-�
 | `docker.control`, `docker.deploy`, `remote.servers`, `remote.console`, `config.write` | OperationsAdmin |
 | `config.read`, `seq.delete` | OperationsAdmin, SecurityAdmin |
 | `federation.manage`, `admins.roles`, `audit.read` | SecurityAdmin |
+
+Owner имеет все перечисленные разрешения независимо от матрицы.
 
 `POST /api/stepup/request` и `GET /api/stepup/status/{id}` доступны только авторизованной сессии и только владельцу подтверждения. При отсутствии подтверждения критичный endpoint отвечает `428 Precondition Required` с `action`, `title` и параметрами для UI polling.
 

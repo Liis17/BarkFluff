@@ -32,17 +32,33 @@
             border: 1px solid transparent;
         }
         .role-chip.on { background: var(--md-primary); color: var(--md-on-primary); }
-        .role-chip:disabled { opacity: .5; cursor: default; }
+        .role-chip.locked { cursor: default; background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
 
+        .admin-avatar-wrap {
+            width: 36px; height: 36px; border-radius: 50%; position: relative; overflow: hidden; flex-shrink: 0;
+        }
         .admin-avatar {
             width: 36px; height: 36px; border-radius: 50%;
             background: var(--md-primary); color: var(--md-on-primary);
             display: inline-flex; align-items: center; justify-content: center;
-            font-weight: 600; font-size: 14px; flex-shrink: 0;
+            font-weight: 600; font-size: 14px;
         }
+        .admin-avatar-image {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+            visibility: hidden;
+        }
+        .invite-link-wrap { display: flex; gap: 8px; align-items: center; }
+        .invite-link-wrap input { flex: 1; min-width: 0; }
+        .invite-status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .invite-status.pending { color: var(--md-on-surface-variant); }
+        .invite-status.success { color: var(--md-success, #2e7d32); }
+        .invite-status.error { color: var(--md-error); }
+        .invite-help { font-size: 12px; line-height: 1.5; color: var(--md-on-surface-variant); }
+        .invite-error { color: var(--md-error); font-size: 13px; min-height: 18px; }
 
         @media (max-width: 600px) {
             .admins-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+            .invite-link-wrap { align-items: stretch; flex-direction: column; }
         }
     </style>
 </head>
@@ -63,6 +79,9 @@
                 <span class="md-status md-status-info"><span class="dot"></span>Роли и доступы</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
+                <button id="add-admin-btn" class="md-btn md-btn-filled md-btn-square-press">
+                    <span class="msr size-18">person_add</span>Добавить администратора
+                </button>
                 <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="msr">refresh</span></button>
                 <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
             </div>
@@ -70,11 +89,10 @@
 
         <div class="md-page">
             <p style="font-size:13px;color:var(--md-on-surface-variant);margin-bottom:16px;">
-                Список админов задаётся конфигурацией <b>Telegram:Admins</b>. Здесь распределяются роли:
-                <b>Viewer</b> — только просмотр (нет ролей), <b>Support</b> — пользователи и почта,
-                <b>ContentAdmin</b> — контент (бейджи, стикеры, боты, рассылки, S3),
-                <b>OperationsAdmin</b> — Docker, SSH и конфигурация, <b>SecurityAdmin</b> — 2FA, федерация, роли и аудит.
-                Изменение ролей требует подтверждения в Telegram. Панель не может остаться без ни одного SecurityAdmin.
+                Owner задаётся единственной записью <b>Telegram:Admins</b>, имеет полный доступ и не может быть удалён.
+                Новые администраторы приглашаются через Telegram и получают <b>Viewer</b> до назначения ролей.
+                <b>Support</b> — пользователи и почта, <b>ContentAdmin</b> — контент, <b>OperationsAdmin</b> — Docker, SSH и конфигурация,
+                <b>SecurityAdmin</b> — безопасность, роли и аудит. Изменение ролей, приглашение и удаление требуют подтверждения в Telegram.
             </p>
 
             <div style="overflow:auto;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);">
@@ -96,25 +114,79 @@
     </main>
 </div>
 
+<div id="inviteScrim" class="md-scrim" onclick="if(event.target===this)closeInviteModal()">
+    <div class="md-dialog" role="dialog" aria-modal="true" aria-labelledby="inviteModalTitle">
+        <div class="md-dialog-header">
+            <h3 id="inviteModalTitle">Добавить администратора</h3>
+            <button id="invite-header-close" class="md-icon-btn" title="Закрыть" onclick="closeInviteModal()"><span class="msr">close</span></button>
+        </div>
+        <form onsubmit="submitInvitation(event)">
+            <div class="md-dialog-body">
+                <div id="invite-form-state">
+                    <div>
+                        <label for="inviteTelegramId" style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
+                            Telegram ID <span style="color:var(--md-error);">*</span>
+                        </label>
+                        <input type="text" id="inviteTelegramId" required inputmode="numeric" autocomplete="off" placeholder="123456789" class="md-input-outlined" style="width:100%;">
+                    </div>
+                    <div>
+                        <label for="inviteUsername" style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
+                            Telegram username <span style="color:var(--md-error);">*</span>
+                        </label>
+                        <input type="text" id="inviteUsername" required maxlength="33" autocomplete="off" placeholder="username или @username" class="md-input-outlined" style="width:100%;">
+                    </div>
+                    <p class="invite-help">После создания ссылки пользователь должен открыть её в Telegram и подтвердить приглашение. Username будет сверен с Telegram ID при переходе.</p>
+                    <div id="inviteFormError" class="invite-error" role="alert"></div>
+                </div>
+
+                <div id="invite-wait-state" style="display:none;">
+                    <p style="margin:0 0 12px;color:var(--md-on-surface);">Передайте эту ссылку приглашённому администратору:</p>
+                    <div class="invite-link-wrap">
+                        <input type="text" id="inviteLink" readonly class="md-input-outlined" aria-label="Ссылка приглашения">
+                        <button type="button" id="copyInviteBtn" class="md-btn md-btn-tonal"><span class="msr size-18">content_copy</span>Копировать</button>
+                    </div>
+                    <div id="inviteStatus" class="invite-status pending" style="margin-top:16px;">
+                        <span class="msr size-20" id="inviteStatusIcon">schedule</span>
+                        <span id="inviteStatusText">Ожидание перехода и подтверждения в Telegram…</span>
+                    </div>
+                    <p id="inviteExpires" class="invite-help" style="margin:10px 0 0;"></p>
+                </div>
+            </div>
+            <div class="md-dialog-actions">
+                <button type="button" id="inviteCancelBtn" class="md-btn md-btn-text" onclick="closeInviteModal()">Закрыть</button>
+                <button type="submit" id="createInviteBtn" class="md-btn md-btn-filled md-btn-square-press">
+                    <span class="msr size-18">link</span>Создать ссылку
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=5"></script>
+<script src="assets/api.js?v=6"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
     const ALL_ROLES = ['Support', 'ContentAdmin', 'OperationsAdmin', 'SecurityAdmin'];
     let admins = [];
-    let draftRoles = {};   // telegramUserId -> Set(role)
+    let draftRoles = {};
+    let activeInvitationId = null;
+    let invitationPollTimer = null;
+    let invitationCountdownTimer = null;
+    let activeInvitationExpiresAt = null;
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
     function formatDate(s) { if (!s) return '—'; const d = new Date(s); if (isNaN(d.getTime())) return '—'; return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
-
+    function adminKey(id) { return String(id); }
+    function adminPath(id) { return encodeURIComponent(adminKey(id)); }
     function checkAuth() { return BF.requireAuth(); }
 
     async function loadAdmins() {
         const tbody = document.getElementById('admins-body');
         try {
             admins = await BF.request('/api/admins', { errorToast: false });
-            admins.forEach(a => { draftRoles[a.telegramUserId] = new Set(a.roles); });
+            draftRoles = {};
+            admins.forEach(a => { draftRoles[adminKey(a.telegramUserId)] = new Set(a.roles || []); });
             render();
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="4" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
@@ -122,9 +194,20 @@
     }
 
     function hasDraftChanges(admin) {
-        const current = new Set(admin.roles);
-        const draft = draftRoles[admin.telegramUserId];
+        if (admin.isOwner) return false;
+        const current = new Set(admin.roles || []);
+        const draft = draftRoles[adminKey(admin.telegramUserId)] || new Set();
         return current.size !== draft.size || [...current].some(r => !draft.has(r));
+    }
+
+    function renderAvatar(admin) {
+        const username = admin.username || '?';
+        const initial = escapeHtml(username.charAt(0).toUpperCase());
+        const src = escapeHtml(admin.avatarUrl || '');
+        return `<div class="admin-avatar-wrap">
+            <span class="admin-avatar">${initial}</span>
+            ${src ? `<img class="admin-avatar-image" src="${src}" alt="" loading="lazy" onload="this.style.visibility='visible';this.previousElementSibling.style.display='none';" onerror="this.remove();">` : ''}
+        </div>`;
     }
 
     function render() {
@@ -133,71 +216,246 @@
             tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">Админы не настроены</td></tr>';
             return;
         }
+
         tbody.innerHTML = admins.map(admin => {
-            const draft = draftRoles[admin.telegramUserId] || new Set();
-            const chips = ALL_ROLES.map(role => {
-                const on = draft.has(role);
-                return `<button type="button" class="role-chip ${on ? 'on' : ''}" onclick="toggleRole(${admin.telegramUserId}, '${role}')">${role}</button>`;
-            }).join(' ');
-            const viewer = draft.size === 0 ? '<span class="role-chip" style="cursor:default;">Viewer (только просмотр)</span>' : '';
+            const id = adminKey(admin.telegramUserId);
+            const safeId = escapeHtml(id);
+            const draft = draftRoles[id] || new Set();
+            const roles = admin.isOwner
+                ? '<span class="role-chip locked"><span class="msr size-16">lock</span>Owner</span>'
+                : ALL_ROLES.map(role => {
+                    const on = draft.has(role);
+                    return `<button type="button" class="role-chip ${on ? 'on' : ''}" onclick="toggleRole('${safeId}', '${role}')">${role}</button>`;
+                }).join(' ');
+            const viewer = !admin.isOwner && draft.size === 0
+                ? '<span class="role-chip" style="cursor:default;">Viewer (только просмотр)</span><div style="height:6px;"></div>'
+                : '';
             const changed = hasDraftChanges(admin);
             const saveBtn = changed
-                ? `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveRoles(${admin.telegramUserId})"><span class="msr size-18">save</span> Сохранить</button>
-                   <button class="md-btn md-btn-text" onclick="resetRoles(${admin.telegramUserId})">Сбросить</button>`
+                ? `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveRoles('${safeId}')"><span class="msr size-18">save</span> Сохранить</button>
+                   <button class="md-btn md-btn-text" onclick="resetRoles('${safeId}')">Сбросить</button>`
                 : '';
+            const deleteBtn = admin.isOwner
+                ? ''
+                : `<button class="md-icon-btn" style="color:var(--md-error);" title="Удалить администратора" onclick="deleteAdmin('${safeId}')"><span class="msr size-20">delete</span></button>`;
             return `
             <tr>
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;font-weight:500;">
-                        <span class="admin-avatar">${escapeHtml((admin.username || '?').charAt(0).toUpperCase())}</span>
-                        @${escapeHtml(admin.username)}
+                        ${renderAvatar(admin)}
+                        <span>@${escapeHtml(admin.username)}</span>
+                        ${admin.isOwner ? '<span class="md-status md-status-info" title="Задан конфигурацией"><span class="dot"></span>Owner</span>' : ''}
                     </div>
                 </td>
-                <td>${viewer}${viewer ? '<div style="height:6px;"></div>' : ''}${chips}</td>
+                <td>${viewer}${roles}</td>
                 <td style="font-size:12px;color:var(--md-on-surface-variant);">
                     ${admin.updatedBy ? `Изменил: ${escapeHtml(admin.updatedBy)}<br>` : ''}${formatDate(admin.updatedAt)}
                 </td>
-                <td style="white-space:nowrap;">${saveBtn}</td>
+                <td style="white-space:nowrap;"><div style="display:flex;align-items:center;gap:4px;">${saveBtn}${deleteBtn}</div></td>
             </tr>`;
         }).join('');
     }
 
     function toggleRole(telegramUserId, role) {
-        const draft = draftRoles[telegramUserId];
+        const admin = admins.find(a => adminKey(a.telegramUserId) === adminKey(telegramUserId));
+        if (!admin || admin.isOwner) return;
+        const draft = draftRoles[adminKey(telegramUserId)] || new Set();
         if (draft.has(role)) draft.delete(role); else draft.add(role);
+        draftRoles[adminKey(telegramUserId)] = draft;
         render();
     }
 
     function resetRoles(telegramUserId) {
-        const admin = admins.find(a => a.telegramUserId === telegramUserId);
-        if (admin) draftRoles[telegramUserId] = new Set(admin.roles);
+        const admin = admins.find(a => adminKey(a.telegramUserId) === adminKey(telegramUserId));
+        if (admin) draftRoles[adminKey(telegramUserId)] = new Set(admin.roles || []);
         render();
     }
 
     async function saveRoles(telegramUserId) {
-        const admin = admins.find(a => a.telegramUserId === telegramUserId);
-        if (!admin) return;
-        const roles = [...(draftRoles[telegramUserId] || new Set())];
+        const id = adminKey(telegramUserId);
+        const admin = admins.find(a => adminKey(a.telegramUserId) === id);
+        if (!admin || admin.isOwner) return;
+        const roles = [...(draftRoles[id] || new Set())];
         try {
-            const body = await BF.request(`/api/admins/${telegramUserId}/roles`, {
+            const body = await BF.request(`/api/admins/${adminPath(id)}/roles`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ roles }),
                 errorToast: false
             });
             admin.roles = body.roles || roles;
-            draftRoles[telegramUserId] = new Set(admin.roles);
+            draftRoles[id] = new Set(admin.roles);
             render();
+            BF.toast('Роли сохранены', 'success');
         } catch (e) {
             BF.toast('Не удалось сохранить роли: ' + e.message, 'error');
         }
     }
 
-    document.getElementById('refresh-btn').addEventListener('click', loadAdmins);
+    async function deleteAdmin(telegramUserId) {
+        const id = adminKey(telegramUserId);
+        const admin = admins.find(a => adminKey(a.telegramUserId) === id);
+        if (!admin || admin.isOwner) return;
+        if (!confirm(`Удалить администратора @${admin.username}? Его активные сессии будут отозваны.`)) return;
+        try {
+            await BF.request(`/api/admins/${adminPath(id)}`, { method: 'DELETE', errorToast: false });
+            await loadAdmins();
+            BF.toast('Администратор удалён', 'success');
+        } catch (e) {
+            BF.toast('Не удалось удалить администратора: ' + e.message, 'error');
+        }
+    }
 
+    function setInviteFormError(message) {
+        document.getElementById('inviteFormError').textContent = message || '';
+    }
+
+    function setInviteState(state) {
+        const formState = document.getElementById('invite-form-state');
+        const waitState = document.getElementById('invite-wait-state');
+        const createBtn = document.getElementById('createInviteBtn');
+        formState.style.display = state === 'form' ? '' : 'none';
+        waitState.style.display = state === 'form' ? 'none' : '';
+        createBtn.style.display = state === 'form' ? '' : 'none';
+        document.getElementById('inviteCancelBtn').textContent = state === 'form' ? 'Отмена' : 'Закрыть';
+    }
+
+    function stopInvitationPolling() {
+        if (invitationPollTimer) window.clearInterval(invitationPollTimer);
+        if (invitationCountdownTimer) window.clearInterval(invitationCountdownTimer);
+        invitationPollTimer = null;
+        invitationCountdownTimer = null;
+    }
+
+    function updateInviteCountdown() {
+        const expires = activeInvitationExpiresAt ? new Date(activeInvitationExpiresAt).getTime() : 0;
+        const remaining = expires - Date.now();
+        const el = document.getElementById('inviteExpires');
+        if (!expires || remaining <= 0) {
+            el.textContent = 'Срок действия ссылки истекает через 10 минут после создания.';
+            return;
+        }
+        const seconds = Math.floor(remaining / 1000);
+        el.textContent = `Ссылка действует ещё ${Math.floor(seconds / 60)} мин. ${String(seconds % 60).padStart(2, '0')} сек.`;
+    }
+
+    function renderInvitationStatus(status) {
+        const statusEl = document.getElementById('inviteStatus');
+        const icon = document.getElementById('inviteStatusIcon');
+        const text = document.getElementById('inviteStatusText');
+        const labels = {
+            pending: ['pending', 'schedule', 'Ожидание перехода и подтверждения в Telegram…'],
+            accepted: ['success', 'check_circle', 'Приглашение принято. Администратор добавлен с ролью Viewer.'],
+            rejected: ['error', 'cancel', 'Приглашение отклонено пользователем.'],
+            expired: ['error', 'timer_off', 'Срок действия приглашения истёк.']
+        };
+        const value = labels[status] || labels.pending;
+        statusEl.className = `invite-status ${value[0]}`;
+        icon.textContent = value[1];
+        text.textContent = value[2];
+    }
+
+    async function pollInvitationStatus() {
+        if (!activeInvitationId) return;
+        try {
+            const invitation = await BF.request(`/api/admins/invitations/${encodeURIComponent(activeInvitationId)}`, { errorToast: false });
+            activeInvitationExpiresAt = invitation.expiresAt;
+            renderInvitationStatus(invitation.status);
+            updateInviteCountdown();
+            if (invitation.status !== 'pending') {
+                stopInvitationPolling();
+                if (invitation.status === 'accepted') {
+                    await loadAdmins();
+                    BF.toast('Новый администратор принят', 'success');
+                }
+            }
+        } catch (e) {
+            document.getElementById('inviteStatusText').textContent = 'Не удалось обновить статус. Повторяем попытку…';
+        }
+    }
+
+    function startInvitationPolling() {
+        stopInvitationPolling();
+        pollInvitationStatus();
+        invitationPollTimer = window.setInterval(pollInvitationStatus, 2000);
+        invitationCountdownTimer = window.setInterval(updateInviteCountdown, 1000);
+    }
+
+    window.openInviteModal = function () {
+        stopInvitationPolling();
+        activeInvitationId = null;
+        activeInvitationExpiresAt = null;
+        document.getElementById('inviteTelegramId').value = '';
+        document.getElementById('inviteUsername').value = '';
+        document.getElementById('inviteLink').value = '';
+        setInviteFormError('');
+        setInviteState('form');
+        document.getElementById('inviteScrim').classList.add('open');
+        window.setTimeout(() => document.getElementById('inviteTelegramId').focus(), 100);
+    };
+
+    window.closeInviteModal = function () {
+        stopInvitationPolling();
+        activeInvitationId = null;
+        document.getElementById('inviteScrim').classList.remove('open');
+    };
+
+    window.submitInvitation = async function (event) {
+        event.preventDefault();
+        const idText = document.getElementById('inviteTelegramId').value.trim();
+        const username = document.getElementById('inviteUsername').value.trim().replace(/^@/, '');
+        const numericId = Number(idText);
+        if (!/^\d+$/.test(idText) || !Number.isSafeInteger(numericId) || numericId <= 0) {
+            setInviteFormError('Telegram ID должен быть положительным числом.');
+            return;
+        }
+        if (!/^[A-Za-z0-9_]{5,32}$/.test(username)) {
+            setInviteFormError('Username должен содержать от 5 до 32 латинских букв, цифр или _.');
+            return;
+        }
+
+        const button = document.getElementById('createInviteBtn');
+        setInviteFormError('');
+        try {
+            const invitation = await BF.request('/api/admins/invitations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegramUserId: numericId, username }),
+                loading: button,
+                errorToast: false
+            });
+            activeInvitationId = invitation.id;
+            activeInvitationExpiresAt = invitation.expiresAt;
+            document.getElementById('inviteLink').value = invitation.link;
+            renderInvitationStatus(invitation.status);
+            updateInviteCountdown();
+            setInviteState('waiting');
+            startInvitationPolling();
+        } catch (e) {
+            setInviteFormError(e.message || 'Не удалось создать приглашение.');
+        }
+    };
+
+    document.getElementById('copyInviteBtn').addEventListener('click', async () => {
+        const input = document.getElementById('inviteLink');
+        try {
+            await navigator.clipboard.writeText(input.value);
+            BF.toast('Ссылка скопирована', 'success');
+        } catch (_) {
+            input.focus();
+            input.select();
+            BF.toast('Скопируйте ссылку вручную', 'info');
+        }
+    });
+
+    document.getElementById('add-admin-btn').addEventListener('click', openInviteModal);
+    document.getElementById('refresh-btn').addEventListener('click', loadAdmins);
     document.getElementById('logout-btn').addEventListener('click', async () => {
         if (!confirm('Выйти?')) return;
         await BF.logout();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && document.getElementById('inviteScrim').classList.contains('open')) closeInviteModal();
     });
 
     (async function () {

@@ -55,6 +55,9 @@ public static class AdminPermissions
 
     public static bool IsAllowed(string permission, HashSet<AdminRole> roles)
     {
+        if (roles.Contains(AdminRole.Owner))
+            return true;
+
         if (!Matrix.TryGetValue(permission, out var allowed))
             return false;
 
