@@ -194,6 +194,8 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 
 `utils/UpdateServerTls.kt` разворачивает base64 в `X509Certificate` → `KeyStore` → `TrustManagerFactory` → `SSLSocketFactory` лениво. `UpdateChecker` и OkHttp-клиент `UpdateActivity` сначала выполняют запрос без кастомного factory, а при TLS-ошибке создают новый запрос с этим factory. HTTP-ошибки, таймауты, обычные сетевые ошибки и отмена корутины не повторяются; hostname-проверка сохраняется.
 
+На Android 14+ `UpdateActivity` устанавливает скачанный APK через `PackageInstaller.Session`: перед созданием session читает фактическое состояние `USE_FULL_SCREEN_INTENT` через `NotificationHelper.canUseFullScreenIntent()` и передаёт его как `GRANTED` или `DENIED` через `SessionParams.setPermissionState()`. APK записывается в session как `base.apk` с `fsync()`, а результат установки обрабатывается через explicit mutable `PendingIntent` на `UpdateActivity`, включая системное подтверждение, отмену и повторную попытку. Для Android 12–13 сохраняется путь `FileProvider` + `ACTION_VIEW`.
+
 Два решения, которые важно не откатить:
 
 - **`network_security_config` намеренно не трогается.** Любой `domain-config` там ломает `PinnedTrustManager` из `core/security/`: он делегирует в hostname-неосведомлённый `checkServerTrusted(chain, authType)`, а платформенный `RootTrustManager` при наличии per-domain конфигураций на такой вызов бросает `CertificateException`. Отвалился бы весь остальной трафик приложения — gRPC, аватары, LiveKit.
