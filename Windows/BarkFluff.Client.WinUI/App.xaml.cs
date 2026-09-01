@@ -226,8 +226,8 @@ public partial class App : Application
         builder.Services.AddSingleton<IDeviceSettingsService, DeviceSettingsService>();
         builder.Services.AddSingleton<ISettingsPreferences, SettingsPreferences>();
         builder.Services.AddSingleton<IAboutSettingsService, AboutSettingsService>();
+        builder.Services.AddSingleton<HttpClient>(_ => UpdateHttpClientFactory.Create());
         builder.Services.AddSingleton<IUpdateService, UpdateService>();
-        builder.Services.AddSingleton<HttpClient>();
 
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
