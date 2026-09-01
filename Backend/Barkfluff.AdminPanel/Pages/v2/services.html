@@ -162,8 +162,10 @@
             background: #1d1b20;
             color: #f5eff7;
             font: 13px/1.45 'Roboto Mono', monospace;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
+            white-space: pre;
+            overflow-wrap: normal;
+            tab-size: 8;
+            user-select: text;
         }
         .remote-console-input {
             flex: 1;
@@ -382,6 +384,7 @@
 <script src="assets/api.js?v=6"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
+<script src="assets/terminal.js?v=1"></script>
 <script>
     let servicesData = [];
     let branchesByContainer = {};
@@ -918,8 +921,15 @@
     let editingServerId = null;
     let containerServerId = null;
     let consoleSocket = null;
+    let consoleRenderer = null;
     const consoleReadyMessage = '\u0000barkfluff:console-ready\u0000';
     const consoleErrorPrefix = '\u0000barkfluff:console-error:';
+
+    function ensureConsoleRenderer() {
+        if (!consoleRenderer)
+            consoleRenderer = new BarkFluffTerminal(document.getElementById('consoleOutput'), { columns: 120 });
+        return consoleRenderer;
+    }
 
     function switchTab(id) {
         activeTab = id;
@@ -1097,7 +1107,8 @@
 
         if (consoleSocket) closeConsoleDialog();
         document.getElementById('consoleDialogTitle').textContent = `SSH-консоль — ${server.name}`;
-        document.getElementById('consoleOutput').textContent = 'Подключение к серверу…\n';
+        ensureConsoleRenderer().reset();
+        appendConsoleOutput('Подключение к серверу…\n');
         setConsoleStatus('Подключение…', 'md-status-info');
         setConsoleInputEnabled(false);
         document.getElementById('consoleDialogScrim').classList.add('open');
@@ -1106,7 +1117,7 @@
         try {
             stepUpQuery = await BF.stepUpQuery('remote.console', `serverId=${serverId}`);
         } catch (e) {
-            document.getElementById('consoleOutput').textContent = `Подтверждение не получено: ${e.message}\n`;
+            appendConsoleOutput(`Подтверждение не получено: ${e.message}\n`);
             setConsoleStatus('Нет подтверждения', 'md-status-error');
             return;
         }
@@ -1204,13 +1215,8 @@
     }
 
     function appendConsoleOutput(data) {
-        let text = typeof data === 'string' ? data : '';
-        text = text.replace(/\x1B(?:[@-_]|\[[0-?]*[ -/]*[@-~])/g, '');
-        const output = document.getElementById('consoleOutput');
-        output.textContent += text;
-        if (output.textContent.length > 200000)
-            output.textContent = output.textContent.slice(-180000);
-        output.scrollTop = output.scrollHeight;
+        if (typeof data !== 'string' || data.length === 0) return;
+        ensureConsoleRenderer().write(data);
     }
 
     async function deleteContainer(serverId, containerId) {
