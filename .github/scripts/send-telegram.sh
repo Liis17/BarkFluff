@@ -36,12 +36,14 @@ printf '{"inline_keyboard":[[{"text":"%s","url":"%s"}]]}' \
 
 curl_message_file="$message_file"
 curl_reply_markup_file="$reply_markup_file"
+curl_ssl_options=()
 if command -v cygpath >/dev/null 2>&1; then
   curl_message_file=$(cygpath -w "$message_file")
   curl_reply_markup_file=$(cygpath -w "$reply_markup_file")
+  curl_ssl_options+=(--ssl-revoke-best-effort)
 fi
 
-curl -sS -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+curl "${curl_ssl_options[@]}" -sS -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
   --data-urlencode "chat_id=${TG_CHAT}" \
   --data-urlencode "parse_mode=Markdown" \
   --data-urlencode "text@${curl_message_file}" \
