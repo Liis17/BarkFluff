@@ -42,7 +42,6 @@ environment:
 Для локального запуска можно указать `SETTINGS_SERVICE_URL=http://localhost:7003`.
 Settings получает подключение к PostgreSQL через `SETTINGS_HOST`,
 `SETTINGS_DBPORT`, `SETTINGS_DATABASE`, `SETTINGS_USERNAME` и `SETTINGS_PASSWORD`.
-`SETTINGS_ADMIN_DATABASE` используется для создания базы `settings` при первом старте.
 
 Bootstrap-compose (`Docker/{dev,nightly,master}/barkfluff/docker-compose.setup.yml`)
 включает только PostgreSQL, Settings в режиме настройки и Setup UI. Setup UI

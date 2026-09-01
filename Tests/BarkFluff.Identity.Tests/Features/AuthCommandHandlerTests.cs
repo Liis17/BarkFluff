@@ -78,14 +78,16 @@ public class AuthCommandHandlerTests
         string? appName = "BarkFluff",
         string? appVersion = "1.0",
         string? deviceId = "dev-123",
-        string? ipAddress = "127.0.0.1") => new()
+        string? ipAddress = "127.0.0.1",
+        string? trustedIpAddress = null) => new()
     {
         DeviceName = deviceName,
         OperationSystem = os,
         AppName = appName,
         AppVersion = appVersion,
         DeviceId = deviceId,
-        IpAddress = ipAddress
+        IpAddress = ipAddress,
+        TrustedIpAddress = trustedIpAddress
     };
 
     private AuthCommandHandler CreateHandler(
@@ -222,14 +224,21 @@ public class AuthCommandHandlerTests
         _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, OtpEnabled = false, EmailOtpEnabled = true });
         _context.SaveChanges();
 
-        var handler = CreateHandler();
+        var handler = CreateHandler(BuildRequestContext(
+            appName: "BarkFluff Developers Portal",
+            appVersion: "1.0.0",
+            ipAddress: "0.0.0.0",
+            trustedIpAddress: "203.0.113.42"));
         var command = new AuthCommand { Username = "user", Password = "pass" };
 
         await Assert.ThrowsAsync<OtpCodeNeedException>(() => handler.Handle(command, CancellationToken.None));
 
         var props = _context.AuthUserProperties.First(x => x.UserId == 1);
         Assert.NotNull(props.LastEmailAuthCode);
-        _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Once);
+        _publishEndpoint.Verify(p => p.Publish(It.Is<EmailNotification>(notification =>
+            notification.Type == NotificationType.ConfirmationAuth &&
+            notification.Payload["ip"] == "203.0.113.42" &&
+            notification.Payload["appname"] == "BarkFluff Developers Portal"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -255,11 +264,18 @@ public class AuthCommandHandlerTests
         _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("correctpassword") });
         _context.SaveChanges();
 
-        var handler = CreateHandler();
+        var handler = CreateHandler(BuildRequestContext(
+            appName: "BarkFluff Developers Portal",
+            appVersion: "1.0.0",
+            ipAddress: "0.0.0.0",
+            trustedIpAddress: "203.0.113.42"));
         var command = new AuthCommand { Username = "user", Password = "wrongpassword" };
 
         await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => handler.Handle(command, CancellationToken.None));
-        _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Once);
+        _publishEndpoint.Verify(p => p.Publish(It.Is<EmailNotification>(notification =>
+            notification.Type == NotificationType.FailedLogin &&
+            notification.Payload["ip"] == "203.0.113.42" &&
+            notification.Payload["appname"] == "BarkFluff Developers Portal"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -369,7 +385,65 @@ public class AuthCommandHandlerTests
         Assert.NotNull(result.RefreshToken);
         Assert.NotNull(result.AccessToken);
         Assert.Equal("access", result.AccessToken.Value);
-        _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Once);
+        _publishEndpoint.Verify(p => p.Publish(It.Is<EmailNotification>(notification =>
+            notification.Type == NotificationType.SuccessfulLogin &&
+            notification.Payload["ip"] == "127.0.0.1" &&
+            notification.Payload["appname"] == "BarkFluff v.1.0"), It.IsAny<CancellationToken>()), Times.Once);
+        _usersClient.Verify(c => c.RegisterDeviceAsync(It.Is<RegisterDeviceRequest>(device =>
+            device.AppName == "BarkFluff v.1.0"), null, null, CancellationToken.None), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_DevelopersPortal_UsesTrustedIpAndHidesVersion()
+    {
+        var user = new FindByLoginResponse { User = new User { Id = 1, Username = "user" } };
+
+        _usersClient
+            .Setup(c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<FindByLoginResponse>(
+                Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess,
+                () => new Metadata(), () => { }));
+
+        _usersClient
+            .Setup(c => c.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetUserContactsResponse>(
+                Task.FromResult(new GetUserContactsResponse
+                {
+                    User = new User { Id = 1, Username = "user" },
+                    Contact = new UserContact { Email = "test@test.com" }
+                }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess,
+                () => new Metadata(), () => { }));
+
+        _usersClient
+            .Setup(c => c.RegisterDeviceAsync(It.IsAny<RegisterDeviceRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<RegisterDeviceResponse>(
+                Task.FromResult(new RegisterDeviceResponse()), Task.FromResult(new Metadata()),
+                () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("password123") });
+        _context.SaveChanges();
+
+        _mediator.Setup(m => m.Send(It.IsAny<CreateTokenCommand>(), CancellationToken.None))
+            .ReturnsAsync(new CreateTokenResponse { AccessToken = new Token { Value = "access" } });
+
+        var handler = CreateHandler(BuildRequestContext(
+            appName: "BarkFluff Developers Portal",
+            appVersion: "1.0.0",
+            ipAddress: "0.0.0.0",
+            trustedIpAddress: "203.0.113.42"));
+
+        var result = await handler.Handle(
+            new AuthCommand { Username = "user", Password = "password123" },
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        _publishEndpoint.Verify(p => p.Publish(It.Is<EmailNotification>(notification =>
+            notification.Type == NotificationType.SuccessfulLogin &&
+            notification.Payload["ip"] == "203.0.113.42" &&
+            notification.Payload["appname"] == "BarkFluff Developers Portal"), It.IsAny<CancellationToken>()), Times.Once);
+        _usersClient.Verify(c => c.RegisterDeviceAsync(It.Is<RegisterDeviceRequest>(device =>
+            device.AppName == "BarkFluff Developers Portal" &&
+            device.Location == "Russia, Moscow, Moscow"), null, null, CancellationToken.None), Times.Once);
     }
 
     [Fact]

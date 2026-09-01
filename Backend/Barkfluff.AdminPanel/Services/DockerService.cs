@@ -211,7 +211,7 @@ public class DockerService
     /// </summary>
     public async Task ComposePullAsync(string serviceName)
     {
-        await RunDockerComposeCommandAsync("--project-name", "barkfluff", "--env-file", "/.env", "-f", "/docker-compose.yml", "pull", serviceName);
+        await RunDockerComposeCommandAsync("pull", serviceName);
         _logger.LogInformation("Образ для сервиса {ServiceName} успешно обновлен", serviceName);
     }
 
@@ -220,7 +220,7 @@ public class DockerService
     /// </summary>
     public async Task ComposeUpAsync(string serviceName)
     {
-        await RunDockerComposeCommandAsync("--project-name", "barkfluff", "--env-file", "/.env", "-f", "/docker-compose.yml", "up", "--force-recreate", "--build", "-d", serviceName);
+        await RunDockerComposeCommandAsync("up", "--force-recreate", "--no-deps", "--build", "-d", serviceName);
         _logger.LogInformation("Контейнер сервиса {ServiceName} успешно пересоздан", serviceName);
         InvalidateContainersCache();
     }
@@ -374,55 +374,57 @@ public class DockerService
     }
 
     /// <summary>
-    /// Выполнить Docker Compose команду.
-    /// Использует ArgumentList — каждый аргумент передаётся буквально.
+    /// Выполнить Docker Compose через временный helper-контейнер.
+    /// Docker CLI работает внутри admin-panel, поэтому его текущая директория
+    /// не совпадает с host-каталогом Compose. Монтируем проект по реальному
+    /// host-пути, чтобы относительные bind mounts разрешались на хосте.
     /// </summary>
     private async Task<string> RunDockerComposeCommandAsync(params string[] args)
     {
-        var startInfo = new ProcessStartInfo
+        var helperImage = await GetAdminPanelImageAsync();
+        var dockerSocket = await GetMountSourceAsync("admin-panel", "/var/run/docker.sock");
+        var composeFile = await GetMountSourceAsync("admin-panel", "/docker-compose.yml");
+        var envFile = await GetMountSourceAsync("admin-panel", "/.env");
+        var projectDirectory = Path.GetDirectoryName(composeFile);
+
+        if (string.IsNullOrWhiteSpace(dockerSocket)
+            || string.IsNullOrWhiteSpace(composeFile)
+            || string.IsNullOrWhiteSpace(envFile)
+            || string.IsNullOrWhiteSpace(projectDirectory)
+            || !Path.IsPathRooted(dockerSocket)
+            || !Path.IsPathRooted(composeFile)
+            || !Path.IsPathRooted(envFile)
+            || !Path.IsPathRooted(projectDirectory))
         {
-            FileName = "docker",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            WorkingDirectory = "/" // Корневая директория
-        };
-
-        startInfo.ArgumentList.Add("compose");
-        foreach (var arg in args)
-            startInfo.ArgumentList.Add(arg);
-
-        using var process = new Process { StartInfo = startInfo };
-        var outputBuilder = new StringBuilder();
-        var errorBuilder = new StringBuilder();
-
-        process.OutputDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-                outputBuilder.AppendLine(e.Data);
-        };
-
-        process.ErrorDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-                errorBuilder.AppendLine(e.Data);
-        };
-
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        await process.WaitForExitAsync();
-
-        if (process.ExitCode != 0)
-        {
-            throw new Exception($"Docker compose command failed: {errorBuilder}");
+            throw new InvalidOperationException("Не удалось определить реальные host-пути Docker Compose.");
         }
 
-        return outputBuilder.ToString().Trim();
+        var dockerArguments = new List<string>
+        {
+            "run", "--rm", "--user", "root",
+            "--mount", $"type=bind,src={dockerSocket},dst=/var/run/docker.sock",
+            "--mount", $"type=bind,src={projectDirectory},dst={projectDirectory},readonly",
+        };
+
+        if (!string.Equals(Path.GetDirectoryName(envFile), projectDirectory, StringComparison.Ordinal))
+        {
+            dockerArguments.Add("--mount");
+            dockerArguments.Add($"type=bind,src={envFile},dst={envFile},readonly");
+        }
+
+        dockerArguments.Add("--entrypoint");
+        dockerArguments.Add("docker");
+        dockerArguments.Add(helperImage);
+        dockerArguments.Add("compose");
+        dockerArguments.Add("--project-name");
+        dockerArguments.Add("barkfluff");
+        dockerArguments.Add("--env-file");
+        dockerArguments.Add(envFile);
+        dockerArguments.Add("-f");
+        dockerArguments.Add(composeFile);
+        dockerArguments.AddRange(args);
+
+        return await RunDockerCommandAsync(dockerArguments.ToArray());
     }
 
     /// <summary>
@@ -586,7 +588,7 @@ public class DockerService
                 "-v", $"{envFile}:{envFile}:ro",
                 "--entrypoint", "sh",
                 helperImage,
-                "-c", $"sleep 2 && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} pull admin-panel && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} up --force-recreate -d admin-panel && docker image prune -f"
+                "-c", $"sleep 2 && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} pull admin-panel && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} up --force-recreate --no-deps -d admin-panel && docker image prune -f"
             );
 
             _logger.LogInformation("Helper-контейнер для обновления запущен");

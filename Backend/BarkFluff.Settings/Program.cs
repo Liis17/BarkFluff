@@ -43,7 +43,6 @@ public class Program
         builder.Services.AddDbContext<SettingsContext>(options =>
             options.UseNpgsql(databaseOptions.ConnectionString, npgsql =>
             {
-                npgsql.UseAdminDatabase(databaseOptions.AdminDatabase);
                 npgsql.EnableRetryOnFailure(3);
                 npgsql.CommandTimeout(30);
             }));

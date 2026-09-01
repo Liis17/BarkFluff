@@ -190,9 +190,9 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 
 ## Система обновлений и её TLS
 
-Сервер обновлений [[Backend/ClientStorage|ClientStorage]] (`storage.barkfluff.com`) отдаётся за Cloudflare Origin CA, которого нет в системном хранилище Android. Сертификат едет в APK строкой `BuildConfig.STORAGE_CA_PEM_B64`: `app/build.gradle.kts` заполняет её из переменной окружения `STORAGE_CA_PEM_B64`, а воркфлоу `build-client-android.yml` подставляет туда секрет `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64` — тот же, которым он ходит на storage через `curl --cacert`. Без переменной строка пустая, и локальные сборки просто работают на системном хранилище (обновления в них не проверяются).
+Сервер обновлений [[Backend/ClientStorage|ClientStorage]] (`storage.barkfluff.com`) сначала проверяется через системное хранилище Android. Для переходного сценария старый CA едет в APK строкой `BuildConfig.STORAGE_CA_PEM_B64`: `app/build.gradle.kts` заполняет её из переменной окружения `STORAGE_CA_PEM_B64`, а воркфлоу `build-client-android.yml` подставляет туда секрет `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64` — тот же, которым он ходит на storage через `curl --cacert`. CA из APK разбирается лениво и используется только после TLS-ошибки системной попытки. Без переменной fallback недоступен, но публичный сертификат через системное хранилище продолжает работать.
 
-`utils/UpdateServerTls.kt` разворачивает base64 в `X509Certificate` → `KeyStore` → `TrustManagerFactory` → `SSLSocketFactory`. Этот factory подставляется только двум местам: `HttpURLConnection` в `UpdateChecker` (проверка версии) и OkHttp-клиенту загрузки APK в `UpdateActivity`.
+`utils/UpdateServerTls.kt` разворачивает base64 в `X509Certificate` → `KeyStore` → `TrustManagerFactory` → `SSLSocketFactory` лениво. `UpdateChecker` и OkHttp-клиент `UpdateActivity` сначала выполняют запрос без кастомного factory, а при TLS-ошибке создают новый запрос с этим factory. HTTP-ошибки, таймауты, обычные сетевые ошибки и отмена корутины не повторяются; hostname-проверка сохраняется.
 
 Два решения, которые важно не откатить:
 

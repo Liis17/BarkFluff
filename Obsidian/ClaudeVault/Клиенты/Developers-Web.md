@@ -34,6 +34,7 @@ npm run dev       # → http://localhost:5173
 - Auth flow через `IdentityApi.Auth` с транспортом `createGrpcWebTransport` (`Content-Type: application/grpc-web+proto`)
 - Типизированный клиент: `createClient(IdentityApi, identityTransport)` из `src/gen/identity_api_connect`
 - OTP ошибка детектируется через `ConnectError.metadata.get('x-error-code')`
+- При входе портал отправляет `x-app-name = BarkFluff Developers Portal` и технический `x-app-version = 1.0.0`; клиентский `x-ip-address` не отправляется. Identity получает отображаемый IP из trusted-заголовков reverse proxy, а версию не добавляет к имени портала в уведомлениях и данных сессии.
 - Токен JWT хранится в `AuthContext` + персистится в `localStorage` под ключом **`barkfluff_dev_auth`** (JSON с `accessToken`/`refreshToken`/`accessTokenExpiration`/`refreshTokenExpiration`). При чтении выполняется runtime-валидация формы и дат; повреждённая запись очищается. Refresh без даты истечения не принимается, долгий fallback не используется.
 - `deviceId` (UUID) генерируется один раз и сохраняется в `localStorage` под ключом **`barkfluff_device_id`** — используется для `x-device-id` header в gRPC-метаданных.
 - Передаётся во все API-вызовы через заголовок `x-auth-token` (plaintext, без base64)

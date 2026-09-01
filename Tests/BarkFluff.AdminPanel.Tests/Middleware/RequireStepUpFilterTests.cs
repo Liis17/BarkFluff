@@ -44,7 +44,7 @@ public sealed class RequireStepUpFilterTests : IDisposable
         builder.Services.AddSingleton<IStepUpSender>(new NoopStepUpSender());
         builder.Services.Configure<TelegramSettings>(settings =>
         {
-            settings.ParsedAdmins = [new AdminUser(AdminId, "alice"), new AdminUser(200, "bob")];
+            settings.ParsedAdmins = [new AdminUser(AdminId, "alice")];
         });
         builder.Services.Configure<AuthSettings>(_ => { });
 

@@ -72,27 +72,30 @@ public sealed class SettingsStorage
     {
         var catalogEntry = SettingsCatalog.Resolve(serviceId, section, key);
         var scope = SettingsScopes.Get(serviceId);
-        await using var transaction = await BeginTransactionAsync(cancellationToken);
-        var row = await GetLockedRowAsync(scope, catalogEntry.StorageKey, cancellationToken)
-            ?? throw new InvalidOperationException($"Catalog row {scope.TableName}.{catalogEntry.StorageKey} is missing.");
-        var changedAt = DateTime.UtcNow;
-        var previous = row.Value;
-        row.Value = value;
-        row.EditedBy = NormalizeActor(editedBy);
-        row.EditedAt = changedAt;
-        _context.SettingsHistory.Add(new SettingRevision
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            SettingsTable = scope.TableName,
-            Key = catalogEntry.StorageKey,
-            PreviousValue = previous,
-            NewValue = value,
-            ChangedAt = changedAt,
-            ChangedBy = NormalizeActor(editedBy),
-            ChangedFrom = editedFrom ?? string.Empty,
-            ChangeKind = "Update"
+            await using var transaction = await BeginTransactionAsync(cancellationToken);
+            var row = await GetLockedRowAsync(scope, catalogEntry.StorageKey, cancellationToken)
+                ?? throw new InvalidOperationException($"Catalog row {scope.TableName}.{catalogEntry.StorageKey} is missing.");
+            var changedAt = DateTime.UtcNow;
+            var previous = row.Value;
+            row.Value = value;
+            row.EditedBy = NormalizeActor(editedBy);
+            row.EditedAt = changedAt;
+            _context.SettingsHistory.Add(new SettingRevision
+            {
+                SettingsTable = scope.TableName,
+                Key = catalogEntry.StorageKey,
+                PreviousValue = previous,
+                NewValue = value,
+                ChangedAt = changedAt,
+                ChangedBy = NormalizeActor(editedBy),
+                ChangedFrom = editedFrom ?? string.Empty,
+                ChangeKind = "Update"
+            });
+            await _context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         });
-        await _context.SaveChangesAsync(cancellationToken);
-        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         _metrics.Increment("configurations_db_writes");
     }
 
@@ -126,28 +129,31 @@ public sealed class SettingsStorage
             throw new InvalidOperationException($"Revision {revisionId} references unknown table {source.SettingsTable}.");
         SettingsCatalog.Resolve(scope.ServiceId, source.Key);
 
-        await using var transaction = await BeginTransactionAsync(cancellationToken);
-        var row = await GetLockedRowAsync(scope, source.Key, cancellationToken)
-            ?? throw new InvalidOperationException($"Settings row {scope.TableName}.{source.Key} was not found.");
-        var changedAt = DateTime.UtcNow;
-        var currentValue = row.Value;
-        row.Value = source.PreviousValue;
-        row.EditedBy = NormalizeActor(editedBy);
-        row.EditedAt = changedAt;
-        _context.SettingsHistory.Add(new SettingRevision
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            SettingsTable = scope.TableName,
-            Key = source.Key,
-            PreviousValue = currentValue,
-            NewValue = source.PreviousValue,
-            ChangedAt = changedAt,
-            ChangedBy = NormalizeActor(editedBy),
-            ChangedFrom = editedFrom ?? string.Empty,
-            ChangeKind = "Rollback",
-            SourceRevisionId = source.Id
+            await using var transaction = await BeginTransactionAsync(cancellationToken);
+            var row = await GetLockedRowAsync(scope, source.Key, cancellationToken)
+                ?? throw new InvalidOperationException($"Settings row {scope.TableName}.{source.Key} was not found.");
+            var changedAt = DateTime.UtcNow;
+            var currentValue = row.Value;
+            row.Value = source.PreviousValue;
+            row.EditedBy = NormalizeActor(editedBy);
+            row.EditedAt = changedAt;
+            _context.SettingsHistory.Add(new SettingRevision
+            {
+                SettingsTable = scope.TableName,
+                Key = source.Key,
+                PreviousValue = currentValue,
+                NewValue = source.PreviousValue,
+                ChangedAt = changedAt,
+                ChangedBy = NormalizeActor(editedBy),
+                ChangedFrom = editedFrom ?? string.Empty,
+                ChangeKind = "Rollback",
+                SourceRevisionId = source.Id
+            });
+            await _context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         });
-        await _context.SaveChangesAsync(cancellationToken);
-        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         _metrics.Increment("configurations_db_writes");
     }
 
@@ -225,7 +231,10 @@ public sealed class SettingsStorage
     private async Task<SettingRow?> GetLockedRowAsync(SettingsScope scope, string key, CancellationToken cancellationToken)
     {
         var settings = _context.Settings(scope);
-        if (!_context.Database.IsRelational())
+        if (!string.Equals(
+                _context.Database.ProviderName,
+                "Npgsql.EntityFrameworkCore.PostgreSQL",
+                StringComparison.Ordinal))
             return await settings.SingleOrDefaultAsync(row => row.Key == key, cancellationToken);
 
         // The table name comes only from the closed SettingsScopes catalog; the key remains parameterized.
