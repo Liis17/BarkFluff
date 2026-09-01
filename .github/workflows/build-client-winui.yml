@@ -280,20 +280,55 @@ jobs:
             throw 'Не задан секрет WINUI_MSIX_CERTIFICATE_B64'
           }
 
+          $certificateB64 = $env:CERTIFICATE_B64.Trim().Trim([char]0xFEFF)
+          $certificateB64 = $certificateB64.Trim()
+          $hasDoubleQuotes = $certificateB64.StartsWith('"') -and $certificateB64.EndsWith('"')
+          $hasSingleQuotes = $certificateB64.StartsWith("'") -and $certificateB64.EndsWith("'")
+          if ($hasDoubleQuotes -or $hasSingleQuotes) {
+            $certificateB64 = $certificateB64.Substring(1, $certificateB64.Length - 2).Trim()
+          }
+
+          if ($certificateB64.StartsWith('```')) {
+            $certificateB64 = $certificateB64 -replace '^```[^\r\n]*\r?\n', ''
+            $certificateB64 = $certificateB64 -replace '\r?\n```\s*$', ''
+          }
+
+          $certificateB64 = $certificateB64 -replace '^(?:base64|pfx)\s*:\s*', ''
+          $certificateB64 = $certificateB64 -replace '^data:application/(?:x-)?pkcs12;base64,', ''
+          $certificateB64 = $certificateB64 -replace '\s', ''
+          if ($certificateB64 -match '-----BEGIN|^\s*(?:base64|pfx)\s*:') {
+            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 должен содержать Base64 PFX без PEM-заголовка или метки'
+          }
+          if ($certificateB64.Length -eq 0 -or
+              ($certificateB64.Length % 4) -ne 0 -or
+              $certificateB64 -notmatch '^[A-Za-z0-9+/]*={0,2}$') {
+            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 содержит недопустимые символы или имеет некорректную длину'
+          }
+
           $certificatePath = Join-Path $env:RUNNER_TEMP 'BarkFluffWinUI-signing.pfx'
-          [System.IO.File]::WriteAllBytes(
-            $certificatePath,
-            [Convert]::FromBase64String($env:CERTIFICATE_B64))
+          try {
+            $certificateBytes = [Convert]::FromBase64String($certificateB64)
+          }
+          catch [FormatException] {
+            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 не удалось декодировать; нужен полный Base64 PFX'
+          }
+          [System.IO.File]::WriteAllBytes($certificatePath, $certificateBytes)
 
           if (-not (Test-Path -LiteralPath $certificatePath -PathType Leaf)) {
             throw "Не удалось восстановить сертификат: $certificatePath"
           }
 
           $password = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
-          $certificates = Import-PfxCertificate `
-            -FilePath $certificatePath `
-            -CertStoreLocation 'Cert:\CurrentUser\My' `
-            -Password $password
+          try {
+            $certificates = Import-PfxCertificate `
+              -FilePath $certificatePath `
+              -CertStoreLocation 'Cert:\CurrentUser\My' `
+              -Password $password `
+              -ErrorAction Stop
+          }
+          catch {
+            throw 'Не удалось импортировать PFX: проверьте полный Base64-секрет WINUI_MSIX_CERTIFICATE_B64 и пароль WINUI_MSIX_CERTIFICATE_PASSWORD'
+          }
           $certificate = $certificates |
             Where-Object HasPrivateKey |
             Select-Object -First 1
