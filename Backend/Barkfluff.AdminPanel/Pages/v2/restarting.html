@@ -54,28 +54,12 @@
         </div>
     </div>
 
+    <script src="assets/admin-panel-wait.js?v=1"></script>
     <script>
-        let seconds = 0;
-        const timerEl = document.getElementById('timer');
-        let successCount = 0;
-        const requiredSuccessCount = 2;
-
-        setInterval(() => { seconds++; timerEl.textContent = seconds; }, 1000);
-
-        async function checkServer() {
-            try {
-                const r = await fetch('/api/auth/me', { cache: 'no-cache' });
-                if (r.ok) {
-                    successCount++;
-                    if (successCount >= requiredSuccessCount) {
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                        window.location.href = '/services';
-                    }
-                } else successCount = 0;
-            } catch { successCount = 0; }
-        }
-        setInterval(checkServer, 3000);
-        setTimeout(checkServer, 5000);
+        AdminPanelWait.start({
+            initialDelayMs: 5000,
+            pageServerStartedAt: '{{SERVER_STARTED_AT_UTC}}'
+        });
     </script>
 </body>
 </html>

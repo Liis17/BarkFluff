@@ -31,6 +31,7 @@
     <None Remove="Pages\v2\assets\api.js" />
     <None Remove="Pages\v2\assets\command-palette.js" />
     <None Remove="Pages\v2\assets\preview-mode.js" />
+    <None Remove="Pages\v2\assets\admin-panel-wait.js" />
   </ItemGroup>
 
   <ItemGroup>
@@ -107,6 +108,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\v2\assets\preview-mode.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\v2\assets\admin-panel-wait.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
