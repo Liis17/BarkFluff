@@ -19,11 +19,11 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 | Controller | Маршрут | Описание |
 |------------|---------|----------|
 | `HomeController` | `GET /` | Отдаёт `html/barkfluff.html` |
-| `InstallController` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Скрипты установки (Windows и Linux, release и beta) |
+| `InstallController` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Legacy-скрипты установки, оставлены для совместимости; на главной больше не показываются |
 | `DownloadController` | `GET /download/installer` | `Barkfluff.Updater.CLI.exe` |
 | `FallbackController` | `GET /{**catchAll}` | `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService; пусто в ответе → `html/404.html` с кодом 404 |
 | `UserApiController` | `GET /api/user/{username}` | REST API профиля |
-| `VersionApiController` | `GET /api/versions` | Версии клиентов (Android/Windows/macOS, release+beta) |
+| `VersionApiController` | `GET /api/versions` | Версии Android, WinUI и macOS по каналам `release`, `beta`, `dev`, `nightly` |
 | `SupportChatController` | `POST /api/support/send`, `GET /api/support/messages/{chatId}` | Чат поддержки |
 | `AssetsController` | `GET /assets/{filename}` | Ассеты (изображения для магазинов и превью) |
 | `FaviconController` | `GET /favicon.ico` | Иконка сайта |
@@ -45,8 +45,14 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 - **`LegalPageService`** — файлы из `html/legal/` по имени страницы; также обрабатывает `selfhosted.html`
 - **`SupportChatService`** — in-memory сессии чата (`ConcurrentDictionary`)
 - **`TelegramService`** — Telegram-бот для уведомлений чата поддержки. Ответ администратора — reply, первая строка — GUID чата
-- **`VersionStore`** — thread-safe in-memory хранилище актуальных версий клиентов (Android/Windows/macOS, release+beta)
-- **`VersionPollingService`** — `BackgroundService`, каждые 10 минут опрашивает `storage.barkfluff.com` и обновляет `VersionStore`
+- **`VersionStore`** — thread-safe in-memory хранилище актуальных версий Android, WinUI и macOS для каналов `release`, `beta`, `dev`, `nightly`
+- **`VersionPollingService`** — `BackgroundService`, каждые 10 минут опрашивает `barkfluffkotlin`, `barkfluffwinui` и `barkfluffmacos` во всех четырёх каналах и обновляет `VersionStore`
+
+## Главная и каналы сборки
+
+`GET /` отдаёт реальную страницу `html/barkfluff.html`. На ней переключатель `Nightly / Dev / Release` меняет ссылки native-клиентов, отображаемые версии и тему всей страницы. По умолчанию выбран `Release`: фон — спокойный светлый градиент; для `Dev` используется плотный синий blueprint, для `Nightly` — производный WebP ночного неба. Web-клиент вынесен в отдельную секцию, всегда ведёт на `https://web.barkfluff.com` и визуально представлен векторным глифом браузеров. Подсказка со стрелками под hero-превью скрывается на мобильной ширине.
+
+Native-клиенты сгруппированы как `Desktop` (Windows WinUI, macOS, Linux — скоро) и `Mobile` (Android, iOS — скоро). Рабочие ссылки строятся как `/get/barkfluffwinui/{channel}`, `/get/barkfluffkotlin/{channel}` и `/get/barkfluffmacos/{channel}`. Если версия выбранного канала ещё не опубликована, карточка показывает состояние ожидания.
 
 ## REST API — `/api/user/{username}`
 
@@ -85,6 +91,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 - `html/new/` — **WIP** редизайн главной страницы (Barkfluff Redesign.html, profile.html, стили)
 - `files/install.ps1`, `files/installbeta.ps1` — скрипты установки Windows
 - `files/install.sh`, `files/installbeta.sh` — скрипты установки Linux
+- `files/channel-nightly.webp`, `files/channel-dev.webp`, `files/channel-release.webp` — web-оптимизированные производные фонов macOS Packaging без Finder-зон
 - `files/Barkfluff.Updater.CLI.exe` — инсталлятор (не в git)
 
 ## Cookie-уведомление (`files/cookie-notice.js`)

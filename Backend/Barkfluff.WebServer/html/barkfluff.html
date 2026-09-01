@@ -43,11 +43,18 @@
       --brand-2: #e25a12;
       --brand-deep: #8a2e06;
       --brand-glow: rgba(255, 122, 41, 0.35);
+      --brand-soft: #ffb47a;
+      --button-top: #ff8a3c;
+      --button-end: #e65c12;
+      --button-ink: #fff;
+      --surface-card: linear-gradient(180deg, rgba(45,25,20,0.72), rgba(22,11,9,0.72));
+      --surface-panel: rgba(10,5,6,0.58);
+      --grid-line: rgba(255,240,220,0.025);
       --radius-sm: 10px;
       --radius: 16px;
       --radius-lg: 24px;
       --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
-      --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
+      --shadow-brand: 0 12px 30px -8px var(--brand-glow);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -60,6 +67,7 @@
       font-feature-settings: "ss01", "cv11";
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
+      transition: background-color .45s ease, color .35s ease;
     }
 
     .eyebrow {
@@ -73,10 +81,69 @@
     .bg-mesh {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
-        radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
-        radial-gradient(500px 400px at 50% 50%, rgba(255, 180, 100, 0.05), transparent 70%),
-        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+        linear-gradient(180deg, rgba(20,7,10,0.74), rgba(20,7,10,0.92)),
+        url('/assets/channel-nightly.webp') center / cover;
+      transition: opacity .45s ease;
+    }
+    .bg-mesh::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(20,7,10,0.74), rgba(20,7,10,0.92)),
+        url('/assets/channel-nightly.webp') center / cover;
+      opacity: 0;
+      transition: opacity .45s ease;
+    }
+    body[data-channel="dev"] {
+      --bg-0: #061326;
+      --bg-1: #081a32;
+      --bg-2: #0c2442;
+      --bg-3: #123457;
+      --line: rgba(180, 224, 255, 0.12);
+      --line-strong: rgba(180, 224, 255, 0.22);
+      --ink: #eff8ff;
+      --ink-dim: #a9c8df;
+      --ink-mute: #7092b0;
+      --brand: #50bfff;
+      --brand-2: #208bd0;
+      --brand-deep: #105184;
+      --brand-glow: rgba(80, 191, 255, 0.32);
+      --brand-soft: #9bdcff;
+      --button-top: #54c9ff;
+      --button-end: #197cc4;
+      --surface-card: linear-gradient(180deg, rgba(13,43,75,0.84), rgba(5,21,42,0.82));
+      --surface-panel: rgba(4, 19, 38, 0.72);
+      --grid-line: rgba(124, 198, 255, 0.11);
+    }
+    body[data-channel="dev"] .bg-mesh::after {
+      background: linear-gradient(180deg, rgba(5,18,39,0.72), rgba(5,18,39,0.9)),
+        url('/assets/channel-dev.webp') center / cover;
+      opacity: 1;
+    }
+    body[data-channel="release"] {
+      --bg-0: #edf3f6;
+      --bg-1: #f6f9fb;
+      --bg-2: #e7eef2;
+      --bg-3: #d9e5eb;
+      --line: rgba(23, 48, 66, 0.12);
+      --line-strong: rgba(23, 48, 66, 0.2);
+      --ink: #173042;
+      --ink-dim: #526b7b;
+      --ink-mute: #78909d;
+      --brand: #c75f31;
+      --brand-2: #a84822;
+      --brand-deep: #7d351b;
+      --brand-glow: rgba(199, 95, 49, 0.25);
+      --brand-soft: #b6532a;
+      --button-top: #de8152;
+      --button-end: #bd522b;
+      --surface-card: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(239,245,247,0.86));
+      --surface-panel: rgba(255,255,255,0.7);
+      --grid-line: rgba(23,48,66,0.045);
+    }
+    body[data-channel="release"] .bg-mesh::after {
+      background: linear-gradient(180deg, rgba(246,249,251,0.68), rgba(230,239,243,0.86)),
+        url('/assets/channel-release.webp') center / cover;
+      opacity: 1;
     }
     .bg-grain {
       position: fixed; inset: 0; z-index: 1; pointer-events: none;
@@ -86,39 +153,42 @@
     .grid-overlay {
       position: fixed; inset: 0; z-index: 1; pointer-events: none;
       background-image:
-        linear-gradient(to right, rgba(255,240,220,0.025) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,240,220,0.025) 1px, transparent 1px);
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
       background-size: 80px 80px;
       mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
       -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
     }
+    body[data-channel="dev"] .grid-overlay { background-size: 48px 48px; }
+    body[data-channel="release"] .grid-overlay { background-size: 120px 120px; }
+    body[data-channel="release"] .bg-grain { opacity: .08; mix-blend-mode: multiply; }
 
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 10px;
       padding: 14px 20px; border: 1px solid transparent; border-radius: 14px;
       font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: 0.01em;
       cursor: pointer; text-decoration: none; color: inherit;
-      transition: transform 0.15s ease, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      transition: transform .18s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease;
       white-space: nowrap;
     }
     .btn:active { transform: translateY(1px); }
     .btn-primary {
-      background: linear-gradient(180deg, #ff8a3c 0%, #e65c12 100%);
-      color: #fff;
+      background: linear-gradient(180deg, var(--button-top) 0%, var(--button-end) 100%);
+      color: var(--button-ink);
       box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255,255,255,0.25);
     }
     .btn-primary:hover {
-      box-shadow: 0 16px 40px -8px rgba(255,122,41,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+      box-shadow: 0 16px 40px -8px var(--brand-glow), inset 0 1px 0 rgba(255,255,255,0.3);
       transform: translateY(-1px);
     }
     .btn-ghost {
-      background: rgba(255,240,220,0.04); border-color: var(--line-strong); color: var(--ink);
+      background: color-mix(in srgb, var(--ink) 4%, transparent); border-color: var(--line-strong); color: var(--ink);
     }
-    .btn-ghost:hover { background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
+    .btn-ghost:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); border-color: var(--line-strong); }
     .btn-soft {
-      background: rgba(255,122,41,0.1); border-color: rgba(255,122,41,0.25); color: #ffb47a;
+      background: color-mix(in srgb, var(--brand) 12%, transparent); border-color: color-mix(in srgb, var(--brand) 30%, transparent); color: var(--brand-soft);
     }
-    .btn-soft:hover { background: rgba(255,122,41,0.16); border-color: rgba(255,122,41,0.4); color: #ffc997; }
+    .btn-soft:hover { background: color-mix(in srgb, var(--brand) 18%, transparent); border-color: color-mix(in srgb, var(--brand) 45%, transparent); color: var(--ink); }
     .btn svg { width: 16px; height: 16px; }
 
     .brand-mark {
@@ -128,9 +198,9 @@
     }
     .brand-mark .glyph {
       width: 28px; height: 28px; border-radius: 8px;
-      background: linear-gradient(135deg, #ff8a3c, #c23f07);
+      background: linear-gradient(135deg, var(--button-top), var(--brand-deep));
       display: grid; place-items: center;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(255,122,41,0.5);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px var(--brand-glow);
       position: relative;
     }
     .brand-mark .glyph::before {
@@ -164,12 +234,12 @@
     .hero-eyebrow {
       display: inline-flex; align-items: center; gap: 10px; align-self: flex-start;
       font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
-      color: #ffb47a; padding: 6px 12px; border-radius: 999px;
-      background: rgba(255,122,41,0.1); border: 1px solid rgba(255,122,41,0.22);
+      color: var(--brand-soft); padding: 6px 12px; border-radius: 999px;
+      background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
     }
     .hero-eyebrow .pulse {
-      width: 6px; height: 6px; border-radius: 50%; background: #ff7a29;
-      box-shadow: 0 0 8px #ff7a29; animation: pulseDot 1.6s ease-in-out infinite;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--brand);
+      box-shadow: 0 0 8px var(--brand); animation: pulseDot 1.6s ease-in-out infinite;
     }
     @keyframes pulseDot {
       0%, 100% { opacity: 0.5; transform: scale(0.9); }
@@ -181,7 +251,7 @@
       line-height: 0.95; letter-spacing: -0.04em; color: var(--ink);
     }
     .hero-title .accent {
-      background: linear-gradient(120deg, #ffc997 10%, #ff7a29 50%, #b93d0a 95%);
+      background: linear-gradient(120deg, var(--brand-soft) 10%, var(--brand) 50%, var(--brand-deep) 95%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .hero-title em {
@@ -189,11 +259,11 @@
     }
     .hero-title em::after {
       content: ""; position: absolute; left: 0; right: 0; bottom: 6px;
-      height: 14%; background: rgba(255,122,41,0.28); border-radius: 4px; z-index: -1;
+      height: 14%; background: color-mix(in srgb, var(--brand) 28%, transparent); border-radius: 4px; z-index: -1;
     }
 
     .hero-sub { font-size: 17px; line-height: 1.55; color: var(--ink-dim); max-width: 460px; }
-    .hero-sub s { color: var(--ink-mute); text-decoration-color: rgba(255,122,41,0.5); text-decoration-thickness: 2px; }
+    .hero-sub s { color: var(--ink-mute); text-decoration-color: color-mix(in srgb, var(--brand) 50%, transparent); text-decoration-thickness: 2px; }
 
     .hero-meta {
       display: flex; align-items: center; gap: 18px; margin-top: 8px;
@@ -209,8 +279,8 @@
     }
     .preview-frame {
       position: absolute; inset: 0; border-radius: 20px; overflow: hidden;
-      border: 1px solid var(--line-strong); background: #0a0506;
-      box-shadow: 0 40px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,122,41,0.1), inset 0 1px 0 rgba(255,255,255,0.06);
+      border: 1px solid var(--line-strong); background: var(--bg-0);
+      box-shadow: 0 40px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px color-mix(in srgb, var(--brand) 10%, transparent), inset 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent);
       transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease;
     }
     .preview-frame.is-active { opacity: 1; transform: translate(0,0) rotate(0); z-index: 3; }
@@ -221,7 +291,7 @@
     .device-tag {
       position: absolute; top: 14px; left: 14px; z-index: 5;
       display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
-      border-radius: 8px; background: rgba(20,7,10,0.7); backdrop-filter: blur(10px);
+      border-radius: 8px; background: var(--surface-panel); backdrop-filter: blur(10px);
       border: 1px solid var(--line-strong); font-size: 11px; font-weight: 600;
       color: var(--ink-dim); letter-spacing: 0.04em;
     }
@@ -229,114 +299,166 @@
 
     .preview-caption {
       position: absolute; bottom: -18px; right: -12px; z-index: 5;
-      padding: 10px 14px; background: rgba(20,7,10,0.85); backdrop-filter: blur(16px);
+      padding: 10px 14px; background: var(--surface-panel); backdrop-filter: blur(16px);
       border: 1px solid var(--line-strong); border-radius: 14px;
       font-size: 11px; line-height: 1.3; color: var(--ink-dim); max-width: 180px;
       box-shadow: 0 12px 28px -8px rgba(0,0,0,0.6);
     }
     .preview-caption .kbd {
       display: inline-block; padding: 1px 6px; border-radius: 4px;
-      background: rgba(255,240,220,0.08); border: 1px solid var(--line-strong);
+      background: color-mix(in srgb, var(--ink) 8%, transparent); border: 1px solid var(--line-strong);
       color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; margin: 0 1px;
     }
 
-    /* Downloads */
-    .downloads-section {
-      display: flex; overflow-x: auto; gap: 16px; margin-bottom: 48px;
-      padding-bottom: 8px; scroll-snap-type: x mandatory;
-      scrollbar-width: thin; scrollbar-color: rgba(255,122,41,0.25) transparent;
+    /* ===== CLIENT CHANNELS ===== */
+    .client-hub { margin-bottom: 48px; }
+    .channel-head {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 28px;
+      margin-bottom: 22px;
     }
-    .downloads-section::-webkit-scrollbar { height: 4px; }
-    .downloads-section::-webkit-scrollbar-track { background: transparent; }
-    .downloads-section::-webkit-scrollbar-thumb { background: rgba(255,122,41,0.25); border-radius: 4px; }
-    .platform-card {
-      position: relative; padding: 24px; border-radius: 20px; border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(45,25,20,0.55), rgba(22,11,9,0.55));
-      cursor: pointer; transition: transform 0.25s ease, border-color 0.2s, background 0.25s;
-      text-align: left; overflow: hidden; display: flex; flex-direction: column; gap: 16px;
-      min-height: 200px; min-width: 260px; flex-shrink: 0; scroll-snap-align: start;
+    .channel-head-copy { max-width: 580px; }
+    .channel-head .eyebrow { color: var(--brand-soft); }
+    .channel-title {
+      margin-top: 8px; font-size: clamp(28px, 4vw, 44px); line-height: 1.05;
+      letter-spacing: -0.04em; font-weight: 800; color: var(--ink);
     }
-    .platform-card.disabled {
-      opacity: 0.5; cursor: not-allowed; pointer-events: none;
+    .channel-description { margin-top: 10px; color: var(--ink-dim); font-size: 14px; line-height: 1.55; }
+    .channel-switcher {
+      display: grid; grid-template-columns: repeat(3, minmax(104px, 1fr)); gap: 5px;
+      padding: 5px; min-width: 350px; border: 1px solid var(--line-strong); border-radius: 16px;
+      background: var(--surface-panel); box-shadow: 0 16px 38px -24px rgba(0,0,0,.55);
     }
-    .platform-card::before {
-      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--brand), transparent); opacity: 0; transition: opacity 0.3s;
+    .channel-tab {
+      appearance: none; border: 1px solid transparent; border-radius: 11px; padding: 11px 12px;
+      background: transparent; color: var(--ink-mute); font: inherit; text-align: left; cursor: pointer;
+      transition: transform .18s ease, background-color .25s ease, border-color .25s ease, color .2s ease, box-shadow .25s ease;
     }
-    .platform-card:hover, .platform-card.is-active {
-      border-color: rgba(255,122,41,0.35); transform: translateY(-2px);
-      background: linear-gradient(180deg, rgba(60,30,22,0.65), rgba(26,13,10,0.65));
+    .channel-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .channel-tab:active { transform: scale(.97); }
+    .channel-tab.is-active {
+      color: var(--ink); background: color-mix(in srgb, var(--brand) 15%, transparent);
+      border-color: color-mix(in srgb, var(--brand) 42%, transparent); box-shadow: 0 8px 20px -15px var(--brand-glow);
     }
-    .platform-card:hover::before, .platform-card.is-active::before { opacity: 1; }
-    .pc-header { display: flex; align-items: center; justify-content: space-between; }
-    .pc-icon {
-      width: 40px; height: 40px; border-radius: 12px;
-      background: rgba(255,122,41,0.1); border: 1px solid rgba(255,122,41,0.22);
-      display: grid; place-items: center; color: #ffb47a;
+    .channel-tab-top { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; }
+    .channel-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .6; }
+    .channel-tab.is-active .channel-tab-dot { opacity: 1; box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 15%, transparent); }
+    .channel-tab-branch {
+      display: block; margin-top: 4px; padding-left: 14px; color: var(--ink-mute);
+      font: 10px 'JetBrains Mono', monospace; letter-spacing: .02em;
     }
-    .pc-icon svg { width: 20px; height: 20px; fill: currentColor; }
-    .pc-badge {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--ink-mute); padding: 4px 8px; border-radius: 6px;
-      background: rgba(255,240,220,0.05); border: 1px solid var(--line);
+    .channel-tab.is-active .channel-tab-branch { color: var(--brand-soft); }
+    .channel-status {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 16px; padding: 7px 10px;
+      border: 1px solid var(--line); border-radius: 999px; color: var(--ink-mute); font-size: 11px;
+      background: color-mix(in srgb, var(--surface-panel) 75%, transparent);
     }
-    .pc-title { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
-    .pc-title small { display: block; font-size: 12px; font-weight: 500; color: var(--ink-mute); margin-top: 4px; letter-spacing: 0; }
-    .pc-actions { margin-top: auto; display: flex; gap: 8px; }
-    .pc-actions .btn { flex: 1; padding: 10px 12px; font-size: 12px; border-radius: 10px; }
+    .channel-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,.55); }
 
-    /* CLI */
-    .cli-block {
-      display: flex; flex-direction: column; gap: 10px; padding: 20px;
-      border-radius: 16px; border: 1px solid var(--line); background: rgba(10,5,6,0.55); margin-bottom: 36px;
+    .web-client-section {
+      position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: center;
+      overflow: hidden; margin-bottom: 28px; padding: 28px; border: 1px solid var(--line-strong); border-radius: 22px;
+      background: var(--surface-card); box-shadow: var(--shadow-card);
+      transition: transform .28s ease, border-color .28s ease, background-color .35s ease, box-shadow .3s ease;
     }
-    .cli-head { display: flex; align-items: center; justify-content: space-between; }
-    .cli-head .eyebrow { color: var(--ink-dim); }
-    .cli-os-pills,
-    .cli-channel-pills {
-      display: flex; gap: 4px; padding: 3px;
-      background: rgba(255,240,220,0.04); border: 1px solid var(--line); border-radius: 8px;
+    .web-client-section::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(500px 220px at 100% 50%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%);
     }
-    .cli-os-pills button,
-    .cli-channel-pills button {
-      all: unset; font-size: 11px; font-weight: 600; color: var(--ink-mute);
-      padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s, color 0.15s;
+    .web-client-copy, .web-client-preview { position: relative; z-index: 1; }
+    .web-client-copy { min-width: 0; }
+    .web-client-copy .eyebrow { color: var(--brand-soft); }
+    .web-client-title { margin-top: 8px; font-size: clamp(22px, 3vw, 32px); letter-spacing: -.035em; font-weight: 800; }
+    .web-client-description { max-width: 520px; margin-top: 9px; color: var(--ink-dim); font-size: 13px; line-height: 1.55; }
+    .web-client-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; color: var(--ink-mute); font-size: 11px; }
+    .web-client-meta span { padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; }
+    .web-client-action { margin-top: 20px; }
+    .web-client-preview {
+      justify-self: end; width: 100%; max-width: 280px; aspect-ratio: 16 / 10; overflow: hidden;
+      border: 1px solid var(--line-strong); border-radius: 15px; background: var(--bg-0);
+      box-shadow: 0 18px 30px -20px rgba(0,0,0,.8);
     }
-    .cli-os-pills button.active,
-    .cli-channel-pills button.active { background: rgba(255,122,41,0.15); color: #ffb47a; }
-    .cli-line {
-      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-      border-radius: 12px; background: rgba(0,0,0,0.5); border: 1px solid var(--line);
-      font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #f4c48a;
+    .browser-glyph {
+      display: grid; place-items: center; width: 100%; height: 100%; padding: 12px;
+      color: var(--brand-soft);
     }
-    .cli-line .prompt { color: var(--brand); font-weight: 700; flex-shrink: 0; }
-    .cli-line .cmd { flex: 1; white-space: nowrap; overflow-x: auto; }
-    .cli-line .cmd::-webkit-scrollbar { height: 0; }
-    .cli-line .cmd .hl { color: #ffdba0; }
-    .copy-btn {
-      all: unset; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center;
-      cursor: pointer; color: var(--ink-dim); transition: background 0.15s, color 0.15s; flex-shrink: 0;
+    .browser-glyph svg { display: block; width: 100%; height: 100%; overflow: visible; }
+    .browser-window { fill: color-mix(in srgb, var(--bg-0) 86%, transparent); stroke: var(--line-strong); stroke-width: 1.5; }
+    .browser-toolbar { stroke: var(--line); stroke-width: 1.5; }
+    .browser-toolbar-dot { fill: var(--brand); opacity: .85; }
+    .browser-address { fill: color-mix(in srgb, var(--ink) 5%, transparent); stroke: var(--line); stroke-width: 1; }
+    .browser-icon-shell { fill: color-mix(in srgb, var(--brand) 11%, transparent); stroke: color-mix(in srgb, var(--brand) 35%, transparent); stroke-width: 1.5; }
+    .browser-icon-stroke { fill: none; stroke: var(--brand-soft); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .browser-icon-fill { fill: var(--brand-soft); }
+
+    .client-groups { display: grid; gap: 24px; }
+    .client-group {
+      padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: color-mix(in srgb, var(--surface-panel) 78%, transparent);
+      transition: border-color .3s ease, background-color .35s ease;
     }
-    .copy-btn:hover { background: rgba(255,240,220,0.08); color: var(--ink); }
-    .copy-btn svg { width: 15px; height: 15px; }
-    .copy-btn.copied { color: #4ade80; }
+    .client-group-header { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .client-group-kicker { color: var(--brand-soft); font: 10px 'JetBrains Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .client-group-title { margin-top: 6px; font-size: 20px; letter-spacing: -.025em; font-weight: 800; }
+    .client-group-description { margin-top: 5px; color: var(--ink-mute); font-size: 12px; line-height: 1.45; }
+    .client-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .mobile-group .client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .client-card {
+      position: relative; display: flex; min-height: 224px; flex-direction: column; gap: 17px; overflow: hidden;
+      padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-card);
+      color: var(--ink); text-align: left; cursor: pointer;
+      transition: transform .24s ease, border-color .24s ease, background-color .32s ease, box-shadow .28s ease, opacity .25s ease;
+    }
+    .client-card::before {
+      content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 2px; border-radius: 0 0 4px 4px;
+      background: linear-gradient(90deg, transparent, var(--brand), transparent); opacity: 0;
+      transition: opacity .24s ease;
+    }
+    .client-card.is-active { border-color: color-mix(in srgb, var(--brand) 48%, transparent); box-shadow: 0 18px 34px -28px var(--brand-glow); }
+    .client-card.is-active::before { opacity: 1; }
+    .client-card.disabled { opacity: .52; cursor: not-allowed; }
+    .client-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .client-icon {
+      width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0;
+      background: color-mix(in srgb, var(--brand) 13%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+      color: var(--brand-soft);
+    }
+    .client-icon svg { width: 21px; height: 21px; fill: currentColor; }
+    .client-card-state { display: inline-flex; align-items: center; gap: 5px; padding-top: 5px; color: #4ade80; font: 10px 'JetBrains Mono', monospace; white-space: nowrap; }
+    .client-card-state .state-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .client-card.is-pending .client-card-state { color: #fbbf24; }
+    .client-card.is-pending .state-dot { box-shadow: 0 0 8px rgba(251,191,36,.55); }
+    .client-card-title { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+    .client-card-subtitle { margin-top: 5px; color: var(--ink-mute); font-size: 12px; line-height: 1.45; }
+    .client-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; }
+    .client-version { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--brand-soft); font: 11px 'JetBrains Mono', monospace; }
+    .client-version svg { flex-shrink: 0; }
+    .client-version-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-card-action { flex-shrink: 0; padding: 10px 13px; font-size: 12px; border-radius: 10px; }
+    .client-card-action.is-pending { opacity: .7; }
+    .client-card-action svg { width: 14px; height: 14px; }
+    .client-card .coming-soon-badge { color: var(--ink-mute); background: color-mix(in srgb, var(--ink-mute) 12%, transparent); border-color: var(--line); }
+
+    @media (hover: hover) {
+      .channel-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--brand) 9%, transparent); }
+      .client-card:not(.disabled):hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--brand) 35%, transparent); box-shadow: 0 18px 34px -26px var(--brand-glow); }
+      .client-card:not(.disabled):hover::before { opacity: .7; }
+    }
 
     /* Dev block */
     .dev-block {
       display: flex; align-items: center; gap: 18px; padding: 18px 22px;
-      border-radius: 16px; border: 1px solid var(--line); background: rgba(10,5,6,0.55);
+      border-radius: 16px; border: 1px solid var(--line); background: var(--surface-panel);
       margin-bottom: 36px; position: relative;
     }
     .dev-block::before {
       content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-      background: linear-gradient(135deg, rgba(255,122,41,0.25), transparent 40%, transparent 60%, rgba(255,122,41,0.12));
+      background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 30%, transparent), transparent 40%, transparent 60%, color-mix(in srgb, var(--brand) 14%, transparent));
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
     }
     .dev-block-icon {
       width: 38px; height: 38px; border-radius: 10px;
-      background: rgba(255,122,41,0.1); border: 1px solid rgba(255,122,41,0.22);
-      color: #ffb47a; display: grid; place-items: center; flex-shrink: 0;
+      background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
+      color: var(--brand-soft); display: grid; place-items: center; flex-shrink: 0;
     }
     .dev-block-text { flex: 1; min-width: 0; }
     .dev-block-title {
@@ -344,7 +466,7 @@
       margin-bottom: 3px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
     }
     .dev-block-title .eyebrow-mini {
-      font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #ffb47a; opacity: 0.85;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-soft); opacity: 0.85;
     }
     .dev-block-sub { font-size: 12.5px; color: var(--ink-mute); line-height: 1.45; }
     .dev-block-btn { flex-shrink: 0; padding: 9px 14px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
@@ -354,9 +476,9 @@
     .features-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 40px; }
     .feature {
       padding: 18px; border-radius: 14px; border: 1px solid var(--line);
-      background: rgba(255,240,220,0.02); display: flex; flex-direction: column; gap: 8px;
+      background: color-mix(in srgb, var(--surface-panel) 55%, transparent); display: flex; flex-direction: column; gap: 8px;
     }
-    .feature .f-icon { width: 28px; height: 28px; border-radius: 8px; background: rgba(255,122,41,0.08); color: #ffb47a; display: grid; place-items: center; }
+    .feature .f-icon { width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--brand-soft); display: grid; place-items: center; }
     .feature .f-icon svg { width: 14px; height: 14px; fill: currentColor; }
     .feature .f-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
     .feature .f-body { font-size: 12px; line-height: 1.45; color: var(--ink-mute); }
@@ -377,13 +499,13 @@
     /* ===== CHAT WIDGET ===== */
     .chat-support-btn {
       position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px;
-      border-radius: 50%; background: linear-gradient(135deg, #ff8a3c, #e65c12);
+      border-radius: 50%; background: linear-gradient(135deg, var(--button-top), var(--button-end));
       border: none; cursor: pointer; box-shadow: var(--shadow-brand);
       display: flex; align-items: center; justify-content: center;
       transition: transform 0.2s, box-shadow 0.2s; z-index: 1000; animation: chatPulse 3s infinite;
     }
     .chat-support-btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 12px 30px rgba(255,122,41,0.6); }
-    .chat-support-btn.chat-btn-active { animation: none; background: linear-gradient(135deg, #c0601a, #a05016); }
+    .chat-support-btn.chat-btn-active { animation: none; background: linear-gradient(135deg, var(--brand-2), var(--brand-deep)); }
     .chat-support-btn svg { width: 24px; height: 24px; fill: white; }
     @keyframes chatPulse {
       0%   { box-shadow: var(--shadow-brand); }
@@ -393,7 +515,7 @@
 
     .chat-dialog {
       position: fixed; bottom: 96px; right: 24px; width: 370px; max-height: 500px;
-      background: rgba(28,13,10,0.97); backdrop-filter: blur(24px);
+      background: color-mix(in srgb, var(--bg-2) 96%, transparent); backdrop-filter: blur(24px);
       border: 1px solid var(--line-strong); border-radius: 20px; box-shadow: var(--shadow-card);
       z-index: 1000; display: none; flex-direction: column; overflow: hidden;
       animation: chatSlideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -413,7 +535,7 @@
     .chat-close-btn {
       background: none; border: none; color: var(--ink-mute); font-size: 22px; cursor: pointer;
       width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-      border-radius: 8px; transition: 0.2s; line-height: 1;
+      border-radius: 8px; transition: background-color .2s ease, color .2s ease; line-height: 1;
     }
     .chat-close-btn:hover { background: rgba(255,255,255,0.1); color: var(--ink); }
     .chat-messages {
@@ -451,6 +573,10 @@
       .features-strip { grid-template-columns: repeat(2, 1fr); }
       .home-nav { margin-bottom: 40px; }
       .hero-title { font-size: clamp(40px, 10vw, 64px); }
+      .channel-head { align-items: stretch; flex-direction: column; gap: 18px; }
+      .channel-switcher { min-width: 0; width: 100%; }
+      .web-client-section { grid-template-columns: minmax(0, 1fr) 220px; }
+      .client-grid, .mobile-group .client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 700px) {
       .dev-block { flex-direction: column; align-items: flex-start; gap: 14px; }
@@ -495,32 +621,25 @@
       .preview-frame.peek-left  { transform: translate(-6%, 4%) rotate(-3deg) scale(0.88); }
       .preview-frame.peek-right { transform: translate(6%, -4%) rotate(3deg) scale(0.88); }
       .device-tag { top: 10px; left: 10px; padding: 5px 8px; font-size: 10px; }
-      .preview-caption {
-        right: 0; left: 0; bottom: -14px; max-width: none;
-        font-size: 10.5px; padding: 8px 12px; border-radius: 12px; text-align: center;
-      }
+      .preview-caption { display: none; }
 
-      /* Downloads cards */
-      .downloads-section { gap: 12px; margin-bottom: 32px; }
-      .platform-card {
-        min-width: 230px; padding: 18px; border-radius: 16px;
-        min-height: 178px; gap: 12px;
-      }
-      .pc-title { font-size: 17px; }
-      .pc-title small { font-size: 11px; }
-      .pc-icon { width: 36px; height: 36px; border-radius: 10px; }
-      .pc-icon svg { width: 18px; height: 18px; }
-      .pc-actions .btn { padding: 9px 10px; font-size: 11.5px; }
-
-      /* CLI block */
-      .cli-block { padding: 14px; border-radius: 14px; gap: 10px; margin-bottom: 28px; }
-      .cli-head { flex-direction: column; align-items: stretch; gap: 10px; }
-      .cli-head > div { flex-wrap: wrap; gap: 8px; }
-      .cli-os-pills, .cli-channel-pills { flex-wrap: wrap; }
-      .cli-os-pills button, .cli-channel-pills button { font-size: 10.5px; padding: 4px 8px; }
-      .cli-line { padding: 12px; gap: 8px; font-size: 11.5px; border-radius: 10px; }
-      .cli-line .cmd { font-size: 11.5px; }
-      .copy-btn { width: 28px; height: 28px; }
+      /* Client groups */
+      .client-hub { margin-bottom: 32px; }
+      .channel-title { font-size: clamp(27px, 8vw, 36px); }
+      .channel-description { font-size: 13px; }
+      .channel-switcher { border-radius: 14px; }
+      .channel-tab { padding: 10px 9px; }
+      .web-client-section { grid-template-columns: 1fr; padding: 20px; border-radius: 17px; }
+      .web-client-preview { display: none; }
+      .client-group { padding: 18px; border-radius: 17px; }
+      .client-group-header { align-items: flex-start; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+      .client-grid, .mobile-group .client-grid { grid-template-columns: 1fr; gap: 12px; }
+      .client-card { min-height: 190px; padding: 17px; border-radius: 15px; gap: 14px; }
+      .client-card-title { font-size: 17px; }
+      .client-card-subtitle { font-size: 11.5px; }
+      .client-icon { width: 37px; height: 37px; border-radius: 11px; }
+      .client-icon svg { width: 19px; height: 19px; }
+      .client-card-action { padding: 9px 11px; font-size: 11.5px; }
 
       /* Dev block */
       .dev-block { padding: 16px; border-radius: 14px; }
@@ -544,8 +663,11 @@
       .features-strip { grid-template-columns: 1fr; }
       .hero-title { font-size: clamp(34px, 12.5vw, 50px); }
       .hero-meta { font-size: 10.5px; }
-      .cli-line { flex-wrap: nowrap; }
-      .cli-line .cmd { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .channel-tab { padding: 9px 7px; }
+      .channel-tab-top { font-size: 11px; }
+      .channel-tab-branch { font-size: 9px; padding-left: 12px; }
+      .client-card-footer { align-items: flex-start; flex-direction: column; gap: 10px; }
+      .client-card-action { width: 100%; }
     }
 
     /* iOS safe-area for notched devices */
@@ -571,22 +693,18 @@
     }
     .lang-btn:hover { color: var(--ink); }
 
-    /* ===== VERSION BLOCK ===== */
-    .pc-version-block {
-      display: none; flex-direction: column; gap: 3px; align-items: flex-end;
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
     }
-    .pc-version-block.visible { display: flex; }
-    .pc-version-row {
-      display: flex; align-items: center; gap: 4px;
-      font-size: 10px; font-weight: 600; color: #ffb47a;
-      font-family: 'JetBrains Mono', monospace; white-space: nowrap;
-    }
-    .pc-version-row svg { flex-shrink: 0; }
-    .pc-version-beta { color: var(--ink-mute); }
   </style>
   <noscript><style>body { opacity: 1 !important; }</style></noscript>
 </head>
-<body>
+<body data-channel="release">
 
   <div class="bg-mesh"></div>
   <div class="grid-overlay"></div>
@@ -625,8 +743,8 @@
           </h1>
           <p class="hero-sub" id="heroSub">
             Мессенджер, который <b style="color: var(--ink);">работает</b>, <s>и слава богу</s>.<br>
-            <span style="color: #ffb47a;">Без рекламы, без трекинга</span>, без лишнего шума.<br>
-            Просто <span style="color: #ffb47a;">отправляй сообщения</span> — друзьям, себе, кому угодно.
+            <span style="color: var(--brand-soft);">Без рекламы, без трекинга</span>, без лишнего шума.<br>
+            Просто <span style="color: var(--brand-soft);">отправляй сообщения</span> — друзьям, себе, кому угодно.
           </p>
           <div class="hero-meta">
             <span id="heroMeta1"><b>Лёгкий</b>&nbsp;нативный&nbsp;клиент</span>
@@ -665,165 +783,178 @@
         </div>
       </div>
 
-      <div class="downloads-section">
-
-        <div class="platform-card is-active" data-platform="windows">
-          <div class="pc-header">
-            <div class="pc-icon">
-              <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-            </div>
-            <div class="pc-version-block" id="versionBlockWindows">
-              <div class="pc-version-row">
-                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg>
-                <span id="vBadgeWinRelease"></span>
-              </div>
-              <div class="pc-version-row pc-version-beta">
-                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M6 2h12v2l-4 7v8l-4 2V11L6 4V2z"/></svg>
-                <span id="vBadgeWinBeta"></span>
-              </div>
-            </div>
+      <section class="client-hub" id="clientHub" aria-labelledby="clientTitle">
+        <div class="channel-head">
+          <div class="channel-head-copy">
+            <span class="eyebrow" id="clientEyebrow">Канал сборки</span>
+            <h2 class="channel-title" id="clientTitle">Спокойный проверенный релиз</h2>
+            <p class="channel-description" id="clientDescription">Стабильные версии из ветки master с чистым светлым оформлением.</p>
+            <div class="channel-status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span></div>
           </div>
-          <div class="pc-title">
-            Windows
-            <small id="winSubtitle">Portable · x64 · без установщика</small>
-          </div>
-          <div class="pc-actions">
-            <a href="https://storage.barkfluff.com/get/barkfluffwindows" class="btn btn-primary" id="winRelBtn">Релиз</a>
-            <a href="https://storage.barkfluff.com/get/barkfluffwindows/beta" class="btn btn-ghost" id="winBetaBtn">Бета</a>
+          <div class="channel-switcher" role="tablist" aria-label="Канал сборки">
+            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="nightly">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Nightly</span></span>
+              <span class="channel-tab-branch">nightly</span>
+            </button>
+            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="dev">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Dev</span></span>
+              <span class="channel-tab-branch">dev</span>
+            </button>
+            <button class="channel-tab is-active" type="button" role="tab" aria-selected="true" data-channel="release">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Release</span></span>
+              <span class="channel-tab-branch">master</span>
+            </button>
           </div>
         </div>
 
-        <div class="platform-card" data-platform="android">
-          <div class="pc-header">
-            <div class="pc-icon">
-              <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
+        <section class="web-client-section" data-platform="web" aria-labelledby="webTitle">
+          <div class="web-client-copy">
+            <span class="eyebrow" id="webEyebrow">Веб-клиент</span>
+            <h3 class="web-client-title" id="webTitle">Barkfluff в браузере</h3>
+            <p class="web-client-description" id="webDescription">Открывается сразу в браузере и всегда использует одну актуальную ссылку.</p>
+            <div class="web-client-meta">
+              <span id="webSubtitle">Любой современный браузер</span>
+              <span id="webFixedLabel">Единая ссылка</span>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-              <div class="pc-version-block" id="versionBlockAndroid">
-                <div class="pc-version-row">
-                  <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg>
-                  <span id="vBadgeAndRelease"></span>
+            <a href="https://web.barkfluff.com" target="_blank" rel="noopener" class="btn btn-primary web-client-action" id="webOpenBtn"><span id="webOpenLabel">Открыть</span><span aria-hidden="true">→</span></a>
+          </div>
+          <div class="web-client-preview">
+            <div class="browser-glyph" aria-hidden="true">
+              <svg viewBox="0 0 320 200" fill="none">
+                <rect class="browser-window" x="18" y="18" width="284" height="164" rx="22" />
+                <path class="browser-toolbar" d="M18 62h284" />
+                <circle class="browser-toolbar-dot" cx="42" cy="40" r="5" />
+                <circle class="browser-toolbar-dot" cx="58" cy="40" r="5" opacity=".55" />
+                <circle class="browser-toolbar-dot" cx="74" cy="40" r="5" opacity=".3" />
+                <rect class="browser-address" x="94" y="32" width="132" height="16" rx="8" />
+                <g transform="translate(90 121)">
+                  <circle class="browser-icon-shell" r="27" />
+                  <path class="browser-icon-stroke" d="M-13-4a14 14 0 0 1 25-8M-12 5a14 14 0 0 0 23 8M-4-15l7 12-13 1" />
+                  <circle class="browser-icon-fill" cx="-1" cy="-1" r="3" />
+                </g>
+                <g transform="translate(143 121)">
+                  <circle class="browser-icon-shell" r="27" />
+                  <path class="browser-icon-stroke" d="M-11 8c-5-8-2-18 7-22 8-4 18 0 21 8-5-3-10-3-14 1-4 3-5 8-3 13-4 2-8 2-11 0z" />
+                  <path class="browser-icon-fill" d="M7-12c-5 0-10 4-11 9 4-2 8-1 11 2 2 2 3 5 3 8 6-4 8-11 4-16-2-2-4-3-7-3z" opacity=".7" />
+                </g>
+                <g transform="translate(196 121)">
+                  <circle class="browser-icon-shell" r="27" />
+                  <circle class="browser-icon-stroke" r="13" />
+                  <path class="browser-icon-stroke" d="M0-13L-3 3l10 7M0-13l-4 4" />
+                </g>
+                <g transform="translate(249 121)">
+                  <circle class="browser-icon-shell" r="27" />
+                  <path class="browser-icon-stroke" d="M15-5C11-14-1-17-10-11c-6 4-8 11-5 17 3-5 8-8 14-7 7 1 11 0 16-4z" />
+                  <path class="browser-icon-fill" d="M-15 6c5 4 12 5 18 2 5-2 9-6 12-11-5 4-9 5-16 4-6-1-11 1-14 5z" opacity=".7" />
+                </g>
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <div class="client-groups">
+          <section class="client-group" data-client-group="desktop" aria-labelledby="desktopTitle">
+            <div class="client-group-header">
+              <div>
+                <span class="client-group-kicker" id="desktopKicker">01 / Desktop</span>
+                <h3 class="client-group-title" id="desktopTitle">Настольные приложения</h3>
+                <p class="client-group-description" id="desktopDescription">Нативные сборки для компьютера.</p>
+              </div>
+            </div>
+            <div class="client-grid">
+              <article class="client-card is-active" data-platform="windows" data-client="windows" tabindex="0">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                  </div>
+                  <span class="client-card-state" id="winBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
                 </div>
-                <div class="pc-version-row pc-version-beta">
-                  <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M6 2h12v2l-4 7v8l-4 2V11L6 4V2z"/></svg>
-                  <span id="vBadgeAndBeta"></span>
+                <div>
+                  <h4 class="client-card-title" id="winTitle">Windows WinUI</h4>
+                  <p class="client-card-subtitle" id="winSubtitle">WinUI 3 · x64 · Windows 10+</p>
                 </div>
+                <div class="client-card-footer">
+                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeWin">—</span></span>
+                  <a href="https://storage.barkfluff.com/get/barkfluffwinui/release" class="btn btn-primary client-card-action" id="winDownloadBtn"><span id="winDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
+                </div>
+              </article>
+
+              <article class="client-card" data-platform="macos" data-client="macos" tabindex="0">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  </div>
+                  <span class="client-card-state" id="macosBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
+                </div>
+                <div>
+                  <h4 class="client-card-title" id="macosTitle">macOS</h4>
+                  <p class="client-card-subtitle" id="macosSubtitle">macOS 12+ · Intel &amp; Apple Silicon</p>
+                </div>
+                <div class="client-card-footer">
+                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeMac">—</span></span>
+                  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release" class="btn btn-primary client-card-action" id="macosDownloadBtn"><span id="macosDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
+                </div>
+              </article>
+
+              <article class="client-card disabled" data-platform="linux" aria-disabled="true">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.117.779.567 1.563 1.182 2.083.267.222.557.393.882.507.154-.789.132-1.81.069-2.508-.063-.697-.051-1.133.062-1.518.13-.427.477-.862.722-1.174.255-.325.463-.622.569-.934.109-.325.07-.624-.048-.89-.192-.43-.57-.671-.943-.895-.416-.246-.832-.476-.972-.924-.195-.607.207-1.282.64-1.862.386-.516.826-.997 1.293-1.47 1.048-1.047 2.153-2.13 2.668-3.826.233-.778.176-1.57.021-2.292A10.028 10.028 0 0 0 12.504 0zm4.682 3.18c.277.025.57.086.85.22.538.254.993.733 1.25 1.35.256.609.31 1.304.25 2.007-.137 1.597-.9 3.116-1.648 4.378-.52.876-1.068 1.74-1.46 2.657-.373.875-.54 1.79-.35 2.713.142.694.49 1.368 1.054 1.89.277.256.585.455.9.614-.177-1.162-.187-2.412-.1-3.576.088-1.178.296-2.293.536-3.313.25-1.043.53-2.016.793-2.995.256-.955.494-1.916.588-2.898.1-1.023-.017-2.057-.42-2.951-.192-.437-.45-.826-.768-1.09a2.32 2.32 0 0 0-.475-.006zm-6.97 6.77c.137.097.268.213.39.354.437.498.684 1.215.684 2.035 0 .655-.152 1.361-.462 2.018-.297.626-.71 1.197-1.177 1.632l-.018.018a6.36 6.36 0 0 0-.51.562c-.21.278-.375.573-.45.877-.085.346-.06.714.017 1.147.094.526.243 1.11.273 1.742.039.84-.073 1.732-.486 2.554C7.39 23.623 6.432 24 5.42 24a3.48 3.48 0 0 1-1.54-.36c-.473-.234-.91-.575-1.24-1-.33-.427-.55-.923-.612-1.45-.063-.527.018-1.083.255-1.605.233-.515.6-.993 1.046-1.397.44-.4.957-.72 1.475-.965.519-.244 1.04-.413 1.517-.527.48-.115.917-.174 1.26-.208.345-.034.598-.037.738-.042.28.083.514.232.703.408-.178.062-.395.121-.627.183-.476.13-.995.285-1.468.475-.48.19-.915.424-1.249.69-.335.266-.568.561-.663.861-.095.3-.044.613.093.892.137.278.378.52.679.699.303.18.666.295 1.056.315.397.02.815-.057 1.188-.225.367-.167.683-.428.889-.767.208-.342.31-.77.225-1.206a4.45 4.45 0 0 0-.273-.892c-.145-.36-.322-.724-.457-1.101-.139-.39-.224-.797-.183-1.218.04-.416.202-.84.481-1.216.278-.375.659-.7 1.092-.94.214-.12.434-.214.659-.278z"/></svg>
+                  </div>
+                  <span class="client-card-state coming-soon-badge" id="linuxBuildStatus">Скоро</span>
+                </div>
+                <div>
+                  <h4 class="client-card-title" id="linuxTitle">Linux</h4>
+                  <p class="client-card-subtitle" id="linuxSubtitle">В разработке</p>
+                </div>
+                <div class="client-card-footer"><span class="client-version">—</span><span class="btn btn-ghost client-card-action" id="linuxUnavail">Недоступно</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="client-group mobile-group" data-client-group="mobile" aria-labelledby="mobileTitle">
+            <div class="client-group-header">
+              <div>
+                <span class="client-group-kicker" id="mobileKicker">02 / Mobile</span>
+                <h3 class="client-group-title" id="mobileTitle">Мобильные приложения</h3>
+                <p class="client-group-description" id="mobileDescription">Сборки для телефона и планшета.</p>
               </div>
             </div>
-          </div>
-          <div class="pc-title">
-            Android
-            <small id="andSubtitle">Android 12+ · arm64-v8a</small>
-          </div>
-          <div class="pc-actions">
-            <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-primary" id="andRelBtn">Релиз</a>
-            <a href="https://storage.barkfluff.com/get/barkfluffkotlin/beta" class="btn btn-ghost" id="andBetaBtn">Бета</a>
-          </div>
-        </div>
+            <div class="client-grid">
+              <article class="client-card" data-platform="android" data-client="android" tabindex="0">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
+                  </div>
+                  <span class="client-card-state" id="andBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
+                </div>
+                <div>
+                  <h4 class="client-card-title" id="andTitle">Android</h4>
+                  <p class="client-card-subtitle" id="andSubtitle">Android 12+ · arm64-v8a</p>
+                </div>
+                <div class="client-card-footer">
+                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeAnd">—</span></span>
+                  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-primary client-card-action" id="andDownloadBtn"><span id="andDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
+                </div>
+              </article>
 
-        <div class="platform-card" data-platform="web">
-          <div class="pc-header">
-            <div class="pc-icon">
-              <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c1.025 0 2.007.19 2.916.537-.057.15-.12.3-.19.447-.33.693-.734 1.356-1.19 1.974C13.128 7.31 12.586 7.5 12 7.5s-1.128-.19-1.536-.542c-.456-.618-.86-1.281-1.19-1.974-.07-.147-.133-.297-.19-.447A9.961 9.961 0 0 1 12 4zm-3.84.95c.07.165.143.329.222.49.394.826.875 1.601 1.42 2.31C9.197 8.37 8.49 9.12 7.997 10H4.27A8.016 8.016 0 0 1 8.16 4.95zm7.68 0A8.016 8.016 0 0 1 19.73 10h-3.727c-.493-.88-1.2-1.63-1.805-2.25.545-.709 1.026-1.484 1.42-2.31.079-.161.152-.325.222-.49zM4.07 12h3.93a13.21 13.21 0 0 0 0 2H4.07A8.1 8.1 0 0 1 4 12c0-.337.024-.668.07-.997V12zm5.93 0h4a11.21 11.21 0 0 1 0 2H10a11.21 11.21 0 0 1 0-2zm6 0h3.93c.046.329.07.66.07.997V12a8.1 8.1 0 0 1-.07 1.003H16a13.21 13.21 0 0 0 0-2z"/></svg>
+              <article class="client-card disabled" data-platform="ios" aria-disabled="true">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  </div>
+                  <span class="client-card-state coming-soon-badge" id="iosBuildStatus">Скоро</span>
+                </div>
+                <div>
+                  <h4 class="client-card-title" id="iosTitle">iOS</h4>
+                  <p class="client-card-subtitle" id="iosSubtitle">В разработке</p>
+                </div>
+                <div class="client-card-footer"><span class="client-version">—</span><span class="btn btn-ghost client-card-action" id="iosUnavail">Недоступно</span></div>
+              </article>
             </div>
-          </div>
-          <div class="pc-title">
-            Веб
-            <small id="webSubtitle">Любой современный браузер</small>
-          </div>
-          <div class="pc-actions">
-            <a href="https://web.barkfluff.com" target="_blank" class="btn btn-primary" id="webOpenBtn">Открыть →</a>
-          </div>
+          </section>
         </div>
-
-        <div class="platform-card" data-platform="macos">
-          <div class="pc-header">
-            <div class="pc-icon">
-              <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-            </div>
-            <div class="pc-version-block" id="versionBlockMacos">
-              <div class="pc-version-row">
-                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg>
-                <span id="vBadgeMacRelease"></span>
-              </div>
-              <div class="pc-version-row pc-version-beta">
-                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M6 2h12v2l-4 7v8l-4 2V11L6 4V2z"/></svg>
-                <span id="vBadgeMacBeta"></span>
-              </div>
-            </div>
-          </div>
-          <div class="pc-title">
-            macOS
-            <small id="macosSubtitle">macOS 12+ · Intel &amp; Apple Silicon</small>
-          </div>
-          <div class="pc-actions">
-            <a href="https://storage.barkfluff.com/get/barkfluffmacos/release" class="btn btn-primary" id="macosRelBtn">Релиз</a>
-            <a href="https://storage.barkfluff.com/get/barkfluffmacos/beta" class="btn btn-ghost" id="macosBetaBtn">Бета</a>
-          </div>
-        </div>
-
-        <div class="platform-card disabled" data-platform="ios">
-          <div class="pc-header">
-            <div class="pc-icon">
-              <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-            </div>
-            <span class="pc-badge">Скоро</span>
-          </div>
-          <div class="pc-title">
-            iOS
-            <small id="iosSubtitle">В разработке</small>
-          </div>
-          <div class="pc-actions">
-            <span class="btn btn-ghost" style="opacity:0.5;" id="iosUnavail">Недоступно</span>
-          </div>
-        </div>
-
-        <div class="platform-card disabled" data-platform="linux">
-          <div class="pc-header">
-            <div class="pc-icon">
-              <svg viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.117.779.567 1.563 1.182 2.083.267.222.557.393.882.507.154-.789.132-1.81.069-2.508-.063-.697-.051-1.133.062-1.518.13-.427.477-.862.722-1.174.255-.325.463-.622.569-.934.109-.325.07-.624-.048-.89-.192-.43-.57-.671-.943-.895-.416-.246-.832-.476-.972-.924-.195-.607.207-1.282.64-1.862.386-.516.826-.997 1.293-1.47 1.048-1.047 2.153-2.13 2.668-3.826.233-.778.176-1.57.021-2.292A10.028 10.028 0 0 0 12.504 0zm4.682 3.18c.277.025.57.086.85.22.538.254.993.733 1.25 1.35.256.609.31 1.304.25 2.007-.137 1.597-.9 3.116-1.648 4.378-.52.876-1.068 1.74-1.46 2.657-.373.875-.54 1.79-.35 2.713.142.694.49 1.368 1.054 1.89.277.256.585.455.9.614-.177-1.162-.187-2.412-.1-3.576.088-1.178.296-2.293.536-3.313.25-1.043.53-2.016.793-2.995.256-.955.494-1.916.588-2.898.1-1.023-.017-2.057-.42-2.951-.192-.437-.45-.826-.768-1.09a2.32 2.32 0 0 0-.475-.006zm-6.97 6.77c.137.097.268.213.39.354.437.498.684 1.215.684 2.035 0 .655-.152 1.361-.462 2.018-.297.626-.71 1.197-1.177 1.632l-.018.018a6.36 6.36 0 0 0-.51.562c-.21.278-.375.573-.45.877-.085.346-.06.714.017 1.147.094.526.243 1.11.273 1.742.039.84-.073 1.732-.486 2.554C7.39 23.623 6.432 24 5.42 24a3.48 3.48 0 0 1-1.54-.36c-.473-.234-.91-.575-1.24-1-.33-.427-.55-.923-.612-1.45-.063-.527.018-1.083.255-1.605.233-.515.6-.993 1.046-1.397.44-.4.957-.72 1.475-.965.519-.244 1.04-.413 1.517-.527.48-.115.917-.174 1.26-.208.345-.034.598-.037.738-.042.28.083.514.232.703.408-.178.062-.395.121-.627.183-.476.13-.995.285-1.468.475-.48.19-.915.424-1.249.69-.335.266-.568.561-.663.861-.095.3-.044.613.093.892.137.278.378.52.679.699.303.18.666.295 1.056.315.397.02.815-.057 1.188-.225.367-.167.683-.428.889-.767.208-.342.31-.77.225-1.206a4.45 4.45 0 0 0-.273-.892c-.145-.36-.322-.724-.457-1.101-.139-.39-.224-.797-.183-1.218.04-.416.202-.84.481-1.216.278-.375.659-.7 1.092-.94.214-.12.434-.214.659-.278z"/></svg>
-            </div>
-            <span class="pc-badge">Скоро</span>
-          </div>
-          <div class="pc-title">
-            Linux
-            <small id="linuxSubtitle">В разработке</small>
-          </div>
-          <div class="pc-actions">
-            <span class="btn btn-ghost" style="opacity:0.5;" id="linuxUnavail">Недоступно</span>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="cli-block">
-        <div class="cli-head">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="eyebrow" id="cliHeading">Установка одной строкой</span>
-            <span class="pc-badge" id="cliRecommended">Рекомендуется</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="cli-channel-pills" id="cliChannelPills">
-              <button class="active" data-channel="release">Release</button>
-              <button data-channel="beta">Beta</button>
-            </div>
-            <div class="cli-os-pills" id="cliPills">
-              <button class="active" data-os="windows">PowerShell</button>
-              <button data-os="macos">macOS</button>
-              <button data-os="linux">Linux</button>
-            </div>
-          </div>
-        </div>
-        <div class="cli-line">
-          <span class="prompt">$</span>
-          <div class="cmd" id="cliCmd"><span class="hl">powershell</span> -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"</div>
-          <button class="copy-btn" id="cliCopyBtn" title="Скопировать">
-            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <svg class="icon-check" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </button>
-        </div>
-      </div>
-
+      </section>
       <div class="dev-block">
         <div class="dev-block-icon">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
@@ -903,8 +1034,8 @@
     </div>
   </div>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-    /* Platform switcher */
+  <script>
+    /* Platform preview switcher */
     const previewOrder = ['windows', 'android', 'web'];
     let currentPlatform = 'windows';
 
@@ -925,18 +1056,21 @@
         });
       }
 
-      document.querySelectorAll('.platform-card').forEach(c => {
+      document.querySelectorAll('.client-card').forEach(c => {
         c.classList.toggle('is-active', c.dataset.platform === platform);
       });
-
-      const osMap = { windows: 'windows', macos: 'macos', android: null, web: null };
-      if (osMap[platform]) setCliOs(osMap[platform]);
     }
 
-    document.querySelectorAll('.platform-card').forEach(card => {
+    document.querySelectorAll('.client-card:not(.disabled)').forEach(card => {
       card.addEventListener('click', e => {
         if (e.target.closest('a')) return;
         selectPlatform(card.dataset.platform);
+      });
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectPlatform(card.dataset.platform);
+        }
       });
     });
 
@@ -947,66 +1081,6 @@
       if (e.key === 'ArrowRight') selectPlatform(previewOrder[(idx + 1) % previewOrder.length]);
     });
 
-    /* CLI switcher */
-    let currentChannel = 'release';
-    let currentOs = 'windows';
-
-    const cliCommands = {
-      windows: {
-        release: { prompt: '$', hl: 'powershell', rest: ' -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"' },
-        beta:    { prompt: '$', hl: 'powershell', rest: ' -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/installbeta.ps1 -UseBasicParsing | iex"' },
-      },
-      macos: {
-        release: { prompt: '#', hl: '/bin/bash', rest: ' -c "$(curl -fsSL https://barkfluff.com/install.sh)"' },
-        beta:    { prompt: '#', hl: '/bin/bash', rest: ' -c "$(curl -fsSL https://barkfluff.com/installbeta.sh)"' },
-      },
-      linux: {
-        release: { prompt: '#', hl: '', rest: null },
-        beta:    { prompt: '#', hl: '', rest: null }
-      }
-    };
-
-    function setCliOs(os) {
-      currentOs = os;
-      const c = cliCommands[os]?.[currentChannel];
-      if (!c) return;
-      document.querySelectorAll('#cliPills button').forEach(b => b.classList.toggle('active', b.dataset.os === os));
-      const el = document.getElementById('cliCmd');
-      const promptEl = document.querySelector('.cli-line .prompt');
-      if (promptEl) promptEl.textContent = c.prompt;
-      const restText = c.rest !== null ? c.rest
-        : ' ' + ((window.__t && window.__t('cliUnavailable')) || 'install command not yet available — coming soon');
-      el.innerHTML = c.hl
-        ? '<span class="hl">' + c.hl + '</span>' + restText.replace(/</g, '&lt;')
-        : '<span style="color:var(--ink-mute);font-style:italic;">' + restText.trim().replace(/</g, '&lt;') + '</span>';
-    }
-
-    function setChannel(channel) {
-      currentChannel = channel;
-      document.querySelectorAll('#cliChannelPills button').forEach(b => b.classList.toggle('active', b.dataset.channel === channel));
-      setCliOs(currentOs);
-    }
-
-    document.querySelectorAll('#cliPills button').forEach(b => {
-      b.addEventListener('click', () => setCliOs(b.dataset.os));
-    });
-
-    document.querySelectorAll('#cliChannelPills button').forEach(b => {
-      b.addEventListener('click', () => setChannel(b.dataset.channel));
-    });
-
-    document.getElementById('cliCopyBtn').addEventListener('click', e => {
-      navigator.clipboard.writeText(document.getElementById('cliCmd').innerText).catch(() => {});
-      const btn = e.currentTarget;
-      btn.classList.add('copied');
-      btn.querySelector('.icon-copy').style.display = 'none';
-      btn.querySelector('.icon-check').style.display = 'block';
-      setTimeout(() => {
-        btn.classList.remove('copied');
-        btn.querySelector('.icon-copy').style.display = 'block';
-        btn.querySelector('.icon-check').style.display = 'none';
-      }, 1800);
-    });
   </script>
 
   <script>
@@ -1098,110 +1172,181 @@
   <script>
     /* ===== i18n + Versions + Platform ===== */
     (function () {
-
-      /* ── ВАЖНО: все let/const — до первого вызова функций ── */
       let _ver = null;
+      let currentChannel = 'release';
 
-      /* ── String tables ──────────────────────────────── */
+      const channelConfig = {
+        nightly: { eyebrow: 'nightlyEyebrow', title: 'nightlyTitle', description: 'nightlyDescription' },
+        dev: { eyebrow: 'devEyebrow', title: 'devChannelTitle', description: 'devChannelDescription' },
+        release: { eyebrow: 'releaseEyebrow', title: 'releaseTitle', description: 'releaseDescription' }
+      };
+
+      const clientConfig = {
+        windows: { apiKey: 'windows', slug: 'winui', linkId: 'winDownloadBtn', versionId: 'vBadgeWin', statusId: 'winBuildStatus', titleKey: 'winTitle' },
+        android: { apiKey: 'android', slug: 'kotlin', linkId: 'andDownloadBtn', versionId: 'vBadgeAnd', statusId: 'andBuildStatus', titleKey: 'andTitle' },
+        macos: { apiKey: 'macos', slug: 'macos', linkId: 'macosDownloadBtn', versionId: 'vBadgeMac', statusId: 'macosBuildStatus', titleKey: 'macosTitle' }
+      };
+
       const S = {
         ru: {
-          eyebrow:        'Стабильный релиз',
+          eyebrow:        'Ночная сборка',
           title1:         'Лёгкий.',
           title2:         'Быстрый.',
           title3:         'Пушистый.',
-          heroSub:        'Мессенджер, который <b style="color:var(--ink);">работает</b>, <s>и слава богу</s>.<br><span style="color:#ffb47a;">Без рекламы, без трекинга</span>, без лишнего шума.<br>Просто <span style="color:#ffb47a;">отправляй сообщения</span> — друзьям, себе, кому угодно.',
+          heroSub:        'Мессенджер, который <b style="color:var(--ink);">работает</b>, <s>и слава богу</s>.<br><span style="color:var(--brand-soft);">Без рекламы, без трекинга</span>, без лишнего шума.<br>Просто <span style="color:var(--brand-soft);">отправляй сообщения</span> — друзьям, себе, кому угодно.',
           meta1:          '<b>Лёгкий</b>&nbsp;нативный&nbsp;клиент',
           meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;шифрование',
           meta3:          '<b>Мультиплатформенность</b>',
           prevCaption:    'Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке',
-          winSub:         'Portable · x64 · без установщика',
-          release:        'Релиз',
-          beta:           'Бета',
-          andSub:         'Android 12+ · arm64-v8a',
-          webSub:         'Любой современный браузер',
-          webOpen:        'Открыть →',
-          macosSub:       'macOS 12+ · Intel & Apple Silicon',
-          macosRel:       'Релиз',
-          macosBeta:      'Бета',
-          iosSub:         'В разработке',
-          linuxSub:       'В разработке',
-          unavailable:    'Недоступно',
-          cliHeading:     'Установка одной строкой',
-          cliRecommended: 'Рекомендуется',
-          cliUnavailable: 'команда установки пока недоступна — скоро будет',
-          devLabel:       'Для разработчиков',
-          devTitle:       'Создай свой клиент Barkfluff',
-          devSub:         'Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.',
-          devBtn:         'Разработчикам',
-          f1title:        'gRPC + TLS',
-          f1body:         'Современный транспорт, шифрование на уровне соединения.',
-          f2title:        'Светлая и тёмная',
-          f2body:         'Следит за системой или переключается по щелчку.',
-          f3title:        'Один сервис — все платформы',
-          f3body:         'Нативные клиенты для Windows, Android и веба работают с одним бекендом.',
-          f4title:        'Без рекламы и трекинга',
-          f4body:         'Никакой телеметрии, никаких баннеров. Просто переписка.',
-          footerCopy:     '2026 Barkfluff',
-          footerSupport:  'Поддержка',
-          footerPrivacy:  'Конфиденциальность',
-          chatTitle:      'Поддержка Barkfluff',
-          chatSystem:     'Напишите нам, и мы ответим в ближайшее время',
-          chatPh:         'Напишите сообщение...',
-          navDev:         'Разработчикам',
+          clientEyebrow:  'Канал сборки',
+          clientDescription: 'Переключай ветку — ссылки, версии и визуальный режим страницы меняются вместе с каналом.',
+          nightlyEyebrow: 'Ночная сборка',
+          nightlyTitle:  'Свежая сборка каждую ночь',
+          nightlyDescription: 'Последние изменения из ветки nightly для ранней проверки.',
+          devEyebrow:    'Dev-сборка',
+          devChannelTitle: 'Ветка в разработке',
+          devChannelDescription: 'Плотная blueprint-тема и сборки из актуального dev-кода.',
+          releaseEyebrow: 'Релизная сборка',
+          releaseTitle:   'Спокойный проверенный релиз',
+          releaseDescription: 'Стабильные версии из ветки master с чистым светлым оформлением.',
+          channelStatus: 'Версии обновляются автоматически',
+          desktopKicker: '01 / Desktop',
+          desktopTitle: 'Настольные приложения',
+          desktopDescription: 'Нативные сборки для компьютера.',
+          mobileKicker: '02 / Mobile',
+          mobileTitle: 'Мобильные приложения',
+          mobileDescription: 'Сборки для телефона и планшета.',
+          webEyebrow:   'Веб-клиент',
+          webTitle:     'Barkfluff в браузере',
+          webDescription: 'Открывается сразу в браузере и всегда использует одну актуальную ссылку.',
+          webSub:       'Любой современный браузер',
+          webFixed:     'Единая ссылка',
+          webOpen:      'Открыть',
+          winTitle:     'Windows WinUI',
+          winSub:       'WinUI 3 · x64 · Windows 10+',
+          andTitle:     'Android',
+          andSub:       'Android 12+ · arm64-v8a',
+          macosTitle:   'macOS',
+          macosSub:     'macOS 12+ · Intel & Apple Silicon',
+          download:     'Скачать',
+          buildChecking:'Проверяем',
+          buildReady:   'Готово',
+          buildWaiting: 'Ожидает сборку',
+          iosTitle:     'iOS',
+          linuxTitle:   'Linux',
+          comingSoon:   'Скоро',
+          iosSub:       'В разработке',
+          linuxSub:     'В разработке',
+          unavailable:  'Недоступно',
+          devLabel:     'Для разработчиков',
+          devTitle:     'Создай свой клиент Barkfluff',
+          devSub:       'Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.',
+          devBtn:       'Разработчикам',
+          f1title:      'gRPC + TLS',
+          f1body:       'Современный транспорт, шифрование на уровне соединения.',
+          f2title:       'Светлая и тёмная',
+          f2body:       'Следит за системой или переключается по щелчку.',
+          f3title:       'Один сервис — все платформы',
+          f3body:       'Нативные клиенты для Windows, Android и веба работают с одним бекендом.',
+          f4title:       'Без рекламы и трекинга',
+          f4body:       'Никакой телеметрии, никаких баннеров. Просто переписка.',
+          footerCopy:    '2026 Barkfluff',
+          footerSupport: 'Поддержка',
+          footerPrivacy: 'Конфиденциальность',
+          chatTitle:     'Поддержка Barkfluff',
+          chatSystem:    'Напишите нам, и мы ответим в ближайшее время',
+          chatPh:        'Напишите сообщение...',
+          navDev:        'Разработчикам'
         },
         en: {
-          eyebrow:        'Stable release',
+          eyebrow:        'Nightly build',
           title1:         'Lightweight.',
           title2:         'Fast.',
           title3:         'Fluffy.',
-          heroSub:        'A messenger that <b style="color:var(--ink);">works</b>, <s>thank god</s>.<br><span style="color:#ffb47a;">No ads, no tracking</span>, no extra noise.<br>Just <span style="color:#ffb47a;">send messages</span> — to friends, yourself, anyone.',
+          heroSub:        'A messenger that <b style="color:var(--ink);">works</b>, <s>thank god</s>.<br><span style="color:var(--brand-soft);">No ads, no tracking</span>, no extra noise.<br>Just <span style="color:var(--brand-soft);">send messages</span> — to friends, yourself, anyone.',
           meta1:          '<b>Lightweight</b>&nbsp;native&nbsp;client',
           meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;encryption',
           meta3:          '<b>Cross-platform</b>',
           prevCaption:    'Switch platform — press <span class="kbd">←</span> <span class="kbd">→</span> or click a card',
-          winSub:         'Portable · x64 · no installer',
-          release:        'Release',
-          beta:           'Beta',
-          andSub:         'Android 12+ · arm64-v8a',
-          webSub:         'Any modern browser',
-          webOpen:        'Open →',
-          macosSub:       'macOS 12+ · Intel & Apple Silicon',
-          macosRel:       'Release',
-          macosBeta:      'Beta',
-          iosSub:         'In development',
-          linuxSub:       'In development',
-          unavailable:    'Unavailable',
-          cliHeading:     'Install in one line',
-          cliRecommended: 'Recommended',
-          cliUnavailable: 'install command not yet available — coming soon',
-          devLabel:       'For developers',
-          devTitle:       'Build your own Barkfluff client',
-          devSub:         'Open .proto files, gRPC skeletons and integration examples.',
-          devBtn:         'Developers',
-          f1title:        'gRPC + TLS',
-          f1body:         'Modern transport, connection-level encryption.',
-          f2title:        'Light & dark',
-          f2body:         'Follows system preference or switches on click.',
-          f3title:        'One backend — all platforms',
-          f3body:         'Native clients for Windows, Android and web share one backend.',
-          f4title:        'No ads or tracking',
-          f4body:         'No telemetry, no banners. Just messaging.',
-          footerCopy:     '2026 Barkfluff',
-          footerSupport:  'Support',
-          footerPrivacy:  'Privacy',
-          chatTitle:      'Barkfluff Support',
-          chatSystem:     'Write to us and we\'ll reply as soon as possible',
-          chatPh:         'Write a message...',
-          navDev:         'Developers',
+          clientEyebrow:  'Build channel',
+          clientDescription: 'Switch branches to update the links, versions and visual mode together.',
+          nightlyEyebrow: 'Nightly build',
+          nightlyTitle:  'A fresh build every night',
+          nightlyDescription: 'The latest changes from nightly for early testing.',
+          devEyebrow:    'Dev build',
+          devChannelTitle: 'Work in progress',
+          devChannelDescription: 'A dense blueprint theme with builds from the current dev code.',
+          releaseEyebrow: 'Release build',
+          releaseTitle:   'A calm, verified release',
+          releaseDescription: 'Stable versions from master with a clean light presentation.',
+          channelStatus: 'Versions update automatically',
+          desktopKicker: '01 / Desktop',
+          desktopTitle: 'Desktop apps',
+          desktopDescription: 'Native builds for your computer.',
+          mobileKicker: '02 / Mobile',
+          mobileTitle: 'Mobile apps',
+          mobileDescription: 'Builds for phones and tablets.',
+          webEyebrow:   'Web client',
+          webTitle:     'Barkfluff in your browser',
+          webDescription: 'Open it instantly in a browser with one always-current link.',
+          webSub:       'Any modern browser',
+          webFixed:     'One fixed link',
+          webOpen:      'Open',
+          winTitle:     'Windows WinUI',
+          winSub:       'WinUI 3 · x64 · Windows 10+',
+          andTitle:     'Android',
+          andSub:       'Android 12+ · arm64-v8a',
+          macosTitle:   'macOS',
+          macosSub:     'macOS 12+ · Intel & Apple Silicon',
+          download:     'Download',
+          buildChecking:'Checking',
+          buildReady:   'Ready',
+          buildWaiting: 'Build pending',
+          iosTitle:     'iOS',
+          linuxTitle:   'Linux',
+          comingSoon:   'Soon',
+          iosSub:       'In development',
+          linuxSub:     'In development',
+          unavailable:  'Unavailable',
+          devLabel:     'For developers',
+          devTitle:     'Build your own Barkfluff client',
+          devSub:       'Open .proto files, gRPC skeletons and integration examples.',
+          devBtn:       'Developers',
+          f1title:      'gRPC + TLS',
+          f1body:       'Modern transport, connection-level encryption.',
+          f2title:      'Light & dark',
+          f2body:       'Follows system preference or switches on click.',
+          f3title:      'One backend — all platforms',
+          f3body:       'Native clients for Windows, Android and web share one backend.',
+          f4title:      'No ads or tracking',
+          f4body:       'No telemetry, no banners. Just messaging.',
+          footerCopy:    '2026 Barkfluff',
+          footerSupport: 'Support',
+          footerPrivacy: 'Privacy',
+          chatTitle:     'Barkfluff Support',
+          chatSystem:    "Write to us and we'll reply as soon as possible",
+          chatPh:        'Write a message...',
+          navDev:        'Developers'
         }
       };
 
-      /* ── Helpers ────────────────────────────────────── */
       window.__t = function (key) { return S[window.__lang][key] || ''; };
 
       function $e(id) { return document.getElementById(id); }
-      function txt(id, key) { const el = $e(id); if (el) el.textContent = S[window.__lang][key]; }
-      function htm(id, key) { const el = $e(id); if (el) el.innerHTML   = S[window.__lang][key]; }
+      function txt(id, key) {
+        const el = $e(id);
+        if (el && S[window.__lang][key] !== undefined) el.textContent = S[window.__lang][key];
+      }
+      function htm(id, key) {
+        const el = $e(id);
+        if (el && S[window.__lang][key] !== undefined) el.innerHTML = S[window.__lang][key];
+      }
+      function replaceTextNode(id, value) {
+        const el = $e(id);
+        if (!el) return;
+        const node = Array.from(el.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
+        if (node) node.textContent = value;
+      }
 
       function detectPlatform() {
         const ua = navigator.userAgent;
@@ -1211,155 +1356,177 @@
         return 'other';
       }
 
-      /* ── Version display ────────────────────────────── */
-      /* Вызывается как из applyLang (обновляет eyebrow + badges),
-         так и после loadVersions. _ver может быть null — тогда
-         показываем только базовый текст eyebrow без версии. */
+      function setBuildStatus(id, key) {
+        const el = $e(id);
+        if (!el) return;
+        el.innerHTML = '<span class="state-dot"></span><span>' + S[window.__lang][key] + '</span>';
+      }
+
       function applyVersions() {
-        const platform = detectPlatform();
-        const base     = S[window.__lang].eyebrow;
-        let   suffix   = '';
+        Object.entries(clientConfig).forEach(([platform, config]) => {
+          const card = document.querySelector('[data-client="' + platform + '"]');
+          const link = $e(config.linkId);
+          const versionEl = $e(config.versionId);
+          const statusEl = $e(config.statusId);
+          const version = _ver && _ver[config.apiKey] ? (_ver[config.apiKey][currentChannel] || '') : '';
 
-        if (_ver) {
-          const { android, windows, macos } = _ver;
+          if (versionEl) versionEl.textContent = version ? 'v' + version : (_ver ? '—' : '…');
+          if (card) card.classList.toggle('is-pending', Boolean(_ver && !version));
 
-          const wBlock = $e('versionBlockWindows');
-          if (wBlock && windows) {
-            if (windows.release) $e('vBadgeWinRelease').textContent = 'v' + windows.release;
-            if (windows.beta)    $e('vBadgeWinBeta').textContent    = 'v' + windows.beta;
-            if (windows.release || windows.beta) wBlock.classList.add('visible');
+          if (statusEl) {
+            if (!_ver) setBuildStatus(config.statusId, 'buildChecking');
+            else if (version) setBuildStatus(config.statusId, 'buildReady');
+            else setBuildStatus(config.statusId, 'buildWaiting');
           }
 
-          const aBlock = $e('versionBlockAndroid');
-          if (aBlock && android) {
-            if (android.release) $e('vBadgeAndRelease').textContent = 'v' + android.release;
-            if (android.beta)    $e('vBadgeAndBeta').textContent    = 'v' + android.beta;
-            if (android.release || android.beta) aBlock.classList.add('visible');
+          if (link) {
+            link.href = 'https://storage.barkfluff.com/get/barkfluff' + config.slug + '/' + currentChannel;
+            link.dataset.channel = currentChannel;
+            link.classList.toggle('is-pending', Boolean(_ver && !version));
+            link.setAttribute('aria-label', S[window.__lang][config.titleKey] + ' · ' + currentChannel);
           }
+        });
 
-          const mBlock = $e('versionBlockMacos');
-          if (mBlock && macos) {
-            if (macos.release) $e('vBadgeMacRelease').textContent = 'v' + macos.release;
-            if (macos.beta)    $e('vBadgeMacBeta').textContent    = 'v' + macos.beta;
-            if (macos.release || macos.beta) mBlock.classList.add('visible');
-          }
-
-          if (platform === 'windows' && windows && windows.release)
-            suffix = ' v' + windows.release;
-          else if (platform === 'android' && android && android.release)
-            suffix = ' v' + android.release;
-          else if (platform === 'macos' && macos && macos.release)
-            suffix = ' v' + macos.release;
-        }
-
+        const detected = detectPlatform();
+        const selectedClient = clientConfig[detected];
+        const selectedVersion = selectedClient && _ver && _ver[selectedClient.apiKey]
+          ? (_ver[selectedClient.apiKey][currentChannel] || '')
+          : '';
+        const channel = channelConfig[currentChannel];
         const eyebrowEl = $e('heroEyebrowText');
-        if (eyebrowEl) eyebrowEl.textContent = base + suffix;
+        if (eyebrowEl) eyebrowEl.textContent = S[window.__lang][channel.eyebrow] + (selectedVersion ? ' · v' + selectedVersion : '');
       }
 
       async function loadVersions() {
         try {
           const res = await fetch('/api/versions');
-          if (!res.ok) return;
+          if (!res.ok) throw new Error('Version endpoint returned ' + res.status);
           _ver = await res.json();
           applyVersions();
-        } catch (_) { /* сервер недоступен — оставляем старые значения */ }
+        } catch (_) {
+          _ver = null;
+          applyVersions();
+        }
       }
 
-      /* ── i18n ───────────────────────────────────────── */
+      function applyChannel(channel) {
+        if (!channelConfig[channel]) return;
+        currentChannel = channel;
+        document.body.dataset.channel = channel;
+
+        document.querySelectorAll('.channel-tab').forEach(tab => {
+          const active = tab.dataset.channel === channel;
+          tab.classList.toggle('is-active', active);
+          tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+
+        const meta = channelConfig[channel];
+        txt('clientEyebrow', 'clientEyebrow');
+        const channelSwitcher = document.querySelector('.channel-switcher');
+        if (channelSwitcher) channelSwitcher.setAttribute('aria-label', S[window.__lang].clientEyebrow);
+        txt('clientTitle', meta.title);
+        txt('clientDescription', meta.description);
+        txt('channelStatusText', 'channelStatus');
+        applyVersions();
+      }
+
+      window.setChannel = applyChannel;
+
+      document.querySelectorAll('.channel-tab').forEach(tab => {
+        tab.addEventListener('click', () => applyChannel(tab.dataset.channel));
+      });
+
       function applyLang(lang) {
         window.__lang = lang;
         document.documentElement.lang = lang;
         localStorage.setItem('bf_lang', lang);
+        txt('langToggle', 'langToggle');
         $e('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
 
-        txt('navDev',         'navDev');
-        txt('heroTitle1',     'title1');
-        txt('heroTitle2',     'title2');
-        txt('heroTitle3',     'title3');
-        htm('heroSub',        'heroSub');
-        htm('heroMeta1',      'meta1');
-        htm('heroMeta2',      'meta2');
-        htm('heroMeta3',      'meta3');
+        const textMap = {
+          navDev: 'navDev',
+          heroTitle1: 'title1',
+          heroTitle2: 'title2',
+          heroTitle3: 'title3',
+          winTitle: 'winTitle',
+          winSubtitle: 'winSub',
+          winDownloadLabel: 'download',
+          andTitle: 'andTitle',
+          andSubtitle: 'andSub',
+          andDownloadLabel: 'download',
+          webEyebrow: 'webEyebrow',
+          webTitle: 'webTitle',
+          webDescription: 'webDescription',
+          webSubtitle: 'webSub',
+          webFixedLabel: 'webFixed',
+          webOpenLabel: 'webOpen',
+          macosTitle: 'macosTitle',
+          macosSubtitle: 'macosSub',
+          macosDownloadLabel: 'download',
+          iosTitle: 'iosTitle',
+          iosSubtitle: 'iosSub',
+          iosUnavail: 'unavailable',
+          linuxTitle: 'linuxTitle',
+          linuxSubtitle: 'linuxSub',
+          linuxUnavail: 'unavailable',
+          devLabel: 'devLabel',
+          devTitle: 'devTitle',
+          devSub: 'devSub',
+          f1title: 'f1title',
+          f1body: 'f1body',
+          f2title: 'f2title',
+          f2body: 'f2body',
+          f3title: 'f3title',
+          f3body: 'f3body',
+          f4title: 'f4title',
+          f4body: 'f4body',
+          footerCopy: 'footerCopy',
+          footerPrivacy: 'footerPrivacy',
+          chatTitle: 'chatTitle'
+        };
+        Object.entries(textMap).forEach(([id, key]) => txt(id, key));
+        htm('heroSub', 'heroSub');
+        htm('heroMeta1', 'meta1');
+        htm('heroMeta2', 'meta2');
+        htm('heroMeta3', 'meta3');
         htm('previewCaption', 'prevCaption');
-        txt('winSubtitle',    'winSub');
-        txt('winRelBtn',      'release');
-        txt('winBetaBtn',     'beta');
-        txt('andSubtitle',    'andSub');
-        txt('andRelBtn',      'release');
-        txt('andBetaBtn',     'beta');
-        txt('webSubtitle',    'webSub');
-        txt('webOpenBtn',     'webOpen');
-        txt('macosSubtitle',  'macosSub');
-        txt('macosRelBtn',    'macosRel');
-        txt('macosBetaBtn',   'macosBeta');
-        txt('iosSubtitle',    'iosSub');
-        txt('iosUnavail',     'unavailable');
-        txt('linuxSubtitle',  'linuxSub');
-        txt('linuxUnavail',   'unavailable');
-        txt('cliHeading',     'cliHeading');
-        txt('cliRecommended', 'cliRecommended');
-        txt('devLabel',       'devLabel');
-        txt('devTitle',       'devTitle');
-        txt('devSub',         'devSub');
-        txt('devBtn',         'devBtn');
-        txt('f1title', 'f1title'); txt('f1body', 'f1body');
-        txt('f2title', 'f2title'); txt('f2body', 'f2body');
-        txt('f3title', 'f3title'); txt('f3body', 'f3body');
-        txt('f4title', 'f4title'); txt('f4body', 'f4body');
-        txt('footerCopy',    'footerCopy');
-        txt('footerPrivacy', 'footerPrivacy');
-        txt('chatTitle',     'chatTitle');
+        txt('desktopKicker', 'desktopKicker');
+        txt('desktopTitle', 'desktopTitle');
+        txt('desktopDescription', 'desktopDescription');
+        txt('mobileKicker', 'mobileKicker');
+        txt('mobileTitle', 'mobileTitle');
+        txt('mobileDescription', 'mobileDescription');
+        txt('iosBuildStatus', 'comingSoon');
+        txt('linuxBuildStatus', 'comingSoon');
+        replaceTextNode('devBtn', S[lang].devBtn);
+        replaceTextNode('footerSupport', S[lang].footerSupport);
 
-        /* Footer support — ссылка содержит SVG, меняем только текстовый узел */
-        const fsEl = $e('footerSupport');
-        if (fsEl) {
-          const tn = Array.from(fsEl.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
-          if (tn) tn.textContent = '\n            ' + S[lang].footerSupport + '\n          ';
-        }
+        const input = $e('chatInput');
+        if (input) input.placeholder = S[lang].chatPh;
 
-        const ci = $e('chatInput');
-        if (ci) ci.placeholder = S[lang].chatPh;
-
-        /* CLI: re-render current OS/channel */
-        setCliOs(currentOs);
-
-        /* Eyebrow — всегда обновляем (базовый текст + суффикс версии если есть) */
-        applyVersions();
+        applyChannel(currentChannel);
       }
 
       window.toggleLanguage = function () {
         applyLang(window.__lang === 'ru' ? 'en' : 'ru');
       };
 
-      /* ── Init ───────────────────────────────────────── */
-      const saved    = localStorage.getItem('bf_lang');
+      const saved = localStorage.getItem('bf_lang');
       const detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
-      window.__lang  = saved || detected;
+      window.__lang = saved || detected;
       applyLang(window.__lang);
-      /* Локализация применена — плавно показываем страницу */
       requestAnimationFrame(() => document.body.classList.add('lang-ready'));
       loadVersions();
+      setTimeout(loadVersions, 2000);
 
-      /* ── Platform auto-detection ────────────────────── */
       (function autoSelect() {
-        const p = detectPlatform();
-        if (p === 'windows') {
-          selectPlatform('windows');
-        } else if (p === 'android') {
-          selectPlatform('android');
-          const cli = document.querySelector('.cli-block');
-          if (cli) cli.style.display = 'none';
-        } else if (p === 'macos') {
-          selectPlatform('macos');
+        const platform = detectPlatform();
+        if (platform === 'windows' || platform === 'android' || platform === 'macos') {
+          selectPlatform(platform);
         } else {
           selectPlatform('web');
-          if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-            const cli = document.querySelector('.cli-block');
-            if (cli) cli.style.display = 'none';
-          }
         }
       })();
-
     })();
   </script>
 

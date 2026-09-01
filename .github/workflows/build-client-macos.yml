@@ -87,8 +87,8 @@ jobs:
         id: target
         run: |
           case "${{ github.ref_name }}" in
-            master)  CHANNEL="release"; VERSION_CHANNEL="beta" ;;
-            dev)     CHANNEL="beta";    VERSION_CHANNEL="beta" ;;
+            master)  CHANNEL="release"; VERSION_CHANNEL="release" ;;
+            dev)     CHANNEL="dev";     VERSION_CHANNEL="nightly" ;;
             nightly) CHANNEL="nightly"; VERSION_CHANNEL="nightly" ;;
             *)
               echo "Ветка ${{ github.ref_name }} не привязана к каналу обновлений" >&2
