@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - master
-      - release
-      - beta
       - dev
       - nightly
     paths:
@@ -21,6 +19,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: winui-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -59,11 +61,27 @@ jobs:
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
           switch ($env:BRANCH_NAME) {
-            'master'  { $channel = 'release' }
-            'release' { $channel = 'release' }
-            'beta'    { $channel = 'beta' }
-            'dev'     { $channel = 'dev' }
-            'nightly' { $channel = 'nightly' }
+            'master' {
+              $channel = 'release'
+              $assetDirectory = 'master'
+              $identityName = '7895OrbitinSpace.Barkfluff'
+              $displayName = 'Barkfluff'
+              $shortName = 'barkfluff'
+            }
+            'dev' {
+              $channel = 'dev'
+              $assetDirectory = 'dev'
+              $identityName = '7895OrbitinSpace.Barkfluff.Dev'
+              $displayName = 'Barkfluff.dev'
+              $shortName = 'barkfluff.dev'
+            }
+            'nightly' {
+              $channel = 'nightly'
+              $assetDirectory = 'nightly'
+              $identityName = '7895OrbitinSpace.Barkfluff.Nightly'
+              $displayName = 'Barkfluff.nightly'
+              $shortName = 'barkfluff.nightly'
+            }
             default {
               throw "Ветка '$($env:BRANCH_NAME)' не привязана к каналу обновлений"
             }
@@ -79,9 +97,199 @@ jobs:
             "branch=$($env:BRANCH_NAME)"
             "channel=$channel"
             "upload_path=$uploadPath"
+            "asset_directory=$assetDirectory"
+            "identity_name=$identityName"
+            "display_name=$displayName"
+            "short_name=$shortName"
           ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
           Write-Host "Ветка $($env:BRANCH_NAME) → канал $channel → /$uploadPath"
+
+      - name: Подготовка варианта MSIX и версии
+        id: variant
+        shell: pwsh
+        env:
+          BRANCH_NAME: ${{ steps.target.outputs.branch }}
+          CHANNEL: ${{ steps.target.outputs.channel }}
+          ASSET_DIRECTORY: ${{ steps.target.outputs.asset_directory }}
+          IDENTITY_NAME: ${{ steps.target.outputs.identity_name }}
+          DISPLAY_NAME: ${{ steps.target.outputs.display_name }}
+          SHORT_NAME: ${{ steps.target.outputs.short_name }}
+        run: |
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
+          $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
+          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
+          $backupDirectory = Join-Path $env:RUNNER_TEMP "BarkFluffWinUI-manifest-$($env:GITHUB_RUN_ID)"
+          $packageCaPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Resources\Update\storage-ca.pem'
+
+          foreach ($path in @($manifestPath, $applicationManifestPath, $caBundlePath)) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Не найден обязательный файл: $path"
+            }
+          }
+
+          if (Test-Path -LiteralPath $backupDirectory) {
+            Remove-Item -LiteralPath $backupDirectory -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
+          Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $backupDirectory 'Package.appxmanifest')
+          Copy-Item -LiteralPath $applicationManifestPath -Destination (Join-Path $backupDirectory 'app.manifest')
+
+          function Convert-ToStorageVersion {
+            param([string]$Value)
+
+            if ([string]::IsNullOrWhiteSpace($Value)) {
+              return $null
+            }
+
+            $parts = $Value.Trim().Split('.')
+            if (($parts.Count -ne 3) -and ($parts.Count -ne 4)) {
+              return $null
+            }
+
+            $numbers = @()
+            foreach ($part in $parts[0..2]) {
+              $number = 0
+              if (-not [int]::TryParse(
+                    $part,
+                    [Globalization.NumberStyles]::None,
+                    [Globalization.CultureInfo]::InvariantCulture,
+                    [ref]$number) -or
+                  $number -lt 0 -or
+                  $number -gt [ushort]::MaxValue) {
+                return $null
+              }
+              $numbers += $number
+            }
+
+            if ($parts.Count -eq 4) {
+              $revision = 0
+              if (-not [int]::TryParse(
+                    $parts[3],
+                    [Globalization.NumberStyles]::None,
+                    [Globalization.CultureInfo]::InvariantCulture,
+                    [ref]$revision) -or
+                  $revision -lt 0 -or
+                  $revision -gt [ushort]::MaxValue) {
+                return $null
+              }
+            }
+
+            return "$($numbers[0]).$($numbers[1]).$($numbers[2])"
+          }
+
+          function Get-StorageVersion {
+            param([string]$Url)
+
+            try {
+              $jsonText = & curl.exe --fail --silent --show-error --cacert $caBundlePath $Url
+              $curlExitCode = $LASTEXITCODE
+              if ($curlExitCode -ne 0) {
+                return $null
+              }
+
+              $json = ($jsonText -join [Environment]::NewLine) | ConvertFrom-Json
+              return Convert-ToStorageVersion ([string]$json.version)
+            }
+            catch {
+              Write-Warning "Не удалось получить версию $($Url): $($_.Exception.Message)"
+              return $null
+            }
+          }
+
+          [xml]$sourceManifest = [System.IO.File]::ReadAllText($manifestPath)
+          $sourceIdentity = $sourceManifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
+          $sourceManifestVersion = [string]$sourceIdentity.Version
+          $baselineVersion = Convert-ToStorageVersion $sourceManifestVersion
+
+          $storageVersion = Get-StorageVersion 'https://storage.barkfluff.com/get/barkfluffwinui/nightly/version'
+          if ($null -eq $storageVersion) {
+            $storageVersion = Get-StorageVersion 'https://storage.barkfluff.com/get/barkfluffwinui/beta/version'
+          }
+          if ($null -eq $storageVersion) {
+            $storageVersion = $baselineVersion
+          }
+          if ($null -eq $storageVersion) {
+            throw 'Не удалось определить базовую версию WinUI'
+          }
+
+          $packageVersion = $storageVersion
+          if ($env:CHANNEL -eq 'nightly') {
+            $versionParts = $storageVersion.Split('.')
+            $patch = [int]$versionParts[2] + 1
+            if ($patch -gt [ushort]::MaxValue) {
+              throw "Patch-версия вышла за допустимый диапазон: $storageVersion"
+            }
+            $packageVersion = "$($versionParts[0]).$($versionParts[1]).$patch"
+          }
+          $manifestVersion = "$packageVersion.0"
+
+          $sourceManifestText = [System.IO.File]::ReadAllText($manifestPath)
+          $preparedManifest = $sourceManifestText
+          $preparedManifest = $preparedManifest.Replace(
+            'Name="7895OrbitinSpace.Barkfluff"',
+            "Name=`"$($env:IDENTITY_NAME)`"")
+          $preparedManifest = $preparedManifest.Replace(
+            "Version=`"$sourceManifestVersion`"",
+            "Version=`"$manifestVersion`"")
+          $preparedManifest = $preparedManifest.Replace(
+            '<DisplayName>Barkfluff</DisplayName>',
+            "<DisplayName>$($env:DISPLAY_NAME)</DisplayName>")
+          $preparedManifest = $preparedManifest.Replace(
+            'DisplayName="Barkfluff"',
+            "DisplayName=`"$($env:DISPLAY_NAME)`"")
+          $preparedManifest = $preparedManifest.Replace(
+            'ShortName="barkfluff"',
+            "ShortName=`"$($env:SHORT_NAME)`"")
+          $preparedManifest = $preparedManifest.Replace(
+            'Assets\master\',
+            "Assets\$($env:ASSET_DIRECTORY)\")
+
+          $expectedAssetPrefix = "Assets\$($env:ASSET_DIRECTORY)\"
+          $assetReferenceCount = [regex]::Matches(
+            $preparedManifest,
+            [regex]::Escape($expectedAssetPrefix)).Count
+          if ($assetReferenceCount -lt 7) {
+            throw "В manifest найдено недостаточно ссылок на Assets\$($env:ASSET_DIRECTORY): $assetReferenceCount"
+          }
+          if (($env:ASSET_DIRECTORY -ne 'master') -and $preparedManifest.Contains('Assets\master\')) {
+            throw 'В manifest остались ссылки на master-иконки'
+          }
+          if (-not $preparedManifest.Contains("Name=`"$($env:IDENTITY_NAME)`"")) {
+            throw "Identity.Name не заменён на $($env:IDENTITY_NAME)"
+          }
+
+          $sourceApplicationManifest = [System.IO.File]::ReadAllText($applicationManifestPath)
+          $preparedApplicationManifest = $sourceApplicationManifest.Replace(
+            'version="1.0.0.0"',
+            "version=`"$manifestVersion`"")
+          if ($preparedApplicationManifest -eq $sourceApplicationManifest) {
+            throw 'Версия app.manifest не заменена'
+          }
+
+          [System.IO.File]::WriteAllText(
+            $manifestPath,
+            $preparedManifest,
+            [System.Text.UTF8Encoding]::new($false))
+          [System.IO.File]::WriteAllText(
+            $applicationManifestPath,
+            $preparedApplicationManifest,
+            [System.Text.UTF8Encoding]::new($false))
+
+          New-Item -ItemType Directory -Path (Split-Path -Parent $packageCaPath) -Force | Out-Null
+          Copy-Item -LiteralPath $caBundlePath -Destination $packageCaPath -Force
+
+          @(
+            "version=$packageVersion"
+            "manifest_version=$manifestVersion"
+            "backup_directory=$backupDirectory"
+            "package_ca_path=$packageCaPath"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Канал: $($env:CHANNEL)"
+          Write-Host "Identity: $($env:IDENTITY_NAME)"
+          Write-Host "Версия хранения: $packageVersion"
+          Write-Host "Версия manifest: $manifestVersion"
 
       - name: Восстановление self-signed сертификата MSIX
         id: certificate
@@ -131,6 +339,10 @@ jobs:
         shell: pwsh
         env:
           CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
+          PACKAGE_VERSION: ${{ steps.variant.outputs.version }}
+          PACKAGE_MANIFEST_VERSION: ${{ steps.variant.outputs.manifest_version }}
+          EXPECTED_IDENTITY: ${{ steps.target.outputs.identity_name }}
+          ASSET_DIRECTORY: ${{ steps.target.outputs.asset_directory }}
         run: |
           $projectPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\BarkFluff.Client.WinUI.csproj'
           $outputDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
@@ -156,6 +368,11 @@ jobs:
             "-p:PackageCertificateThumbprint=$env:CERTIFICATE_THUMBPRINT"
             '-p:PackageCertificateKeyFile='
             '-p:PackageCertificatePassword='
+            "-p:Version=$env:PACKAGE_VERSION"
+            "-p:AssemblyVersion=$env:PACKAGE_MANIFEST_VERSION"
+            "-p:FileVersion=$env:PACKAGE_MANIFEST_VERSION"
+            "-p:PackageVersion=$env:PACKAGE_VERSION"
+            '-p:AppxAutoIncrementPackageRevision=false'
             "-p:AppxPackageDir=$outputDirectory"
           )
 
@@ -164,49 +381,76 @@ jobs:
             throw "dotnet publish завершился с кодом $LASTEXITCODE"
           }
 
-          $msix = Get-ChildItem `
+          $msixCandidates = Get-ChildItem `
             -LiteralPath $outputDirectory `
             -Recurse `
             -File `
-            -Filter 'BarkFluff.Client.WinUI_*.msix' |
-            Select-Object -First 1
+            -Filter '*.msix'
+
+          $msix = $null
+          $manifestText = $null
+          $identity = $null
+          foreach ($candidate in $msixCandidates) {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $candidatePackage = [System.IO.Compression.ZipFile]::OpenRead($candidate.FullName)
+            try {
+              $manifestEntry = $candidatePackage.GetEntry('AppxManifest.xml')
+              if ($null -eq $manifestEntry) {
+                continue
+              }
+
+              $reader = [System.IO.StreamReader]::new($manifestEntry.Open())
+              try {
+                $candidateManifestText = $reader.ReadToEnd()
+                [xml]$candidateManifest = $candidateManifestText
+              } finally {
+                $reader.Dispose()
+              }
+
+              $candidateIdentity = $candidateManifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
+              if ($null -ne $candidateIdentity -and
+                  [string]$candidateIdentity.Name -eq $env:EXPECTED_IDENTITY) {
+                $msix = $candidate
+                $manifestText = $candidateManifestText
+                $identity = $candidateIdentity
+                break
+              }
+            } finally {
+              $candidatePackage.Dispose()
+            }
+          }
 
           if ($null -eq $msix) {
-            throw "MSIX-файл BarkFluff.Client.WinUI не найден в $outputDirectory"
+            throw "MSIX с identity '$($env:EXPECTED_IDENTITY)' не найден в $outputDirectory"
           }
 
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $package = [System.IO.Compression.ZipFile]::OpenRead($msix.FullName)
-          try {
-            $manifestEntry = $package.GetEntry('AppxManifest.xml')
-            if ($null -eq $manifestEntry) {
-              throw 'В MSIX отсутствует AppxManifest.xml'
-            }
-
-            $reader = [System.IO.StreamReader]::new($manifestEntry.Open())
-            try {
-              [xml]$manifest = $reader.ReadToEnd()
-            } finally {
-              $reader.Dispose()
-            }
-          } finally {
-            $package.Dispose()
-          }
-
-          $identity = $manifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
           $version = [string]$identity.Version
-          if ([string]::IsNullOrWhiteSpace($version)) {
-            throw 'Не удалось определить версию MSIX из AppxManifest.xml'
+          if ($version -ne $env:PACKAGE_MANIFEST_VERSION) {
+            throw "Версия MSIX $version не совпадает с ожидаемой $($env:PACKAGE_MANIFEST_VERSION)"
+          }
+
+          $normalizedManifestText = $manifestText.Replace('\', '/')
+          $expectedAssetPrefix = "Assets/$($env:ASSET_DIRECTORY)/"
+          $assetReferenceCount = [regex]::Matches(
+            $normalizedManifestText,
+            [regex]::Escape($expectedAssetPrefix)).Count
+          if ($assetReferenceCount -lt 7) {
+            throw "В MSIX найдено недостаточно ссылок на $expectedAssetPrefix`: $assetReferenceCount"
+          }
+          if (($env:ASSET_DIRECTORY -ne 'master') -and $normalizedManifestText.Contains('Assets/master/')) {
+            throw 'В MSIX остались ссылки на master-иконки'
           }
 
           @(
             "package_dir=$($msix.Directory.FullName)"
             "msix_path=$($msix.FullName)"
-            "version=$version"
+            "version=$($env:PACKAGE_VERSION)"
+            "manifest_version=$version"
           ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
           Write-Host "MSIX: $($msix.FullName)"
-          Write-Host "Версия: $version"
+          Write-Host "Identity: $($identity.Name)"
+          Write-Host "Версия: $($env:PACKAGE_VERSION) ($version в manifest)"
 
       - name: Архивирование папки установщика
         id: archive
@@ -279,7 +523,20 @@ jobs:
         env:
           CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
           CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
+          MANIFEST_BACKUP_DIRECTORY: ${{ runner.temp }}\BarkFluffWinUI-manifest-${{ github.run_id }}
+          PACKAGE_CA_PATH: ${{ github.workspace }}\Windows\BarkFluff.Client.WinUI\Resources\Update\storage-ca.pem
         run: |
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
+          $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
+          $backupManifestPath = Join-Path $env:MANIFEST_BACKUP_DIRECTORY 'Package.appxmanifest'
+          $backupApplicationManifestPath = Join-Path $env:MANIFEST_BACKUP_DIRECTORY 'app.manifest'
+          if ((Test-Path -LiteralPath $backupManifestPath -PathType Leaf) -and
+              (Test-Path -LiteralPath $backupApplicationManifestPath -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupManifestPath -Destination $manifestPath -Force
+            Copy-Item -LiteralPath $backupApplicationManifestPath -Destination $applicationManifestPath -Force
+            Remove-Item -LiteralPath $env:MANIFEST_BACKUP_DIRECTORY -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
           if (-not [string]::IsNullOrWhiteSpace($env:CERTIFICATE_THUMBPRINT)) {
             Get-ChildItem -Path 'Cert:\CurrentUser\My' |
               Where-Object Thumbprint -eq $env:CERTIFICATE_THUMBPRINT |
@@ -287,7 +544,7 @@ jobs:
           }
 
           $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
-          foreach ($path in @($env:CERTIFICATE_PATH, $caBundlePath)) {
+          foreach ($path in @($env:CERTIFICATE_PATH, $caBundlePath, $env:PACKAGE_CA_PATH)) {
             if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
               Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
             }

@@ -18,14 +18,13 @@
             </Border>
 
             <Border Style="{StaticResource SettingsGroupCard}">
-                <StackPanel>
-                    <controls:SettingsRow Header="{StaticResource Settings_Update_ChannelRelease}">
-                        <Button Click="OnReleaseCheckClick" Content="{StaticResource Settings_Update_Check}" Style="{StaticResource SecondaryButton}" />
-                    </controls:SettingsRow>
-                    <controls:SettingsRow Header="{StaticResource Settings_Update_ChannelBeta}">
-                        <Button Click="OnBetaCheckClick" Content="{StaticResource Settings_Update_Check}" Style="{StaticResource SecondaryButton}" />
-                    </controls:SettingsRow>
-                </StackPanel>
+                <controls:SettingsRow Description="{x:Bind ViewModel.CurrentChannelName, Mode=OneWay}"
+                                      Header="{StaticResource Settings_Update_Channel}">
+                    <Button Click="OnCheckClick"
+                            Content="{StaticResource Settings_Update_Check}"
+                            IsEnabled="{x:Bind ViewModel.CanCheck, Mode=OneWay}"
+                            Style="{StaticResource SecondaryButton}" />
+                </controls:SettingsRow>
             </Border>
 
             <ProgressRing HorizontalAlignment="Left"
@@ -39,6 +38,7 @@
             <StackPanel Margin="0,16,0,0" Orientation="Horizontal" Spacing="12">
                 <Button Click="OnDownloadClick"
                         Content="{StaticResource Settings_Update_Download}"
+                        IsEnabled="{x:Bind ViewModel.CanDownload, Mode=OneWay}"
                         Visibility="{x:Bind ViewModel.IsUpdateAvailable, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <Button Click="OnOpenSiteClick" Content="{StaticResource Settings_Update_OpenSite}" Style="{StaticResource SecondaryButton}" />
             </StackPanel>
