@@ -24,8 +24,14 @@ export function loadAuth(): AuthState | null {
   try {
     const raw = localStorage.getItem(AUTH_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as AuthState;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isAuthState(parsed)) {
+      clearStoredAuth();
+      return null;
+    }
+    return parsed;
   } catch {
+    clearStoredAuth();
     return null;
   }
 }
@@ -46,12 +52,16 @@ async function refreshAccessToken(auth: AuthState): Promise<string | null> {
     const resp = await refreshClient.createToken(
       new CreateTokenRequest({ refreshToken: auth.refreshToken }),
     );
+    const accessToken = resp.accessToken?.value.trim();
+    const accessTokenExpiration = timestampToMilliseconds(resp.accessToken?.expirationDate);
+    if (!accessToken || accessTokenExpiration === null) {
+      throw new Error('Identity service returned an incomplete access token');
+    }
+
     const newAuth: AuthState = {
       ...auth,
-      accessToken: resp.accessToken?.value ?? '',
-      accessTokenExpiration: resp.accessToken?.expirationDate
-        ? Number(resp.accessToken.expirationDate.seconds) * 1000
-        : Date.now() + 3_600_000,
+      accessToken,
+      accessTokenExpiration,
     };
     saveAuth(newAuth);
     return newAuth.accessToken;
@@ -87,3 +97,39 @@ export const authInterceptor: Interceptor = (next) => async (req) => {
   }
   return next(req);
 };
+
+export function timestampToMilliseconds(
+  timestamp: { seconds: bigint | number | string } | null | undefined,
+): number | null {
+  if (!timestamp) return null;
+
+  const seconds = Number(timestamp.seconds);
+  const milliseconds = seconds * 1000;
+  return Number.isSafeInteger(milliseconds) && milliseconds > 0 ? milliseconds : null;
+}
+
+function isAuthState(value: unknown): value is AuthState {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+
+  const candidate = value as Record<string, unknown>;
+  return isNonEmptyString(candidate.accessToken)
+    && isNonEmptyString(candidate.refreshToken)
+    && isPositiveFiniteNumber(candidate.accessTokenExpiration)
+    && isPositiveFiniteNumber(candidate.refreshTokenExpiration);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function clearStoredAuth() {
+  try {
+    localStorage.removeItem(AUTH_KEY);
+  } catch {
+    // Storage may be disabled by the browser; the in-memory auth state is still invalid.
+  }
+}

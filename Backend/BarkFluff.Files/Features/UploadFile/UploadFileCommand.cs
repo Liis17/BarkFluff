@@ -6,6 +6,8 @@ public class UploadFileCommand : IRequest<string>, IDisposable
 {
     public Guid FileId { get; set; }
 
+    public Guid? LeaseToken { get; set; }
+
     public Stream FileStream { get; set; }
 
     public string FileName { get; set; }

@@ -45,8 +45,8 @@ public class UploadAvatarServerCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.UserAvatar)).Returns("profile-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
-            .ReturnsAsync((string _, string _, Stream _, string _) => "etag-test");
+        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, string _, Stream _, string _, CancellationToken _) => "etag-test");
 
         var command = new UploadAvatarServerCommand
         {
@@ -63,7 +63,7 @@ public class UploadAvatarServerCommandHandlerTests
         result.FileId.Should().NotBeNullOrEmpty();
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()),
+            u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
     }
 
@@ -72,7 +72,7 @@ public class UploadAvatarServerCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.UserAvatar)).Returns("profile-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-test");
 
         await _handler.Handle(new UploadAvatarServerCommand
@@ -90,7 +90,7 @@ public class UploadAvatarServerCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.UserAvatar)).Returns("profile-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-test");
 
         await _handler.Handle(new UploadAvatarServerCommand
@@ -112,7 +112,7 @@ public class UploadAvatarServerCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.UserAvatar)).Returns("profile-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-test");
 
         await _handler.Handle(new UploadAvatarServerCommand

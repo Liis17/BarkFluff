@@ -152,7 +152,7 @@ Logout строится по «server-first, fail-loud» схеме: если с
 - ViewModel: `Features/FastAuth/ViewModels/FastAuthViewModel.swift` — `@Observable @MainActor`, держит `sessionTask` и `timerTask`, авто-перезапуск при rejected/expired.
 - Репозиторий: `Packages/BFNetworking/.../Repositories/FastAuthRepository.swift` — `generateFastAuthToken` + server-streaming `subscribeFastAuthResult`. Остальные методы (Scan/Accept/Reject/connectDevice…) — заглушки: это мобильный сценарий, на macOS-клиенте не используется.
 - Сервис: `Packages/BFCore/.../Services/Implementations/AuthService.swift` метод `applyFastAuthTokens` — сохраняет уже выданные токены через `tokenProvider.saveTokens`, без серверного шага.
-- Интеграция в логин: `Features/Auth/Views/LoginView.swift` — `HStack` из `formCard(viewModel)` слева и `QRPanelView(viewModel: fastAuthViewModel)` справа.
+- Интеграция в логин: `Features/Auth/Views/LoginView.swift` — единая адаптивная системная панель. На широком окне `ViewThatFits` показывает `formColumn(viewModel)` и `QRPanelView(viewModel: fastAuthViewModel)` в двух колонках с разделителем; на узком окне они складываются вертикально.
 
 Ошибки/edge-cases:
 - Если эндпоинт `.fastauth` не получен из Beacon (`mapServiceEndpoints`), `withPublicClient` бросит `ConnectionError.serviceNotConfigured(.fastauth)` — `FastAuthViewModel` покажет это через `errorMessage`, паролёвая форма продолжает работать.
@@ -521,3 +521,11 @@ Mac-специфика:
 xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug build
 open Barkfluff.xcodeproj
 ```
+
+### DMG и оформление каналов
+
+DMG собирается в `.github/workflows/build-client-macos.yml` через `create-dmg`. Для каналов используются отдельные фоны: `nightly` — ночное небо (`Mac/Barkfluff/Packaging/dmg-background.png`), `dev` — синий blueprint (`Mac/Barkfluff/Packaging/dmg-background-dev.png`), `master` — светлый градиент (`Mac/Barkfluff/Packaging/dmg-background-master.png`).
+
+Автоматические каналы: `dev` → `beta`, `nightly` → `nightly`, `master` → `release`. Для nightly версия берётся из канала `nightly` (с fallback на `beta`) и увеличивается на patch. После успешной загрузки workflow отправляет в Telegram одну кнопку «Скачать последнюю версию» на `https://storage.barkfluff.com/get/barkfluffmacos/{channel}`; при ошибке — кнопку «Открыть GitHub Action». Для всех трёх каналов с фирменным фоном используется окно `680×425`, размер иконок `128`, размер подписей `16`, позиции приложения и Applications — `(205, 220)` и `(515, 220)`; fallback-ветки сохраняют стандартное оформление Finder.
+
+Все три PNG имеют размер `1800×1100` при `144 dpi` (примерно `900×550` pt), поэтому фон не становится белым при растягивании окна Finder. В `nightly` и `dev` рабочая область `720×440` сохраняет компактную схему установочного окна Firefox: выделенные зоны для приложения и Applications, стрелка установки и светлые подложки под системными подписями Finder. `master` намеренно оставляет только спокойный светлый градиент без декоративных элементов. После создания DMG для `nightly`, `dev` и `master` Finder-настройки повторно сохраняются на RW-образе через POSIX-путь к соответствующему фону, затем служебные `.background` и `.DS_Store` получают macOS-флаг `hidden` через перепаковку DMG.

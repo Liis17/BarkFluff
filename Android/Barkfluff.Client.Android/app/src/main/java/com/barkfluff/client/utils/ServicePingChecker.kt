@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
 import java.io.IOException
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -16,27 +17,44 @@ data class ServicePingResult(
     val responseTimeMs: Long
 )
 
-/** Checks the anonymous GET /ping endpoint using the same TLS policy as all application traffic. */
+/** Checks service liveness using the same TLS policy as all application traffic. */
 class ServicePingChecker(context: Context) {
 
     private val tlsTransport = TlsTransportFactory(context.applicationContext)
     private val httpsClients = ConcurrentHashMap<String, OkHttpClient>()
+    private val httpClient: OkHttpClient? = if (tlsTransport.allowsCleartext) createHttpClient() else null
     private val http2Client: OkHttpClient? = if (tlsTransport.allowsCleartext) createHttp2Client() else null
 
-    fun check(address: String): ServicePingResult {
+    fun check(address: String, fileEndpoint: Boolean = false): ServicePingResult {
         val startedAt = System.nanoTime()
-        val pingUrl = buildPingUrl(address)
+        val probePath = if (fileEndpoint) {
+            "/web/download/${UUID.randomUUID()}"
+        } else {
+            "/ping"
+        }
+        val probeUrl = buildProbeUrl(address, probePath)
             ?: return ServicePingResult(false, elapsedMs(startedAt))
 
         return try {
-            val request = Request.Builder().url(pingUrl).get().build()
-            val client = if (pingUrl.isHttps) httpsClientFor(pingUrl) else http2Client
+            val request = Request.Builder().url(probeUrl).get().build()
+            val client = if (probeUrl.isHttps) {
+                httpsClientFor(probeUrl)
+            } else if (fileEndpoint) {
+                httpClient
+            } else {
+                http2Client
+            }
                 ?: return ServicePingResult(false, elapsedMs(startedAt))
             client.newCall(request).execute().use { response ->
-                val contentType = response.body?.contentType()
-                val isPlainText = contentType?.type == "text" && contentType.subtype == "plain"
-                val isPong = response.code == 200 && isPlainText && response.body?.string()?.trim() == "pong"
-                ServicePingResult(isPong, elapsedMs(startedAt))
+                val available = if (fileEndpoint) {
+                    // A missing random file returns 404, which still proves that the HTTP listener responds.
+                    true
+                } else {
+                    val contentType = response.body?.contentType()
+                    val isPlainText = contentType?.type == "text" && contentType.subtype == "plain"
+                    response.code == 200 && isPlainText && response.body?.string()?.trim() == "pong"
+                }
+                ServicePingResult(available, elapsedMs(startedAt))
             }
         } catch (_: IOException) {
             ServicePingResult(false, elapsedMs(startedAt))
@@ -46,14 +64,14 @@ class ServicePingChecker(context: Context) {
     }
 
     fun close() {
-        (httpsClients.values + listOfNotNull(http2Client)).forEach { client ->
+        (httpsClients.values + listOfNotNull(httpClient, http2Client)).forEach { client ->
             client.connectionPool.evictAll()
             client.dispatcher.executorService.shutdown()
         }
         httpsClients.clear()
     }
 
-    private fun buildPingUrl(address: String): HttpUrl? {
+    private fun buildProbeUrl(address: String, path: String): HttpUrl? {
         val normalizedAddress = address.trim().let { value ->
             if (value.startsWith("http://", ignoreCase = true) ||
                 value.startsWith("https://", ignoreCase = true)
@@ -64,13 +82,13 @@ class ServicePingChecker(context: Context) {
             }
         }
 
-        val pingUrl = normalizedAddress.toHttpUrlOrNull()
+        val probeUrl = normalizedAddress.toHttpUrlOrNull()
             ?.newBuilder()
-            ?.encodedPath("/ping")
+            ?.encodedPath(path)
             ?.query(null)
             ?.build()
             ?: return null
-        return pingUrl.takeIf(tlsTransport::isAllowed)
+        return probeUrl.takeIf(tlsTransport::isAllowed)
     }
 
     private fun httpsClientFor(url: HttpUrl): OkHttpClient {
@@ -81,6 +99,10 @@ class ServicePingChecker(context: Context) {
             }.also { httpsClients[key] = it }
         }
     }
+
+    private fun createHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        .configureTimeouts()
+        .build()
 
     private fun createHttp2Client(): OkHttpClient = OkHttpClient.Builder()
         .configureTimeouts()

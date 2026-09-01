@@ -1,20 +1,25 @@
 namespace Barkfluff.Developers.Infrastructure;
 
-public class ProtoFileProvider
+internal sealed class ProtoFileProvider : IProtoFileSource
 {
-    private readonly Dictionary<string, string> _cache = new();
+    private readonly Dictionary<string, string> _cache = new(StringComparer.Ordinal);
     private readonly string _protoDirectory;
 
-    public ProtoFileProvider()
+    public ProtoFileProvider() : this(Path.Combine(AppContext.BaseDirectory, "Proto"))
     {
-        _protoDirectory = Path.Combine(AppContext.BaseDirectory, "Proto");
+    }
+
+    internal ProtoFileProvider(string protoDirectory)
+    {
+        _protoDirectory = protoDirectory;
 
         if (Directory.Exists(_protoDirectory))
         {
-            foreach (var file in Directory.GetFiles(_protoDirectory, "*.proto"))
+            foreach (var fileName in PublishedProtoManifest.FileNames)
             {
-                var name = Path.GetFileName(file);
-                _cache[name] = File.ReadAllText(file);
+                var path = Path.Combine(_protoDirectory, fileName);
+                if (File.Exists(path))
+                    _cache[fileName] = File.ReadAllText(path);
             }
         }
     }
@@ -22,10 +27,5 @@ public class ProtoFileProvider
     public string? GetContent(string fileName)
     {
         return _cache.TryGetValue(fileName, out var content) ? content : null;
-    }
-
-    public List<string> GetAvailableFiles()
-    {
-        return _cache.Keys.OrderBy(k => k).ToList();
     }
 }

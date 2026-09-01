@@ -10,7 +10,7 @@ using System.Threading;
 public class StreamSubscriptionsManager
 {
     // Поддержка нескольких клиентов на одного пользователя: userId -> (subscriptionId -> stream)
-    private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, IServerStreamWriter<NewMessageEvent>>> _userSubscriptions = new();
+    private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, NewMessageStreamSubscription>> _userSubscriptions = new();
     private long _activeSubscriptionsCount;
 
     public long ActiveCount => Interlocked.Read(ref _activeSubscriptionsCount);
@@ -18,8 +18,8 @@ public class StreamSubscriptionsManager
     public Guid RegisterSubscription(long userId, IServerStreamWriter<NewMessageEvent> responseStream)
     {
         var subscriptionId = Guid.NewGuid();
-        var userStreams = _userSubscriptions.GetOrAdd(userId, _ => new ConcurrentDictionary<Guid, IServerStreamWriter<NewMessageEvent>>());
-        userStreams[subscriptionId] = responseStream;
+        var userStreams = _userSubscriptions.GetOrAdd(userId, _ => new ConcurrentDictionary<Guid, NewMessageStreamSubscription>());
+        userStreams[subscriptionId] = new NewMessageStreamSubscription(responseStream);
         Interlocked.Increment(ref _activeSubscriptionsCount);
         return subscriptionId;
     }
@@ -41,12 +41,52 @@ public class StreamSubscriptionsManager
         }
     }
 
-    public IEnumerable<IServerStreamWriter<NewMessageEvent>> GetUserStreams(long userId)
+    public NewMessageStreamSubscription GetSubscription(long userId, Guid subscriptionId)
+    {
+        if (_userSubscriptions.TryGetValue(userId, out var userStreams)
+            && userStreams.TryGetValue(subscriptionId, out var subscription))
+            return subscription;
+
+        throw new InvalidOperationException($"Subscription {subscriptionId} for user {userId} was not found");
+    }
+
+    public IEnumerable<NewMessageStreamSubscription> GetUserSubscriptions(long userId)
     {
         if (_userSubscriptions.TryGetValue(userId, out var userStreams))
-        {
             return userStreams.Values.ToList();
-        }
+
         return [];
+    }
+
+    public IEnumerable<IServerStreamWriter<NewMessageEvent>> GetUserStreams(long userId)
+        => GetUserSubscriptions(userId).Select(subscription => subscription.Stream);
+}
+
+/// <summary>
+/// Одна подписка на server-stream. gRPC допускает только одну активную запись
+/// в конкретный stream, поэтому heartbeat и события проходят через общий lock.
+/// </summary>
+public sealed class NewMessageStreamSubscription
+{
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
+
+    public NewMessageStreamSubscription(IServerStreamWriter<NewMessageEvent> stream)
+    {
+        Stream = stream;
+    }
+
+    public IServerStreamWriter<NewMessageEvent> Stream { get; }
+
+    public async Task WriteAsync(NewMessageEvent message, CancellationToken cancellationToken)
+    {
+        await _writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            await Stream.WriteAsync(message);
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
     }
 }

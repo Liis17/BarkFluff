@@ -1508,6 +1508,34 @@
         .msg-status-icon--read { width: 20px; }
         .msg-status-icon--pending { width: 14px; height: 14px; }
 
+        .msg-pending-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 4px 8px 0;
+            color: var(--msg-out-meta-color);
+            font-size: 11px;
+        }
+
+        .msg-pending-action {
+            border: 0;
+            padding: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .msg-group.pending-failed .msg-bubble,
+        .msg-group.pending-unknown .msg-bubble,
+        .msg-group.pending-waiting-file .msg-bubble {
+            outline: 1px solid color-mix(in srgb, var(--error) 55%, transparent);
+        }
+
         .msg-date-separator {
             text-align: center;
             padding: 8px 0;

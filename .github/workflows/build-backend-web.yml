@@ -8,7 +8,7 @@ on:
       - nightly
     paths:
       - 'Backend/BarkFluff.Web/**'
-      - 'icons/**'
+      - 'Icons/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 

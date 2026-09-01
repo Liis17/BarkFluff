@@ -50,6 +50,9 @@
     <sys:String x:Key="Error_LoginFailed">Не удалось войти. Проверьте логин и пароль.</sys:String>
     <sys:String x:Key="Error_LoginTwoFactorRequired">Введите код двухфакторной аутентификации.</sys:String>
     <sys:String x:Key="Error_LoginTwoFactorInvalid">Код двухфакторной аутентификации неверный.</sys:String>
+    <sys:String x:Key="Error_LoginRateLimited">Слишком много попыток входа. Попробуйте позже.</sys:String>
+    <sys:String x:Key="Error_LoginLocked">Вход временно заблокирован. Попробуйте позже.</sys:String>
+    <sys:String x:Key="Error_LoginProtectionUnavailable">Защита входа временно недоступна. Попробуйте позже.</sys:String>
     <sys:String x:Key="FastAuth_Creating">Создаём новый QR-код…</sys:String>
     <sys:String x:Key="FastAuth_WaitingConfirmation">Ожидаем подтверждения на другом устройстве.</sys:String>
     <sys:String x:Key="FastAuth_Scanned">QR-код отсканирован. Подтвердите вход на другом устройстве.</sys:String>
@@ -82,6 +85,9 @@
     <sys:String x:Key="Error_RegistrationFieldsRequired">Укажите имя, имя пользователя и почту.</sys:String>
     <sys:String x:Key="Error_RegistrationFailed">Не удалось создать профиль. Проверьте данные и повторите попытку.</sys:String>
     <sys:String x:Key="Error_RegistrationCodeInvalid">Код подтверждения неверный или истёк.</sys:String>
+    <sys:String x:Key="Error_RegistrationRateLimited">Слишком много запросов регистрации. Попробуйте позже.</sys:String>
+    <sys:String x:Key="Error_RegistrationLocked">Подтверждение регистрации временно заблокировано.</sys:String>
+    <sys:String x:Key="Error_RegistrationProtectionUnavailable">Защита регистрации временно недоступна. Попробуйте позже.</sys:String>
     <sys:String x:Key="Error_PasswordMismatch">Пароли не совпадают.</sys:String>
     <sys:String x:Key="Error_PasswordInvalid">Не удалось установить пароль. Попробуйте другой пароль.</sys:String>
     <sys:String x:Key="PasswordRecovery_Title">Восстановление пароля</sys:String>
@@ -97,6 +103,12 @@
     <sys:String x:Key="Error_RecoveryIdentifierRequired">Укажите логин или почту.</sys:String>
     <sys:String x:Key="Error_PasswordResetFailed">Не удалось начать восстановление пароля. Попробуйте позже.</sys:String>
     <sys:String x:Key="Error_PasswordResetCodeInvalid">Код восстановления неверный или истёк.</sys:String>
+    <sys:String x:Key="Error_PasswordResetRateLimited">Слишком много запросов сброса пароля. Попробуйте позже.</sys:String>
+    <sys:String x:Key="Error_PasswordResetLocked">Сброс пароля временно заблокирован. Попробуйте позже.</sys:String>
+    <sys:String x:Key="Error_PasswordResetProtectionUnavailable">Защита сброса пароля временно недоступна. Попробуйте позже.</sys:String>
+    <sys:String x:Key="Error_TwoFactorRateLimited">Слишком много запросов 2FA. Попробуйте позже.</sys:String>
+    <sys:String x:Key="Error_TwoFactorLocked">Операция 2FA временно заблокирована.</sys:String>
+    <sys:String x:Key="Error_TwoFactorProtectionUnavailable">Защита 2FA временно недоступна. Попробуйте позже.</sys:String>
     <sys:String x:Key="Messenger_Search">Поиск чатов и пользователей</sys:String>
     <sys:String x:Key="Messenger_Send">Отправить</sys:String>
     <sys:String x:Key="Messenger_Empty">Выберите чат, чтобы начать переписку</sys:String>

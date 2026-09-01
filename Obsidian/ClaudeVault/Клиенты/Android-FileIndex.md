@@ -53,7 +53,7 @@
 | `StorageSettingsActivity.kt` | Просмотр и очистка кэша (FileCache, StickerCache, ImageCache) с разбивкой по категориям |
 | `PersonalizationSettingsActivity.kt` | Персонализация: закругление пузырей, фон чата, блюр фона, затемнение фона |
 | `UpdateActivity.kt` | Экран обновления приложения; changelog; скачивание APK |
-| `AboutActivity.kt` | «О приложении»: версия, лицензии, ссылки |
+| `AboutActivity.kt` | «О приложении»: версия, лицензии, ссылки; диагностика сервисов, включая Files HTTP media-origin |
 | `LanguageSettingsActivity.kt` | Выбор языка приложения (локализация через `LocaleManager`) |
 | `WidgetsSettingsActivity.kt` | Настройка виджетов главного экрана (закреплённые чаты) |
 | `TestingSettingsActivity.kt` | Флаги для внутреннего тестирования (debug-меню) |
@@ -109,7 +109,7 @@
 |------|------|
 | `data/GlobalParam.kt` | Хранилище состояния сессии (SharedPreferences + EncryptedSharedPreferences): токены, адреса серверов, данные юзера, настройки персонализации |
 | `data/OpenChatManager.kt` | Синглтон; хранит ID текущего открытого чата для подавления дублирующих уведомлений |
-| `data/ServerDataElement.kt` | Data class элемента списка серверов (ip, title, userCount, location, цвет) |
+| `data/ServerDataElement.kt` | Data class элемента списка серверов (ip, title, userCount, location, цвет, filesMediaEndpoint из Navigator) |
 | `data/ClientColors.kt` | Data class цветовой темы сервера (liteHex, mainHex, hardHex) |
 
 ---
@@ -263,7 +263,8 @@ App Widget с закреплёнными чатами.
 | `utils/FirebaseTokenHelper.kt` | app | Получает FCM-токен и регистрирует на сервере; логика обновления токена |
 | `utils/LogoutHelper.kt` | app | Централизованный выход: серверный Logout gRPC, удаление FCM-токена, очистка кэшей и прокси на LoginActivity |
 | `utils/LocaleManager.kt` | app | Применение выбранного языка приложения (`LanguageSettingsActivity`) через `Configuration`/`AppCompatDelegate` |
-| `utils/ServerInfoPrefs.kt` | app | Персистентное хранилище последнего `GetServerInfo` от Beacon (адреса сервисов, `livekitUrl`) |
+| `utils/ServerInfoPrefs.kt` | app | Персистентное хранилище endpoint'ов из Beacon, включая `socketFilesMedia`; выбранный адрес может прийти из Navigator |
+| `utils/ServicePingChecker.kt` | app | Проверяет `/ping` сервисов и `/web/download/{UUID}` отдельного Files HTTP origin |
 | `utils/SpringPress.kt` | app | Пружинистый эффект нажатия для UI-элементов (scale-анимация) |
 | `utils/AudioWaveformExtractor.kt` | app | Извлекает форму волны (waveform) из аудиофайла для голосовых сообщений |
 | `utils/OnlineTimeFormatter.kt` | app | Форматирование времени последней активности пользователя («был(а) в сети …») |

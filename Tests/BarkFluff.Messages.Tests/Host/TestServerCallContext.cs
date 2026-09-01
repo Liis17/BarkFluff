@@ -8,8 +8,14 @@ namespace BarkFluff.Messages.Tests.Host;
 public sealed class TestServerCallContext : ServerCallContext
 {
     private readonly Dictionary<object, object> _userState = new();
+    private readonly CancellationToken _cancellationToken;
     private Status _status = Status.DefaultSuccess;
     private WriteOptions? _writeOptions;
+
+    public TestServerCallContext(CancellationToken cancellationToken = default)
+    {
+        _cancellationToken = cancellationToken;
+    }
 
     protected override string MethodCore => "TestMethod";
 
@@ -21,7 +27,7 @@ public sealed class TestServerCallContext : ServerCallContext
 
     protected override Metadata RequestHeadersCore { get; } = new();
 
-    protected override CancellationToken CancellationTokenCore => CancellationToken.None;
+    protected override CancellationToken CancellationTokenCore => _cancellationToken;
 
     protected override Metadata ResponseTrailersCore { get; } = new();
 

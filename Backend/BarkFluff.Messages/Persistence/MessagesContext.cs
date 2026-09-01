@@ -13,6 +13,8 @@ public class MessagesContext : DbContext
 
     public DbSet<Message> Messages { get; set; }
 
+    public DbSet<MessageOutboxEntry> MessageOutbox { get; set; }
+
     public DbSet<ChatMember> ChatMembers { get; set; }
 
     public DbSet<GroupChatInfo> GroupChatInfos { get; set; }
@@ -36,6 +38,7 @@ public class MessagesContext : DbContext
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
         modelBuilder.ApplyConfiguration(new ChatMemberConfiguration());
         modelBuilder.ApplyConfiguration(new MessageConfiguration());
+        modelBuilder.ApplyConfiguration(new MessageOutboxConfiguration());
         modelBuilder.ApplyConfiguration(new PinnedMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EncryptedMessageConfiguration());
         modelBuilder.ApplyConfiguration(new PrivateChatReadStateConfiguration());

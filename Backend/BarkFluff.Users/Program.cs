@@ -38,7 +38,8 @@ public class Program
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
-        builder.Services.AddGrpcReflection();
+        if (builder.Environment.IsDevelopment())
+            builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<UsersContext>(c
             => c.UseNpgsql(builder.Configuration["UsersDb"], npgsql =>
@@ -119,7 +120,8 @@ public class Program
             startupMetrics.Set("db_migration_healthy", 1);
         }
 
-        app.MapGrpcReflectionService();
+        if (app.Environment.IsDevelopment())
+            app.MapGrpcReflectionService();
 
         // Настраиваем middleware pipeline
         app.UseRouting();

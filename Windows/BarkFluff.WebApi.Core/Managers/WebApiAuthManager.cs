@@ -32,6 +32,18 @@ namespace BarkFluff.WebApi.Core.Managers
                     return (new ErrorReturner(true), response.OtpQr, response.OtpCode);
                 }, globalParam);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return (new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_TwoFactorRateLimited"), null, null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return (new ErrorReturner(false, "Настройка двухфакторной аутентификации временно заблокирована. Повторите попытку позже", errorResourceKey: "Error_TwoFactorLocked"), null, null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return (new ErrorReturner(false, "Защита двухфакторной аутентификации временно недоступна. Повторите попытку позже", errorResourceKey: "Error_TwoFactorProtectionUnavailable"), null, null);
+            }
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка настройки двухфакторной аутентификации"), null, null);
@@ -54,6 +66,18 @@ namespace BarkFluff.WebApi.Core.Managers
 
                     return new ErrorReturner(true);
                 }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_TwoFactorRateLimited");
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return new ErrorReturner(false, "Подтверждение двухфакторной аутентификации временно заблокировано. Повторите попытку позже", errorResourceKey: "Error_TwoFactorLocked");
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return new ErrorReturner(false, "Защита двухфакторной аутентификации временно недоступна. Повторите попытку позже", errorResourceKey: "Error_TwoFactorProtectionUnavailable");
             }
             catch (Exception)
             {
@@ -78,6 +102,18 @@ namespace BarkFluff.WebApi.Core.Managers
                     });
                     return new ErrorReturner(true);
                 }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException)
+            {
+                return new ErrorReturner(false, "Слишком много запросов. Повторите попытку позже", errorResourceKey: "Error_TwoFactorRateLimited");
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException)
+            {
+                return new ErrorReturner(false, "Отключение двухфакторной аутентификации временно заблокировано. Повторите попытку позже", errorResourceKey: "Error_TwoFactorLocked");
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException)
+            {
+                return new ErrorReturner(false, "Защита двухфакторной аутентификации временно недоступна. Повторите попытку позже", errorResourceKey: "Error_TwoFactorProtectionUnavailable");
             }
             catch (Exception)
             {

@@ -15,9 +15,8 @@
 
 | Файл | Сервис | Порт |
 |------|--------|------|
-| [[Backend/Configuration]] | Централизованная конфигурация | 7003 |
-| [[Backend/Configuration-ProjectMap]] | Карта всех файлов и классов Configuration | — |
-| [[Backend/Configuration-Metrics]] | Реестр метрик Configuration (через ServiceMetrics-логи в Seq) | — |
+| [[Backend/Settings]] | Хранилище настроек и setup gRPC API | 7003 |
+| [[Backend/Setup]] | Первичная настройка Settings через web-консоль | 7032 |
 | [[Backend/Beacon]] | Точка входа клиентов | 7002 |
 | [[Backend/Beacon-ProjectMap]] | Карта всех файлов и классов Beacon | — |
 | [[Backend/Beacon-Metrics]] | Реестр метрик Beacon (через ServiceMetrics-логи в Seq) | — |
@@ -31,7 +30,6 @@
 | [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
 | [[Backend/Users-Metrics]] | Реестр метрик Users (через ServiceMetrics-логи в Seq) | — |
 | [[Backend/Users-ChatFolders-ClientGuide]] | Клиентский гайд: папки чатов (UsersApi, XAuth) | — |
-| [[Backend/Users-Rust]] | **Rust drop-in порт Users** (tonic/sqlx/lapin) — тестовый эксперимент | 7001 |
 | [[Backend/Messages]] | Чаты, сообщения, вложения | 7007 |
 | [[Backend/Messages-ProjectMap]] | Карта всех файлов и классов Messages | — |
 | [[Backend/Messages-Metrics]] | Реестр метрик Messages (auto MediatR + доменные + consumer-метрики) | — |
@@ -96,7 +94,6 @@
 | [[Клиенты/Windows-WPF-V2-ProjectMap]] | Карта классов и ресурсов WPF-клиента V2 |
 | [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
 | [[Клиенты/Windows-WebApiCore-ProjectMap]] | Карта всех файлов и менеджеров WebApi.Core |
-| [[Клиенты/Windows-DBEditor]] | Редактор конфигурации БД (WPF) |
 | [[Клиенты/Windows-UpdaterCLI]] | Консольный инсталлятор/апдейтер WPF-клиента (.NET 8, отдельный от основного приложения) |
 | [[Клиенты/Linux-Qt]] | Qt 6 / C++20 — авторизация, мессенджер, настройки, PIN-защита и восстановление сессии |
 | [[Клиенты/macOS]] | SwiftUI + gRPC-Swift (macOS 26) |

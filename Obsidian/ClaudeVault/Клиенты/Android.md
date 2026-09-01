@@ -3,16 +3,22 @@
 Kotlin + gRPC-OkHttp клиент. Activity-based архитектура.
 
 Расположение: `Android/Barkfluff.Client.Android/`
-Package: `com.barkfluff.client`
+Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` используют отдельные `applicationId` ниже)
 
 > Полная карта файлов и внутреннего строения: [[Android-ProjectMap]]
 > Индекс всех файлов с кратким описанием роли каждого: [[Android-FileIndex]]
 > UI/UX спецификация всех экранов и сценариев: [[Клиенты/DesignDocument]] (источник: `dd.md`)
 
-## Версии
+## Версии и требования
 
-- Kotlin 2.2.20, AGP 8.9.1
-- gRPC-OkHttp 1.60.0 (NOT grpc-netty)
+- **Поддерживаемая ОС:** Android 12 (API 31) и выше (`minSdk = 31`).
+- **Сборочный API:** Android 16 (API 36), то есть `compileSdk = 36` и `targetSdk = 36`.
+- **Тулчейн:** Gradle 9.2.1, AGP 8.9.1, Kotlin 2.2.20, KSP 2.2.20-2.0.3, Java bytecode/JVM target 17. Gradle daemon закреплён на JDK 21; CI стартует с JDK 17 и при необходимости использует этот toolchain.
+- **Публикуемый APK:** только `arm64-v8a`; release собирается с R8 и resource shrinking.
+- **Версия приложения:** локальный fallback — `versionName 0.0.1`; CI передаёт реальную SemVer-версию через `-PappVersionName`. `versionCode` вычисляется из неё как `MAJOR × 1 000 000 + MINOR × 1 000 + PATCH`, чтобы Android видел каждый следующий релиз как обновление.
+- **gRPC:** gRPC-OkHttp 1.60.0 (NOT grpc-netty).
+
+Состояние ClientStorage на **30.08.2026**: `release`, `dev` и `nightly` — `0.0.132` (файл каждого канала загружен 22–23.08.2026), `beta` — устаревший `0.0.121 beta`. Опубликованные APK `0.0.132` ещё содержат исторический `versionCode = 1`; пересборка `0.0.132` после этой правки получит `versionCode = 132`, а следующий nightly `0.0.133` — `133`.
 
 ## Иконка приложения (adaptive, по каналу сборки)
 
@@ -178,8 +184,9 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - **`BuildConfig.UPDATE_CHANNEL`** — канал сборки. По нему `UpdateChecker.hasUpdate()` следит только за своим каналом, а `UpdateActivity` показывает кнопку обновления лишь в своей карточке: APK чужого канала не обновит приложение, а встанет вторым. Канал больше **не** определяется суффиксом « beta» в версии — `AppVersion.isBeta` для этого не используется.
 - **Ресурсы каналов** — `app/src/dev/res/` и `app/src/nightly/res/` перекрывают `main`: `app_name` во всех пяти локалях и adaptive-иконка. Для иконки используется цельный `StoreLogo`-арт канала из `Windows/BarkFluff.Client.WinUI/Assets/{branch}/`, скопированный в `drawable-nodpi/` и помещённый в `layer-list` размером 66dp — в безопасную зону adaptive-иконки. Внешний слой прозрачен, поэтому лаунчер сохраняет исходные скруглённые углы и фактуру вместо собственной маски поверх полноразмерной текстуры.
 - **`google-services.json`** содержит client-записи всех трёх пакетов. Без записи под конкретный `applicationId` плагин `com.google.gms.google-services` роняет сборку флейвора.
-- **Версия.** `versionName` поднимает только сборка ветки `nightly` (patch + 1 от версии в канале `nightly`); `dev` и `master` переиздают ту же версию как есть. В git `versionName` всегда остаётся `0.0.1` — реальное значение `sed`'ом подставляет CI и обратно не коммитит. Следствие: два пуша в `dev` подряд без промежуточной nightly-сборки дают два APK с одинаковой версией, и клиент не увидит второй как обновление.
-- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла.
+- **Версия.** Сборка ветки `nightly` увеличивает patch относительно версии в канале `nightly`; `dev` и `master` переиздают эту же версию. CI передаёт значение в Gradle через `-PappVersionName`, а не переписывает исходник. `versionCode` вычисляется из SemVer (`MAJOR × 1 000 000 + MINOR × 1 000 + PATCH`) и растёт вместе с версией; локальный fallback остаётся `0.0.1`/`1`. Два пуша в `dev` подряд без промежуточной nightly-сборки по-прежнему дают одинаковую версию — это отдельное ограничение схемы каналов.
+- **Telegram CI-уведомления.** После успешной загрузки workflow отправляет в канал одну кнопку «Скачать последнюю версию» со ссылкой на `https://storage.barkfluff.com/get/barkfluffkotlin/{channel}`. При ошибке остаётся кнопка «Открыть GitHub Action».
+- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла (`0.0.121 beta` на момент проверки).
 
 ## Система обновлений и её TLS
 
@@ -222,8 +229,8 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - `Android/core/src/main/proto/beacon_api.proto` синхронизирован с `Shared/BarkFluff.Proto/beacon_api.proto`: добавлен `Service calls = 14` рядом с `livekit_url = 13`.
 - `GlobalParam` хранит `socketCalls` и `livekitUrl`; `SelectServerActivity` сохраняет их из Beacon, `AboutActivity` показывает в диагностике.
 - При применении ответа Beacon V1 не превращает пустой/offline Calls endpoint в URL, по умолчанию добавляет `https://` к адресам без схемы и пишет в Logcat raw-диагностику `Beacon calls: has/host/port/tls/livekit`.
-- `utils/ServerInfoPrefs.kt` централизует сохранение [[Backend/Beacon|Beacon]] `GetServerInfo` в `GlobalParam`; `SplashActivity` при запуске требует только сохранённый `socketBeacon`, обновляет остальные endpoint'ы из Beacon и продолжает вход только если после refresh есть Identity. `AboutActivity` показывает сохранённый список сервисов, а проверка доступности запускает параллельный анонимный `GET /ping` по каждому настроенному endpoint'у.
-- `utils/ServicePingChecker.kt` использует тот же `TlsTransportFactory`: принимает сервис только при `HTTP 200`, `text/plain` и теле `pong`, измеряет время каждого запроса в миллисекундах и показывает в строке `Доступен`/`Недоступен` вместе с временем. HTTPS следует системному trust-store или явному host pin; h2c (`H2_PRIOR_KNOWLEDGE`) доступен только в debug. `LiveKit` отображается только как внешний адрес и не проверяется через endpoint liveness из [[Архитектура]].
+- `utils/ServerInfoPrefs.kt` централизует сохранение [[Backend/Beacon|Beacon]] `GetServerInfo` в `GlobalParam`; `SplashActivity` при запуске требует только сохранённый `socketBeacon`, обновляет остальные endpoint'ы из Beacon и продолжает вход только если после refresh есть Identity. Если старый Beacon не прислал уже сохранённый media-origin, он сохраняется. `AboutActivity` показывает сохранённый список сервисов: для обычных endpoint'ов запускается параллельный анонимный `GET /ping`, для Files HTTP — `GET /web/download/{UUID}`.
+- `utils/ServicePingChecker.kt` использует тот же `TlsTransportFactory`: обычные сервисы принимаются только при `HTTP 200`, `text/plain` и теле `pong`, а Files HTTP — при любом HTTP-ответе на случайный GUID; измеряется время каждого запроса в миллисекундах и показывается в строке `Доступен`/`Недоступен` вместе со временем. HTTPS следует системному trust-store или явному host pin; h2c (`H2_PRIOR_KNOWLEDGE`) доступен только в debug для gRPC `/ping`, а cleartext Files HTTP проверяется обычным HTTP/1.1. `LiveKit` отображается только как внешний адрес и не проверяется через endpoint liveness из [[Архитектура]].
 - `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
 - `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`, `ListCallHistory`, `GetActiveCalls`.
 - `core/calls/CallEventsService.kt` подключается в `BarkFluffApplication` вместе с `RealtimeService`: держит lifecycle-подписку на `SubscribeCallEvents`, публикует raw events через `SharedFlow`, текущее состояние звонка через `StateFlow`, делает reconnect/backoff и auto-reject второго входящего звонка при уже активном звонке.
@@ -338,17 +345,22 @@ Backend заполняет эти поля при доставке сообще�
 
 ## Отдельный файловый адрес ноды (мимо CDN)
 
-Beacon отдаёт `files_media_endpoint` — второй публичный origin файлового HTTP ноды
+Beacon и Navigator отдают `files_media_endpoint` — второй публичный origin файлового HTTP ноды
 (`files2.barkfluff.com`, [[Backend/Nginx]]), не проходящий через CDN с его лимитом на размер файла.
 
-- Хранится в `GlobalParam.socketFilesMedia` (prefs-ключ `socket_files_media`, переживает
+- При выборе сервера поле `files_media_endpoint` приходит из Navigator и сохраняется вместе с
+  данными Beacon; для ручного адреса остаётся fallback на значение из Beacon.
+  Хранится в `GlobalParam.socketFilesMedia` (prefs-ключ `socket_files_media`, переживает
   `clearUserData` наравне с остальными адресами), заполняется в `ServerInfoPrefs.applyServerInfo`
   из `GrpcManager.ServerInfo.filesMediaEndpoint`.
 - `FileMediaUrl.rewrite(url, origin)` (`core/utils/`) меняет в ссылке только схему/хост/порт — путь
   `/web/...` тот же; обёртка `GrpcManager.toMediaUrl(url)` подставляет текущий адрес.
 - Применяется в `GrpcManager.getUploadUrl` / `getFileDownloadUrl` / `getFileDownloadUrls` и в
-  `ChatRepository.getUploadUrl` / `uploadFile` (там свой прямой вызов `filesClient`). Аватары из
-  профилей остаются на основном адресе Files.
+  `ChatRepository.getUploadUrl` / `uploadFile` (там свой прямой вызов `filesClient`), поэтому
+  отправка, загрузка и встроенные ссылки на файлы идут через отдельный origin.
+- В диагностике «О приложении» media-origin проверяется запросом
+  `GET /web/download/{случайный UUID}`; любой полученный HTTP-ответ (включая ожидаемый 404)
+  считается признаком живого HTTP listener.
 - `TlsServerCertificatePreflight` проверяет серт нового хоста наравне с остальными эндпоинтами —
   иначе self-signed нода упала бы на первой же загрузке без внятного диалога.
 - Пустое значение (нода не объявила адрес) = поведение как раньше.
@@ -394,7 +406,7 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 
 - **Action menu — оверлей в стиле Telegram** (`view/MessageActionsOverlay.kt`): клик по самому пузырю (`messageCard`/`stickerContainer`, не по всей строке с её padding-гутером 80dp) открывает полноэкранный оверлей поверх `chatRootLayout`. Фон блюрится и затемняется, снимок пузыря "приподнимается" пружиной (`SpringAnimation`, токены M3 Expressive из `SpringPress.kt`) над ним, карточка меню и пункты появляются каскадом (`PathInterpolator(0.2f, 0f, 0f, 1f)`, задержка 18мс на пункт). Снимки берутся через `PixelCopy`, а не `View.draw(Canvas)`: дерево чата содержит hardware-bitmap изображения (Coil грузит их так по умолчанию), обычный software-canvas на них падает с `IllegalArgumentException: Software rendering doesn't support hardware bitmaps`. View-перегрузки `PixelCopy` в этом SDK нет — есть только `Window`, поэтому и фон, и сам пузырь снимаются как под-прямоугольники окна по координатам `getLocationInWindow`.
 - **Закрытие**: тап вне меню, тап по копии пузыря, вертикальный свайп (перехватывается оверлеем — жест не долетает до `RecyclerView`, чат под ним не скроллится) или системный back — идёт первым в цепочке `backCallback`, до стикер-оверлея и режима выделения (см. ниже, у него свой приоритет ещё выше).
-- **Иконки**: `res/drawable/ic_action_*.xml` — отдельный набор VectorDrawable, вручную сконвертированный из `/icons/*.svg` (плоские SVG, Material 3 Rounded, `stroke="currentColor"`, viewBox 24×24). Не переиспользует `ic_reply`/`ic_edit`/`ic_delete`/... — те задействованы на других экранах (профиль, группа, вложения).
+- **Иконки**: `res/drawable/ic_action_*.xml` — отдельный набор VectorDrawable, вручную сконвертированный из `Icons/*.svg` (плоские SVG, Material 3 Rounded, `stroke="currentColor"`, viewBox 24×24). Не переиспользует `ic_reply`/`ic_edit`/`ic_delete`/... — те задействованы на других экранах (профиль, группа, вложения).
 - **Пункты меню** (в порядке отображения): Ответить → Копировать текст (`MarkdownRenderer.strip(item.text)`, без markdown-разметки) / Копировать как Markdown (`item.text` как есть) — оба при `hasText` → Копировать изображение — если ровно одна картинка → Сохранить изображение(-я) → Сохранить в загрузки — если есть документы → Изменить / Удалить (danger-стиль, `?attr/colorError`, отделены `MaterialDivider`) — только для своих → Переслать → Закрепить/Открепить (иконка переключается по `pinnedById`) → Свойства → Выделить.
 - **Свойства** (`showMessageProperties`): `MaterialAlertDialogBuilder` со списком ID сообщения, отправителя, времени отправки, признака изменения, статуса прочтения (только для своих сообщений) и перечня вложений (тип + имя файла).
 - **Режим выделения** (`MessageAdapter.selectionMode`/`selectedIds`, владелец состояния — `ChatActivity.selectedMessageIds`): пункт «Выделить» включает режим — индикатор выбора слева от пузыря (пустой кружок/закрашенный чек, `ic_circle_outline`/`ic_action_select`), тап по пузырю в этом режиме переключает выбор вместо открытия меню. У входящих сообщений своего отступа под индикатор нет — `contentColumn` сдвигается вправо через `translationX` (32dp = 24dp индикатор + 8dp зазор); у исходящих индикатор просто попадает в уже существующий 80dp гутер слева. Верхняя панель `selectionToolbar` подменяет `chatHeaderBar` через `View.INVISIBLE`, а не `GONE` — `pinnedMessageBar` и `e2eBanner` constraint-привязаны к нижнему краю `chatHeaderBar`, `GONE` обнулил бы высоту в цепочке и утащил их под статус-бар; `selectionToolbar` получает тот же обработчик window insets, что и `chatHeaderBar`. Пакетные действия: копировать (тексты выбранных через `\n\n`), переслать (`ForwardChatPickerBottomSheet` уже принимает список ID), удалить (только свои сообщения, диалог подтверждения, Toast с числом неудалённых при частичном сбое). Выход — крестик, back (первым в цепочке `backCallback`) или снятие последнего выбора.
@@ -587,7 +599,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 | Свойство `GlobalParam` | Ключ prefs | Что включает |
 |---|---|---|
 | `showIdsInProfile` | `testing_show_ids_in_profile` | ID-строки в `UserProfileActivity` и ChatId-карточка в `GroupInfoActivity`. В профиле пользователя показывает `UserId: <otherUserId>` и `ChatId: <chatId>`, в профиле группы — `ChatId: <chatId>`. Тап по строке копирует значение в `ClipboardManager` + Toast. |
-| `showServerAddressesInAbout` | `testing_show_server_addresses_in_about` | Карточка диагностических адресов в `AboutActivity`. Кнопка «Проверить доступность» параллельно вызывает анонимный `GET /ping` на настроенных [[Backend/Beacon|Beacon]], [[Backend/Identity|Identity]], [[Backend/Users|Users]], [[Backend/Files|Files]], [[Backend/Messages|Messages]], [[Backend/Updates|Updates]], [[Backend/Onliner|Onliner]], [[Backend/FastAuth|FastAuth]] и [[Backend/Calls|Calls]]; каждая строка показывает доступность и время запроса. |
+| `showServerAddressesInAbout` | `testing_show_server_addresses_in_about` | Карточка диагностических адресов в `AboutActivity`. Кнопка «Проверить доступность» параллельно вызывает анонимный `GET /ping` на настроенных [[Backend/Beacon|Beacon]], [[Backend/Identity|Identity]], [[Backend/Users|Users]], [[Backend/Files|Files]], [[Backend/Messages|Messages]], [[Backend/Updates|Updates]], [[Backend/Onliner|Onliner]], [[Backend/FastAuth|FastAuth]] и [[Backend/Calls|Calls]], а для отдельного Files HTTP origin — `GET /web/download/{UUID}`; каждая строка показывает доступность и время запроса. |
 | `secretChatsEnabled` | `testing_secret_chats_enabled` | `encryptedChatButton` в шапке `ChatsFragment` (иконка `ic_hood`, открывает `CreateEncryptedChatActivity`). По умолчанию кнопка `View.GONE`; видимость переоценивается в `onViewCreated` и `onResume`, чтобы переключение в TestingSettings подхватывалось при возврате. |
 
 Оба флага по умолчанию `false` — обычная сборка не показывает ни блок ID, ни кнопку скрытых чатов.
@@ -745,6 +757,7 @@ Android/
 - **Тулчейн:** AGP 8.9.1, Gradle 9.2.1, Kotlin 2.2.20, Java 17.
 - **Сборка только с JDK 17+:** `JAVA_HOME` = JBR Android Studio (JDK 21). Из `Android/`:
   `./gradlew :core:assembleDebug :app-v1:assembleDebug`
+- **Единая точка входа:** поддерживаемый Gradle-рут — `Android/`; вложенные `Barkfluff.Client.Android/settings.gradle.kts` и его wrapper/каталог версий — историческая копия и не используются CI. Вложенный root сейчас не считается самостоятельным entrypoint: его каталог версий не содержит Hilt-алиасов.
 
 ### Состав `:core`
 

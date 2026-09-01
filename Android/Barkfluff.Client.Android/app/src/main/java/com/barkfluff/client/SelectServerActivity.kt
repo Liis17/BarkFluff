@@ -207,10 +207,12 @@ class SelectServerActivity : AppCompatActivity() {
 
     private fun onServerSelected(server: ServerDataElement) {
         Log.d(TAG, "Выбран сервер: ${server.title} (${server.ip})")
-        normalizeServerAddress(server.ip)?.let(::connectToServer)
+        normalizeServerAddress(server.ip)?.let { address ->
+            connectToServer(address, server.filesMediaEndpoint)
+        }
     }
 
-    private fun connectToServer(address: String) {
+    private fun connectToServer(address: String, navigatorFilesMediaEndpoint: String = "") {
         if (isConnecting) {
             return
         }
@@ -242,16 +244,21 @@ class SelectServerActivity : AppCompatActivity() {
                 if (infoResult.isSuccess) {
                     val serverInfo = infoResult.getOrNull()
                     if (serverInfo != null) {
-                        if (!preflightServerCertificates(serverInfo)) {
+                        val effectiveServerInfo = if (navigatorFilesMediaEndpoint.isBlank()) {
+                            serverInfo
+                        } else {
+                            serverInfo.copy(filesMediaEndpoint = navigatorFilesMediaEndpoint)
+                        }
+                        if (!preflightServerCertificates(effectiveServerInfo)) {
                             resetConnectionState()
                             return@launch
                         }
 
                         // Сохраняем информацию о сервере в GlobalParam
                         globalParam.socketBeacon = address
-                        globalParam.applyServerInfo(serverInfo)
+                        globalParam.applyServerInfo(effectiveServerInfo)
 
-                        Log.d(TAG, "Успешное подключение к серверу: ${serverInfo.name}")
+                        Log.d(TAG, "Успешное подключение к серверу: ${effectiveServerInfo.name}")
 
                         // Создаем Identity клиент для проверки доступности (без interceptor, так как токена еще нет)
                         val identityResult = grpcManager.createIdentityClient(globalParam.socketIdentity)

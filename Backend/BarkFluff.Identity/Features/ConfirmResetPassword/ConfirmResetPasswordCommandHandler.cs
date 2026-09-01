@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Shared.Exceptions.Identity;
 
 using MediatR;
@@ -36,7 +37,8 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
 
         public ConfirmResetPasswordCommandHandler(ResetPasswordsStorage resetPasswordsStorage, AuthPropertiesStorage authPropertiesStorage,
             PasswordsStorage passwordsStorage, RefreshTokensStorage refreshTokensStorage, IMediator mediator, RequestContext requestContext,
-            MetricsCollector metrics, ILogger<ConfirmResetPasswordCommandHandler> logger)
+            MetricsCollector metrics, ILogger<ConfirmResetPasswordCommandHandler> logger,
+            IIdentityAbuseGuard abuseGuard)
         {
             _resetPasswordsStorage = resetPasswordsStorage;
             _authPropertiesStorage = authPropertiesStorage;
@@ -46,7 +48,10 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             this.requestContext = requestContext;
             _metrics = metrics;
             _logger = logger;
+            _abuseGuard = abuseGuard;
         }
+
+        private readonly IIdentityAbuseGuard _abuseGuard;
 
         public async Task<ConfirmResetPasswordResponse> Handle(ConfirmResetPasswordCommand request, CancellationToken cancellationToken)
         {
@@ -68,6 +73,11 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             {
                 throw new XAppInfoIsRequiedException();
             }
+
+            await _abuseGuard.EnsureCodeAllowedAsync(
+                IdentityCodeKind.PasswordReset,
+                request.ResetId,
+                cancellationToken);
 
             var resetPasswordInfo = await _resetPasswordsStorage.GetResetPassword(request.ResetId);
 
@@ -110,6 +120,9 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
                 resetPasswordInfo.OtpType
             );
 
+            if (string.IsNullOrWhiteSpace(request.OtpCode))
+                throw new OtpCodeNeedException();
+
             if (resetPasswordInfo.OtpType == OtpType.Authenticator)
             {
                 var otpSecret = await _authPropertiesStorage.GetOtpSecretKey(resetPasswordInfo.UserId);
@@ -120,12 +133,26 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
 
                 if (!isValid)
                 {
+                    var failure = await _abuseGuard.RegisterCodeFailureAsync(
+                        IdentityCodeKind.PasswordReset,
+                        request.ResetId,
+                        resetPasswordInfo.ExpiresAt,
+                        cancellationToken);
+                    await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
                     _metrics.Increment("password_reset_confirmation_failed");
                     _metrics.Increment("otp_authenticator_failed");
                     _logger.LogWarning(
                         "Неверный Authenticator OTP код для пользователя {UserId}",
                         resetPasswordInfo.UserId
                     );
+
+                    if (failure.Locked)
+                    {
+                        await _resetPasswordsStorage.InvalidateResetPassword(request.ResetId);
+                        throw new IdentityLockoutException();
+                    }
+
                     throw new NotValidOtpCodeException();
                 }
 
@@ -136,18 +163,37 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             {
                 if (!string.Equals(resetPasswordInfo.OtpCode, request.OtpCode, StringComparison.Ordinal))
                 {
+                    var failure = await _abuseGuard.RegisterCodeFailureAsync(
+                        IdentityCodeKind.PasswordReset,
+                        request.ResetId,
+                        resetPasswordInfo.ExpiresAt,
+                        cancellationToken);
+                    await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
                     _metrics.Increment("password_reset_confirmation_failed");
                     _metrics.Increment("otp_email_failed");
                     _logger.LogWarning(
                         "Неверный Email OTP код для пользователя {UserId}",
                         resetPasswordInfo.UserId
                     );
+
+                    if (failure.Locked)
+                    {
+                        await _resetPasswordsStorage.InvalidateResetPassword(request.ResetId);
+                        throw new IdentityLockoutException();
+                    }
+
                     throw new NotValidOtpCodeException();
                 }
 
                 _metrics.Increment("otp_email_verified");
                 _logger.LogDebug("Email OTP код успешно проверен для пользователя {UserId}", resetPasswordInfo.UserId);
             }
+
+            await _abuseGuard.ClearCodeFailuresAsync(
+                IdentityCodeKind.PasswordReset,
+                request.ResetId,
+                cancellationToken);
 
             _logger.LogDebug("Генерация refresh token для пользователя {UserId}", resetPasswordInfo.UserId);
 

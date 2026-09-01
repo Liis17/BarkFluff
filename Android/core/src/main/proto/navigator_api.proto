@@ -34,6 +34,7 @@ message ServerInfo {
   string server_public_name = 5; // Публичное имя сервера
   string location = 6; // Локация сервера
   ServerColor color = 7; // Цвета сервера
+  string files_media_endpoint = 14; // Отдельный HTTP-адрес Files для файловых операций
 }
 
 message ServiceEndpoint {

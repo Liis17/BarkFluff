@@ -113,7 +113,10 @@ public class ChatsStorage
         return chats;
     }
 
-    public async Task<Guid?> GetUserChatIdWithPerson(long person, long userId)
+    public async Task<Guid?> GetUserChatIdWithPerson(
+        long person,
+        long userId,
+        CancellationToken cancellationToken = default)
     {
         if (person == userId)
         {
@@ -133,7 +136,7 @@ public class ChatsStorage
                 .OrderByDescending(x => x.LastMessageSentAt)
                 .ThenBy(x => x.Id)
                 .Select(x => (Guid?)x.Id)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
         return await _context.Chats
@@ -152,13 +155,16 @@ public class ChatsStorage
             .OrderByDescending(x => x.LastMessageSentAt)
             .ThenBy(x => x.Id)
             .Select(x => (Guid?)x.Id)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<bool> CheckAccessToChat(Guid chatId, long userId)
+    public async Task<bool> CheckAccessToChat(
+        Guid chatId,
+        long userId,
+        CancellationToken cancellationToken = default)
     {
         return await _context.ChatMembers
-            .AnyAsync(m => m.ChatId == chatId && m.UserId == userId);
+            .AnyAsync(m => m.ChatId == chatId && m.UserId == userId, cancellationToken);
     }
 
     public async Task<List<Guid>> GetMemberChatIds(long userId, List<Guid> chatIds)
@@ -184,7 +190,11 @@ public class ChatsStorage
         return count;
     }
 
-    public async Task<List<ChatMember>> GetChatMembers(Guid chatId, int skip, int count)
+    public async Task<List<ChatMember>> GetChatMembers(
+        Guid chatId,
+        int skip,
+        int count,
+        CancellationToken cancellationToken = default)
     {
         var members = await _context
             .ChatMembers
@@ -192,7 +202,7 @@ public class ChatsStorage
             .OrderBy(x => x.UserId)
             .Skip(skip)
             .Take(count)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return members;
     }
@@ -202,7 +212,10 @@ public class ChatsStorage
         return await _context.ChatMembers.CountAsync(x => x.ChatId == chatId);
     }
 
-    public async Task<Chat> CreatePersonChat(long userId, long personId)
+    public async Task<Chat> CreatePersonChat(
+        long userId,
+        long personId,
+        CancellationToken cancellationToken = default)
     {
         var chat = new Chat()
         {
@@ -215,9 +228,9 @@ public class ChatsStorage
             IsGroupChat = false
         };
 
-        var result = await _context.Chats.AddAsync(chat);
+        var result = await _context.Chats.AddAsync(chat, cancellationToken);
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
 
         return result.Entity;
     }
@@ -374,12 +387,12 @@ public class ChatsStorage
         return await _context.GroupChatInfos.FirstOrDefaultAsync(x => x.ChatId == chatId);
     }
 
-    public async Task<Chat?> GetChat(Guid chatId)
+    public async Task<Chat?> GetChat(Guid chatId, CancellationToken cancellationToken = default)
     {
         return await _context
             .Chats
             .Include(x => x.Members)
-            .FirstOrDefaultAsync(x => x.Id == chatId);
+            .FirstOrDefaultAsync(x => x.Id == chatId, cancellationToken);
     }
 
     public async Task UpdateGroupChat(Guid chatId, string? title, string? picture)
@@ -444,12 +457,14 @@ public class ChatsStorage
     /// FederatedStatus чата (для нефедеративных всегда Active — поле для них не используется).
     /// Null, если чат не найден.
     /// </summary>
-    public Task<FederatedStatus?> GetFederatedStatusAsync(Guid chatId)
+    public Task<FederatedStatus?> GetFederatedStatusAsync(
+        Guid chatId,
+        CancellationToken cancellationToken = default)
     {
         return _context.Chats
             .Where(c => c.Id == chatId)
             .Select(c => (FederatedStatus?)c.FederatedStatus)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public Task<Chat?> GetFederatedChatAsync(Guid chatId)
@@ -474,14 +489,17 @@ public class ChatsStorage
         return true;
     }
 
-    public Task<Chat?> FindActiveFederatedChatByUuidPairAsync(Guid uuidLow, Guid uuidHigh)
+    public Task<Chat?> FindActiveFederatedChatByUuidPairAsync(
+        Guid uuidLow,
+        Guid uuidHigh,
+        CancellationToken cancellationToken = default)
     {
         return _context.Chats
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.IsFederated
                 && c.FederatedStatus == Domain.FederatedStatus.Active
                 && c.FederatedUuidLow == uuidLow
-                && c.FederatedUuidHigh == uuidHigh);
+                && c.FederatedUuidHigh == uuidHigh, cancellationToken);
     }
 
     /// <summary>
@@ -495,7 +513,8 @@ public class ChatsStorage
         Guid remoteUuid,
         string remoteServerName,
         Guid uuidLow,
-        Guid uuidHigh)
+        Guid uuidHigh,
+        CancellationToken cancellationToken = default)
     {
         var chat = new Chat
         {
@@ -527,7 +546,7 @@ public class ChatsStorage
         _context.Chats.Add(chat);
         try
         {
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
             return chat;
         }
         catch (DbUpdateException)
@@ -537,7 +556,7 @@ public class ChatsStorage
             foreach (var member in chat.Members)
                 _context.Entry(member).State = EntityState.Detached;
 
-            var existing = await FindActiveFederatedChatByUuidPairAsync(uuidLow, uuidHigh);
+            var existing = await FindActiveFederatedChatByUuidPairAsync(uuidLow, uuidHigh, cancellationToken);
             if (existing is not null)
                 return existing;
 

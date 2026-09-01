@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.SettingsSetup";
+
+package barkfluff.settings.setup;
+
+service SettingsSetupApi {
+  rpc GetSetupState(GetSetupStateRequest) returns (GetSetupStateResponse);
+  rpc SaveSetupGroup(SaveSetupGroupRequest) returns (SaveSetupGroupResponse);
+  rpc CompleteSetup(CompleteSetupRequest) returns (CompleteSetupResponse);
+}
+
+message GetSetupStateRequest {}
+
+message GetSetupStateResponse {
+  bool complete = 1;
+  bool locked = 2;
+  string catalog_fingerprint = 3;
+  string completed_at_utc = 4;
+  repeated SetupGroup groups = 5;
+}
+
+message SetupGroup {
+  string id = 1;
+  int32 order = 2;
+  string title = 3;
+  string description = 4;
+  bool applicable = 5;
+  bool complete = 6;
+  repeated SetupField fields = 7;
+}
+
+message SetupField {
+  string id = 1;
+  int32 service_id = 2;
+  string section = 3;
+  string key = 4;
+  string storage_key = 5;
+  string label = 6;
+  string description = 7;
+  string placeholder = 8;
+  string input_type = 9;
+  string requirement = 10;
+  string validator_id = 11;
+  bool sensitive = 12;
+  bool required = 13;
+  bool applicable = 14;
+  bool configured = 15;
+  string value = 16;
+  string error = 17;
+}
+
+message SaveSetupGroupRequest {
+  string group_id = 1;
+  repeated SetupValue values = 2;
+  string edited_by = 3;
+  string edited_from = 4;
+}
+
+message SetupValue {
+  string field_id = 1;
+  string value = 2;
+}
+
+message SaveSetupGroupResponse {
+  bool success = 1;
+  string message = 2;
+  GetSetupStateResponse state = 3;
+}
+
+message CompleteSetupRequest {
+  string completed_by = 1;
+  string completed_from = 2;
+}
+
+message CompleteSetupResponse {
+  bool success = 1;
+  string message = 2;
+  GetSetupStateResponse state = 3;
+}

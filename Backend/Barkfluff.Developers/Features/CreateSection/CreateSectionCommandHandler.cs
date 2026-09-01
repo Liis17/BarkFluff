@@ -25,7 +25,7 @@ public class CreateSectionCommandHandler : IRequestHandler<CreateSectionCommand,
             Content = request.Content
         };
 
-        var created = await _storage.CreateAsync(section);
+        var created = await _storage.CreateAsync(section, cancellationToken);
 
         return new DocumentationSection
         {

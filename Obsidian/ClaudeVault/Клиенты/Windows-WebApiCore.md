@@ -44,7 +44,7 @@ WebApi (IDisposable, фасад)
 | `WebApi` | Фасад gRPC-клиентов; `CallsAC` создаётся только если сервер объявил endpoint звонков, `FastAuthUserAC` используется для авторизованного подтверждения QR-входа |
 | `WebApiBase` | Абстрактный базовый класс менеджеров; содержит общий `ReadStream<T>` для безопасного чтения и отмены server-streaming RPC |
 | `GlobalParam` | Состояние (токены, URL, профиль), включая `SocketCalls`, `LivekitUrl`, `ServerDnsName`, `FederationEnabled`; AES-256-GCM; KDF PBKDF2-SHA512 × 600k (формат BFV3); чтение legacy BFV2 (PBKDF2-SHA256 × 100k) для миграции |
-| `ErrorReturner` | `(bool IsSuccess, string? ErrorMessage, int ErrorCode)` |
+| `ErrorReturner` | `(bool IsSuccess, string? ErrorMessage, int ErrorCode, string? ErrorResourceKey)`; Identity rate limit, lockout и временная недоступность защиты возвращают локализационный ключ |
 | `ForwardingLetter` | Исходящее сообщение: `Text`, `FilesId`, `ForwardedMessageId` (0 = обычная отправка). Одно и то же поле обслуживает и ответ, и пересылку — как в веб-клиенте |
 | `MessageModel` | Сообщение чата, включая `IsEdited` / `EditedAt` |
 | `AttachmentsModel` | Вложение; для типа `ForwardedMessage` заполнен `ForwardedMessage` |

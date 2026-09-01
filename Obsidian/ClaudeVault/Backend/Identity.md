@@ -6,6 +6,8 @@
 
 Расположение: `Backend/BarkFluff.Identity/`
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 ## Сборка
 
 ```bash
@@ -15,7 +17,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 Миграции применяются автоматически при старте.
 
-## Конфигурация (от Configuration-сервиса)
+## Конфигурация (от Settings-сервиса)
 
 | Ключ | Описание |
 |------|----------|
@@ -28,6 +30,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `UsersService:Token` | Service token для Users |
 | `RabbitMQ:Host` | Адрес брокера |
 | `RabbitMQ:Username` / `RabbitMQ:Password` | Credentials MassTransit |
+| `Redis` | Redis для распределённых счётчиков и блокировок Identity |
+| `IdentitySecurity:*` | Лимиты, TTL и progressive delay защиты Identity; production defaults: `60` high-risk запросов/минуту на IP, `5` запросов на субъект и `5` ошибок за `15` минут, lockout `15` минут, backoff `250/500/1000/2000` мс |
 
 ## Архитектура
 
@@ -39,8 +43,9 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - `Infrastructure/` — `LocationClient` (ip-api.com, геолокация по IP), `NotificationQueueSender` (RabbitMQ/MassTransit)
 - `Persistence/Contexts/` — `IdentityContext` (EF Core + Npgsql)
 - `Persistence/Services/` — `RefreshTokensStorage`, `AuthPropertiesStorage`, `ConfirmationCodesStorage`, `PasswordsStorage`, `ResetPasswordsStorage`
+- `Security/` — `IIdentityAbuseGuard`, `RedisIdentityAbuseGuard` (атомарные Lua-операции, TTL, lockout, fail-closed), `IdentityAbuseGuardBehavior` и типы ключей защиты
 - `Services/` — `JwtService`, `PasswordHasher` (BCrypt workFactor=12, с поддержкой legacy SHA-256 на verify), `CodeGenerator` (6-значный цифровой, CSPRNG), `RefreshTokenGenerator` (32 байта, URL-safe Base64, CSPRNG)
-- `Settings/` — `JwtSettings` (SecretKey, Issuer, Audience, ExpiryMinutes)
+- `Settings/` — `JwtSettings` и `IdentitySecurityOptions`
 - `Consumers/` — `SessionRevokedConsumer` (MassTransit, слушает `session-revoked-identity`)
 
 ### Domain-модели
@@ -120,6 +125,14 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 6. Создание нового `RefreshToken` (TTL 9999 дней) + JWT access token
 7. Регистрация/обновление устройства в Users-сервисе (`RegisterDevice`)
 8. Email-уведомления через RabbitMQ: успех (`SuccessfulLogin`) или неудача (`FailedLogin`)
+
+### Распределённая защита Identity
+
+Для публичных high-risk RPC (`Auth`, `CreateAccount`, `ConfirmAccount`, `ResetPassword`, `ConfirmResetPassword`, `EnableOtpVerification`, `ConfirmOtpVerification`, `DisableOtpVerification`) MediatR-поведение проверяет Redis-состояние до handler'а. Счётчик high-risk запросов общий для доверенного IP и ограничен `60/мин`; создание кодов и сбросов дополнительно ограничены `5/15 мин` на субъект.
+
+Ошибки входа считаются отдельно для пары `login + trusted IP` и `userId`. Пятый неверный пароль/OTP создаёт lockout пользователя на `15` минут; неверные коды регистрации и сброса после пятой попытки инвалидируются, а OTP-операции настройки/отключения блокируются на `15` минут. Успешный вход или подтверждение очищает соответствующие counters. Отсутствующий OTP-код не считается ошибкой и возвращает `OtpCodeNeedException`.
+
+`trusted IP` берётся только из `X-Real-IP`, `X-Forwarded-For` или TCP-соединения reverse proxy. Клиентская metadata `x-ip-address` сохраняется только для совместимости и не участвует в Redis-ключах. При ошибке Redis high-risk запрос отклоняется `IdentityProtectionUnavailableException` (fail-closed). Остальные публичные RPC ограничены внешней зоной Nginx Identity: `10r/s`, `burst=20`, `nodelay`, HTTP `429`.
 
 ### Обновление токена (`CreateToken`)
 1. Поиск `RefreshToken` по значению
@@ -206,6 +219,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - **Изменение пароля**: `password_changes`, `password_changes_initial`, `password_change_failed_invalid_old`
 - **Сессии/logout**: `session_removal_attempts`, `sessions_removed`, `session_removal_failed_not_found`, `logouts`, `sessions_created`, `sessions_revoked`, `session_revocations_received`
 - **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`, `server_force_password_changes` (ForceSetPasswordServer), `server_bot_token_creations` (CreateBotTokenServer), `server_bot_token_reads` (GetBotTokenServer)
+- **Identity protection**: `identity_rate_limited`, `identity_lockouts`, `identity_code_invalidated`, `identity_protection_unavailable`
 - **RabbitMQ**: `rabbitmq_events_consumed` (инкрементируется `SessionRevokedConsumer`)
 - **LocationClient**: `geolocation_requests`, `geolocation_success`, `geolocation_errors`
 - **Gauge**: `service_started_unix` (для uptime)

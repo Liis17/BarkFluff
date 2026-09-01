@@ -26,14 +26,14 @@ var webMode = builder.Configuration["Web:Mode"];
 var isShellMode = string.Equals(webMode, "Shell", StringComparison.OrdinalIgnoreCase);
 var isProxyMode = string.Equals(webMode, "Proxy", StringComparison.OrdinalIgnoreCase);
 
-// Шелл и прокси живут вне ноды, рядом с ними нет Configuration-сервиса, а
+// Шелл и прокси живут вне ноды, рядом с ними нет Settings-сервиса, а
 // LoadConfiguration падает без ретраев при недоступном сервисе — поэтому в этих
 // режимах его пропускаем и берём конфигурацию только из env/appsettings (тот же
 // осознанный выход из платформенного шаблона, что у BarkFluff.Navigator).
 if (!isShellMode && !isProxyMode)
     builder.LoadConfiguration(ServiceId.Web);
 
-// Env-переменные контейнера должны иметь приоритет над Configuration service
+// Env-переменные контейнера должны иметь приоритет над Settings service
 builder.Configuration.AddEnvironmentVariables();
 
 // В Proxy-режиме адрес origin-ноды обязателен — fail fast, а не 502 на первом запросе.
@@ -271,7 +271,9 @@ app.Use(async (ctx, next) =>
         ctx.Response.Headers.Remove("Content-Length");
         // Запрещаем nginx буферизировать ответ — критично для server-streaming
         ctx.Response.Headers["X-Accel-Buffering"] = "no";
-        ctx.Response.Headers["Cache-Control"] = "no-cache";
+        // Нельзя позволять промежуточным прокси сжимать/преобразовывать
+        // gRPC-Web server-stream: это может превратить live-ответ в буфер.
+        ctx.Response.Headers["Cache-Control"] = "no-cache, no-transform";
         return Task.CompletedTask;
     });
 
@@ -597,6 +599,21 @@ static IReadOnlyList<RouteConfig> BuildRoutes(bool isShellMode, bool isProxyMode
         return routes;
 
     // HTTP upload — client-streaming недоступен в gRPC-Web, поэтому используем прямой HTTP POST.
+    routes.Add(new RouteConfig
+    {
+        RouteId = "files-http-upload-status",
+        ClusterId = "files-http",
+        Match = new RouteMatch
+        {
+            Path = "/api/files/upload/{uploadId}/status",
+            Methods = new[] { "GET" }
+        },
+        Transforms = new[]
+        {
+            new Dictionary<string, string> { { "PathPattern", "/upload/{uploadId}/status" } }
+        }
+    });
+
     routes.Add(new RouteConfig
     {
         RouteId = "files-http-upload",

@@ -12,7 +12,7 @@
  * Вызывается из login-page.js: BF.fastAuth.start() при инициализации,
  * BF.fastAuth.cancel() при уходе со страницы / переходе на OTP.
  *
- * Requires: barkfluff.bundle.js, BF.metadata, BF.tokens, window.proto
+ * Requires: barkfluff.bundle.js, BF.metadata, BF.tokens, BF.network, window.proto
  * Exposes: BF.fastAuth
  */
 (function () {
@@ -137,29 +137,29 @@
      * Шаг 1: запросить новый QR-токен.
      */
     function generateToken() {
-        return new Promise(function (resolve) {
-            var pkg = window.proto && window.proto.barkfluff
-                && window.proto.barkfluff.fast && window.proto.barkfluff.fast.auth;
-            var client = fastAuthClient();
-            if (!pkg || !client) {
-                resolve({ ok: false, err: 'fastauth_unavailable' });
-                return;
-            }
-            var req = new pkg.GenerateFastAuthTokenRequest();
-            req.setFormat(pkg.TokenFormat.TOKEN_FORMAT_QR);
-            var meta = BF.metadata.build(); // без auth-токена
-            client.generateFastAuthToken(req, meta, function (err, resp) {
-                if (err || !resp) { resolve({ ok: false, err: err }); return; }
+        var pkg = window.proto && window.proto.barkfluff
+            && window.proto.barkfluff.fast && window.proto.barkfluff.fast.auth;
+        var client = fastAuthClient();
+        if (!pkg || !client) return Promise.resolve({ ok: false, err: 'fastauth_unavailable' });
+        var req = new pkg.GenerateFastAuthTokenRequest();
+        req.setFormat(pkg.TokenFormat.TOKEN_FORMAT_QR);
+        var meta = BF.metadata.build(); // без auth-токена
+        return BF.network.unary(
+            client.generateFastAuthToken.bind(client),
+            req,
+            meta,
+            BF.network.POLICIES.MUTATION
+        ).then(function (resp) {
+                if (!resp) return { ok: false, err: 'empty_response' };
                 var token = resp.getToken();
                 var expiresAt = resp.getExpiresAt();
-                resolve({
+                return {
                     ok: true,
                     pngBase64: token ? token.getValue() : '',
                     fastAuthId: resp.getFastAuthId(),
                     expiresAtMs: expiresAt ? expiresAt.toDate().getTime() : (Date.now() + 5 * 60 * 1000)
-                });
-            });
-        });
+                };
+            }).catch(function (err) { return { ok: false, err: err }; });
     }
 
     /**

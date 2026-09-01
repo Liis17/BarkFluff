@@ -112,7 +112,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\icons\**\*.svg">
+    <Content Include="..\..\Icons\**\*.svg">
       <Link>Pages\v2\assets\icons\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

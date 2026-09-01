@@ -16,11 +16,11 @@ namespace Barkfluff.AdminPanel.Services;
 public class DeployJobService : BackgroundService
 {
     /// <summary>
-    /// Порядок обработки сервисов: configuration первым — от него зависят остальные.
+    /// Порядок обработки сервисов: settings первым — от него зависят остальные.
     /// </summary>
     public static readonly string[] DeployOrder =
     [
-        "configuration",
+        "settings",
         "beacon",
         "files",
         "identity",

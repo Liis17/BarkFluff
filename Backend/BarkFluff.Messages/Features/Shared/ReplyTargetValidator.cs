@@ -18,9 +18,13 @@ public static class ReplyTargetValidator
     /// Ответ на сообщение чужого чата намеренно неотличим от несуществующего: иначе перебором id
     /// можно было бы выяснять, какие сообщения есть на ноде.
     /// </summary>
-    public static async Task ValidateAsync(MessagesStorage messagesStorage, Guid chatId, long replyToMessageId)
+    public static async Task ValidateAsync(
+        MessagesStorage messagesStorage,
+        Guid chatId,
+        long replyToMessageId,
+        CancellationToken cancellationToken = default)
     {
-        var target = await messagesStorage.GetMessageById(replyToMessageId);
+        var target = await messagesStorage.GetMessageById(replyToMessageId, cancellationToken);
 
         if (target is null || target.ChatId != chatId || target.IsDeleted)
             throw new MessageNotFoundException();

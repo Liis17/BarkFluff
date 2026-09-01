@@ -31,7 +31,8 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.AddBarkFluffSerilog("BarkFluff.Navigator");
 builder.Services.AddBarkFluffGrpc();
 builder.Services.AddBarkFluffMetrics("BarkFluff.Navigator");
-builder.Services.AddGrpcReflection();
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddGrpcReflection();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
@@ -102,7 +103,8 @@ static void EnsureServersColumn(NavigatorContext ctx, string column, string defi
     alter.ExecuteNonQuery();
 }
 
-app.MapGrpcReflectionService();
+if (app.Environment.IsDevelopment())
+    app.MapGrpcReflectionService();
 app.UseRouting();
 app.UseXAuth();
 app.MapHealthEndpoints();

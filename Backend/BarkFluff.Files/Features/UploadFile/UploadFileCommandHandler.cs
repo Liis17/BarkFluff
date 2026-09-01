@@ -98,7 +98,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
         _logger.LogInformation("Начало обработки загрузки файла с ID: {FileId}", request.FileId);
 
-        var file = await _filesStorage.GetFile(request.FileId);
+        var file = await _filesStorage.GetFile(request.FileId, cancellationToken);
 
         if (file is null)
         {
@@ -109,8 +109,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         // Проверяем, не был ли файл уже загружен
         if (!string.IsNullOrEmpty(file.Etag))
         {
-            _logger.LogWarning("Файл с ID {FileId} уже был загружен (Etag: {Etag})", request.FileId, file.Etag);
-            throw new FileAlreadyUploadedException("Файл уже был загружен");
+            _logger.LogInformation(
+                "Файл с ID {FileId} уже загружен, возвращается прежний результат",
+                request.FileId);
+            return file.Id.ToString();
         }
 
         file.Filename = request.FileName;
@@ -132,138 +134,146 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             or UploadFileType.MessageAttachmentGif;
         var isVideoType = file.Type == UploadFileType.MessageAttachmentVideo;
 
-        Stream originalStream;
+        Stream originalStream = Stream.Null;
         // Путь к временному файлу на диске. Нужен для видео (FFmpeg читает файл по пути),
         // также используется для буферизации больших не-графических файлов. null = буфер в памяти.
         string? tempFilePath = null;
 
-        if (isVideoType || fileSize > 100 * 1024 * 1024)
-        {
-            // Видео и большие файлы (в т.ч. изображения/GIF) — буферизация через временный файл на диске
-            tempFilePath = Path.GetTempFileName();
-            _logger.LogInformation("Файл {FileId} ({Size} МБ) буферизуется через диск", request.FileId, fileSize / 1024 / 1024);
-            // FileShare.Read — чтобы процесс ffmpeg/ffprobe мог открыть файл параллельно нашему стриму.
-            var tempStream = new FileStream(
-                tempFilePath, FileMode.Create, FileAccess.ReadWrite,
-                FileShare.Read, 81920, FileOptions.None);
-            var bufferingTimer = Stopwatch.StartNew();
-            await request.FileStream.CopyToAsync(tempStream, cancellationToken);
-            bufferingDuration = bufferingTimer.Elapsed;
-            tempStream.Position = 0;
-            originalStream = tempStream;
-        }
-        else
-        {
-            // Изображения и файлы до 100 МБ — в оперативной памяти для скорости
-            var memStream = new MemoryStream();
-            var bufferingTimer = Stopwatch.StartNew();
-            await request.FileStream.CopyToAsync(memStream, cancellationToken);
-            bufferingDuration = bufferingTimer.Elapsed;
-            memStream.Position = 0;
-            originalStream = memStream;
-        }
-
-        // Compute SHA256 hash of the file
-        // TODO: For better performance with large files, consider computing hash during the initial stream copy
-        string fileHash;
-        using (var sha256 = SHA256.Create())
-        {
-            var hashTimer = Stopwatch.StartNew();
-            var hashBytes = await sha256.ComputeHashAsync(originalStream, cancellationToken);
-            hashDuration = hashTimer.Elapsed;
-            fileHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
-        }
-
-        originalStream.Position = 0;
-
-        _logger.LogInformation("Вычислен хеш файла: {FileHash}", fileHash);
-
-        var processingTimer = Stopwatch.StartNew();
-        // Определяем реальный тип файла по содержимому для MessageAttachment типов
-        if (TypesRequiringDetection.Contains(file.Type))
-        {
-            var detectedType = await _fileTypeDetector.DetectAsync(originalStream);
-            var newFileType = MapDetectedTypeToUploadFileType(detectedType, file.Type);
-
-            if (newFileType != file.Type)
-            {
-                _logger.LogInformation(
-                    "Тип файла изменён с {OriginalType} на {NewType} на основе содержимого",
-                    file.Type, newFileType);
-                file.Type = newFileType;
-
-                // Пересчитываем bucketName для нового типа
-                bucketName = _bucketRegistry.GetBucketName(file.Type);
-
-                // Пересчитываем isImageType и contentType после детекции —
-                // тип файла мог измениться (например Video → Image)
-                isImageType = file.Type is UploadFileType.UserAvatar
-                    or UploadFileType.MessageAttachmentImage
-                    or UploadFileType.ChatPicture
-                    or UploadFileType.MessageAttachmentGif;
-
-                if (isImageType)
-                    contentType = request.FileName.GetContentType();
-            }
-        }
-
-        // Валидация стикеров: макс. 12 МБ, макс. 1024px по любой оси, без сжатия
-        if (file.Type == UploadFileType.MessageAttachmentSticker)
-        {
-            if (fileSize > 12 * 1024 * 1024)
-                throw new StickerTooLargeException();
-
-            originalStream.Position = 0;
-            var imageInfo = await SixLabors.ImageSharp.Image.IdentifyAsync(originalStream, cancellationToken);
-            if (imageInfo is null || imageInfo.Width > 1024 || imageInfo.Height > 1024)
-                throw new StickerDimensionExceededException();
-
-            originalStream.Position = 0;
-        }
-
-        processingDuration = processingTimer.Elapsed;
-        originalStream.Position = 0;
-
-        // Серверная дедупликация: проверяем, существует ли файл с таким хешем
-        var existingFileId = await _hashesStorage.GetFileIdByHash(fileHash);
-        if (existingFileId.HasValue)
-        {
-            _logger.LogInformation(
-                "Файл с хешем {FileHash} уже существует в хранилище (FileId: {ExistingFileId}). Дедупликация.",
-                fileHash, existingFileId.Value);
-
-            var existingFile = await _filesStorage.GetFile(existingFileId.Value);
-
-            // Дедупликация только если тип совпадает и файл реально загружен в S3.
-            // Один и тот же контент может быть отправлен как IMAGE и как DOCUMENT —
-            // это принципиально разные записи (разные бакеты, разная обработка превью).
-            var canDeduplicate = existingFile is not null
-                && !string.IsNullOrEmpty(existingFile.Etag)
-                && existingFile.Type == file.Type;
-
-            if (canDeduplicate)
-            {
-                foreach (var uploaderId in file.Uploaders)
-                    await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId);
-
-                await _filesStorage.DeleteFile(file.Id);
-                // Подчищаем возможный висячий хеш для удаляемого file.Id
-                // (защита на случай если запись попала в FileHashes от прошлой попытки загрузки)
-                await _hashesStorage.DeleteHashByFileId(file.Id, cancellationToken);
-                await originalStream.DisposeAsync();
-
-                processingDuration = processingTimer.Elapsed;
-                RecordUploadTimings(totalTimer.Elapsed, bufferingDuration, hashDuration, processingDuration, s3Duration);
-                return existingFileId.Value.ToString();
-            }
-
-            _logger.LogInformation(
-                "Дедупликация пропущена для {FileId}: тип отличается ({ExistingType} vs {NewType}) или файл не загружен.",
-                file.Id, existingFile?.Type, file.Type);
-        }
-
         try
         {
+            if (isVideoType || fileSize > 100 * 1024 * 1024)
+            {
+                // Видео и большие файлы (в т.ч. изображения/GIF) — буферизация через временный файл на диске
+                tempFilePath = Path.GetTempFileName();
+                _logger.LogInformation("Файл {FileId} ({Size} МБ) буферизуется через диск", request.FileId, fileSize / 1024 / 1024);
+                // FileShare.Read — чтобы процесс ffmpeg/ffprobe мог открыть файл параллельно нашему стриму.
+                originalStream = new FileStream(
+                    tempFilePath, FileMode.Create, FileAccess.ReadWrite,
+                    FileShare.Read, 81920, FileOptions.None);
+                var bufferingTimer = Stopwatch.StartNew();
+                await request.FileStream.CopyToAsync(originalStream, cancellationToken);
+                bufferingDuration = bufferingTimer.Elapsed;
+                originalStream.Position = 0;
+            }
+            else
+            {
+                // Изображения и файлы до 100 МБ — в оперативной памяти для скорости
+                originalStream = new MemoryStream();
+                var bufferingTimer = Stopwatch.StartNew();
+                await request.FileStream.CopyToAsync(originalStream, cancellationToken);
+                bufferingDuration = bufferingTimer.Elapsed;
+                originalStream.Position = 0;
+            }
+
+            // Compute SHA256 hash of the file
+            // TODO: For better performance with large files, consider computing hash during the initial stream copy
+            string fileHash;
+            using (var sha256 = SHA256.Create())
+            {
+                var hashTimer = Stopwatch.StartNew();
+                var hashBytes = await sha256.ComputeHashAsync(originalStream, cancellationToken);
+                hashDuration = hashTimer.Elapsed;
+                fileHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+            }
+
+            originalStream.Position = 0;
+
+            _logger.LogInformation("Вычислен хеш файла: {FileHash}", fileHash);
+
+            var processingTimer = Stopwatch.StartNew();
+            // Определяем реальный тип файла по содержимому для MessageAttachment типов
+            if (TypesRequiringDetection.Contains(file.Type))
+            {
+                var detectedType = await _fileTypeDetector.DetectAsync(originalStream, cancellationToken);
+                var newFileType = MapDetectedTypeToUploadFileType(detectedType, file.Type);
+
+                if (newFileType != file.Type)
+                {
+                    _logger.LogInformation(
+                        "Тип файла изменён с {OriginalType} на {NewType} на основе содержимого",
+                        file.Type, newFileType);
+                    file.Type = newFileType;
+
+                    // Пересчитываем bucketName для нового типа
+                    bucketName = _bucketRegistry.GetBucketName(file.Type);
+
+                    // Пересчитываем isImageType и contentType после детекции —
+                    // тип файла мог измениться (например Video → Image)
+                    isImageType = file.Type is UploadFileType.UserAvatar
+                        or UploadFileType.MessageAttachmentImage
+                        or UploadFileType.ChatPicture
+                        or UploadFileType.MessageAttachmentGif;
+
+                    if (isImageType)
+                        contentType = request.FileName.GetContentType();
+                }
+            }
+
+            // Валидация стикеров: макс. 12 МБ, макс. 1024px по любой оси, без сжатия
+            if (file.Type == UploadFileType.MessageAttachmentSticker)
+            {
+                if (fileSize > 12 * 1024 * 1024)
+                    throw new StickerTooLargeException();
+
+                originalStream.Position = 0;
+                var imageInfo = await SixLabors.ImageSharp.Image.IdentifyAsync(originalStream, cancellationToken);
+                if (imageInfo is null || imageInfo.Width > 1024 || imageInfo.Height > 1024)
+                    throw new StickerDimensionExceededException();
+
+                originalStream.Position = 0;
+            }
+
+            processingDuration = processingTimer.Elapsed;
+            originalStream.Position = 0;
+
+            // Серверная дедупликация: проверяем, существует ли файл с таким хешем
+            var existingFileId = await _hashesStorage.GetFileIdByHash(fileHash, cancellationToken);
+            if (existingFileId.HasValue)
+            {
+                _logger.LogInformation(
+                    "Файл с хешем {FileHash} уже существует в хранилище (FileId: {ExistingFileId}). Дедупликация.",
+                    fileHash, existingFileId.Value);
+
+                var existingFile = await _filesStorage.GetFile(existingFileId.Value, cancellationToken);
+
+                // Дедупликация только если тип совпадает и файл реально загружен в S3.
+                // Один и тот же контент может быть отправлен как IMAGE и как DOCUMENT —
+                // это принципиально разные записи (разные бакеты, разная обработка превью).
+                var canDeduplicate = existingFile is not null
+                    && !string.IsNullOrEmpty(existingFile.Etag)
+                    && existingFile.Type == file.Type;
+
+                if (canDeduplicate)
+                {
+                    if (request.LeaseToken.HasValue)
+                    {
+                        await _filesStorage.CompleteDeduplicatedUploadAsync(
+                            file.Id,
+                            request.LeaseToken.Value,
+                            existingFileId.Value,
+                            file.Uploaders,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        foreach (var uploaderId in file.Uploaders)
+                            await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId, cancellationToken);
+
+                        await _filesStorage.DeleteFile(file.Id, cancellationToken);
+                        // Подчищаем возможный висячий хеш для удаляемого file.Id
+                        // (защита на случай если запись попала в FileHashes от прошлой попытки загрузки)
+                        await _hashesStorage.DeleteHashByFileId(file.Id, cancellationToken);
+                    }
+                    processingDuration = processingTimer.Elapsed;
+                    RecordUploadTimings(totalTimer.Elapsed, bufferingDuration, hashDuration, processingDuration, s3Duration);
+                    return existingFileId.Value.ToString();
+                }
+
+                _logger.LogInformation(
+                    "Дедупликация пропущена для {FileId}: тип отличается ({ExistingType} vs {NewType}) или файл не загружен.",
+                    file.Id, existingFile?.Type, file.Type);
+            }
+
             var contentProcessingTimer = Stopwatch.StartNew();
             // Объединённая обработка изображения за один Image.LoadAsync:
             // получаем размеры, опционально сжатый оригинал и опционально превью.
@@ -289,6 +299,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 {
                     imageResult = await _imageCompressor.ProcessImageAllInOneAsync(
                         originalStream, needsEnforceLimits, previewWidth, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -363,6 +377,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                         "Сгенерировано превью видео {FileId}: {Width}x{Height}",
                         file.Id, frameResult.Width, frameResult.Height);
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Не удалось сгенерировать превью видео {FileId}", file.Id);
@@ -381,7 +399,8 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 bucketName, // Имя бакета на основе типа файла
                 $"{file.Id}", // Используем ID файла как ключ
                 originalStream,
-                contentType
+                contentType,
+                cancellationToken
             );
 
             _logger.LogInformation("Файл успешно загружен в S3, получен Etag: {Etag}", etag);
@@ -398,11 +417,16 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                         bucketName,
                         $"{previewId.Value}", // ключ для сжатой версии
                         compressedStream,
-                        "image/jpeg" // сохраняем как JPEG
+                        "image/jpeg", // сохраняем как JPEG
+                        cancellationToken
                     );
 
                     file.PreviewId = previewId.Value;
                     _logger.LogInformation("Превью успешно создано с ID: {PreviewId}", previewId.Value);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -416,10 +440,30 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             file.Etag = etag;
             file.UploadedAt = DateTime.UtcNow;
             file.Size = fileSize;
+
+            // Сохраняем изменения
+            await _filesStorage.UpdateFile(file, cancellationToken);
+
+            // Save the file hash for deduplication
+            var fileHashEntity = new FileHash
+            {
+                FileId = file.Id,
+                Hash = fileHash
+            };
+            await _hashesStorage.AddHash(fileHashEntity, cancellationToken);
+
+            RecordUploadTimings(totalTimer.Elapsed, bufferingDuration, hashDuration, processingDuration, s3Duration);
+
+            _logger.LogInformation("Хеш файла сохранен в базу данных");
+
+            _logger.LogInformation("Обработка файла {FileId} успешно завершена", file.Id);
+
+            return file.Id.ToString();
         }
         finally
         {
-            // Обязательно закрываем поток в конце работы
+            // Поток и временный файл освобождаются при ошибке/отмене на любой стадии,
+            // включая буферизацию, хеширование и раннюю дедупликацию.
             await originalStream.DisposeAsync();
 
             if (tempFilePath is not null)
@@ -435,25 +479,6 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 }
             }
         }
-
-        // Сохраняем изменения
-        await _filesStorage.UpdateFile(file);
-
-        // Save the file hash for deduplication
-        var fileHashEntity = new FileHash
-        {
-            FileId = file.Id,
-            Hash = fileHash
-        };
-        await _hashesStorage.AddHash(fileHashEntity, cancellationToken);
-
-        RecordUploadTimings(totalTimer.Elapsed, bufferingDuration, hashDuration, processingDuration, s3Duration);
-
-        _logger.LogInformation("Хеш файла сохранен в базу данных");
-
-        _logger.LogInformation("Обработка файла {FileId} успешно завершена", file.Id);
-
-        return file.Id.ToString();
     }
 
     private void RecordUploadTimings(

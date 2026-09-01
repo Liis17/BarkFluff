@@ -72,7 +72,8 @@ public class AddStickerCommandHandler : IRequestHandler<AddStickerCommand, AddSt
         var previewId = Guid.NewGuid();
 
         using var previewStream = new MemoryStream(previewBytes);
-        await _s3Uploader.UploadAsync(bucketName, $"{previewId}", previewStream, "image/webp");
+        await _s3Uploader.UploadAsync(
+            bucketName, $"{previewId}", previewStream, "image/webp", cancellationToken);
 
         // Создаём запись UploadFile для превью, чтобы оно было доступно через GetTempDownloadUrl и /download/
         var previewFile = new Domain.UploadFile

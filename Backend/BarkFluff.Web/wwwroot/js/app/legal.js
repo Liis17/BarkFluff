@@ -4,7 +4,7 @@
  * хранится не флаг, а редакция документа, поэтому после его обновления согласие
  * запрашивается заново.
  *
- * Requires: BF.utils (renderMarkdown), BF.metadata, BF.tokens, barkfluff.bundle.js
+ * Requires: BF.utils (renderMarkdown), BF.metadata, BF.network, BF.tokens, barkfluff.bundle.js
  * Exposes: BF.legal
  */
 (function () {
@@ -25,6 +25,16 @@
 
     /** Предел ожидания записи согласия на сервере перед переходом в мессенджер. */
     var FLUSH_TIMEOUT = 1500;
+    var CONSENT_POLICY = {
+        attemptTimeoutMs: FLUSH_TIMEOUT,
+        overallTimeoutMs: FLUSH_TIMEOUT,
+        maxAttempts: 1,
+        retryCodes: [],
+        retryTransport: false,
+        baseDelayMs: 0,
+        maxDelayMs: 0,
+        outcomeUnknown: true
+    };
 
     var revision = '';
     var cache = {};
@@ -95,13 +105,13 @@
         var req = new usrPb.AcceptLegalConsentRequest();
         req.setRevision(saved);
 
-        return new Promise(function (resolve) {
-            var done = false;
-            var finish = function () { if (!done) { done = true; resolve(); } };
-            setTimeout(finish, FLUSH_TIMEOUT);
-            new window.barkfluff.UsersApiClient(BF.node.origin())
-                .acceptLegalConsent(req, BF.metadata.build(token), finish);
-        });
+        var client = new window.barkfluff.UsersApiClient(BF.node.origin());
+        return BF.network.unary(
+            client.acceptLegalConsent.bind(client),
+            req,
+            BF.metadata.build(token),
+            CONSENT_POLICY
+        ).then(function () {}).catch(function () {});
     }
 
     // ─────────────── модалка чтения ───────────────

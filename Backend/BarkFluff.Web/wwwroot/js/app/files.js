@@ -113,6 +113,152 @@
             : BF.node.origin() + '/api/files/upload/' + fileId;
     }
 
+    function statusEndpoint(fileId) {
+        var origin = mediaOrigin();
+        return origin
+            ? origin + '/web/upload/' + fileId + '/status'
+            : BF.node.origin() + '/api/files/upload/' + fileId + '/status';
+    }
+
+    function uploadError(kind, message, details) {
+        var error = new Error(message || kind);
+        error.kind = kind;
+        error.retryable = kind === 'timeout' || kind === 'transport' || kind === 'http';
+        error.outcomeUnknown = kind !== 'cancelled';
+        if (details) Object.keys(details).forEach(function (key) { error[key] = details[key]; });
+        return error;
+    }
+
+    function xhrRequest(method, url, body, options) {
+        options = options || {};
+        var wallTimeoutMs = options.wallTimeoutMs || (method === 'POST' ? 30 * 60 * 1000 : 12000);
+        var stallTimeoutMs = options.stallTimeoutMs || 60000;
+
+        return new Promise(function (resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            var settled = false;
+            var wallTimer = null;
+            var stallTimer = null;
+            var uploadComplete = method !== 'POST';
+            var signal = options.signal;
+
+            function cleanup() {
+                if (wallTimer) clearTimeout(wallTimer);
+                if (stallTimer) clearTimeout(stallTimer);
+                if (signal) signal.removeEventListener('abort', onAbort);
+            }
+
+            function fail(error, abort) {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                reject(error);
+                if (abort) xhr.abort();
+            }
+
+            function succeed(value) {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                resolve(value);
+            }
+
+            function armStallTimer() {
+                if (method !== 'POST' || uploadComplete || settled) return;
+                if (stallTimer) clearTimeout(stallTimer);
+                stallTimer = setTimeout(function () {
+                    fail(uploadError('timeout', 'upload_stalled', {
+                        timeout: 'stall',
+                        fileId: options.fileId || ''
+                    }), true);
+                }, stallTimeoutMs);
+            }
+
+            function onAbort() {
+                fail(uploadError('cancelled', 'upload_cancelled', {
+                    fileId: options.fileId || '',
+                    outcomeUnknown: false
+                }), true);
+            }
+
+            xhr.open(method, url);
+            if (method === 'POST') {
+                xhr.upload.addEventListener('progress', function (event) {
+                    if (!event.lengthComputable) return;
+                    var percent = Math.round(event.loaded / event.total * 100);
+                    uploadComplete = event.total > 0 && event.loaded >= event.total;
+                    if (uploadComplete && stallTimer) {
+                        clearTimeout(stallTimer);
+                        stallTimer = null;
+                    } else {
+                        armStallTimer();
+                    }
+                    if (typeof options.onProgress === 'function') options.onProgress(percent);
+                });
+            }
+            xhr.addEventListener('load', function () {
+                var response;
+                try { response = JSON.parse(xhr.responseText || '{}'); } catch (_) { response = null; }
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    fail(uploadError('http', 'upload_failed_' + xhr.status, {
+                        status: xhr.status,
+                        response: response,
+                        state: response && response.state,
+                        retryAfterSeconds: response && response.retryAfterSeconds,
+                        fileId: options.fileId || ''
+                    }));
+                    return;
+                }
+                if (!response) {
+                    fail(uploadError('transport', 'upload_invalid_response', { fileId: options.fileId || '' }));
+                    return;
+                }
+                if (method === 'POST' && typeof options.onProgress === 'function') options.onProgress(100);
+                succeed(response);
+            });
+            xhr.addEventListener('error', function () {
+                fail(uploadError('transport', 'upload_failed_network', { fileId: options.fileId || '' }));
+            });
+            xhr.addEventListener('abort', function () {
+                fail(uploadError('cancelled', 'upload_cancelled', {
+                    fileId: options.fileId || '',
+                    outcomeUnknown: false
+                }));
+            });
+
+            wallTimer = setTimeout(function () {
+                fail(uploadError('timeout', 'upload_timed_out', {
+                    timeout: 'wall',
+                    fileId: options.fileId || ''
+                }), true);
+            }, wallTimeoutMs);
+            if (signal) {
+                if (signal.aborted) { onAbort(); return; }
+                signal.addEventListener('abort', onAbort, { once: true });
+            }
+            armStallTimer();
+            xhr.send(body || null);
+        });
+    }
+
+    function postFile(file, fileId, onProgress, options) {
+        var formData = new FormData();
+        formData.append('file', file, file.name);
+        return xhrRequest('POST', uploadEndpoint(fileId), formData, Object.assign({}, options || {}, {
+            fileId: fileId,
+            onProgress: onProgress
+        })).then(function (body) {
+            if (!body.fileId) throw uploadError('transport', 'upload_invalid_response', { fileId: fileId });
+            return body.fileId;
+        });
+    }
+
+    function getUploadStatus(fileId, options) {
+        return xhrRequest('GET', statusEndpoint(fileId), null, Object.assign({}, options || {}, {
+            fileId: fileId
+        }));
+    }
+
     /**
      * Upload a file: reserve upload slot → upload via REST.
      * Returns the file ID assigned by the server.
@@ -121,39 +267,31 @@
      * @param {Function} [onProgress] — function(percent) for bytes sent to the server
      * @returns {Promise<string>} — file ID
      */
-    function uploadFile(file, uploadFileType, onProgress) {
-        return BF.api.getUploadUrl(uploadFileType).then(function (data) {
+    function uploadFile(file, uploadFileType, onProgress, options) {
+        options = options || {};
+        return BF.api.getUploadUrl(uploadFileType, options.operationId, options.signal).then(function (data) {
             if (!data || !data.fileId) return Promise.reject(new Error('no_upload_url'));
+            if (typeof options.onReserved === 'function') options.onReserved(data.fileId);
+            return postFile(file, data.fileId, onProgress, options);
+        });
+    }
 
-            var formData = new FormData();
-            formData.append('file', file, file.name);
+    function retryUpload(file, uploadFileType, descriptor, onProgress, options) {
+        descriptor = descriptor || {};
+        options = Object.assign({}, options || {}, { operationId: descriptor.operationId || '' });
+        if (!descriptor.reservedFileId) return uploadFile(file, uploadFileType, onProgress, options);
 
-            return new Promise(function (resolve, reject) {
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', uploadEndpoint(data.fileId));
-
-                xhr.upload.addEventListener('progress', function (event) {
-                    if (!event.lengthComputable || typeof onProgress !== 'function') return;
-                    onProgress(Math.round(event.loaded / event.total * 100));
-                });
-                xhr.addEventListener('load', function () {
-                    if (xhr.status < 200 || xhr.status >= 300) {
-                        reject(new Error('upload_failed_' + xhr.status));
-                        return;
-                    }
-                    var body;
-                    try {
-                        body = JSON.parse(xhr.responseText);
-                    } catch (e) {
-                        reject(new Error('upload_invalid_response'));
-                        return;
-                    }
-                    if (typeof onProgress === 'function') onProgress(100);
-                    resolve(body.fileId);
-                });
-                xhr.addEventListener('error', function () { reject(new Error('upload_failed_network')); });
-                xhr.addEventListener('abort', function () { reject(new Error('upload_aborted')); });
-                xhr.send(formData);
+        return getUploadStatus(descriptor.reservedFileId, options).then(function (status) {
+            if (status.state === 'completed') return status.fileId;
+            if (status.state === 'pending') {
+                return postFile(file, descriptor.reservedFileId, onProgress, options);
+            }
+            throw uploadError('http', 'upload_processing', {
+                status: 409,
+                state: status.state || 'processing',
+                retryAfterSeconds: status.retryAfterSeconds || 1,
+                fileId: descriptor.reservedFileId,
+                outcomeUnknown: true
             });
         });
     }
@@ -182,6 +320,14 @@
         if (['mp4','mov','avi','mkv','webm','m4v'].indexOf(ext) !== -1) return 3;
         if (['mp3','ogg','wav','aac','flac','m4a'].indexOf(ext) !== -1) return 7;
         return 5;
+    }
+
+    function matchesPendingUpload(upload, file) {
+        if (!upload || !file) return false;
+        return file.name === upload.name &&
+            file.size === upload.size &&
+            (file.type || '') === (upload.type || '') &&
+            getUploadFileType(file.type, upload.uploadType === 5, file.name) === upload.uploadType;
     }
 
     // --- Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер) ---
@@ -386,7 +532,10 @@
         getCachedFileUrl: getCachedFileUrl,
         refreshFileUrl: refreshFileUrl,
         uploadFile: uploadFile,
+        retryUpload: retryUpload,
+        getUploadStatus: getUploadStatus,
         getUploadFileType: getUploadFileType,
+        matchesPendingUpload: matchesPendingUpload,
         applyPlaceholder: applyPlaceholder,
         bindResilientMedia: bindResilientMedia,
         bindResilientLink: bindResilientLink,

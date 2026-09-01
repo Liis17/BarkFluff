@@ -122,6 +122,7 @@ message UploadFileInfo {
 
 message GetUploadUrlRequest {
   UploadFileType file_type = 1; // Тип загружаемого файла
+  string client_operation_id = 2; // Идемпотентный UUID операции резервирования
 }
 
 message GetUploadUrlResponse {

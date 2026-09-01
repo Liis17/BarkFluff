@@ -30,7 +30,7 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 
 ## Зависимости
 
-- [[Backend/Configuration]] — discovery + ключ `Redis`
+- [[Backend/Settings]] — discovery + ключ `Redis`
 - [[Backend/Identity]] — выпуск access/refresh через `CreateSessionForUserServer` (новый server-метод)
 - Redis — стор сессий (`fastauth:session:{id}`), захват подписчика (`fastauth:subscriber:{id}`), канал событий `fastauth:events`
 
@@ -102,7 +102,7 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 ```json
 {
   "RunSettings": { "Port": 7008 },
-  "ConfigurationServiceAddr": "http://localhost:7003",
+  "SettingsServiceAddr": "http://localhost:7003",
   "Redis": "redis:6379",
   "IdentityService": {
     "Host": "http://localhost:7000",
@@ -111,4 +111,4 @@ dotnet build Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj
 }
 ```
 
-> Ключ `Redis` раздаёт Configuration-сервис (ServiceId=7, миграция `20260814100000_AddRedisConfigurationForFastAuth`; значение по умолчанию подставляет `ConfigurationDefaultsPopulator`). Без него сервис падает при старте.
+> Ключ `Redis` раздаёт Settings-сервис (ServiceId=7, миграция `20260814100000_AddRedisConfigurationForFastAuth`; значение по умолчанию подставляет каталог Settings). Без него сервис падает при старте.

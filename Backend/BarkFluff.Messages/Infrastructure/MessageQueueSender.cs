@@ -24,14 +24,22 @@ public class MessageQueueSender
 
     public async Task SendMessage(Message message, Guid chatId, List<long> chatMembers, Dictionary<string, UploadFileInfo>? filesInfoMap = null)
     {
-        var newMessageEvent = new NewMessageEvent()
+        await _publishEndpoint.Publish(CreateMessageEvent(message, chatId, chatMembers, filesInfoMap));
+    }
+
+    public NewMessageEvent CreateMessageEvent(
+        Message message,
+        Guid chatId,
+        List<long> chatMembers,
+        Dictionary<string, UploadFileInfo>? filesInfoMap = null)
+    {
+        return new NewMessageEvent
         {
+            EventId = Guid.NewGuid(),
             ChatId = chatId,
             ChatMembers = chatMembers,
             Message = message.ToGrpc(filesInfoMap).ToByteArray()
         };
-
-        await _publishEndpoint.Publish(newMessageEvent);
     }
 
     /// <summary>
@@ -51,6 +59,7 @@ public class MessageQueueSender
     {
         var newMessageEvent = new NewMessageEvent
         {
+            EventId = Guid.NewGuid(),
             ChatId = chatId,
             ChatMembers = localChatMembers,
             Message = message.ToGrpc().ToByteArray(),
@@ -86,8 +95,31 @@ public class MessageQueueSender
         List<FederatedFileRefInfo>? federatedAttachments = null,
         Guid? replyToFederatedMessageId = null)
     {
-        var newMessageEvent = new NewMessageEvent
+        await _publishEndpoint.Publish(CreateFederatedMessageEvent(
+            message, chatId, localChatMembers, filesInfoMap, federatedId, senderUuid,
+            remoteParticipants, isFirstMessageInChat, initiatorUuid, inviteeUuid,
+            senderFid, lastChangeAt, federatedAttachments, replyToFederatedMessageId));
+    }
+
+    public NewMessageEvent CreateFederatedMessageEvent(
+        Message message,
+        Guid chatId,
+        List<long> localChatMembers,
+        Dictionary<string, UploadFileInfo>? filesInfoMap,
+        Guid federatedId,
+        Guid senderUuid,
+        List<FederatedParticipant> remoteParticipants,
+        bool isFirstMessageInChat,
+        Guid? initiatorUuid,
+        Guid? inviteeUuid,
+        string? senderFid,
+        DateTimeOffset? lastChangeAt = null,
+        List<FederatedFileRefInfo>? federatedAttachments = null,
+        Guid? replyToFederatedMessageId = null)
+    {
+        return new NewMessageEvent
         {
+            EventId = Guid.NewGuid(),
             ReplyToFederatedMessageId = replyToFederatedMessageId,
             ChatId = chatId,
             ChatMembers = localChatMembers,
@@ -104,8 +136,11 @@ public class MessageQueueSender
             // Снапшот метаданных вложений (этап 3.1) — байты остаются у нас.
             FederatedAttachments = federatedAttachments,
         };
+    }
 
-        await _publishEndpoint.Publish(newMessageEvent);
+    public Task PublishOutbox(NewMessageEvent message, CancellationToken cancellationToken)
+    {
+        return _publishEndpoint.Publish(message, cancellationToken);
     }
 
     /// <summary>

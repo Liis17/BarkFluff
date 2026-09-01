@@ -9,10 +9,10 @@
 ### `Program.cs`
 Точка входа сервиса. Настраивает DI-контейнер и Kestrel.
 
-- Читает порт из env-переменных `BEACON_PORT` / `RunSettings__Port`, иначе из `RunSettings:Port` (7002)
-- Загружает конфигурацию через `LoadConfiguration(ServiceId.Beacon)` из Configuration service
-- Регистрирует: MediatR, gRPC reflection, Serilog, метрики (`AddBarkFluffMetrics`)
-- Регистрирует gRPC-клиенты: `NavigatorApiClient` (по ключу `NavigatorUrl`) и `ConfigurationApiClient` (по ключу `ConfigurationServiceAddr`)
+- Читает порт из `RunSettings:Port`, загруженного через Settings service (по умолчанию 7002)
+- Загружает параметры через `LoadConfiguration(ServiceId.Beacon)` из Settings service
+- Регистрирует: MediatR, gRPC reflection только в Development, Serilog, метрики (`AddBarkFluffMetrics`)
+- Регистрирует gRPC-клиенты: `NavigatorApiClient` (по ключу `NavigatorUrl`) и wire-compatible `ConfigurationApiClient` (по ключу `SettingsServiceAddr`)
 - Запускает `ServerRegistrationService` как `HostedService`
 
 ---
@@ -35,7 +35,7 @@ gRPC-сервис (реализует `BeaconApi.BeaconApiBase` из `beacon_api
 ### `Features/GetServerInfo/GetServerInfoCommandHandler.cs`
 Основная бизнес-логика сборки ответа клиенту.
 
-- **Параллельно** (`Task.WhenAll`) запрашивает конфигурации 9 сервисов через `ConfigurationApiClient`:
+- **Параллельно** (`Task.WhenAll`) запрашивает параметры 9 сервисов через wire-compatible `ConfigurationApiClient` Settings API:
   `Identity`, `Users`, `Files`, `Messages`, `Updates`, `Onliner`, `FastAuth`, `Calls`, `Bots`
 - Ответ кешируется в `IMemoryCache` (`CacheKey`, `CacheTtl` = 5 минут); повторные вызовы отдают кеш
 - Для каждого сервиса вызывает `ParseService()`:
@@ -77,7 +77,7 @@ Settings-класс. Свойства сервера: `Name`, `Description`, `Pu
 |------|-----------------------|------------|
 | `RunSettings:Port` | `7002` | Порт Kestrel |
 | `NavigatorUrl` | `http://localhost:7010` | Адрес Navigator service |
-| `ConfigurationServiceAddr` | `http://localhost:7003` | Адрес Configuration service |
+| `SettingsServiceAddr` | `http://localhost:7003` | Адрес Settings service |
 
 ---
 
@@ -108,7 +108,7 @@ Settings-класс. Свойства сервера: `Name`, `Description`, `Pu
 Клиент
   └─► BeaconApiService.GetServerInfo()
         └─► MediatR → GetServerInfoCommandHandler
-              └─► ConfigurationApi (x9 сервисов, параллельно)
+              └─► Settings/ConfigurationApi (x9 сервисов, параллельно)
                     └─► собирает GetServerInfoResponse
                           └─► возвращает клиенту
 
@@ -126,8 +126,8 @@ ServerRegistrationService (каждые 5 мин)
 | Нет БД | ✅ Актуально |
 | GetServerInfo через CQRS/MediatR | ✅ Актуально |
 | Регистрация в Navigator каждые 5 мин | ✅ Актуально |
-| Зависимости: Configuration + Navigator | ✅ Актуально |
+| Зависимости: Settings + Navigator | ✅ Актуально |
 | 9 сервисов в GetServerInfoResponse (включая Calls, Bots) | ✅ Актуально |
 | GetServerInfo: `ExternalEndpoint:Host` без фолбэка (пусто → `Offline`); ответ кешируется 5 мин | ✅ Актуально |
 | MetricsCollector (`server_info_requests`, `navigator_registrations`) | ⚠️ Не упомянуто в Beacon.md |
-| `ConfigurationServiceAddr` ключ конфига | ⚠️ Не упомянуто в Beacon.md |
+| `SettingsServiceAddr` ключ конфига | ✅ Упомянуто в Beacon.md |

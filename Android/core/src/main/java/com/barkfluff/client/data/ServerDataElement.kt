@@ -10,5 +10,6 @@ data class ServerDataElement(
     val userCount: String = "",
     val publicName: String = "",
     val location: String = "",
-    val hexColor: String = ""
+    val hexColor: String = "",
+    val filesMediaEndpoint: String = ""
 )

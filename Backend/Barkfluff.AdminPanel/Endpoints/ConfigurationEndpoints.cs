@@ -14,6 +14,9 @@ namespace Barkfluff.AdminPanel.Endpoints;
 /// </summary>
 public static class ConfigurationEndpoints
 {
+    private static readonly HashSet<string> SectionOnlyConfigurationSections =
+        ["DevelopersDb", "Redis", "NavigatorUrl"];
+
     public static void MapConfigurationEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/configuration")
@@ -29,12 +32,15 @@ public static class ConfigurationEndpoints
 
                 var items = response.Configurations.Select(c =>
                 {
-                    var masked = SensitiveConfigMasker.IsSensitive(c.Section, c.Key) && !string.IsNullOrEmpty(c.Value);
-                    var field = ConfigurationFieldCatalog.Describe(c.Section, c.Key, c.Value);
+                    var key = NormalizeConfigurationKey(c.Section, c.Key);
+                    var masked = SensitiveConfigMasker.IsSensitive(c.Section, key) && !string.IsNullOrEmpty(c.Value);
+                    var field = ConfigurationFieldCatalog.Describe(c.Section, key, c.Value);
                     return new
                     {
+                        settingsTable = GetSettingsTableName((ServiceId)c.ServiceId),
+                        storageKey = GetStorageKey(c.Section, key),
                         section = c.Section,
-                        key = c.Key,
+                        key,
                         value = masked ? SensitiveConfigMasker.MaskedValue : c.Value,
                         masked,
                         serviceId = c.ServiceId,
@@ -73,8 +79,9 @@ public static class ConfigurationEndpoints
         {
             var token = context.GetAuthToken()!;
 
-            if (string.IsNullOrWhiteSpace(request.Section) || string.IsNullOrWhiteSpace(request.Key))
-                return Results.BadRequest(new { message = "Section и Key обязательны" });
+            var requestValidationError = ValidateConfigurationUpdateRequest(request);
+            if (requestValidationError is not null)
+                return Results.BadRequest(new { message = requestValidationError });
 
             if (SensitiveConfigMasker.IsSensitive(request.Section, request.Key) &&
                 string.Equals(request.Value, SensitiveConfigMasker.MaskedValue, StringComparison.Ordinal))
@@ -371,6 +378,33 @@ public static class ConfigurationEndpoints
             return $"bucket={request.BucketId};{string.Join(";", values)}";
         });
     }
+
+    internal static string? ValidateConfigurationUpdateRequest(ConfigurationValueUpdateRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Section))
+            return "Section обязательна";
+
+        if (request.Key is null ||
+            (!string.IsNullOrEmpty(request.Key) && string.IsNullOrWhiteSpace(request.Key)))
+            return "Key должен быть пустым или содержать непробельные символы";
+
+        return null;
+    }
+
+    internal static string NormalizeConfigurationKey(string section, string? key) =>
+        key is null || (SectionOnlyConfigurationSections.Contains(section) && string.IsNullOrWhiteSpace(key))
+            ? string.Empty
+            : key;
+
+    internal static string GetSettingsTableName(ServiceId serviceId)
+    {
+        return serviceId == ServiceId.Unknown
+            ? "GlobalSettings"
+            : $"{serviceId}Settings";
+    }
+
+    internal static string GetStorageKey(string section, string key) =>
+        string.IsNullOrEmpty(key) ? section : $"{section}:{key}";
 
     private static string MaskHistoryValue(string value, bool sensitive) =>
         sensitive && !string.IsNullOrEmpty(value) ? SensitiveConfigMasker.MaskedValue : value;

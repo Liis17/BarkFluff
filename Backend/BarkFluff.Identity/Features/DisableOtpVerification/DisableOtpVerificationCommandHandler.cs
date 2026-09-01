@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
@@ -28,11 +29,13 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
     private readonly RequestContext _requestContext;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<DisableOtpVerificationCommandHandler> _logger;
+    private readonly IIdentityAbuseGuard _abuseGuard;
 
     public DisableOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage,
         NotificationQueueSender notificationQueueSender, LocationClient locationClient,
         UsersServerApi.UsersServerApiClient usersClient, RequestContext requestContext,
-        MetricsCollector metrics, ILogger<DisableOtpVerificationCommandHandler> logger)
+        MetricsCollector metrics, ILogger<DisableOtpVerificationCommandHandler> logger,
+        IIdentityAbuseGuard abuseGuard)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
@@ -42,6 +45,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
         _requestContext = requestContext;
         _metrics = metrics;
         _logger = logger;
+        _abuseGuard = abuseGuard;
     }
 
     public async Task<DisableOtpVerificationResponse> Handle(DisableOtpVerificationCommand request, CancellationToken cancellationToken)
@@ -51,6 +55,11 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
             _userContext.UserId,
             request.OptType
         );
+
+        await _abuseGuard.EnsureOtpOperationAllowedAsync(
+            IdentityOtpOperation.Disable,
+            _userContext.UserId,
+            cancellationToken);
 
         var otpConfigs = await _authPropertiesStorage.GetUserAuthProperties(_userContext.UserId);
 
@@ -79,18 +88,31 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
 
             _logger.LogDebug("Проверка OTP кода для отключения Authenticator 2FA");
 
+            if (string.IsNullOrWhiteSpace(request.OtpCode))
+                throw new OtpCodeNeedException();
+
             var totp = new Totp(Base32Encoding.ToBytes(otpConfigs.OtpSecret));
 
             var isValid = totp.VerifyTotp(request.OtpCode, out long timeStepMatched, VerificationWindow.RfcSpecifiedNetworkDelay);
 
             if (!isValid)
             {
+                var failure = await _abuseGuard.RegisterOtpFailureAsync(
+                    IdentityOtpOperation.Disable,
+                    _userContext.UserId,
+                    cancellationToken);
+                await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
                 _metrics.Increment("otp_authenticator_failed");
                 _metrics.Increment("otp_disable_failed");
                 _logger.LogWarning(
                     "Неверный OTP код при попытке отключения Authenticator 2FA для пользователя {UserId}",
                     _userContext.UserId
                 );
+
+                if (failure.Locked)
+                    throw new IdentityLockoutException();
+
                 throw new NotValidOtpCodeException();
             }
 
@@ -108,6 +130,11 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
             await _authPropertiesStorage.DisableEmailOtp(_userContext.UserId);
             _metrics.Increment("otp_disabled_email");
         }
+
+        await _abuseGuard.ClearOtpFailuresAsync(
+            IdentityOtpOperation.Disable,
+            _userContext.UserId,
+            cancellationToken);
 
         // Отправка уведомления об изменении метода 2FA (отключении)
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });

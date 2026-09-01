@@ -23,6 +23,21 @@ public sealed class LoginViewModelTests
         Assert.Equal("Error_LoginTwoFactorRequired", viewModel.ErrorMessage);
     }
 
+    [Theory]
+    [InlineData("Error_LoginRateLimited")]
+    [InlineData("Error_LoginLocked")]
+    [InlineData("Error_LoginProtectionUnavailable")]
+    public async Task LoginAsync_IdentityProtectionError_PreservesResourceKey(string errorResourceKey)
+    {
+        var viewModel = CreateViewModel(new FakeAuthenticationService(LoginResult.Failure(errorResourceKey)));
+        viewModel.LoginOrEmail = "alice";
+        viewModel.Password = "password";
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal(errorResourceKey, viewModel.ErrorMessage);
+    }
+
     [Fact]
     public void PasteOtpCodeCommand_SixDigits_FillsEveryInput()
     {

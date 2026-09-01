@@ -96,7 +96,7 @@ public class UploadFileCommandHandlerTests
 
     private void SetupUploadReturnsEtag(string bucket, string etag = "test-etag")
     {
-        _s3Uploader.Setup(u => u.UploadAsync(bucket, It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync(bucket, It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(etag);
     }
 
@@ -119,7 +119,7 @@ public class UploadFileCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_FileAlreadyUploaded_Throws()
+    public async Task Handle_FileAlreadyUploaded_ReturnsExistingFileId()
     {
         var file = await _helper.SeedFile(etag: "already-uploaded");
 
@@ -131,9 +131,10 @@ public class UploadFileCommandHandlerTests
             FileSize = 3
         };
 
-        var act = () => _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        await act.Should().ThrowAsync<FileAlreadyUploadedException>();
+        result.Should().Be(file.Id.ToString());
+        _s3Uploader.VerifyNoOtherCalls();
     }
 
     #endregion
@@ -161,8 +162,36 @@ public class UploadFileCommandHandlerTests
 
         result.Should().Be(file.Id.ToString());
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-documents", $"{file.Id}", It.IsAny<Stream>(), "application/pdf"),
+            u => u.UploadAsync("message-documents", $"{file.Id}", It.IsAny<Stream>(), "application/pdf", It.IsAny<CancellationToken>()),
             Times.Once());
+    }
+
+    [Fact]
+    public async Task Handle_Document_PassesCancellationTokenToS3()
+    {
+        var file = await _helper.SeedFile(type: UploadFileType.MessageAttachmentDocument);
+        SetupBucketForType(UploadFileType.MessageAttachmentDocument, "message-documents");
+        using var cancellation = new CancellationTokenSource();
+        _s3Uploader
+            .Setup(uploader => uploader.UploadAsync(
+                "message-documents",
+                It.IsAny<string>(),
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                cancellation.Token))
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+        using var command = new UploadFileCommand
+        {
+            FileId = file.Id,
+            FileStream = new MemoryStream([1, 2, 3]),
+            FileName = "doc.pdf",
+            FileSize = 3,
+        };
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => _handler.Handle(command, cancellation.Token));
+
+        _s3Uploader.VerifyAll();
     }
 
     [Fact]
@@ -170,7 +199,7 @@ public class UploadFileCommandHandlerTests
     {
         var file = await _helper.SeedFile(type: UploadFileType.MessageAttachmentDocument);
         SetupBucketForType(UploadFileType.MessageAttachmentDocument, "message-documents");
-        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(async () =>
             {
                 await Task.Delay(20);
@@ -399,7 +428,7 @@ public class UploadFileCommandHandlerTests
 
         result.Should().Be(file.Id.ToString());
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-documents", $"{file.Id}", It.IsAny<Stream>(), It.IsAny<string>()),
+            u => u.UploadAsync("message-documents", $"{file.Id}", It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -525,7 +554,7 @@ public class UploadFileCommandHandlerTests
         updated!.PreviewId.Should().NotBeNull();
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("chat-pictures", It.IsAny<string>(), It.IsAny<Stream>(), "image/jpeg"),
+            u => u.UploadAsync("chat-pictures", It.IsAny<string>(), It.IsAny<Stream>(), "image/jpeg", It.IsAny<CancellationToken>()),
             Times.Exactly(2));
     }
 
@@ -551,7 +580,7 @@ public class UploadFileCommandHandlerTests
         updated!.PreviewId.Should().NotBeNull();
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), "image/jpeg"),
+            u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), "image/jpeg", It.IsAny<CancellationToken>()),
             Times.Exactly(2));
     }
 
@@ -577,7 +606,7 @@ public class UploadFileCommandHandlerTests
         updated!.PreviewId.Should().BeNull();
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()),
+            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -588,7 +617,7 @@ public class UploadFileCommandHandlerTests
         var callCount = 0;
 
         SetupBucketForType(UploadFileType.ChatPicture, "chat-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("chat-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("chat-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>
             {
                 callCount++;
@@ -674,8 +703,51 @@ public class UploadFileCommandHandlerTests
 
         result.Should().Be(existingFile.Id.ToString());
         _s3Uploader.Verify(
-            u => u.UploadAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()),
+            u => u.UploadAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never());
+    }
+
+    [Fact]
+    public async Task Handle_Deduplication_WithLease_CompletesOperationAtomicallyWithActualFileId()
+    {
+        var data = new byte[] { 42, 42, 42 };
+        var actualHash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(data)).ToLowerInvariant();
+        var existingFile = await _helper.SeedFile(
+            uploaders: [7],
+            type: UploadFileType.MessageAttachmentDocument,
+            etag: "existing-etag");
+        await _helper.SeedFileHash(existingFile.Id, actualHash);
+        var reservation = await _helper.UploadedFilesStorage.ReserveUploadAsync(
+            42,
+            Guid.NewGuid(),
+            UploadFileType.MessageAttachmentDocument,
+            DateTime.UtcNow,
+            TimeSpan.FromHours(2),
+            CancellationToken.None);
+        var claim = await _helper.UploadedFilesStorage.ClaimUploadAsync(
+            reservation.FileId,
+            DateTime.UtcNow,
+            TimeSpan.FromMinutes(30),
+            CancellationToken.None);
+
+        using var command = new UploadFileCommand
+        {
+            FileId = reservation.FileId,
+            LeaseToken = claim.LeaseToken,
+            FileStream = new MemoryStream(data),
+            FileName = "dup.txt",
+            FileSize = data.Length,
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Should().Be(existingFile.Id.ToString());
+        (await _helper.UploadedFilesStorage.GetFile(reservation.FileId)).Should().BeNull();
+        var operation = await _helper.UploadedFilesStorage.GetUploadOperationAsync(reservation.FileId);
+        operation!.State.Should().Be(UploadOperationState.Completed);
+        operation.ResultFileId.Should().Be(existingFile.Id);
+        (await _helper.UploadedFilesStorage.GetFile(existingFile.Id))!.Uploaders.Should().Contain(42);
     }
 
     [Fact]
@@ -710,7 +782,7 @@ public class UploadFileCommandHandlerTests
 
         result.Should().Be(newFile.Id.ToString());
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-images", $"{newFile.Id}", It.IsAny<Stream>(), It.IsAny<string>()),
+            u => u.UploadAsync("message-images", $"{newFile.Id}", It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -745,7 +817,7 @@ public class UploadFileCommandHandlerTests
 
         result.Should().Be(newFile.Id.ToString());
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()),
+            u => u.UploadAsync("message-documents", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -883,7 +955,7 @@ public class UploadFileCommandHandlerTests
         await _handler.Handle(command, CancellationToken.None);
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("message-documents", $"{file.Id}", It.IsAny<Stream>(), expectedContentType),
+            u => u.UploadAsync("message-documents", $"{file.Id}", It.IsAny<Stream>(), expectedContentType, It.IsAny<CancellationToken>()),
             Times.Once());
     }
 

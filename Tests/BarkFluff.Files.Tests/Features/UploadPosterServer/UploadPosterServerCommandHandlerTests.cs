@@ -45,7 +45,7 @@ public class UploadPosterServerCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.UserProfilePoster)).Returns("profile-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-poster");
 
         var result = await _handler.Handle(new UploadPosterServerCommand
@@ -65,7 +65,7 @@ public class UploadPosterServerCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.UserProfilePoster)).Returns("profile-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-poster");
 
         await _handler.Handle(new UploadPosterServerCommand
@@ -86,7 +86,7 @@ public class UploadPosterServerCommandHandlerTests
     {
         var imageData = CreateTestImageBytes();
         _bucketRegistry.Setup(r => r.GetBucketName(UploadFileType.UserProfilePoster)).Returns("profile-pictures");
-        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()))
+        _s3Uploader.Setup(u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-poster");
 
         await _handler.Handle(new UploadPosterServerCommand
@@ -97,7 +97,7 @@ public class UploadPosterServerCommandHandlerTests
         }, CancellationToken.None);
 
         _s3Uploader.Verify(
-            u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>()),
+            u => u.UploadAsync("profile-pictures", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 }

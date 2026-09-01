@@ -170,6 +170,68 @@
             margin-top: 10px; font-size: 12px; color: var(--md-on-surface-variant);
         }
 
+        /* Keep the service availability overview dense without hiding its diagnostics. */
+        .services-health-grid {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+        .services-health-grid .health-card {
+            min-width: 0;
+            padding: 9px 10px;
+            border-left-width: 3px;
+        }
+        .services-health-grid .health-card.status-healthy { border-left-color: var(--md-success); }
+        .services-health-grid .health-card.status-degraded { border-left-color: var(--md-warning); }
+        .services-health-grid .health-card.status-down { border-left-color: var(--md-error); }
+        .services-health-grid .health-card.status-unknown { border-left-color: var(--md-outline); }
+        .services-health-grid .health-card-head { gap: 6px; }
+        .services-health-grid .health-card .name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        .services-health-grid .health-card-head .md-status {
+            flex-shrink: 0;
+            height: 22px;
+            padding: 0 8px;
+            font-size: 11px;
+        }
+        .services-health-grid .health-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            margin-top: 6px;
+        }
+        .services-health-grid .health-deps {
+            flex: 1 1 auto;
+            min-width: 0;
+            gap: 4px;
+            margin-top: 0;
+        }
+        .services-health-grid .health-deps .md-status {
+            height: 20px;
+            padding: 0 7px;
+            font-size: 10.5px;
+        }
+        .services-health-grid .health-foot {
+            flex: 0 1 48%;
+            min-width: 0;
+            max-width: 48%;
+            overflow: hidden;
+            margin-top: 0;
+            font-size: 11px;
+            line-height: 16px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .services-health-grid .health-card-meta-only .health-foot {
+            flex-basis: auto;
+            max-width: 100%;
+        }
+
         @media (max-width: 600px) {
             .service-grid { grid-template-columns: 1fr; }
             .upload-timing-head { align-items: flex-start; flex-direction: column; gap: 4px; }
@@ -260,7 +322,7 @@
                     <h2>Состояние сервисов</h2>
                     <span class="hint">Liveness + readiness, обновление каждые 30 секунд</span>
                 </div>
-                <div id="services-health-grid" class="health-grid"></div>
+                <div id="services-health-grid" class="health-grid services-health-grid"></div>
             </div>
 
             <!-- Infrastructure -->
@@ -345,11 +407,16 @@
                 svc.probeLatencyMs != null ? 'отклик ' + svc.probeLatencyMs + ' мс' : null,
                 svc.lastSeenUtc ? 'лог: ' + formatTime(svc.lastSeenUtc) : null
             ].filter(Boolean).join(' · ');
-            return '<div class="health-card">' +
-                '<div class="health-card-head"><span class="name">' +
-                    escapeHtml((svc.name || '').replace('BarkFluff.', '')) + '</span>' + healthBadge(svc.status) + '</div>' +
+            const statusClass = Object.prototype.hasOwnProperty.call(HEALTH_STATUS, svc.status) ? svc.status : 'unknown';
+            const serviceName = (svc.name || '').replace('BarkFluff.', '');
+            const details = (deps || foot) ? '<div class="health-card-meta' + (!deps ? ' health-card-meta-only' : '') + '">' +
                 (deps ? '<div class="health-deps">' + deps + '</div>' : '') +
-                (foot ? '<div class="health-foot">' + foot + '</div>' : '') +
+                (foot ? '<div class="health-foot" title="' + foot + '">' + foot + '</div>' : '') +
+                '</div>' : '';
+            return '<div class="health-card status-' + statusClass + '">' +
+                '<div class="health-card-head"><span class="name" title="' + escapeHtml(serviceName) + '">' +
+                    escapeHtml(serviceName) + '</span>' + healthBadge(svc.status) + '</div>' +
+                details +
                 '</div>';
         }).join('');
     }
@@ -516,15 +583,20 @@
         while (sized >= 1024 && index < units.length - 1) { sized /= 1024; index++; }
         return `${sized.toLocaleString('ru-RU', {maximumFractionDigits:index ? 1 : 0})} ${units[index]}`;
     }
-    const lastUploadMetricIds = new Set([
-        'files_last_upload_total_ms',
-        'files_last_upload_buffering_ms',
-        'files_last_upload_hashing_ms',
-        'files_last_upload_processing_ms',
-        'files_last_upload_s3_ms'
-    ]);
+    const lastUploadMetricFields = [
+        ['files_last_upload_total_ms', 'totalMs'],
+        ['files_last_upload_buffering_ms', 'bufferingMs'],
+        ['files_last_upload_hashing_ms', 'hashingMs'],
+        ['files_last_upload_processing_ms', 'processingMs'],
+        ['files_last_upload_s3_ms', 's3Ms']
+    ];
+    const lastUploadMetricIds = new Set(lastUploadMetricFields.map(([id]) => id));
+    let lastUploadRefreshPending = false;
     function getLastMetricValue(metric) {
         return [...(metric.points || [])].reverse().find(point => point.value != null)?.value;
+    }
+    function metricsFromLastUploadSnapshot(snapshot) {
+        return lastUploadMetricFields.map(([id, field]) => ({ id, points: [{ value: snapshot?.[field] }] }));
     }
     function renderLastUploadCard(metrics) {
         const values = Object.fromEntries(metrics.map(metric => [metric.id, getLastMetricValue(metric)]));
@@ -539,6 +611,7 @@
         ];
         const card = document.createElement('article');
         card.className = 'upload-timing-card';
+        card.dataset.snapshot = stages.map(([, value]) => value ?? '').concat(total).join(':');
         const stageMarkup = stages.map(([title, value]) => {
             const duration = value ?? 0;
             const width = total > 0 ? Math.min(duration / total * 100, 100) : 0;
@@ -546,6 +619,24 @@
         }).join('');
         card.innerHTML = `<div class="upload-timing-head"><span class="upload-timing-title">Последняя загрузка файла</span><span class="upload-timing-total">${formatMetricValue(total, 'ms')}<small>мс</small></span></div><div class="upload-timing-stages">${stageMarkup}</div>`;
         return card;
+    }
+    async function refreshLastUploadCard(section = document.querySelector('.metric-service[data-service="BarkFluff.Files"]')) {
+        if (!section?.classList.contains('open') || !section.dataset.loaded || lastUploadRefreshPending) return;
+        lastUploadRefreshPending = true;
+        try {
+            const snapshot = await BF.request('/api/seq/dashboard/files/last-upload', { errorToast: false, cache: 'no-store' });
+            const freshCard = renderLastUploadCard(metricsFromLastUploadSnapshot(snapshot));
+            if (!freshCard) return;
+
+            const currentCard = section.querySelector('.upload-timing-card');
+            if (currentCard?.dataset.snapshot === freshCard.dataset.snapshot) return;
+            if (currentCard) currentCard.replaceWith(freshCard);
+            else section.querySelector('.service-grid')?.prepend(freshCard);
+        } catch {
+            // Keep the latest cached value visible while Seq is temporarily unavailable.
+        } finally {
+            lastUploadRefreshPending = false;
+        }
     }
     function renderMetricGroup(group) {
         const section = document.createElement('section');
@@ -558,7 +649,9 @@
     async function toggleMetricGroup(section, group) {
         const isOpen = section.classList.toggle('open');
         section.querySelector('.metric-service-toggle').setAttribute('aria-expanded', isOpen);
-        if (isOpen && !section.dataset.loaded) await loadMetricGroup(section, group);
+        if (!isOpen) return;
+        if (!section.dataset.loaded) await loadMetricGroup(section, group);
+        else if (group.serviceName === 'BarkFluff.Files') refreshLastUploadCard(section);
     }
     async function loadMetricGroup(section, group) {
         const grid = section.querySelector('.service-grid');
@@ -587,6 +680,7 @@
                 });
             });
             section.dataset.loaded = 'true';
+            if (group.serviceName === 'BarkFluff.Files') refreshLastUploadCard(section);
         } catch {
             grid.innerHTML = '<div style="color:var(--md-error);padding:16px">Не удалось загрузить метрики</div>';
         }
@@ -655,6 +749,9 @@
         BF.pageReady();
 
         setInterval(loadDashboardData, 30000);
+        setInterval(() => {
+            if (!document.hidden) refreshLastUploadCard();
+        }, 10000);
     })();
 </script>
 </body>

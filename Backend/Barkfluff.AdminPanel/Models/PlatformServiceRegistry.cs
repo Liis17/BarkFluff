@@ -29,8 +29,8 @@ public static class PlatformServiceRegistry
         new("BarkFluff.Federation",     "federation",       "FederationService:Host",      "http://federation:7030"),
         new("BarkFluff.CloudMessaging", "cloud-messaging"),
         new("BarkFluff.Web",            "web",              "WebService:Host",             "http://web:7016",       true),
-        new("BarkFluff.Configuration",  "configuration",    "ConfigurationService:Host",   "http://configuration:7003"),
-        new("BarkFluff.Developers",     "developers",       "DevelopersService:Host",      "http://developers:7020"),
+        new("BarkFluff.Settings",       "settings",         "SettingsService:Host",        "http://settings:7003"),
+        new("BarkFluff.Developers",     "developers",       "DevelopersService:Host",      "http://developers:7020", true),
         new("BarkFluff.Calls",          "calls",            "CallsService:Host",           "http://calls:7025"),
         new("BarkFluff.Bots",           "bots",             "BotsService:Host",            "http://bots:7027"),
     ];

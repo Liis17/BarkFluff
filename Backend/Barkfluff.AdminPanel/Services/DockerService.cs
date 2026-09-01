@@ -292,7 +292,7 @@ public class DockerService
         var containerToServiceMap = new Dictionary<string, string>
         {
             { "beacon", "beacon" },
-            { "configuration", "configuration" },
+            { "settings", "settings" },
             { "files", "files" },
             { "identity", "identity" },
             { "messages", "messages" },

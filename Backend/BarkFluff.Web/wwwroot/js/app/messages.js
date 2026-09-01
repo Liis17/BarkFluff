@@ -467,6 +467,8 @@
 
         var group = document.createElement('div');
         group.className = 'msg-group ' + direction + (opts && opts.groupedWithPrevious ? ' grouped-with-previous' : '');
+        if (msg.isPending) group.classList.add('pending-send');
+        if (msg.pendingState) group.classList.add('pending-' + msg.pendingState);
         if (!isOutgoing && opts && opts.showSenderGutter) group.classList.add('has-sender-gutter');
         group.dataset.msgId = msg.id;
 
@@ -536,6 +538,34 @@
             }
 
             if (!isSticker) {
+                if (msg.isPending && msg.pendingState) {
+                    var pendingRow = document.createElement('div');
+                    pendingRow.className = 'msg-pending-row';
+                    var pendingLabel = document.createElement('span');
+                    pendingLabel.className = 'msg-pending-label';
+                    pendingLabel.textContent = BF.i18n.t('message.pending.' + msg.pendingState);
+                    pendingRow.appendChild(pendingLabel);
+
+                    var action = null;
+                    if (msg.pendingState === 'uploading' && opts && opts.onPendingCancel) {
+                        action = document.createElement('button');
+                        action.textContent = BF.i18n.t('message.cancelUpload');
+                        action.addEventListener('click', function () { opts.onPendingCancel(msg.id); });
+                    } else if ((msg.pendingState === 'failed' || msg.pendingState === 'unknown' ||
+                        msg.pendingState === 'processing' || msg.pendingState === 'waiting-file') &&
+                        opts && opts.onPendingRetry) {
+                        action = document.createElement('button');
+                        action.textContent = BF.i18n.t('message.retry');
+                        action.addEventListener('click', function () { opts.onPendingRetry(msg.id); });
+                    }
+                    if (action) {
+                        action.type = 'button';
+                        action.className = 'msg-pending-action';
+                        pendingRow.appendChild(action);
+                    }
+                    bubble.appendChild(pendingRow);
+                }
+
                 var meta = document.createElement('div');
                 meta.className = 'msg-meta' + (imageOnly || videoOnly ? ' msg-img-overlay-meta' : '');
                 if (msg.isEdited) {

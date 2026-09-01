@@ -11,7 +11,12 @@ public class S3Uploader : IS3Uploader
         _registry = registry;
     }
 
-    public async Task<string> UploadAsync(string bucket, string key, Stream data, string contentType)
+    public async Task<string> UploadAsync(
+        string bucket,
+        string key,
+        Stream data,
+        string contentType,
+        CancellationToken cancellationToken)
     {
         var client = _registry.GetClientForBucket(bucket);
 
@@ -29,7 +34,7 @@ public class S3Uploader : IS3Uploader
             DisablePayloadSigning = true,
         };
 
-        var response = await client.PutObjectAsync(request);
+        var response = await client.PutObjectAsync(request, cancellationToken);
 
         return response.ETag;
     }

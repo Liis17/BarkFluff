@@ -16,6 +16,21 @@
     var files = function () { return c().files; };
     var onliner = function () { return c().onliner; };
 
+    // Every unary call is classified by semantics. User-visible mutations never
+    // retry implicitly; reads and server draft sync use bounded retry policies.
+    function readCall(method, request) {
+        return c().authCall(method, request, BF.network.POLICIES.READ);
+    }
+    function draftCall(method, request) {
+        return c().authCall(method, request, BF.network.POLICIES.DRAFT);
+    }
+    function mutationCall(method, request, signal) {
+        var policy = signal
+            ? BF.network.withSignal(BF.network.POLICIES.MUTATION, signal)
+            : BF.network.POLICIES.MUTATION;
+        return c().authCall(method, request, policy);
+    }
+
     // Chat/Users/Messages встраивают в ответы уже готовые ссылки на Files (picture,
     // profilePicture, previewUrl…), в обход BF.files.getFileUrls/getUploadUrl — подменяем
     // хост на files_media_endpoint ноды тем же способом, здесь же, в момент маппинга.
@@ -93,6 +108,7 @@
             replyTo: m.getReplyTo ? mapReplyTo(m.getReplyTo()) : null,
             isEdited: m.getIsEdited ? m.getIsEdited() : false,
             editedAt: m.getEditedAt ? tsToMs(m.getEditedAt()) : null,
+            clientOperationId: m.getClientOperationId ? m.getClientOperationId() : '',
             content: {
                 text: content ? content.getText() : '',
                 attachments: content ? content.getAttachmentsList().map(mapAttachment) : []
@@ -189,7 +205,7 @@
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 50, 50));
         req.setPagination(pg);
-        return c().authCall(messages().listChats.bind(messages()), req).then(function (resp) {
+        return readCall(messages().listChats.bind(messages()), req).then(function (resp) {
             return {
                 chats: resp.getChatsList().map(mapChat),
                 totalCount: resp.getTotalCount()
@@ -200,7 +216,7 @@
     function getChatInfo(chatId) {
         var req = new (msgPb().GetChatInfoRequest)();
         req.setChatId(chatId);
-        return c().authCall(messages().getChatInfo.bind(messages()), req).then(function (resp) {
+        return readCall(messages().getChatInfo.bind(messages()), req).then(function (resp) {
             return {
                 lastMessageId: resp.getLastMessageId(),
                 firstUnreadMessageId: resp.getFirstUnreadMessageId(),
@@ -226,7 +242,7 @@
     function getChatDraft(chatId) {
         var req = new (msgPb().GetChatDraftRequest)();
         req.setChatId(chatId);
-        return c().authCall(messages().getChatDraft.bind(messages()), req).then(function (resp) {
+        return readCall(messages().getChatDraft.bind(messages()), req).then(function (resp) {
             return { draft: mapChatDraft(resp.getDraft()) };
         });
     }
@@ -236,7 +252,7 @@
         req.setChatId(chatId);
         req.setText(text || '');
         req.setReplyToMessageId(replyToMessageId || 0);
-        return c().authCall(messages().upsertChatDraft.bind(messages()), req).then(function (resp) {
+        return draftCall(messages().upsertChatDraft.bind(messages()), req).then(function (resp) {
             return { draft: mapChatDraft(resp.getDraft()) };
         });
     }
@@ -245,7 +261,7 @@
         var req = new (msgPb().DeleteChatDraftRequest)();
         req.setChatId(chatId);
         req.setExpectedRevision(revision || '');
-        return c().authCall(messages().deleteChatDraft.bind(messages()), req).then(function (resp) {
+        return draftCall(messages().deleteChatDraft.bind(messages()), req).then(function (resp) {
             return { deleted: resp.getDeleted() };
         });
     }
@@ -253,7 +269,7 @@
     function getPersonChatId(userId) {
         var req = new (msgPb().GetPersonChatIdRequest)();
         req.setUserId(userId);
-        return c().authCall(messages().getPersonChatId.bind(messages()), req).then(function (resp) {
+        return readCall(messages().getPersonChatId.bind(messages()), req).then(function (resp) {
             return { chatId: resp.getChatId() };
         });
     }
@@ -264,7 +280,7 @@
         req.setFromMessageId(fromMessageId || 0);
         req.setOffsetBefore(Math.min(offsetBefore || 30, 50));
         req.setOffsetAfter(Math.min(offsetAfter || 0, 50));
-        return c().authCall(messages().listMessages.bind(messages()), req).then(function (resp) {
+        return readCall(messages().listMessages.bind(messages()), req).then(function (resp) {
             return { messages: resp.getMessagesList().map(mapMessage) };
         });
     }
@@ -288,8 +304,11 @@
             msg.setForwardedMessageIdsList(opts.forwardedMessageIds);
         }
         req.setMessage(msg);
+        if (opts.clientOperationId && req.setClientOperationId) {
+            req.setClientOperationId(opts.clientOperationId);
+        }
 
-        return c().authCall(messages().sendMessage.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().sendMessage.bind(messages()), req).then(function (resp) {
             var m = resp.getMessage();
             return { message: m ? mapMessage(m) : null };
         });
@@ -298,7 +317,7 @@
     function markAsRead(messageIds) {
         var req = new (msgPb().MarkAsReadRequest)();
         req.setMessageIdsList(messageIds);
-        return c().authCall(messages().markAsRead.bind(messages()), req);
+        return mutationCall(messages().markAsRead.bind(messages()), req);
     }
 
     function editMessage(messageId, text, fileIds) {
@@ -306,7 +325,7 @@
         req.setMessageId(messageId);
         req.setText(text || '');
         if (fileIds && fileIds.length > 0) req.setFilesIdsList(fileIds);
-        return c().authCall(messages().editMessage.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().editMessage.bind(messages()), req).then(function (resp) {
             var m = resp.getMessage();
             return { message: m ? mapMessage(m) : null };
         });
@@ -315,7 +334,7 @@
     function deleteMessage(messageId) {
         var req = new (msgPb().DeleteMessageRequest)();
         req.setMessageId(messageId);
-        return c().authCall(messages().deleteMessage.bind(messages()), req);
+        return mutationCall(messages().deleteMessage.bind(messages()), req);
     }
 
     function listChatAttachments(chatId, type, offset, size, fileNameQuery) {
@@ -328,7 +347,7 @@
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 30, 50));
         req.setPagination(pg);
-        return c().authCall(messages().listChatAttachments.bind(messages()), req).then(function (resp) {
+        return readCall(messages().listChatAttachments.bind(messages()), req).then(function (resp) {
             return {
                 attachments: resp.getAttachmentsList().map(function (a) {
                     var att = a.getAttachment();
@@ -352,7 +371,7 @@
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 50, 50));
         req.setPagination(pg);
-        return c().authCall(messages().listChatMembers.bind(messages()), req).then(function (resp) {
+        return readCall(messages().listChatMembers.bind(messages()), req).then(function (resp) {
             return {
                 members: resp.getChatMembersList().map(function (m) {
                     var gi = m.getGeneralInfo();
@@ -372,14 +391,14 @@
         var req = new (msgPb().AddUserRequest)();
         req.setChatId(chatId);
         req.setUserId(userId);
-        return c().authCall(messages().addUser.bind(messages()), req);
+        return mutationCall(messages().addUser.bind(messages()), req);
     }
 
     function kickUser(chatId, userId) {
         var req = new (msgPb().KickUserRequest)();
         req.setChatId(chatId);
         req.setUserId(userId);
-        return c().authCall(messages().kickUser.bind(messages()), req);
+        return mutationCall(messages().kickUser.bind(messages()), req);
     }
 
     function updateGroupChat(chatId, title, pictureFileId) {
@@ -387,7 +406,7 @@
         req.setChatId(chatId);
         req.setTitle(title || '');
         req.setPictureFileId(pictureFileId || '');
-        return c().authCall(messages().updateGroupChat.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().updateGroupChat.bind(messages()), req).then(function (resp) {
             var ch = resp.getChat();
             return { chat: ch ? { id: ch.getId(), title: ch.getTitle(), picture: mediaUrl(ch.getPicture()) } : null };
         });
@@ -400,7 +419,7 @@
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 20, 50));
         req.setPagination(pg);
-        return c().authCall(users().searchUsers.bind(users()), req).then(function (resp) {
+        return readCall(users().searchUsers.bind(users()), req).then(function (resp) {
             return {
                 users: resp.getUsersList().map(mapUser),
                 totalCount: resp.getTotalCount()
@@ -411,16 +430,19 @@
     function getUser(userId) {
         var req = new (usrPb().GetUserRequest)();
         req.setUserId(userId);
-        return c().authCall(users().getUser.bind(users()), req).then(function (resp) {
+        return readCall(users().getUser.bind(users()), req).then(function (resp) {
             var u = resp.getUser();
             return { user: u ? mapUser(u) : null };
         });
     }
 
-    function getUploadUrl(fileType) {
+    function getUploadUrl(fileType, clientOperationId, signal) {
         var req = new (filePb().GetUploadUrlRequest)();
         req.setFileType(fileType || 0);
-        return c().authCall(files().getUploadUrl.bind(files()), req).then(function (resp) {
+        if (clientOperationId && req.setClientOperationId) {
+            req.setClientOperationId(clientOperationId);
+        }
+        return mutationCall(files().getUploadUrl.bind(files()), req, signal).then(function (resp) {
             return { url: resp.getUrl(), fileId: resp.getFileId() };
         });
     }
@@ -428,7 +450,7 @@
     function checkFileHash(fileHash) {
         var req = new (filePb().CheckFileHashRequest)();
         req.setFileHash(fileHash);
-        return c().authCall(files().checkFileHash.bind(files()), req).then(function (resp) {
+        return readCall(files().checkFileHash.bind(files()), req).then(function (resp) {
             return { fileId: resp.getFileId() };
         });
     }
@@ -436,7 +458,7 @@
     function getTempDownloadUrl(fileIds) {
         var req = new (filePb().GetTempDownloadUrlRequest)();
         req.setFileIdsList(fileIds);
-        return c().authCall(files().getTempDownloadUrl.bind(files()), req).then(function (resp) {
+        return readCall(files().getTempDownloadUrl.bind(files()), req).then(function (resp) {
             return {
                 files: resp.getFileUrlsList().map(function (f) {
                     return { fileId: f.getFileId(), url: f.getUrl(), previewUrl: f.getPreviewUrl() };
@@ -451,7 +473,7 @@
         pg.setOffset(offset || 0);
         pg.setSize(size || 50);
         req.setPagination(pg);
-        return c().authCall(files().listStickerPacks.bind(files()), req).then(function (resp) {
+        return readCall(files().listStickerPacks.bind(files()), req).then(function (resp) {
             return {
                 packs: resp.getPacksList().map(function (p) {
                     return {
@@ -467,7 +489,7 @@
     function getStickerPack(packId) {
         var req = new (filePb().GetStickerPackRequest)();
         req.setPackId(packId);
-        return c().authCall(files().getStickerPack.bind(files()), req).then(function (resp) {
+        return readCall(files().getStickerPack.bind(files()), req).then(function (resp) {
             var pack = resp.getPack();
             return {
                 pack: pack ? {
@@ -489,7 +511,7 @@
     function getStickerPackByFile(fileId) {
         var req = new (filePb().GetStickerPackByFileRequest)();
         req.setFileId(fileId);
-        return c().authCall(files().getStickerPackByFile.bind(files()), req).then(function (resp) {
+        return readCall(files().getStickerPackByFile.bind(files()), req).then(function (resp) {
             var pack = resp.getPack();
             return {
                 pack: pack ? {
@@ -514,31 +536,31 @@
         var req = new (usrPb().ChangeNameRequest)();
         req.setFirstName(firstName || '');
         req.setLastName(lastName || '');
-        return c().authCall(users().changeName.bind(users()), req);
+        return mutationCall(users().changeName.bind(users()), req);
     }
 
     function changeUsername(username) {
         var req = new (usrPb().ChangeUsernameRequest)();
         req.setUsername(username);
-        return c().authCall(users().changeUsername.bind(users()), req);
+        return mutationCall(users().changeUsername.bind(users()), req);
     }
 
     function changeBio(bio) {
         var req = new (usrPb().ChangeBioRequest)();
         req.setBio(bio || '');
-        return c().authCall(users().changeBio.bind(users()), req);
+        return mutationCall(users().changeBio.bind(users()), req);
     }
 
     function setProfilePicture(fileId) {
         var req = new (usrPb().SetProfilePictureRequest)();
         req.setFileId(fileId);
-        return c().authCall(users().setProfilePicture.bind(users()), req);
+        return mutationCall(users().setProfilePicture.bind(users()), req);
     }
 
     function checkExistUsername(username) {
         var req = new (usrPb().CheckExistUsernameRequest)();
         req.setUsername(username);
-        return c().authCall(users().checkExistUsername.bind(users()), req).then(function (resp) {
+        return readCall(users().checkExistUsername.bind(users()), req).then(function (resp) {
             return { exist: resp.getExist() };
         });
     }
@@ -547,7 +569,7 @@
 
     function getActiveSessions() {
         var req = new (identPb().GetActiveSessionsRequest)();
-        return c().authCall(identity().getActiveSessions.bind(identity()), req).then(function (resp) {
+        return readCall(identity().getActiveSessions.bind(identity()), req).then(function (resp) {
             return {
                 sessions: resp.getSessionsList().map(function (s) {
                     return {
@@ -569,12 +591,12 @@
     function removeActiveSession(deviceId) {
         var req = new (identPb().RemoveActiveSessionRequest)();
         req.setDeviceId(deviceId);
-        return c().authCall(identity().removeActiveSession.bind(identity()), req);
+        return mutationCall(identity().removeActiveSession.bind(identity()), req);
     }
 
     function listOtpVerification() {
         var req = new (identPb().ListOtpVerificationRequest)();
-        return c().authCall(identity().listOtpVerification.bind(identity()), req).then(function (resp) {
+        return readCall(identity().listOtpVerification.bind(identity()), req).then(function (resp) {
             return { authenticatorEnabled: resp.getAuthenticatorEnabled(), emailEnabled: resp.getEmailEnabled() };
         });
     }
@@ -582,7 +604,7 @@
     function enableOtpVerification(otpType) {
         var req = new (identPb().EnableOtpVerificationRequest)();
         req.setOtpType(otpType);
-        return c().authCall(identity().enableOtpVerification.bind(identity()), req).then(function (resp) {
+        return mutationCall(identity().enableOtpVerification.bind(identity()), req).then(function (resp) {
             return { otpQr: resp.getOtpQr(), otpCode: resp.getOtpCode() };
         });
     }
@@ -590,21 +612,21 @@
     function confirmOtpVerification(otpCode) {
         var req = new (identPb().ConfirmOtpVerificationRequest)();
         req.setOtpCode(otpCode);
-        return c().authCall(identity().confirmOtpVerification.bind(identity()), req);
+        return mutationCall(identity().confirmOtpVerification.bind(identity()), req);
     }
 
     function disableOtpVerification(otpType, otpCode) {
         var req = new (identPb().DisableOtpVerificationRequest)();
         req.setOtpType(otpType);
         if (otpCode) req.setOtpCode(otpCode);
-        return c().authCall(identity().disableOtpVerification.bind(identity()), req);
+        return mutationCall(identity().disableOtpVerification.bind(identity()), req);
     }
 
     function setPassword(password, oldPassword) {
         var req = new (identPb().SetPasswordRequest)();
         req.setPassword(password);
         if (oldPassword) req.setOldPassword(oldPassword);
-        return c().authCall(identity().setPassword.bind(identity()), req);
+        return mutationCall(identity().setPassword.bind(identity()), req);
     }
 
     // --- User devices / notifications (UsersApi) ---
@@ -613,25 +635,25 @@
         var req = new (usrPb().RenameDeviceRequest)();
         req.setDeviceId(deviceId);
         req.setCustomName(customName || '');
-        return c().authCall(users().renameDevice.bind(users()), req);
+        return mutationCall(users().renameDevice.bind(users()), req);
     }
 
     function setNotificationsEnabled(enabled) {
         var req = new (usrPb().SetNotificationsEnabledRequest)();
         req.setEnabled(!!enabled);
-        return c().authCall(users().setNotificationsEnabled.bind(users()), req);
+        return mutationCall(users().setNotificationsEnabled.bind(users()), req);
     }
 
     function setFirebaseToken(token, pushPlatform) {
         var req = new (usrPb().SetFirebaseTokenRequest)();
         req.setFirebaseToken(token);
         req.setPushPlatform(pushPlatform || 2);
-        return c().authCall(users().setFirebaseToken.bind(users()), req);
+        return mutationCall(users().setFirebaseToken.bind(users()), req);
     }
 
     function clearFirebaseToken() {
         var req = new (usrPb().ClearFirebaseTokenRequest)();
-        return c().authCall(users().clearFirebaseToken.bind(users()), req);
+        return mutationCall(users().clearFirebaseToken.bind(users()), req);
     }
 
     // --- Privacy (UsersApi) ---
@@ -650,7 +672,7 @@
 
     function getPrivacySettings() {
         var req = new (usrPb().GetPrivacySettingsRequest)();
-        return c().authCall(users().getPrivacySettings.bind(users()), req).then(function (resp) {
+        return readCall(users().getPrivacySettings.bind(users()), req).then(function (resp) {
             return { settings: mapPrivacySettings(resp.getSettings()) };
         });
     }
@@ -665,7 +687,7 @@
         s.setSearchVisible(!!settings.searchVisible);
         s.setOnlineVisibility(settings.onlineVisibility || 0);
         req.setSettings(s);
-        return c().authCall(users().updatePrivacySettings.bind(users()), req);
+        return mutationCall(users().updatePrivacySettings.bind(users()), req);
     }
 
     // --- Personalization (UsersApi) ---
@@ -680,7 +702,7 @@
 
     function getPersonalization() {
         var req = new (usrPb().GetPersonalizationRequest)();
-        return c().authCall(users().getPersonalization.bind(users()), req).then(function (resp) {
+        return readCall(users().getPersonalization.bind(users()), req).then(function (resp) {
             return { personalization: mapPersonalization(resp.getPersonalization()) };
         });
     }
@@ -691,13 +713,13 @@
         p.setProfilePosterFileId(personalization.profilePosterFileId || '');
         p.setChatBackgroundFileIdsList(personalization.chatBackgroundFileIds || []);
         req.setPersonalization(p);
-        return c().authCall(users().updatePersonalization.bind(users()), req);
+        return mutationCall(users().updatePersonalization.bind(users()), req);
     }
 
     function setProfilePoster(fileId) {
         var req = new (usrPb().SetProfilePosterRequest)();
         req.setProfilePosterFileId(fileId || '');
-        return c().authCall(users().setProfilePoster.bind(users()), req);
+        return mutationCall(users().setProfilePoster.bind(users()), req);
     }
 
     // --- Synced chat backgrounds (UsersApi) ---
@@ -717,7 +739,7 @@
 
     function getUserSettings() {
         var req = new (usrPb().GetUserSettingsRequest)();
-        return c().authCall(users().getUserSettings.bind(users()), req).then(function (resp) {
+        return readCall(users().getUserSettings.bind(users()), req).then(function (resp) {
             return { settings: mapUserSettings(resp.getSettings()) };
         });
     }
@@ -725,14 +747,14 @@
     function setGlobalChatBackground(fileId) {
         var req = new (usrPb().SetGlobalChatBackgroundRequest)();
         req.setChatBackgroundFileId(fileId || '');
-        return c().authCall(users().setGlobalChatBackground.bind(users()), req);
+        return mutationCall(users().setGlobalChatBackground.bind(users()), req);
     }
 
     function setChatBackground(chatId, fileId) {
         var req = new (usrPb().SetChatBackgroundRequest)();
         req.setChatId(chatId);
         req.setChatBackgroundFileId(fileId || '');
-        return c().authCall(users().setChatBackground.bind(users()), req);
+        return mutationCall(users().setChatBackground.bind(users()), req);
     }
 
     // --- Chat Folders (UsersApi) ---
@@ -749,7 +771,7 @@
 
     function getChatFolders() {
         var req = new (usrPb().GetChatFoldersRequest)();
-        return c().authCall(users().getChatFolders.bind(users()), req).then(function (resp) {
+        return readCall(users().getChatFolders.bind(users()), req).then(function (resp) {
             return { folders: resp.getFoldersList().map(mapChatFolder) };
         });
     }
@@ -758,7 +780,7 @@
         var req = new (usrPb().CreateChatFolderRequest)();
         req.setFolderName(folderName || '');
         req.setFolderIcon(folderIcon || '');
-        return c().authCall(users().createChatFolder.bind(users()), req).then(function (resp) {
+        return mutationCall(users().createChatFolder.bind(users()), req).then(function (resp) {
             var f = resp.getFolder();
             return { folder: f ? mapChatFolder(f) : null };
         });
@@ -774,7 +796,7 @@
             req.setHasChatListUpdate(true);
             req.setChatListList(opts.chatList || []);
         }
-        return c().authCall(users().updateChatFolder.bind(users()), req).then(function (resp) {
+        return mutationCall(users().updateChatFolder.bind(users()), req).then(function (resp) {
             var f = resp.getFolder();
             return { folder: f ? mapChatFolder(f) : null };
         });
@@ -783,14 +805,14 @@
     function deleteChatFolder(folderId) {
         var req = new (usrPb().DeleteChatFolderRequest)();
         req.setFolderId(folderId);
-        return c().authCall(users().deleteChatFolder.bind(users()), req);
+        return mutationCall(users().deleteChatFolder.bind(users()), req);
     }
 
     function addChatToFolder(folderId, chatId) {
         var req = new (usrPb().AddChatToFolderRequest)();
         req.setFolderId(folderId);
         req.setChatId(chatId);
-        return c().authCall(users().addChatToFolder.bind(users()), req).then(function (resp) {
+        return mutationCall(users().addChatToFolder.bind(users()), req).then(function (resp) {
             var f = resp.getFolder();
             return { folder: f ? mapChatFolder(f) : null };
         });
@@ -800,7 +822,7 @@
         var req = new (usrPb().RemoveChatFromFolderRequest)();
         req.setFolderId(folderId);
         req.setChatId(chatId);
-        return c().authCall(users().removeChatFromFolder.bind(users()), req).then(function (resp) {
+        return mutationCall(users().removeChatFromFolder.bind(users()), req).then(function (resp) {
             var f = resp.getFolder();
             return { folder: f ? mapChatFolder(f) : null };
         });
@@ -815,7 +837,7 @@
             return item;
         });
         req.setOrdersList(list);
-        return c().authCall(users().reorderChatFolders.bind(users()), req);
+        return mutationCall(users().reorderChatFolders.bind(users()), req);
     }
 
     // --- Pinned Messages (MessagesApi) ---
@@ -833,7 +855,7 @@
         var req = new (msgPb().PinMessageRequest)();
         req.setChatId(chatId);
         req.setMessageId(messageId);
-        return c().authCall(messages().pinMessage.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().pinMessage.bind(messages()), req).then(function (resp) {
             var p = resp.getPinned();
             return { pinned: p ? mapPinnedInfo(p) : null };
         });
@@ -843,7 +865,7 @@
         var req = new (msgPb().UnpinMessageRequest)();
         req.setChatId(chatId);
         req.setMessageId(messageId);
-        return c().authCall(messages().unpinMessage.bind(messages()), req);
+        return mutationCall(messages().unpinMessage.bind(messages()), req);
     }
 
     function listPinnedMessages(chatId, offset, size) {
@@ -853,7 +875,7 @@
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 50, 50));
         req.setPagination(pg);
-        return c().authCall(messages().listPinnedMessages.bind(messages()), req).then(function (resp) {
+        return readCall(messages().listPinnedMessages.bind(messages()), req).then(function (resp) {
             return {
                 pinned: resp.getPinnedList().map(mapPinnedInfo),
                 totalCount: resp.getTotalCount()
@@ -864,7 +886,7 @@
     function unpinAll(chatId) {
         var req = new (msgPb().UnpinAllRequest)();
         req.setChatId(chatId);
-        return c().authCall(messages().unpinAll.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().unpinAll.bind(messages()), req).then(function (resp) {
             return { unpinnedCount: resp.getUnpinnedCount() };
         });
     }
@@ -874,7 +896,7 @@
         req.setUserIdsList(userIds);
         req.setTitle(title || '');
         req.setPictureFileId(pictureFileId || '');
-        return c().authCall(messages().createGroupChat.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().createGroupChat.bind(messages()), req).then(function (resp) {
             var ch = resp.getCreatedChat();
             return { chat: ch ? mapChat(ch) : null };
         });
@@ -887,7 +909,7 @@
         req.setPeerUserId(peerUserId);
         req.setKdfSalt(kdfSalt);
         req.setPassphraseVerifier(passphraseVerifier);
-        return c().authCall(messages().createPrivateChat.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().createPrivateChat.bind(messages()), req).then(function (resp) {
             var ch = resp.getChat();
             return { chat: ch ? mapChat(ch) : null, created: resp.getCreated() };
         });
@@ -896,7 +918,7 @@
     function acceptPrivateChat(chatId) {
         var req = new (msgPb().AcceptPrivateChatRequest)();
         req.setChatId(chatId);
-        return c().authCall(messages().acceptPrivateChat.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().acceptPrivateChat.bind(messages()), req).then(function (resp) {
             var ch = resp.getChat();
             return { chat: ch ? mapChat(ch) : null };
         });
@@ -905,7 +927,7 @@
     function rejectPrivateChat(chatId) {
         var req = new (msgPb().RejectPrivateChatRequest)();
         req.setChatId(chatId);
-        return c().authCall(messages().rejectPrivateChat.bind(messages()), req);
+        return mutationCall(messages().rejectPrivateChat.bind(messages()), req);
     }
 
     function listPrivateMessages(chatId, fromMessageId, offsetBefore, offsetAfter) {
@@ -914,7 +936,7 @@
         req.setFromMessageId(fromMessageId || 0);
         req.setOffsetBefore(Math.min(offsetBefore || 30, 50));
         req.setOffsetAfter(Math.min(offsetAfter || 0, 50));
-        return c().authCall(messages().listPrivateMessages.bind(messages()), req).then(function (resp) {
+        return readCall(messages().listPrivateMessages.bind(messages()), req).then(function (resp) {
             return { messages: resp.getMessagesList().map(mapEncryptedMessage) };
         });
     }
@@ -925,7 +947,7 @@
         req.setCiphertext(ciphertext);
         req.setNonce(nonce);
         req.setAssociatedData(associatedData);
-        return c().authCall(messages().sendPrivateMessage.bind(messages()), req).then(function (resp) {
+        return mutationCall(messages().sendPrivateMessage.bind(messages()), req).then(function (resp) {
             var m = resp.getMessage();
             return { message: m ? mapEncryptedMessage(m) : null };
         });
@@ -935,25 +957,25 @@
         var req = new (msgPb().MarkPrivateMessagesAsReadRequest)();
         req.setChatId(chatId);
         req.setLastReadMessageId(lastReadMessageId);
-        return c().authCall(messages().markPrivateMessagesAsRead.bind(messages()), req);
+        return mutationCall(messages().markPrivateMessagesAsRead.bind(messages()), req);
     }
 
     function setOnlineStatus() {
         var req = new (onlPb().SetOnlineStatusRequest)();
-        return c().authCall(onliner().setOnlineStatus.bind(onliner()), req);
+        return mutationCall(onliner().setOnlineStatus.bind(onliner()), req);
     }
 
     function setTypingStatus(chatId, typing) {
         var req = new (onlPb().SetTypingStatusRequest)();
         req.setChatId(chatId);
         req.setAction(typing ? 1 : 2);
-        return c().authCall(onliner().setTypingStatus.bind(onliner()), req);
+        return mutationCall(onliner().setTypingStatus.bind(onliner()), req);
     }
 
     function getOnlineStatus(userIds) {
         var req = new (onlPb().GetOnlineStatusRequest)();
         req.setUserIdsList(userIds);
-        return c().authCall(onliner().getOnlineStatus.bind(onliner()), req).then(function (resp) {
+        return readCall(onliner().getOnlineStatus.bind(onliner()), req).then(function (resp) {
             return {
                 statuses: resp.getUsersStatusesList().map(function (s) {
                     return {

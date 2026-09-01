@@ -6,6 +6,8 @@
 
 Расположение: `Backend/BarkFluff.Calls/`. План: `docs/plan/Calls-LiveKit-SFU.md`.
 
+gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+
 ## Сборка
 
 ```bash
@@ -73,7 +75,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 - **Голос — общий для звонка.** Любой участник вызывает `SetCallAudioQuality`; текущее значение хранит `CallQualityStore` (in-memory Singleton — состояние транзиентное, как подписки, поэтому колонки в CDR нет), сервер рассылает `CallAudioQualityChanged` всем (включая инициатора смены — единый источник истины). Текущее качество отдаётся в ответах `Initiate/Accept/Join` (`audio_quality`) — late-join получает актуальное. Применение пресета к публикации — на клиенте (LiveKit `audioPreset`).
 - **Видео — локально у публикующего.** Качество своего видео-стрима (разрешение+битрейт) клиент меняет сам через LiveKit; на backend не ходит. См. [[Клиенты/Web]].
 
-## Конфигурация (секция в [[Backend/Configuration]], ServiceId=13)
+## Конфигурация (секция в [[Backend/Settings]], ServiceId=13)
 
 | Ключ | Назначение |
 |------|-----------|
@@ -81,7 +83,12 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 | `CallsDb` | строка подключения CDR |
 | `MessagesService:Host/Token` | авторизация группы + список участников |
 | `LiveKit:Url` | WSS-адрес (дублируется в [[Backend/Beacon]].`livekit_url`) |
-| `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `docker/livekit/livekit.yaml`) |
+| `LiveKit:ApiKey` / `ApiSecret` | креды подписи токенов и верификации webhooks (совпадают с `keys` в `docker/{dev,nightly,master}/barkfluff/livekit/livekit.yaml`) |
+
+Ключ и секрет LiveKit не имеют общего development-default и создаются пустыми.
+Оператор вводит непредсказуемую пару через Setup UI и использует те же значения в
+`keys` файла `livekit.yaml`; после завершения первичной настройки изменения
+выполняются через AdminPanel.
 
 ## Внешний доступ ([[Backend/Nginx]])
 
@@ -96,7 +103,7 @@ A ◀══ media (WebRTC) ══▶ LiveKit SFU ◀══ media ══▶ B
 
 - **[[Backend/Messages]]** — `MessagesServerApi.CheckChatMembership` (авторизация группового звонка), `GetChatMemberIds` (ринг участникам) и `PostCallSystemMessage` (системное сообщение об итоге звонка при завершении).
 - **[[Backend/Beacon]]** — отдаёт клиенту `livekit_url` из конфига Calls.
-- **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `docker/livekit/livekit.yaml`.
+- **LiveKit server** — Docker-сервис `livekit` (`livekit/livekit-server`), конфиг `docker/{dev,nightly,master}/barkfluff/livekit/livekit.yaml`.
 - **RabbitMQ** — `SessionRevokedConsumer` (отзыв токенов, паритет с другими сервисами); `ChatMemberKickedConsumer` (очередь `chat-member-kicked-calls`, событие `ChatMemberKickedEvent`: при кике пользователя из чата best-effort удаляет его из активной LiveKit-комнаты через `RoomServiceClient.RemoveParticipant`); публикация `IncomingCallPushEvent` / `CallDismissPushEvent` для [[Backend/CloudMessaging]].
 
 ## Клиенты

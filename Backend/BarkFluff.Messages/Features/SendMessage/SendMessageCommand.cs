@@ -6,6 +6,8 @@ namespace BarkFluff.Messages.Features.SendMessage;
 
 public class SendMessageCommand : IRequest<SendMessageResponse>
 {
+    public Guid? ClientOperationId { get; set; }
+
     public Guid? ChatId { get; set; }
 
     public long? UserId { get; set; }

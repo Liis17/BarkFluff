@@ -14,7 +14,7 @@
 
 ## Исключения по доменам
 
-- `Identity/` — аутентификация, OTP, сессии, пользователи (23 класса)
+- `Identity/` — аутентификация, OTP, сессии, пользователи и защита от злоупотреблений (26 классов)
 - `Messages/` — чаты, сообщения, приватные/секретные чаты, закреплённые сообщения (24 класса)
 - `FastAuth/` — QR-авторизация устройств (4 класса)
 - `Files/` — загрузка файлов (2 класса)
@@ -31,6 +31,9 @@
 | UsernameInvalidFormatException | `E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47` |
 | UserNotFoundException | `A4DAB334-1067-4838-A782-C4257DC838F7` |
 | SessionNotFoundException | `011BF29A-2DE6-4A63-BF8D-3F36AE730D9D` |
+| IdentityRateLimitExceededException | `7D1CBF0E-2C85-4A2A-9B2D-6B2A6CF5A1E2` (`ResourceExhausted`) |
+| IdentityLockoutException | `B95A5B58-6A7F-43A2-A9B9-D9D8F8B4B1E4` (`ResourceExhausted`) |
+| IdentityProtectionUnavailableException | `A7B3D2F1-4C6E-4E6D-8A6B-2F0A9C7D5E11` (`Unavailable`) |
 | FastAuthSessionNotFoundException | `A5E94C7D-1B82-4F36-9CDE-78B1F4A7E2C5` |
 | ChatNotFoundException | `7506386A-8940-4F3B-87B8-315DD0A7AB08` |
 | NoAccessToChatException | `604DD334-0484-4C6B-8113-354B9D2FDF2A` |

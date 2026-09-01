@@ -11,6 +11,8 @@ public class FilesContext : DbContext
 
     public DbSet<UploadFile> UploadedFiles { get; set; }
 
+    public DbSet<UploadOperation> UploadOperations { get; set; }
+
     public DbSet<TempFile> TempFiles { get; set; }
 
     public DbSet<FileHash> FileHashes { get; set; }
@@ -30,6 +32,22 @@ public class FilesContext : DbContext
         modelBuilder.Entity<UploadFile>()
             .HasIndex(x => x.PreviewId)
             .HasFilter("\"PreviewId\" IS NOT NULL");
+
+        modelBuilder.Entity<UploadOperation>()
+            .Property(x => x.State)
+            .HasConversion<int>();
+
+        modelBuilder.Entity<UploadOperation>()
+            .HasIndex(x => new { x.UserId, x.ClientOperationId })
+            .IsUnique()
+            .HasFilter("\"ClientOperationId\" IS NOT NULL");
+
+        modelBuilder.Entity<UploadOperation>()
+            .HasIndex(x => x.ReservedFileId)
+            .IsUnique();
+
+        modelBuilder.Entity<UploadOperation>()
+            .HasIndex(x => new { x.State, x.LeaseExpiresAt });
 
         modelBuilder.Entity<TempFile>()
             .HasIndex(x => x.OriginalFileId);
