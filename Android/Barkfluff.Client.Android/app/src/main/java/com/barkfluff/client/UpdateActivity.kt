@@ -1,18 +1,25 @@
 package com.barkfluff.client
 
+import android.Manifest
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.IntentSender
+import android.content.pm.PackageInstaller
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityUpdateBinding
+import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.AppVersion
 import com.barkfluff.client.utils.ChannelVersionInfo
 import com.barkfluff.client.utils.UpdateChecker
@@ -37,6 +44,15 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+internal fun fullScreenIntentPermissionState(canUseFullScreenIntent: Boolean): Int {
+    return if (canUseFullScreenIntent) {
+        PackageInstaller.SessionParams.PERMISSION_STATE_GRANTED
+    } else {
+        PackageInstaller.SessionParams.PERMISSION_STATE_DENIED
+    }
+}
+
 class UpdateActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityUpdateBinding
@@ -57,6 +73,9 @@ class UpdateActivity : AppCompatActivity() {
         private const val CHANNEL_RELEASE = "release"
         private const val CHANNEL_DEV = "dev"
         private const val CHANNEL_NIGHTLY = "nightly"
+        private const val INSTALL_STATUS_ACTION = "com.barkfluff.client.ACTION_INSTALL_STATUS"
+        private const val INSTALL_SESSION_ID_EXTRA = "install_session_id"
+        private const val APK_SPLIT_NAME = "base.apk"
     }
 
     private val installPermissionLauncher = registerForActivityResult(
@@ -78,7 +97,15 @@ class UpdateActivity : AppCompatActivity() {
         setupToolbar()
         setupCurrentVersion()
         setupClickListeners()
-        checkUpdates()
+        if (!handleInstallStatusIntent(intent)) {
+            checkUpdates()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleInstallStatusIntent(intent)
     }
 
     private fun setupToolbar() {
@@ -406,29 +433,164 @@ class UpdateActivity : AppCompatActivity() {
                 return
             }
 
-            val contentUri = FileProvider.getUriForFile(
-                this,
-                "${packageName}.fileprovider",
-                destFile
-            )
-
-            // Чистить APK после установки не нужно: он лежит в cacheDir, и
-            // BarkFluffApplication.cleanupPendingUpdate() удаляет его при следующем старте.
-
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(contentUri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                lifecycleScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            installDownloadedApkWithPackageInstaller(destFile)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error installing APK with PackageInstaller", e)
+                        showInstallError(e.message.orEmpty())
+                    }
+                }
+                return
             }
-            startActivity(intent)
-            // Если установка прошла успешно — процесс будет убит и корутина не выполнится.
-            // Если приложение продолжает работать (ошибка установки) — через 5 сек покажем подсказку.
-            scheduleInstallErrorHint()
+
+            installDownloadedApkWithFileProvider(destFile)
         } catch (e: Exception) {
             Log.e(TAG, "Error installing APK", e)
             Toast.makeText(this, getString(R.string.update_install_error, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             installTriggered = false
         }
+    }
+
+    private fun installDownloadedApkWithFileProvider(destFile: File) {
+        val contentUri = FileProvider.getUriForFile(
+            this,
+            "${packageName}.fileprovider",
+            destFile
+        )
+
+        // Чистить APK после установки не нужно: он лежит в cacheDir, и
+        // BarkFluffApplication.cleanupPendingUpdate() удаляет его при следующем старте.
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(contentUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+        // Если установка прошла успешно — процесс будет убит и корутина не выполнится.
+        // Если приложение продолжает работать (ошибка установки) — через 5 сек покажем подсказку.
+        scheduleInstallErrorHint()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun installDownloadedApkWithPackageInstaller(destFile: File) {
+        // Android 14+ сбрасывает это разрешение для sideload через ACTION_VIEW.
+        // Перед созданием session явно переносим фактическое состояние пользователя.
+        val fullScreenIntentState = fullScreenIntentPermissionState(
+            NotificationHelper.canUseFullScreenIntent(this)
+        )
+
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+            setAppPackageName(packageName)
+            setSize(destFile.length())
+            setPermissionState(Manifest.permission.USE_FULL_SCREEN_INTENT, fullScreenIntentState)
+            setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
+        }
+
+        val packageInstaller = packageManager.packageInstaller
+        var sessionId = -1
+        try {
+            sessionId = packageInstaller.createSession(params)
+            packageInstaller.openSession(sessionId).use { session ->
+                session.openWrite(APK_SPLIT_NAME, 0, destFile.length()).use { output ->
+                    destFile.inputStream().use { input ->
+                        input.copyTo(output, DOWNLOAD_BUFFER_BYTES)
+                    }
+                    session.fsync(output)
+                }
+                session.commit(createInstallStatusIntentSender(sessionId))
+            }
+        } catch (e: Exception) {
+            abandonInstallSessionIfValid(sessionId)
+            throw e
+        }
+    }
+
+    private fun createInstallStatusIntentSender(sessionId: Int): IntentSender {
+        val statusIntent = Intent(this, UpdateActivity::class.java).apply {
+            action = INSTALL_STATUS_ACTION
+            putExtra(INSTALL_SESSION_ID_EXTRA, sessionId)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val statusPendingIntent = PendingIntent.getActivity(
+            this,
+            sessionId,
+            statusIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+        return statusPendingIntent.intentSender
+    }
+
+    private fun handleInstallStatusIntent(intent: Intent?): Boolean {
+        if (intent?.action != INSTALL_STATUS_ACTION) return false
+
+        val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
+        when (status) {
+            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                val confirmationIntent = getInstallConfirmationIntent(intent)
+                if (confirmationIntent == null) {
+                    abandonInstallSession(intent)
+                    showInstallError("Не получено подтверждение установки (status=$status)")
+                    return true
+                }
+
+                try {
+                    startActivity(confirmationIntent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error opening package installation confirmation", e)
+                    abandonInstallSession(intent)
+                    showInstallError(e.message.orEmpty())
+                }
+            }
+
+            PackageInstaller.STATUS_SUCCESS -> {
+                Log.i(TAG, "APK installation completed")
+            }
+
+            else -> {
+                abandonInstallSession(intent)
+                val statusMessage = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty()
+                Log.e(TAG, "APK installation failed: status=$status, message=$statusMessage")
+                showInstallError(statusMessage.ifBlank { "status=$status" })
+            }
+        }
+        return true
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getInstallConfirmationIntent(intent: Intent): Intent? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+        } else {
+            intent.getParcelableExtra(Intent.EXTRA_INTENT)
+        }
+    }
+
+    private fun abandonInstallSession(intent: Intent) {
+        val sessionId = intent.getIntExtra(INSTALL_SESSION_ID_EXTRA, -1)
+        abandonInstallSessionIfValid(sessionId)
+    }
+
+    private fun abandonInstallSessionIfValid(sessionId: Int) {
+        if (sessionId != -1) {
+            runCatching { packageManager.packageInstaller.abandonSession(sessionId) }
+        }
+    }
+
+    private fun showInstallError(message: String) {
+        installTriggered = false
+        binding.cardInstallError.visibility = View.VISIBLE
+        Toast.makeText(
+            this,
+            getString(R.string.update_install_error, message.ifBlank { "неизвестная ошибка" }),
+            Toast.LENGTH_LONG
+        ).show()
     }
 
 }
