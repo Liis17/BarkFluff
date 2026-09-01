@@ -44,6 +44,7 @@ class ChatsFragment : Fragment() {
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
     private var titleAnimationGeneration = 0
+    private var initialScrollPending = true
 
     // Сворачивание шапки по направлению прокрутки
     private var headerCollapsed = false
@@ -85,6 +86,7 @@ class ChatsFragment : Fragment() {
         val app = requireActivity().application as BarkFluffApplication
         globalParam = GlobalParam(requireContext())
         grpcManager = app.grpcManager
+        initialScrollPending = true
 
         setupToolbar()
         setupChatList()
@@ -115,6 +117,15 @@ class ChatsFragment : Fragment() {
                     }
                     chatAdapter.submitList(state.displayItems)
                     showEmptyState(state.displayItems.isEmpty())
+                    if (initialScrollPending && state.displayItems.isNotEmpty()) {
+                        initialScrollPending = false
+                        val recyclerView = binding.chatRecyclerView
+                        recyclerView.post {
+                            if (_binding == null || recyclerView.adapter !== chatAdapter) return@post
+                            (recyclerView.layoutManager as? LinearLayoutManager)
+                                ?.scrollToPositionWithOffset(0, 0)
+                        }
+                    }
                     previousItems = state.displayItems
                 }
 
