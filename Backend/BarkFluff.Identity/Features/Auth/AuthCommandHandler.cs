@@ -28,6 +28,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 {
 
     private const int ExpDaysRefreshToken = 9999;
+    private const string DevelopersPortalAppName = "BarkFluff Developers Portal";
 
     public async Task<AuthResponse> Handle(AuthCommand request, CancellationToken cancellationToken)
     {
@@ -68,6 +69,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             throw new XAppInfoIsRequiedException();
         }
 
+        var ipAddress = string.IsNullOrWhiteSpace(requestContext.TrustedIpAddress)
+            ? requestContext.IpAddress
+            : requestContext.TrustedIpAddress;
+        var appName = FormatAppName(requestContext.AppName, requestContext.AppVersion);
+
         await abuseGuard.EnsureLoginAllowedAsync(
             login!,
             requestContext.TrustedIpAddress,
@@ -107,7 +113,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             logger.LogWarning(
                 "Неудачная попытка входа: пользователь не найден. Логин: {Login}, IP: {IpAddress}",
                 login,
-                requestContext.IpAddress
+                ipAddress
             );
 
             if (failure.Locked)
@@ -151,7 +157,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 await authPropertiesStorage.UpdateLastEmailAuthCode(userContactInfo.User.Id, code);
 
                 // Получаем данные о местоположении IP-адреса
-                var locationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
+                var locationInfo = await locationClient.GetLocationString(ipAddress);
 
                 var emailNotification = new EmailNotification
                 {
@@ -162,11 +168,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     {
                         {"username", userContactInfo.User.Username},
                         {"confirmation_code", code},
-                        {"ip", requestContext.IpAddress ?? string.Empty},
+                        {"ip", ipAddress ?? string.Empty},
                         {"devicename", requestContext.DeviceName},
                         {"os", requestContext.OperationSystem},
                         {"location", locationInfo},
-                        {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
+                        {"appname", appName},
                         {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
                     },
                     ServiceId = ServiceId.Identity,
@@ -206,7 +212,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 logger.LogWarning(
                     "Неверный TOTP код для пользователя {UserId}, IP: {IpAddress}",
                     user.User.Id,
-                    requestContext.IpAddress
+                    ipAddress
                 );
 
                 if (failure.Locked)
@@ -238,7 +244,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 logger.LogWarning(
                     "Неверный Email OTP код для пользователя {UserId}, IP: {IpAddress}",
                     user.User.Id,
-                    requestContext.IpAddress
+                    ipAddress
                 );
 
                 if (failure.Locked)
@@ -270,7 +276,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 "Неудачная попытка входа: неверный пароль для пользователя {UserId}. Логин: {Login}, IP: {IpAddress}",
                 user.User.Id,
                 login,
-                requestContext.IpAddress
+                ipAddress
             );
 
             if (failure.Locked)
@@ -279,7 +285,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             // Отправка уведомления о неудачной попытке входа
             var userContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
 
-            var locationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
+            var locationInfo = await locationClient.GetLocationString(ipAddress);
 
             var failedLoginNotification = new EmailNotification
             {
@@ -289,11 +295,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 Payload = new Dictionary<string, string>
                 {
                     {"username", user.User.Username},
-                    {"ip", requestContext.IpAddress ?? string.Empty},
+                    {"ip", ipAddress ?? string.Empty},
                     {"devicename", requestContext.DeviceName},
                     {"os", requestContext.OperationSystem},
                     {"location", locationInfo},
-                    {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
+                    {"appname", appName},
                     {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
                 },
                 ServiceId = ServiceId.Identity,
@@ -317,7 +323,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             user.User.Id,
             login,
             requestContext.DeviceName,
-            requestContext.IpAddress
+            ipAddress
         );
 
         logger.LogDebug("Генерация refresh token для пользователя {UserId}", user.User.Id);
@@ -331,7 +337,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
 
         // Регистрация устройства в Users сервисе
-        var successLocationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
+        var successLocationInfo = await locationClient.GetLocationString(ipAddress);
 
         try
         {
@@ -340,7 +346,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 DeviceId = deviceId,
                 UserId = user.User.Id,
                 OriginalName = requestContext.DeviceName ?? "Unknown",
-                AppName = $"{requestContext.AppName} v.{requestContext.AppVersion}",
+                AppName = appName,
                 OperationSystem = requestContext.OperationSystem ?? "",
                 Location = successLocationInfo
             });
@@ -362,11 +368,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             Payload = new Dictionary<string, string>
             {
                 {"username", user.User.Username},
-                {"ip", requestContext.IpAddress ?? string.Empty},
+                {"ip", ipAddress ?? string.Empty},
                 {"devicename", requestContext.DeviceName},
                 {"os", requestContext.OperationSystem},
                 {"location", successLocationInfo},
-                {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
+                {"appname", appName},
                 {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
             },
             ServiceId = ServiceId.Identity,
@@ -396,5 +402,12 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         };
 
         return response;
+    }
+
+    private static string FormatAppName(string? appName, string? appVersion)
+    {
+        return string.Equals(appName, DevelopersPortalAppName, StringComparison.Ordinal)
+            ? DevelopersPortalAppName
+            : $"{appName} v.{appVersion}";
     }
 }
