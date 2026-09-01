@@ -288,6 +288,13 @@ jobs:
             $certificateB64 = $certificateB64.Substring(1, $certificateB64.Length - 2).Trim()
           }
 
+          $base64Block = [regex]::Match(
+            $certificateB64,
+            '(?ms)BASE64_BEGIN\s*(?<payload>.*?)\s*BASE64_END')
+          if ($base64Block.Success) {
+            $certificateB64 = $base64Block.Groups['payload'].Value.Trim()
+          }
+
           if ($certificateB64.StartsWith('```')) {
             $certificateB64 = $certificateB64 -replace '^```[^\r\n]*\r?\n', ''
             $certificateB64 = $certificateB64 -replace '\r?\n```\s*$', ''
@@ -299,10 +306,13 @@ jobs:
           if ($certificateB64 -match '-----BEGIN|^\s*(?:base64|pfx)\s*:') {
             throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 должен содержать Base64 PFX без PEM-заголовка или метки'
           }
+          $invalidCharacterCount = [regex]::Matches(
+            $certificateB64,
+            '[^A-Za-z0-9+/=]').Count
           if ($certificateB64.Length -eq 0 -or
               ($certificateB64.Length % 4) -ne 0 -or
               $certificateB64 -notmatch '^[A-Za-z0-9+/]*={0,2}$') {
-            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 содержит недопустимые символы или имеет некорректную длину'
+            throw "Секрет WINUI_MSIX_CERTIFICATE_B64 содержит недопустимые символы или имеет некорректную длину (нормализованная длина: $($certificateB64.Length), недопустимых символов: $invalidCharacterCount)"
           }
 
           $certificatePath = Join-Path $env:RUNNER_TEMP 'BarkFluffWinUI-signing.pfx'
