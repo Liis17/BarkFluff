@@ -165,13 +165,17 @@ services:
       SETTINGS_HOST: ${SETTINGS_HOST}
       SETTINGS_DBPORT: ${SETTINGS_DBPORT}
       SETTINGS_DATABASE: ${SETTINGS_DATABASE}
-      SETTINGS_ADMIN_DATABASE: ${SETTINGS_ADMIN_DATABASE}
       SETTINGS_USERNAME: ${SETTINGS_USERNAME}
       SETTINGS_PASSWORD: ${SETTINGS_PASSWORD}
       SETTINGS_PORT: ${SETTINGS_PORT}
       SETTINGS_SETUP_MODE: "false"
     networks:
       - barkfluff-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-bootstrap:
+        condition: service_completed_successfully
 
   beacon:
     image: docker.barkfluff.com/barkfluff-beacon:latest
@@ -418,13 +422,40 @@ services:
     environment:
       POSTGRES_USER: "${POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_DB: "${POSTGRES_DB:-postgres}"
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - pgdata:/var/lib/postgresql
       - backup_volume:/backup
     # Порт наружу не публикуется: доступ к БД — только изнутри Docker-сети.
     # Для ручных подключений используйте SSH-туннель.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - barkfluff-network
+
+  postgres-bootstrap:
+    image: postgres:18
+    restart: "no"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for database in "$${SETTINGS_DATABASE:-settings}" identity users messages files onliner calls bots federation developers; do
+          echo "Ensuring PostgreSQL database exists: $$database"
+          createdb --if-not-exists --maintenance-db=postgres "$$database"
+        done
+    environment:
+      PGHOST: "postgres"
+      PGPORT: "5432"
+      PGUSER: "${POSTGRES_USER}"
+      PGPASSWORD: "${POSTGRES_PASSWORD}"
+      SETTINGS_DATABASE: "${SETTINGS_DATABASE:-settings}"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - barkfluff-network
 
@@ -527,8 +558,8 @@ SETTINGS_SERVICE_URL=http://settings:7003
 ASPNETCORE_ENVIRONMENT=Production
 
 # --- PostgreSQL ---
-# Учётка суперпользователя. Базы сервисов (identity, users, messages, files,
-# onliner, calls, bots, federation) создаются автоматически при первом старте.
+# Учётка суперпользователя. При первом старте создаются только отсутствующие
+# базы сервисов; существующие базы и их данные не пересоздаются.
 POSTGRES_USER=barkfluff
 POSTGRES_PASSWORD=смените-меня
 POSTGRES_DB=postgres
@@ -539,7 +570,6 @@ POSTGRES_PORT=5432
 SETTINGS_HOST=postgres_barkfluff
 SETTINGS_DBPORT=5432
 SETTINGS_DATABASE=settings
-SETTINGS_ADMIN_DATABASE=postgres
 SETTINGS_USERNAME=barkfluff
 SETTINGS_PASSWORD=смените-меня
 
@@ -617,7 +647,7 @@ docker compose -f docker-compose.setup.yml down
 docker compose -f docker-compose.yml up -d
 docker compose ps</code></pre>
       </figure>
-      <p>Settings применяет миграции, создаёт базу и показывает только значения, которые нужно ввести вручную. После завершения форма блокируется отпечатком каталога полей.</p>
+        <p>Bootstrap создаёт только отсутствующие базы. Settings применяет миграции к выбранной базе и добавляет только отсутствующие ключи каталога; существующие значения не перезаписываются. После завершения форма блокируется отпечатком каталога полей.</p>
     </section>
 
     <section id="settings">
@@ -723,7 +753,7 @@ docker run --rm -v barkfluff_minio_data:/data -v "$PWD":/out alpine \
         <pre><code>docker compose pull
 docker compose up -d</code></pre>
       </figure>
-      <p>Миграции базы сервисы накатывают сами при старте. Сначала снимите бэкап: откатить миграцию назад штатно нельзя.</p>
+      <p>Миграции базы сервисы накатывают сами при старте. Сначала снимите бэкап. Не используйте <code>docker compose down -v</code>: эта команда удаляет именованные volumes с данными.</p>
 
       <h3>Безопасность</h3>
       <ul>
