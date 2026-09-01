@@ -186,7 +186,7 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - **`google-services.json`** содержит client-записи всех трёх пакетов. Без записи под конкретный `applicationId` плагин `com.google.gms.google-services` роняет сборку флейвора.
 - **Версия.** Сборка ветки `nightly` увеличивает patch относительно версии в канале `nightly`; `dev` и `master` переиздают эту же версию. CI передаёт значение в Gradle через `-PappVersionName`, а не переписывает исходник. `versionCode` вычисляется из SemVer (`MAJOR × 1 000 000 + MINOR × 1 000 + PATCH`) и растёт вместе с версией; локальный fallback остаётся `0.0.1`/`1`. Два пуша в `dev` подряд без промежуточной nightly-сборки по-прежнему дают одинаковую версию — это отдельное ограничение схемы каналов.
 - **Telegram CI-уведомления.** После успешной загрузки workflow отправляет в канал одну кнопку «Скачать последнюю версию» со ссылкой на `https://storage.barkfluff.com/get/barkfluffkotlin/{channel}`. При ошибке остаётся кнопка «Открыть GitHub Action».
-- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла (`0.0.121 beta` на момент проверки).
+- **WebServer.** `VersionPollingService` в [[Backend/WebServer]] опрашивает `kotlin` во всех каналах `release`, `beta`, `dev`, `nightly`; `beta` оставлен только для обратной совместимости. Главная показывает ссылку выбранного канала и состояние ожидания, если публикации ещё нет.
 
 ## Система обновлений и её TLS
 

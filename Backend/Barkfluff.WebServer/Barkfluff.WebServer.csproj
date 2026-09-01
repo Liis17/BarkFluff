@@ -11,6 +11,9 @@
     <None Remove="files\barkfluff.android.jpg" />
     <None Remove="files\barkfluff.web.png" />
     <None Remove="files\barkfluff.windows.png" />
+    <None Remove="files\channel-nightly.webp" />
+    <None Remove="files\channel-dev.webp" />
+    <None Remove="files\channel-release.webp" />
     <None Remove="files\favicon.ico" />
     <None Remove="files\install.ps1" />
     <None Remove="files\installbeta.ps1" />
@@ -112,6 +115,15 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="files\barkfluff.windows.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\channel-nightly.webp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\channel-dev.webp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\channel-release.webp">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

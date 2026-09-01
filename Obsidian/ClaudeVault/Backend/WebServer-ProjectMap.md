@@ -13,10 +13,10 @@
 | `Controllers/FallbackController.cs` | `GET /{**catchAll}` | Перехватывает все необработанные пути: `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService; ничего не подошло → `html/404.html` с кодом 404 |
 | `Controllers/UserApiController.cs` | `GET /api/user/{username}` | REST API публичного профиля пользователя (делегирует в UserProfileService) |
 | `Controllers/SupportChatController.cs` | `POST /api/support/send`, `GET /api/support/messages/{chatId}` | Чат поддержки: отправка сообщений и получение истории |
-| `Controllers/VersionApiController.cs` | `GET /api/versions` | Возвращает актуальные версии клиентов (Android/Windows/macOS, release+beta) |
-| `Controllers/InstallController.cs` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Скрипты установки клиента (Windows PowerShell и Linux Bash, релиз и бета) |
+| `Controllers/VersionApiController.cs` | `GET /api/versions` | Возвращает версии Android, WinUI и macOS по каналам `release`, `beta`, `dev`, `nightly` |
+| `Controllers/InstallController.cs` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Legacy-скрипты установки, оставлены для совместимости; на главной не показываются |
 | `Controllers/DownloadController.cs` | `GET /download/installer` | Отдаёт `Barkfluff.Updater.CLI.exe` — инсталлятор Windows |
-| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт ассеты по whitelist `_allowedFiles`: изображения (png/jpg для магазинов и превью) и `cookie-notice.js` |
+| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт ассеты по whitelist `_allowedFiles`: изображения (png/jpg/webp для магазинов, превью и фоновых тем) и `cookie-notice.js` |
 | `Controllers/FaviconController.cs` | `GET /favicon.ico` | Отдаёт `files/favicon.ico` |
 
 ---
@@ -30,8 +30,8 @@
 | `Services/LegalPageService.cs` | Читает HTML из `html/legal/` по имени страницы; обрабатывает `selfhosted.html`. |
 | `Services/SupportChatService.cs` | In-memory хранилище сессий чата (`ConcurrentDictionary`). Добавляет сообщения, возвращает историю с пагинацией. |
 | `Services/TelegramService.cs` | Telegram-бот поддержки. Отправляет сообщения пользователей администратору. Ответ администратора — reply, первая строка — GUID чата. |
-| `Services/VersionStore.cs` | Thread-safe in-memory хранилище версий клиентов (Android/Windows/macOS, release+beta). |
-| `Services/VersionPollingService.cs` | `BackgroundService`. Каждые 10 минут опрашивает `storage.barkfluff.com` — получает версии всех клиентов, пишет в `VersionStore`. |
+| `Services/VersionStore.cs` | Thread-safe in-memory хранилище версий Android, WinUI и macOS для `release`, `beta`, `dev`, `nightly`. |
+| `Services/VersionPollingService.cs` | `BackgroundService`. Каждые 10 минут опрашивает `barkfluffkotlin`, `barkfluffwinui` и `barkfluffmacos` во всех нужных каналах, пишет в `VersionStore`. |
 
 ---
 
@@ -50,7 +50,7 @@
 
 | Файл/Папка | Описание |
 |-----------|----------|
-| `html/barkfluff.html` | Главная страница сайта |
+| `html/barkfluff.html` | Главная страница сайта: переключатель Nightly/Dev/Release (по умолчанию Release), отдельный Web-клиент с векторным browser-глифом, группы Desktop/Mobile |
 | `html/404.html` | Страница «не найдено» (отдаётся `FallbackController` с кодом 404) |
 | `html/userpage.html` | Шаблон публичной страницы пользователя (`%%username%%`) |
 | `html/UniqueUsers/paws.page.html` | Специальная страница для пользователя `li_is` с анимированными лапками-следами (SVG + CSS keyframes) |
@@ -77,6 +77,9 @@
 | `files/barkfluff.windows.png` | Скриншот Windows-клиента |
 | `files/barkfluff.web.png` | Скриншот Web-клиента |
 | `files/barkfluff.android.jpg` | Скриншот Android-клиента |
+| `files/channel-nightly.webp` | Ночное небо для темы Nightly, производная `Mac/Barkfluff/Packaging/dmg-background.png` без Finder-зон |
+| `files/channel-dev.webp` | Плотный blueprint для темы Dev, производная `Mac/Barkfluff/Packaging/dmg-background-dev.png` без Finder-зон |
+| `files/channel-release.webp` | Светлый градиент для темы Release, производная `Mac/Barkfluff/Packaging/dmg-background-master.png` |
 | `files/Barkfluff.Updater.CLI.exe` | Инсталлятор (не в git, добавляется при деплое) |
 
 ---
