@@ -22,6 +22,7 @@ public sealed class SettingsViewModelTests
         Assert.Equal(WindowPreferences.DefaultWidth, viewModel.WindowWidth);
         Assert.Equal(WindowPreferences.DefaultHeight, viewModel.WindowHeight);
         Assert.Equal("1000 × 800", viewModel.WindowSizeDescription);
+        Assert.Equal("1000 × 800", viewModel.WindowBoundsDescription);
     }
 
     [Fact]
@@ -59,7 +60,9 @@ public sealed class SettingsViewModelTests
         {
             RememberSize = false,
             Width = 1280,
-            Height = 720
+            Height = 720,
+            PositionX = -100,
+            PositionY = 200
         });
 
         var viewModel = CreateViewModel(dataStore);
@@ -69,6 +72,9 @@ public sealed class SettingsViewModelTests
         Assert.False(viewModel.RememberWindowSize);
         Assert.Equal(1280, viewModel.WindowWidth);
         Assert.Equal(720, viewModel.WindowHeight);
+        Assert.Equal(-100, viewModel.WindowPositionX);
+        Assert.Equal(200, viewModel.WindowPositionY);
+        Assert.Equal("1280 × 720 (X: -100, Y: 200)", viewModel.WindowBoundsDescription);
     }
 
     [Fact]
@@ -87,6 +93,23 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task SaveWindowBoundsAsync_PersistsSizeAndPosition()
+    {
+        var dataStore = new TestApplicationDataStore();
+        var viewModel = CreateViewModel(dataStore);
+
+        await viewModel.LoadAsync();
+        await viewModel.SaveWindowBoundsAsync(1280, 720, -100, 200);
+
+        var stored = await new SettingsPreferences(dataStore).GetWindowPreferencesAsync();
+        Assert.Equal(1280, stored.Width);
+        Assert.Equal(720, stored.Height);
+        Assert.Equal(-100, stored.PositionX);
+        Assert.Equal(200, stored.PositionY);
+        Assert.Equal("1280 × 720 (X: -100, Y: 200)", viewModel.WindowBoundsDescription);
+    }
+
+    [Fact]
     public async Task SaveWindowSizeAsync_WhenRememberingIsDisabled_LeavesStoredSizeUnchanged()
     {
         var dataStore = new TestApplicationDataStore();
@@ -95,12 +118,14 @@ public sealed class SettingsViewModelTests
         await viewModel.LoadAsync();
         await viewModel.SaveWindowSizeAsync(1280, 720);
         await viewModel.SetRememberWindowSizeAsync(false);
-        await viewModel.SaveWindowSizeAsync(1440, 900);
+        await viewModel.SaveWindowBoundsAsync(1440, 900, -100, 200);
 
         var stored = await new SettingsPreferences(dataStore).GetWindowPreferencesAsync();
         Assert.False(stored.RememberSize);
         Assert.Equal(1280, stored.Width);
         Assert.Equal(720, stored.Height);
+        Assert.Null(stored.PositionX);
+        Assert.Null(stored.PositionY);
     }
 
     [Fact]
@@ -109,18 +134,22 @@ public sealed class SettingsViewModelTests
         var dataStore = new TestApplicationDataStore();
         var viewModel = CreateViewModel(dataStore);
         var resetRaised = false;
-        viewModel.WindowSizeResetRequested += (_, _) => resetRaised = true;
+        viewModel.WindowBoundsResetRequested += (_, _) => resetRaised = true;
 
         await viewModel.LoadAsync();
-        await viewModel.SaveWindowSizeAsync(1280, 720);
+        await viewModel.SaveWindowBoundsAsync(1280, 720, -100, 200);
         await viewModel.ResetWindowSizeAsync();
 
         var stored = await new SettingsPreferences(dataStore).GetWindowPreferencesAsync();
         Assert.True(resetRaised);
         Assert.Equal(WindowPreferences.DefaultWidth, stored.Width);
         Assert.Equal(WindowPreferences.DefaultHeight, stored.Height);
+        Assert.Null(stored.PositionX);
+        Assert.Null(stored.PositionY);
         Assert.Equal(WindowPreferences.DefaultWidth, viewModel.WindowWidth);
         Assert.Equal(WindowPreferences.DefaultHeight, viewModel.WindowHeight);
+        Assert.Null(viewModel.WindowPositionX);
+        Assert.Null(viewModel.WindowPositionY);
     }
 
     private static SettingsViewModel CreateViewModel(TestApplicationDataStore dataStore) =>

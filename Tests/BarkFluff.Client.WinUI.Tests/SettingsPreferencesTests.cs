@@ -63,4 +63,17 @@ public sealed class SettingsPreferencesTests
         Assert.Equal(WindowPreferences.DefaultWidth, preferences.Width);
         Assert.Equal(WindowPreferences.DefaultHeight, preferences.Height);
     }
+
+    [Fact]
+    public async Task SaveWindowPreferencesAsync_DropsIncompletePosition()
+    {
+        var service = new SettingsPreferences(new TestApplicationDataStore());
+
+        await service.SaveWindowPreferencesAsync(new WindowPreferences { PositionX = -100 });
+
+        var preferences = await service.GetWindowPreferencesAsync();
+
+        Assert.Null(preferences.PositionX);
+        Assert.Null(preferences.PositionY);
+    }
 }

@@ -8,4 +8,6 @@ public sealed record WindowPreferences
     public bool RememberSize { get; init; } = true;
     public int Width { get; init; } = DefaultWidth;
     public int Height { get; init; } = DefaultHeight;
+    public int? PositionX { get; init; }
+    public int? PositionY { get; init; }
 }

@@ -33,7 +33,7 @@ public sealed partial class MainWindow : Window
     {
         _viewModel = viewModel;
         InitializeComponent();
-        ApplySavedWindowSize();
+        ApplySavedWindowBounds();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -43,7 +43,7 @@ public sealed partial class MainWindow : Window
 
         AppWindow.Closing += OnAppWindowClosing;
         AppWindow.Changed += OnAppWindowChanged;
-        _viewModel.Settings.WindowSizeResetRequested += OnWindowSizeResetRequested;
+        _viewModel.Settings.WindowBoundsResetRequested += OnWindowBoundsResetRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         NavigateToCurrentViewModel();
     }
@@ -51,22 +51,60 @@ public sealed partial class MainWindow : Window
     /// <summary>Корень контента: к нему привязываются тема и <c>ContentDialog</c>.</summary>
     public FrameworkElement RootElement => Root;
 
-    private void ApplySavedWindowSize()
+    private void ApplySavedWindowBounds()
     {
         var settings = _viewModel.Settings;
         var width = settings.RememberWindowSize ? settings.WindowWidth : WindowPreferences.DefaultWidth;
         var height = settings.RememberWindowSize ? settings.WindowHeight : WindowPreferences.DefaultHeight;
-        AppWindow.Resize(new SizeInt32(width, height));
+
+        if (settings.RememberWindowSize && settings.WindowPositionX is int x && settings.WindowPositionY is int y)
+        {
+            var savedBounds = new RectInt32
+            {
+                X = x,
+                Y = y,
+                Width = width,
+                Height = height
+            };
+
+            if (DisplayArea.GetFromRect(savedBounds, DisplayAreaFallback.None) is not null)
+            {
+                AppWindow.MoveAndResize(savedBounds);
+                return;
+            }
+        }
+
+        ApplyDefaultWindowBounds(width, height);
     }
 
-    private void OnWindowSizeResetRequested(object? sender, EventArgs eventArgs)
+    private void ApplyDefaultWindowBounds(int width, int height)
     {
-        AppWindow.Resize(new SizeInt32(_viewModel.Settings.WindowWidth, _viewModel.Settings.WindowHeight));
+        var primaryDisplay = DisplayArea.Primary;
+        var workArea = primaryDisplay.WorkArea;
+        var x = primaryDisplay.OuterBounds.X + workArea.X + Math.Max(0, (workArea.Width - width) / 2);
+        var y = primaryDisplay.OuterBounds.Y + workArea.Y + Math.Max(0, (workArea.Height - height) / 2);
+        AppWindow.MoveAndResize(new RectInt32
+        {
+            X = x,
+            Y = y,
+            Width = width,
+            Height = height
+        });
+
+        if (_viewModel.Settings.RememberWindowSize)
+        {
+            _ = _viewModel.Settings.SaveWindowBoundsAsync(width, height, x, y);
+        }
+    }
+
+    private void OnWindowBoundsResetRequested(object? sender, EventArgs eventArgs)
+    {
+        ApplyDefaultWindowBounds(WindowPreferences.DefaultWidth, WindowPreferences.DefaultHeight);
     }
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs eventArgs)
     {
-        if (!eventArgs.DidSizeChange || !_viewModel.Settings.RememberWindowSize)
+        if ((!eventArgs.DidSizeChange && !eventArgs.DidPositionChange) || !_viewModel.Settings.RememberWindowSize)
         {
             return;
         }
@@ -74,15 +112,15 @@ public sealed partial class MainWindow : Window
         _windowSizeSaveCancellation?.Cancel();
         var cancellation = new CancellationTokenSource();
         _windowSizeSaveCancellation = cancellation;
-        _windowSizeSaveTask = SaveWindowSizeAfterDelayAsync(sender, cancellation);
+        _windowSizeSaveTask = SaveWindowBoundsAfterDelayAsync(sender, cancellation);
     }
 
-    private async Task SaveWindowSizeAfterDelayAsync(AppWindow window, CancellationTokenSource cancellation)
+    private async Task SaveWindowBoundsAfterDelayAsync(AppWindow window, CancellationTokenSource cancellation)
     {
         try
         {
             await Task.Delay(WindowSizeSaveDelay, cancellation.Token);
-            await PersistWindowSizeAsync(window, cancellation.Token);
+            await PersistWindowBoundsAsync(window, cancellation.Token);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -199,7 +237,7 @@ public sealed partial class MainWindow : Window
 
             if (_viewModel.Settings.RememberWindowSize)
             {
-                await PersistWindowSizeAsync(AppWindow);
+                await PersistWindowBoundsAsync(AppWindow);
             }
         }
         finally
@@ -210,10 +248,16 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private Task PersistWindowSizeAsync(AppWindow window, CancellationToken cancellationToken = default)
+    private Task PersistWindowBoundsAsync(AppWindow window, CancellationToken cancellationToken = default)
     {
         var size = window.Size;
-        return _viewModel.Settings.SaveWindowSizeAsync(size.Width, size.Height, cancellationToken);
+        var position = window.Position;
+        return _viewModel.Settings.SaveWindowBoundsAsync(
+            size.Width,
+            size.Height,
+            position.X,
+            position.Y,
+            cancellationToken);
     }
 
     private void OnTrayShowRequested(object sender, RoutedEventArgs eventArgs) => ShowFromTray();

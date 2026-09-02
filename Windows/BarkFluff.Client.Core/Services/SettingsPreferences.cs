@@ -60,6 +60,8 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
     private static WindowPreferences Normalize(WindowPreferences preferences) => preferences with
     {
         Width = preferences.Width > 0 ? preferences.Width : WindowPreferences.DefaultWidth,
-        Height = preferences.Height > 0 ? preferences.Height : WindowPreferences.DefaultHeight
+        Height = preferences.Height > 0 ? preferences.Height : WindowPreferences.DefaultHeight,
+        PositionX = preferences.PositionX.HasValue && preferences.PositionY.HasValue ? preferences.PositionX : null,
+        PositionY = preferences.PositionX.HasValue && preferences.PositionY.HasValue ? preferences.PositionY : null
     };
 }

@@ -54,16 +54,28 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _rememberWindowSize = true;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WindowSizeDescription))]
+    [NotifyPropertyChangedFor(nameof(WindowSizeDescription), nameof(WindowBoundsDescription))]
     private int _windowWidth = WindowPreferences.DefaultWidth;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WindowSizeDescription))]
+    [NotifyPropertyChangedFor(nameof(WindowSizeDescription), nameof(WindowBoundsDescription))]
     private int _windowHeight = WindowPreferences.DefaultHeight;
 
-    public string WindowSizeDescription => $"{WindowWidth} × {WindowHeight}";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WindowBoundsDescription))]
+    private int? _windowPositionX;
 
-    public event EventHandler? WindowSizeResetRequested;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WindowBoundsDescription))]
+    private int? _windowPositionY;
+
+    public string WindowSizeDescription => $"{WindowWidth} × {WindowHeight}";
+    public string WindowBoundsDescription =>
+        WindowPositionX is int x && WindowPositionY is int y
+            ? $"{WindowSizeDescription} (X: {x}, Y: {y})"
+            : WindowSizeDescription;
+
+    public event EventHandler? WindowBoundsResetRequested;
 
     public async Task LoadAsync()
     {
@@ -83,6 +95,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         RememberWindowSize = _windowPreferences.RememberSize;
         WindowWidth = _windowPreferences.Width;
         WindowHeight = _windowPreferences.Height;
+        WindowPositionX = _windowPreferences.PositionX;
+        WindowPositionY = _windowPreferences.PositionY;
         _isLoaded = true;
     }
 
@@ -110,6 +124,33 @@ public sealed partial class SettingsViewModel : ObservableObject
         await SaveWindowPreferencesAsync(preferences, cancellationToken);
     }
 
+    public async Task SaveWindowBoundsAsync(
+        int width,
+        int height,
+        int positionX,
+        int positionY,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_isLoaded || !RememberWindowSize)
+        {
+            return;
+        }
+
+        var preferences = _windowPreferences with
+        {
+            Width = width > 0 ? width : WindowPreferences.DefaultWidth,
+            Height = height > 0 ? height : WindowPreferences.DefaultHeight,
+            PositionX = positionX,
+            PositionY = positionY
+        };
+
+        WindowWidth = preferences.Width;
+        WindowHeight = preferences.Height;
+        WindowPositionX = preferences.PositionX;
+        WindowPositionY = preferences.PositionY;
+        await SaveWindowPreferencesAsync(preferences, cancellationToken);
+    }
+
     public async Task ResetWindowSizeAsync(CancellationToken cancellationToken = default)
     {
         if (!_isLoaded)
@@ -120,13 +161,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         var preferences = _windowPreferences with
         {
             Width = WindowPreferences.DefaultWidth,
-            Height = WindowPreferences.DefaultHeight
+            Height = WindowPreferences.DefaultHeight,
+            PositionX = null,
+            PositionY = null
         };
 
         WindowWidth = preferences.Width;
         WindowHeight = preferences.Height;
+        WindowPositionX = preferences.PositionX;
+        WindowPositionY = preferences.PositionY;
         await SaveWindowPreferencesAsync(preferences, cancellationToken);
-        WindowSizeResetRequested?.Invoke(this, EventArgs.Empty);
+        WindowBoundsResetRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task SaveWindowPreferencesAsync(WindowPreferences preferences, CancellationToken cancellationToken)
