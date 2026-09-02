@@ -52,6 +52,15 @@ final class MarkdownTests: XCTestCase {
         XCTAssertEqual(inlines[4], MarkdownInline(text: "link", linkURL: "https://already.example.com"))
     }
 
+    func testMarkdownLinkDestinationIsProtectedFromInlineFormatting() {
+        let inlines = firstTextLine(from: "[**site**](https://example.com/**literal**)")
+
+        XCTAssertEqual(
+            inlines,
+            [MarkdownInline(text: "site", style: .bold, linkURL: "https://example.com/**literal**")]
+        )
+    }
+
     func testBlockSyntaxIncludesListsQuotesRulesAndFencedCode() {
         let document = MarkdownParser.parse("""
         - first

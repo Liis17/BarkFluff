@@ -50,17 +50,7 @@ enum MarkdownSanitizer {
         }
     }
 
-    static func normalizedMarkdownLink(_ raw: String) -> String? {
-        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if isSafeLinkURL(value) {
-            return value
-        }
-
-        guard isRecognizedBareURL(value) else { return nil }
-        return "http://" + value
-    }
-
-    static func normalizedBareURL(_ raw: String) -> String? {
+    static func normalizedURL(_ raw: String) -> String? {
         let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if isSafeLinkURL(value) {
             return value
