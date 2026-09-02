@@ -386,6 +386,9 @@ public enum MarkdownParser {
     private static func parseMarkup(_ text: String) -> [MarkdownInline] {
         var buffer = InlineBuffer(text)
         applyHTMLLinks(to: &buffer)
+        // Remove link wrappers before applying text styles so formatting markers
+        // in a URL can never be interpreted as inline Markdown.
+        applyMarkdownLinks(to: &buffer)
         applyWrapper(to: &buffer, pattern: #"<strong>(.+?)</strong>"#, style: .bold, options: [.caseInsensitive, .dotMatchesLineSeparators])
         applyWrapper(to: &buffer, pattern: #"<sub>(.+?)</sub>"#, style: .small, options: [.caseInsensitive, .dotMatchesLineSeparators])
         applyWrapper(to: &buffer, pattern: #"\*\*([\s\S]+?)\*\*"#, style: .bold)
@@ -393,7 +396,6 @@ public enum MarkdownParser {
         applyWrapper(to: &buffer, pattern: #"~~([^~]+?)~~"#, style: .strikethrough)
         applyWrapper(to: &buffer, pattern: #"\*([^*]+?)\*"#, style: .italic)
         applyWrapper(to: &buffer, pattern: #"(?<!\w)_([^_]+?)_(?!\w)"#, style: .italic)
-        applyMarkdownLinks(to: &buffer)
         linkifyBareURLs(in: &buffer)
         return buffer.inlines()
     }
@@ -446,7 +448,7 @@ public enum MarkdownParser {
             guard let wrapperRange = buffer.characterRange(for: match.range),
                   let labelRange = buffer.characterRange(for: match.range(at: 1)),
                   let rawURL = buffer.string(from: match.range(at: 2)),
-                  let url = MarkdownSanitizer.normalizedMarkdownLink(rawURL) else {
+                  let url = MarkdownSanitizer.normalizedURL(rawURL) else {
                 continue
             }
             let labelLength = labelRange.count
@@ -465,7 +467,7 @@ public enum MarkdownParser {
             guard let range = buffer.characterRange(for: match.range),
                   !buffer.hasLink(in: range),
                   let rawURL = buffer.string(from: match.range),
-                  let url = MarkdownSanitizer.normalizedBareURL(rawURL) else {
+                  let url = MarkdownSanitizer.normalizedURL(rawURL) else {
                 continue
             }
             buffer.setLink(url, in: range)
