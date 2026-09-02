@@ -110,9 +110,9 @@
 | `Conversation/ViewModels/ForwardChatPickerViewModel.swift` | VM пикера чатов для пересылки: snapshot чатов, поиск, мультивыбор `selectedChatIDs`, `commentText`, параллельная отправка через `withTaskGroup` |
 | `Conversation/Views/ConversationView.swift` | Основной экран диалога |
 | `Conversation/Views/ForwardChatPickerView.swift` | Sheet мультивыбора чатов для пересылки (только аватары + имена + checkmark, внизу TextField + send) |
-| `Conversation/Views/ForwardedMessageView.swift` | Отрисовка пересланного сообщения внутри пузыря (вертикальная полоса, имя автора, текст, мини-вложения) |
-| `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над `MessageInputView` (полоса + автор + snippet + кнопка ×). Хелпер `makeSnippet` |
-| `Conversation/Views/MessageBubbleView.swift` | Пузырь сообщения с текстом и вложениями. Контекстное меню: Изменить, Ответить, Переслать, Копировать текст, Скопировать/Сохранить изображение, Сохранить в загрузки, Удалить (свои); для Forward использует `Message.forwardSourceID` |
+| `Conversation/Views/ForwardedMessageView.swift` | Отрисовка пересланного сообщения внутри пузыря (вертикальная полоса, имя автора, plain preview текста, мини-вложения) |
+| `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над `MessageInputView` (полоса + автор + очищенный Markdown snippet + кнопка ×). Хелпер `makeSnippet` |
+| `Conversation/Views/MessageBubbleView.swift` | Пузырь сообщения с Markdown-текстом и вложениями. `BFMarkdown.MarkdownMessageView` для обычных/системных сообщений; контекстное меню: Изменить, Ответить, Переслать, Копировать текст, Скопировать/Сохранить изображение, Сохранить в загрузки, Удалить (свои); для Forward использует `Message.forwardSourceID` |
 | `Conversation/Views/EditPreviewView.swift` | Превью редактируемого сообщения над `MessageInputView` (иконка `pencil`, заголовок, snippet оригинала, кнопка ×) |
 | `Conversation/Views/MessagesListView.swift` | Список сообщений с группировкой по дате |
 | `Conversation/Views/MessageAttachmentView.swift` | Отображение одного вложения в пузыре |
@@ -342,6 +342,10 @@
 | Файл | Назначение |
 |------|-----------|
 | `BFCore.swift` | Корневой файл пакета (re-exports, точка входа) |
+| `Markdown/MarkdownDocument.swift` | Публичный AST документа, блоков, строк, inline runs, таблиц и изображений |
+| `Markdown/MarkdownParser.swift` | Foundation-only parser Markdown V1 с защитой inline code/ссылок |
+| `Markdown/MarkdownSanitizer.swift` | Allowlist URL/HTML-атрибутов, размеров изображений и выравнивания |
+| `Markdown/MarkdownText.swift` | `MarkdownText.strip(_:)` для plain compact previews |
 | `Models/Chat.swift` | Модель чата |
 | `Models/Message.swift` | Модель сообщения с вложениями |
 | `Models/User.swift` | Модель пользователя |
@@ -405,6 +409,17 @@
 | `Utilities/Errors/BFError.swift` | Доменные ошибки приложения |
 | `Utilities/Errors/ErrorLocalizer.swift` | Локализация ошибок для отображения пользователю |
 | `Utilities/PaginationHelper.swift` | Утилита курсорной пагинации |
+
+---
+
+## Пакет BFMarkdown
+
+Расположение: `Packages/BFMarkdown/`. Зависит от `BFCore`; подключён локальным Swift Package к macOS и iOS app targets.
+
+| Файл | Назначение |
+|------|-----------|
+| `Package.swift` | Swift Package с продуктом `BFMarkdown` и зависимостью на `BFCore` |
+| `Sources/BFMarkdown/MarkdownMessageView.swift` | Публичный SwiftUI-рендерер AST: inline styles/links, code/quote, GFM-таблицы с горизонтальным скроллом, `AsyncImage` и alt fallback |
 
 ---
 

@@ -42,7 +42,7 @@ struct ForwardedMessageView: View {
                     .foregroundStyle(titleColor)
 
                 if !payload.text.isEmpty {
-                    Text(payload.text)
+                    Text(verbatim: MarkdownText.strip(payload.text))
                         .font(.callout)
                         .foregroundStyle(textColor)
                         .lineLimit(4)
