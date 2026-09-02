@@ -7,6 +7,7 @@
 
 import SwiftUI
 import BFCore
+import BFMarkdown
 
 /// Пузырь сообщения в стиле iMessage
 struct MessageBubbleView: View {
@@ -101,9 +102,8 @@ struct MessageBubbleView: View {
     }
 
     private var systemMessageView: some View {
-        Text(message.content.text)
+        MarkdownMessageView(source: message.content.text, foreground: .secondary)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, Theme.Spacing.lg)
             .padding(.vertical, Theme.Spacing.md)
@@ -270,10 +270,8 @@ struct MessageBubbleView: View {
                 }
 
                 if message.content.hasText {
-                    Text(message.content.text)
+                    MarkdownMessageView(source: message.content.text, foreground: .white)
                         .font(.body)
-                        .foregroundStyle(.white)
-                        .textSelection(.enabled)
                         .multilineTextAlignment(.leading)
                 }
             }
@@ -298,10 +296,8 @@ struct MessageBubbleView: View {
                 }
 
                 if message.content.hasText {
-                    Text(message.content.text)
+                    MarkdownMessageView(source: message.content.text, foreground: .primary)
                         .font(.body)
-                        .foregroundStyle(.primary)
-                        .textSelection(.enabled)
                         .multilineTextAlignment(.leading)
                 }
             }

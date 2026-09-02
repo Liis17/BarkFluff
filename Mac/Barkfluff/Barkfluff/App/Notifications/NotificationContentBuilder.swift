@@ -88,7 +88,7 @@ enum NotificationContentBuilder {
     /// Собрать тело уведомления из текста и/или сводки по вложениям.
     /// Для группового чата `prefix` может быть «Имя:» (но мы пока используем subtitle).
     private static func bodyText(message: Message, prefix: String?) -> String {
-        let text = message.content.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = MarkdownText.strip(message.content.text)
         let attachmentsSummary = attachmentSummary(message.content.attachments)
 
         var body = ""

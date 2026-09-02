@@ -101,17 +101,20 @@ final class MarkdownTests: XCTestCase {
         <p align="center">
         <strong>README</strong>
         </p>
+        <a href="javascript:alert(1)">unsafe link</a>
         <img src="https://example.com/image.png" alt="preview" width="240" height="9999">
         <img src="javascript:alert(1)" alt="unsafe">
         """)
 
         guard case let .text(group) = document.blocks[0],
-              case let .image(safeImage) = document.blocks[1],
-              case let .image(unsafeImage) = document.blocks[2] else {
-            return XCTFail("Expected HTML paragraph and images")
+              case let .text(unsafeLinkGroup) = document.blocks[1],
+              case let .image(safeImage) = document.blocks[2],
+              case let .image(unsafeImage) = document.blocks[3] else {
+            return XCTFail("Expected HTML paragraph, link and images")
         }
         XCTAssertEqual(group.alignment, .center)
         XCTAssertEqual(group.lines[0].inlines, [MarkdownInline(text: "README", style: .bold)])
+        XCTAssertEqual(unsafeLinkGroup.lines[0].inlines, [MarkdownInline(text: "unsafe link")])
         XCTAssertEqual(safeImage.url, "https://example.com/image.png")
         XCTAssertEqual(safeImage.width, 240)
         XCTAssertNil(safeImage.height)

@@ -52,8 +52,8 @@ public struct Chat: Identifiable, Hashable, Sendable {
     /// Превью последнего сообщения
     public var lastMessagePreview: String? {
         guard let msg = lastMessage else { return nil }
-        if msg.isSystem { return msg.content.text }
-        if msg.content.hasText { return msg.content.text }
+        if msg.isSystem { return MarkdownText.strip(msg.content.text) }
+        if msg.content.hasText { return MarkdownText.strip(msg.content.text) }
         if msg.content.hasAttachments, let attachment = msg.content.attachments.first {
             return attachment.type.previewText(fileName: attachment.fileName)
         }
