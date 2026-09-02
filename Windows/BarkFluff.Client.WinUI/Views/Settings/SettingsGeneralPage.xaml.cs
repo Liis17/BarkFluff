@@ -2,6 +2,7 @@ using BarkFluff.Client.Core.ViewModels;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -22,4 +23,15 @@ public sealed partial class SettingsGeneralPage : Page
         ViewModel = App.Services.GetRequiredService<SettingsViewModel>();
         Bindings.Update();
     }
+
+    private async void OnRememberWindowSizeToggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleSwitch toggleSwitch)
+        {
+            await ViewModel.SetRememberWindowSizeAsync(toggleSwitch.IsOn);
+        }
+    }
+
+    private async void OnResetWindowSizeClick(object sender, RoutedEventArgs e) =>
+        await ViewModel.ResetWindowSizeAsync();
 }

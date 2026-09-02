@@ -38,4 +38,29 @@ public sealed class SettingsPreferencesTests
         Assert.Equal(0, preferences.ChatBackgroundDim);
         Assert.Equal(240, preferences.ChatStickerSizeDp);
     }
+
+    [Fact]
+    public async Task GetWindowPreferencesAsync_WithoutStoredValue_ReturnsDefaults()
+    {
+        var service = new SettingsPreferences(new TestApplicationDataStore());
+
+        var preferences = await service.GetWindowPreferencesAsync();
+
+        Assert.True(preferences.RememberSize);
+        Assert.Equal(WindowPreferences.DefaultWidth, preferences.Width);
+        Assert.Equal(WindowPreferences.DefaultHeight, preferences.Height);
+    }
+
+    [Fact]
+    public async Task SaveWindowPreferencesAsync_NormalizesInvalidDimensions()
+    {
+        var service = new SettingsPreferences(new TestApplicationDataStore());
+
+        await service.SaveWindowPreferencesAsync(new WindowPreferences { Width = 0, Height = -1 });
+
+        var preferences = await service.GetWindowPreferencesAsync();
+
+        Assert.Equal(WindowPreferences.DefaultWidth, preferences.Width);
+        Assert.Equal(WindowPreferences.DefaultHeight, preferences.Height);
+    }
 }
