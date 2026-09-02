@@ -12,16 +12,6 @@
                        Style="{StaticResource OnboardingTitle}"
                        Text="{StaticResource Settings_Devices_Title}" />
 
-            <Border Style="{StaticResource SettingsHeroCard}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Devices_Hint}" />
-                    <Button Margin="0,16,0,0"
-                            Content="{StaticResource Settings_Devices_Connect}"
-                            IsEnabled="False"
-                            Style="{StaticResource SecondaryButton}" />
-                </StackPanel>
-            </Border>
-
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Devices_ThisDevice}" />
             <Border Style="{StaticResource SettingsGroupCard}">
                 <controls:SettingsRow Glyph="&#xE770;"
@@ -31,7 +21,10 @@
 
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Devices_OtherDevices}" />
             <Border Style="{StaticResource SettingsGroupCard}">
-                <ListView ItemsSource="{x:Bind ViewModel.OtherDevices, Mode=OneWay}">
+                <ListView ItemsSource="{x:Bind ViewModel.OtherDevices, Mode=OneWay}"
+                          MaxHeight="280"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:DeviceSessionItem">
                             <controls:SettingsRow Glyph="&#xE770;" Header="{x:Bind Name}" Description="{x:Bind Details}">
@@ -42,8 +35,9 @@
                 </ListView>
             </Border>
 
-            <Button Content="{StaticResource Settings_Devices_TerminateOthers}"
-                    Visibility="Collapsed"
+            <Button Click="OnTerminateOthersClick"
+                    Content="{StaticResource Settings_Devices_TerminateOthers}"
+                    Visibility="{x:Bind ViewModel.HasOtherDevices, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                     Style="{StaticResource DangerButton}" />
         </StackPanel>
     </ScrollViewer>

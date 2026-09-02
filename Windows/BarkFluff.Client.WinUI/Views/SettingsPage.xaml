@@ -62,12 +62,6 @@
                         <TextBlock Text="{StaticResource Settings_Nav_Personalization}" />
                     </StackPanel>
                 </ListViewItem>
-                <ListViewItem Tag="widgets">
-                    <StackPanel Orientation="Horizontal" Spacing="14">
-                        <FontIcon FontSize="16" Glyph="&#xE80F;" />
-                        <TextBlock Text="{StaticResource Settings_Nav_Widgets}" />
-                    </StackPanel>
-                </ListViewItem>
                 <ListViewItem Tag="chatfolders">
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <FontIcon FontSize="16" Glyph="&#xE8B7;" />
