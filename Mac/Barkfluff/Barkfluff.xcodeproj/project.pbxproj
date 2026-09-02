@@ -10,6 +10,7 @@
 		7DF1B9222F3E7001007C1466 /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B9212F3E7001007C1466 /* NukeUI */; };
 		7DF1B9452F3E65B0007C1466 /* BFCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B91D2F3E7000007C1466 /* BFCore */; };
 		7DF1B9462F3E65B0007C1466 /* BFNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B91E2F3E7000007C1466 /* BFNetworking */; };
+		7DF1B9472F3E65B0007C1466 /* BFMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B9492F3E7000007C1466 /* BFMarkdown */; };
 		7DCA01102F3E65B0007C1466 /* BFCalls in Frameworks */ = {isa = PBXBuildFile; productRef = 7DCA01202F3E7000007C1466 /* BFCalls */; };
 /* End PBXBuildFile section */
 
@@ -35,6 +36,7 @@
 			files = (
 				7DF1B9452F3E65B0007C1466 /* BFCore in Frameworks */,
 				7DF1B9462F3E65B0007C1466 /* BFNetworking in Frameworks */,
+				7DF1B9472F3E65B0007C1466 /* BFMarkdown in Frameworks */,
 				7DCA01102F3E65B0007C1466 /* BFCalls in Frameworks */,
 				7DF1B9222F3E7001007C1466 /* NukeUI in Frameworks */,
 			);
@@ -119,6 +121,7 @@
 			packageProductDependencies = (
 				7DF1B91D2F3E7000007C1466 /* BFCore */,
 				7DF1B91E2F3E7000007C1466 /* BFNetworking */,
+				7DF1B9492F3E7000007C1466 /* BFMarkdown */,
 				7DCA01202F3E7000007C1466 /* BFCalls */,
 				7DF1B9212F3E7001007C1466 /* NukeUI */,
 			);
@@ -155,6 +158,7 @@
 				7DF1B91A2F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFProto" */,
 				7DF1B91B2F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFNetworking" */,
 				7DF1B91C2F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFCore" */,
+				7DF1B9482F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFMarkdown" */,
 				7DCA01302F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFCalls" */,
 				7DF1B9202F3E7001007C1466 /* XCRemoteSwiftPackageReference "Nuke" */,
 			);
@@ -425,6 +429,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/BFCore;
 		};
+		7DF1B9482F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFMarkdown" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/BFMarkdown;
+		};
 		7DCA01302F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFCalls" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/BFCalls;
@@ -450,6 +458,11 @@
 		7DF1B91E2F3E7000007C1466 /* BFNetworking */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = BFNetworking;
+		};
+		7DF1B9492F3E7000007C1466 /* BFMarkdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7DF1B9482F3E7000007C1466 /* XCLocalSwiftPackageReference "Packages/BFMarkdown" */;
+			productName = BFMarkdown;
 		};
 		7DCA01202F3E7000007C1466 /* BFCalls */ = {
 			isa = XCSwiftPackageProductDependency;
