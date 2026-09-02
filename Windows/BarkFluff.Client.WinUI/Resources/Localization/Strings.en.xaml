@@ -7,11 +7,11 @@
     <x:String x:Key="Settings_OnWindowCloseExit">Quit the application</x:String>
     <x:String x:Key="Settings_OnWindowCloseTray">Minimize to the tray</x:String>
     <x:String x:Key="Settings_OnWindowCloseTrayHint">The application keeps running in the notification area. Use Exit in the icon's menu to quit.</x:String>
-    <x:String x:Key="Settings_WindowSize_Title">Window size</x:String>
-    <x:String x:Key="Settings_WindowSize_Remember">Remember window size</x:String>
-    <x:String x:Key="Settings_WindowSize_RememberHint">Restore the window size on the next launch.</x:String>
-    <x:String x:Key="Settings_WindowSize_Saved">Saved size</x:String>
-    <x:String x:Key="Settings_WindowSize_Reset">Reset size</x:String>
+    <x:String x:Key="Settings_WindowSize_Title">Window size and position</x:String>
+    <x:String x:Key="Settings_WindowSize_Remember">Remember window size and position</x:String>
+    <x:String x:Key="Settings_WindowSize_RememberHint">Restore the window size and position on the next launch.</x:String>
+    <x:String x:Key="Settings_WindowSize_Saved">Saved size and position</x:String>
+    <x:String x:Key="Settings_WindowSize_Reset">Reset size and position</x:String>
     <x:String x:Key="Tray_Open">Open BarkFluff</x:String>
     <x:String x:Key="Tray_Exit">Exit</x:String>
     <x:String x:Key="Welcome_Title">Welcome to BarkFluff</x:String>

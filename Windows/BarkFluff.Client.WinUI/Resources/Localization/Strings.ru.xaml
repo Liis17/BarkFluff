@@ -7,11 +7,11 @@
     <x:String x:Key="Settings_OnWindowCloseExit">Завершать работу</x:String>
     <x:String x:Key="Settings_OnWindowCloseTray">Сворачивать в трей</x:String>
     <x:String x:Key="Settings_OnWindowCloseTrayHint">Приложение продолжит работать в области уведомлений. Чтобы выйти, используйте пункт «Выход» в меню значка.</x:String>
-    <x:String x:Key="Settings_WindowSize_Title">Размер окна</x:String>
-    <x:String x:Key="Settings_WindowSize_Remember">Запоминать размер окна</x:String>
-    <x:String x:Key="Settings_WindowSize_RememberHint">Восстанавливать размер окна при следующем запуске.</x:String>
-    <x:String x:Key="Settings_WindowSize_Saved">Сохранённый размер</x:String>
-    <x:String x:Key="Settings_WindowSize_Reset">Сбросить размер</x:String>
+    <x:String x:Key="Settings_WindowSize_Title">Размер и положение окна</x:String>
+    <x:String x:Key="Settings_WindowSize_Remember">Запоминать размер и положение окна</x:String>
+    <x:String x:Key="Settings_WindowSize_RememberHint">Восстанавливать размер и положение окна при следующем запуске.</x:String>
+    <x:String x:Key="Settings_WindowSize_Saved">Сохранённые размер и положение</x:String>
+    <x:String x:Key="Settings_WindowSize_Reset">Сбросить размер и положение</x:String>
     <x:String x:Key="Tray_Open">Открыть BarkFluff</x:String>
     <x:String x:Key="Tray_Exit">Выход</x:String>
     <x:String x:Key="Welcome_Title">Добро пожаловать в BarkFluff</x:String>

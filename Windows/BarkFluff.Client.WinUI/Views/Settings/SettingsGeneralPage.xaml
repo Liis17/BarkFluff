@@ -39,7 +39,7 @@
                                       Toggled="OnRememberWindowSizeToggled" />
                     </controls:SettingsRow>
                     <controls:SettingsRow Header="{StaticResource Settings_WindowSize_Saved}"
-                                          Description="{x:Bind ViewModel.WindowSizeDescription, Mode=OneWay}">
+                                          Description="{x:Bind ViewModel.WindowBoundsDescription, Mode=OneWay}">
                         <Button Click="OnResetWindowSizeClick"
                                 Content="{StaticResource Settings_WindowSize_Reset}"
                                 Style="{StaticResource SecondaryButton}" />
