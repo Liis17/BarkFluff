@@ -317,7 +317,17 @@
     <string name="search_nothing_found">Nothing found</string>
     <string name="search_try_different">Try a different search query</string>
     <string name="search_users_title">Search users</string>
+    <string name="search_users_prompt_title">Who are you looking for?</string>
     <string name="search_users_hint_long">Enter first name, last name or username (at least 3 characters)</string>
+    <string name="search_private_hint">Find a user for a private chat</string>
+    <string name="search_private_title">Who should join the private chat?</string>
+    <string name="search_private_description">Choose a user to start a private chat</string>
+    <string name="search_too_short">Enter at least 3 characters</string>
+    <string name="search_loading">Searching for users…</string>
+    <string name="search_error_title">Search couldn’t be completed</string>
+    <string name="search_error_description">Check your connection and try again</string>
+    <string name="search_retry">Retry</string>
+    <string name="cd_clear_search">Clear search</string>
 
     <!-- Image Picker -->
     <string name="select_photos">Choose photos</string>

@@ -119,6 +119,17 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
 
+## Экран поиска (`SearchActivity`)
+
+Самостоятельный поиск пользователей перенесён на Compose + Material 3 Expressive; Compose подключён только в `:app-v1`, остальные V1-экраны остаются View/XML. `SearchActivity` сохраняется Activity-хостом, помечен `@AndroidEntryPoint` и использует `SearchViewModel` с `StateFlow<SearchUiState>`.
+
+- `SearchViewModel` сохраняет минимум 3 символа и debounce 300 мс, запускает запросы через `collectLatest`, поэтому устаревший результат не может перетереть новый. Состояния `SearchPhase`: `Idle`, `TooShort`, `Loading`, `Results`, `Empty`, `Error`; ошибка не маскируется под пустой список. `SearchUsersGateway` отделяет VM от `GrpcManager` и упрощает unit-тесты.
+- `SearchScreen` — edge-to-edge: кнопка «Назад» с touch target 48dp и единый 56dp pill `DockedSearchBar` на роли `surfaceContainerHigh`. При фокусе применяется primary state layer, clear-кнопка появляется только для непустого запроса, IME Search вызывает немедленный валидный запрос. Dynamic color используется на Android 12+, fallback берётся из ролей темы.
+- Начальное/служебное состояние центрируется по доступной высоте и использует 80dp `primaryContainer`; результаты — `LazyColumn` с двухстрочными tonal `ListItem` (минимум 72dp, аватар 48dp) без outline и тяжёлых теней. Переходы между фазами намеренно не анимируются, поэтому экран корректно следует reduced-motion настройкам.
+- Аватар результата рисуется Compose-обёрткой вокруг существующего `AvatarView`; `loadAvatarByFileId` продолжает использовать `AvatarLoader` с прежними runtime/persistent URL-кэшами и TLS-политикой. При отсутствии файла остаются инициалы.
+- `MODE_PRIVATE` и `EXTRA_MODE` сохранены: private-mode получает отдельные тексты, выбор пользователя по-прежнему открывает существующий password dialog и `ChatActivity.privateChatIntent`. Нормальный режим использует прежний `getPersonChatId` и extras.
+- `activity_search.xml`, `item_user.xml` и `UserAdapter` не удаляются: `AddGroupMemberActivity` продолжает переиспользовать legacy search-layout. Добавлены ViewModel unit-тесты debounce/cancellation/success/empty/error/retry и Compose UI-тесты шести фаз, semantics, clear/back и клика по результату.
+
 ## Экран «Профиль» (`ProfileFragment`)
 
 Экран настроек V1 реализует вариант 2a из [[Клиенты/DesignDocument]]: локальные M3-формы (фон `surface container`, плашки `surface`) получают цвет из активной схемы Material 3, включая системный dynamic color на Android 12+.

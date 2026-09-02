@@ -312,7 +312,17 @@
     <string name="search_nothing_found">未找到任何结果</string>
     <string name="search_try_different">请尝试其他搜索词</string>
     <string name="search_users_title">搜索用户</string>
+    <string name="search_users_prompt_title">你在找谁？</string>
     <string name="search_users_hint_long">请输入名字、姓氏或用户名（至少 3 个字符）</string>
+    <string name="search_private_hint">查找要进行私聊的用户</string>
+    <string name="search_private_title">谁将加入私聊？</string>
+    <string name="search_private_description">选择一位用户开始私聊</string>
+    <string name="search_too_short">请输入至少 3 个字符</string>
+    <string name="search_loading">正在搜索用户…</string>
+    <string name="search_error_title">无法完成搜索</string>
+    <string name="search_error_description">请检查网络连接后重试</string>
+    <string name="search_retry">重试</string>
+    <string name="cd_clear_search">清除搜索</string>
 
     <!-- Image Picker -->
     <string name="select_photos">选择照片</string>

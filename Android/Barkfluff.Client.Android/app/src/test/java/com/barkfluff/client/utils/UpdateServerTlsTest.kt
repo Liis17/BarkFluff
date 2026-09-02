@@ -91,7 +91,9 @@ class UpdateServerTlsTest {
 
         try {
             UpdateServerTls.withFallback(
-                embeddedTrustProvider = { fail("embedded trust must not be resolved") },
+                embeddedTrustProvider = {
+                    throw AssertionError("embedded trust must not be resolved")
+                },
                 operation = {
                     attempts++
                     throw original
@@ -155,7 +157,9 @@ class UpdateServerTlsTest {
 
         try {
             UpdateServerTls.withFallback(
-                embeddedTrustProvider = { fail("embedded trust must not be resolved") },
+                embeddedTrustProvider = {
+                    throw AssertionError("embedded trust must not be resolved")
+                },
                 operation = {
                     attempts++
                     throw original

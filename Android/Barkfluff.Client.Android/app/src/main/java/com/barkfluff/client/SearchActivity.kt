@@ -2,161 +2,88 @@ package com.barkfluff.client
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
+import android.text.InputType
 import android.util.Log
-import android.view.View
-import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.barkfluff.client.adapter.UserAdapter
-import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.databinding.ActivitySearchBinding
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.barkfluff.client.grpc.GrpcManager
-import com.google.android.material.color.DynamicColors
+import com.barkfluff.client.search.BarkFluffSearchTheme
+import com.barkfluff.client.search.SearchScreen
+import com.barkfluff.client.search.SearchUser
+import com.barkfluff.client.search.SearchViewModel
 import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
- * Экран поиска пользователей
- * Поиск через UsersApi.SearchUsers с задержкой 300мс после последнего ввода
- * Поиск начинается от 3 символов
+ * Самостоятельный экран поиска пользователей.
+ *
+ * UI живёт в Compose, а backend-контракт, интенты и private-mode остаются прежними.
+ * activity_search.xml намеренно не используется: его переиспользует AddGroupMemberActivity.
  */
+@AndroidEntryPoint
 class SearchActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivitySearchBinding
-    private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
-    private lateinit var userAdapter: UserAdapter
+    private val searchViewModel: SearchViewModel by viewModels()
 
-    private var searchJob: Job? = null
+    private lateinit var grpcManager: GrpcManager
     private var isPrivateMode = false
+    private var isActionInProgress by mutableStateOf(false)
 
     companion object {
         private const val TAG = "SearchActivity"
         const val EXTRA_MODE = "search_mode"
         const val MODE_PRIVATE = "private"
-        private const val SEARCH_DELAY_MS = 300L
-        private const val MIN_SEARCH_LENGTH = 3
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
 
-        binding = ActivitySearchBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        globalParam = GlobalParam(this)
         grpcManager = (application as BarkFluffApplication).grpcManager
         isPrivateMode = intent.getStringExtra(EXTRA_MODE) == MODE_PRIVATE
 
-        setupToolbar()
-        setupSearchField()
-        setupResultsList()
-    }
+        setContent {
+            val uiState by searchViewModel.uiState.collectAsState()
 
-    private fun setupToolbar() {
-        if (isPrivateMode) binding.toolbar.title = getString(R.string.create_chat_private)
-        binding.toolbar.setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
-    }
-
-    private fun setupSearchField() {
-        binding.searchEditText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                searchJob?.cancel()
-                searchJob = lifecycleScope.launch {
-                    delay(SEARCH_DELAY_MS)
-                    val query = s?.toString()?.trim().orEmpty()
-                    if (query.length >= MIN_SEARCH_LENGTH) {
-                        searchUsers(query)
-                    } else {
-                        showHintState()
-                    }
-                }
-            }
-        })
-
-        // Поиск по нажатию Enter/IMEE_ACTION
-        binding.searchEditText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                val query = binding.searchEditText.text.toString().trim()
-                if (query.length >= MIN_SEARCH_LENGTH) {
-                    searchUsers(query)
-                }
-                true
-            } else {
-                false
+            BarkFluffSearchTheme {
+                SearchScreen(
+                    isPrivateMode = isPrivateMode,
+                    uiState = uiState,
+                    isActionInProgress = isActionInProgress,
+                    onQueryChanged = searchViewModel::onQueryChanged,
+                    onSubmit = searchViewModel::submitQuery,
+                    onRetry = searchViewModel::retry,
+                    onClear = { searchViewModel.onQueryChanged("") },
+                    onBack = { onBackPressedDispatcher.onBackPressed() },
+                    onUserClick = ::onUserClick,
+                    getAvatarUrl = { fileId -> grpcManager.getFileDownloadUrl(fileId).getOrNull() }
+                )
             }
         }
     }
 
-    private fun setupResultsList() {
-        userAdapter = UserAdapter(
-            onUserClick = { userData ->
-                if (isPrivateMode) showPrivateChatPassword(userData) else openChatWithUser(userData)
-            },
-            getFileUrlCallback = { fileId ->
-                Log.d(TAG, "setupResultsList: Requesting URL for fileId=$fileId")
-                val result = grpcManager.getFileDownloadUrl(fileId)
-                if (result.isSuccess) {
-                    val url = result.getOrNull()
-                    Log.d(TAG, "setupResultsList: Got URL for fileId=$fileId")
-                    url
-                } else {
-                    Log.e(TAG, "setupResultsList: Failed to get URL for fileId=$fileId, error=${result.exceptionOrNull()?.message}")
-                    null
-                }
-            }
-        )
-
-        binding.searchResultsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(this@SearchActivity)
-            adapter = userAdapter
-            setHasFixedSize(false)
-        }
-    }
-
-    private fun searchUsers(query: String) {
-        lifecycleScope.launch {
-            showLoading(true)
-
-            val result = grpcManager.searchUsers(query)
-            if (result.isSuccess) {
-                val users = result.getOrNull() ?: emptyList()
-                Log.d(TAG, "Найдено ${users.size} пользователей")
-
-                val displayItems = users.map { user ->
-                    // Используем извлечённый fileId (GUID), а не сырой URL Minio
-                    val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
-                    UserAdapter.UserDisplayItem(
-                        userData = user,
-                        displayAvatarFileId = avatarFileId.ifBlank { null },
-                        displayFullName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username },
-                        displayUsername = if (user.username.isNotBlank()) "@${user.username}" else ""
-                    )
-                }
-
-                userAdapter.submitList(displayItems)
-                showEmptyState(displayItems.isEmpty())
-            } else {
-                Log.e(TAG, "Ошибка поиска пользователей", result.exceptionOrNull())
-                showEmptyState(true)
-            }
-
-            showLoading(false)
+    private fun onUserClick(user: SearchUser) {
+        if (isActionInProgress) return
+        if (isPrivateMode) {
+            showPrivateChatPassword(user.userData)
+        } else {
+            openChatWithUser(user.userData)
         }
     }
 
@@ -164,37 +91,42 @@ class SearchActivity : AppCompatActivity() {
         Log.d(TAG, "openChatWithUser: userId=${userData.userId}, username=${userData.username}")
 
         lifecycleScope.launch {
-            showLoading(true)
+            isActionInProgress = true
+            try {
+                val result = grpcManager.getPersonChatId(userData.userId)
+                if (result.isSuccess) {
+                    val chatId = result.getOrNull()
+                    Log.d(TAG, "openChatWithUser: Got chatId=$chatId")
 
-            val result = grpcManager.getPersonChatId(userData.userId)
-            if (result.isSuccess) {
-                val chatId = result.getOrNull()
-                Log.d(TAG, "openChatWithUser: Got chatId=$chatId")
+                    val displayName = "${userData.firstName} ${userData.lastName}"
+                        .trim()
+                        .ifBlank { userData.username }
+                    val avatarFileId = userData.profilePicturePreviewFileId
+                        .ifBlank { userData.profilePictureFileId }
+                        .ifBlank { null }
 
-                // Формируем отображаемое имя
-                val displayName = "${userData.firstName} ${userData.lastName}".trim().ifBlank { userData.username }
-                // Получаем fileId аватара
-                val avatarFileId = userData.profilePicturePreviewFileId.ifBlank { userData.profilePictureFileId }.ifBlank { null }
-
-                // Открываем ChatActivity
-                val intent = Intent(this@SearchActivity, ChatActivity::class.java).apply {
-                    putExtra("chat_id", chatId)
-                    putExtra("chat_title", displayName)
-                    putExtra("chat_avatar_file_id", avatarFileId)
-                    putExtra("is_group_chat", false)
-                    putExtra("other_user_id", userData.userId)
+                    val intent = Intent(this@SearchActivity, ChatActivity::class.java).apply {
+                        putExtra("chat_id", chatId)
+                        putExtra("chat_title", displayName)
+                        putExtra("chat_avatar_file_id", avatarFileId)
+                        putExtra("is_group_chat", false)
+                        putExtra("other_user_id", userData.userId)
+                    }
+                    startActivity(intent)
+                } else {
+                    Log.e(TAG, "Ошибка получения chatId", result.exceptionOrNull())
+                    Toast.makeText(
+                        this@SearchActivity,
+                        getString(
+                            R.string.chat_open_failed_detail,
+                            result.exceptionOrNull()?.message.orEmpty()
+                        ),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-                startActivity(intent)
-            } else {
-                Log.e(TAG, "Ошибка получения chatId", result.exceptionOrNull())
-                android.widget.Toast.makeText(
-                    this@SearchActivity,
-                    getString(R.string.chat_open_failed_detail, result.exceptionOrNull()?.message.orEmpty()),
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+            } finally {
+                isActionInProgress = false
             }
-
-            showLoading(false)
         }
     }
 
@@ -204,11 +136,15 @@ class SearchActivity : AppCompatActivity() {
             val margin = (24 * resources.displayMetrics.density).toInt()
             setPadding(margin, 0, margin, 0)
         }
-        val passwordLayout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle).apply {
+        val passwordLayout = TextInputLayout(
+            this,
+            null,
+            com.google.android.material.R.attr.textInputOutlinedStyle
+        ).apply {
             hint = getString(R.string.private_chat_password_hint)
         }
         val password = TextInputEditText(passwordLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         passwordLayout.addView(password)
         val remember = MaterialCheckBox(this).apply {
@@ -226,7 +162,11 @@ class SearchActivity : AppCompatActivity() {
             .setPositiveButton(R.string.encrypted_chat_create) { _, _ ->
                 val passphrase = password.text?.toString().orEmpty()
                 if (passphrase.length < 6) {
-                    Toast.makeText(this, R.string.private_chat_password_too_short, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this,
+                        R.string.private_chat_password_too_short,
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return@setPositiveButton
                 }
                 createPrivateChat(userData, passphrase, remember.isChecked)
@@ -234,45 +174,42 @@ class SearchActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun createPrivateChat(userData: GrpcManager.UserData, passphrase: String, rememberKey: Boolean) {
+    private fun createPrivateChat(
+        userData: GrpcManager.UserData,
+        passphrase: String,
+        rememberKey: Boolean
+    ) {
         lifecycleScope.launch {
-            showLoading(true)
-            val app = application as BarkFluffApplication
-            val result = app.privateChatRepository.createPrivateChat(userData.userId, passphrase, rememberKey)
-            result.onSuccess { creation ->
-                val title = "${userData.firstName} ${userData.lastName}".trim().ifBlank { userData.username }
-                startActivity(ChatActivity.privateChatIntent(this@SearchActivity, chatId = creation.chat.id, title = title))
-                finish()
-            }.onFailure {
-                Toast.makeText(
-                    this@SearchActivity,
-                    getString(R.string.private_chat_open_failed, it.message.orEmpty()),
-                    Toast.LENGTH_LONG
-                ).show()
+            isActionInProgress = true
+            try {
+                val app = application as BarkFluffApplication
+                val result = app.privateChatRepository.createPrivateChat(
+                    userData.userId,
+                    passphrase,
+                    rememberKey
+                )
+                result.onSuccess { creation ->
+                    val title = "${userData.firstName} ${userData.lastName}"
+                        .trim()
+                        .ifBlank { userData.username }
+                    startActivity(
+                        ChatActivity.privateChatIntent(
+                            this@SearchActivity,
+                            chatId = creation.chat.id,
+                            title = title
+                        )
+                    )
+                    finish()
+                }.onFailure {
+                    Toast.makeText(
+                        this@SearchActivity,
+                        getString(R.string.private_chat_open_failed, it.message.orEmpty()),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } finally {
+                isActionInProgress = false
             }
-            showLoading(false)
         }
-    }
-
-    private fun showLoading(show: Boolean) {
-        binding.loadingIndicator.visibility = if (show) View.VISIBLE else View.GONE
-    }
-
-    private fun showEmptyState(show: Boolean) {
-        binding.emptyState.visibility = if (show) View.VISIBLE else View.GONE
-        binding.searchResultsRecyclerView.visibility = if (show) View.GONE else View.VISIBLE
-        binding.hintState.visibility = View.GONE
-    }
-
-    private fun showHintState() {
-        binding.hintState.visibility = View.VISIBLE
-        binding.emptyState.visibility = View.GONE
-        binding.searchResultsRecyclerView.visibility = View.GONE
-        binding.loadingIndicator.visibility = View.GONE
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        searchJob?.cancel()
     }
 }
