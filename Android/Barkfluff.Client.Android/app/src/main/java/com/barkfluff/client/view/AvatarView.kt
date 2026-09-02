@@ -74,6 +74,25 @@ class AvatarView @JvmOverloads constructor(
         )
     }
 
+    /** Compose-compatible entry point that keeps AvatarLoader's URL cache and TLS stack intact. */
+    fun loadAvatarByFileId(
+        fileId: String?,
+        displayName: String,
+        userId: Long = 0,
+        size: Int = 96,
+        getUrlCallback: suspend () -> String?
+    ) {
+        avatarLoader.loadByFileId(
+            imageView = imageView,
+            placeholderView = placeholderView,
+            fileId = fileId,
+            displayName = displayName,
+            userId = userId,
+            size = size,
+            getUrlCallback = getUrlCallback
+        )
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         currentLoadJob?.cancel()

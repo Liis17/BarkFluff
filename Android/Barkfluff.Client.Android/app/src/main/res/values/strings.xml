@@ -366,7 +366,17 @@
     <string name="search_nothing_found">Ничего не найдено</string>
     <string name="search_try_different">Попробуйте изменить поисковой запрос</string>
     <string name="search_users_title">Поиск пользователей</string>
+    <string name="search_users_prompt_title">Кого ищем?</string>
     <string name="search_users_hint_long">Введите имя, фамилию или username (минимум 3 символа)</string>
+    <string name="search_private_hint">Найти пользователя для приватного чата</string>
+    <string name="search_private_title">Кого добавить в приватный чат?</string>
+    <string name="search_private_description">Выберите пользователя, чтобы начать приватный чат</string>
+    <string name="search_too_short">Введите минимум 3 символа</string>
+    <string name="search_loading">Ищем пользователей…</string>
+    <string name="search_error_title">Не удалось выполнить поиск</string>
+    <string name="search_error_description">Проверьте подключение и попробуйте ещё раз</string>
+    <string name="search_retry">Повторить</string>
+    <string name="cd_clear_search">Очистить поиск</string>
 
     <!-- Image Picker -->
     <string name="select_photos">Выберите фото</string>

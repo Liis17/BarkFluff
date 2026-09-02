@@ -14,6 +14,8 @@ import com.barkfluff.client.notifications.RealtimeSideEffectsImpl
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
+import com.barkfluff.client.search.GrpcSearchUsersGateway
+import com.barkfluff.client.search.SearchUsersGateway
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,6 +37,11 @@ object AppModule {
     @Singleton
     fun provideGrpcManager(@ApplicationContext context: Context): GrpcManager =
         GrpcManager(context)
+
+    @Provides
+    @Singleton
+    fun provideSearchUsersGateway(implementation: GrpcSearchUsersGateway): SearchUsersGateway =
+        implementation
 
     @Provides
     @Singleton

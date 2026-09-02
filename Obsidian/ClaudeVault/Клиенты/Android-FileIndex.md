@@ -41,7 +41,7 @@
 | `MediaViewerActivity.kt` | Просмотр видео через ExoPlayer (media3); swipe-down dismiss |
 | `PreviewImageActivity.kt` | Предпросмотр локального изображения перед отправкой |
 | `PreviewVideoActivity.kt` | Предпросмотр локального видео перед отправкой через ExoPlayer |
-| `SearchActivity.kt` | Поиск пользователей через Users API; открывает чат по результату |
+| `SearchActivity.kt` | Compose-хост поиска пользователей; сохраняет обычный/private chat flow и открывает чат по результату |
 | `DevicesActivity.kt` | Список авторизованных устройств/сессий; завершение сессии; QR-кнопка для FastAuth |
 | `FastAuthConfirmActivity.kt` | Подтверждение/отклонение FastAuth QR-входа нового устройства |
 | `QrScannerActivity.kt` | Сканер QR-кода через CameraX + ML Kit; инициирует FastAuth |
@@ -281,6 +281,14 @@ App Widget с закреплёнными чатами.
 | `views/AspectRatioImageView.kt` | AppCompatImageView с height=width*3/2 (2:3); превью фонов чата |
 | `views/ScannerOverlayView.kt` | Кастомный View: полупрозрачный оверлей с угловыми маркерами для QR-сканера |
 | `view/VoiceWaveformView.kt` | Кастомный View: отрисовка формы волны голосового сообщения (интерактивный прогресс) |
+
+## Search Compose (`search/`)
+
+| Файл | Роль |
+|------|------|
+| `search/SearchViewModel.kt` | StateFlow-модель поиска: debounce 300 мс, collectLatest cancellation и шесть фаз UI |
+| `search/SearchUsersGateway.kt` | Тестируемая граница над `GrpcManager.searchUsers` |
+| `search/SearchScreen.kt` | M3 Expressive Compose UI standalone SearchActivity: SearchBar, states, tonal results и accessibility |
 
 ---
 

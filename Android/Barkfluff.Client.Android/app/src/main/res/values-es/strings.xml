@@ -312,7 +312,17 @@
     <string name="search_nothing_found">No se encontró nada</string>
     <string name="search_try_different">Prueba con otra búsqueda</string>
     <string name="search_users_title">Buscar usuarios</string>
+    <string name="search_users_prompt_title">¿A quién buscas?</string>
     <string name="search_users_hint_long">Introduce nombre, apellido o usuario (mínimo 3 caracteres)</string>
+    <string name="search_private_hint">Buscar un usuario para un chat privado</string>
+    <string name="search_private_title">¿Quién se unirá al chat privado?</string>
+    <string name="search_private_description">Elige un usuario para iniciar un chat privado</string>
+    <string name="search_too_short">Introduce al menos 3 caracteres</string>
+    <string name="search_loading">Buscando usuarios…</string>
+    <string name="search_error_title">No se pudo completar la búsqueda</string>
+    <string name="search_error_description">Comprueba tu conexión e inténtalo de nuevo</string>
+    <string name="search_retry">Reintentar</string>
+    <string name="cd_clear_search">Borrar búsqueda</string>
 
     <!-- Image Picker -->
     <string name="select_photos">Elegir fotos</string>

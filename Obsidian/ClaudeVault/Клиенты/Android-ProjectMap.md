@@ -325,11 +325,19 @@ Error codes (из gRPC trailer `x-error-code`):
 
 ### `SearchActivity.kt`
 
-**Тип:** AppCompatActivity
+**Тип:** AppCompatActivity + Compose host (`@AndroidEntryPoint`)
 
-Поиск пользователей через Users API. По тапу на результат открывает чат.
+Самостоятельный экран поиска пользователей на M3 Expressive Compose. `SearchActivity` сохраняет `EXTRA_MODE`/`MODE_PRIVATE`, нормальный `getPersonChatId` и private-chat password dialog, а UI-модель отдаёт `SearchViewModel`.
 
-**Связи:** `GrpcManager`, `UserAdapter`, `ChatActivity`
+**Связи:** `SearchViewModel`, `SearchScreen`, `GrpcManager`, `ChatActivity`, `PrivateChatRepository`
+
+### `search/SearchViewModel.kt`, `search/SearchUsersGateway.kt`
+
+`SearchViewModel` публикует `StateFlow<SearchUiState>` с фазами `Idle`/`TooShort`/`Loading`/`Results`/`Empty`/`Error`, дебаунсит валидный запрос на 300 мс и через `collectLatest` отменяет устаревшие поиски. `SearchUsersGateway` — injectable-граница над `GrpcManager.searchUsers`, используемая unit-тестами.
+
+### `search/SearchScreen.kt`
+
+Compose UI SearchActivity: edge-to-edge header с 48dp back и 56dp `DockedSearchBar`, dynamic Material color, центрированные empty/initial/error-состояния, tonal `LazyColumn` результатов и IME/accessibility semantics. Аватар подключается через `AndroidView`-обёртку `AvatarView`, не обходя `AvatarLoader`.
 
 ---
 
@@ -848,7 +856,7 @@ In-memory LRU кэш битмапов (используется как допо�
 
 ### `view/AvatarView.kt`
 
-Кастомный View — круглый аватар с онлайн-индикатором. Использует `AvatarLoader`.
+Кастомный View — круглый аватар с онлайн-индикатором. Использует `AvatarLoader`; `loadAvatarByFileId()` — совместимый Compose bridge для `SearchScreen`, без изменения кэша и TLS.
 
 ---
 
@@ -958,6 +966,7 @@ Object. Создаёт каналы уведомлений Android и показ
 - `item_message_sent.xml`, `item_message_received.xml` — пузыри сообщений
 - `item_attachment_*.xml` — вложения (audio, video, document, image_cell, media_cell)
 - `item_chat.xml`, `item_user.xml`, `item_server.xml`, `item_device.xml` — элементы списков
+- `activity_search.xml`, `item_user.xml` и `UserAdapter` остаются legacy-контрактом для `AddGroupMemberActivity`; самостоятельный `SearchActivity` эти ресурсы не использует
 - `item_sticker*.xml` — стикер-панель (sticker, header, loading, empty)
 - `step_register_0[1-9]_*.xml` — шаги регистрации
 - `dialog_chat_profile.xml` — диалог профиля чата. Верхняя часть: блок постера (соотношение 3:1, `profilePosterImageView`/`profilePosterPlaceholder`) + круглый аватар 120dp поверх по центру (`profileAvatarImageView`/`profileAvatarPlaceholder` + `onlineIndicator`) + кнопка закрытия floating поверх. Ниже: имя, @username, онлайн-статус, био, divider, медиафайлы (chips + RecyclerView). Без горизонтальных отступов (на всю ширину).
