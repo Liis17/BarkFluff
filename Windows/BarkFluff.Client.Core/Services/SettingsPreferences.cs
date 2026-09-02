@@ -8,6 +8,7 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
 {
     private const string InterfacePreferencesKey = "settings.interface";
     private const string TestingPreferencesKey = "settings.testing";
+    private const string WindowPreferencesKey = "settings.window";
 
     public async Task<InterfacePreferences> GetInterfacePreferencesAsync(CancellationToken cancellationToken = default) =>
         Clamp(await GetAsync<InterfacePreferences>(InterfacePreferencesKey, cancellationToken) ?? new InterfacePreferences());
@@ -20,6 +21,12 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
 
     public Task SaveTestingPreferencesAsync(TestingPreferences preferences, CancellationToken cancellationToken = default) =>
         SaveAsync(TestingPreferencesKey, preferences, cancellationToken);
+
+    public async Task<WindowPreferences> GetWindowPreferencesAsync(CancellationToken cancellationToken = default) =>
+        Normalize(await GetAsync<WindowPreferences>(WindowPreferencesKey, cancellationToken) ?? new WindowPreferences());
+
+    public Task SaveWindowPreferencesAsync(WindowPreferences preferences, CancellationToken cancellationToken = default) =>
+        SaveAsync(WindowPreferencesKey, Normalize(preferences), cancellationToken);
 
     private async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken)
     {
@@ -48,5 +55,11 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
         ChatBackgroundBlurRadius = Math.Clamp(preferences.ChatBackgroundBlurRadius, 1, 25),
         ChatBackgroundDim = Math.Clamp(preferences.ChatBackgroundDim, 0, 100),
         ChatStickerSizeDp = Math.Clamp(preferences.ChatStickerSizeDp, 96, 240)
+    };
+
+    private static WindowPreferences Normalize(WindowPreferences preferences) => preferences with
+    {
+        Width = preferences.Width > 0 ? preferences.Width : WindowPreferences.DefaultWidth,
+        Height = preferences.Height > 0 ? preferences.Height : WindowPreferences.DefaultHeight
     };
 }

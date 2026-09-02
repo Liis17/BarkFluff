@@ -14,17 +14,23 @@ using Microsoft.UI.Xaml.Navigation;
 
 using System.ComponentModel;
 
+using Windows.Graphics;
+
 namespace BarkFluff.Client.WinUI;
 
 public sealed partial class MainWindow : Window
 {
+    private static readonly TimeSpan WindowSizeSaveDelay = TimeSpan.FromMilliseconds(300);
+
     private readonly MainWindowViewModel _viewModel;
     private bool _isExitRequested;
+    private CancellationTokenSource? _windowSizeSaveCancellation;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
         _viewModel = viewModel;
         InitializeComponent();
+        ApplySavedWindowSize();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -33,12 +39,58 @@ public sealed partial class MainWindow : Window
         TrayIcon.DoubleClickCommand = new RelayCommand(ShowFromTray);
 
         AppWindow.Closing += OnAppWindowClosing;
+        AppWindow.Changed += OnAppWindowChanged;
+        _viewModel.Settings.WindowSizeResetRequested += OnWindowSizeResetRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         NavigateToCurrentViewModel();
     }
 
     /// <summary>Корень контента: к нему привязываются тема и <c>ContentDialog</c>.</summary>
     public FrameworkElement RootElement => Root;
+
+    private void ApplySavedWindowSize()
+    {
+        var settings = _viewModel.Settings;
+        var width = settings.RememberWindowSize ? settings.WindowWidth : WindowPreferences.DefaultWidth;
+        var height = settings.RememberWindowSize ? settings.WindowHeight : WindowPreferences.DefaultHeight;
+        AppWindow.Resize(new SizeInt32(width, height));
+    }
+
+    private void OnWindowSizeResetRequested(object? sender, EventArgs eventArgs)
+    {
+        AppWindow.Resize(new SizeInt32(_viewModel.Settings.WindowWidth, _viewModel.Settings.WindowHeight));
+    }
+
+    private async void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs eventArgs)
+    {
+        if (!eventArgs.DidSizeChange || !_viewModel.Settings.RememberWindowSize)
+        {
+            return;
+        }
+
+        _windowSizeSaveCancellation?.Cancel();
+        var cancellation = new CancellationTokenSource();
+        _windowSizeSaveCancellation = cancellation;
+
+        try
+        {
+            await Task.Delay(WindowSizeSaveDelay, cancellation.Token);
+            var size = sender.Size;
+            await _viewModel.Settings.SaveWindowSizeAsync(size.Width, size.Height, cancellation.Token);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_windowSizeSaveCancellation, cancellation))
+            {
+                _windowSizeSaveCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
+    }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
