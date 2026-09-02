@@ -82,8 +82,7 @@ public sealed partial class MainWindow : Window
         try
         {
             await Task.Delay(WindowSizeSaveDelay, cancellation.Token);
-            var size = window.Size;
-            await _viewModel.Settings.SaveWindowSizeAsync(size.Width, size.Height, cancellation.Token);
+            await PersistWindowSizeAsync(window, cancellation.Token);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -200,8 +199,7 @@ public sealed partial class MainWindow : Window
 
             if (_viewModel.Settings.RememberWindowSize)
             {
-                var size = AppWindow.Size;
-                await _viewModel.Settings.SaveWindowSizeAsync(size.Width, size.Height);
+                await PersistWindowSizeAsync(AppWindow);
             }
         }
         finally
@@ -210,6 +208,12 @@ public sealed partial class MainWindow : Window
             _windowCloseInProgress = false;
             Close();
         }
+    }
+
+    private Task PersistWindowSizeAsync(AppWindow window, CancellationToken cancellationToken = default)
+    {
+        var size = window.Size;
+        return _viewModel.Settings.SaveWindowSizeAsync(size.Width, size.Height, cancellationToken);
     }
 
     private void OnTrayShowRequested(object sender, RoutedEventArgs eventArgs) => ShowFromTray();
