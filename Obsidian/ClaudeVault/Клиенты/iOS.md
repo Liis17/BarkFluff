@@ -22,6 +22,7 @@ SwiftUI приложение для iOS. iOS-версия macOS-клиента �
 - `BFProto/` — Proto definitions
 - `BFNetworking/` — gRPC клиент, репозитории
 - `BFCore/` — Бизнес-логика: сервисы, модели, кеш, локальный GRDB-кеш
+- `BFMarkdown/` — общий SwiftUI-рендерер Markdown-сообщений поверх `BFCore`
 
 ## Локальный кеш (GRDB)
 
@@ -144,6 +145,16 @@ PhotosPicker-паттерн: VM хранит `var selectedPosterItem: PhotosPick
 ## Контекстное меню сообщения (паритет с macOS)
 
 `MessageBubbleView` показывает long-press меню: Изменить / Ответить / Переслать / Копировать текст / Скопировать изображение / Сохранить (изображения) / Сохранить (документы) / Удалить. Все действия проксируются в `ConversationViewModel` (edit/reply/delete/sendSticker), а медиа-действия — в `MediaActions` (UIPasteboard / PHPhotoLibrary / share sheet).
+
+## Markdown-сообщения (V1)
+
+iOS использует общий с macOS контур `BFCore` + `BFMarkdown` и повторяет поведение Android/Web. Исходная Markdown-строка сохраняется без изменений: серверный формат, протоколы, ввод, отправка, редактирование и копирование не меняются.
+
+- `BFCore` предоставляет Foundation-only AST, `MarkdownParser.parse(_:)` и `MarkdownText.strip(_:)` для compact previews.
+- `BFMarkdown.MarkdownMessageView(source:foreground:)` отображает заголовки, списки, цитаты, разделители, fenced code, bold/italic/strike/inline code, безопасные ссылки, bare URL, GFM-таблицы и безопасные HTML-изображения через `AsyncImage` с alt fallback.
+- Обычные и системные текстовые сообщения используют Markdown-рендерер; выделение текста сохраняется.
+- Chat list/reply/optimistic forwarded previews используют `MarkdownText.strip`. Вложенный текст пересланного сообщения отображается plain preview, как в Android.
+- URL и HTML-изображения проходят allowlist-проверку; `javascript:` и другие небезопасные схемы не активируются.
 
 ## Стикеры
 
