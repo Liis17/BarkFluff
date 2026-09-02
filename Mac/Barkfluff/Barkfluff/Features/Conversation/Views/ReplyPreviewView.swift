@@ -68,7 +68,7 @@ struct ReplyPreviewView: View {
     static func makeSnippet(_ message: Message, locale: Locale = .current) -> String {
         let text = message.content.text
         if !text.isEmpty {
-            return String(text.prefix(160))
+            return String(MarkdownText.strip(text).prefix(160))
         }
         if let first = message.content.attachments.first {
             return first.type.previewText(fileName: first.fileName, in: locale)
