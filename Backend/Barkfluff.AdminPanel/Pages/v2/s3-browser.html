@@ -362,7 +362,7 @@
 
     (async function () {
         const params = new URLSearchParams(window.location.search);
-        currentBucket = params.get('bucket') || 'avatars';
+        currentBucket = params.get('bucket') || 'profile-pictures';
         currentPrefix = params.get('prefix') || '';
         document.getElementById('bucket-name-badge').textContent = currentBucket;
 
