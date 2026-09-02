@@ -213,6 +213,7 @@ private struct MarkdownCodeBlockView: View {
             Text(verbatim: code.isEmpty ? " " : code)
                 .font(.system(.callout, design: .monospaced))
                 .foregroundStyle(foreground)
+                .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(8)
         }
@@ -371,11 +372,25 @@ struct MarkdownMessageView_Previews: PreviewProvider {
 
     > **Если это не ты,** смени пароль и заверши другие сессии.
 
+    ---
+
     **Жирный**, *курсив*, ~~зачёркнутый~~ и `код`
+
+    [Сайт BarkFluff](https://example.com) и bare URL example.com
+
+    ```swift
+    let message = "Markdown V1"
+    print(message)
+    ```
 
     | Поле | Значение |
     | :--- | ---: |
     | IP | 91.197.3.120 |
+
+    <p align="center">
+    <strong>Безопасный HTML</strong>
+    </p>
+    <img src="https://placehold.co/320x80/png?text=BarkFluff" alt="Пример изображения">
     """
 
     static var previews: some View {
