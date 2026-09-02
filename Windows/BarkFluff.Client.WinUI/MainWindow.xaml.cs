@@ -25,6 +25,9 @@ public sealed partial class MainWindow : Window
     private readonly MainWindowViewModel _viewModel;
     private bool _isExitRequested;
     private CancellationTokenSource? _windowSizeSaveCancellation;
+    private Task? _windowSizeSaveTask;
+    private bool _windowCloseReady;
+    private bool _windowCloseInProgress;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -61,7 +64,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new SizeInt32(_viewModel.Settings.WindowWidth, _viewModel.Settings.WindowHeight));
     }
 
-    private async void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs eventArgs)
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs eventArgs)
     {
         if (!eventArgs.DidSizeChange || !_viewModel.Settings.RememberWindowSize)
         {
@@ -71,11 +74,15 @@ public sealed partial class MainWindow : Window
         _windowSizeSaveCancellation?.Cancel();
         var cancellation = new CancellationTokenSource();
         _windowSizeSaveCancellation = cancellation;
+        _windowSizeSaveTask = SaveWindowSizeAfterDelayAsync(sender, cancellation);
+    }
 
+    private async Task SaveWindowSizeAfterDelayAsync(AppWindow window, CancellationTokenSource cancellation)
+    {
         try
         {
             await Task.Delay(WindowSizeSaveDelay, cancellation.Token);
-            var size = sender.Size;
+            var size = window.Size;
             await _viewModel.Settings.SaveWindowSizeAsync(size.Width, size.Height, cancellation.Token);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
@@ -86,6 +93,7 @@ public sealed partial class MainWindow : Window
             if (ReferenceEquals(_windowSizeSaveCancellation, cancellation))
             {
                 _windowSizeSaveCancellation = null;
+                _windowSizeSaveTask = null;
             }
 
             cancellation.Dispose();
@@ -156,12 +164,51 @@ public sealed partial class MainWindow : Window
 
     private void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs eventArgs)
     {
+        if (_windowCloseReady)
+        {
+            return;
+        }
+
         // В режиме MinimizeToTray закрытие отменяется, окно прячется, процесс живёт
         // ради иконки в трее. Пункт «Выход» выставляет флаг и закрывает окно по-настоящему.
         if (!_isExitRequested && _viewModel.Settings.ClosingBehavior == WindowClosingBehavior.MinimizeToTray)
         {
             eventArgs.Cancel = true;
             this.Hide();
+            return;
+        }
+
+        eventArgs.Cancel = true;
+        if (_windowCloseInProgress)
+        {
+            return;
+        }
+
+        _windowCloseInProgress = true;
+        _ = CloseAfterSavingWindowSizeAsync();
+    }
+
+    private async Task CloseAfterSavingWindowSizeAsync()
+    {
+        try
+        {
+            _windowSizeSaveCancellation?.Cancel();
+            if (_windowSizeSaveTask is not null)
+            {
+                await _windowSizeSaveTask;
+            }
+
+            if (_viewModel.Settings.RememberWindowSize)
+            {
+                var size = AppWindow.Size;
+                await _viewModel.Settings.SaveWindowSizeAsync(size.Width, size.Height);
+            }
+        }
+        finally
+        {
+            _windowCloseReady = true;
+            _windowCloseInProgress = false;
+            Close();
         }
     }
 
