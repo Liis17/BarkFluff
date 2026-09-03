@@ -10,9 +10,10 @@ public sealed class MainWindowViewModelTests
     {
         var navigation = new RecordingNavigationService();
         var expectedViewModel = new object();
+        var dataStore = new TestApplicationDataStore();
         navigation.Navigate(expectedViewModel);
 
-        var viewModel = new MainWindowViewModel(navigation, new SettingsViewModel(new TestApplicationDataStore()));
+        var viewModel = new MainWindowViewModel(navigation, new SettingsViewModel(dataStore, new SettingsPreferences(dataStore)));
 
         Assert.Same(expectedViewModel, viewModel.CurrentViewModel);
     }

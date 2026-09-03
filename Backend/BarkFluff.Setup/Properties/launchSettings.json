@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "BarkFluff.Setup": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:64093;http://localhost:64094"
+    }
+  }
+}

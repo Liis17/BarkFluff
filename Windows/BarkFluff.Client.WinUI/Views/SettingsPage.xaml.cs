@@ -39,7 +39,6 @@ public sealed partial class SettingsPage : Page
             "privacy" => typeof(SettingsPrivacyPage),
             "devices" => typeof(SettingsDevicesPage),
             "personalization" => typeof(SettingsPersonalizationPage),
-            "widgets" => typeof(SettingsWidgetsPage),
             "chatfolders" => typeof(SettingsChatFoldersPage),
             "notifications" => typeof(SettingsNotificationsPage),
             "language" => typeof(SettingsLanguagePage),

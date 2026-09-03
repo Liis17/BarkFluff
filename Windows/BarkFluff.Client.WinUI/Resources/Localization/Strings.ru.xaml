@@ -7,6 +7,11 @@
     <x:String x:Key="Settings_OnWindowCloseExit">Завершать работу</x:String>
     <x:String x:Key="Settings_OnWindowCloseTray">Сворачивать в трей</x:String>
     <x:String x:Key="Settings_OnWindowCloseTrayHint">Приложение продолжит работать в области уведомлений. Чтобы выйти, используйте пункт «Выход» в меню значка.</x:String>
+    <x:String x:Key="Settings_WindowSize_Title">Размер и положение окна</x:String>
+    <x:String x:Key="Settings_WindowSize_Remember">Запоминать размер и положение окна</x:String>
+    <x:String x:Key="Settings_WindowSize_RememberHint">Восстанавливать размер и положение окна при следующем запуске.</x:String>
+    <x:String x:Key="Settings_WindowSize_Saved">Сохранённые размер и положение</x:String>
+    <x:String x:Key="Settings_WindowSize_Reset">Сбросить размер и положение</x:String>
     <x:String x:Key="Tray_Open">Открыть BarkFluff</x:String>
     <x:String x:Key="Tray_Exit">Выход</x:String>
     <x:String x:Key="Welcome_Title">Добро пожаловать в BarkFluff</x:String>
@@ -175,7 +180,6 @@
     <x:String x:Key="Settings_Nav_Privacy">Приватность</x:String>
     <x:String x:Key="Settings_Nav_Devices">Устройства</x:String>
     <x:String x:Key="Settings_Nav_Personalization">Персонализация</x:String>
-    <x:String x:Key="Settings_Nav_Widgets">Виджеты</x:String>
     <x:String x:Key="Settings_Nav_ChatFolders">Папки чатов</x:String>
     <x:String x:Key="Settings_Nav_Notifications">Уведомления</x:String>
     <x:String x:Key="Settings_Nav_Language">Язык</x:String>
@@ -252,8 +256,6 @@
     <x:String x:Key="Settings_Privacy_VisibilityNone">Никто</x:String>
 
     <x:String x:Key="Settings_Devices_Title">Устройства</x:String>
-    <x:String x:Key="Settings_Devices_Hint">Вы можете войти на другом устройстве, отсканировав QR-код в приложении BarkFluff</x:String>
-    <x:String x:Key="Settings_Devices_Connect">Подключить устройство</x:String>
     <x:String x:Key="Settings_Devices_ThisDevice">Это устройство</x:String>
     <x:String x:Key="Settings_Devices_OtherDevices">Другие устройства</x:String>
     <x:String x:Key="Settings_Devices_Empty">Других устройств нет</x:String>
@@ -298,10 +300,6 @@
     <x:String x:Key="Settings_Personalization_ChatBackground">Фон чатов</x:String>
     <x:String x:Key="Settings_Personalization_AddBackground">Добавить фон</x:String>
     <x:String x:Key="Settings_Personalization_NoBackground">Без фона</x:String>
-
-    <x:String x:Key="Settings_Widgets_Title">Виджеты</x:String>
-    <x:String x:Key="Settings_Widgets_Empty">Виджеты ещё не созданы.</x:String>
-    <x:String x:Key="Settings_Widgets_AndroidHint">Виджеты рабочего стола есть только в приложении для Android.</x:String>
 
     <x:String x:Key="Settings_ChatFolders_Title">Папки чатов</x:String>
     <x:String x:Key="Settings_ChatFolders_Section">Ваши папки</x:String>
