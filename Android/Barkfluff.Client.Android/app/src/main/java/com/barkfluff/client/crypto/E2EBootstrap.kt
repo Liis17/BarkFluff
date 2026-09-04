@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.BarkFluffApplication
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.google.protobuf.ByteString
 import org.signal.libsignal.protocol.state.PreKeyRecord
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord
@@ -32,7 +32,7 @@ object E2EBootstrap {
             // Сериализация identity-key: используем .serialize() (33 байта, с type-prefix)
             val identityPubBytes = bundle.identityKeyPair.publicKey.serialize()
 
-            val result = app.grpcManager.registerPrekeyBundle(
+            val result = app.legacyTransport.registerPrekeyBundle(
                 registrationId = bundle.registrationId,
                 identityPubkey = identityPubBytes,
                 signedPreKey = signedProto,
@@ -63,7 +63,7 @@ object E2EBootstrap {
             val refill = PrekeyManager.INITIAL_ONE_TIME_PREKEYS - currentRemaining
             val newKeys = manager.generateAdditionalOneTimePrekeys(refill)
             val protos = newKeys.map { it.toProto() }
-            val r = app.grpcManager.replenishOneTimePrekeys(protos)
+            val r = app.legacyTransport.replenishOneTimePrekeys(protos)
             if (r.isSuccess) Log.i(TAG, "Replenished one-time prekeys: total=${r.getOrNull()}")
         } catch (e: Exception) {
             Log.w(TAG, "replenishIfNeeded failed", e)

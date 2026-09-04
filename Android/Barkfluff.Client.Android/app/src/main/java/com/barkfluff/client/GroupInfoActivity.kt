@@ -26,7 +26,7 @@ import com.barkfluff.client.adapter.AttachmentPreviewAdapter
 import com.barkfluff.client.adapter.GroupMemberAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityGroupInfoBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
@@ -51,7 +51,7 @@ import java.io.File
 class GroupInfoActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityGroupInfoBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var chatRepository: ChatRepository
     private lateinit var globalParam: GlobalParam
     private lateinit var memberAdapter: GroupMemberAdapter
@@ -123,8 +123,8 @@ class GroupInfoActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
-        chatRepository = ChatRepository(this, grpcManager)
+        legacyTransport = app.legacyTransport
+        chatRepository = ChatRepository(this, legacyTransport)
         globalParam = GlobalParam(this)
 
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run { finish(); return }
@@ -152,7 +152,7 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun showChatBackgroundDialog() {
         lifecycleScope.launch {
-            val fileIds = grpcManager.getPersonalization().getOrElse {
+            val fileIds = legacyTransport.getPersonalization().getOrElse {
                 Toast.makeText(this@GroupInfoActivity, R.string.profile_background_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
@@ -167,7 +167,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 .setPositiveButton(R.string.btn_apply) { _, _ ->
                     lifecycleScope.launch {
                         val fileId = if (selected == 0) "" else fileIds[selected - 1]
-                        val result = grpcManager.setChatBackground(chatId, fileId)
+                        val result = legacyTransport.setChatBackground(chatId, fileId)
                         if (result.isSuccess) {
                             globalParam.setChatBackgroundOverride(chatId, fileId)
                             Toast.makeText(this@GroupInfoActivity, R.string.profile_background_updated, Toast.LENGTH_SHORT).show()
@@ -418,7 +418,7 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun setupMembersList() {
         memberAdapter = GroupMemberAdapter(
-            getFileUrl = { fileId -> grpcManager.getFileDownloadUrl(fileId).getOrNull() },
+            getFileUrl = { fileId -> legacyTransport.getFileDownloadUrl(fileId).getOrNull() },
             onMemberClick = { member -> openMemberProfile(member) },
             onRemove = { member -> confirmRemove(member) }
         )
@@ -436,12 +436,12 @@ class GroupInfoActivity : AppCompatActivity() {
             fileId = chatAvatarFileId,
             displayName = chatTitle,
             userId = 0
-        ) { chatAvatarFileId?.let { grpcManager.getFileDownloadUrl(it).getOrNull() } }
+        ) { chatAvatarFileId?.let { legacyTransport.getFileDownloadUrl(it).getOrNull() } }
     }
 
     private fun loadMembers() {
         lifecycleScope.launch {
-            val result = grpcManager.listChatMembers(chatId)
+            val result = legacyTransport.listChatMembers(chatId)
             if (result.isFailure) {
                 Toast.makeText(this@GroupInfoActivity, R.string.group_members_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
@@ -457,7 +457,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 async(Dispatchers.IO) {
                     val name = "${member.firstName} ${member.lastName}".trim()
                         .ifBlank { getString(R.string.group_member_id, member.userId) }
-                    val avatarFileId = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
+                    val avatarFileId = legacyTransport.getUserData(member.userId).getOrNull()?.let { user ->
                         avatarSourceFor(user)
                     }
                     val status = statuses[member.userId]
@@ -479,7 +479,7 @@ class GroupInfoActivity : AppCompatActivity() {
         }
     }
 
-    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+    private fun avatarSourceFor(user: GrpcTransportFacade.UserData): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }
@@ -490,7 +490,7 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun openMemberProfile(member: GroupMemberAdapter.MemberItem) {
         lifecycleScope.launch {
             val personalChatId = if (member.userId != globalParam.userId) {
-                grpcManager.getPersonChatId(member.userId).getOrNull()
+                legacyTransport.getPersonChatId(member.userId).getOrNull()
             } else {
                 null
             }
@@ -512,7 +512,7 @@ class GroupInfoActivity : AppCompatActivity() {
     private suspend fun loadOnlineStatuses(userIds: List<Long>): Map<Long, Pair<Boolean, Long>> {
         if (userIds.isEmpty()) return emptyMap()
         return try {
-            val onlinerClient = grpcManager.onlinerClient ?: return emptyMap()
+            val onlinerClient = legacyTransport.onlinerClient ?: return emptyMap()
             val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
                 .addAllUserIds(userIds)
                 .build()
@@ -539,7 +539,7 @@ class GroupInfoActivity : AppCompatActivity() {
             .setMessage(getString(R.string.group_remove_member_message, member.name))
             .setPositiveButton(R.string.btn_delete) { _, _ ->
                 lifecycleScope.launch {
-                    val result = grpcManager.kickUser(chatId, member.userId)
+                    val result = legacyTransport.kickUser(chatId, member.userId)
                     if (result.isSuccess) {
                         loadMembers()
                     } else {
@@ -566,7 +566,7 @@ class GroupInfoActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
                 lifecycleScope.launch {
-                    val result = grpcManager.updateGroupChat(chatId, title = newName)
+                    val result = legacyTransport.updateGroupChat(chatId, title = newName)
                     if (result.isSuccess) {
                         chatTitle = newName
                         binding.groupName.text = newName
@@ -616,7 +616,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 }
 
                 val fileId = uploadResult.getOrNull()!!
-                val updateResult = grpcManager.updateGroupChat(chatId, pictureFileId = fileId)
+                val updateResult = legacyTransport.updateGroupChat(chatId, pictureFileId = fileId)
                 if (updateResult.isSuccess) {
                     chatAvatarFileId = updateResult.getOrNull()?.pictureFileId?.ifBlank { fileId } ?: fileId
                     renderHeader()

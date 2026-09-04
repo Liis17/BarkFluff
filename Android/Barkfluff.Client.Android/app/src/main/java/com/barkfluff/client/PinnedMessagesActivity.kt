@@ -16,7 +16,7 @@ import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityPinnedMessagesBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.RealtimeService
 import kotlinx.coroutines.launch
 
@@ -34,7 +34,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPinnedMessagesBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var realtimeService: RealtimeService
     private lateinit var adapter: MessageAdapter
     private var chatId: String = ""
@@ -52,7 +52,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
         val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
         realtimeService = app.realtimeService
         currentUserId = globalParam.userId
 
@@ -80,7 +80,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
             currentUserId = currentUserId,
             isGroupChat = true,
             getFileUrl = { fileId ->
-                val r = grpcManager.getFileDownloadUrl(fileId)
+                val r = legacyTransport.getFileDownloadUrl(fileId)
                 if (r.isSuccess) r.getOrNull() else null
             },
             onMessageActionRequested = { _, item -> showUnpinMenu(item) },
@@ -114,7 +114,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
         lifecycleScope.launch {
             binding.loadingIndicator.visibility = View.VISIBLE
             binding.emptyState.visibility = View.GONE
-            val result = grpcManager.listPinnedMessages(chatId)
+            val result = legacyTransport.listPinnedMessages(chatId)
             binding.loadingIndicator.visibility = View.GONE
             if (result.isFailure) {
                 Toast.makeText(this@PinnedMessagesActivity, R.string.pinned_load_failed, Toast.LENGTH_SHORT).show()
@@ -161,7 +161,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
     private fun unpin(messageId: Long) {
         lifecycleScope.launch {
-            val result = grpcManager.unpinMessage(chatId, messageId)
+            val result = legacyTransport.unpinMessage(chatId, messageId)
             if (result.isFailure) {
                 Toast.makeText(this@PinnedMessagesActivity, R.string.message_unpin_failed, Toast.LENGTH_SHORT).show()
             } else {
@@ -176,7 +176,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
             .setMessage(R.string.pinned_unpin_all_message)
             .setPositiveButton(R.string.message_unpin) { _, _ ->
                 lifecycleScope.launch {
-                    val result = grpcManager.unpinAllMessages(chatId)
+                    val result = legacyTransport.unpinAllMessages(chatId)
                     if (result.isSuccess) {
                         Toast.makeText(
                             this@PinnedMessagesActivity,

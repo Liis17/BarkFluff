@@ -15,7 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityFolderChatPickerBinding
 import com.barkfluff.client.databinding.ItemPickerChatBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.AvatarLoader
 import kotlinx.coroutines.launch
 
@@ -33,10 +33,10 @@ class FolderChatPickerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFolderChatPickerBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var adapter: PickerAdapter
 
-    private var allChats: List<GrpcManager.ChatData> = emptyList()
+    private var allChats: List<GrpcTransportFacade.ChatData> = emptyList()
     private val selectedIds = LinkedHashSet<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +46,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
 
         val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         intent.getStringArrayListExtra(EXTRA_INITIAL_SELECTED)?.let { selectedIds.addAll(it) }
 
@@ -77,7 +77,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
     private fun loadChats() {
         binding.loadingIndicator.visibility = View.VISIBLE
         lifecycleScope.launch {
-            val result = grpcManager.getChats()
+            val result = legacyTransport.getChats()
             binding.loadingIndicator.visibility = View.GONE
             if (result.isFailure) {
                 Toast.makeText(this@FolderChatPickerActivity, R.string.folder_chat_load_error, Toast.LENGTH_SHORT).show()
@@ -102,7 +102,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
         }
 
         inner class VH(val binding: ItemPickerChatBinding) : RecyclerView.ViewHolder(binding.root) {
-            fun bind(chat: GrpcManager.ChatData) {
+            fun bind(chat: GrpcTransportFacade.ChatData) {
                 val title = if (chat.title.isNotBlank()) chat.title else getString(R.string.chat_default_title)
                 binding.chatTitle.text = title
 
@@ -118,7 +118,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
                         userId = chat.id.hashCode().toLong(),
                         size = 64
                     ) {
-                        val r = grpcManager.getFileDownloadUrl(avatarFileId)
+                        val r = legacyTransport.getFileDownloadUrl(avatarFileId)
                         if (r.isSuccess) r.getOrNull() else null
                     }
                 }

@@ -7,14 +7,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.databinding.ActivityPrivacySettingsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
 class PrivacySettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPrivacySettingsBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
 
     private var isUpdatingSwitch = false
     private var currentSettings: UsersApiOuterClass.PrivacySettings? = null
@@ -29,7 +29,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         binding.toolbar.setNavigationOnClickListener {
             onBackPressedDispatcher.onBackPressed()
@@ -45,7 +45,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
 
     private fun loadPrivacySettings() {
         lifecycleScope.launch {
-            val result = grpcManager.getPrivacySettings()
+            val result = legacyTransport.getPrivacySettings()
             if (result.isSuccess) {
                 currentSettings = result.getOrNull()
                 applySettingsToUi(currentSettings!!)
@@ -143,7 +143,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
         currentSettings = updated
 
         lifecycleScope.launch {
-            val result = grpcManager.updatePrivacySettings(updated)
+            val result = legacyTransport.updatePrivacySettings(updated)
             if (result.isFailure) {
                 Log.e(TAG, "Ошибка сохранения настроек приватности", result.exceptionOrNull())
                 Toast.makeText(

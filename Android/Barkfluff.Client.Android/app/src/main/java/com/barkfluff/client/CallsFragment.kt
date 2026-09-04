@@ -17,7 +17,7 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentCallsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -29,7 +29,7 @@ class CallsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var adapter: CallHistoryAdapter
 
     private var missedOnly = false
@@ -48,7 +48,7 @@ class CallsFragment : Fragment() {
 
         val app = requireActivity().application as BarkFluffApplication
         globalParam = GlobalParam(requireContext())
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         adapter = CallHistoryAdapter(
             onRowClick = { openChat(it) },
@@ -103,7 +103,7 @@ class CallsFragment : Fragment() {
     ): List<CallHistoryAdapter.Row> = coroutineScope {
         // Заголовки групповых чатов из списка чатов (один запрос).
         val groupTitles: Map<String, String> = if (items.any { it.isGroup }) {
-            grpcManager.getChats().getOrNull()
+            legacyTransport.getChats().getOrNull()
                 ?.associate { it.id to it.title.ifBlank { getString(R.string.call_group_title) } }
                 ?: emptyMap()
         } else {
@@ -124,7 +124,7 @@ class CallsFragment : Fragment() {
 
     private suspend fun resolvePeerName(peerUserId: Long): String {
         if (peerUserId <= 0L) return getString(R.string.call_default_user)
-        val user = grpcManager.getUserData(peerUserId).getOrNull() ?: return getString(R.string.call_default_user)
+        val user = legacyTransport.getUserData(peerUserId).getOrNull() ?: return getString(R.string.call_default_user)
         return "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
     }
 
@@ -183,7 +183,7 @@ class CallsFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val chatId = grpcManager.getPersonChatId(row.peerUserId).getOrNull()
+            val chatId = legacyTransport.getPersonChatId(row.peerUserId).getOrNull()
             if (chatId.isNullOrBlank() || _binding == null) {
                 if (_binding != null) {
                     Toast.makeText(requireContext(), R.string.call_open_chat_failed, Toast.LENGTH_SHORT).show()
@@ -236,12 +236,12 @@ class CallsFragment : Fragment() {
     }
 
     private fun ensureCallsClient(): Boolean {
-        if (grpcManager.callsClient != null) return true
+        if (legacyTransport.callsClient != null) return true
 
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) return false
 
-        return grpcManager.createCallsClient(callsAddress, requireContext(), includeDeviceInfo = true).isSuccess
+        return legacyTransport.createCallsClient(callsAddress, requireContext(), includeDeviceInfo = true).isSuccess
     }
 
     private fun showEmpty() {

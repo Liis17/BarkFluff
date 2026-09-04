@@ -165,7 +165,7 @@ class IncomingCallActivity : AppCompatActivity() {
      */
     private fun loadCallerInfo() {
         val app = application as BarkFluffApplication
-        val repository = ChatRepository(this, app.grpcManager)
+        val repository = ChatRepository(this, app.legacyTransport)
         val avatarImage = findViewById<ImageView>(R.id.avatarImage)
         val avatarInitials = findViewById<TextView>(R.id.avatarInitials)
 
@@ -300,7 +300,7 @@ class IncomingCallActivity : AppCompatActivity() {
             CallTelecomRegistry.markAnswering(callId)
             // Обновляем токен до accept() — приложение могло проснуться из фона с истёкшим токеном,
             // и тогда стрим событий звонка оборвётся на 401 и сервер завершит звонок.
-            (application as BarkFluffApplication).grpcManager.ensureTokenValid(this@IncomingCallActivity)
+            (application as BarkFluffApplication).legacyTransport.ensureTokenValid(this@IncomingCallActivity)
             val response = (application as BarkFluffApplication).callRepository.accept(callId)
             response.onSuccess {
                 CallTelecomRegistry.markActive(callId)
@@ -336,7 +336,7 @@ class IncomingCallActivity : AppCompatActivity() {
 
     private fun ensureCallsClient(): Boolean {
         val app = application as BarkFluffApplication
-        if (app.grpcManager.callsClient != null) return true
+        if (app.legacyTransport.callsClient != null) return true
 
         val globalParam = GlobalParam(this)
         val callsAddress = globalParam.socketCalls
@@ -345,7 +345,7 @@ class IncomingCallActivity : AppCompatActivity() {
             return false
         }
 
-        return app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
+        return app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
     }
 
     companion object {

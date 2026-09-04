@@ -4,7 +4,7 @@ import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.users.UsersApiOuterClass
 
 /**
- * Names retained while callers move from the nested GrpcManager DTOs to domain packages.
+ * Names retained while callers move from the nested GrpcTransportFacade DTOs to domain packages.
  * They are aliases, not a second representation, so cache and gateway migrations stay lossless.
  */
 typealias UserData = UserProfile
@@ -95,7 +95,7 @@ class PinErrorException(val errorCode: String?, cause: Throwable) : Exception(ca
     val isTooManyPinned: Boolean get() = errorCode.equals(ERROR_TOO_MANY_PINNED, ignoreCase = true)
 }
 
-/** Adapter for generated users data when a gateway is used without GrpcManager. */
+/** Adapter for generated users data when a gateway is used without GrpcTransportFacade. */
 internal fun UsersApiOuterClass.User.toDomainProfile(mediaUrl: (String) -> String): UserProfile {
     val pictureFileId = extractFileId(profilePicture)
     val previewFileId = extractFileId(profilePicturePreview)

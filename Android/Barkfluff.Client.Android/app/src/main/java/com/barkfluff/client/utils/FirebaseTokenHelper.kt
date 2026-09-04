@@ -3,7 +3,7 @@ package com.barkfluff.client.utils
 import android.content.Context
 import android.util.Log
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +23,7 @@ object FirebaseTokenHelper {
      * Если токен уже сохранен локально, использует его.
      * Иначе запрашивает новый у Firebase.
      */
-    suspend fun getTokenAndSendToServer(context: Context, grpcManager: GrpcManager) {
+    suspend fun getTokenAndSendToServer(context: Context, legacyTransport: GrpcTransportFacade) {
         try {
             val globalParam = GlobalParam(context)
             var token = globalParam.firebaseToken
@@ -41,7 +41,7 @@ object FirebaseTokenHelper {
             }
 
             // Отправляем токен на сервер
-            sendTokenToServer(grpcManager, token)
+            sendTokenToServer(legacyTransport, token)
 
         } catch (e: Exception) {
             Log.e(TAG, "getTokenAndSendToServer: ошибка", e)
@@ -71,7 +71,7 @@ object FirebaseTokenHelper {
      * Используется при свежем логине с LoginActivity — гарантирует отправку нового токена
      * (а не унаследованного от предыдущего аккаунта).
      */
-    suspend fun deleteAndRefreshTokenThenSend(context: Context, grpcManager: GrpcManager) {
+    suspend fun deleteAndRefreshTokenThenSend(context: Context, legacyTransport: GrpcTransportFacade) {
         try {
             Log.d(TAG, "deleteAndRefreshTokenThenSend: удаляем старый токен")
             withContext(Dispatchers.IO) {
@@ -89,7 +89,7 @@ object FirebaseTokenHelper {
             globalParam.firebaseToken = token
 
             Log.d(TAG, "deleteAndRefreshTokenThenSend: новый токен получен")
-            sendTokenToServer(grpcManager, token)
+            sendTokenToServer(legacyTransport, token)
         } catch (e: Exception) {
             Log.e(TAG, "deleteAndRefreshTokenThenSend: ошибка", e)
         }
@@ -99,7 +99,7 @@ object FirebaseTokenHelper {
      * Принудительно запрашивает новый токен у Firebase и отправляет на сервер.
      * Используется при обновлении токена (onNewToken в сервисе).
      */
-    suspend fun refreshTokenAndSendToServer(context: Context, grpcManager: GrpcManager) {
+    suspend fun refreshTokenAndSendToServer(context: Context, legacyTransport: GrpcTransportFacade) {
         try {
             Log.d(TAG, "refreshTokenAndSendToServer: запрашиваем новый токен")
 
@@ -112,16 +112,16 @@ object FirebaseTokenHelper {
 
             Log.d(TAG, "refreshTokenAndSendToServer: получен токен")
 
-            sendTokenToServer(grpcManager, token)
+            sendTokenToServer(legacyTransport, token)
 
         } catch (e: Exception) {
             Log.e(TAG, "refreshTokenAndSendToServer: ошибка", e)
         }
     }
 
-    private suspend fun sendTokenToServer(grpcManager: GrpcManager, token: String) {
+    private suspend fun sendTokenToServer(legacyTransport: GrpcTransportFacade, token: String) {
         try {
-            val result = grpcManager.setFirebaseToken(token)
+            val result = legacyTransport.setFirebaseToken(token)
             if (result.isSuccess) {
                 Log.i(TAG, "sendTokenToServer: токен успешно отправлен на сервер")
             } else {

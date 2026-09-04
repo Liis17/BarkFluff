@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class QrScannerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityQrScannerBinding
-    private lateinit var grpcManager: com.barkfluff.client.grpc.GrpcManager
+    private lateinit var legacyTransport: com.barkfluff.client.grpc.GrpcTransportFacade
     private lateinit var cameraExecutor: ExecutorService
 
     private val isProcessing = AtomicBoolean(false)
@@ -37,7 +37,7 @@ class QrScannerActivity : AppCompatActivity() {
         binding = ActivityQrScannerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        grpcManager = (application as BarkFluffApplication).grpcManager
+        legacyTransport = (application as BarkFluffApplication).legacyTransport
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         binding.buttonClose.setOnClickListener { finish() }
@@ -122,7 +122,7 @@ class QrScannerActivity : AppCompatActivity() {
         binding.textScanHint.text = getString(R.string.qr_device_data_loading)
 
         lifecycleScope.launch {
-            val result = grpcManager.scanFastAuth(fastAuthId)
+            val result = legacyTransport.scanFastAuth(fastAuthId)
             binding.progressScanning.visibility = View.GONE
 
             if (result.isSuccess) {

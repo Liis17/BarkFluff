@@ -9,7 +9,7 @@ import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.drafts.ComposerAttachmentStore
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
@@ -68,13 +68,13 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideGrpcManager(@ApplicationContext context: Context): GrpcManager =
-        GrpcManager(context)
+    fun provideGrpcTransportFacade(@ApplicationContext context: Context): GrpcTransportFacade =
+        GrpcTransportFacade(context)
 
     @Provides
     @Singleton
-    fun provideGrpcClientRegistry(grpcManager: GrpcManager): GrpcClientRegistry =
-        grpcManager.clientRegistry()
+    fun provideGrpcClientRegistry(legacyTransport: GrpcTransportFacade): GrpcClientRegistry =
+        legacyTransport.clientRegistry()
 
     @Provides
     @Singleton
@@ -83,8 +83,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideTokenCoordinator(grpcManager: GrpcManager): TokenCoordinator =
-        grpcManager.tokenCoordinator()
+    fun provideTokenCoordinator(legacyTransport: GrpcTransportFacade): TokenCoordinator =
+        legacyTransport.tokenCoordinator()
 
     @Provides
     @Singleton
@@ -93,40 +93,40 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideServerDiscoveryGateway(grpcManager: GrpcManager): ServerDiscoveryGateway =
-        GrpcServerDiscoveryGateway(grpcManager)
+    fun provideServerDiscoveryGateway(legacyTransport: GrpcTransportFacade): ServerDiscoveryGateway =
+        GrpcServerDiscoveryGateway(legacyTransport)
 
     @Provides
     @Singleton
     fun provideAuthGateway(
-        grpcManager: GrpcManager,
+        legacyTransport: GrpcTransportFacade,
         @ApplicationContext context: Context,
-    ): AuthGateway = GrpcAuthGateway(grpcManager, context)
+    ): AuthGateway = GrpcAuthGateway(legacyTransport, context)
 
     @Provides
     @Singleton
-    fun provideAccountSecurityGateway(grpcManager: GrpcManager): AccountSecurityGateway =
-        GrpcAccountSecurityGateway(grpcManager)
+    fun provideAccountSecurityGateway(legacyTransport: GrpcTransportFacade): AccountSecurityGateway =
+        GrpcAccountSecurityGateway(legacyTransport)
 
     @Provides
     @Singleton
-    fun provideUserProfileGateway(grpcManager: GrpcManager): UserProfileGateway =
-        GrpcUserProfileGateway(grpcManager)
+    fun provideUserProfileGateway(legacyTransport: GrpcTransportFacade): UserProfileGateway =
+        GrpcUserProfileGateway(legacyTransport)
 
     @Provides
     @Singleton
-    fun provideUserSettingsGateway(grpcManager: GrpcManager): UserSettingsGateway =
-        GrpcUserSettingsGateway(grpcManager)
+    fun provideUserSettingsGateway(legacyTransport: GrpcTransportFacade): UserSettingsGateway =
+        GrpcUserSettingsGateway(legacyTransport)
 
     @Provides
     @Singleton
-    fun provideUserDirectoryGateway(grpcManager: GrpcManager): UserDirectoryGateway =
-        GrpcUserDirectoryGateway(grpcManager)
+    fun provideUserDirectoryGateway(legacyTransport: GrpcTransportFacade): UserDirectoryGateway =
+        GrpcUserDirectoryGateway(legacyTransport)
 
     @Provides
     @Singleton
-    fun provideChatDirectoryGateway(grpcManager: GrpcManager): ChatDirectoryGateway =
-        GrpcChatDirectoryGateway(grpcManager)
+    fun provideChatDirectoryGateway(legacyTransport: GrpcTransportFacade): ChatDirectoryGateway =
+        GrpcChatDirectoryGateway(legacyTransport)
 
     @Provides
     @Singleton
@@ -137,13 +137,13 @@ object AppModule {
     @Singleton
     fun provideMessageGateway(
         chatRepository: ChatRepository,
-        grpcManager: GrpcManager,
-    ): MessageGateway = GrpcMessageGateway(chatRepository, grpcManager)
+        legacyTransport: GrpcTransportFacade,
+    ): MessageGateway = GrpcMessageGateway(chatRepository, legacyTransport)
 
     @Provides
     @Singleton
-    fun provideChatFolderGateway(grpcManager: GrpcManager): ChatFolderGateway =
-        GrpcChatFolderGateway(grpcManager)
+    fun provideChatFolderGateway(legacyTransport: GrpcTransportFacade): ChatFolderGateway =
+        GrpcChatFolderGateway(legacyTransport)
 
     @Provides
     @Singleton
@@ -152,8 +152,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideStickerGateway(grpcManager: GrpcManager): StickerGateway =
-        GrpcStickerGateway(grpcManager)
+    fun provideStickerGateway(legacyTransport: GrpcTransportFacade): StickerGateway =
+        GrpcStickerGateway(legacyTransport)
 
     @Provides
     @Singleton
@@ -162,8 +162,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideFastAuthGateway(grpcManager: GrpcManager): FastAuthGateway =
-        GrpcFastAuthGateway(grpcManager)
+    fun provideFastAuthGateway(legacyTransport: GrpcTransportFacade): FastAuthGateway =
+        GrpcFastAuthGateway(legacyTransport)
 
     @Provides
     @Singleton
@@ -189,17 +189,17 @@ object AppModule {
     @Singleton
     fun provideRealtimeSideEffects(
         @ApplicationContext context: Context,
-        grpcManager: GrpcManager
-    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, grpcManager)
+        legacyTransport: GrpcTransportFacade
+    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, legacyTransport)
 
     @Provides
     @Singleton
     fun provideRealtimeService(
         @ApplicationContext context: Context,
-        grpcManager: GrpcManager,
+        legacyTransport: GrpcTransportFacade,
         tokenCoordinator: TokenCoordinator,
         sideEffects: RealtimeSideEffects
-    ): RealtimeService = RealtimeService(context, grpcManager, tokenCoordinator, sideEffects)
+    ): RealtimeService = RealtimeService(context, legacyTransport, tokenCoordinator, sideEffects)
 
     @Provides
     @Singleton
@@ -217,9 +217,9 @@ object AppModule {
     @Singleton
     fun provideChatRepository(
         @ApplicationContext context: Context,
-        grpcManager: GrpcManager,
+        legacyTransport: GrpcTransportFacade,
         mediaTransport: MediaHttpTransport,
-    ): ChatRepository = ChatRepository(context, grpcManager, mediaTransport)
+    ): ChatRepository = ChatRepository(context, legacyTransport, mediaTransport)
 
     @Provides
     @Singleton
@@ -241,28 +241,28 @@ object AppModule {
     @Singleton
     fun providePrivateChatRepository(
         @ApplicationContext context: Context,
-        grpcManager: GrpcManager
-    ): PrivateChatRepository = PrivateChatRepository(context, grpcManager)
+        legacyTransport: GrpcTransportFacade
+    ): PrivateChatRepository = PrivateChatRepository(context, legacyTransport)
 
     @Provides
     @Singleton
     fun provideSecretChatRepository(
         @ApplicationContext context: Context,
-        grpcManager: GrpcManager,
+        legacyTransport: GrpcTransportFacade,
         signalStore: BarkFluffSignalStore
-    ): SecretChatRepository = SecretChatRepository(context, grpcManager, signalStore)
+    ): SecretChatRepository = SecretChatRepository(context, legacyTransport, signalStore)
 
     @Provides
     @Singleton
-    fun provideCallRepository(grpcManager: GrpcManager): CallRepository =
-        CallRepository(grpcManager)
+    fun provideCallRepository(legacyTransport: GrpcTransportFacade): CallRepository =
+        CallRepository(legacyTransport)
 
     @Provides
     @Singleton
     fun provideCallEventsService(
         @ApplicationContext context: Context,
-        grpcManager: GrpcManager,
+        legacyTransport: GrpcTransportFacade,
         callRepository: CallRepository,
         tokenCoordinator: TokenCoordinator,
-    ): CallEventsService = CallEventsService(context, grpcManager, callRepository, tokenCoordinator)
+    ): CallEventsService = CallEventsService(context, legacyTransport, callRepository, tokenCoordinator)
 }

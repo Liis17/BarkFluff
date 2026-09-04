@@ -74,7 +74,7 @@ class ImageViewerActivity : AppCompatActivity() {
         binding = ActivityImageViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        chatRepository = ChatRepository(this, (application as BarkFluffApplication).grpcManager)
+        chatRepository = ChatRepository(this, (application as BarkFluffApplication).legacyTransport)
 
         fileIds = intent.getStringArrayListExtra(EXTRA_FILE_IDS) ?: emptyList()
         previewUrls = intent.getStringArrayListExtra(EXTRA_PREVIEW_URLS) ?: emptyList()

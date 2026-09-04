@@ -17,7 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityLoginBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.snackbar.Snackbar
@@ -46,7 +46,7 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
 
     private var isOtpMode = false
     private var isLoading = false
@@ -65,7 +65,7 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager(applicationContext)
+        legacyTransport = GrpcTransportFacade(applicationContext)
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
@@ -101,7 +101,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         // Для авторизации не используем interceptor, так как токена еще нет
-        val result = grpcManager.createIdentityClient(identityAddress)
+        val result = legacyTransport.createIdentityClient(identityAddress)
         if (result.isFailure) {
             showError(getString(R.string.login_identity_connection_failed))
             Log.e(TAG, "Failed to create identity client", result.exceptionOrNull())
@@ -212,7 +212,7 @@ class LoginActivity : AppCompatActivity() {
         setLoadingState(true)
 
         lifecycleScope.launch {
-            val result = grpcManager.auth(
+            val result = legacyTransport.auth(
                 email = email,
                 username = username,
                 password = password,
@@ -239,7 +239,7 @@ class LoginActivity : AppCompatActivity() {
         setLoadingState(true)
 
         lifecycleScope.launch {
-            val result = grpcManager.auth(
+            val result = legacyTransport.auth(
                 email = email,
                 username = username,
                 password = savedPassword,
@@ -250,11 +250,11 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleAuthResult(result: GrpcManager.AuthResult) {
+    private fun handleAuthResult(result: GrpcTransportFacade.AuthResult) {
         setLoadingState(false)
 
         when (result) {
-            is GrpcManager.AuthResult.Success -> {
+            is GrpcTransportFacade.AuthResult.Success -> {
                 lifecycleScope.launch {
                     // Сохраняем токены
                     globalParam.accessToken = result.accessToken
@@ -265,11 +265,11 @@ class LoginActivity : AppCompatActivity() {
                     // Создаем Users клиент для загрузки данных пользователя
                     val usersAddress = globalParam.socketUsers
                     if (usersAddress.isNotBlank()) {
-                        val usersResult = grpcManager.createUsersClient(usersAddress, this@LoginActivity)
+                        val usersResult = legacyTransport.createUsersClient(usersAddress, this@LoginActivity)
                         if (usersResult.isSuccess) {
                             // Загружаем профиль и синхронизируемые настройки параллельно.
-                            val userSettingsDeferred = async { grpcManager.getUserSettings() }
-                            val userDataResult = grpcManager.getCurrentUserData()
+                            val userSettingsDeferred = async { legacyTransport.getUserSettings() }
+                            val userDataResult = legacyTransport.getCurrentUserData()
                             if (userDataResult.isSuccess) {
                                 val userData = userDataResult.getOrNull()
                                 if (userData != null) {
@@ -301,17 +301,17 @@ class LoginActivity : AppCompatActivity() {
                     }
 
                     // Переходим в чаты
-                    // Всегда пересоздаём каналы app-level grpcManager после логина,
+                    // Всегда пересоздаём каналы app-level legacyTransport после логина,
                     // чтобы гарантировать свежие соединения с актуальными токенами
                     val app = applicationContext as BarkFluffApplication
-                    app.grpcManager.recreateAllClients(this@LoginActivity, globalParam)
+                    app.legacyTransport.recreateAllClients(this@LoginActivity, globalParam)
                     navigateToChats()
                 }
             }
-            is GrpcManager.AuthResult.OtpRequired -> {
+            is GrpcTransportFacade.AuthResult.OtpRequired -> {
                 showOtpMode()
             }
-            is GrpcManager.AuthResult.Error -> {
+            is GrpcTransportFacade.AuthResult.Error -> {
                 showError(result.message)
             }
         }
@@ -415,6 +415,6 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        grpcManager.shutdown()
+        legacyTransport.shutdown()
     }
 }

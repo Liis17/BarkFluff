@@ -1,13 +1,13 @@
 package com.barkfluff.client.calls
 
 import barkfluff.calls.CallsApiOuterClass
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 class CallRepository(
-    private val grpcManager: GrpcManager
+    private val legacyTransport: GrpcTransportFacade
 ) {
     suspend fun initiateDirect(
         calleeUserId: Long,
@@ -121,5 +121,5 @@ class CallRepository(
         }
 
     private fun requireClient() =
-        grpcManager.callsClient ?: error("Calls клиент не создан")
+        legacyTransport.callsClient ?: error("Calls клиент не создан")
 }

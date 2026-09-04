@@ -19,7 +19,7 @@ import com.barkfluff.client.adapter.ChatBackgroundAdapter
 import com.barkfluff.client.adapter.ChatBackgroundItem
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityPersonalizationSettingsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
@@ -46,7 +46,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPersonalizationSettingsBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var chatRepository: ChatRepository
     private lateinit var backgroundAdapter: ChatBackgroundAdapter
 
@@ -101,8 +101,8 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
         val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = app.grpcManager
-        chatRepository = ChatRepository(this, grpcManager)
+        legacyTransport = app.legacyTransport
+        chatRepository = ChatRepository(this, legacyTransport)
 
         setupToolbar()
         setupPoster()
@@ -192,7 +192,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun loadCurrentUserForPoster() {
         lifecycleScope.launch {
             try {
-                val result = (application as BarkFluffApplication).grpcManager.getCurrentUserData()
+                val result = (application as BarkFluffApplication).legacyTransport.getCurrentUserData()
                 if (result.isSuccess) {
                     val userData = result.getOrNull() ?: return@launch
                     val globalParam = GlobalParam(this@PersonalizationSettingsActivity)
@@ -221,7 +221,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                             binding.profilePreviewAvatarPlaceholder,
                             fileId, displayName, userData.userId, size = 192
                         ) {
-                            grpcManager.getFileDownloadUrl(fileId).getOrNull()
+                            legacyTransport.getFileDownloadUrl(fileId).getOrNull()
                         }
                     } else {
                         AvatarLoader.showPlaceholder(
@@ -260,7 +260,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val urlResult = grpcManager.getFileDownloadUrl(currentPosterFileId)
+                val urlResult = legacyTransport.getFileDownloadUrl(currentPosterFileId)
                 if (urlResult.isSuccess) {
                     val url = urlResult.getOrNull() ?: return@launch
                     // Кэшируем URL
@@ -309,14 +309,14 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val uploadResult = grpcManager.uploadProfilePoster(jpegBytes)
+                val uploadResult = legacyTransport.uploadProfilePoster(jpegBytes)
                 if (uploadResult.isFailure) {
                     Toast.makeText(this@PersonalizationSettingsActivity, R.string.personalization_poster_upload_failed, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
                 val fileId = uploadResult.getOrNull()!!
-                val setResult = grpcManager.setProfilePoster(fileId)
+                val setResult = legacyTransport.setProfilePoster(fileId)
                 if (setResult.isSuccess) {
                     currentPosterFileId = fileId
                     loadPosterPreview()
@@ -473,7 +473,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
             },
             onSelect = { fileId ->
                 lifecycleScope.launch {
-                    val result = grpcManager.setGlobalChatBackground(fileId)
+                    val result = legacyTransport.setGlobalChatBackground(fileId)
                     if (result.isSuccess) {
                         globalParam.chatBackgroundFileId = fileId
                         backgroundAdapter.selectedFileId = fileId
@@ -516,7 +516,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun loadPersonalizationFromServer() {
         lifecycleScope.launch {
             try {
-                val result = grpcManager.getPersonalization()
+                val result = legacyTransport.getPersonalization()
                 if (result.isSuccess) {
                     val ids = result.getOrNull() ?: emptyList()
                     backgroundFileIds.clear()
@@ -632,9 +632,9 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun syncPersonalizationToServer() {
         lifecycleScope.launch {
             try {
-                val result = grpcManager.updatePersonalizationBackgrounds(backgroundFileIds.toList())
+                val result = legacyTransport.updatePersonalizationBackgrounds(backgroundFileIds.toList())
                 if (result.isSuccess) {
-                    grpcManager.getUserSettings().onSuccess { settings ->
+                    legacyTransport.getUserSettings().onSuccess { settings ->
                         globalParam.applyChatBackgroundSettings(
                             settings.globalChatBackgroundFileId,
                             settings.chatBackgroundFileIds

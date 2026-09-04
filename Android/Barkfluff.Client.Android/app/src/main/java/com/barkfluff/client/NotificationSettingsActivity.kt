@@ -7,14 +7,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityNotificationSettingsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import kotlinx.coroutines.launch
 
 class NotificationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityNotificationSettingsBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
 
     private var isUpdatingFromServer = false
 
@@ -28,7 +28,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
         globalParam = GlobalParam(this)
 
         binding.toolbar.setNavigationOnClickListener {
@@ -48,7 +48,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
 
     private fun loadNotificationsState() {
         lifecycleScope.launch {
-            val result = grpcManager.getNotificationsEnabled()
+            val result = legacyTransport.getNotificationsEnabled()
 
             if (result.isSuccess) {
                 val enabled = result.getOrDefault(true)
@@ -68,7 +68,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
         binding.switchNotifications.isEnabled = false
 
         lifecycleScope.launch {
-            val result = grpcManager.setNotificationsEnabled(enabled)
+            val result = legacyTransport.setNotificationsEnabled(enabled)
 
             if (result.isSuccess) {
                 globalParam.notificationsEnabled = enabled

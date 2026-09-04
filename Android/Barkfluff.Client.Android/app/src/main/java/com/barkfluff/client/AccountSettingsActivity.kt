@@ -14,7 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityAccountSettingsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -28,7 +28,7 @@ class AccountSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAccountSettingsBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
 
     companion object {
         private const val TAG = "AccountSettingsActivity"
@@ -61,7 +61,7 @@ class AccountSettingsActivity : AppCompatActivity() {
 
         val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         setupToolbar()
         setupClickListeners()
@@ -82,7 +82,7 @@ class AccountSettingsActivity : AppCompatActivity() {
         binding.itemFirstName.setOnClickListener {
             showEditDialog(getString(R.string.account_first_name), globalParam.firstName) { newValue ->
                 lifecycleScope.launch {
-                    val result = grpcManager.changeName(newValue, globalParam.lastName)
+                    val result = legacyTransport.changeName(newValue, globalParam.lastName)
                     if (result.isSuccess) {
                         globalParam.firstName = newValue
                         updateUI()
@@ -96,7 +96,7 @@ class AccountSettingsActivity : AppCompatActivity() {
         binding.itemLastName.setOnClickListener {
             showEditDialog(getString(R.string.account_last_name), globalParam.lastName, allowEmpty = true) { newValue ->
                 lifecycleScope.launch {
-                    val result = grpcManager.changeName(globalParam.firstName, newValue)
+                    val result = legacyTransport.changeName(globalParam.firstName, newValue)
                     if (result.isSuccess) {
                         globalParam.lastName = newValue
                         updateUI()
@@ -110,9 +110,9 @@ class AccountSettingsActivity : AppCompatActivity() {
         binding.itemUsername.setOnClickListener {
             showEditDialog(getString(R.string.account_username), globalParam.userName) { newValue ->
                 lifecycleScope.launch {
-                    val checkResult = grpcManager.checkUsername(newValue)
+                    val checkResult = legacyTransport.checkUsername(newValue)
                     if (checkResult.isSuccess && checkResult.getOrNull() == false) {
-                        val result = grpcManager.changeUsername(newValue)
+                        val result = legacyTransport.changeUsername(newValue)
                         if (result.isSuccess) {
                             globalParam.userName = newValue
                             updateUI()
@@ -129,7 +129,7 @@ class AccountSettingsActivity : AppCompatActivity() {
         binding.itemBio.setOnClickListener {
             showEditDialog(getString(R.string.account_bio), globalParam.description, allowEmpty = true) { newValue ->
                 lifecycleScope.launch {
-                    val result = grpcManager.changeBio(newValue)
+                    val result = legacyTransport.changeBio(newValue)
                     if (result.isSuccess) {
                         globalParam.description = newValue
                         updateUI()
@@ -192,7 +192,7 @@ class AccountSettingsActivity : AppCompatActivity() {
                     globalParam.userId,
                     size = 192
                 ) {
-                    val result = grpcManager.getFileDownloadUrl(fileId)
+                    val result = legacyTransport.getFileDownloadUrl(fileId)
                     if (result.isSuccess) result.getOrNull() else null
                 }
             } else {
@@ -262,15 +262,15 @@ class AccountSettingsActivity : AppCompatActivity() {
 
             lifecycleScope.launch {
                 try {
-                    val uploadResult = grpcManager.uploadUserAvatar(bytes)
+                    val uploadResult = legacyTransport.uploadUserAvatar(bytes)
                     if (uploadResult.isSuccess) {
                         val fileId = uploadResult.getOrNull()!!
                         Log.d(TAG, "Аватар загружен, fileId: $fileId")
 
-                        val setResult = grpcManager.setProfilePicture(fileId)
+                        val setResult = legacyTransport.setProfilePicture(fileId)
                         if (setResult.isSuccess) {
                             // Обновляем данные пользователя
-                            val userDataResult = grpcManager.getCurrentUserData()
+                            val userDataResult = legacyTransport.getCurrentUserData()
                             if (userDataResult.isSuccess) {
                                 val userData = userDataResult.getOrNull()!!
                                 globalParam.pictureFileId = userData.profilePictureFileId

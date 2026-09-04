@@ -14,7 +14,7 @@ import com.barkfluff.client.adapter.DeviceAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityDevicesBinding
 import com.barkfluff.client.databinding.BottomSheetDeviceDetailsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.LogoutHelper
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -23,11 +23,11 @@ import kotlinx.coroutines.launch
 class DevicesActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDevicesBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var globalParam: GlobalParam
     private lateinit var deviceAdapter: DeviceAdapter
 
-    private var allSessions: List<GrpcManager.SessionData> = emptyList()
+    private var allSessions: List<GrpcTransportFacade.SessionData> = emptyList()
 
     private val qrScannerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -57,7 +57,7 @@ class DevicesActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
         globalParam = GlobalParam(this)
 
         setupToolbar()
@@ -108,7 +108,7 @@ class DevicesActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            val result = grpcManager.getActiveSessions(this@DevicesActivity)
+            val result = legacyTransport.getActiveSessions(this@DevicesActivity)
             binding.progressLoading.visibility = View.GONE
 
             if (result.isSuccess) {
@@ -182,7 +182,7 @@ class DevicesActivity : AppCompatActivity() {
         }
     }
 
-    private fun showDeviceDetailsBottomSheet(session: GrpcManager.SessionData) {
+    private fun showDeviceDetailsBottomSheet(session: GrpcTransportFacade.SessionData) {
         val bottomSheet = BottomSheetDialog(this)
         val sheetBinding = BottomSheetDeviceDetailsBinding.inflate(layoutInflater)
         bottomSheet.setContentView(sheetBinding.root)
@@ -220,7 +220,7 @@ class DevicesActivity : AppCompatActivity() {
         bottomSheet.show()
     }
 
-    private fun showRenameDeviceDialog(session: GrpcManager.SessionData) {
+    private fun showRenameDeviceDialog(session: GrpcTransportFacade.SessionData) {
         val builder = MaterialAlertDialogBuilder(this)
         builder.setTitle(R.string.device_rename)
 
@@ -243,7 +243,7 @@ class DevicesActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            val result = grpcManager.renameDevice(deviceId, customName)
+            val result = legacyTransport.renameDevice(deviceId, customName)
             binding.progressLoading.visibility = View.GONE
 
             if (result.isSuccess) {
@@ -263,7 +263,7 @@ class DevicesActivity : AppCompatActivity() {
         }
     }
 
-    private fun showRemoveSessionDialog(session: GrpcManager.SessionData) {
+    private fun showRemoveSessionDialog(session: GrpcTransportFacade.SessionData) {
         val name = session.customName.ifEmpty { session.originalName }.ifEmpty { getString(R.string.device_unknown_name) }
         val isCurrentDevice = session.deviceId == globalParam.deviceId
 
@@ -279,7 +279,7 @@ class DevicesActivity : AppCompatActivity() {
             .setPositiveButton(R.string.device_terminate_action) { _, _ ->
                 if (isCurrentDevice) {
                     lifecycleScope.launch {
-                        LogoutHelper.performFullLogout(this@DevicesActivity, grpcManager)
+                        LogoutHelper.performFullLogout(this@DevicesActivity, legacyTransport)
                     }
                 } else {
                     removeSession(session.deviceId)
@@ -305,7 +305,7 @@ class DevicesActivity : AppCompatActivity() {
 
     private fun removeSession(deviceId: String) {
         lifecycleScope.launch {
-            val result = grpcManager.removeActiveSession(deviceId)
+            val result = legacyTransport.removeActiveSession(deviceId)
             if (result.isSuccess) {
                 allSessions = allSessions.filter { it.deviceId != deviceId }
                 updateUI()
@@ -330,7 +330,7 @@ class DevicesActivity : AppCompatActivity() {
             var failCount = 0
 
             for (deviceId in otherDeviceIds) {
-                val result = grpcManager.removeActiveSession(deviceId)
+                val result = legacyTransport.removeActiveSession(deviceId)
                 if (result.isSuccess) {
                     successCount++
                 } else {

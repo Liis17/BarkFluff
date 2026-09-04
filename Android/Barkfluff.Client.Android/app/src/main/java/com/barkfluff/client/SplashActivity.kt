@@ -5,7 +5,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.barkfluff.client.utils.ServerInfoRefreshResult
@@ -31,13 +31,13 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager(applicationContext)
+        legacyTransport = GrpcTransportFacade(applicationContext)
 
         // Проверяем данные и переходим на нужный экран
         checkDataAndNavigate()
@@ -54,7 +54,7 @@ class SplashActivity : AppCompatActivity() {
             }
 
             val refreshResult = withTimeoutOrNull(SERVER_INFO_REFRESH_TIMEOUT_MS) {
-                refreshServerInfoFromBeacon(grpcManager, globalParam, applicationContext)
+                refreshServerInfoFromBeacon(legacyTransport, globalParam, applicationContext)
             } ?: ServerInfoRefreshResult.Unavailable
             if (
                 refreshResult == ServerInfoRefreshResult.CertificateApprovalRequired ||
@@ -138,7 +138,7 @@ class SplashActivity : AppCompatActivity() {
             }
 
             // Создаем Identity клиент с interceptor для авторизованных вызовов
-            val createResult = grpcManager.createIdentityClient(identityAddress, this)
+            val createResult = legacyTransport.createIdentityClient(identityAddress, this)
             if (createResult.isFailure) {
                 return false
             }
@@ -149,7 +149,7 @@ class SplashActivity : AppCompatActivity() {
                 return false
             }
 
-            val refreshResult = grpcManager.refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
+            val refreshResult = legacyTransport.refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
             if (refreshResult.isSuccess) {
                 val (newAccessToken, newAccessTokenExpiration, newRefreshToken, newRefreshTokenExpiration) = refreshResult.getOrNull()!!
                 
@@ -166,7 +166,7 @@ class SplashActivity : AppCompatActivity() {
         } catch (e: Exception) {
             false
         } finally {
-            grpcManager.shutdown()
+            legacyTransport.shutdown()
         }
     }
 
@@ -180,23 +180,23 @@ class SplashActivity : AppCompatActivity() {
             val usersAddress = globalParam.socketUsers
 
             if (identityAddress.isNotBlank()) {
-                grpcManager.createIdentityClient(identityAddress, this)
+                legacyTransport.createIdentityClient(identityAddress, this)
             }
             if (usersAddress.isNotBlank()) {
-                grpcManager.createUsersClient(usersAddress, this)
+                legacyTransport.createUsersClient(usersAddress, this)
             }
 
             val shouldContinue = coroutineScope {
                 // Загружаем профиль и синхронизируемые настройки параллельно.
-                val userSettingsDeferred = async { grpcManager.getUserSettings() }
-                var userDataResult = grpcManager.getCurrentUserData()
+                val userSettingsDeferred = async { legacyTransport.getUserSettings() }
+                var userDataResult = legacyTransport.getCurrentUserData()
                 var reloadUserSettings = false
 
                 // Если 401 — токен инвалидирован на сервере, пробуем обновить принудительно
                 if (userDataResult.isFailure) {
                     val errMsg = userDataResult.exceptionOrNull()?.message ?: ""
                     if (errMsg.contains("401") || errMsg.contains("UNAUTHENTICATED")) {
-                        val refreshed = grpcManager.forceRefreshToken(this@SplashActivity)
+                        val refreshed = legacyTransport.forceRefreshToken(this@SplashActivity)
                         if (!refreshed) {
                             // Refresh тоже невалиден — на Login
                             globalParam.clearUserData()
@@ -205,7 +205,7 @@ class SplashActivity : AppCompatActivity() {
                             return@coroutineScope false
                         }
                         // Повторяем запрос с новым токеном
-                        userDataResult = grpcManager.getCurrentUserData()
+                        userDataResult = legacyTransport.getCurrentUserData()
                         reloadUserSettings = true
                     }
                 }
@@ -224,7 +224,7 @@ class SplashActivity : AppCompatActivity() {
                 // Ошибка не блокирует вход — до следующего удачного старта используется кэш.
                 val userSettingsResult = if (reloadUserSettings) {
                     userSettingsDeferred.cancel()
-                    grpcManager.getUserSettings()
+                    legacyTransport.getUserSettings()
                 } else {
                     userSettingsDeferred.await()
                 }
@@ -239,14 +239,14 @@ class SplashActivity : AppCompatActivity() {
             if (!shouldContinue) return
             // Отправляем актуальный FCM-токен на сервер (уже залогинен — не пересоздаём)
             try {
-                FirebaseTokenHelper.getTokenAndSendToServer(this, grpcManager)
+                FirebaseTokenHelper.getTokenAndSendToServer(this, legacyTransport)
             } catch (e: Exception) {
                 // Не критично — продолжаем
             }
         } catch (e: Exception) {
             // Ошибка загрузки данных пользователя - не критично, продолжаем
         } finally {
-            grpcManager.shutdown()
+            legacyTransport.shutdown()
         }
 
         navigateToChats()
@@ -272,11 +272,11 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToChats() {
-        // Пересоздаём каналы app-level grpcManager — гарантирует свежие каналы
+        // Пересоздаём каналы app-level legacyTransport — гарантирует свежие каналы
         // с актуальным токеном (AuthInterceptor читает из GlobalParam динамически,
         // но каналы могут быть устаревшими после предыдущей сессии)
         val app = applicationContext as BarkFluffApplication
-        app.grpcManager.recreateAllClients(this, globalParam)
+        app.legacyTransport.recreateAllClients(this, globalParam)
 
         val intent = Intent(this, MainActivity::class.java)
         // Пробрасываем chatId из уведомления, если есть
@@ -291,6 +291,6 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        grpcManager.shutdown()
+        legacyTransport.shutdown()
     }
 }

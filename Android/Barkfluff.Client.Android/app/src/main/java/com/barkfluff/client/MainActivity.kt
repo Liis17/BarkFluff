@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
 
         // Проверяем инициализацию gRPC клиентов
         val app = applicationContext as BarkFluffApplication
-        if (!app.grpcManager.isInitialized()) {
+        if (!app.legacyTransport.isInitialized()) {
             val globalParam = GlobalParam(this)
             val hasToken = globalParam.accessToken != null
             val tokenExpiration = globalParam.accessTokenExpiration
@@ -183,7 +183,7 @@ class MainActivity : AppCompatActivity() {
             if (hasToken && !isExpired) {
                 // Токен валиден — инициализируем gRPC на месте
                 Log.d("MainActivity", "Token valid, initializing gRPC in-place")
-                app.grpcManager.initAllClients(this, globalParam)
+                app.legacyTransport.initAllClients(this, globalParam)
             } else {
                 // Нужна авторизация через SplashActivity
                 Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
@@ -226,10 +226,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun resolveDeepLinkUser(username: String) {
         val app = applicationContext as BarkFluffApplication
-        val grpcManager = app.grpcManager
+        val legacyTransport = app.legacyTransport
 
         lifecycleScope.launch {
-            val searchResult = grpcManager.searchUsers(username, size = 20)
+            val searchResult = legacyTransport.searchUsers(username, size = 20)
             if (searchResult.isFailure) {
                 Toast.makeText(this@MainActivity, R.string.main_user_search_failed, Toast.LENGTH_SHORT).show()
                 return@launch
@@ -243,7 +243,7 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val chatResult = grpcManager.getPersonChatId(user.userId)
+            val chatResult = legacyTransport.getPersonChatId(user.userId)
             if (chatResult.isFailure) {
                 Toast.makeText(this@MainActivity, R.string.deep_link_chat_open_failed, Toast.LENGTH_SHORT).show()
                 return@launch

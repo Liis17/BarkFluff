@@ -397,7 +397,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         if (!ensureCallsClient()) return false
 
         val app = application as BarkFluffApplication
-        app.grpcManager.ensureTokenValid(this)
+        app.legacyTransport.ensureTokenValid(this)
         return app.callRepository.join(callId)
             .onSuccess { response ->
                 livekitUrl = response.livekitUrl.ifBlank { livekitUrl.ifBlank { GlobalParam(this).livekitUrl } }
@@ -576,7 +576,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         if (uid > 0L && resolving.add(participant.identity)) {
             lifecycleScope.launch {
-                val user = (application as BarkFluffApplication).grpcManager.getUserData(uid).getOrNull()
+                val user = (application as BarkFluffApplication).legacyTransport.getUserData(uid).getOrNull()
                 if (user != null) {
                     val name = "${user.firstName} ${user.lastName}".trim()
                         .ifBlank { user.username }.ifBlank { getString(R.string.call_participant_default) }
@@ -923,12 +923,12 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun ensureCallsClient(): Boolean {
         val app = application as BarkFluffApplication
-        if (app.grpcManager.callsClient != null) return true
+        if (app.legacyTransport.callsClient != null) return true
 
         val callsAddress = GlobalParam(this).socketCalls
         if (callsAddress.isBlank()) return false
 
-        return app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
+        return app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
     }
 
     private fun sheetContainer(title: String): LinearLayout =

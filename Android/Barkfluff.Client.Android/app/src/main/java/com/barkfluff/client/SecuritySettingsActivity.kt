@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import barkfluff.identity.IdentityApiOuterClass
 import com.barkfluff.client.databinding.ActivitySecuritySettingsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 class SecuritySettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySecuritySettingsBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private var isUpdatingSwitch = false
 
     companion object {
@@ -34,7 +34,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         setupToolbar()
         setupClickListeners()
@@ -77,7 +77,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun loadOtpStatus() {
         lifecycleScope.launch {
-            val result = grpcManager.listOtpVerification()
+            val result = legacyTransport.listOtpVerification()
             if (result.isSuccess) {
                 val status = result.getOrNull()!!
                 isUpdatingSwitch = true
@@ -196,7 +196,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         // Шаг 1: Отправка кода
         sendCodeButton.setOnClickListener {
             lifecycleScope.launch {
-                val result = grpcManager.resetPassword()
+                val result = legacyTransport.resetPassword()
                 if (result.isSuccess) {
                     resetId = result.getOrNull()
                     currentStep = 2
@@ -220,7 +220,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             }
             
             lifecycleScope.launch {
-                val result = grpcManager.confirmResetPassword(resetId!!, code)
+                val result = legacyTransport.confirmResetPassword(resetId!!, code)
                 if (result.isSuccess) {
                     currentStep = 3
                     stepIndicator.text = getString(R.string.security_password_step, 3, getString(R.string.security_password_step_new_password))
@@ -249,7 +249,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             }
             
             lifecycleScope.launch {
-                val result = grpcManager.setPasswordAfterReset(newPassword)
+                val result = legacyTransport.setPasswordAfterReset(newPassword)
                 if (result.isSuccess) {
                     Toast.makeText(this@SecuritySettingsActivity, R.string.security_password_changed, Toast.LENGTH_SHORT).show()
                     dialog.dismiss()
@@ -264,7 +264,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun enableAuthenticator2FA() {
         lifecycleScope.launch {
-            val result = grpcManager.getOtpSetup()
+            val result = legacyTransport.getOtpSetup()
             if (result.isSuccess) {
                 val setup = result.getOrNull()!!
                 showOtpSetupDialog(setup)
@@ -277,7 +277,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun showOtpSetupDialog(setup: GrpcManager.OtpSetupResult) {
+    private fun showOtpSetupDialog(setup: GrpcTransportFacade.OtpSetupResult) {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL
@@ -336,7 +336,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
                 lifecycleScope.launch {
-                    val result = grpcManager.confirmOtpSetup(code)
+                    val result = legacyTransport.confirmOtpSetup(code)
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_enabled, Toast.LENGTH_SHORT).show()
                     } else {
@@ -358,7 +358,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun enableEmail2FA() {
         lifecycleScope.launch {
-            val result = grpcManager.enableOtpEmail()
+            val result = legacyTransport.enableOtpEmail()
             if (result.isSuccess) {
                 showEmailOtpConfirmDialog()
             } else {
@@ -393,7 +393,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setPositiveButton(R.string.btn_confirm) { _, _ ->
                 val code = otpEdit.text?.toString() ?: ""
                 lifecycleScope.launch {
-                    val result = grpcManager.confirmOtpSetup(code)
+                    val result = legacyTransport.confirmOtpSetup(code)
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_enabled, Toast.LENGTH_SHORT).show()
                     } else {
@@ -436,7 +436,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setPositiveButton(R.string.security_disable) { _, _ ->
                 val code = otpEdit.text?.toString() ?: ""
                 lifecycleScope.launch {
-                    val result = grpcManager.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Authenticator, code)
+                    val result = legacyTransport.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Authenticator, code)
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_disabled, Toast.LENGTH_SHORT).show()
                     } else {
@@ -462,7 +462,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setMessage(R.string.security_disable_2fa_email_message)
             .setPositiveButton(R.string.security_disable) { _, _ ->
                 lifecycleScope.launch {
-                    val result = grpcManager.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Email, "")
+                    val result = legacyTransport.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Email, "")
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_disabled, Toast.LENGTH_SHORT).show()
                     } else {

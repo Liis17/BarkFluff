@@ -2,13 +2,13 @@ package com.barkfluff.client.utils
 
 import android.content.Context
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-fun GlobalParam.applyServerInfo(serverInfo: GrpcManager.ServerInfo) {
+fun GlobalParam.applyServerInfo(serverInfo: GrpcTransportFacade.ServerInfo) {
     serverName = serverInfo.name
     serverDescription = serverInfo.description
     socketIdentity = ensureHttpPrefix(serverInfo.identityEndpoint)
@@ -37,7 +37,7 @@ sealed interface ServerInfoRefreshResult {
 }
 
 suspend fun refreshServerInfoFromBeacon(
-    grpcManager: GrpcManager,
+    legacyTransport: GrpcTransportFacade,
     globalParam: GlobalParam,
     context: Context
 ): ServerInfoRefreshResult {
@@ -45,12 +45,12 @@ suspend fun refreshServerInfoFromBeacon(
         return ServerInfoRefreshResult.Unavailable
     }
 
-    val createResult = grpcManager.createOnlyBeaconClient(globalParam.socketBeacon)
+    val createResult = legacyTransport.createOnlyBeaconClient(globalParam.socketBeacon)
     if (createResult.isFailure) {
         return ServerInfoRefreshResult.Unavailable
     }
 
-    val infoResult = grpcManager.getServerInfo()
+    val infoResult = legacyTransport.getServerInfo()
     val serverInfo = infoResult.getOrNull() ?: return ServerInfoRefreshResult.Unavailable
     val effectiveServerInfo = if (
         serverInfo.filesMediaEndpoint.isBlank() && globalParam.socketFilesMedia.isNotBlank()

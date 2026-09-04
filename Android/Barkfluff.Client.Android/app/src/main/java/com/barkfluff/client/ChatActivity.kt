@@ -47,7 +47,7 @@ import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.adapter.StickerPanelAdapter
 import com.barkfluff.client.adapter.StickerPanelItem
@@ -106,7 +106,7 @@ class ChatActivity : AppCompatActivity() {
     private val viewModel: ChatViewModel by viewModels()
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var realtimeService: RealtimeService
 
     @Inject lateinit var chatRepository: ChatRepository
@@ -292,7 +292,7 @@ class ChatActivity : AppCompatActivity() {
 
         val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
         realtimeService = app.realtimeService
 
         // Получаем данные из intent
@@ -842,7 +842,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun ensureCallsClient(): Boolean {
         val app = application as BarkFluffApplication
-        if (app.grpcManager.callsClient != null) return true
+        if (app.legacyTransport.callsClient != null) return true
 
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) {
@@ -850,7 +850,7 @@ class ChatActivity : AppCompatActivity() {
             return false
         }
 
-        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
+        val result = app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true)
         if (result.isFailure) {
             Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
         }
@@ -993,7 +993,7 @@ class ChatActivity : AppCompatActivity() {
                 try {
                     val connection = java.net.URL(url)
                         .openConnection() as java.net.HttpURLConnection
-                    grpcManager.configureHttpConnection(connection)
+                    legacyTransport.configureHttpConnection(connection)
                     connection.connect()
                     val bytes = connection.inputStream.readBytes()
                     connection.disconnect()
@@ -1072,7 +1072,7 @@ class ChatActivity : AppCompatActivity() {
     private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
         return try {
             val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-            grpcManager.configureHttpConnection(conn)
+            legacyTransport.configureHttpConnection(conn)
             conn.connect()
             val bmp = android.graphics.BitmapFactory.decodeStream(conn.inputStream)
             conn.disconnect()
@@ -1190,14 +1190,14 @@ class ChatActivity : AppCompatActivity() {
      */
     private fun loadGroupMemberInfo() {
         lifecycleScope.launch {
-            val members = grpcManager.listChatMembers(chatId).getOrNull() ?: return@launch
+            val members = legacyTransport.listChatMembers(chatId).getOrNull() ?: return@launch
 
             for (member in members) {
                 if (member.userId == currentUserId) continue
                 val name = "${member.firstName} ${member.lastName}".trim().ifBlank {
                     getString(R.string.group_member_id, member.userId)
                 }
-                val avatarSource = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
+                val avatarSource = legacyTransport.getUserData(member.userId).getOrNull()?.let { user ->
                     avatarSourceFor(user)
                 }
                 groupMemberInfoCache[member.userId] = name to avatarSource
@@ -1261,7 +1261,7 @@ class ChatActivity : AppCompatActivity() {
         if (!pendingTypingNameFetches.add(userId)) return
         lifecycleScope.launch {
             try {
-                val user = grpcManager.getUserData(userId).getOrNull()
+                val user = legacyTransport.getUserData(userId).getOrNull()
                 if (user != null) {
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank {
                         getString(R.string.group_member_id, userId)
@@ -1275,7 +1275,7 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+    private fun avatarSourceFor(user: GrpcTransportFacade.UserData): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }
@@ -2019,7 +2019,7 @@ class ChatActivity : AppCompatActivity() {
     private fun refreshStickerDataFromServer() {
         lifecycleScope.launch {
             try {
-                val packs = withContext(Dispatchers.IO) { grpcManager.listStickerPacks() }
+                val packs = withContext(Dispatchers.IO) { legacyTransport.listStickerPacks() }
                 if (packs.isNullOrEmpty()) {
                     if (!stickerDataLoaded) stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
                     return@launch
@@ -2033,7 +2033,7 @@ class ChatActivity : AppCompatActivity() {
                         stickerCount = pack.stickerCount,
                         coverStickerId = pack.coverStickerId
                     ))
-                    val stickers = withContext(Dispatchers.IO) { grpcManager.getStickerPack(pack.id) }
+                    val stickers = withContext(Dispatchers.IO) { legacyTransport.getStickerPack(pack.id) }
                     if (stickers != null) {
                         allItems.addAll(stickers.map { StickerPanelItem.Sticker(it, pack.id) })
                     }
@@ -2808,7 +2808,7 @@ class ChatActivity : AppCompatActivity() {
     private fun toggleChatMute() {
         val newMuted = !viewModel.uiState.value.isChatMuted
         lifecycleScope.launch {
-            val result = grpcManager.setChatMuted(chatId, newMuted)
+            val result = legacyTransport.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
                 viewModel.dispatch(ChatIntent.SetMuted(newMuted))
                 isChatMuted = newMuted
@@ -2877,7 +2877,7 @@ class ChatActivity : AppCompatActivity() {
 
     private suspend fun fetchAndDisplayOnlineStatus(userId: Long) {
         try {
-            val onlinerClient = grpcManager.onlinerClient
+            val onlinerClient = legacyTransport.onlinerClient
             if (onlinerClient != null) {
                 val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
                     .addUserIds(userId)
@@ -2999,7 +2999,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun refreshChatBackgroundSettings() {
         lifecycleScope.launch {
-            grpcManager.getUserSettings().onSuccess { settings ->
+            legacyTransport.getUserSettings().onSuccess { settings ->
                 globalParam.applyChatBackgroundSettings(
                     settings.globalChatBackgroundFileId,
                     settings.chatBackgroundFileIds

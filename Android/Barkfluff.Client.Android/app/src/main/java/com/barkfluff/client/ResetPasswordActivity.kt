@@ -20,7 +20,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityResetPasswordBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.launch
 
@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 class ResetPasswordActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityResetPasswordBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
 
     private var resetId: String? = null
     private var currentStep = 1
@@ -69,7 +69,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
@@ -369,7 +369,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = grpcManager.resetPassword(email, username)
+            val result = legacyTransport.resetPassword(email, username)
             setLoading(false)
 
             if (result.isSuccess) {
@@ -391,7 +391,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = grpcManager.confirmResetPassword(resetId!!, otpCode)
+            val result = legacyTransport.confirmResetPassword(resetId!!, otpCode)
             setLoading(false)
 
             if (result.isSuccess) {
@@ -423,7 +423,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = grpcManager.resetPassword(email, username)
+            val result = legacyTransport.resetPassword(email, username)
             setLoading(false)
 
             if (result.isSuccess) {
@@ -441,7 +441,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = grpcManager.setPasswordAfterReset(newPassword)
+            val result = legacyTransport.setPasswordAfterReset(newPassword)
             setLoading(false)
 
             if (result.isSuccess) {

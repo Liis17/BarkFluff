@@ -5,7 +5,7 @@ import android.content.Context
 import android.util.Log
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +43,7 @@ object WidgetUpdater {
     private val pendingJobs = ConcurrentHashMap<Int, Job>()
     private val refreshMutex = Mutex()
 
-    private var cachedChats: List<GrpcManager.ChatData>? = null
+    private var cachedChats: List<GrpcTransportFacade.ChatData>? = null
     @Volatile
     private var cachedAt: Long = 0L
     private const val CACHE_TTL_MS = 10_000L
@@ -68,12 +68,12 @@ object WidgetUpdater {
                         return@withTimeout
                     }
                     val app = ctx as? BarkFluffApplication
-                    val grpcManager = app?.grpcManager
+                    val legacyTransport = app?.legacyTransport
                     val globalParam = GlobalParam(ctx)
                     val loggedIn = !globalParam.accessToken.isNullOrBlank()
 
-                    val chats = if (loggedIn && grpcManager != null) {
-                        fetchChats(ctx, grpcManager, globalParam)
+                    val chats = if (loggedIn && legacyTransport != null) {
+                        fetchChats(ctx, legacyTransport, globalParam)
                     } else emptyList()
 
                     val views = WidgetRenderer.render(
@@ -82,7 +82,7 @@ object WidgetUpdater {
                         config = config,
                         chats = chats,
                         loggedIn = loggedIn,
-                        grpcManager = grpcManager
+                        legacyTransport = legacyTransport
                     )
                     AppWidgetManager.getInstance(ctx).updateAppWidget(appWidgetId, views)
                 }
@@ -122,9 +122,9 @@ object WidgetUpdater {
 
     private suspend fun fetchChats(
         context: Context,
-        grpcManager: GrpcManager,
+        legacyTransport: GrpcTransportFacade,
         globalParam: GlobalParam
-    ): List<GrpcManager.ChatData> {
+    ): List<GrpcTransportFacade.ChatData> {
         val now = System.currentTimeMillis()
         cachedChats?.let { cached ->
             if (now - cachedAt < CACHE_TTL_MS) return cached
@@ -132,21 +132,21 @@ object WidgetUpdater {
 
         // Если клиент не создан (например, виджет работает в фоне без активного приложения) —
         // создаём messages-клиент по адресу из GlobalParam.
-        if (grpcManager.messagesClient == null) {
+        if (legacyTransport.messagesClient == null) {
             val addr = globalParam.socketMessages
             if (addr.isBlank()) {
                 Log.w(TAG, "No messages endpoint configured")
                 return emptyList()
             }
-            val r = grpcManager.createMessagesClient(addr, context, includeDeviceInfo = true)
+            val r = legacyTransport.createMessagesClient(addr, context, includeDeviceInfo = true)
             if (r.isFailure) {
                 Log.w(TAG, "Failed to create messages client for widget: ${r.exceptionOrNull()?.message}")
                 return emptyList()
             }
         }
 
-        grpcManager.ensureTokenValid(context)
-        val result = grpcManager.getChats(offset = 0, size = 100)
+        legacyTransport.ensureTokenValid(context)
+        val result = legacyTransport.getChats(offset = 0, size = 100)
         return if (result.isSuccess) {
             val list = result.getOrNull().orEmpty()
             cachedChats = list

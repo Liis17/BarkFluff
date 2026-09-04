@@ -76,7 +76,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
         val peerId = binding.peerIdEditText.text?.toString()?.toLongOrNull() ?: return
         val app = applicationContext as BarkFluffApplication
         lifecycleScope.launch {
-            val result = app.grpcManager.listPeerDevices(peerId)
+            val result = app.legacyTransport.listPeerDevices(peerId)
             result.onSuccess { devices ->
                 peerDevices = devices.filter { it.hasBundle }
                 val labels = if (peerDevices.isEmpty()) listOf(getString(R.string.encrypted_devices_empty))
