@@ -26,8 +26,14 @@ import com.barkfluff.client.adapter.AttachmentPreviewAdapter
 import com.barkfluff.client.adapter.GroupMemberAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityGroupInfoBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.PresenceGateway
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.model.UserProfile
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
@@ -35,6 +41,7 @@ import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -48,12 +55,18 @@ import java.io.File
 /**
  * Экран управления групповым чатом: аватар, название, участники, вложения.
  */
+@AndroidEntryPoint
 class GroupInfoActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityGroupInfoBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
-    private lateinit var chatRepository: ChatRepository
     private lateinit var globalParam: GlobalParam
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var messageGateway: MessageGateway
+    @javax.inject.Inject lateinit var presenceGateway: PresenceGateway
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
     private lateinit var memberAdapter: GroupMemberAdapter
     private data class AttachmentsPanel(
         val container: View,
@@ -122,9 +135,6 @@ class GroupInfoActivity : AppCompatActivity() {
         binding = ActivityGroupInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
-        chatRepository = ChatRepository(this, legacyTransport)
         globalParam = GlobalParam(this)
 
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run { finish(); return }
@@ -152,7 +162,7 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun showChatBackgroundDialog() {
         lifecycleScope.launch {
-            val fileIds = legacyTransport.getPersonalization().getOrElse {
+            val fileIds = userSettingsGateway.personalization().getOrElse {
                 Toast.makeText(this@GroupInfoActivity, R.string.profile_background_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
@@ -167,7 +177,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 .setPositiveButton(R.string.btn_apply) { _, _ ->
                     lifecycleScope.launch {
                         val fileId = if (selected == 0) "" else fileIds[selected - 1]
-                        val result = legacyTransport.setChatBackground(chatId, fileId)
+                        val result = userSettingsGateway.setChatBackground(chatId, fileId)
                         if (result.isSuccess) {
                             globalParam.setChatBackgroundOverride(chatId, fileId)
                             Toast.makeText(this@GroupInfoActivity, R.string.profile_background_updated, Toast.LENGTH_SHORT).show()
@@ -261,9 +271,9 @@ class GroupInfoActivity : AppCompatActivity() {
     ): AttachmentsPanel {
         lateinit var adapter: AttachmentPreviewAdapter
         adapter = AttachmentPreviewAdapter(
-            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onAttachmentClick = { info -> openAttachment(info, adapter) },
-            downloadToCache = { fileId -> FileCache.getFile(fileId) ?: chatRepository.downloadFile(fileId) },
+            downloadToCache = { fileId -> FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId) },
             scope = lifecycleScope
         )
         recyclerView.adapter = adapter
@@ -293,7 +303,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     try {
                         val file = withContext(Dispatchers.IO) {
-                            FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                            FileCache.getFile(att.fileId) ?: fileMediaGateway.download(att.fileId)
                         }
                         if (file != null) {
                             val uri = androidx.core.content.FileProvider.getUriForFile(
@@ -351,9 +361,9 @@ class GroupInfoActivity : AppCompatActivity() {
         showLoading(Tab.MEDIA)
         lifecycleScope.launch {
             try {
-                val images = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.IMAGE).getOrNull().orEmpty()
-                val gifs = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.GIF).getOrNull().orEmpty()
-                val videos = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.VIDEO).getOrNull().orEmpty()
+                val images = messageGateway.attachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.IMAGE).getOrNull().orEmpty()
+                val gifs = messageGateway.attachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.GIF).getOrNull().orEmpty()
+                val videos = messageGateway.attachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.VIDEO).getOrNull().orEmpty()
                 val merged = (images + gifs + videos).sortedByDescending { it.sentAt.seconds }
                 if (!isCurrentLoad(Tab.MEDIA, version, requestedChatId)) return@launch
                 if (merged.isEmpty()) showEmpty(Tab.MEDIA, getString(R.string.media_no_attachments)) else showList(Tab.MEDIA, merged)
@@ -373,7 +383,7 @@ class GroupInfoActivity : AppCompatActivity() {
         showLoading(Tab.FILES)
         lifecycleScope.launch {
             try {
-                val attachments = chatRepository.getChatAttachments(
+                val attachments = messageGateway.attachments(
                     chatId,
                     barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT,
                     pageSize = if (query.isBlank()) 100 else 30,
@@ -418,7 +428,7 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun setupMembersList() {
         memberAdapter = GroupMemberAdapter(
-            getFileUrl = { fileId -> legacyTransport.getFileDownloadUrl(fileId).getOrNull() },
+            getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onMemberClick = { member -> openMemberProfile(member) },
             onRemove = { member -> confirmRemove(member) }
         )
@@ -436,12 +446,12 @@ class GroupInfoActivity : AppCompatActivity() {
             fileId = chatAvatarFileId,
             displayName = chatTitle,
             userId = 0
-        ) { chatAvatarFileId?.let { legacyTransport.getFileDownloadUrl(it).getOrNull() } }
+        ) { chatAvatarFileId?.let { fileMediaGateway.downloadUrl(it).getOrNull() } }
     }
 
     private fun loadMembers() {
         lifecycleScope.launch {
-            val result = legacyTransport.listChatMembers(chatId)
+            val result = chatDirectoryGateway.members(chatId)
             if (result.isFailure) {
                 Toast.makeText(this@GroupInfoActivity, R.string.group_members_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
@@ -457,7 +467,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 async(Dispatchers.IO) {
                     val name = "${member.firstName} ${member.lastName}".trim()
                         .ifBlank { getString(R.string.group_member_id, member.userId) }
-                    val avatarFileId = legacyTransport.getUserData(member.userId).getOrNull()?.let { user ->
+                    val avatarFileId = userProfileGateway.user(member.userId).getOrNull()?.let { user ->
                         avatarSourceFor(user)
                     }
                     val status = statuses[member.userId]
@@ -479,7 +489,7 @@ class GroupInfoActivity : AppCompatActivity() {
         }
     }
 
-    private fun avatarSourceFor(user: GrpcTransportFacade.UserData): String? {
+    private fun avatarSourceFor(user: UserProfile): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }
@@ -490,7 +500,7 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun openMemberProfile(member: GroupMemberAdapter.MemberItem) {
         lifecycleScope.launch {
             val personalChatId = if (member.userId != globalParam.userId) {
-                legacyTransport.getPersonChatId(member.userId).getOrNull()
+                userDirectoryGateway.personChatId(member.userId).getOrNull()
             } else {
                 null
             }
@@ -512,15 +522,8 @@ class GroupInfoActivity : AppCompatActivity() {
     private suspend fun loadOnlineStatuses(userIds: List<Long>): Map<Long, Pair<Boolean, Long>> {
         if (userIds.isEmpty()) return emptyMap()
         return try {
-            val onlinerClient = legacyTransport.onlinerClient ?: return emptyMap()
-            val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
-                .addAllUserIds(userIds)
-                .build()
-            val response = onlinerClient.getOnlineStatus(request)
-            response.usersStatusesList.associate { st ->
-                val online = st.status.getNumber() ==
-                        barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
-                st.userId to (online to st.lastSeen.seconds * 1000)
+            presenceGateway.status(userIds).getOrNull().orEmpty().associate { status ->
+                status.userId to (status.isOnline to status.lastSeenEpochMillis)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading online statuses", e)
@@ -539,7 +542,7 @@ class GroupInfoActivity : AppCompatActivity() {
             .setMessage(getString(R.string.group_remove_member_message, member.name))
             .setPositiveButton(R.string.btn_delete) { _, _ ->
                 lifecycleScope.launch {
-                    val result = legacyTransport.kickUser(chatId, member.userId)
+                    val result = chatDirectoryGateway.removeMember(chatId, member.userId)
                     if (result.isSuccess) {
                         loadMembers()
                     } else {
@@ -566,7 +569,7 @@ class GroupInfoActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
                 lifecycleScope.launch {
-                    val result = legacyTransport.updateGroupChat(chatId, title = newName)
+                    val result = chatDirectoryGateway.updateGroup(chatId, title = newName)
                     if (result.isSuccess) {
                         chatTitle = newName
                         binding.groupName.text = newName
@@ -606,7 +609,7 @@ class GroupInfoActivity : AppCompatActivity() {
                     outputStream.toByteArray()
                 }
 
-                val uploadResult = chatRepository.uploadFile(
+                val uploadResult = fileMediaGateway.upload(
                     bytes,
                     barkfluff.files.FilesApiOuterClass.UploadFileType.CHAT_PICTURE
                 )
@@ -616,7 +619,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 }
 
                 val fileId = uploadResult.getOrNull()!!
-                val updateResult = legacyTransport.updateGroupChat(chatId, pictureFileId = fileId)
+                val updateResult = chatDirectoryGateway.updateGroup(chatId, pictureFileId = fileId)
                 if (updateResult.isSuccess) {
                     chatAvatarFileId = updateResult.getOrNull()?.pictureFileId?.ifBlank { fileId } ?: fileId
                     renderHeader()
@@ -640,6 +643,5 @@ class GroupInfoActivity : AppCompatActivity() {
     override fun onDestroy() {
         fileSearchJob?.cancel()
         super.onDestroy()
-        chatRepository.close()
     }
 }
