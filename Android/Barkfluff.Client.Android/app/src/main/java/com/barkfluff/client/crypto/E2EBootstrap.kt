@@ -3,9 +3,12 @@ package com.barkfluff.client.crypto
 import android.content.Context
 import android.util.Log
 import barkfluff.users.UsersApiOuterClass
-import com.barkfluff.client.BarkFluffApplication
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.PrekeyGateway
 import com.google.protobuf.ByteString
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import org.signal.libsignal.protocol.state.PreKeyRecord
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord
 
@@ -16,12 +19,22 @@ import org.signal.libsignal.protocol.state.SignedPreKeyRecord
  */
 object E2EBootstrap {
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface Dependencies {
+        fun prekeyManager(): PrekeyManager
+        fun prekeyGateway(): PrekeyGateway
+    }
+
     private const val TAG = "E2EBootstrap"
 
     /** Сгенерировать identity+prekeys и зарегистрировать на сервере (если ещё не сделано). */
     suspend fun ensurePrekeyBundleRegistered(context: Context): Boolean {
-        val app = context.applicationContext as BarkFluffApplication
-        val manager = app.prekeyManager
+        val dependencies = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            Dependencies::class.java,
+        )
+        val manager = dependencies.prekeyManager()
         if (manager.isRegistered) return true
 
         return try {
@@ -32,7 +45,7 @@ object E2EBootstrap {
             // Сериализация identity-key: используем .serialize() (33 байта, с type-prefix)
             val identityPubBytes = bundle.identityKeyPair.publicKey.serialize()
 
-            val result = app.legacyTransport.registerPrekeyBundle(
+            val result = dependencies.prekeyGateway().register(
                 registrationId = bundle.registrationId,
                 identityPubkey = identityPubBytes,
                 signedPreKey = signedProto,
@@ -56,14 +69,17 @@ object E2EBootstrap {
      * Вызывать после успешного FetchPrekeyBundle если remaining_one_time_prekeys мало.
      */
     suspend fun replenishIfNeeded(context: Context, currentRemaining: Int) {
-        val app = context.applicationContext as BarkFluffApplication
-        val manager = app.prekeyManager
+        val dependencies = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            Dependencies::class.java,
+        )
+        val manager = dependencies.prekeyManager()
         if (currentRemaining >= PrekeyManager.MIN_ONE_TIME_PREKEYS_THRESHOLD) return
         try {
             val refill = PrekeyManager.INITIAL_ONE_TIME_PREKEYS - currentRemaining
             val newKeys = manager.generateAdditionalOneTimePrekeys(refill)
             val protos = newKeys.map { it.toProto() }
-            val r = app.legacyTransport.replenishOneTimePrekeys(protos)
+            val r = dependencies.prekeyGateway().replenish(protos)
             if (r.isSuccess) Log.i(TAG, "Replenished one-time prekeys: total=${r.getOrNull()}")
         } catch (e: Exception) {
             Log.w(TAG, "replenishIfNeeded failed", e)
