@@ -40,6 +40,25 @@ class ClientSlotRegistryTest {
     }
 
     @Test
+    fun `next lazy read replaces a slot when endpoint changes`() {
+        val created = mutableListOf<String>()
+        val closed = mutableListOf<String>()
+        var endpoint = "one.example:443"
+        val registry = ClientSlotRegistry<Service, String>(
+            endpointFor = { endpoint },
+            normalize = { it.substringBefore(":") + ":443" },
+            clientFactory = { _, normalized -> "client-$normalized-${created.size}".also { created += it } },
+            closeAction = { closed += it },
+        )
+
+        assertEquals("client-one.example:443-0", registry.get(Service.USERS))
+        endpoint = "two.example:443"
+
+        assertEquals("client-two.example:443-1", registry.get(Service.USERS))
+        assertEquals(listOf("client-one.example:443-0"), closed)
+    }
+
+    @Test
     fun `shutdown is terminal and closes every client`() {
         val closed = mutableListOf<String>()
         val registry = ClientSlotRegistry<Service, String>(

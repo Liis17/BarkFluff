@@ -329,6 +329,7 @@ class GrpcRealtimeGateway(private val realtime: RealtimeService) : RealtimeGatew
     override fun shutdown() = realtime.shutdown()
     override fun changeOnlineSubscription(userIds: List<Long>) = realtime.changeOnlineSubscription(userIds)
     override fun changeTypingSubscription(chatIds: List<String>) = realtime.changeTypingSubscription(chatIds)
+    override fun sendTypingStatus(chatId: String, typing: Boolean) = realtime.sendTypingStatus(chatId, typing)
 }
 
 class GrpcCallGateway(private val repository: CallRepository) : CallGateway {

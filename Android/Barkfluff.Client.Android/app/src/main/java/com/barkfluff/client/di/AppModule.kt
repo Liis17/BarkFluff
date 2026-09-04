@@ -62,10 +62,8 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Composition root приложения: единственные экземпляры gRPC-менеджера, realtime-сервисов,
- * E2E-инфраструктуры и репозиториев. Публичные свойства BarkFluffApplication — делегаты
- * к этим синглтонам, поэтому существующие касты (application as BarkFluffApplication).*
- * продолжают работать; новые компоненты получают зависимости через конструктор.
+ * Composition root: one typed client registry, transport policy, domain gateways, realtime,
+ * durable composer and E2E repositories. UI components receive ports rather than RPC stubs.
  */
 @Module
 @InstallIn(SingletonComponent::class)

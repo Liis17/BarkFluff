@@ -51,8 +51,8 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 /**
- * Зависимости приходят из Hilt ([AppModule]) — свойства ниже делегируют к синглтонам графа,
- * поэтому существующие касты (application as BarkFluffApplication).* не меняются.
+ * Process-wide orchestration only. Transport clients and domain ports are owned by the Hilt
+ * graph; the application keeps lifecycle bridges (realtime, outbox and incoming calls).
  */
 @HiltAndroidApp
 class BarkFluffApplication : Application() {

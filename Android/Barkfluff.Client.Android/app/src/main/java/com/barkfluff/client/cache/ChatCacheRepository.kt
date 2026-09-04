@@ -412,10 +412,13 @@ class ChatCacheRepository(context: Context) {
         chatId: String,
         attachments: List<ComposerAttachment>,
     ) = withContext(Dispatchers.IO) {
-        val dao = database().cacheDao()
-        dao.deleteComposerAttachments(scope.id, chatId)
-        if (attachments.isNotEmpty()) {
-            dao.upsertComposerAttachments(attachments.map { it.toEntity(scope.id, chatId) })
+        val db = database()
+        db.withTransaction {
+            val dao = db.cacheDao()
+            dao.deleteComposerAttachments(scope.id, chatId)
+            if (attachments.isNotEmpty()) {
+                dao.upsertComposerAttachments(attachments.map { it.toEntity(scope.id, chatId) })
+            }
         }
     }
 
@@ -673,6 +676,9 @@ class ChatCacheRepository(context: Context) {
                 appContext.deleteDatabase(DATABASE_NAME)
                 File(appContext.getDatabasePath(DATABASE_NAME).path + "-wal").delete()
                 File(appContext.getDatabasePath(DATABASE_NAME).path + "-shm").delete()
+                // Composer previews are deliberately outside Room so they survive process death;
+                // a full cache clear/logout must remove that journal and its private bytes too.
+                File(appContext.noBackupFilesDir, "composer").deleteRecursively()
                 securePreferences.edit().remove(KEY_PASSPHRASE).apply()
             }
         }

@@ -22,6 +22,7 @@ import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.PresenceGateway
 import com.barkfluff.client.domain.gateway.RealtimeGateway
 import com.barkfluff.client.domain.model.PinErrorException
 import com.barkfluff.client.send.OutgoingMessageQueue
@@ -100,6 +101,7 @@ data class ComposerState(
     val pendingReply: PendingReply? = null,
     val pendingEdit: PendingEdit? = null,
     val attachmentPaths: List<String> = emptyList(),
+    val attachmentKinds: List<String> = emptyList(),
     val draftGeneration: Long? = null,
     val isRestoring: Boolean = false,
 )
@@ -116,6 +118,7 @@ data class SelectionState(
 data class PresenceState(
     val onlineUserIds: Set<Long> = emptySet(),
     val typingUserIds: Set<Long> = emptySet(),
+    val lastSeenEpochMillisByUser: Map<Long, Long> = emptyMap(),
 )
 
 /**
@@ -161,6 +164,8 @@ sealed interface ChatIntent {
     data object StartCatchUp : ChatIntent
     data object ReachedBottom : ChatIntent
     data class TextChanged(val text: String) : ChatIntent
+    data class TypingChanged(val text: String) : ChatIntent
+    data object StopTyping : ChatIntent
     data class Send(val text: String, val fileIds: List<String> = emptyList()) : ChatIntent
     data class SendMedia(val job: SendJob) : ChatIntent
     data class StageAttachment(
@@ -188,6 +193,8 @@ sealed interface ChatIntent {
 sealed interface ChatEffect {
     data class ToastRes(val resId: Int, val formatArg: String? = null) : ChatEffect
     data class DraftRestored(val text: String) : ChatEffect
+    data class AttachmentStaged(val source: Uri) : ChatEffect
+    data class AttachmentStageFailed(val source: Uri) : ChatEffect
     data class SendAccepted(val text: String) : ChatEffect
     data object SendRejected : ChatEffect
     data object FinishActivity : ChatEffect
@@ -210,6 +217,7 @@ class ChatViewModel @Inject constructor(
     private val messageGateway: MessageGateway,
     private val realtimeService: RealtimeService,
     private val realtimeGateway: RealtimeGateway,
+    private val presenceGateway: PresenceGateway,
     private val chatCacheRepository: ChatCacheRepository,
     private val chatDraftRepository: ChatDraftRepository,
     private val composerAttachmentStore: ComposerAttachmentStore,
@@ -240,6 +248,7 @@ class ChatViewModel @Inject constructor(
     private val composerReducer = ChatComposer()
     private val rowProjector = MessageRowProjector()
     private val regularChatSession = RegularChatSession(messageGateway, chatCacheRepository)
+    private val presenceSession by lazy { ChatPresenceSession(realtimeGateway, viewModelScope) }
 
     private fun emitEffect(effect: ChatEffect) {
         _events.tryEmit(effect)
@@ -263,6 +272,8 @@ class ChatViewModel @Inject constructor(
             ChatIntent.StartCatchUp -> onStartCatchUp()
             ChatIntent.ReachedBottom -> onReachedBottom()
             is ChatIntent.TextChanged -> updateComposerText(intent.text)
+            is ChatIntent.TypingChanged -> presenceSession.textChanged(intent.text)
+            ChatIntent.StopTyping -> presenceSession.stopTyping(sendCancel = true)
             is ChatIntent.Send -> sendMessage(intent.text, intent.fileIds)
             is ChatIntent.SendMedia -> enqueueMedia(intent.job)
             is ChatIntent.StageAttachment -> stageAttachment(intent)
@@ -290,6 +301,8 @@ class ChatViewModel @Inject constructor(
     private var chatId: String = ""
     private var supportsDrafts = false
     private var cacheScope: CacheScope? = null
+    private var presenceUserIds: List<Long> = emptyList()
+    private var presenceStatusJob: Job? = null
 
     // Пагинация
     private var firstVisibleMessageId = 0L
@@ -305,6 +318,9 @@ class ChatViewModel @Inject constructor(
     private var draftSaveJob: Job? = null
     private var draftRestored = false
     private var isRestoringDraft = false
+    /** Prevents a newly-picked preview from being mistaken for the send in flight. */
+    @Volatile private var sendInFlight = false
+    private var composerGenerationCounter = 0L
     private var observedOutgoingOperationIds = emptySet<String>()
     private val clearedDraftOperations = mutableSetOf<String>()
     private var latestOutgoingSnapshots: List<OutgoingMessageSnapshot> = emptyList()
@@ -348,6 +364,7 @@ class ChatViewModel @Inject constructor(
             ),
         )
 
+        configurePresence(if (isGroupChat) emptyList() else listOf(otherUserId))
         restoreSelection()
         restoreFromSavedState()
         subscribeToRealtimeEvents()
@@ -360,8 +377,19 @@ class ChatViewModel @Inject constructor(
 
     /** Copies a picked URI before it is exposed as an accepted composer preview. */
     private fun stageAttachment(intent: ChatIntent.StageAttachment) {
-        val scope = cacheScope ?: return
-        val generation = _uiState.value.composer.draftGeneration ?: 0L
+        val scope = cacheScope ?: run {
+            emitEffect(ChatEffect.AttachmentStageFailed(intent.uri))
+            emitEffect(ChatEffect.ToastRes(R.string.message_send_error, "No active chat scope"))
+            return
+        }
+        if (sendInFlight) {
+            emitEffect(ChatEffect.AttachmentStageFailed(intent.uri))
+            emitEffect(ChatEffect.ToastRes(R.string.message_send_error, "Message is being queued"))
+            return
+        }
+        // Attachment generations are local handoff generations, not just the remote draft
+        // revision. Keeping them monotonic lets a later preview survive an older enqueue.
+        val generation = nextComposerGeneration()
         viewModelScope.launch {
             runCatching {
                 composerAttachmentStore.stageUri(
@@ -374,12 +402,19 @@ class ChatViewModel @Inject constructor(
                     mimeType = intent.mimeType,
                 )
             }.onSuccess { attachment ->
+                composerGenerationCounter = maxOf(composerGenerationCounter, attachment.generation)
                 val state = _uiState.value
                 _uiState.value = state.copy(
-                    composer = composerReducer.stagedAttachment(state.composer, attachment.path)
+                    composer = composerReducer.stagedAttachment(
+                        state.composer,
+                        attachment.path,
+                        attachment.kind,
+                    )
                 )
+                emitEffect(ChatEffect.AttachmentStaged(intent.uri))
             }.onFailure { error ->
                 Log.w(TAG, "Composer attachment staging failed", error)
+                emitEffect(ChatEffect.AttachmentStageFailed(intent.uri))
                 emitEffect(ChatEffect.ToastRes(R.string.message_send_error, error.message.orEmpty()))
             }
         }
@@ -402,28 +437,94 @@ class ChatViewModel @Inject constructor(
     private fun restoreComposerAttachments() {
         val scope = cacheScope ?: return
         viewModelScope.launch {
-            val attachments = composerAttachmentStore.restore(scope, chatId)
-            if (attachments.isEmpty()) return@launch
-            val state = _uiState.value
-            val generation = attachments.maxOf { it.generation }
-            if (outgoingMessageQueue.hasDurableHandoff(chatId, generation)) {
-                composerAttachmentStore.clearAfterEnqueue(scope, chatId, generation)
-                _uiState.value = state.copy(
-                    composer = composerReducer.clearAfterDurableEnqueue(
-                        state.composer,
-                        generation,
+            val restored = composerAttachmentStore.restore(scope, chatId)
+            if (restored.isEmpty()) return@launch
+            composerGenerationCounter = maxOf(
+                composerGenerationCounter,
+                restored.maxOf { it.generation },
+            )
+
+            // A queue row may already own the preview when the old process died between QUEUED
+            // and clearAfterEnqueue. Clear only that generation, then render any newer records.
+            val handoffGeneration = restored.maxOf { it.generation }
+            if (outgoingMessageQueue.hasDurableHandoff(chatId, handoffGeneration)) {
+                composerAttachmentStore.clearAfterEnqueue(scope, chatId, handoffGeneration)
+                val remaining = composerAttachmentStore.restore(scope, chatId)
+                val state = _uiState.value
+                _uiState.value = if (remaining.isEmpty()) {
+                    state.copy(
+                        composer = composerReducer.clearAfterDurableEnqueue(
+                            state.composer,
+                            handoffGeneration,
+                        )
                     )
-                )
+                } else {
+                    composerReducer.clearAfterDurableEnqueue(
+                        state.composer,
+                        handoffGeneration,
+                        remaining,
+                    ).let { next -> state.copy(composer = next) }
+                }
                 return@launch
             }
-            val paths = attachments.sortedBy { it.attachmentIndex }.map { it.path }
+
+            val state = _uiState.value
+            val ordered = restored.sortedBy { it.attachmentIndex }
+            // Merge with a preview that completed while restore was reading Room; never let a
+            // stale restore result remove a newly accepted path.
+            val currentPaths = state.composer.attachmentPaths
+            val currentKinds = state.composer.attachmentKinds
+            val currentEntries = currentPaths.mapIndexed { index, path ->
+                path to currentKinds.getOrNull(index).orEmpty().ifBlank { OutgoingAttachmentKind.DOCUMENT.name }
+            }
+            val restoredEntries = ordered.map { it.path to it.kind }
+            val restoredPathSet = restoredEntries.mapTo(HashSet()) { it.first }
+            val merged = restoredEntries + currentEntries.filterNot { it.first in restoredPathSet }
             _uiState.value = state.copy(
                 composer = state.composer.copy(
-                    attachmentPaths = paths,
+                    attachmentPaths = merged.map { it.first },
+                    attachmentKinds = merged.map { it.second },
                     draftGeneration = state.composer.draftGeneration
-                        ?: generation,
+                        ?: ordered.maxOfOrNull { it.generation },
                 )
             )
+        }
+    }
+
+    private fun nextComposerGeneration(): Long {
+        val next = maxOf(
+            composerGenerationCounter,
+            _uiState.value.composer.draftGeneration ?: 0L,
+        ) + 1L
+        composerGenerationCounter = next
+        return next
+    }
+
+    /** Starts the chat-scoped presence subscriptions and hydrates their initial status. */
+    private fun configurePresence(userIds: List<Long>) {
+        if (chatId.isBlank()) return
+        val normalized = userIds
+            .filter { it > 0L && it != currentUserId }
+            .distinct()
+        if (normalized == presenceUserIds && presenceStatusJob?.isActive == true) return
+        presenceUserIds = normalized
+        presenceSession.start(chatId, normalized)
+        presenceStatusJob?.cancel()
+        if (normalized.isEmpty()) return
+        presenceStatusJob = viewModelScope.launch {
+            presenceGateway.status(normalized).onSuccess { statuses ->
+                statuses.forEach { status ->
+                    val next = chatPresence.online(
+                        state = _uiState.value.presence,
+                        userId = status.userId,
+                        isOnline = status.isOnline,
+                        lastSeenEpochMillis = status.lastSeenEpochMillis,
+                    )
+                    if (next != _uiState.value.presence) {
+                        _uiState.value = _uiState.value.copy(presence = next)
+                    }
+                }
+            }
         }
     }
 
@@ -480,6 +581,13 @@ class ChatViewModel @Inject constructor(
                             )
                         }
                     }
+
+                    val trackedPresenceUsers = if (chatInfo.isGroupChat) {
+                        chatInfo.memberIds
+                    } else {
+                        listOf(_uiState.value.otherUserId)
+                    }
+                    configurePresence(trackedPresenceUsers)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading chat info", e)
@@ -753,12 +861,24 @@ class ChatViewModel @Inject constructor(
         val hasStagedComposerAttachments = _uiState.value.composer.attachmentPaths.isNotEmpty()
         if (messageText.isBlank() && fileIds.isEmpty() && !hasStagedComposerAttachments && replyId == 0L) return
 
+        if (sendInFlight) return
+        sendInFlight = true
         viewModelScope.launch {
             try {
                 val sentDraft = chatDraftRepository.edit(chatId, messageText, replyId)
-                val stagedAttachments = cacheScope?.let { scope ->
-                    composerAttachmentStore.restore(scope, chatId).mapNotNull(::toAttachmentSpec)
+                val draftGeneration = sentDraft?.generation
+                val stagedRecords = cacheScope?.let { scope ->
+                    if (draftGeneration != null) {
+                        composerAttachmentStore.rebindGeneration(scope, chatId, draftGeneration)
+                    } else {
+                        composerAttachmentStore.restore(scope, chatId)
+                    }
                 }.orEmpty()
+                val stagedAttachments = stagedRecords.mapNotNull(::toAttachmentSpec)
+                // When a local draft is unavailable, the staged attachment generation still
+                // serves as the durable handoff key. This prevents a successful enqueue from
+                // leaving the same preview in the composer for a second send.
+                val handoffGeneration = draftGeneration ?: stagedRecords.maxOfOrNull { it.generation }
                 outgoingMessageQueue.enqueue(SendJob(
                     chatId = chatId,
                     chatTitle = _uiState.value.chatTitle,
@@ -766,18 +886,33 @@ class ChatViewModel @Inject constructor(
                     attachments = stagedAttachments,
                     replyId = replyId,
                     existingFileIds = fileIds,
-                    draftGeneration = sentDraft?.generation
+                    draftGeneration = handoffGeneration
                 ))
-                _uiState.value = _uiState.value.copy(
-                    composer = composerReducer.clearAfterDurableEnqueue(
-                        _uiState.value.composer,
-                        sentDraft?.generation,
-                    )
+                val remaining = cacheScope?.let { scope ->
+                    composerAttachmentStore.restore(scope, chatId)
+                }.orEmpty()
+                val currentState = _uiState.value
+                _uiState.value = currentState.copy(
+                    composer = if (remaining.isEmpty()) {
+                        composerReducer.clearAfterDurableEnqueue(
+                            currentState.composer,
+                            handoffGeneration,
+                        )
+                    } else {
+                        composerReducer.clearAfterDurableEnqueue(
+                            currentState.composer,
+                            handoffGeneration,
+                            remaining,
+                        )
+                    }
                 )
                 emitEffect(ChatEffect.SendAccepted(messageText))
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending message", e)
+                emitEffect(ChatEffect.SendRejected)
                 emitEffect(ChatEffect.ToastRes(R.string.message_send_error, e.message.orEmpty()))
+            } finally {
+                sendInFlight = false
             }
         }
     }
@@ -806,6 +941,8 @@ class ChatViewModel @Inject constructor(
     }
 
     fun enqueueMedia(job: SendJob) {
+        if (sendInFlight) return
+        sendInFlight = true
         viewModelScope.launch {
             try {
                 val draft = chatDraftRepository.edit(job.chatId, job.text, job.replyId)
@@ -821,6 +958,8 @@ class ChatViewModel @Inject constructor(
                 Log.e(TAG, "Unable to stage outgoing media", e)
                 emitEffect(ChatEffect.SendRejected)
                 emitEffect(ChatEffect.ToastRes(R.string.message_send_error, e.message.orEmpty()))
+            } finally {
+                sendInFlight = false
             }
         }
     }
@@ -1172,10 +1311,12 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             realtimeGateway.onlineStatuses.collect { event ->
+                if (event.userId !in presenceUserIds) return@collect
                 val next = chatPresence.online(
                     _uiState.value.presence,
                     event.userId,
                     event.status == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE,
+                    lastSeenEpochMillis = event.lastSeen.seconds * 1000L + event.lastSeen.nanos / 1_000_000L,
                 )
                 if (next != _uiState.value.presence) {
                     _uiState.value = _uiState.value.copy(presence = next)
@@ -1709,6 +1850,8 @@ class ChatViewModel @Inject constructor(
     override fun onCleared() {
         loadMessagesJob?.cancel()
         draftSaveJob?.cancel()
+        presenceStatusJob?.cancel()
+        if (initialized) presenceSession.stop()
         super.onCleared()
     }
 }
