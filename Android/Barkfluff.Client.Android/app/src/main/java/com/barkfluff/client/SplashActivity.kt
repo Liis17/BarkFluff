@@ -5,11 +5,16 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -22,6 +27,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * - Если есть сервер, но нет токенов -> LoginActivity
  * - Если есть сервер и refresh токен -> MainActivity (с проверкой/обновлением токена)
  */
+@AndroidEntryPoint
 class SplashActivity : AppCompatActivity() {
 
     companion object {
@@ -31,13 +37,16 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var serverDiscoveryGateway: ServerDiscoveryGateway
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
+    @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         globalParam = GlobalParam(this)
-        legacyTransport = GrpcTransportFacade(applicationContext)
 
         // Проверяем данные и переходим на нужный экран
         checkDataAndNavigate()
@@ -54,7 +63,7 @@ class SplashActivity : AppCompatActivity() {
             }
 
             val refreshResult = withTimeoutOrNull(SERVER_INFO_REFRESH_TIMEOUT_MS) {
-                refreshServerInfoFromBeacon(legacyTransport, globalParam, applicationContext)
+                refreshServerInfoFromBeacon(serverDiscoveryGateway, globalParam, applicationContext)
             } ?: ServerInfoRefreshResult.Unavailable
             if (
                 refreshResult == ServerInfoRefreshResult.CertificateApprovalRequired ||
@@ -138,7 +147,7 @@ class SplashActivity : AppCompatActivity() {
             }
 
             // Создаем Identity клиент с interceptor для авторизованных вызовов
-            val createResult = legacyTransport.createIdentityClient(identityAddress, this)
+            val createResult = authGateway.createIdentity(identityAddress, this)
             if (createResult.isFailure) {
                 return false
             }
@@ -149,7 +158,7 @@ class SplashActivity : AppCompatActivity() {
                 return false
             }
 
-            val refreshResult = legacyTransport.refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
+            val refreshResult = authGateway.refresh(refreshToken, globalParam.refreshTokenExpiration)
             if (refreshResult.isSuccess) {
                 val (newAccessToken, newAccessTokenExpiration, newRefreshToken, newRefreshTokenExpiration) = refreshResult.getOrNull()!!
                 
@@ -165,8 +174,6 @@ class SplashActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             false
-        } finally {
-            legacyTransport.shutdown()
         }
     }
 
@@ -180,23 +187,23 @@ class SplashActivity : AppCompatActivity() {
             val usersAddress = globalParam.socketUsers
 
             if (identityAddress.isNotBlank()) {
-                legacyTransport.createIdentityClient(identityAddress, this)
+                authGateway.createIdentity(identityAddress, this)
             }
             if (usersAddress.isNotBlank()) {
-                legacyTransport.createUsersClient(usersAddress, this)
+                clientRegistry.createUsersClient(usersAddress, this, includeDeviceInfo = true)
             }
 
             val shouldContinue = coroutineScope {
                 // Загружаем профиль и синхронизируемые настройки параллельно.
-                val userSettingsDeferred = async { legacyTransport.getUserSettings() }
-                var userDataResult = legacyTransport.getCurrentUserData()
+                val userSettingsDeferred = async { userSettingsGateway.syncedChatBackgrounds() }
+                var userDataResult = userProfileGateway.currentUser()
                 var reloadUserSettings = false
 
                 // Если 401 — токен инвалидирован на сервере, пробуем обновить принудительно
                 if (userDataResult.isFailure) {
                     val errMsg = userDataResult.exceptionOrNull()?.message ?: ""
                     if (errMsg.contains("401") || errMsg.contains("UNAUTHENTICATED")) {
-                        val refreshed = legacyTransport.forceRefreshToken(this@SplashActivity)
+                        val refreshed = authGateway.ensureValid(forceRefresh = true)
                         if (!refreshed) {
                             // Refresh тоже невалиден — на Login
                             globalParam.clearUserData()
@@ -205,7 +212,7 @@ class SplashActivity : AppCompatActivity() {
                             return@coroutineScope false
                         }
                         // Повторяем запрос с новым токеном
-                        userDataResult = legacyTransport.getCurrentUserData()
+                        userDataResult = userProfileGateway.currentUser()
                         reloadUserSettings = true
                     }
                 }
@@ -224,7 +231,7 @@ class SplashActivity : AppCompatActivity() {
                 // Ошибка не блокирует вход — до следующего удачного старта используется кэш.
                 val userSettingsResult = if (reloadUserSettings) {
                     userSettingsDeferred.cancel()
-                    legacyTransport.getUserSettings()
+                    userSettingsGateway.syncedChatBackgrounds()
                 } else {
                     userSettingsDeferred.await()
                 }
@@ -239,16 +246,13 @@ class SplashActivity : AppCompatActivity() {
             if (!shouldContinue) return
             // Отправляем актуальный FCM-токен на сервер (уже залогинен — не пересоздаём)
             try {
-                FirebaseTokenHelper.getTokenAndSendToServer(this, legacyTransport)
+                FirebaseTokenHelper.getTokenAndSendToServer(this, userProfileGateway)
             } catch (e: Exception) {
                 // Не критично — продолжаем
             }
         } catch (e: Exception) {
             // Ошибка загрузки данных пользователя - не критично, продолжаем
-        } finally {
-            legacyTransport.shutdown()
         }
-
         navigateToChats()
     }
 
@@ -272,11 +276,9 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToChats() {
-        // Пересоздаём каналы app-level legacyTransport — гарантирует свежие каналы
-        // с актуальным токеном (AuthInterceptor читает из GlobalParam динамически,
-        // но каналы могут быть устаревшими после предыдущей сессии)
-        val app = applicationContext as BarkFluffApplication
-        app.legacyTransport.recreateAllClients(this, globalParam)
+        // Пересоздаём каналы с актуальным токеном (interceptor читает GlobalParam динамически,
+        // но каналы могли остаться от предыдущей сессии).
+        clientRegistry.recreateAllClients(globalParam, this)
 
         val intent = Intent(this, MainActivity::class.java)
         // Пробрасываем chatId из уведомления, если есть
@@ -289,8 +291,4 @@ class SplashActivity : AppCompatActivity() {
         finish()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        legacyTransport.shutdown()
-    }
 }

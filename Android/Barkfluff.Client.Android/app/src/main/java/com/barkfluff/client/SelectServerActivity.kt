@@ -12,7 +12,9 @@ import com.barkfluff.client.adapter.ServerAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
+import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.security.TlsCertificateInfo
 import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
@@ -21,6 +23,7 @@ import com.barkfluff.client.utils.TlsServerCertificatePreflight
 import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -35,6 +38,7 @@ import kotlin.coroutines.resume
  * Активность выбора сервера
  * Аналог SelectServer.xaml из WPF клиента
  */
+@AndroidEntryPoint
 class SelectServerActivity : AppCompatActivity() {
 
     companion object {
@@ -44,7 +48,8 @@ class SelectServerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySelectServerBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var serverDiscoveryGateway: ServerDiscoveryGateway
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
     private lateinit var serverAdapter: ServerAdapter
     private lateinit var tlsTrustStore: TlsTrustStore
     private val certificateProbe = TlsCertificateProbe()
@@ -62,7 +67,6 @@ class SelectServerActivity : AppCompatActivity() {
 
         // Инициализация
         globalParam = GlobalParam(this)
-        legacyTransport = GrpcTransportFacade(applicationContext)
         tlsTrustStore = TlsTrustStore(applicationContext)
         certificatePreflight = TlsServerCertificatePreflight(tlsTrustStore, certificateProbe)
 
@@ -100,15 +104,9 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
-        val pingManager = GrpcTransportFacade(applicationContext)
-        try {
-            if (pingManager.createOnlyBeaconClient(address).isFailure) return@withTimeoutOrNull null
-            val start = System.currentTimeMillis()
-            if (pingManager.getServerInfo().isFailure) return@withTimeoutOrNull null
-            (System.currentTimeMillis() - start).toInt()
-        } finally {
-            pingManager.shutdown()
-        }
+        val start = System.currentTimeMillis()
+        if (serverDiscoveryGateway.probe(address).isFailure) return@withTimeoutOrNull null
+        (System.currentTimeMillis() - start).toInt()
     }
 
     private fun setupClickListeners() {
@@ -148,7 +146,7 @@ class SelectServerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Создаем Navigator клиент
-                val createResult = legacyTransport.createNavigatorClient()
+                val createResult = serverDiscoveryGateway.createNavigator()
                 if (createResult.isFailure) {
                     showError(
                         createResult.exceptionOrNull()?.message
@@ -158,7 +156,7 @@ class SelectServerActivity : AppCompatActivity() {
                 }
 
                 // Получаем список серверов
-                val result = legacyTransport.getServerList()
+                val result = serverDiscoveryGateway.listServers()
 
                 if (result.isSuccess) {
                     val servers = result.getOrNull()
@@ -224,7 +222,7 @@ class SelectServerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Создаем Beacon клиент
-                val createResult = legacyTransport.createOnlyBeaconClient(address)
+                val createResult = serverDiscoveryGateway.createBeacon(address)
                 if (createResult.isFailure) {
                     showError(
                         createResult.exceptionOrNull()?.message
@@ -236,9 +234,9 @@ class SelectServerActivity : AppCompatActivity() {
 
                 // Получаем информацию о сервере. Для self-signed Beacon сперва показываем
                 // fingerprint, а адрес сохраняем только после завершения trust flow.
-                var infoResult = legacyTransport.getServerInfo()
+                var infoResult = serverDiscoveryGateway.serverInfo()
                 if (infoResult.isFailure && approveCertificateIfEligible(address)) {
-                    infoResult = legacyTransport.getServerInfo()
+                    infoResult = serverDiscoveryGateway.serverInfo()
                 }
 
                 if (infoResult.isSuccess) {
@@ -261,7 +259,7 @@ class SelectServerActivity : AppCompatActivity() {
                         Log.d(TAG, "Успешное подключение к серверу: ${effectiveServerInfo.name}")
 
                         // Создаем Identity клиент для проверки доступности (без interceptor, так как токена еще нет)
-                        val identityResult = legacyTransport.createIdentityClient(globalParam.socketIdentity)
+                        val identityResult = authGateway.createIdentity(globalParam.socketIdentity)
                         if (identityResult.isFailure) {
                             Log.e(TAG, "Не удалось создать Identity клиент")
                         }
@@ -295,12 +293,12 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun normalizeServerAddress(input: String): String? = runCatching {
-        legacyTransport.normalizeEndpointAddress(input)
+        serverDiscoveryGateway.normalizeEndpoint(input)
     }.onFailure {
         showError(getString(R.string.tls_invalid_endpoint))
     }.getOrNull()
 
-    private suspend fun preflightServerCertificates(serverInfo: GrpcTransportFacade.ServerInfo): Boolean {
+    private suspend fun preflightServerCertificates(serverInfo: ServerInfo): Boolean {
         while (true) {
             val certificate = try {
                 withContext(Dispatchers.IO) {
@@ -410,6 +408,5 @@ class SelectServerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        legacyTransport.shutdown()
     }
 }
