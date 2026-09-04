@@ -1,32 +1,22 @@
 package com.barkfluff.client.adapter
 
-import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.MimeTypeMap
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.SeekBar
-import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import com.barkfluff.client.ImageViewerActivity
-import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
@@ -42,11 +32,9 @@ import com.barkfluff.client.databinding.ItemMessageSentBinding
 import com.barkfluff.client.databinding.ViewMessageQuoteBinding
 import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioWaveformExtractor
-import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.utils.ImageLoadHelper
-import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
@@ -55,10 +43,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Адаптер для отображения сообщений в чате с разделителями дат.
@@ -79,6 +63,9 @@ class MessageAdapter(
 
     private val audioPlaybackController = AudioPlaybackController()
     private val viewOperations = ViewBoundOperationController()
+    private val contentRenderer = MessageContentRenderer()
+    private val attachmentRenderer = MessageAttachmentRenderer(attachmentLoader)
+    private val audioRenderer = MessageAudioRenderer(audioPlaybackController)
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
     fun getMessageAt(position: Int): MessageItem? {
@@ -417,7 +404,7 @@ class MessageAdapter(
                 applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
-                binding.stickerTimeTextView.text = formatTime(item.timestamp)
+                binding.stickerTimeTextView.text = contentRenderer.formatTime(item.timestamp)
                 applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus, useLightTint = true)
             } else {
                 // Обычное сообщение с облачком
@@ -435,20 +422,20 @@ class MessageAdapter(
                     binding.forwardQuotesContainer.visibility != View.VISIBLE
 
                 if (item.text.isNotBlank()) {
-                    MarkdownRenderer.renderMessageInto(
+                    contentRenderer.renderText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView,
                         item.text
                     )
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
-                    MarkdownRenderer.clearMessageContent(
+                    contentRenderer.clearText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView
                     )
                 }
 
-                binding.timeTextView.text = formatTime(item.timestamp)
+                binding.timeTextView.text = contentRenderer.formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
                 applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
@@ -616,7 +603,7 @@ class MessageAdapter(
                 applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
-                binding.stickerTimeTextView.text = formatTime(item.timestamp)
+                binding.stickerTimeTextView.text = contentRenderer.formatTime(item.timestamp)
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
@@ -633,20 +620,20 @@ class MessageAdapter(
                     binding.forwardQuotesContainer.visibility != View.VISIBLE
 
                 if (item.text.isNotBlank()) {
-                    MarkdownRenderer.renderMessageInto(
+                    contentRenderer.renderText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView,
                         item.text
                     )
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
-                    MarkdownRenderer.clearMessageContent(
+                    contentRenderer.clearText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView
                     )
                 }
 
-                binding.timeTextView.text = formatTime(item.timestamp)
+                binding.timeTextView.text = contentRenderer.formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
                 val showMediaTimeOverlay = item.text.isBlank() && displayedAttachments.isPureMedia()
@@ -781,7 +768,7 @@ class MessageAdapter(
 
     /** Превью для reply: текст оригинала, а если его нет — тип первого вложения. */
     private fun buildReplyPreviewLine(data: Shared.ReplyInfo, context: Context): String {
-        if (data.textPreview.isNotBlank()) return MarkdownRenderer.strip(data.textPreview)
+        if (data.textPreview.isNotBlank()) return contentRenderer.plainText(data.textPreview)
 
         return when (data.firstAttachmentType) {
             Shared.MessageAttachmentType.IMAGE, Shared.MessageAttachmentType.GIF -> context.getString(R.string.reply_photo)
@@ -822,7 +809,7 @@ class MessageAdapter(
         }
 
         if (data.text.isNotBlank()) {
-            quote.forwardTextTextView.text = MarkdownRenderer.strip(data.text)
+            quote.forwardTextTextView.text = contentRenderer.plainText(data.text)
             quote.forwardTextTextView.visibility = View.VISIBLE
         } else {
             quote.forwardTextTextView.visibility = View.GONE
@@ -833,7 +820,7 @@ class MessageAdapter(
 
     private fun loadStickerImage(imageView: ImageView, attachment: Shared.MessageAttachment) {
         val fileId = if (attachment.previewFileId.isNotBlank()) attachment.previewFileId else attachment.fileId
-        val previewUrl = FileMediaUrl.rewrite(imageView.context, attachment.previewUrl)
+        val previewUrl = attachmentRenderer.previewUrl(imageView.context, attachment)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
@@ -871,7 +858,8 @@ class MessageAdapter(
     ) {
         val overlay = LayoutInflater.from(container.context)
             .inflate(R.layout.view_media_time_status, container, false)
-        overlay.findViewById<android.widget.TextView>(R.id.mediaTimeTextView).text = formatTime(item.timestamp)
+        overlay.findViewById<android.widget.TextView>(R.id.mediaTimeTextView).text =
+            contentRenderer.formatTime(item.timestamp)
         applyDeliveryStatusIcon(
             overlay.findViewById(R.id.mediaReadStatusImageView),
             item.readStatus,
@@ -1201,7 +1189,7 @@ class MessageAdapter(
 
         // Загружаем превью (previewFileId → fileId как fallback)
         val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
-        val previewUrl    = FileMediaUrl.rewrite(thumbnail.context, attachment.previewUrl)
+        val previewUrl    = attachmentRenderer.previewUrl(thumbnail.context, attachment)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
@@ -1216,38 +1204,34 @@ class MessageAdapter(
             onError = { thumbnail.setImageResource(R.drawable.ic_image_placeholder) }
         )
 
-        // Клик: видео → MediaViewerActivity, картинка/gif → ImageViewerActivity
+        // Navigation is owned by the Activity/controller; recycled rows only emit a typed event.
         if (isVideo) {
             cellView.setOnClickListener {
-                val ctx = cellView.context
                 val cachedPath = attachmentLoader.cached(attachment.fileId)?.absolutePath
-                ctx.startActivity(
-                    MediaViewerActivity.createIntent(
-                        ctx,
-                        attachment.fileId,
-                        attachment.fileName.ifBlank { "video" },
-                        cachedPath
+                eventSink?.onAttachmentAction(
+                    MessageAttachmentAction.OpenVideo(
+                        fileId = attachment.fileId,
+                        fileName = attachment.fileName.ifBlank { "video" },
+                        cachedPath = cachedPath,
                     )
                 )
             }
         } else {
             cellView.setOnClickListener {
-                val ctx = cellView.context
                 val imageItems = allMedia.filter {
                     it.type == Shared.MessageAttachmentType.IMAGE ||
                     it.type == Shared.MessageAttachmentType.GIF
                 }
                 val clickedIndex = imageItems.indexOf(attachment).coerceAtLeast(0)
                 val allFileIds    = imageItems.map { it.fileId }
-                val allPreviewUrls = imageItems.map { FileMediaUrl.rewrite(ctx, it.previewUrl) }
-                ctx.startActivity(
-                    ImageViewerActivity.createIntent(
-                        ctx,
-                        allFileIds,
-                        allPreviewUrls,
-                        clickedIndex,
+                val allPreviewUrls = imageItems.map { attachmentRenderer.previewUrl(cellView.context, it) }
+                eventSink?.onAttachmentAction(
+                    MessageAttachmentAction.OpenImage(
+                        fileIds = allFileIds,
+                        previewUrls = allPreviewUrls,
+                        clickedIndex = clickedIndex,
                         fileNames = imageItems.map { it.fileName },
-                        sourceMessageIds = List(imageItems.size) { sourceMessageId ?: 0L }
+                        sourceMessageIds = List(imageItems.size) { sourceMessageId ?: 0L },
                     )
                 )
             }
@@ -1393,7 +1377,7 @@ class MessageAdapter(
                     if (binding.root.tag != fileId) return@withContext
 
                     if (file != null) {
-                        val durationMs = getAudioDuration(file)
+                        val durationMs = audioRenderer.duration(file)
                         updateUiForCached(durationMs)
                         loadVoiceWaveform(fileId, file, binding)
                     } else {
@@ -1405,7 +1389,7 @@ class MessageAdapter(
 
         val cachedFile = attachmentLoader.cached(fileId)
         if (cachedFile != null) {
-            val durationMs = getAudioDuration(cachedFile)
+            val durationMs = audioRenderer.duration(cachedFile)
             updateUiForCached(durationMs)
             loadVoiceWaveform(fileId, cachedFile, binding)
             if (audioPlaybackController.isActiveFile(fileId)) {
@@ -1511,10 +1495,14 @@ class MessageAdapter(
                     if (attachmentLoader.hasCached(fileId)) {
                         val cachedFile = attachmentLoader.cached(fileId)
                         if (cachedFile != null) {
-                            saveFileToDownloads(context, cachedFile, fileName)
+                            eventSink?.onAttachmentAction(
+                                MessageAttachmentAction.Save(fileName = fileName, cachedFile = cachedFile)
+                            )
                         }
                     } else {
-                        Toast.makeText(context, R.string.audio_download_required, Toast.LENGTH_SHORT).show()
+                        eventSink?.onAttachmentAction(
+                            MessageAttachmentAction.ToastRes(R.string.audio_download_required)
+                        )
                     }
                     true
                 }
@@ -1536,7 +1524,9 @@ class MessageAdapter(
                     binding.playPauseButton.isEnabled = false
                     binding.playPauseButton.alpha = 0.4f
                     binding.durationText.text = "0:00"
-                    Toast.makeText(context, R.string.audio_removed_from_cache, Toast.LENGTH_SHORT).show()
+                    eventSink?.onAttachmentAction(
+                        MessageAttachmentAction.ToastRes(R.string.audio_removed_from_cache)
+                    )
                     true
                 }
                 else -> false
@@ -1544,18 +1534,6 @@ class MessageAdapter(
         }
         popup.show()
     }
-    private fun getAudioDuration(file: File): Int {
-        return try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(file.absolutePath)
-            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toIntOrNull() ?: 0
-            retriever.release()
-            duration
-        } catch (e: Exception) {
-            0
-        }
-    }
-
     private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
         return try {
             val retriever = MediaMetadataRetriever()
@@ -1642,7 +1620,7 @@ class MessageAdapter(
 
         // Load thumbnail
         val thumbnailFileId = attachment.previewFileId.ifBlank { "" }
-        val thumbnailUrl = FileMediaUrl.rewrite(binding.root.context, attachment.previewUrl)
+        val thumbnailUrl = attachmentRenderer.previewUrl(binding.root.context, attachment)
 
         if (thumbnailUrl.isNotBlank()) {
             ImageLoadHelper.loadByFileId(
@@ -1690,10 +1668,13 @@ class MessageAdapter(
         // Play button
         binding.videoPlayButton.setOnClickListener {
             val cachedPath = attachmentLoader.cached(fileId)?.absolutePath
-            val intent = MediaViewerActivity.createIntent(
-                binding.root.context, fileId, fileName, cachedPath
+            eventSink?.onAttachmentAction(
+                MessageAttachmentAction.OpenVideo(
+                    fileId = fileId,
+                    fileName = fileName,
+                    cachedPath = cachedPath,
+                )
             )
-            binding.root.context.startActivity(intent)
         }
 
         return binding.root
@@ -1708,7 +1689,7 @@ class MessageAdapter(
         val context = container.context
         val fileId = attachment.fileId
         val fileName = attachment.fileName.ifBlank { context.getString(R.string.attachment_file) }
-        val previewUrl = FileMediaUrl.rewrite(context, attachment.previewUrl)
+        val previewUrl = attachmentRenderer.previewUrl(context, attachment)
 
         binding.docFileName.text = fileName
         binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
@@ -1776,7 +1757,14 @@ class MessageAdapter(
         // Open button
         binding.docOpenButton.setOnClickListener {
             val cachedFile = attachmentLoader.cached(fileId) ?: return@setOnClickListener
-            openFile(context, cachedFile, fileName, fileId, previewUrl)
+            eventSink?.onAttachmentAction(
+                MessageAttachmentAction.OpenDocument(
+                    fileId = fileId,
+                    fileName = fileName,
+                    cachedFile = cachedFile,
+                    previewUrl = previewUrl,
+                )
+            )
         }
 
         // Long press → context menu
@@ -1812,7 +1800,9 @@ class MessageAdapter(
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE
                     binding.docDownloadProgress.visibility = View.GONE
-                    Toast.makeText(context, R.string.file_removed_from_cache, Toast.LENGTH_SHORT).show()
+                    eventSink?.onAttachmentAction(
+                        MessageAttachmentAction.ToastRes(R.string.file_removed_from_cache)
+                    )
                     true
                 }
                 else -> false
@@ -1821,120 +1811,7 @@ class MessageAdapter(
         popup.show()
     }
 
-    private fun openFile(context: Context, file: File, fileName: String, fileId: String, previewUrl: String) {
-        val mimeType = getMimeType(fileName)
-
-        when {
-            isImageFile(fileName) -> {
-                // Open in ImageViewerActivity
-                val intent = ImageViewerActivity.createIntent(
-                    context,
-                    listOf(fileId),
-                    listOf(previewUrl),
-                    0,
-                    fileNames = listOf(fileName)
-                )
-                context.startActivity(intent)
-            }
-            isVideoFile(fileName) -> {
-                // Open in MediaViewerActivity
-                val intent = MediaViewerActivity.createIntent(
-                    context,
-                    fileId,
-                    fileName,
-                    file.absolutePath
-                )
-                context.startActivity(intent)
-            }
-            else -> {
-                // Open with system chooser
-                try {
-                    val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            file
-                        )
-                    } else {
-                        Uri.fromFile(file)
-                    }
-
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, mimeType)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                    }
-
-                    val chooser = Intent.createChooser(intent, context.getString(R.string.open_with))
-                    context.startActivity(chooser)
-                } catch (e: Exception) {
-                    Toast.makeText(context, R.string.file_open_failed, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
-    private fun isImageFile(fileName: String): Boolean {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        return ext in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif")
-    }
-
-    private fun isVideoFile(fileName: String): Boolean {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        return ext in setOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "flv", "wmv")
-    }
-
-    private fun getMimeType(fileName: String): String {
-        val ext = fileName.substringAfterLast('.', "")
-        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
-    }
-
-    private fun saveFileToDownloads(context: Context, sourceFile: File, fileName: String) {
-        try {
-            val resolver = context.contentResolver
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, getMimeType(fileName))
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/BarkFluff")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-            }
-
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-
-            if (uri != null) {
-                resolver.openOutputStream(uri).use { outputStream ->
-                    FileInputStream(sourceFile).use { inputStream ->
-                        inputStream.copyTo(outputStream!!)
-                    }
-                }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    resolver.update(uri, contentValues, null, null)
-                }
-
-                Toast.makeText(context, R.string.file_saved_to_downloads, Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, R.string.file_save_failed, Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.file_save_error, e.message.orEmpty()),
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
     // ─── Formatting Helpers ───────────────────────────────────────────────────
-
-    private fun formatTime(timestampMillis: Long): String {
-        if (timestampMillis <= 0) return ""
-        return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestampMillis))
-    }
 
     private fun formatAudioTime(ms: Long): String {
         if (ms <= 0) return "0:00"

@@ -4,6 +4,7 @@ import barkfluff.calls.CallsApiOuterClass
 import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.content.ContentValues
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -15,6 +16,7 @@ import android.graphics.Typeface
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -24,6 +26,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.PathInterpolator
+import android.webkit.MimeTypeMap
 import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
@@ -39,6 +42,7 @@ import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.MessageAdapter
 import com.barkfluff.client.adapter.FileMediaAttachmentLoader
+import com.barkfluff.client.adapter.MessageAttachmentAction
 import com.barkfluff.client.adapter.MessageRowEventSink
 import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageRowProjector
@@ -99,6 +103,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import coil.load
 import java.io.File
+import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -1116,6 +1121,10 @@ class ChatActivity : AppCompatActivity() {
 
                 override fun senderInfo(senderId: Long): Pair<String?, String?>? =
                     groupMemberInfoCache[senderId]
+
+                override fun onAttachmentAction(action: MessageAttachmentAction) {
+                    handleAttachmentAction(action)
+                }
             }
         )
 
@@ -1181,6 +1190,94 @@ class ChatActivity : AppCompatActivity() {
         // Обработчик клика на кнопку прокрутки вниз
         binding.scrollToBottomButton.setOnClickListener {
             scrollToLatestMessages()
+        }
+    }
+
+    /** Executes system-facing attachment actions outside the stateless message adapter. */
+    private fun handleAttachmentAction(action: MessageAttachmentAction) {
+        when (action) {
+            is MessageAttachmentAction.OpenImage -> {
+                startActivity(
+                    ImageViewerActivity.createIntent(
+                        this,
+                        action.fileIds,
+                        action.previewUrls,
+                        action.clickedIndex,
+                        fileNames = action.fileNames,
+                        sourceMessageIds = action.sourceMessageIds,
+                    )
+                )
+            }
+            is MessageAttachmentAction.OpenVideo -> {
+                startActivity(
+                    MediaViewerActivity.createIntent(
+                        this,
+                        action.fileId,
+                        action.fileName,
+                        action.cachedPath,
+                    )
+                )
+            }
+            is MessageAttachmentAction.OpenDocument -> openDocumentAttachment(action)
+            is MessageAttachmentAction.Save -> {
+                lifecycleScope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        FileSaveUtils.saveToDownloads(this@ChatActivity, action.cachedFile, action.fileName)
+                    }
+                    Toast.makeText(
+                        this@ChatActivity,
+                        if (saved) R.string.file_saved_to_downloads else R.string.file_save_failed,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+            is MessageAttachmentAction.ToastRes -> {
+                val text = action.formatArg?.let { getString(action.resId, it) } ?: getString(action.resId)
+                Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun openDocumentAttachment(action: MessageAttachmentAction.OpenDocument) {
+        val mimeType = getMimeType(action.fileName) ?: "application/octet-stream"
+        try {
+            when {
+                mimeType.startsWith("image/") -> startActivity(
+                    ImageViewerActivity.createIntent(
+                        this,
+                        listOf(action.fileId),
+                        listOf(action.previewUrl),
+                        0,
+                        fileNames = listOf(action.fileName),
+                    )
+                )
+                mimeType.startsWith("video/") -> startActivity(
+                    MediaViewerActivity.createIntent(
+                        this,
+                        action.fileId,
+                        action.fileName,
+                        action.cachedFile.absolutePath,
+                    )
+                )
+                else -> {
+                    val uri = FileProvider.getUriForFile(
+                        this,
+                        "${packageName}.fileprovider",
+                        action.cachedFile,
+                    )
+                    startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, mimeType)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            },
+                            getString(R.string.open_with),
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.file_open_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
