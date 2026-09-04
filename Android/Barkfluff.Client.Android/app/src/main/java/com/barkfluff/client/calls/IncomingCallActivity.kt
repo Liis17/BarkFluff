@@ -25,15 +25,25 @@ import coil.transform.CircleCropTransformation
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.CallGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.notifications.NotificationHelper
-import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+@AndroidEntryPoint
 class IncomingCallActivity : AppCompatActivity() {
+
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var callGateway: CallGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
 
     private lateinit var callId: String
     private lateinit var callerName: String
@@ -164,8 +174,6 @@ class IncomingCallActivity : AppCompatActivity() {
      * При отсутствии userId/профиля остаются инициалы из bindViews().
      */
     private fun loadCallerInfo() {
-        val app = application as BarkFluffApplication
-        val repository = ChatRepository(this, app.legacyTransport)
         val avatarImage = findViewById<ImageView>(R.id.avatarImage)
         val avatarInitials = findViewById<TextView>(R.id.avatarInitials)
 
@@ -183,7 +191,7 @@ class IncomingCallActivity : AppCompatActivity() {
             // Приложение могло стартовать от push — gRPC-клиентов ещё нет
             if (!IncomingCallPrefetch.ensureClients(this@IncomingCallActivity)) return@launch
 
-            val user = repository.getUserData(callerUserId).getOrNull() ?: return@launch
+            val user = userProfileGateway.user(callerUserId).getOrNull() ?: return@launch
 
             val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
             if (displayName.isNotBlank()) {
@@ -194,7 +202,7 @@ class IncomingCallActivity : AppCompatActivity() {
 
             val avatarFileId = user.profilePictureFileId
             if (prefetchedAvatar == null && avatarFileId.isNotBlank()) {
-                loadCallerAvatarWithRetry(avatarImage, avatarInitials, avatarFileId, repository)
+                loadCallerAvatarWithRetry(avatarImage, avatarInitials, avatarFileId)
             }
         }
     }
@@ -204,13 +212,12 @@ class IncomingCallActivity : AppCompatActivity() {
         avatarImage: ImageView,
         avatarInitials: TextView,
         avatarFileId: String,
-        repository: ChatRepository
     ) {
         AvatarLoader.showPlaceholder(avatarInitials, callerName, callerUserId)
         avatarImage.visibility = View.GONE
 
         for (attempt in 1..AVATAR_LOAD_ATTEMPTS) {
-            val avatarUrl = resolveAvatarUrl(avatarFileId, repository, forceRefresh = attempt > 1)
+            val avatarUrl = resolveAvatarUrl(avatarFileId, forceRefresh = attempt > 1)
             if (!avatarUrl.isNullOrBlank() && loadAvatarUrl(avatarImage, avatarInitials, avatarFileId, avatarUrl)) {
                 return
             }
@@ -223,7 +230,6 @@ class IncomingCallActivity : AppCompatActivity() {
 
     private suspend fun resolveAvatarUrl(
         avatarFileId: String,
-        repository: ChatRepository,
         forceRefresh: Boolean
     ): String? {
         if (avatarFileId.startsWith("http://") || avatarFileId.startsWith("https://")) {
@@ -238,7 +244,7 @@ class IncomingCallActivity : AppCompatActivity() {
             }
         }
 
-        val url = repository.getFileDownloadUrl(avatarFileId).getOrNull()
+        val url = fileMediaGateway.downloadUrl(avatarFileId).getOrNull()
         if (!url.isNullOrBlank()) {
             AvatarLoader.urlCache[avatarFileId] = url
             AvatarLoader.putUrlInCache(avatarFileId, url)
@@ -296,12 +302,16 @@ class IncomingCallActivity : AppCompatActivity() {
         if (actionTaken) return
         actionTaken = true
         lifecycleScope.launch {
-            if (!ensureCallsClient()) return@launch
             CallTelecomRegistry.markAnswering(callId)
             // Обновляем токен до accept() — приложение могло проснуться из фона с истёкшим токеном,
             // и тогда стрим событий звонка оборвётся на 401 и сервер завершит звонок.
-            (application as BarkFluffApplication).legacyTransport.ensureTokenValid(this@IncomingCallActivity)
-            val response = (application as BarkFluffApplication).callRepository.accept(callId)
+            if (!authGateway.ensureValid()) {
+                CallTelecomRegistry.clearAnswering(callId)
+                actionTaken = false
+                Toast.makeText(this@IncomingCallActivity, R.string.call_accept_failed, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val response = callGateway.accept(callId)
             response.onSuccess {
                 CallTelecomRegistry.markActive(callId)
                 NotificationHelper.clearIncomingCallAlert(this@IncomingCallActivity, callId)
@@ -325,27 +335,11 @@ class IncomingCallActivity : AppCompatActivity() {
         if (actionTaken) return
         actionTaken = true
         lifecycleScope.launch {
-            if (ensureCallsClient()) {
-                (application as BarkFluffApplication).callRepository.reject(callId)
-            }
+            callGateway.reject(callId)
             CallTelecomRegistry.disconnect(callId, DisconnectCause.REJECTED)
             NotificationHelper.dismissCall(this@IncomingCallActivity, callId)
             finish()
         }
-    }
-
-    private fun ensureCallsClient(): Boolean {
-        val app = application as BarkFluffApplication
-        if (app.legacyTransport.callsClient != null) return true
-
-        val globalParam = GlobalParam(this)
-        val callsAddress = globalParam.socketCalls
-        if (callsAddress.isBlank()) {
-            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        return app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
     }
 
     companion object {

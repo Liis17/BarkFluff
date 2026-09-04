@@ -29,20 +29,29 @@ import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import barkfluff.calls.CallsApiOuterClass
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.CallGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.twilio.audioswitch.AudioDevice
+import dagger.hilt.android.AndroidEntryPoint
 import io.livekit.android.room.track.VideoQuality
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
+
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var callGateway: CallGateway
+    @javax.inject.Inject lateinit var callEventsService: CallEventsService
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
 
     private lateinit var callId: String
     private lateinit var livekitUrl: String
@@ -286,9 +295,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     private fun observeCallEvents() {
-        val app = application as BarkFluffApplication
         lifecycleScope.launch {
-            app.callEventsService.events.collect { event ->
+            callEventsService.events.collect { event ->
                 val endedId = when (event.eventCase) {
                     CallsApiOuterClass.CallEvent.EventCase.ENDED -> event.ended.callId
                     CallsApiOuterClass.CallEvent.EventCase.REJECTED -> event.rejected.callId
@@ -394,11 +402,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     private suspend fun refreshLiveKitCredentialsForReconnect(): Boolean {
-        if (!ensureCallsClient()) return false
-
-        val app = application as BarkFluffApplication
-        app.legacyTransport.ensureTokenValid(this)
-        return app.callRepository.join(callId)
+        if (!authGateway.ensureValid()) return false
+        return callGateway.join(callId)
             .onSuccess { response ->
                 livekitUrl = response.livekitUrl.ifBlank { livekitUrl.ifBlank { GlobalParam(this).livekitUrl } }
                 accessToken = response.accessToken
@@ -576,7 +581,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         if (uid > 0L && resolving.add(participant.identity)) {
             lifecycleScope.launch {
-                val user = (application as BarkFluffApplication).legacyTransport.getUserData(uid).getOrNull()
+                val user = userProfileGateway.user(uid).getOrNull()
                 if (user != null) {
                     val name = "${user.firstName} ${user.lastName}".trim()
                         .ifBlank { user.username }.ifBlank { getString(R.string.call_participant_default) }
@@ -762,8 +767,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun setAudioQuality(quality: CallsApiOuterClass.CallAudioQuality) {
         lifecycleScope.launch {
-            if (!ensureCallsClient()) return@launch
-            (application as BarkFluffApplication).callRepository.setAudioQuality(callId, quality)
+            callGateway.setAudioQuality(callId, quality)
                 .onSuccess { Toast.makeText(this@CallActivity, R.string.call_quality_updated, Toast.LENGTH_SHORT).show() }
                 .onFailure { Toast.makeText(this@CallActivity, R.string.call_quality_change_failed, Toast.LENGTH_SHORT).show() }
         }
@@ -787,9 +791,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             callEngine.disconnect()
             CallForegroundService.stop(this@CallActivity)
             CallTelecomRegistry.disconnect(callId, DisconnectCause.LOCAL)
-            if (ensureCallsClient()) {
-                (application as BarkFluffApplication).callRepository.end(callId)
-            }
+            callGateway.end(callId)
             NotificationHelper.dismissCall(this@CallActivity, callId)
             finish()
         }
@@ -920,16 +922,6 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun isVideoCall(): Boolean = mediaType.equals("video", ignoreCase = true)
-
-    private fun ensureCallsClient(): Boolean {
-        val app = application as BarkFluffApplication
-        if (app.legacyTransport.callsClient != null) return true
-
-        val callsAddress = GlobalParam(this).socketCalls
-        if (callsAddress.isBlank()) return false
-
-        return app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true).isSuccess
-    }
 
     private fun sheetContainer(title: String): LinearLayout =
         LinearLayout(this).apply {

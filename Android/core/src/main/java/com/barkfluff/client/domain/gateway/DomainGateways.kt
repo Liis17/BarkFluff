@@ -225,6 +225,12 @@ interface CallGateway {
 
     suspend fun end(callId: String): Result<Unit>
     suspend fun reject(callId: String): Result<Unit>
+    suspend fun accept(callId: String): Result<CallsApiOuterClass.AcceptCallResponse>
+    suspend fun join(callId: String): Result<CallsApiOuterClass.JoinCallResponse>
+    suspend fun setAudioQuality(
+        callId: String,
+        quality: CallsApiOuterClass.CallAudioQuality,
+    ): Result<Unit>
 }
 
 interface FastAuthGateway {

@@ -349,6 +349,12 @@ class GrpcCallGateway(private val repository: CallRepository) : CallGateway {
 
     override suspend fun end(callId: String): Result<Unit> = repository.end(callId)
     override suspend fun reject(callId: String): Result<Unit> = repository.reject(callId)
+    override suspend fun accept(callId: String) = repository.accept(callId)
+    override suspend fun join(callId: String) = repository.join(callId)
+    override suspend fun setAudioQuality(
+        callId: String,
+        quality: barkfluff.calls.CallsApiOuterClass.CallAudioQuality,
+    ): Result<Unit> = repository.setAudioQuality(callId, quality)
 }
 
 class GrpcFastAuthGateway(private val grpc: GrpcTransportFacade) : FastAuthGateway {
