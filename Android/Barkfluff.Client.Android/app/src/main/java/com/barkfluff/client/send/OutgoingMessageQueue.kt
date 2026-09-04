@@ -25,7 +25,7 @@ import com.barkfluff.client.cache.OutgoingFailureCategory
 import com.barkfluff.client.cache.OutgoingMessageRecord
 import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.TokenCoordinator
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.ChatRepository.UploadHttpException
 import com.barkfluff.client.utils.ImageCompressor
@@ -78,7 +78,7 @@ class OutgoingMessageQueue(
     private val context: Context,
     private val cache: ChatCacheRepository,
     private val chatRepository: ChatRepository,
-    private val grpcManager: GrpcManager
+    private val tokenCoordinator: TokenCoordinator
 ) {
     companion object {
         private const val LEASE_MILLIS = 10 * 60 * 1000L
@@ -256,7 +256,7 @@ class OutgoingMessageQueue(
             cache.saveOutgoing(scope, record)
             onForeground(snapshotOf(record))
 
-            if (!grpcManager.ensureTokenValid(appContext)) {
+            if (!tokenCoordinator.ensureValid()) {
                 throw PermanentOutgoingException(OutgoingFailureCategory.AUTH_REQUIRED, "Token refresh failed")
             }
 
