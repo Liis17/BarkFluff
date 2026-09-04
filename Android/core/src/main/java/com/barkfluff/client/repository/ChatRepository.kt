@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
  */
 class ChatRepository(
     private val context: Context,
-    private val legacyTransport: GrpcApiTransport,
+    private val transport: GrpcApiTransport,
     private val mediaTransport: MediaHttpTransport = MediaHttpTransport(context),
 ) {
 
@@ -56,7 +56,7 @@ class ChatRepository(
         count: Int = DEFAULT_PAGE_SIZE
     ): Result<List<Shared.Message>> = withContext(Dispatchers.IO) {
         try {
-            if (legacyTransport.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -81,7 +81,7 @@ class ChatRepository(
             }
 
             val request = requestBuilder.build()
-            val response = legacyTransport.messagesClient!!.listMessages(request)
+            val response = transport.messagesClient!!.listMessages(request)
 
             Log.d(TAG, "Loaded ${response.messagesList.size} messages for chat $chatId")
             Result.success(response.messagesList)
@@ -112,7 +112,7 @@ class ChatRepository(
         clientOperationId: String? = null
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
-            if (legacyTransport.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -133,7 +133,7 @@ class ChatRepository(
 
             Log.d(TAG, "sendMessage: request.message.filesIdsCount=${request.message.filesIdsCount}")
 
-            val response = legacyTransport.messagesClient!!.sendMessage(request)
+            val response = transport.messagesClient!!.sendMessage(request)
             Log.d(TAG, "Message sent to chat $chatId, id=${response.message.id}, attachments=${response.message.content.attachmentsList.size}")
             Result.success(response.message)
         } catch (e: Exception) {
@@ -148,7 +148,7 @@ class ChatRepository(
      * Отмечает сообщения как прочитанные.
      */
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit> {
-        return legacyTransport.markAsRead(messageIds)
+        return transport.markAsRead(messageIds)
     }
 
     /**
@@ -163,7 +163,7 @@ class ChatRepository(
         fileIds: List<String> = emptyList()
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
-            if (legacyTransport.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -173,7 +173,7 @@ class ChatRepository(
                 .addAllFilesIds(fileIds)
                 .build()
 
-            val response = legacyTransport.messagesClient!!.editMessage(request)
+            val response = transport.messagesClient!!.editMessage(request)
             Log.d(TAG, "Message edited, id=${response.message.id}")
             Result.success(response.message)
         } catch (e: Exception) {
@@ -187,7 +187,7 @@ class ChatRepository(
      */
     suspend fun deleteMessage(messageId: Long): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            if (legacyTransport.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -195,7 +195,7 @@ class ChatRepository(
                 .setMessageId(messageId)
                 .build()
 
-            legacyTransport.messagesClient!!.deleteMessage(request)
+            transport.messagesClient!!.deleteMessage(request)
             Log.d(TAG, "Message $messageId deleted")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -209,7 +209,7 @@ class ChatRepository(
      */
     suspend fun getChatInfo(chatId: String): Result<ChatInfo> = withContext(Dispatchers.IO) {
         try {
-            if (legacyTransport.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -217,13 +217,13 @@ class ChatRepository(
                 .setChatId(chatId)
                 .build()
 
-            val response = legacyTransport.messagesClient!!.getChatInfo(request)
+            val response = transport.messagesClient!!.getChatInfo(request)
 
             Result.success(
                 ChatInfo(
                     chatId = chatId,
                     title = response.title,
-                    pictureFileId = legacyTransport.extractGuidFromUrl(response.picture),
+                    pictureFileId = transport.extractGuidFromUrl(response.picture),
                     isGroupChat = response.isGroupChat,
                     lastMessageId = response.lastMessageId,
                     firstUnreadMessageId = response.firstUnreadMessageId,
@@ -240,7 +240,7 @@ class ChatRepository(
 
     suspend fun getChatDraft(chatId: String): Result<ChatDraft?> = withContext(Dispatchers.IO) {
         try {
-            val client = legacyTransport.messagesClient
+            val client = transport.messagesClient
                 ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
             val response = client.getChatDraft(
                 MessagesApiOuterClass.GetChatDraftRequest.newBuilder().setChatId(chatId).build()
@@ -256,7 +256,7 @@ class ChatRepository(
     suspend fun upsertChatDraft(chatId: String, text: String, replyToMessageId: Long): Result<ChatDraft> =
         withContext(Dispatchers.IO) {
             try {
-                val client = legacyTransport.messagesClient
+                val client = transport.messagesClient
                     ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
                 val response = client.upsertChatDraft(
                     MessagesApiOuterClass.UpsertChatDraftRequest.newBuilder()
@@ -275,7 +275,7 @@ class ChatRepository(
     suspend fun deleteChatDraft(chatId: String, expectedRevision: String): Result<Boolean> =
         withContext(Dispatchers.IO) {
             try {
-                val client = legacyTransport.messagesClient
+                val client = transport.messagesClient
                     ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
                 val response = client.deleteChatDraft(
                     MessagesApiOuterClass.DeleteChatDraftRequest.newBuilder()
@@ -294,14 +294,14 @@ class ChatRepository(
      * Получает данные пользователя по ID.
      */
     suspend fun getUserData(userId: Long): Result<GrpcApiTransport.UserData> {
-        return legacyTransport.getUserData(userId)
+        return transport.getUserData(userId)
     }
 
     /**
      * Получает URL для скачивания файла.
      */
     suspend fun getFileDownloadUrl(fileId: String): Result<String> {
-        return legacyTransport.getFileDownloadUrl(fileId)
+        return transport.getFileDownloadUrl(fileId)
     }
 
     /**
@@ -312,7 +312,7 @@ class ChatRepository(
         clientOperationId: String? = null
     ): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
         try {
-            if (legacyTransport.filesClient == null) {
+            if (transport.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
@@ -321,7 +321,7 @@ class ChatRepository(
             clientOperationId?.takeIf { it.isNotBlank() }?.let(requestBuilder::setClientOperationId)
             val request = requestBuilder.build()
 
-            val response = legacyTransport.filesClient!!.getUploadUrl(request)
+            val response = transport.filesClient!!.getUploadUrl(request)
             Result.success(UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting upload URL", e)
@@ -459,7 +459,7 @@ class ChatRepository(
     ): Result<String> = withContext(Dispatchers.IO) {
         var connection: java.net.HttpURLConnection? = null
         try {
-            if (legacyTransport.filesClient == null) {
+            if (transport.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
@@ -467,7 +467,7 @@ class ChatRepository(
             // (для картинок это уже сжатый JPEG из ImageCompressor — совпадает с тем,
             // что хеширует backend в UploadFileCommandHandler).
             val fileHash = source.sha256Hex(shouldCancel)
-            val existingFileId = legacyTransport.checkFileHash(fileHash).getOrNull()
+            val existingFileId = transport.checkFileHash(fileHash).getOrNull()
             if (!existingFileId.isNullOrEmpty()) {
                 Log.d(TAG, "File already exists on server (hash=$fileHash), reusing fileId: $existingFileId")
                 try { onProgress(100) } catch (_: Throwable) {}
@@ -485,7 +485,7 @@ class ChatRepository(
                         clientOperationId?.takeIf { it.isNotBlank() }?.let(builder::setClientOperationId)
                     }
                     .build()
-                val response = legacyTransport.filesClient!!.getUploadUrl(uploadUrlRequest)
+                val response = transport.filesClient!!.getUploadUrl(uploadUrlRequest)
                 UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId)
             }
             val fileId = target.fileId
@@ -575,7 +575,7 @@ class ChatRepository(
         fileNameQuery: String = ""
     ): Result<List<MessagesApiOuterClass.ChatAttachmentInfo>> = withContext(Dispatchers.IO) {
         try {
-            if (legacyTransport.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -592,7 +592,7 @@ class ChatRepository(
                 )
                 .build()
 
-            val response = legacyTransport.messagesClient!!.listChatAttachments(request)
+            val response = transport.messagesClient!!.listChatAttachments(request)
             Log.d(TAG, "Loaded ${response.attachmentsList.size} attachments for chat $chatId")
             Result.success(response.attachmentsList)
         } catch (e: Exception) {
