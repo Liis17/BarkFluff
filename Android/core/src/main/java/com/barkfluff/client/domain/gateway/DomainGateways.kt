@@ -166,6 +166,7 @@ interface ChatFolderGateway {
 interface FileMediaGateway {
     suspend fun downloadUrl(fileId: String): Result<String>
     suspend fun uploadUrl(fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<MediaUpload>
+    suspend fun upload(bytes: ByteArray, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String>
     suspend fun upload(file: File, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String>
     suspend fun download(fileId: String, onProgress: (Int) -> Unit = {}): File?
 }
@@ -193,6 +194,11 @@ interface RealtimeGateway {
 }
 
 interface CallGateway {
+    suspend fun listHistory(
+        filter: CallsApiOuterClass.CallHistoryFilter,
+        limit: Int = 50,
+    ): Result<CallsApiOuterClass.ListCallHistoryResponse>
+
     suspend fun initiateDirect(
         calleeUserId: Long,
         mediaType: CallsApiOuterClass.CallMediaType,

@@ -242,6 +242,9 @@ class GrpcFileMediaGateway(private val repository: ChatRepository) : FileMediaGa
     override suspend fun uploadUrl(fileType: FilesApiOuterClass.UploadFileType): Result<MediaUpload> =
         repository.getUploadUrl(fileType).map { MediaUpload(it.url, it.fileId) }
 
+    override suspend fun upload(bytes: ByteArray, fileType: FilesApiOuterClass.UploadFileType): Result<String> =
+        repository.uploadFile(bytes, fileType)
+
     override suspend fun upload(file: File, fileType: FilesApiOuterClass.UploadFileType): Result<String> =
         repository.uploadFile(file, fileType)
 
@@ -296,6 +299,11 @@ class GrpcRealtimeGateway(private val realtime: RealtimeService) : RealtimeGatew
 }
 
 class GrpcCallGateway(private val repository: CallRepository) : CallGateway {
+    override suspend fun listHistory(
+        filter: barkfluff.calls.CallsApiOuterClass.CallHistoryFilter,
+        limit: Int,
+    ) = repository.listCallHistory(filter, limit)
+
     override suspend fun initiateDirect(
         calleeUserId: Long,
         mediaType: barkfluff.calls.CallsApiOuterClass.CallMediaType,
