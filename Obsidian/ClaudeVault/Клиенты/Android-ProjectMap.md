@@ -4,9 +4,17 @@
 > Исходный проект: `Android/Barkfluff.Client.Android/`
 > См. также: [[Android]]
 
-> Версия: 2026-04-11 (актуализирована частично 2026-07-04). Этот файл предназначен для агентов/AI-сессий — позволяет понять архитектуру без полного перечитывания исходников.
+> Версия: 2026-09-05. Карта обновлена после завершения основных срезов миграции transport/state/composer/adapter. Этот файл предназначен для агентов/AI-сессий — позволяет понять архитектуру без полного перечитывания исходников.
 
-> ⚠️ **Устарело относительно модульной структуры:** после появления модуля `Android/core/` пакеты `grpc/`, `data/`, `repository/`, часть `utils/`, `calls/` (сетевой слой) и `crypto/` (примитивы) физически переехали из `app/src/main/java/com/barkfluff/client/` в `core/src/main/java/com/barkfluff/client/`. Этот файл всё ещё описывает их как часть `app` — по сути (классы, методы) описание верно, но путь неточен. Точное распределение по модулям файл-за-файлом → [[Android-FileIndex]]. Архитектура `:core` → [[Android]]. Также не описаны новые пакеты `editor/`, `send/`, `share/`, `widget/`, `dialog/` и полный состав `calls/` (звонки на LiveKit) — см. [[Android-FileIndex]].
+> Исторические связи ниже сохранены для поиска старых имён. Актуальные границы и пути описаны в разделе «Срез миграции 2026-09» и в [[Android-FileIndex]].
+
+## Срез миграции 2026-09
+
+`BarkFluffApplication` больше не владеет RPC-фасадом. `:core/grpc/GrpcClientRegistry.kt` — единственный владелец channel/stub lifecycle: Navigator и Beacon создаются explicit, остальные клиенты lazy, `recreateAllClients()` идемпотентен, `shutdown()` запрещает resurrection. `TokenCoordinator` сериализует refresh одним process-wide mutex и сохраняет rotated refresh token; `MediaHttpTransport` централизует TLS и переписывание media-origin. Production adapters находятся в `domain/gateway/GrpcGatewayAdapters.kt`; UI не получает registry или protobuf stubs.
+
+Обычный чат проходит через один внешний контракт `ChatViewModel.state/effects/dispatch`. `ChatUiState` состоит из `ChatSessionState`, `TimelineState`, `ComposerState`, `SelectionState`, `PresenceState`. `RegularChatSession`, `ChatComposer`, `ChatPresence`, `SelectionReducer` и `MessageRowProjector` — тестируемые внутренние модули. `ChatActivity` остаётся lifecycle/rendering shell; E2E-контроллеры получают repositories, cache и realtime через typed-конструкторы.
+
+`ComposerAttachmentStore` хранит принятные preview-копии в `noBackupFilesDir/composer/<scope>/<chatId>/`, metadata — в SQLCipher Room v4 (`composer_attachments`). `draftGeneration` связывает durable draft с outbox и закрывает crash window между `QUEUED` и очисткой preview. `MessageAdapter` принимает immutable `MessageRowUi` и один `MessageRowEventSink`; загрузка медиа и playback вынесены в `AttachmentLoader`/`AudioPlaybackController`, view-bound jobs отменяются в `onViewRecycled`.
 
 ---
 
@@ -22,7 +30,7 @@
 | gRPC              | `grpc-okhttp` 1.60.0 (НЕ grpc-netty)                    |
 | Image loading     | Coil                                                    |
 | Video             | ExoPlayer (media3-exoplayer 1.3.1)                      |
-| Архитектура       | Activity-based, ViewBinding, без MVVM/Hilt              |
+| Архитектура       | Activity-based shell + Hilt ViewModel, ViewBinding      |
 | Хранилище токенов | `EncryptedSharedPreferences` (`barkfluff_secure_prefs`) |
 | Обычное хранилище | `SharedPreferences` (`barkfluff_prefs`)                 |
 | FCM               | Firebase Cloud Messaging (push-уведомления)             |
@@ -72,9 +80,8 @@ DeepLinkActivity (перехват bf:// ссылок)
 **Расположение:** `java/com/barkfluff/client/`
 **Тип:** Application
 
-Точка старта всего процесса. Инициализирует:
+Точка старта всего процесса. Инициализирует lifecycle/background orchestration, но не RPC-фасад:
 
-- `GrpcManager` (singleton на уровне app)
 - `RealtimeService` (singleton, стримы gRPC)
 - `AvatarLoader.initializeCache()` — URL-кэш аватаров
 - `FileCache.init()` — дисковый кэш медиафайлов
@@ -86,7 +93,7 @@ DeepLinkActivity (перехват bf:// ссылок)
 
 В `onCreate()` первым делом вызывает `cleanupPendingUpdate()` — читает из GlobalParam `pendingUpdateApkPath` / `pendingUpdateDownloadId`, удаляет APK обновления из Downloads (`File.delete()`), удаляет запись из `DownloadManager.remove(id)`, чистит `cacheDir/update_pending.apk` и сбрасывает параметры (`clearPendingUpdate()`). Логика срабатывает на следующем старте после установки обновления.
 
-**Связи:** Все Activity/Fragment берут `GrpcManager` и `RealtimeService` через `applicationContext as BarkFluffApplication`.
+**Связи:** transport и gateways приходят из Hilt; background components используют entry point только для минимально нужных typed-зависимостей. `Application` хранит `RealtimeService`, кэши, outbox и call orchestration для process lifecycle.
 
 ---
 
@@ -98,14 +105,14 @@ DeepLinkActivity (перехват bf:// ссылок)
 
 1. Нет `socketBeacon` / `socketIdentity` → `WelcomeActivity`
 2. Нет `refreshToken` → `LoginActivity`
-3. Есть `refreshToken`, но access-токен просрочен → пробует обновить через `GrpcManager.refreshAccessToken()`
+3. Есть `refreshToken`, но access-токен просрочен → пробует обновить через `AuthGateway.ensureValid()`
    - Успех → `MainActivity`
    - Ошибка → `LoginActivity`
 4. Все токены валидны → загружает данные текущего юзера и → `MainActivity`
 
 Обрабатывает `pendingChatId` (если открыт из уведомления при убитом приложении).
 
-**Связи:** `GlobalParam`, `GrpcManager`, `WelcomeActivity`, `LoginActivity`, `MainActivity`
+**Связи:** `GlobalParam`, `AuthGateway`, `WelcomeActivity`, `LoginActivity`, `MainActivity`
 
 ---
 
@@ -123,13 +130,13 @@ DeepLinkActivity (перехват bf:// ссылок)
 
 **Тип:** AppCompatActivity
 
-Выбор сервера. Загружает список серверов через `GrpcManager.getServerList()` (Navigator API). При ручном вводе адреса — валидирует формат `host:port`. При выборе:
+Выбор сервера. Загружает список серверов через `ServerDiscoveryGateway.listServers()` (Navigator API). При ручном вводе адреса — валидирует формат `host:port`. При выборе:
 
-1. Создаёт Beacon-клиент → запрашивает `getServerInfo()`
+1. Создаёт Beacon-клиент через `GrpcClientRegistry` → запрашивает `ServerDiscoveryGateway.serverInfo()`
 2. Сохраняет все endpoint-адреса в `GlobalParam` (`socketIdentity`, `socketUsers`, `socketFiles`, `socketFilesMedia`, `socketMessages`, `socketUpdates`, `socketOnliner`); `socketFilesMedia` берётся из Navigator, а при пустом значении — из Beacon
 3. → `LoginActivity`
 
-**Связи:** `GlobalParam`, `GrpcManager`, `ServerAdapter`, `LoginActivity`
+**Связи:** `GlobalParam`, `ServerDiscoveryGateway`, `ServerAdapter`, `LoginActivity`
 
 ---
 
@@ -145,7 +152,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - `NotValidOtpCodeException` → ошибка "неверный код"
 - `InvalidLoginOrPasswordException` → ошибка "неверный логин/пароль"
 
-**Связи:** `GlobalParam`, `GrpcManager`, `GrpcManager.AuthResult`, `MainActivity`, `RegisterActivity`, `ResetPasswordActivity`
+**Связи:** `GlobalParam`, `AuthGateway`, `AccountSecurityGateway`, `AuthenticationResult`, `MainActivity`, `RegisterActivity`, `ResetPasswordActivity`
 
 ---
 
@@ -165,7 +172,7 @@ Error codes (из gRPC trailer `x-error-code`):
 8. `step_register_08_2fa.xml` — настройка 2FA
 9. `step_register_09_complete.xml` — завершение
 
-**Связи:** `GlobalParam`, `GrpcManager`, `DeviceInfoInterceptor`, `LoginActivity`
+**Связи:** `GlobalParam`, `AccountSecurityGateway`, `UserDirectoryGateway`, `DeviceInfoInterceptor`, `LoginActivity`
 
 ---
 
@@ -175,7 +182,7 @@ Error codes (из gRPC trailer `x-error-code`):
 
 Сброс пароля через email (запрос кода, подтверждение, новый пароль).
 
-**Связи:** `GrpcManager`, `LoginActivity`
+**Связи:** `AccountSecurityGateway`, `LoginActivity`
 
 ---
 
@@ -197,7 +204,7 @@ Error codes (из gRPC trailer `x-error-code`):
 
 Проверяет обновления (`UpdateChecker`) → показывает badge на вкладке Profile.
 
-**Связи:** `ChatsFragment`, `CallsFragment`, `ProfileFragment`, `ChatActivity`, `SplashActivity`, `DeepLinkHandler`, `OpenChatManager`, `UpdateChecker`
+**Связи:** `ChatsFragment`, `CallsFragment`, `ProfileFragment`, `ChatActivity`, `SplashActivity`, `DeepLinkHandler`, `OpenChatManager`, `UpdateChecker`, typed gateways
 
 ---
 
@@ -205,9 +212,9 @@ Error codes (из gRPC trailer `x-error-code`):
 
 **Тип:** Fragment
 
-Список чатов. Загружает чаты через `GrpcManager`. Подписывается на `RealtimeService.newMessages` → обновляет список при новом сообщении. Обрабатывает `cameFromBackground` — перезагружает список при возврате из фона. Регистрирует Firebase-токен для push-уведомлений. По клику на чат открывает `ChatActivity`.
+Список чатов. Загружает чаты через `ChatDirectoryGateway.chats()`. Подписывается на `RealtimeService.newMessages` → обновляет список при новом сообщении. Обрабатывает `cameFromBackground` — перезагружает список при возврате из фона. Регистрирует Firebase-токен через `UserProfileGateway`. По клику на чат открывает `ChatActivity`.
 
-**Связи:** `GrpcManager`, `RealtimeService`, `ChatAdapter`, `AvatarLoader`, `FirebaseTokenHelper`, `ChatActivity`, `SearchActivity`
+**Связи:** `ChatDirectoryGateway`, `UserDirectoryGateway`, `RealtimeService`, `ChatAdapter`, `AvatarLoader`, `FirebaseTokenHelper`, `ChatActivity`, `SearchActivity`
 
 ---
 
@@ -217,7 +224,7 @@ Error codes (из gRPC trailer `x-error-code`):
 
 Вкладка звонков (`TAB_CALLS = 1`). Видимость управляется флагом `mainTabCallsVisible`.
 
-**Связи:** `GrpcManager`, `ChatActivity`
+**Связи:** `CallGateway`, `ChatDirectoryGateway`, `ChatActivity`
 
 ---
 
@@ -241,18 +248,18 @@ Error codes (из gRPC trailer `x-error-code`):
 - Карточка с блоком постера (соотношение 3:1): `profilePosterPreviewImage` / `profilePosterPreviewPlaceholder`
 - Поверх постера по центру: круглый аватар 120dp (`profilePreviewAvatarImage` / `profilePreviewAvatarPlaceholder`)
 - Под аватаром: `profilePreviewFullName`, `profilePreviewUsername`
-- Кнопка `buttonSetPoster` → `GetContent("image/*")` → JPEG 85% → `GrpcManager.uploadProfilePoster()` → `GrpcManager.setProfilePoster(fileId)` → обновление превью
+- Кнопка `buttonSetPoster` → `GetContent("image/*")` → JPEG 85% → `UserProfileGateway.uploadProfilePoster()` → `UserProfileGateway.setProfilePoster(fileId)` → обновление превью
 - `currentPosterFileId` хранит текущий FileId постера, загружается из `getUserData().profilePosterFileId`
 
 Показывает update-badge если есть обновление.
 
-**Связи:** `GlobalParam`, `GrpcManager`, `AvatarLoader`, `UpdateChecker`, все Settings-Activity
+**Связи:** `GlobalParam`, `UserProfileGateway`, `AvatarLoader`, `UpdateChecker`, все Settings-Activity
 
 ---
 
 ### `ChatActivity.kt`
 
-**Тип:** AppCompatActivity (~1000 строк, основная логика)
+**Тип:** AppCompatActivity (lifecycle/rendering shell; logical state живёт в `ChatViewModel`)
 
 Экран переписки. Основные возможности:
 
@@ -270,14 +277,9 @@ Error codes (из gRPC trailer `x-error-code`):
 - **Фон чата**: загружает по `GlobalParam.chatBackgroundFileId` из `FileCache` или Files API. На API 31+ blur через `RenderEffect`, на API 26–30 через `ScriptIntrinsicBlur` (deprecated). `chatHeaderBlurImage` — отдельная blur-копия, обрезанная до высоты шапки; `chatDimOverlay` находится поверх обеих копий фона. Корневой layout edge-to-edge, системные inset’ы вручную применяются к контенту. Фон кешируется в `FileCache`.
 - **Закругление пузырей**: передаёт `GlobalParam.chatMessageCornerRadius` в `MessageAdapter`
 
-Хранит состояние:
+Состояние получает единым immutable-снимком `ChatUiState` (session/timeline/composer/selection/presence), а события отправляет как `ChatIntent` через `dispatch`. Input/IME/stickers/voice, chrome и actions контролируются отдельными view-контроллерами; process-death recovery выполняют `ChatComposer`, Room v4 и `SavedStateHandle`.
 
-- `chatId`, `chatTitle`, `chatAvatarFileId`, `isGroupChat`, `otherUserId`
-- `firstVisibleMessageId` / `lastVisibleMessageId` для пагинации
-- `firstUnreadMessageId` — разделитель непрочитанных
-- Списки pending-вложений (`pendingPastedImages`, `pendingStickerUris`, `pendingDocumentUris`)
-
-**Связи:** `GrpcManager`, `RealtimeService`, `ChatRepository`, `MessageAdapter`, `StickerPanelAdapter`, `ImagePickerBottomSheet`, `AvatarLoader`, `ImageCompressor`, `FileCache`, `StickerCache`, `KeyboardHeightTracker`, `MessageItemAnimator`, `OpenChatManager`, `ImageViewerActivity`, `MediaViewerActivity`, `UserProfileActivity`
+**Связи:** `ChatViewModel`, `ChatIntent`, `ChatUiState`, `RegularChatSession`, `ChatComposer`, `ChatPresence`, `SelectionReducer`, `RealtimeGateway`, `MessageAdapter`, `StickerPanelAdapter`, `ImagePickerBottomSheet`, `AvatarLoader`, `ImageCompressor`, `FileCache`, `StickerCache`, `KeyboardHeightTracker`, `MessageItemAnimator`, `OpenChatManager`, `ImageViewerActivity`, `MediaViewerActivity`, `UserProfileActivity`
 
 ---
 
@@ -299,7 +301,7 @@ Error codes (из gRPC trailer `x-error-code`):
 
 **Кэширование постера:** URL постера сохраняется в `AvatarLoader.urlCache` (runtime) и `AvatarLoader.putUrlInCache()` (persistent SharedPreferences) — повторные открытия не делают gRPC-запрос.
 
-**Связи:** `GrpcManager`, `ChatRepository`, `AvatarLoader`, `FileCache`, `AttachmentPreviewAdapter`, `ImageViewerActivity`, `MediaViewerActivity`
+**Связи:** `MessageGateway`, `ChatDirectoryGateway`, `FileMediaGateway`, `UserProfileGateway`, `AvatarLoader`, `FileCache`, `AttachmentPreviewAdapter`, `ImageViewerActivity`, `MediaViewerActivity`
 
 ---
 
@@ -329,11 +331,11 @@ Error codes (из gRPC trailer `x-error-code`):
 
 Самостоятельный экран поиска пользователей на M3 Expressive Compose. `SearchActivity` сохраняет `EXTRA_MODE`/`MODE_PRIVATE`, нормальный `getPersonChatId` и private-chat password dialog, а UI-модель отдаёт `SearchViewModel`.
 
-**Связи:** `SearchViewModel`, `SearchScreen`, `GrpcManager`, `ChatActivity`, `PrivateChatRepository`
+**Связи:** `SearchViewModel`, `SearchScreen`, `UserDirectoryGateway`, `ChatActivity`, `PrivateChatRepository`
 
 ### `search/SearchViewModel.kt`, `search/SearchUsersGateway.kt`
 
-`SearchViewModel` публикует `StateFlow<SearchUiState>` с фазами `Idle`/`TooShort`/`Loading`/`Results`/`Empty`/`Error`, дебаунсит валидный запрос на 300 мс и через `collectLatest` отменяет устаревшие поиски. `SearchUsersGateway` — injectable-граница над `GrpcManager.searchUsers`, используемая unit-тестами.
+`SearchViewModel` публикует `StateFlow<SearchUiState>` с фазами `Idle`/`TooShort`/`Loading`/`Results`/`Empty`/`Error`, дебаунсит валидный запрос на 300 мс и через `collectLatest` отменяет устаревшие поиски. `SearchUsersGateway` — injectable-граница поверх `UserDirectoryGateway.search`, используемая unit-тестами.
 
 ### `search/SearchScreen.kt`
 
@@ -347,7 +349,7 @@ Compose UI SearchActivity: edge-to-edge header с 48dp back и 56dp `DockedSearc
 
 Список авторизованных устройств (сессий). Кнопка "завершить сессию" для каждого. Нижний диалог с деталями (`bottom_sheet_device_details.xml`).
 
-**Связи:** `GrpcManager`, `DeviceAdapter`
+**Связи:** `UserProfileGateway`, `DeviceAdapter`
 
 ---
 
@@ -357,7 +359,7 @@ Compose UI SearchActivity: edge-to-edge header с 48dp back и 56dp `DockedSearc
 
 Редактирование профиля: имя, фамилия, username, bio, email, аватар (uCrop). Сохранение через Users API. При смене username `checkUsername()` возвращает `true`, если имя уже занято; `ChangeUsername` вызывается только при `false`.
 
-**Связи:** `GrpcManager`, `GlobalParam`, `AvatarLoader`
+**Связи:** `UserProfileGateway`, `UserDirectoryGateway`, `FileMediaGateway`, `GlobalParam`, `AvatarLoader`
 
 ---
 
@@ -367,7 +369,7 @@ Compose UI SearchActivity: edge-to-edge header с 48dp back и 56dp `DockedSearc
 
 Смена пароля, управление 2FA.
 
-**Связи:** `GrpcManager`
+**Связи:** `UserProfileGateway`
 
 ---
 
@@ -419,10 +421,10 @@ Toggle уведомлений, настройки каналов Android.
 **Блок 3 — Фон чатов:**
 - `RecyclerView` GridLayoutManager 3 колонки + `ChatBackgroundAdapter`; в свернутом состоянии показываются первые 9 ячеек, при большем количестве появляется кнопка `buttonToggleBackgrounds`
 - Первая ячейка всегда — "Без фона" (fileId = ""); выбор сбрасывает фон
-- Кнопка "Добавить фон": `GetContent("image/*")` → JPEG 85% → `ChatRepository.uploadFile` → `GrpcManager.updatePersonalizationBackgrounds`
+- Кнопка "Добавить фон": `GetContent("image/*")` → JPEG 85% → `FileMediaGateway.upload` → `UserSettingsGateway.updatePersonalizationBackgrounds`
 - Долгое нажатие → режим удаления (оверлей корзины)
 
-**Связи:** `GlobalParam`, `GrpcManager`, `ChatRepository`, `ChatBackgroundAdapter`, `AspectRatioImageView`, `OnlineTimeFormatter`, `MessageAdapter`
+**Связи:** `GlobalParam`, `UserSettingsGateway`, `FileMediaGateway`, `ChatBackgroundAdapter`, `AspectRatioImageView`, `OnlineTimeFormatter`, `MessageAdapter`
 
 ---
 
@@ -454,11 +456,11 @@ Files HTTP проверяется запросом `GET /web/download/{случ�
 
 **Тип:** AppCompatActivity
 
-Настройки приватности профиля. Управляет видимостью данных пользователя (онлайн-статус, аватар, описание) для трёх уровней: **Все / Друзья / Никто**. Читает и сохраняет `UsersApiOuterClass.PrivacySettings` через Users API (`GrpcManager`).
+Настройки приватности профиля. Управляет видимостью данных пользователя (онлайн-статус, аватар, описание) для трёх уровней: **Все / Друзья / Никто**. Читает и сохраняет `UsersApiOuterClass.PrivacySettings` через `UserSettingsGateway`.
 
 Открывается из `ProfileFragment` (раздел настроек).
 
-**Связи:** `GrpcManager`, `BarkFluffApplication`
+**Связи:** `UserSettingsGateway`, `BarkFluffApplication`
 
 ---
 
@@ -474,9 +476,19 @@ Files HTTP проверяется запросом `GET /web/download/{случ�
 
 ## gRPC слой
 
-### `grpc/GrpcManager.kt`
+### `grpc/GrpcClientRegistry.kt` и typed gateways
 
-Центральный менеджер всех gRPC-клиентов. **Аналог `WebApiClientManager` из WPF.**
+Актуальная transport-граница: registry владеет channel/stub lifecycle, а UI и background-компоненты получают только typed gateways через Hilt. `GrpcApiTransport` используется production adapters/repositories и не экспортируется в экранный слой.
+
+- `GrpcClientRegistry`: Navigator/Beacon создаются explicit; остальные clients lazy; endpoint нормализуется; `recreateAllClients()` идемпотентен; `shutdown()` запрещает resurrection.
+- `TokenCoordinator`: process-wide mutex, пятиминутный freshness buffer и запись rotated refresh-token.
+- `MediaHttpTransport`: TLS policy и переписывание media-origin для HTTP файлов.
+- `domain/gateway/DomainGateways.kt`: discovery/auth/account/users/settings/directory/chat/message/media/call/FastAuth/E2E/prekey ports.
+- `domain/gateway/GrpcGatewayAdapters.kt`: production mapping protobuf → domain DTO/Result.
+
+### Исторический фасад (до миграции): `grpc/GrpcManager.kt`
+
+Ниже оставлены старые имена и подробности только как поисковый контекст для исторических изменений. Файла `GrpcManager.kt` в исходниках больше нет; новые вызовы должны идти через registry, gateways или repositories.
 
 Хранит:
 
@@ -557,7 +569,7 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 - `onlinePingLoop` — каждые 3сек шлёт `setOnlineStatus`
 - `notificationLoop` — подписывается на `newMessages`, показывает уведомления (кроме текущего открытого чата)
 
-**Связи:** `GrpcManager`, `GlobalParam`, `OpenChatManager`, `NotificationHelper`, `AvatarLoader`
+**Связи:** `GrpcClientRegistry`, `TokenCoordinator`, `MessageGateway`, `GlobalParam`, `OpenChatManager`, `NotificationHelper`, `AvatarLoader`
 
 ---
 
@@ -632,7 +644,7 @@ Data class: тема сервера (liteHex, mainHex, hardHex).
 
 ### `repository/ChatRepository.kt`
 
-Инкапсулирует Messages API. Получает `GrpcManager` через конструктор.
+Глубокий модуль Messages API. Получает typed `GrpcClientRegistry`/`MessageGateway` и `MediaHttpTransport` через конструктор; UI не видит protobuf stub.
 
 Методы:
 
@@ -646,18 +658,20 @@ Data class: тема сервера (liteHex, mainHex, hardHex).
 
 ### `adapter/MessageAdapter.kt`
 
-`ListAdapter<MessageItem, RecyclerView.ViewHolder>`. 4 типа ViewHolder:
+`ListAdapter<MessageRowUi, RecyclerView.ViewHolder>`. Adapter stateless: получает только immutable rows и один `MessageRowEventSink`; projector строит dedup/date/unread/footer rows, а attachment/audio I/O скрыты за `AttachmentLoader`/`AudioPlaybackController`.
+
+4 типа ViewHolder:
 
 - `VIEW_TYPE_SENT` — отправленное (`item_message_sent.xml`)
 - `VIEW_TYPE_RECEIVED` — полученное (`item_message_received.xml`)
 - `VIEW_TYPE_DATE_SEPARATOR` — разделитель даты (`item_message_date_separator.xml`)
 - `VIEW_TYPE_UNREAD_SEPARATOR` — разделитель непрочитанных
 
-Поддерживает вложения: изображения (grid через `ImageGridAdapter`), видео, аудио (через `AudioPlayerHelper`), документы. Тап на изображение → `ImageViewerActivity`, тап на видео → `MediaViewerActivity`. Контекстное меню (copy, save, download).
+Поддерживает вложения: изображения (grid через `ImageGridAdapter`), видео, аудио и документы. Действия возвращаются typed sink-событиями; навигация, Toast и файловые операции остаются в `ChatActivity`/контроллерах.
 
 **`messageCornerRadiusDp: Int`** — параметр закругления облачков (0..30), устанавливается из `GlobalParam` при создании в `ChatActivity`. Применяется к `messageCard.radius` при биндинге.
 
-Конструктор принимает: `getFileUrl: suspend (String) -> String?`, `downloadToCache: suspend (String) -> File?`, `scope: CoroutineScope`, `messageCornerRadiusDp: Int = 20`.
+`onViewRecycled` отменяет view-bound jobs и сбрасывает binding; DiffUtil/payload не используют `notifyDataSetChanged`.
 
 **Связи:** `ImageGridAdapter`, `AudioPlayerHelper`, `FileCache`, `AvatarLoader`, `ImageLoadHelper`, `ImageViewerActivity`, `MediaViewerActivity`
 
@@ -750,7 +764,7 @@ Singleton. Загружает и кешируют аватары через Coil
 - `getImageLoader(context): ImageLoader` — Coil ImageLoader с trust-all SSL
 - `load(context, fileId, getUrl, imageView, textView)` — загружает аватар или показывает инициали
 
-**Связи:** `FileUrlCache`, `GrpcManager` (опосредованно), `RealtimeService`
+**Связи:** `FileUrlCache`, `FileMediaGateway` (опосредованно), `RealtimeService`
 
 ---
 
@@ -896,7 +910,7 @@ Object. Создаёт каналы уведомлений Android и показ
 
 `FirebaseMessagingService`. Обрабатывает входящие push-уведомления (когда приложение убито). При новом `RemoteMessage` парсит `chatId`/`messageId` из data-payload, показывает уведомление через `NotificationHelper`. При обновлении FCM-токена → сохраняет в `GlobalParam`, регистрирует на сервере.
 
-**Связи:** `NotificationHelper`, `GlobalParam`, `GrpcManager`
+**Связи:** `NotificationHelper`, `GlobalParam`, `UserProfileGateway`
 
 ---
 
@@ -989,19 +1003,21 @@ Object. Создаёт каналы уведомлений Android и показ
 
 ```
 BarkFluffApplication
-    ├── GrpcManager  ←── используется везде
+    ├── GrpcClientRegistry  ←── transport lifecycle (через Hilt)
     └── RealtimeService ←── подписываются: ChatsFragment, ChatActivity
 
 GlobalParam ←── используется везде
 
 ChatActivity
-    ├── ChatRepository
-    │     └── GrpcManager.messagesClient
+    ├── ChatViewModel
+    │     ├── RegularChatSession
+    │     ├── ChatComposer / ChatPresence / SelectionReducer
+    │     └── MessageRowProjector
     ├── MessageAdapter
-    │     ├── AudioPlayerHelper
-    │     ├── FileCache
+    │     ├── AttachmentLoader
+    │     ├── AudioPlaybackController
     │     ├── ImageGridAdapter
-    │     └── AvatarLoader
+    │     └── MessageRowEventSink
     ├── StickerPanelAdapter
     │     └── StickerCache
     ├── RealtimeService (subscribe: newMessages, messagesRead, onlineStatuses)
@@ -1009,13 +1025,13 @@ ChatActivity
     └── OpenChatManager
 
 RealtimeService
-    ├── GrpcManager.updatesClient (stream newMessages, messagesRead)
-    ├── GrpcManager.onlinerClient (stream onlineStatus, setOnlineStatus)
+    ├── GrpcClientRegistry (updates/onliner/calls stubs)
+    ├── MessageGateway (markAsRead)
     ├── NotificationHelper
     └── AvatarLoader.urlCache
 
 NotificationHelper
-    └── MarkAsReadReceiver → RealtimeService.markAsRead()
+    └── MarkAsReadReceiver → MessageGateway (узкий Hilt entry point)
 ```
 
 ---
@@ -1024,7 +1040,7 @@ NotificationHelper
 
 1. **grpc-okhttp, не grpc-netty** — `OkHttpChannelBuilder` вместо `NettyChannelBuilder`. Метод `MetadataUtils.attachHeaders` недоступен — использовать `ClientInterceptor`.
 
-2. **Trust-all SSL** — оба `GrpcManager` и `AvatarLoader` отключают проверку SSL-сертификатов (для самоподписанных). Это намеренно для dev-серверов.
+2. **Trust-all SSL** — transport-фабрики gRPC/HTTP и `AvatarLoader` используют общую TLS-политику для dev-серверов с самоподписанными сертификатами.
 
 3. **Токены в `EncryptedSharedPreferences`** — файл `barkfluff_secure_prefs`, ключ `AES256_GCM_SPEC`.
 
@@ -1032,7 +1048,7 @@ NotificationHelper
 
 5. **`CreateTokenResponse.access_token`** — field_number=2 (не 1).
 
-6. **Navigator endpoint** — `navigator.barkfluff.com:64646` (plaintext, порт 64646, не 443). `GrpcManager.DEFAULT_NAVIGATOR_URL` = `https://navigator.barkfluff.com:443` — для HTTPS.
+6. **Navigator endpoint** — registry нормализует адрес Navigator (production default `https://navigator.barkfluff.com`); Beacon и пользовательские endpoint'ы проходят ту же нормализацию.
 
 7. **`cameFromBackground`** — флаг в `BarkFluffApplication`. После паузы `RealtimeService` не получает события, поэтому при возврате из фона `ChatsFragment` перезагружает список.
 

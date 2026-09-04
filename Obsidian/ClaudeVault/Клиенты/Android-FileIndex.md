@@ -7,13 +7,34 @@
 >
 > ⚠️ **Пакеты `grpc/`, `data/`, `repository/` физически переехали в общий модуль `Android/core/src/main/java/com/barkfluff/client/` (`:core`)**. Пакеты `calls/` и `crypto/` существуют **в обоих** модулях с разным назначением: в `:core` — сетевой/крипто-слой (репозитории, состояние сессий), в `app` — UI (Activities, Views, Telecom-интеграция, bootstrap). Ниже это указано в заголовке каждого раздела.
 
+## Актуальные seams (2026-09)
+
+- `GrpcClientRegistry`, `TokenCoordinator` и `MediaHttpTransport` владеют transport lifecycle, refresh и media TLS policy. `GrpcApiTransport` — только внутренний production adapter; `GrpcManager` удалён.
+- Typed ports находятся в `domain/gateway/DomainGateways.kt`, production wiring — `GrpcGatewayAdapters.kt` + `di/AppModule.kt`. UI/worker получают только нужный gateway или Hilt entry point.
+- Regular chat: `ChatViewModel.state/effects/dispatch`, модули `RegularChatSession`, `ChatComposer`, `ChatPresence`, `SelectionReducer`, `MessageRowProjector`.
+- Durable composer: `ComposerAttachmentStore` + Room schema v4 (`composer_attachments`) под `noBackupFilesDir/composer/<scope>/<chatId>/`; `draftGeneration` координирует handoff с outbox.
+- `MessageAdapter` stateless; event boundary — `MessageRowEventSink`, media/audio I/O — `AttachmentLoader` и `AudioPlaybackController`. `ChatActivity` — shell, E2E controllers не зависят от `BarkFluffApplication`.
+
+---
+
+## Regular chat state (`app`)
+
+| Файл | Роль |
+|------|------|
+| `ChatViewModel.kt` | Единственный внешний state/effect/intent контракт обычного чата |
+| `chat/RegularChatSession.kt` | Cache-first timeline, pagination, realtime/read/pin/outbox reconciliation |
+| `ChatStateModules.kt` | `ChatComposer`, `ChatPresence`, `SelectionReducer` и immutable state-модули |
+| `chat/MessageRowUi.kt` | Top-level row DTO, `MessageType` и `ReadStatus` |
+| `adapter/MessageRowProjector.kt` | Pure projection/dedup/grouping/date/unread/footer/selection |
+| `drafts/ComposerAttachmentStore.kt` | Atomic app-private staging и cleanup принятых preview-вложений |
+
 ---
 
 ## Activities & Fragments (root)
 
 | Файл | Роль |
 |------|------|
-| `BarkFluffApplication.kt` | Application-класс; инициализирует все синглтоны (GrpcManager, RealtimeService, кэши) |
+| `BarkFluffApplication.kt` | Application-класс; process lifecycle/background orchestration, realtime/call services и кэши; RPC registry не хранится в Application |
 | `SplashActivity.kt` | Точка входа; роутер — проверяет токены и направляет на WelcomeActivity, LoginActivity или MainActivity |
 | `WelcomeActivity.kt` | Приветственный экран при первом запуске; запрашивает разрешения; ведёт на SelectServerActivity |
 | `SelectServerActivity.kt` | Выбор/ввод адреса сервера; загружает список серверов через Navigator API; сохраняет endpoint'ы |
@@ -24,7 +45,7 @@
 | `ChatsFragment.kt` | Список чатов; подписывается на RealtimeService; обновляется при новых сообщениях |
 | `CallsFragment.kt` | Вкладка звонков — история (`CallHistoryAdapter`), инициация нового звонка |
 | `ProfileFragment.kt` | Профиль пользователя + меню настроек + постер профиля; кнопка выхода (LogoutHelper) |
-| `ChatActivity.kt` | Экран переписки; пагинация сообщений, вложения всех типов, стикер-панель, фон чата, блюр |
+| `ChatActivity.kt` | Lifecycle/rendering shell обычного чата; получает immutable state, dispatch'ит intents и выполняет effects |
 | `GroupInfoActivity.kt` | Информация о группе: название, аватар, участники; вход в `AddGroupMemberActivity`/редактирование |
 | `AddGroupMemberActivity.kt` | Добавление участника в групповой чат (`MessagesApi.AddUser`) |
 | `CreateChatBottomSheet.kt` | Нижний лист выбора: новый личный чат / новая группа |
@@ -95,7 +116,10 @@
 
 | Файл | Роль |
 |------|------|
-| `grpc/GrpcManager.kt` | Центральный менеджер всех gRPC-клиентов и stub'ов; инициализация каналов, методы API (auth, chats, users, files, messages, online) |
+| `grpc/GrpcClientRegistry.kt` | Typed stub/channel registry: explicit Navigator/Beacon, lazy user clients, normalization, recreation и shutdown |
+| `grpc/GrpcApiTransport.kt` | Внутренний production transport adapter для gateway/repository; не передаётся в UI |
+| `grpc/TokenCoordinator.kt` | Единый mutex refresh, freshness buffer и rotation refresh-токена |
+| `grpc/MediaHttpTransport.kt` | TLS-конфигурация HTTP и переписывание media-origin |
 | `grpc/RealtimeService.kt` | gRPC streaming: подписки на новые сообщения, read receipts, онлайн-статусы; exponential backoff; ping-loop |
 | `grpc/RealtimeSideEffects.kt` | Интерфейс побочных эффектов realtime-событий (уведомления/аватары/виджеты), реализуется на стороне приложения — см. `notifications/RealtimeSideEffectsImpl.kt` (app) |
 | `grpc/AuthInterceptor.kt` | ClientInterceptor; добавляет заголовок `x-auth-token` к каждому gRPC-запросу |
@@ -118,7 +142,7 @@
 
 | Файл | Роль |
 |------|------|
-| `repository/ChatRepository.kt` | Инкапсулирует Messages API: загрузка сообщений с пагинацией, отправка, скачивание файлов в FileCache |
+| `repository/ChatRepository.kt` | Глубокий модуль Messages/files: cache-first pagination, send/edit/delete и media transfer |
 | `repository/PrivateChatRepository.kt` | Фасад приватных (E2E через passphrase) чатов: CreatePrivateChat/Accept/Reject, отправка/чтение шифрованных сообщений |
 | `repository/SecretChatRepository.kt` | Фасад секретных чатов (Signal Double Ratchet): инвайты, отправка/подтверждение сообщений устройству |
 
@@ -128,7 +152,10 @@
 
 | Файл | Роль |
 |------|------|
-| `adapter/MessageAdapter.kt` | ListAdapter для сообщений; 4 типа ViewHolder (sent/received/date-sep/unread-sep); вложения всех типов; закругление пузырей |
+| `adapter/MessageAdapter.kt` | Stateless ListAdapter для immutable `MessageRowUi`; payload-safe DiffUtil и отмена view-bound операций |
+| `adapter/MessageRowProjector.kt` | Pure projector: deduplication, date/unread/footer rows, grouping и selection |
+| `adapter/AttachmentLoader.kt` | Граница URL/cache/download/delete для attachment rendering |
+| `adapter/AudioPlaybackController.kt` | Playback/waveform/download policy без состояния в adapter |
 | `adapter/ChatAdapter.kt` | ListAdapter списка чатов; аватар, последнее сообщение, счётчик непрочитанных; footer-спейсер |
 | `adapter/ChatBackgroundAdapter.kt` | Сетка фоновых изображений чата (3 колонки); выбор, добавление, режим удаления |
 | `adapter/UserAdapter.kt` | Список пользователей (контакты, результаты поиска) |
@@ -175,7 +202,7 @@ SQLCipher Room + app-private staging для text/media обычных чатов
 
 | Файл | Роль |
 |------|------|
-| `cache/OutgoingMessageStore.kt` | Room entities/DAO outbox v3: state, lease, retry, ordered attachments, operation IDs |
+| `cache/OutgoingMessageStore.kt` | Room entities/DAO outbox v4: state, lease, retry, ordered attachments, operation IDs и composer handoff generation |
 | `send/OutgoingMessageQueue.kt` | Public seam `enqueue/observeChat/retry/cancel`, durable staging, FIFO/parallel drain, resume/status/idempotency |
 | `send/OutgoingMessageWorker.kt` | Persistent `CoroutineWorker`; запускает queue с `NetworkType.CONNECTED` и foreground notification |
 | `send/OutgoingRetryPolicy.kt` | Бессрочная retry-политика 10s → 30m |
@@ -290,7 +317,7 @@ App Widget с закреплёнными чатами.
 | Файл | Роль |
 |------|------|
 | `search/SearchViewModel.kt` | StateFlow-модель поиска: debounce 300 мс, collectLatest cancellation и шесть фаз UI |
-| `search/SearchUsersGateway.kt` | Тестируемая граница над `GrpcManager.searchUsers` |
+| `search/SearchUsersGateway.kt` | Совместимая граница поиска поверх общего `UserDirectoryGateway` |
 | `search/SearchScreen.kt` | M3 Expressive Compose UI standalone SearchActivity: SearchBar, states, tonal results и accessibility |
 
 ---
@@ -301,7 +328,7 @@ App Widget с закреплёнными чатами.
 |------|------|
 | `notifications/NotificationHelper.kt` | Создаёт каналы Android и показывает MessagingStyle-уведомления; дедупликация по messageId |
 | `notifications/BarkFluffFirebaseMessagingService.kt` | FirebaseMessagingService; обрабатывает push когда приложение убито; обновляет FCM-токен |
-| `notifications/MarkAsReadReceiver.kt` | BroadcastReceiver; обрабатывает action «Прочитано» из уведомления → RealtimeService.markAsRead() |
+| `notifications/MarkAsReadReceiver.kt` | BroadcastReceiver; обрабатывает action «Прочитано» из уведомления через узкий Hilt entry point `MessageGateway` |
 | `notifications/RealtimeSideEffectsImpl.kt` | Реализация интерфейса `RealtimeSideEffects` (объявлен в `grpc/`): уведомления (`NotificationHelper`), загрузка аватара/превью (Coil), обновление виджетов (`WidgetUpdater`) — отделяет `RealtimeService` от прямых UI-побочных эффектов |
 
 ---
