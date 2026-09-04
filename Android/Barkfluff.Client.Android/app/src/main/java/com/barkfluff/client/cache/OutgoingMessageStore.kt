@@ -227,6 +227,21 @@ interface OutgoingMessageDao {
     @Query("SELECT operationId FROM outgoing_messages WHERE scopeId = :scopeId")
     suspend fun operationIds(scopeId: String): List<String>
 
+    @Query("""
+        SELECT COUNT(*) FROM outgoing_messages
+        WHERE scopeId = :scopeId
+          AND chatId = :chatId
+          AND draftGeneration = :generation
+          AND state NOT IN (:sentState, :cancelledState)
+    """)
+    suspend fun activeHandoffs(
+        scopeId: String,
+        chatId: String,
+        generation: Long,
+        sentState: String,
+        cancelledState: String,
+    ): Int
+
     @Query("DELETE FROM outgoing_messages WHERE scopeId = :scopeId AND state = :stagingState")
     suspend fun deleteStaging(scopeId: String, stagingState: String): Int
 

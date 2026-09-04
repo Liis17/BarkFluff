@@ -128,6 +128,15 @@ class OutgoingMessageQueue(
         return cache.observeOutgoing(scope, chatId).map { records -> records.map(::snapshotOf) }
     }
 
+    /**
+     * Returns true when a durable outbox row already owns this composer generation. This closes
+     * the crash window between QUEUED and clearing the preview journal.
+     */
+    suspend fun hasDurableHandoff(chatId: String, generation: Long): Boolean {
+        val scope = currentScopeOrNull() ?: return false
+        return cache.hasActiveOutgoingHandoff(scope, chatId, generation)
+    }
+
     suspend fun retry(operationId: OperationId) {
         val scope = requireScope()
         val record = cache.outgoing(scope, operationId) ?: return

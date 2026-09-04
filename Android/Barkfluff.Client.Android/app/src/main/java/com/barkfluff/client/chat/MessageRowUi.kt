@@ -6,7 +6,8 @@ import com.barkfluff.client.cache.OutgoingMessageState
 /** Immutable row contract shared by regular, pinned and E2E timelines. */
 enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR, FOOTER, SYSTEM }
 
-data class MessageItem(
+/** Immutable row consumed by every message renderer and adapter. */
+data class MessageRowUi(
     val messageId: Long,
     val senderId: Long,
     val senderName: String? = null,
@@ -28,7 +29,7 @@ data class MessageItem(
     val selectionEnabled: Boolean = false,
 ) {
     companion object {
-        fun createDateSeparator(dateText: String) = MessageItem(
+        fun createDateSeparator(dateText: String) = MessageRowUi(
             messageId = 0,
             senderId = 0,
             text = "",
@@ -38,7 +39,7 @@ data class MessageItem(
             dateText = dateText,
         )
 
-        fun createUnreadSeparator(label: String) = MessageItem(
+        fun createUnreadSeparator(label: String) = MessageRowUi(
             messageId = -2,
             senderId = 0,
             text = "",
@@ -48,7 +49,7 @@ data class MessageItem(
             dateText = label,
         )
 
-        fun createFooter() = MessageItem(
+        fun createFooter() = MessageRowUi(
             messageId = Long.MIN_VALUE,
             senderId = 0,
             text = "",
@@ -58,5 +59,8 @@ data class MessageItem(
         )
     }
 }
+
+/** Source-compatible name retained for E2E and pinned consumers during the row migration. */
+typealias MessageItem = MessageRowUi
 
 enum class ReadStatus { NONE, SENDING, SENT, DELIVERED, READ, FAILED }
