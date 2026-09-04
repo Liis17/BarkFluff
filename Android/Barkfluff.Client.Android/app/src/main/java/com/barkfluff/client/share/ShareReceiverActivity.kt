@@ -13,14 +13,16 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityShareReceiverBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.ChatSummary
-import com.barkfluff.client.domain.model.LastMessageSummary
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -30,11 +32,15 @@ import kotlinx.coroutines.launch
  * чат-получатель. После выбора чата открывает [ShareConfirmBottomSheet], который ставит
  * задачу в durable [com.barkfluff.client.send.OutgoingMessageQueue].
  */
+@AndroidEntryPoint
 class ShareReceiverActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityShareReceiverBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     private lateinit var chatAdapter: ChatAdapter
 
     /** Прочитываемый из бот-шита payload — держится только в этой Activity на время share-сессии. */
@@ -54,9 +60,6 @@ class ShareReceiverActivity : AppCompatActivity() {
         // applicationContext — чтобы SharedPreferences/EncryptedSharedPreferences не были
         // привязаны к жизненному циклу этой Activity (исключаем race на холодном старте).
         globalParam = GlobalParam(applicationContext)
-        val app = applicationContext as BarkFluffApplication
-        legacyTransport = app.legacyTransport
-
         binding.toolbar.setNavigationOnClickListener { finish() }
 
         applyWindowInsets()
@@ -182,7 +185,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         chatAdapter = ChatAdapter(
             onChatClick = { chat -> onChatClicked(chat) },
             getFileUrl = { fileId ->
-                val r = legacyTransport.getFileDownloadUrl(fileId)
+                val r = fileMediaGateway.downloadUrl(fileId)
                 if (r.isSuccess) r.getOrNull() else null
             }
         )
@@ -198,14 +201,14 @@ class ShareReceiverActivity : AppCompatActivity() {
         binding.emptyState.visibility = View.GONE
         binding.chatsRecyclerView.visibility = View.GONE
         lifecycleScope.launch {
-            if (!ensureTokenAndClients()) {
+            if (!authGateway.ensureValid()) {
                 binding.loadingIndicator.visibility = View.GONE
                 Toast.makeText(this@ShareReceiverActivity, R.string.share_not_authorized, Toast.LENGTH_LONG).show()
                 finish()
                 return@launch
             }
 
-            val result = legacyTransport.getChats()
+            val result = chatDirectoryGateway.chats()
             if (result.isFailure) {
                 Log.e(TAG, "getChats failed", result.exceptionOrNull())
                 binding.loadingIndicator.visibility = View.GONE
@@ -213,27 +216,7 @@ class ShareReceiverActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val chats = result.getOrNull().orEmpty().map { chat ->
-                ChatSummary(
-                    id = chat.id,
-                    title = chat.title,
-                    picture = chat.picture,
-                    pictureFileId = chat.pictureFileId,
-                    picturePreviewFileId = chat.picturePreviewFileId,
-                    isGroupChat = chat.isGroupChat,
-                    lastMessage = chat.lastMessage?.let {
-                        LastMessageSummary(it.id, it.senderId, it.text, it.sentAt, it.readBy)
-                    },
-                    memberIds = chat.memberIds,
-                    countUnread = chat.countUnread,
-                    firstUnreadMessageId = chat.firstUnreadMessageId,
-                    chatType = chat.chatType,
-                    lastActivityAt = chat.lastActivityAt,
-                    privateInviteState = chat.privateInviteState,
-                    privateInviterUserId = chat.privateInviterUserId,
-                    hasDraft = chat.hasDraft,
-                )
-            }
+            val chats = result.getOrNull()?.chats.orEmpty()
             if (chats.isEmpty()) {
                 binding.loadingIndicator.visibility = View.GONE
                 binding.emptyState.visibility = View.VISIBLE
@@ -249,34 +232,11 @@ class ShareReceiverActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun ensureTokenAndClients(): Boolean {
-        return try {
-            val tokenOk = legacyTransport.ensureTokenValid(applicationContext)
-            if (!tokenOk) {
-                Log.w(TAG, "ensureTokenValid returned false")
-                return false
-            }
-            legacyTransport.initAllClients(applicationContext, globalParam)
-            val ok = legacyTransport.messagesClient != null && legacyTransport.usersClient != null
-            if (!ok) {
-                Log.w(TAG, "initAllClients did not create messages/users clients: " +
-                        "messages=${legacyTransport.messagesClient != null}, " +
-                        "users=${legacyTransport.usersClient != null}, " +
-                        "socketUsers='${globalParam.socketUsers}', " +
-                        "socketMessages='${globalParam.socketMessages}'")
-            }
-            ok
-        } catch (e: Exception) {
-            Log.e(TAG, "ensureTokenAndClients failed", e)
-            false
-        }
-    }
-
     private suspend fun resolveDisplayItem(chat: ChatSummary): ChatAdapter.ChatDisplayItem {
         if (!chat.isGroupChat && chat.title.isBlank()) {
             val otherUserId = chat.memberIds.firstOrNull { it != globalParam.userId }
             if (otherUserId != null) {
-                val userResult = legacyTransport.getUserData(otherUserId)
+                val userResult = userProfileGateway.user(otherUserId)
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
