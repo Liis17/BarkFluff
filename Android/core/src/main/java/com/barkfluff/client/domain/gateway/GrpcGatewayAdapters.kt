@@ -12,6 +12,8 @@ import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.calls.CallRepository
+import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 
@@ -375,4 +377,25 @@ class GrpcPrekeyGateway(private val grpc: GrpcApiTransport) : PrekeyGateway {
     override suspend fun replenish(
         prekeys: List<barkfluff.users.UsersApiOuterClass.OneTimePreKey>,
     ): Result<Int> = grpc.replenishOneTimePrekeys(prekeys)
+}
+
+/**
+ * Production E2E ports. Encryption/key storage remains inside the repositories; callers only
+ * receive a success/failure result and never need the compatibility transport or wire DTOs.
+ */
+class GrpcPrivateChatGateway(
+    private val repository: PrivateChatRepository,
+) : PrivateChatGateway {
+    override suspend fun send(chatId: String, plaintext: String): Result<Unit> =
+        repository.sendText(chatId, plaintext).map { Unit }
+}
+
+class GrpcSecretChatGateway(
+    private val repository: SecretChatRepository,
+) : SecretChatGateway {
+    override suspend fun send(chatId: String, plaintext: String): Result<Unit> {
+        val chat = repository.getChat(chatId)
+            ?: return Result.failure(IllegalArgumentException("Secret chat $chatId is unavailable"))
+        return repository.sendMessage(chat, plaintext).map { Unit }
+    }
 }
