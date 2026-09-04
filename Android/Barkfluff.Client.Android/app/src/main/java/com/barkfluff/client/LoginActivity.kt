@@ -17,10 +17,15 @@ import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityLoginBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.model.AuthenticationResult
+import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.snackbar.Snackbar
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import java.util.regex.Pattern
@@ -29,6 +34,7 @@ import java.util.regex.Pattern
  * Экран авторизации
  * Аналог Login.xaml из WPF клиента
  */
+@AndroidEntryPoint
 class LoginActivity : AppCompatActivity() {
 
     companion object {
@@ -46,7 +52,10 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
+    @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
 
     private var isOtpMode = false
     private var isLoading = false
@@ -65,7 +74,6 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
-        legacyTransport = GrpcTransportFacade(applicationContext)
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
@@ -101,7 +109,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         // Для авторизации не используем interceptor, так как токена еще нет
-        val result = legacyTransport.createIdentityClient(identityAddress)
+        val result = authGateway.createIdentity(identityAddress)
         if (result.isFailure) {
             showError(getString(R.string.login_identity_connection_failed))
             Log.e(TAG, "Failed to create identity client", result.exceptionOrNull())
@@ -212,12 +220,11 @@ class LoginActivity : AppCompatActivity() {
         setLoadingState(true)
 
         lifecycleScope.launch {
-            val result = legacyTransport.auth(
+            val result = authGateway.authenticate(
                 email = email,
                 username = username,
                 password = password,
                 otpCode = null,
-                context = this@LoginActivity
             )
             handleAuthResult(result)
         }
@@ -239,37 +246,36 @@ class LoginActivity : AppCompatActivity() {
         setLoadingState(true)
 
         lifecycleScope.launch {
-            val result = legacyTransport.auth(
+            val result = authGateway.authenticate(
                 email = email,
                 username = username,
                 password = savedPassword,
                 otpCode = otpCode,
-                context = this@LoginActivity
             )
             handleAuthResult(result)
         }
     }
 
-    private fun handleAuthResult(result: GrpcTransportFacade.AuthResult) {
+    private fun handleAuthResult(result: AuthenticationResult) {
         setLoadingState(false)
 
         when (result) {
-            is GrpcTransportFacade.AuthResult.Success -> {
+            is AuthenticationResult.Success -> {
                 lifecycleScope.launch {
                     // Сохраняем токены
-                    globalParam.accessToken = result.accessToken
-                    globalParam.refreshToken = result.refreshToken
-                    globalParam.accessTokenExpiration = result.accessTokenExpiration
-                    globalParam.refreshTokenExpiration = result.refreshTokenExpiration
+                    globalParam.accessToken = result.session.accessToken
+                    globalParam.refreshToken = result.session.refreshToken
+                    globalParam.accessTokenExpiration = result.session.accessTokenExpiration
+                    globalParam.refreshTokenExpiration = result.session.refreshTokenExpiration
 
                     // Создаем Users клиент для загрузки данных пользователя
                     val usersAddress = globalParam.socketUsers
                     if (usersAddress.isNotBlank()) {
-                        val usersResult = legacyTransport.createUsersClient(usersAddress, this@LoginActivity)
+                        val usersResult = clientRegistry.createUsersClient(usersAddress, this@LoginActivity, includeDeviceInfo = true)
                         if (usersResult.isSuccess) {
                             // Загружаем профиль и синхронизируемые настройки параллельно.
-                            val userSettingsDeferred = async { legacyTransport.getUserSettings() }
-                            val userDataResult = legacyTransport.getCurrentUserData()
+                            val userSettingsDeferred = async { userSettingsGateway.syncedChatBackgrounds() }
+                            val userDataResult = userProfileGateway.currentUser()
                             if (userDataResult.isSuccess) {
                                 val userData = userDataResult.getOrNull()
                                 if (userData != null) {
@@ -300,18 +306,15 @@ class LoginActivity : AppCompatActivity() {
                         }
                     }
 
-                    // Переходим в чаты
-                    // Всегда пересоздаём каналы app-level legacyTransport после логина,
-                    // чтобы гарантировать свежие соединения с актуальными токенами
-                    val app = applicationContext as BarkFluffApplication
-                    app.legacyTransport.recreateAllClients(this@LoginActivity, globalParam)
+                    // Переходим в чаты. Fresh channels pick up the newly persisted token.
+                    clientRegistry.recreateAllClients(globalParam, this@LoginActivity)
                     navigateToChats()
                 }
             }
-            is GrpcTransportFacade.AuthResult.OtpRequired -> {
+            AuthenticationResult.OtpRequired -> {
                 showOtpMode()
             }
-            is GrpcTransportFacade.AuthResult.Error -> {
+            is AuthenticationResult.Error -> {
                 showError(result.message)
             }
         }
@@ -413,8 +416,4 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        legacyTransport.shutdown()
-    }
 }

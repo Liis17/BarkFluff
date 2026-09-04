@@ -31,12 +31,16 @@ import com.barkfluff.client.databinding.StepRegister06AvatarBinding
 import com.barkfluff.client.databinding.StepRegister07BioBinding
 import com.barkfluff.client.databinding.StepRegister082faBinding
 import com.barkfluff.client.databinding.StepRegister09CompleteBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
-import com.barkfluff.client.grpc.DeviceInfoInterceptor
+import com.barkfluff.client.domain.gateway.AccountSecurityGateway
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.utils.OtpCellsHelper
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
@@ -55,6 +59,7 @@ import java.io.File
  * 8. 2FA
  * 9. Завершение
  */
+@AndroidEntryPoint
 class RegisterActivity : AppCompatActivity() {
 
     companion object {
@@ -81,7 +86,11 @@ class RegisterActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityRegisterBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
 
     // Данные регистрации
     private var currentStep = 1
@@ -139,7 +148,6 @@ class RegisterActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
-        legacyTransport = GrpcTransportFacade(applicationContext)
 
         // Создаем gRPC клиенты один раз при старте
         createGrpcClients()
@@ -184,17 +192,15 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun createGrpcClients() {
         // Создаем Identity и Users клиенты с заголовками устройства
-        legacyTransport.createIdentityClient(globalParam.socketIdentity, this, includeDeviceInfo = true)
-        legacyTransport.createUsersClient(globalParam.socketUsers, this, includeDeviceInfo = true)
-        legacyTransport.createFilesClient(globalParam.socketFiles, this, includeDeviceInfo = true)
+        clientRegistry.createIdentityClient(globalParam.socketIdentity, this, includeDeviceInfo = true)
+        clientRegistry.createUsersClient(globalParam.socketUsers, this, includeDeviceInfo = true)
+        clientRegistry.createFilesClient(globalParam.socketFiles, this, includeDeviceInfo = true)
         Log.d(TAG, "gRPC клиенты созданы")
     }
 
     private fun recreateGrpcClients() {
         // Закрываем старые клиенты
-        legacyTransport.shutdown()
-        // Создаем новые
-        createGrpcClients()
+        clientRegistry.recreateAllClients(globalParam, this)
         Log.d(TAG, "gRPC клиенты пересозданы")
     }
 
@@ -231,7 +237,7 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val existsResult = legacyTransport.checkEmail(email)
+                val existsResult = userDirectoryGateway.checkEmail(email)
                 if (existsResult.isSuccess) {
                     val exists = existsResult.getOrNull()!!
                     Log.d(TAG, "Email exists: $exists")
@@ -424,7 +430,7 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val existsResult = legacyTransport.checkUsername(username)
+                val existsResult = userDirectoryGateway.checkUsername(username)
                 if (existsResult.isSuccess) {
                     val exists = existsResult.getOrNull()!!
                     Log.d(TAG, "Username exists: $exists")
@@ -495,7 +501,7 @@ class RegisterActivity : AppCompatActivity() {
             binding.nextButton.isEnabled = false
             
             try {
-                val existsResult = legacyTransport.checkEmail(email)
+                val existsResult = userDirectoryGateway.checkEmail(email)
                 if (existsResult.isSuccess) {
                     val exists = existsResult.getOrNull()!!
                     Log.d(TAG, "Email exists: $exists")
@@ -534,7 +540,7 @@ class RegisterActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Создаем аккаунт - сервер отправит код на почту
-                val createResult = legacyTransport.createAccount(firstName, lastName, email, username)
+                val createResult = accountSecurityGateway.register(firstName, lastName, email, username)
                 if (createResult.isSuccess) {
                     codeId = createResult.getOrNull()
                     Log.d(TAG, "Аккаунт создан, CodeId: $codeId")
@@ -593,7 +599,7 @@ class RegisterActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Подтверждаем аккаунт - получаем refresh токен
-                val confirmResult = legacyTransport.confirmAccount(codeId!!, code)
+                val confirmResult = accountSecurityGateway.confirmAccount(codeId!!, code)
                 if (confirmResult.isSuccess) {
                     val confirmData = confirmResult.getOrNull()!!
                     Log.d(TAG, "Аккаунт подтвержден, получен refresh токен")
@@ -603,7 +609,7 @@ class RegisterActivity : AppCompatActivity() {
                     globalParam.refreshTokenExpiration = confirmData.refreshTokenExpiration
                     
                     // Создаем access токен
-                    val tokenResult = legacyTransport.refreshAccessToken(confirmData.refreshToken, confirmData.refreshTokenExpiration)
+                    val tokenResult = authGateway.refresh(confirmData.refreshToken, confirmData.refreshTokenExpiration)
                     if (tokenResult.isSuccess) {
                         val tokenData = tokenResult.getOrNull()!!
                         globalParam.accessToken = tokenData.accessToken
@@ -853,7 +859,7 @@ class RegisterActivity : AppCompatActivity() {
     private fun setup2fa() {
         lifecycleScope.launch {
             try {
-                val result = legacyTransport.getOtpSetup()
+                val result = userProfileGateway.otpSetup()
                 if (result.isSuccess) {
                     val otpResult = result.getOrNull()
                     if (otpResult != null) {
@@ -877,7 +883,7 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val result = legacyTransport.setPassword(password)
+                val result = userProfileGateway.password(password)
                 if (result.isSuccess) {
                     Log.d(TAG, "Пароль установлен")
                     saveCurrentStepData()
@@ -907,12 +913,12 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val uploadResult = legacyTransport.uploadUserAvatar(bytes)
+                val uploadResult = userProfileGateway.uploadAvatar(bytes)
                 if (uploadResult.isSuccess) {
                     val fileId = uploadResult.getOrNull()!!
                     Log.d(TAG, "Аватар загружен, fileId: $fileId")
 
-                    val setResult = legacyTransport.setProfilePicture(fileId)
+                    val setResult = userProfileGateway.setProfilePicture(fileId)
                     if (setResult.isFailure) {
                         Log.e(TAG, "Set profile picture failed: ${setResult.exceptionOrNull()?.message}")
                     }
@@ -950,7 +956,7 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val result = legacyTransport.changeBio(bio)
+                val result = userProfileGateway.changeBio(bio)
                 if (result.isSuccess) {
                     Log.d(TAG, "Био установлено")
                 } else {
@@ -974,7 +980,7 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val result = legacyTransport.confirmOtpSetup(code)
+                val result = userProfileGateway.confirmOtpSetup(code)
                 if (result.isSuccess) {
                     is2faEnabled = true
                     Toast.makeText(this@RegisterActivity, R.string.register_2fa_configured, Toast.LENGTH_SHORT).show()
@@ -1041,7 +1047,7 @@ class RegisterActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Загружаем данные пользователя и сохраняем в globalParam
-                val userResult = legacyTransport.getCurrentUserData()
+                val userResult = userProfileGateway.currentUser()
                 if (userResult.isSuccess) {
                     val userData = userResult.getOrNull()!!
                     globalParam.userId = userData.userId
@@ -1128,8 +1134,6 @@ class RegisterActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        legacyTransport.shutdown()
-        Log.d(TAG, "gRPC клиенты закрыты")
         step1Binding = null
         step2Binding = null
         step3Binding = null
