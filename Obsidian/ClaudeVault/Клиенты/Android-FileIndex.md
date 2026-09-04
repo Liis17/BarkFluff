@@ -11,8 +11,8 @@
 
 - `GrpcClientRegistry`, `TokenCoordinator` и `MediaHttpTransport` владеют transport lifecycle, refresh и media TLS policy. `GrpcApiTransport` — только внутренний production adapter; `GrpcManager` удалён.
 - Typed ports находятся в `domain/gateway/DomainGateways.kt`, production wiring — `GrpcGatewayAdapters.kt` + `di/AppModule.kt`. UI/worker получают только нужный gateway или Hilt entry point.
-- Regular chat: `ChatViewModel.state/effects/dispatch`, модули `RegularChatSession`, `ChatComposer`, `ChatPresence`, `SelectionReducer`, `MessageRowProjector`.
-- Durable composer: `ComposerAttachmentStore` + Room schema v4 (`composer_attachments`) под `noBackupFilesDir/composer/<scope>/<chatId>/`; `draftGeneration` координирует handoff с outbox.
+- Regular chat: `ChatViewModel.state/effects/dispatch`, модули `RegularChatSession`, `ChatComposer`, `ChatPresence`/`ChatPresenceSession`, `SelectionReducer`, `MessageRowProjector`.
+- Durable composer: `ComposerAttachmentStore` + Room schema v4 (`composer_attachments`) под `noBackupFilesDir/composer/<scope>/<chatId>/`; `draftGeneration` координирует handoff с outbox, а `ChatCacheRepository.clearAll()` удаляет journal и файлы при cache clear/logout.
 - `MessageAdapter` stateless; event boundary — `MessageRowEventSink`, media/audio I/O — `AttachmentLoader` и `AudioPlaybackController`. `ChatActivity` — shell, E2E controllers не зависят от `BarkFluffApplication`.
 
 ---
