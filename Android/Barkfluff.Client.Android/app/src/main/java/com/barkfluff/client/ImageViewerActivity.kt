@@ -16,10 +16,11 @@ import androidx.viewpager2.widget.ViewPager2
 import com.barkfluff.client.adapter.ImagePagerAdapter
 import com.barkfluff.client.databinding.ActivityImageViewerBinding
 import com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
 import com.barkfluff.client.utils.SwipeToDismissHelper
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,10 +31,11 @@ import java.io.File
  * свайпа между изображениями и свайпа вверх/вниз для закрытия.
  * Не полноэкранный — статус-бар остаётся видимым.
  */
+@AndroidEntryPoint
 class ImageViewerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityImageViewerBinding
-    private lateinit var chatRepository: ChatRepository
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
 
     private var fileIds: List<String> = emptyList()
     private var previewUrls: List<String> = emptyList()
@@ -74,8 +76,6 @@ class ImageViewerActivity : AppCompatActivity() {
         binding = ActivityImageViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        chatRepository = ChatRepository(this, (application as BarkFluffApplication).legacyTransport)
-
         fileIds = intent.getStringArrayListExtra(EXTRA_FILE_IDS) ?: emptyList()
         previewUrls = intent.getStringArrayListExtra(EXTRA_PREVIEW_URLS) ?: emptyList()
         fileNames = intent.getStringArrayListExtra(EXTRA_FILE_NAMES) ?: emptyList()
@@ -100,7 +100,7 @@ class ImageViewerActivity : AppCompatActivity() {
 
     private fun setupViewPager() {
         val adapter = ImagePagerAdapter(fileIds, previewUrls) { fileId ->
-            chatRepository.getFileDownloadUrl(fileId).getOrNull()
+            fileMediaGateway.downloadUrl(fileId).getOrNull()
         }
         binding.viewPager.adapter = adapter
         binding.viewPager.setCurrentItem(startPosition, false)
@@ -202,7 +202,7 @@ class ImageViewerActivity : AppCompatActivity() {
     }
 
     private suspend fun getImageFile(fileId: String): File? {
-        return FileCache.getFile(fileId) ?: chatRepository.downloadFile(fileId)
+        return FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId)
     }
 
     private fun getFileName(position: Int): String {
@@ -216,6 +216,5 @@ class ImageViewerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        chatRepository.close()
     }
 }

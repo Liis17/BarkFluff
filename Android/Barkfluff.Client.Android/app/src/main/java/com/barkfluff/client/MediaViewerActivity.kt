@@ -15,10 +15,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.barkfluff.client.databinding.ActivityMediaViewerBinding
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
 import com.barkfluff.client.utils.SwipeToDismissHelper
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,10 +32,11 @@ import java.io.File
  * Не полноэкранный — статус-бар остаётся видимым.
  * Поддерживает свайп вверх/вниз для закрытия с анимацией.
  */
+@AndroidEntryPoint
 class MediaViewerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMediaViewerBinding
-    private lateinit var chatRepository: ChatRepository
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
     private var player: ExoPlayer? = null
     private var progressUpdateJob: Job? = null
 
@@ -68,8 +70,6 @@ class MediaViewerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMediaViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        chatRepository = ChatRepository(this, (application as BarkFluffApplication).legacyTransport)
 
         fileId = intent.getStringExtra(EXTRA_FILE_ID) ?: ""
         fileName = intent.getStringExtra(EXTRA_FILE_NAME) ?: "video"
@@ -107,7 +107,7 @@ class MediaViewerActivity : AppCompatActivity() {
         binding.controlsCard.visibility = View.INVISIBLE
         controlsVisible = false
         lifecycleScope.launch {
-            val file = chatRepository.downloadFile(fileId)
+            val file = fileMediaGateway.download(fileId)
             withContext(Dispatchers.Main) {
                 binding.loadingProgress.visibility = View.GONE
                 if (file != null) {
@@ -309,7 +309,6 @@ class MediaViewerActivity : AppCompatActivity() {
         progressUpdateJob?.cancel()
         player?.release()
         player = null
-        chatRepository.close()
         super.onDestroy()
     }
 
