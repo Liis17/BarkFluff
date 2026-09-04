@@ -531,7 +531,13 @@ class ChatCacheRepository(context: Context) {
     }
 
     suspend fun nextOutgoingAttempt(scope: CacheScope): Long? = withContext(Dispatchers.IO) {
-        database().outgoingDao().nextQueuedAttempt(scope.id, OutgoingMessageState.QUEUED.name)
+        database().outgoingDao().nextWakeAt(
+            scopeId = scope.id,
+            queuedState = OutgoingMessageState.QUEUED.name,
+            preparingState = OutgoingMessageState.PREPARING.name,
+            uploadingState = OutgoingMessageState.UPLOADING.name,
+            sendingState = OutgoingMessageState.SENDING.name
+        )
     }
 
     suspend fun oldSentOutgoing(scope: CacheScope, beforeMillis: Long): List<OutgoingMessageRecord> =

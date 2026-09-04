@@ -202,8 +202,24 @@ interface OutgoingMessageDao {
     @Query("DELETE FROM outgoing_messages WHERE scopeId = :scopeId AND operationId = :operationId")
     suspend fun deleteMessage(scopeId: String, operationId: String)
 
-    @Query("SELECT MIN(nextAttemptAtMillis) FROM outgoing_messages WHERE scopeId = :scopeId AND state = :queuedState")
-    suspend fun nextQueuedAttempt(scopeId: String, queuedState: String): Long?
+    @Query("""
+        SELECT MIN(
+            CASE WHEN state = :queuedState THEN nextAttemptAtMillis ELSE leaseExpiresAtMillis END
+        )
+        FROM outgoing_messages
+        WHERE scopeId = :scopeId
+          AND (
+              state = :queuedState OR
+              (state IN (:preparingState, :uploadingState, :sendingState) AND leaseExpiresAtMillis > 0)
+          )
+    """)
+    suspend fun nextWakeAt(
+        scopeId: String,
+        queuedState: String,
+        preparingState: String,
+        uploadingState: String,
+        sendingState: String
+    ): Long?
 
     @Query("SELECT * FROM outgoing_messages WHERE scopeId = :scopeId AND state = :sentState AND createdAtMillis < :beforeMillis")
     suspend fun oldSent(scopeId: String, sentState: String, beforeMillis: Long): List<OutgoingMessageEntity>
