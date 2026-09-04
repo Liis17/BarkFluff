@@ -48,7 +48,14 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.CallGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.PresenceGateway
+import com.barkfluff.client.domain.gateway.StickerGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.adapter.StickerPanelAdapter
 import com.barkfluff.client.adapter.StickerPanelItem
@@ -107,11 +114,17 @@ class ChatActivity : AppCompatActivity() {
     private val viewModel: ChatViewModel by viewModels()
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var realtimeService: RealtimeService
 
     @Inject lateinit var chatRepository: ChatRepository
     @Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @Inject lateinit var callGateway: CallGateway
+    @Inject lateinit var fileMediaGateway: FileMediaGateway
+    @Inject lateinit var mediaHttpTransport: MediaHttpTransport
+    @Inject lateinit var presenceGateway: PresenceGateway
+    @Inject lateinit var stickerGateway: StickerGateway
+    @Inject lateinit var userProfileGateway: UserProfileGateway
+    @Inject lateinit var userSettingsGateway: UserSettingsGateway
     private lateinit var messageAdapter: MessageAdapter
     private val messageRowProjector = MessageRowProjector()
 
@@ -292,10 +305,8 @@ class ChatActivity : AppCompatActivity() {
         setContentView(binding.root)
         messageActionsOverlay = MessageActionsOverlay(binding.chatRootLayout)
 
-        val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        legacyTransport = app.legacyTransport
-        realtimeService = app.realtimeService
+        realtimeService = (application as BarkFluffApplication).realtimeService
 
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
@@ -807,9 +818,6 @@ class ChatActivity : AppCompatActivity() {
 
     private fun startCall(video: Boolean) {
         lifecycleScope.launch {
-            if (!ensureCallsClient()) return@launch
-
-            val app = application as BarkFluffApplication
             val mediaType = if (video) {
                 CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
             } else {
@@ -817,13 +825,13 @@ class ChatActivity : AppCompatActivity() {
             }
 
             val result = if (isGroupChat) {
-                app.callRepository.initiateGroup(chatId, mediaType)
+                callGateway.initiateGroup(chatId, mediaType)
             } else {
                 if (otherUserId <= 0L) {
                     Toast.makeText(this@ChatActivity, R.string.chat_call_user_missing, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
-                app.callRepository.initiateDirect(otherUserId, mediaType)
+                callGateway.initiateDirect(otherUserId, mediaType)
             }
 
             result.onSuccess { response ->
@@ -842,23 +850,6 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun ensureCallsClient(): Boolean {
-        val app = application as BarkFluffApplication
-        if (app.legacyTransport.callsClient != null) return true
-
-        val callsAddress = globalParam.socketCalls
-        if (callsAddress.isBlank()) {
-            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        val result = app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true)
-        if (result.isFailure) {
-            Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
-        }
-        return result.isSuccess
-    }
-
     private fun loadChatAvatar() {
         if (!chatAvatarFileId.isNullOrBlank()) {
             val fileId = chatAvatarFileId!!
@@ -870,7 +861,7 @@ class ChatActivity : AppCompatActivity() {
                 userId = chatId.hashCode().toLong(),
                 size = 80
             ) {
-                chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                fileMediaGateway.downloadUrl(fileId).getOrNull()
             }
         } else {
             AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, chatTitle, chatId.hashCode().toLong())
@@ -962,7 +953,7 @@ class ChatActivity : AppCompatActivity() {
             }
             // Иначе скачиваем через Files API
             val url = withContext(Dispatchers.IO) {
-                chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                fileMediaGateway.downloadUrl(fileId).getOrNull()
             } ?: return@launch
 
             if (loadVersion != chatBackgroundLoadVersion) return@launch
@@ -993,9 +984,7 @@ class ChatActivity : AppCompatActivity() {
             // Кешируем в дисковый кэш приложения
             withContext(Dispatchers.IO) {
                 try {
-                    val connection = java.net.URL(url)
-                        .openConnection() as java.net.HttpURLConnection
-                    legacyTransport.configureHttpConnection(connection)
+                    val connection = mediaHttpTransport.openConnection(url)
                     connection.connect()
                     val bytes = connection.inputStream.readBytes()
                     connection.disconnect()
@@ -1073,8 +1062,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
         return try {
-            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-            legacyTransport.configureHttpConnection(conn)
+            val conn = mediaHttpTransport.openConnection(url)
             conn.connect()
             val bmp = android.graphics.BitmapFactory.decodeStream(conn.inputStream)
             conn.disconnect()
@@ -1104,10 +1092,10 @@ class ChatActivity : AppCompatActivity() {
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
             getFileUrl = { fileId ->
-                chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                fileMediaGateway.downloadUrl(fileId).getOrNull()
             },
             downloadToCache = { fileId, onProgress ->
-                chatRepository.downloadFile(fileId, onProgress)
+                fileMediaGateway.download(fileId, onProgress)
             },
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
             stickerSizeDp = globalParam.chatStickerSizeDp,
@@ -1192,14 +1180,14 @@ class ChatActivity : AppCompatActivity() {
      */
     private fun loadGroupMemberInfo() {
         lifecycleScope.launch {
-            val members = legacyTransport.listChatMembers(chatId).getOrNull() ?: return@launch
+            val members = chatDirectoryGateway.members(chatId).getOrNull() ?: return@launch
 
             for (member in members) {
                 if (member.userId == currentUserId) continue
                 val name = "${member.firstName} ${member.lastName}".trim().ifBlank {
                     getString(R.string.group_member_id, member.userId)
                 }
-                val avatarSource = legacyTransport.getUserData(member.userId).getOrNull()?.let { user ->
+                val avatarSource = userProfileGateway.user(member.userId).getOrNull()?.let { user ->
                     avatarSourceFor(user)
                 }
                 groupMemberInfoCache[member.userId] = name to avatarSource
@@ -1263,7 +1251,7 @@ class ChatActivity : AppCompatActivity() {
         if (!pendingTypingNameFetches.add(userId)) return
         lifecycleScope.launch {
             try {
-                val user = legacyTransport.getUserData(userId).getOrNull()
+                val user = userProfileGateway.user(userId).getOrNull()
                 if (user != null) {
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank {
                         getString(R.string.group_member_id, userId)
@@ -1277,7 +1265,7 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun avatarSourceFor(user: GrpcTransportFacade.UserData): String? {
+    private fun avatarSourceFor(user: UserProfile): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }
@@ -1885,7 +1873,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupStickerPanel() {
         stickerPanelAdapter = StickerPanelAdapter(
-            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onStickerClick = { sticker ->
                 sendStickerMessage(sticker)
             },
@@ -1984,7 +1972,7 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val url = try {
                 withContext(Dispatchers.IO) {
-                    chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                    fileMediaGateway.downloadUrl(fileId).getOrNull()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading sticker preview url", e)
@@ -2021,8 +2009,8 @@ class ChatActivity : AppCompatActivity() {
     private fun refreshStickerDataFromServer() {
         lifecycleScope.launch {
             try {
-                val packs = withContext(Dispatchers.IO) { legacyTransport.listStickerPacks() }
-                if (packs.isNullOrEmpty()) {
+                val packs = stickerGateway.packs().getOrNull().orEmpty()
+                if (packs.isEmpty()) {
                     if (!stickerDataLoaded) stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
                     return@launch
                 }
@@ -2035,10 +2023,8 @@ class ChatActivity : AppCompatActivity() {
                         stickerCount = pack.stickerCount,
                         coverStickerId = pack.coverStickerId
                     ))
-                    val stickers = withContext(Dispatchers.IO) { legacyTransport.getStickerPack(pack.id) }
-                    if (stickers != null) {
-                        allItems.addAll(stickers.map { StickerPanelItem.Sticker(it, pack.id) })
-                    }
+                    val stickers = stickerGateway.stickerPack(pack.id).getOrNull().orEmpty()
+                    allItems.addAll(stickers.map { StickerPanelItem.Sticker(it, pack.id) })
                 }
                 stickerPanelAdapter.submitList(allItems)
                 stickerDataLoaded = true
@@ -2710,7 +2696,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun copyMessageImage(att: barkfluff.shared.Shared.MessageAttachment) {
         lifecycleScope.launch {
-            val srcFile = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+            val srcFile = FileCache.getFile(att.fileId) ?: fileMediaGateway.download(att.fileId)
             if (srcFile == null) {
                 Toast.makeText(this@ChatActivity, R.string.message_image_download_failed, Toast.LENGTH_SHORT).show()
                 return@launch
@@ -2752,7 +2738,7 @@ class ChatActivity : AppCompatActivity() {
             var saved = 0
             for (att in images) {
                 val name = att.fileName.ifBlank { "image_${att.fileId.take(8)}.jpg" }
-                val file = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                val file = FileCache.getFile(att.fileId) ?: fileMediaGateway.download(att.fileId)
                 if (file != null) {
                     val ok = withContext(Dispatchers.IO) {
                         FileSaveUtils.saveImageToGallery(this@ChatActivity, file, name)
@@ -2775,7 +2761,7 @@ class ChatActivity : AppCompatActivity() {
             var saved = 0
             for (att in docs) {
                 val name = att.fileName.ifBlank { "file_${att.fileId.take(8)}" }
-                val file = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                val file = FileCache.getFile(att.fileId) ?: fileMediaGateway.download(att.fileId)
                 if (file != null) {
                     val ok = withContext(Dispatchers.IO) {
                         FileSaveUtils.saveToDownloads(this@ChatActivity, file, name)
@@ -2810,7 +2796,7 @@ class ChatActivity : AppCompatActivity() {
     private fun toggleChatMute() {
         val newMuted = !viewModel.uiState.value.isChatMuted
         lifecycleScope.launch {
-            val result = legacyTransport.setChatMuted(chatId, newMuted)
+            val result = userSettingsGateway.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
                 viewModel.dispatch(ChatIntent.SetMuted(newMuted))
                 isChatMuted = newMuted
@@ -2879,25 +2865,17 @@ class ChatActivity : AppCompatActivity() {
 
     private suspend fun fetchAndDisplayOnlineStatus(userId: Long) {
         try {
-            val onlinerClient = legacyTransport.onlinerClient
-            if (onlinerClient != null) {
-                val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
-                    .addUserIds(userId)
-                    .build()
-                val response = onlinerClient.getOnlineStatus(request)
-                val userStatus = response.usersStatusesList.firstOrNull()
-                withContext(Dispatchers.Main) {
-                    if (userStatus != null) {
-                        val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
-                        if (isOnline) {
-                            applyOnlineStatus(getString(R.string.profile_online), true)
-                        } else {
-                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeen.seconds * 1000)
-                            applyOnlineStatus(lastSeen, false)
-                        }
+            val userStatus = presenceGateway.status(listOf(userId)).getOrNull()?.firstOrNull()
+            withContext(Dispatchers.Main) {
+                if (userStatus != null) {
+                    if (userStatus.isOnline) {
+                        applyOnlineStatus(getString(R.string.profile_online), true)
                     } else {
-                        applyOnlineStatus(getString(R.string.status_recently_seen), false)
+                        val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeenEpochMillis)
+                        applyOnlineStatus(lastSeen, false)
                     }
+                } else {
+                    applyOnlineStatus(getString(R.string.status_recently_seen), false)
                 }
             }
         } catch (e: Exception) {
@@ -3001,7 +2979,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun refreshChatBackgroundSettings() {
         lifecycleScope.launch {
-            legacyTransport.getUserSettings().onSuccess { settings ->
+            userSettingsGateway.syncedChatBackgrounds().onSuccess { settings ->
                 globalParam.applyChatBackgroundSettings(
                     settings.globalChatBackgroundFileId,
                     settings.chatBackgroundFileIds
