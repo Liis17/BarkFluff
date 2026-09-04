@@ -452,7 +452,6 @@
       }
     },
     "auth.login.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
