@@ -3,9 +3,15 @@ package com.barkfluff.client.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.util.Log
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.model.ChatSummary
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +35,14 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object WidgetUpdater {
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface Dependencies {
+        fun authGateway(): AuthGateway
+        fun chatDirectoryGateway(): ChatDirectoryGateway
+        fun fileMediaGateway(): FileMediaGateway
+    }
+
     private const val TAG = "WidgetUpdater"
     private const val DEBOUNCE_MS = 500L
 
@@ -43,7 +57,7 @@ object WidgetUpdater {
     private val pendingJobs = ConcurrentHashMap<Int, Job>()
     private val refreshMutex = Mutex()
 
-    private var cachedChats: List<GrpcTransportFacade.ChatData>? = null
+    private var cachedChats: List<ChatSummary>? = null
     @Volatile
     private var cachedAt: Long = 0L
     private const val CACHE_TTL_MS = 10_000L
@@ -67,13 +81,12 @@ object WidgetUpdater {
                         Log.v(TAG, "No config for widget $appWidgetId, skipping")
                         return@withTimeout
                     }
-                    val app = ctx as? BarkFluffApplication
-                    val legacyTransport = app?.legacyTransport
                     val globalParam = GlobalParam(ctx)
                     val loggedIn = !globalParam.accessToken.isNullOrBlank()
+                    val dependencies = EntryPointAccessors.fromApplication(ctx, Dependencies::class.java)
 
-                    val chats = if (loggedIn && legacyTransport != null) {
-                        fetchChats(ctx, legacyTransport, globalParam)
+                    val chats = if (loggedIn) {
+                        fetchChats(dependencies.authGateway(), dependencies.chatDirectoryGateway())
                     } else emptyList()
 
                     val views = WidgetRenderer.render(
@@ -82,7 +95,7 @@ object WidgetUpdater {
                         config = config,
                         chats = chats,
                         loggedIn = loggedIn,
-                        legacyTransport = legacyTransport
+                        fileMediaGateway = dependencies.fileMediaGateway(),
                     )
                     AppWidgetManager.getInstance(ctx).updateAppWidget(appWidgetId, views)
                 }
@@ -121,34 +134,18 @@ object WidgetUpdater {
     }
 
     private suspend fun fetchChats(
-        context: Context,
-        legacyTransport: GrpcTransportFacade,
-        globalParam: GlobalParam
-    ): List<GrpcTransportFacade.ChatData> {
+        authGateway: AuthGateway,
+        chatDirectoryGateway: ChatDirectoryGateway,
+    ): List<ChatSummary> {
         val now = System.currentTimeMillis()
         cachedChats?.let { cached ->
             if (now - cachedAt < CACHE_TTL_MS) return cached
         }
 
-        // Если клиент не создан (например, виджет работает в фоне без активного приложения) —
-        // создаём messages-клиент по адресу из GlobalParam.
-        if (legacyTransport.messagesClient == null) {
-            val addr = globalParam.socketMessages
-            if (addr.isBlank()) {
-                Log.w(TAG, "No messages endpoint configured")
-                return emptyList()
-            }
-            val r = legacyTransport.createMessagesClient(addr, context, includeDeviceInfo = true)
-            if (r.isFailure) {
-                Log.w(TAG, "Failed to create messages client for widget: ${r.exceptionOrNull()?.message}")
-                return emptyList()
-            }
-        }
-
-        legacyTransport.ensureTokenValid(context)
-        val result = legacyTransport.getChats(offset = 0, size = 100)
+        if (!authGateway.ensureValid()) return emptyList()
+        val result = chatDirectoryGateway.chats(offset = 0, size = 100)
         return if (result.isSuccess) {
-            val list = result.getOrNull().orEmpty()
+            val list = result.getOrNull()?.chats.orEmpty()
             cachedChats = list
             cachedAt = now
             list
