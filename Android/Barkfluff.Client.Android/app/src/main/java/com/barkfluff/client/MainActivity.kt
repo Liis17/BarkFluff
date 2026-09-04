@@ -29,6 +29,8 @@ import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityMainBinding
 import com.barkfluff.client.deeplink.DeepLinkCommand
 import com.barkfluff.client.deeplink.DeepLinkHandler
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.color.DynamicColors
@@ -43,6 +45,8 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -172,8 +176,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
 
         // Проверяем инициализацию gRPC клиентов
-        val app = applicationContext as BarkFluffApplication
-        if (!app.legacyTransport.isInitialized()) {
+        if (clientRegistry.messagesClient == null || clientRegistry.usersClient == null) {
             val globalParam = GlobalParam(this)
             val hasToken = globalParam.accessToken != null
             val tokenExpiration = globalParam.accessTokenExpiration
@@ -183,7 +186,7 @@ class MainActivity : AppCompatActivity() {
             if (hasToken && !isExpired) {
                 // Токен валиден — инициализируем gRPC на месте
                 Log.d("MainActivity", "Token valid, initializing gRPC in-place")
-                app.legacyTransport.initAllClients(this, globalParam)
+                clientRegistry.initAllClients(globalParam, this)
             } else {
                 // Нужна авторизация через SplashActivity
                 Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
@@ -225,11 +228,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveDeepLinkUser(username: String) {
-        val app = applicationContext as BarkFluffApplication
-        val legacyTransport = app.legacyTransport
-
         lifecycleScope.launch {
-            val searchResult = legacyTransport.searchUsers(username, size = 20)
+            val searchResult = userDirectoryGateway.search(username, size = 20)
             if (searchResult.isFailure) {
                 Toast.makeText(this@MainActivity, R.string.main_user_search_failed, Toast.LENGTH_SHORT).show()
                 return@launch
@@ -243,7 +243,7 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val chatResult = legacyTransport.getPersonChatId(user.userId)
+            val chatResult = userDirectoryGateway.personChatId(user.userId)
             if (chatResult.isFailure) {
                 Toast.makeText(this@MainActivity, R.string.deep_link_chat_open_failed, Toast.LENGTH_SHORT).show()
                 return@launch

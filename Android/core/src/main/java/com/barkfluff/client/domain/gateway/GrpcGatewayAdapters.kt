@@ -9,6 +9,7 @@ import com.barkfluff.client.domain.model.*
 import com.barkfluff.client.domain.model.toDomain
 import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.calls.CallRepository
 import java.io.File
@@ -147,6 +148,24 @@ class GrpcUserDirectoryGateway(private val grpc: GrpcTransportFacade) : UserDire
     override suspend fun peerDevices(userId: Long): Result<List<barkfluff.users.UsersApiOuterClass.PeerDeviceInfo>> = grpc.listPeerDevices(userId)
 }
 
+class GrpcPresenceGateway(
+    private val registry: GrpcClientRegistry,
+) : PresenceGateway {
+    override suspend fun status(userIds: List<Long>): Result<List<UserPresence>> = runCatching {
+        val client = registry.onlinerClient ?: error("Onliner client is unavailable")
+        val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
+            .addAllUserIds(userIds.filter { it > 0L })
+            .build()
+        client.getOnlineStatus(request).usersStatusesList.map { value ->
+            UserPresence(
+                userId = value.userId,
+                isOnline = value.status == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE,
+                lastSeenEpochMillis = value.lastSeen.seconds * 1000 + value.lastSeen.nanos / 1_000_000,
+            )
+        }
+    }
+}
+
 class GrpcChatDirectoryGateway(private val grpc: GrpcTransportFacade) : ChatDirectoryGateway {
     override suspend fun chats(offset: Int, size: Int): Result<ChatPage> =
         grpc.getChatsPage(offset, size).map { page ->
@@ -230,6 +249,13 @@ class GrpcMessageGateway(
         grpc.unpinMessage(chatId, messageId)
 
     override suspend fun unpinAllMessages(chatId: String): Result<Int> = grpc.unpinAllMessages(chatId)
+
+    override suspend fun attachments(
+        chatId: String,
+        type: Shared.MessageAttachmentType,
+        pageSize: Int,
+        fileNameQuery: String,
+    ) = repository.getChatAttachments(chatId, type, pageSize, fileNameQuery)
 }
 
 class GrpcChatFolderGateway(private val grpc: GrpcTransportFacade) : ChatFolderGateway {

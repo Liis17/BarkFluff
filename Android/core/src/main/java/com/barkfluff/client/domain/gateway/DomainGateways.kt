@@ -17,6 +17,7 @@ import com.barkfluff.client.domain.model.MediaUpload
 import com.barkfluff.client.domain.model.PinnedMessagePage
 import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.UserPresence
 import com.barkfluff.client.domain.model.ConfirmAccountResult
 import com.barkfluff.client.domain.model.ConfirmResetPasswordResult
 import com.barkfluff.client.domain.model.InvalidOldPasswordException
@@ -118,6 +119,10 @@ interface UserDirectoryGateway {
     suspend fun peerDevices(userId: Long): Result<List<barkfluff.users.UsersApiOuterClass.PeerDeviceInfo>>
 }
 
+interface PresenceGateway {
+    suspend fun status(userIds: List<Long>): Result<List<UserPresence>>
+}
+
 interface ChatDirectoryGateway {
     suspend fun chats(offset: Int = 0, size: Int = 50): Result<ChatPage>
     suspend fun chat(chatId: String): Result<ChatSummary>
@@ -154,6 +159,12 @@ interface MessageGateway {
     suspend fun pinMessage(chatId: String, messageId: Long): Result<Shared.PinnedMessageInfo>
     suspend fun unpinMessage(chatId: String, messageId: Long): Result<Unit>
     suspend fun unpinAllMessages(chatId: String): Result<Int>
+    suspend fun attachments(
+        chatId: String,
+        type: Shared.MessageAttachmentType = Shared.MessageAttachmentType.MESSAGE_ATTACHMENT_TYPE_UNKNOWN,
+        pageSize: Int = 100,
+        fileNameQuery: String = "",
+    ): Result<List<barkfluff.messages.MessagesApiOuterClass.ChatAttachmentInfo>>
 }
 
 interface ChatFolderGateway {

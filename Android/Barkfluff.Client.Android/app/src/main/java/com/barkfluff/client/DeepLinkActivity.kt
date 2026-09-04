@@ -10,13 +10,20 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.deeplink.DeepLinkCommand
 import com.barkfluff.client.deeplink.DeepLinkHandler
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.grpc.GrpcClientRegistry
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
  * Прозрачная Activity — точка входа для deep link URI (bf:// и bfdev://).
  * Не имеет собственного UI.
  */
+@AndroidEntryPoint
 class DeepLinkActivity : AppCompatActivity() {
+
+    @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
 
     companion object {
         private const val TAG = "DeepLinkActivity"
@@ -52,7 +59,7 @@ class DeepLinkActivity : AppCompatActivity() {
                 val app = applicationContext as BarkFluffApplication
                 val globalParam = GlobalParam(this)
                 val hasToken = globalParam.refreshToken != null
-                val grpcReady = app.legacyTransport.isInitialized()
+                val grpcReady = clientRegistry.messagesClient != null && clientRegistry.usersClient != null
                 val cameFromBackground = app.cameFromBackground
 
                 if (hasToken && grpcReady && !cameFromBackground) {
@@ -68,11 +75,8 @@ class DeepLinkActivity : AppCompatActivity() {
     }
 
     private fun resolveAndOpenChat(username: String) {
-        val app = applicationContext as BarkFluffApplication
-        val legacyTransport = app.legacyTransport
-
         lifecycleScope.launch {
-            val searchResult = legacyTransport.searchUsers(username, size = 20)
+            val searchResult = userDirectoryGateway.search(username, size = 20)
             if (searchResult.isFailure) {
                 Toast.makeText(this@DeepLinkActivity, R.string.deep_link_user_search_error, Toast.LENGTH_SHORT).show()
                 finish()
@@ -92,7 +96,7 @@ class DeepLinkActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val chatResult = legacyTransport.getPersonChatId(user.userId)
+            val chatResult = userDirectoryGateway.personChatId(user.userId)
             if (chatResult.isFailure) {
                 Toast.makeText(this@DeepLinkActivity, R.string.deep_link_chat_open_failed, Toast.LENGTH_SHORT).show()
                 finish()

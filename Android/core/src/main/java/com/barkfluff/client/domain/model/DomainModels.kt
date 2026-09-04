@@ -91,6 +91,12 @@ data class ChatInfo(
 
 data class ChatMember(val userId: Long, val firstName: String, val lastName: String)
 
+data class UserPresence(
+    val userId: Long,
+    val isOnline: Boolean,
+    val lastSeenEpochMillis: Long,
+)
+
 data class ChatFolder(
     val folderId: String,
     val folderName: String,
