@@ -122,6 +122,31 @@ class GrpcTokenCoordinatorTest {
     }
 
     @Test
+    fun `coordinator instances share the process refresh mutex`() = runBlocking {
+        val store = FakeTokenStore(
+            accessToken = "old-access",
+            accessTokenExpiration = 0L,
+            refreshToken = "refresh-${System.nanoTime()}",
+            refreshTokenExpiration = 3_000_000L,
+        )
+        var refreshCalls = 0
+        fun newCoordinator() = coordinator(store, now = { 1_000_000L }) {
+            refreshCalls += 1
+            delay(20)
+            TokenRefreshResult("new-access", 5_000_000L, store.refreshToken!!, 3_000_000L)
+        }
+        val first = newCoordinator()
+        val second = newCoordinator()
+
+        val results = coroutineScope {
+            listOf(async { first.ensureValid() }, async { second.ensureValid() }).map { it.await() }
+        }
+
+        assertTrue(results.all { it })
+        assertEquals(1, refreshCalls)
+    }
+
+    @Test
     fun `missing refresh credentials fail without invoking identity`() = runBlocking {
         val store = FakeTokenStore(
             accessToken = null,
