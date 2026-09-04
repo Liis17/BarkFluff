@@ -282,7 +282,10 @@ class OutgoingMessageQueue(
                 val type = UploadFileType.forNumber(attachment.uploadFileTypeNumber)
                     ?: UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
                 val uploadUrl = chatRepository.getUploadUrl(type, attachment.uploadOperationId).getOrElse { throw it }
-                val status = chatRepository.getUploadStatus(uploadUrl.url).getOrElse { throw it }
+                val status = chatRepository.getUploadStatus(
+                    uploadUrl = uploadUrl.url,
+                    shouldCancel = { cancellationRequests.containsKey(record.operationId) }
+                ).getOrElse { throw it }
                 val completedId = status?.takeIf {
                     it.state.equals("completed", ignoreCase = true) || it.state.equals("complete", ignoreCase = true)
                 }?.fileId?.takeIf(String::isNotBlank)
@@ -499,12 +502,12 @@ class OutgoingMessageQueue(
                     mime?.startsWith("video/") == true -> UploadFileType.MESSAGE_ATTACHMENT_VIDEO
                     else -> UploadFileType.MESSAGE_ATTACHMENT_IMAGE
                 }
-                Sextuple(OutgoingAttachmentKind.RAW_IMAGE, file, name, mime, type, 0L, -1L, false)
+                StagedAttachmentInput(OutgoingAttachmentKind.RAW_IMAGE, file, name, mime, type, 0L, -1L, false)
             }
             is AttachmentSpec.EditedImage -> {
                 val file = File(directory, "source_$index.jpg")
                 file.outputStream().use { it.write(spec.bytes) }
-                Sextuple(
+                StagedAttachmentInput(
                     OutgoingAttachmentKind.EDITED_IMAGE, file, "image.jpg", "image/jpeg",
                     if (sendAsFile) UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT else UploadFileType.MESSAGE_ATTACHMENT_IMAGE,
                     0L, -1L, false
@@ -515,7 +518,7 @@ class OutgoingMessageQueue(
                 val name = displayName(spec.spec.uri) ?: "video.mp4"
                 val file = File(directory, "source_$index${extension(name, mime)}")
                 copyUri(spec.spec.uri, file)
-                Sextuple(
+                StagedAttachmentInput(
                     OutgoingAttachmentKind.VIDEO, file, name, mime,
                     if (sendAsFile) UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT else UploadFileType.MESSAGE_ATTACHMENT_VIDEO,
                     spec.spec.trimStartMs, spec.spec.trimEndMs, spec.spec.compressTo480p
@@ -526,17 +529,17 @@ class OutgoingMessageQueue(
                 val name = displayName(spec.uri) ?: "file"
                 val file = File(directory, "source_$index${extension(name, mime)}")
                 copyUri(spec.uri, file)
-                Sextuple(OutgoingAttachmentKind.DOCUMENT, file, name, mime, UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT, 0L, -1L, false)
+                StagedAttachmentInput(OutgoingAttachmentKind.DOCUMENT, file, name, mime, UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT, 0L, -1L, false)
             }
             is AttachmentSpec.Sticker -> {
                 val file = File(directory, "source_$index.webp")
                 file.outputStream().use { it.write(spec.bytes) }
-                Sextuple(OutgoingAttachmentKind.STICKER, file, "sticker.webp", "image/webp", UploadFileType.MESSAGE_ATTACHMENT_STICKER, 0L, -1L, false)
+                StagedAttachmentInput(OutgoingAttachmentKind.STICKER, file, "sticker.webp", "image/webp", UploadFileType.MESSAGE_ATTACHMENT_STICKER, 0L, -1L, false)
             }
             is AttachmentSpec.Voice -> {
                 val file = File(directory, "source_$index.ogg")
                 spec.file.inputStream().use { input -> file.outputStream().use { input.copyTo(it) } }
-                Sextuple(OutgoingAttachmentKind.VOICE, file, "voice.ogg", "audio/ogg", UploadFileType.MESSAGE_ATTACHMENT_VOICE, 0L, -1L, false)
+                StagedAttachmentInput(OutgoingAttachmentKind.VOICE, file, "voice.ogg", "audio/ogg", UploadFileType.MESSAGE_ATTACHMENT_VOICE, 0L, -1L, false)
             }
         }
         return OutgoingAttachmentRecord(
@@ -682,7 +685,7 @@ class OutgoingMessageQueue(
         val existingFileIds: List<String>
     )
 
-    private data class Sextuple(
+    private data class StagedAttachmentInput(
         val kind: OutgoingAttachmentKind,
         val source: File,
         val fileName: String?,

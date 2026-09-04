@@ -864,7 +864,11 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             outgoingMessageQueue.observeChat(chatId).collect { snapshots ->
                 latestOutgoingSnapshots = snapshots
-                val active = snapshots.filter { it.state != OutgoingMessageState.SENT }
+                val active = snapshots.filter {
+                    it.state != OutgoingMessageState.STAGING &&
+                        it.state != OutgoingMessageState.CANCEL_REQUESTED &&
+                        it.state != OutgoingMessageState.SENT
+                }
                 val activeIds = active.map { it.operationId }.toSet()
                 val current = _uiState.value.items.toMutableList()
                 current.removeAll { item ->
@@ -930,7 +934,11 @@ class ChatViewModel @Inject constructor(
             }
         }
 
-        latestOutgoingSnapshots.filter { it.state != OutgoingMessageState.SENT }
+        latestOutgoingSnapshots.filter {
+            it.state != OutgoingMessageState.STAGING &&
+                it.state != OutgoingMessageState.CANCEL_REQUESTED &&
+                it.state != OutgoingMessageState.SENT
+        }
             .forEach { snapshot -> upsertOutgoingBubble(messageItems, snapshot) }
         submitItems(messageItems)
     }
