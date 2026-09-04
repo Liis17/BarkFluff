@@ -26,10 +26,7 @@ import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.security.TlsTransportFactory
-import com.barkfluff.client.utils.FileMediaUrl
 import io.grpc.*
-import io.grpc.ManagedChannel
-import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
@@ -58,6 +55,9 @@ class GrpcManager(context: Context) {
 
     private val appContext = context.applicationContext
     private val tlsTransport = TlsTransportFactory(appContext)
+    /** Typed client lifecycle owner used by the compatibility facade below. */
+    private val clientRegistry = GrpcClientRegistry(appContext, tlsTransport)
+    private val mediaTransport = MediaHttpTransport(appContext, tlsTransport)
 
     /** Единая политика freshness/refresh для всех legacy и новых consumers. */
     private val tokenCoordinator: TokenCoordinator by lazy {
@@ -85,143 +85,38 @@ class GrpcManager(context: Context) {
         )
     }
 
-    /**
-     * True после [shutdown]: ленивый подъём клиентов отключён, чтобы терминальная очистка
-     * не «оживляла» каналы повторным чтением свойства.
-     */
-    @Volatile
-    private var shutdownRequested = false
+    // Compatibility properties. Mutable slots and lazy creation live in the registry.
+    val navigatorChannel: Channel? get() = clientRegistry.navigatorChannel
+    val beaconChannel: Channel? get() = clientRegistry.beaconChannel
+    val identityChannel: Channel? get() = clientRegistry.identityChannel
+    val usersChannel: Channel? get() = clientRegistry.usersChannel
+    val filesChannel: Channel? get() = clientRegistry.filesChannel
+    val messagesChannel: Channel? get() = clientRegistry.messagesChannel
+    val updatesChannel: Channel? get() = clientRegistry.updatesChannel
+    val onlinerChannel: Channel? get() = clientRegistry.onlinerChannel
+    val fastAuthChannel: Channel? get() = clientRegistry.fastAuthChannel
+    val callsChannel: Channel? get() = clientRegistry.callsChannel
 
-    // Адреса, использованные при создании каналов (для идемпотентности)
-    private var navigatorAddress: String? = null
-    private var beaconAddress: String? = null
-    private var identityAddress: String? = null
-    private var usersAddress: String? = null
-    private var filesAddress: String? = null
-    private var messagesAddress: String? = null
-    private var updatesAddress: String? = null
-    private var onlinerAddress: String? = null
-    private var fastAuthAddress: String? = null
-    private var callsAddress: String? = null
-
-    // gRPC каналы
-    var navigatorChannel: Channel? = null
-        private set
-    var beaconChannel: Channel? = null
-        private set
-    var identityChannel: Channel? = null
-        private set
-    var usersChannel: Channel? = null
-        private set
-    var filesChannel: Channel? = null
-        private set
-    var messagesChannel: Channel? = null
-        private set
-    var updatesChannel: Channel? = null
-        private set
-    var onlinerChannel: Channel? = null
-        private set
-    var fastAuthChannel: Channel? = null
-        private set
-    var callsChannel: Channel? = null
-        private set
-
-    // gRPC клиенты. Navigator/Beacon создаются явно (SelectServerActivity/ServerInfoPrefs),
-    // их生命周期 не меняется. Остальные восемь лениво самоподнимаются по адресам из
-    // GlobalParam: процесс, поднятый FCM/виджетом, не проходит через Splash/Login/Main,
-    // и раньше чтение возвращало null («Users клиент не создан» и т.п.).
-    var navigatorClient: NavigatorApiGrpcKt.NavigatorApiCoroutineStub? = null
-        private set
-    var beaconClient: BeaconApiGrpcKt.BeaconApiCoroutineStub? = null
-        private set
-
-    private var _identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub? = null
-    var identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub?
-        @Synchronized get() {
-            _identityClient?.let { return it }
-            val address = GlobalParam(appContext).socketIdentity
-            if (address.isBlank() || shutdownRequested) return null
-            createIdentityClient(address, appContext, includeDeviceInfo = true)
-            return _identityClient
-        }
-        private set(value) { _identityClient = value }
-
-    private var _usersClient: UsersApiGrpcKt.UsersApiCoroutineStub? = null
-    var usersClient: UsersApiGrpcKt.UsersApiCoroutineStub?
-        @Synchronized get() {
-            _usersClient?.let { return it }
-            val address = GlobalParam(appContext).socketUsers
-            if (address.isBlank() || shutdownRequested) return null
-            createUsersClient(address, appContext, includeDeviceInfo = true)
-            return _usersClient
-        }
-        private set(value) { _usersClient = value }
-
-    private var _filesClient: FilesApiGrpcKt.FilesApiCoroutineStub? = null
-    var filesClient: FilesApiGrpcKt.FilesApiCoroutineStub?
-        @Synchronized get() {
-            _filesClient?.let { return it }
-            val address = GlobalParam(appContext).socketFiles
-            if (address.isBlank() || shutdownRequested) return null
-            createFilesClient(address, appContext, includeDeviceInfo = true)
-            return _filesClient
-        }
-        private set(value) { _filesClient = value }
-
-    private var _messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub? = null
-    var messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub?
-        @Synchronized get() {
-            _messagesClient?.let { return it }
-            val address = GlobalParam(appContext).socketMessages
-            if (address.isBlank() || shutdownRequested) return null
-            createMessagesClient(address, appContext, includeDeviceInfo = true)
-            return _messagesClient
-        }
-        private set(value) { _messagesClient = value }
-
-    private var _updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub? = null
-    var updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub?
-        @Synchronized get() {
-            _updatesClient?.let { return it }
-            val address = GlobalParam(appContext).socketUpdates
-            if (address.isBlank() || shutdownRequested) return null
-            createUpdatesClient(address, appContext, includeDeviceInfo = true)
-            return _updatesClient
-        }
-        private set(value) { _updatesClient = value }
-
-    private var _onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub? = null
-    var onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub?
-        @Synchronized get() {
-            _onlinerClient?.let { return it }
-            val address = GlobalParam(appContext).socketOnliner
-            if (address.isBlank() || shutdownRequested) return null
-            createOnlinerClient(address, appContext, includeDeviceInfo = true)
-            return _onlinerClient
-        }
-        private set(value) { _onlinerClient = value }
-
-    private var _fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub? = null
-    var fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub?
-        @Synchronized get() {
-            _fastAuthClient?.let { return it }
-            val address = GlobalParam(appContext).socketFastAuth
-            if (address.isBlank() || shutdownRequested) return null
-            createFastAuthClient(address, appContext, includeDeviceInfo = true)
-            return _fastAuthClient
-        }
-        private set(value) { _fastAuthClient = value }
-
-    private var _callsClient: CallsApiGrpcKt.CallsApiCoroutineStub? = null
-    var callsClient: CallsApiGrpcKt.CallsApiCoroutineStub?
-        @Synchronized get() {
-            _callsClient?.let { return it }
-            val address = GlobalParam(appContext).socketCalls
-            if (address.isBlank() || shutdownRequested) return null
-            createCallsClient(address, appContext, includeDeviceInfo = true)
-            return _callsClient
-        }
-        private set(value) { _callsClient = value }
+    val navigatorClient: NavigatorApiGrpcKt.NavigatorApiCoroutineStub?
+        get() = clientRegistry.navigatorClient
+    val beaconClient: BeaconApiGrpcKt.BeaconApiCoroutineStub?
+        get() = clientRegistry.beaconClient
+    val identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub?
+        get() = clientRegistry.identityClient
+    val usersClient: UsersApiGrpcKt.UsersApiCoroutineStub?
+        get() = clientRegistry.usersClient
+    val filesClient: FilesApiGrpcKt.FilesApiCoroutineStub?
+        get() = clientRegistry.filesClient
+    val messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub?
+        get() = clientRegistry.messagesClient
+    val updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub?
+        get() = clientRegistry.updatesClient
+    val onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub?
+        get() = clientRegistry.onlinerClient
+    val fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub?
+        get() = clientRegistry.fastAuthClient
+    val callsClient: CallsApiGrpcKt.CallsApiCoroutineStub?
+        get() = clientRegistry.callsClient
 
     /**
      * Проверяет, инициализированы ли основные клиенты (identity, users, files, messages).
@@ -236,37 +131,24 @@ class GrpcManager(context: Context) {
      */
     fun tokenCoordinator(): TokenCoordinator = tokenCoordinator
 
-    fun normalizeEndpointAddress(address: String): String = tlsTransport.normalizeGrpcAddress(address)
+    fun normalizeEndpointAddress(address: String): String = clientRegistry.normalizeEndpointAddress(address)
+
+    /** Typed registry seam for adapters being migrated away from this facade. */
+    fun clientRegistry(): GrpcClientRegistry = clientRegistry
 
     /**
      * Files выдаёт ссылки на свой основной адрес (за CDN с лимитом на размер файла).
      * Если нода объявила отдельный файловый origin — качаем и грузим через него.
      */
     fun toMediaUrl(url: String): String =
-        FileMediaUrl.rewrite(url, GlobalParam(appContext).socketFilesMedia)
+        mediaTransport.rewrite(url)
 
     /**
      * Инициализирует все клиенты по адресам из GlobalParam.
      * Идемпотентно — если клиент уже создан с тем же адресом, пропускает пересоздание.
      */
     fun initAllClients(context: Context, globalParam: GlobalParam) {
-        val identity = globalParam.socketIdentity
-        val users = globalParam.socketUsers
-        val files = globalParam.socketFiles
-        val messages = globalParam.socketMessages
-        val onliner = globalParam.socketOnliner
-        val updates = globalParam.socketUpdates
-        val calls = globalParam.socketCalls
-
-        if (identity.isNotBlank()) createIdentityClient(identity, context, includeDeviceInfo = true)
-        if (users.isNotBlank()) createUsersClient(users, context, includeDeviceInfo = true)
-        if (files.isNotBlank()) createFilesClient(files, context, includeDeviceInfo = true)
-        if (messages.isNotBlank()) createMessagesClient(messages, context, includeDeviceInfo = true)
-        if (onliner.isNotBlank()) createOnlinerClient(onliner, context, includeDeviceInfo = true)
-        if (updates.isNotBlank()) createUpdatesClient(updates, context, includeDeviceInfo = true)
-        val fastAuth = globalParam.socketFastAuth
-        if (fastAuth.isNotBlank()) createFastAuthClient(fastAuth, context, includeDeviceInfo = true)
-        if (calls.isNotBlank()) createCallsClient(calls, context, includeDeviceInfo = true)
+        clientRegistry.initAllClients(globalParam, context)
     }
 
     /**
@@ -274,24 +156,7 @@ class GrpcManager(context: Context) {
      * Аналог CreateOnlyBeaconAC в WPF
      */
     fun createOnlyBeaconClient(beaconAddress: String): Result<Unit> {
-        if (beaconAddress.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Beacon сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(beaconAddress)
-        if (this.beaconAddress == normalized && beaconClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-            this.beaconChannel = channel
-            this.beaconClient = BeaconApiGrpcKt.BeaconApiCoroutineStub(channel)
-            this.beaconAddress = normalized
-            Log.d(TAG, "Beacon клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Beacon клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу: ${e.message}"))
-        }
+        return clientRegistry.createBeaconClient(beaconAddress)
     }
 
     /**
@@ -299,104 +164,29 @@ class GrpcManager(context: Context) {
      * Аналог CreateNavigatorAC в WPF
      */
     fun createNavigatorClient(navigatorUrl: String = DEFAULT_NAVIGATOR_URL): Result<Unit> {
-        if (navigatorUrl.isBlank()) {
-            return Result.failure(IllegalArgumentException("URL навигатора не может быть пустым"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(navigatorUrl)
-        if (this.navigatorAddress == normalized && navigatorClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-            navigatorChannel = channel
-            navigatorClient = NavigatorApiGrpcKt.NavigatorApiCoroutineStub(channel)
-            this.navigatorAddress = normalized
-            Log.d(TAG, "Navigator клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Navigator клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу: ${e.message}"))
-        }
+        return clientRegistry.createNavigatorClient(navigatorUrl)
     }
 
     /**
      * Создает Identity клиент для авторизации
      */
     fun createIdentityClient(identityAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (identityAddress.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Identity сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(identityAddress)
-        if (this.identityAddress == normalized && _identityClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            // Добавляем interceptors
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            identityChannel = interceptedChannel
-            identityClient = IdentityApiGrpcKt.IdentityApiCoroutineStub(interceptedChannel)
-            this.identityAddress = normalized
-            Log.d(TAG, "Identity клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Identity клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу авторизации: ${e.message}"))
-        }
+        return clientRegistry.createIdentityClient(
+            address = identityAddress,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
 
     /**
      * Создает Users клиент для работы с пользователями
      */
     fun createUsersClient(usersAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (usersAddress.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Users сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(usersAddress)
-        if (this.usersAddress == normalized && _usersClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            // Добавляем interceptors
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            this.usersChannel = interceptedChannel
-            usersClient = UsersApiGrpcKt.UsersApiCoroutineStub(interceptedChannel)
-            this.usersAddress = normalized
-            Log.d(TAG, "Users клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Users клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу пользователей: ${e.message}"))
-        }
+        return clientRegistry.createUsersClient(
+            address = usersAddress,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
 
     /**
@@ -893,11 +683,9 @@ class GrpcManager(context: Context) {
         return tlsTransport.normalizeUrl(url)
     }
 
-    private fun createChannel(address: String): ManagedChannel = tlsTransport.createGrpcChannel(address)
-
     /** Applies the same host-scoped TLS policy to presigned HTTP(S) connections. */
     fun configureHttpConnection(connection: HttpURLConnection) {
-        tlsTransport.configure(connection)
+        mediaTransport.configure(connection)
     }
 
     private fun toBase64(value: String): String {
@@ -916,30 +704,7 @@ class GrpcManager(context: Context) {
      * Это исключает окно, в котором клиенты == null и IO-корутины падают с NPE.
      */
     fun recreateAllClients(context: Context, globalParam: GlobalParam) {
-        Log.d(TAG, "Force-recreating all gRPC channels")
-
-        // 1. Сохраняем старые каналы для последующего закрытия
-        val oldChannels = listOfNotNull(
-            identityChannel, usersChannel, filesChannel,
-            messagesChannel, updatesChannel, onlinerChannel, callsChannel
-        )
-
-        // 2. Сбрасываем адреса, чтобы initAllClients не пропустил пересоздание (idempotency check)
-        identityAddress = null
-        usersAddress = null
-        filesAddress = null
-        messagesAddress = null
-        updatesAddress = null
-        onlinerAddress = null
-        fastAuthAddress = null
-        callsAddress = null
-
-        // 3. Создаём новые каналы и клиенты — ссылки обновляются атомарно для каждого сервиса
-        initAllClients(context, globalParam)
-
-        // 4. Закрываем старые каналы (in-flight RPC на старых каналах завершатся с ошибкой,
-        //    но новые запросы уже идут через новые каналы)
-        oldChannels.forEach { shutdownChannel(it) }
+        clientRegistry.recreateAllClients(globalParam, context)
     }
 
     /**
@@ -947,298 +712,67 @@ class GrpcManager(context: Context) {
      * Аналог Dispose в WPF
      */
     fun shutdown() {
-        shutdownRequested = true
-        shutdownChannel(navigatorChannel)
-        shutdownChannel(beaconChannel)
-        shutdownChannel(identityChannel)
-        shutdownChannel(usersChannel)
-        shutdownChannel(filesChannel)
-        shutdownChannel(messagesChannel)
-        shutdownChannel(updatesChannel)
-        shutdownChannel(onlinerChannel)
-        shutdownChannel(fastAuthChannel)
-        shutdownChannel(callsChannel)
-
-        navigatorChannel = null
-        beaconChannel = null
-        identityChannel = null
-        usersChannel = null
-        filesChannel = null
-        messagesChannel = null
-        updatesChannel = null
-        onlinerChannel = null
-        fastAuthChannel = null
-        callsChannel = null
-
-        navigatorClient = null
-        beaconClient = null
-        identityClient = null
-        usersClient = null
-        filesClient = null
-        messagesClient = null
-        updatesClient = null
-        onlinerClient = null
-        fastAuthClient = null
-        callsClient = null
-
-        navigatorAddress = null
-        beaconAddress = null
-        identityAddress = null
-        usersAddress = null
-        filesAddress = null
-        messagesAddress = null
-        updatesAddress = null
-        onlinerAddress = null
-        fastAuthAddress = null
-        callsAddress = null
-    }
-
-    /**
-     * Корректно закрывает gRPC канал
-     */
-    private fun shutdownChannel(channel: Channel?) {
-        if (channel is ManagedChannel) {
-            channel.shutdown()
-            try {
-                // Ждем завершения не более 3 секунд
-                if (!channel.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS)) {
-                    Log.w(TAG, "Канал не был закрыт в течение 3 секунд, вызываем shutdownNow()")
-                    channel.shutdownNow()
-                }
-            } catch (e: InterruptedException) {
-                Log.w(TAG, "Прерывание при ожидании закрытия канала", e)
-                channel.shutdownNow()
-                Thread.currentThread().interrupt()
-            }
-        }
+        clientRegistry.shutdown()
     }
 
     /**
      * Создает Files клиент для работы с файлами
      */
     fun createFilesClient(filesAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (filesAddress.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Files сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(filesAddress)
-        if (this.filesAddress == normalized && _filesClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            this.filesChannel = interceptedChannel
-            filesClient = FilesApiGrpcKt.FilesApiCoroutineStub(interceptedChannel)
-            this.filesAddress = normalized
-            Log.d(TAG, "Files клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Files клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу файлов: ${e.message}"))
-        }
+        return clientRegistry.createFilesClient(
+            address = filesAddress,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
 
     /**
      * Создает Messages клиент для работы с чатами и сообщениями
      */
     fun createMessagesClient(messagesAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (messagesAddress.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Messages сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(messagesAddress)
-        if (this.messagesAddress == normalized && _messagesClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            this.messagesChannel = interceptedChannel
-            messagesClient = MessagesApiGrpcKt.MessagesApiCoroutineStub(interceptedChannel)
-            this.messagesAddress = normalized
-            Log.d(TAG, "Messages клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Messages клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу сообщений: ${e.message}"))
-        }
+        return clientRegistry.createMessagesClient(
+            address = messagesAddress,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
 
     /**
      * Создает Updates клиент для подписки на обновления сообщений
      */
     fun createUpdatesClient(updatesAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (updatesAddress.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Updates сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(updatesAddress)
-        if (this.updatesAddress == normalized && _updatesClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            this.updatesChannel = interceptedChannel
-            updatesClient = UpdatesApiGrpcKt.UpdatesApiCoroutineStub(interceptedChannel)
-            this.updatesAddress = normalized
-            Log.d(TAG, "Updates клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Updates клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу обновлений: ${e.message}"))
-        }
+        return clientRegistry.createUpdatesClient(
+            address = updatesAddress,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
 
     /**
      * Создает Onliner клиент для отслеживания онлайн-статусов
      */
     fun createOnlinerClient(onlinerAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (onlinerAddress.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Onliner сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(onlinerAddress)
-        if (this.onlinerAddress == normalized && _onlinerClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            this.onlinerChannel = interceptedChannel
-            onlinerClient = OnlinerApiGrpcKt.OnlinerApiCoroutineStub(interceptedChannel)
-            this.onlinerAddress = normalized
-            Log.d(TAG, "Onliner клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Onliner клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу онлайн-статусов: ${e.message}"))
-        }
+        return clientRegistry.createOnlinerClient(
+            address = onlinerAddress,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
 
     fun createFastAuthClient(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (address.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес FastAuth сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(address)
-        if (this.fastAuthAddress == normalized && _fastAuthClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            this.fastAuthChannel = interceptedChannel
-            fastAuthClient = FastAuthApiGrpcKt.FastAuthApiCoroutineStub(interceptedChannel)
-            this.fastAuthAddress = normalized
-            Log.d(TAG, "FastAuth клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания FastAuth клиента", e)
-            Result.failure(Exception("Ошибка подключения к FastAuth серверу: ${e.message}"))
-        }
+        return clientRegistry.createFastAuthClient(
+            address = address,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
 
     fun createCallsClient(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
-        if (address.isBlank()) {
-            return Result.failure(IllegalArgumentException("Адрес Calls сервера не указан"))
-        }
-
-        val normalized = tlsTransport.normalizeGrpcAddress(address)
-        if (this.callsAddress == normalized && _callsClient != null) return Result.success(Unit)
-
-        return try {
-            val channel = createChannel(normalized)
-
-            val interceptors = mutableListOf<ClientInterceptor>()
-            if (context != null) {
-                interceptors.add(AuthInterceptor(context))
-            }
-            if (includeDeviceInfo && context != null) {
-                interceptors.add(DeviceInfoInterceptor(context))
-            }
-
-            val interceptedChannel = if (interceptors.isNotEmpty()) {
-                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
-            } else {
-                channel
-            }
-
-            this.callsChannel = interceptedChannel
-            callsClient = CallsApiGrpcKt.CallsApiCoroutineStub(interceptedChannel)
-            this.callsAddress = normalized
-            Log.d(TAG, "Calls клиент создан: $normalized")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания Calls клиента", e)
-            Result.failure(Exception("Ошибка подключения к серверу звонков: ${e.message}"))
-        }
+        return clientRegistry.createCallsClient(
+            address = address,
+            context = context,
+            includeDeviceInfo = includeDeviceInfo,
+        )
     }
     suspend fun scanFastAuth(fastAuthId: String): Result<ScanFastAuthResponse> = withContext(Dispatchers.IO) {
         try {
