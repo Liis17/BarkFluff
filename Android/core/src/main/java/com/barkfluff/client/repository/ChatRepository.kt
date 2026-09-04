@@ -10,9 +10,15 @@ import com.barkfluff.client.grpc.GrpcManager
 import java.io.File
 import java.io.OutputStream
 import java.util.concurrent.CancellationException
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -370,18 +376,55 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         )
     }
 
-    suspend fun getUploadStatus(uploadUrl: String): Result<UploadStatus?> = withContext(Dispatchers.IO) {
-        var connection: java.net.HttpURLConnection? = null
+    /**
+     * Reads a resumable upload slot while allowing the durable queue to cooperatively cancel
+     * a blocked HTTP request instead of waiting for its socket timeout.
+     */
+    suspend fun getUploadStatus(
+        uploadUrl: String,
+        shouldCancel: () -> Boolean = { false }
+    ): Result<UploadStatus?> = coroutineScope {
+        val connectionRef = AtomicReference<java.net.HttpURLConnection?>(null)
+        val request = async(Dispatchers.IO) {
+            getUploadStatusBlocking(uploadUrl, shouldCancel, connectionRef)
+        }
+        val canceller = launch(Dispatchers.IO) {
+            while (isActive && !request.isCompleted) {
+                if (shouldCancel()) {
+                    connectionRef.get()?.disconnect()
+                    request.cancel(CancellationException("Outgoing upload status was cancelled"))
+                    break
+                }
+                delay(100)
+            }
+        }
         try {
+            request.await()
+        } finally {
+            canceller.cancel()
+            connectionRef.get()?.disconnect()
+        }
+    }
+
+    private fun getUploadStatusBlocking(
+        uploadUrl: String,
+        shouldCancel: () -> Boolean,
+        connectionRef: AtomicReference<java.net.HttpURLConnection?>
+    ): Result<UploadStatus?> {
+        var connection: java.net.HttpURLConnection? = null
+        return try {
+            if (shouldCancel()) throw CancellationException("Outgoing upload status was cancelled")
             val statusUrl = uploadUrl.trimEnd('/') + "/status"
             connection = java.net.URL(statusUrl).openConnection() as java.net.HttpURLConnection
+            connectionRef.set(connection)
             grpcManager.configureHttpConnection(connection)
             connection.requestMethod = "GET"
             connection.connectTimeout = 30_000
             connection.readTimeout = 60_000
             val code = connection.responseCode
-            if (code == java.net.HttpURLConnection.HTTP_NOT_FOUND) return@withContext Result.success(null)
-            if (code !in 200..299) return@withContext Result.failure(UploadHttpException(code))
+            if (shouldCancel()) throw CancellationException("Outgoing upload status was cancelled")
+            if (code == java.net.HttpURLConnection.HTTP_NOT_FOUND) return Result.success(null)
+            if (code !in 200..299) return Result.failure(UploadHttpException(code))
             val json = org.json.JSONObject(connection.inputStream.bufferedReader().readText())
             Result.success(
                 UploadStatus(
@@ -396,6 +439,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             Result.failure(e)
         } finally {
             connection?.disconnect()
+            connectionRef.compareAndSet(connection, null)
         }
     }
 
