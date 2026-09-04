@@ -9,7 +9,7 @@ import androidx.security.crypto.MasterKeys
 import barkfluff.shared.Shared
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.crypto.BarkFluffSignalStore
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.grpc.GrpcApiTransport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.signal.libsignal.protocol.IdentityKey
@@ -35,7 +35,7 @@ import java.util.UUID
  */
 class SecretChatRepository(
     context: Context,
-    private val grpc: GrpcTransportFacade,
+    private val grpc: GrpcApiTransport,
     private val signalStore: BarkFluffSignalStore
 ) {
     private val tag = "SecretChatRepo"
@@ -150,7 +150,7 @@ class SecretChatRepository(
         metaPrefs.edit().remove(chatId).apply()
     }
 
-    suspend fun sendMessage(chat: SecretChat, plaintext: String): Result<GrpcTransportFacade.SecretMessageSent> =
+    suspend fun sendMessage(chat: SecretChat, plaintext: String): Result<GrpcApiTransport.SecretMessageSent> =
         withContext(Dispatchers.IO) {
             try {
                 val address = addressFor(chat.peerDeviceId)

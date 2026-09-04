@@ -19,9 +19,9 @@ object FileMediaUrl {
 
     /**
      * Chat/Users/Messages встраивают готовые ссылки на Files прямо в свои ответы
-     * (Chat.picture, MessageAttachment.previewUrl…), в обход GrpcTransportFacade.getFileDownloadUrl —
+     * (Chat.picture, MessageAttachment.previewUrl…), в обход RPC download helper —
      * адаптеры и активити читают их напрямую из proto. Тот же rewrite, без прокидывания
-     * GrpcTransportFacade через конструкторы: адрес ноды берётся прямо из GlobalParam.
+     * transport через конструкторы: адрес ноды берётся прямо из GlobalParam.
      */
     fun rewrite(context: Context, url: String): String {
         if (url.isBlank()) return url

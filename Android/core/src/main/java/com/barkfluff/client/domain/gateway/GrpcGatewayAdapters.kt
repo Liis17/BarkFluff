@@ -7,7 +7,7 @@ import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.domain.model.*
 import com.barkfluff.client.domain.model.toDomain
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.grpc.GrpcApiTransport
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.repository.ChatRepository
@@ -15,7 +15,7 @@ import com.barkfluff.client.calls.CallRepository
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 
-class GrpcServerDiscoveryGateway(private val grpc: GrpcTransportFacade) : ServerDiscoveryGateway {
+class GrpcServerDiscoveryGateway(private val grpc: GrpcApiTransport) : ServerDiscoveryGateway {
     override suspend fun listServers(): Result<List<ServerDataElement>> = grpc.getServerList()
     override suspend fun serverInfo(): Result<ServerInfo> = grpc.getServerInfo().map { it.toDomain() }
     override suspend fun probe(address: String): Result<ServerInfo> =
@@ -44,7 +44,7 @@ class GrpcChatDraftGateway(private val repository: ChatRepository) : ChatDraftGa
 }
 
 class GrpcAuthGateway(
-    private val grpc: GrpcTransportFacade,
+    private val grpc: GrpcApiTransport,
     private val context: Context,
 ) : AuthGateway {
     override suspend fun authenticate(
@@ -69,7 +69,7 @@ class GrpcAuthGateway(
         grpc.createIdentityClient(address, context, includeDeviceInfo)
 }
 
-class GrpcAccountSecurityGateway(private val grpc: GrpcTransportFacade) : AccountSecurityGateway {
+class GrpcAccountSecurityGateway(private val grpc: GrpcApiTransport) : AccountSecurityGateway {
     override suspend fun register(firstName: String, lastName: String, email: String, login: String): Result<String> =
         grpc.createAccount(firstName, lastName, email, login)
 
@@ -95,7 +95,7 @@ class GrpcAccountSecurityGateway(private val grpc: GrpcTransportFacade) : Accoun
         grpc.setPasswordAfterReset(newPassword)
 }
 
-class GrpcUserProfileGateway(private val grpc: GrpcTransportFacade) : UserProfileGateway {
+class GrpcUserProfileGateway(private val grpc: GrpcApiTransport) : UserProfileGateway {
     override suspend fun currentUser(): Result<UserProfile> = grpc.getCurrentUserData().map { it.toDomain() }
     override suspend fun user(userId: Long): Result<UserProfile> = grpc.getUserData(userId).map { it.toDomain() }
     override suspend fun setFirebaseToken(token: String): Result<Unit> = grpc.setFirebaseToken(token)
@@ -121,7 +121,7 @@ class GrpcUserProfileGateway(private val grpc: GrpcTransportFacade) : UserProfil
     override suspend fun storageInfo(): Result<StorageInfo> = grpc.getUserStorageInfo().map(::toDomain)
 }
 
-class GrpcUserSettingsGateway(private val grpc: GrpcTransportFacade) : UserSettingsGateway {
+class GrpcUserSettingsGateway(private val grpc: GrpcApiTransport) : UserSettingsGateway {
     override suspend fun notificationsEnabled(): Result<Boolean> = grpc.getNotificationsEnabled()
     override suspend fun setNotificationsEnabled(enabled: Boolean): Result<Unit> = grpc.setNotificationsEnabled(enabled)
     override suspend fun privacySettings(): Result<UsersApiOuterClass.PrivacySettings> = grpc.getPrivacySettings()
@@ -138,7 +138,7 @@ class GrpcUserSettingsGateway(private val grpc: GrpcTransportFacade) : UserSetti
     override suspend fun setChatBackground(chatId: String, fileId: String): Result<Unit> = grpc.setChatBackground(chatId, fileId)
 }
 
-class GrpcUserDirectoryGateway(private val grpc: GrpcTransportFacade) : UserDirectoryGateway {
+class GrpcUserDirectoryGateway(private val grpc: GrpcApiTransport) : UserDirectoryGateway {
     override suspend fun search(query: String, offset: Int, size: Int): Result<List<UserProfile>> =
         grpc.searchUsers(query, offset, size).map { users -> users.map { it.toDomain() } }
 
@@ -166,7 +166,7 @@ class GrpcPresenceGateway(
     }
 }
 
-class GrpcChatDirectoryGateway(private val grpc: GrpcTransportFacade) : ChatDirectoryGateway {
+class GrpcChatDirectoryGateway(private val grpc: GrpcApiTransport) : ChatDirectoryGateway {
     override suspend fun chats(offset: Int, size: Int): Result<ChatPage> =
         grpc.getChatsPage(offset, size).map { page ->
             ChatPage(page.chats.map { it.toDomain() }, page.totalCount)
@@ -187,7 +187,7 @@ class GrpcChatDirectoryGateway(private val grpc: GrpcTransportFacade) : ChatDire
 
 class GrpcMessageGateway(
     private val repository: ChatRepository,
-    private val grpc: GrpcTransportFacade,
+    private val grpc: GrpcApiTransport,
 ) : MessageGateway {
     override suspend fun loadMessages(
         chatId: String,
@@ -238,7 +238,7 @@ class GrpcMessageGateway(
     override suspend fun pinMessage(chatId: String, messageId: Long): Result<Shared.PinnedMessageInfo> {
         val result = grpc.pinMessage(chatId, messageId)
         val cause = result.exceptionOrNull()
-        return if (cause is GrpcTransportFacade.PinErrorException) {
+        return if (cause is GrpcApiTransport.PinErrorException) {
             Result.failure(PinErrorException(cause.errorCode, cause))
         } else {
             result
@@ -258,7 +258,7 @@ class GrpcMessageGateway(
     ) = repository.getChatAttachments(chatId, type, pageSize, fileNameQuery)
 }
 
-class GrpcChatFolderGateway(private val grpc: GrpcTransportFacade) : ChatFolderGateway {
+class GrpcChatFolderGateway(private val grpc: GrpcApiTransport) : ChatFolderGateway {
     override suspend fun folders(): Result<List<ChatFolder>> = grpc.getChatFolders().map { folders -> folders.map { it.toDomain() } }
     override suspend fun create(name: String, icon: String): Result<ChatFolder> = grpc.createChatFolder(name, icon).map { it.toDomain() }
     override suspend fun update(folderId: String, name: String, icon: String, chatIds: List<String>): Result<ChatFolder> =
@@ -285,7 +285,7 @@ class GrpcFileMediaGateway(private val repository: ChatRepository) : FileMediaGa
         repository.downloadFile(fileId, onProgress)
 }
 
-class GrpcStickerGateway(private val grpc: GrpcTransportFacade) : StickerGateway {
+class GrpcStickerGateway(private val grpc: GrpcApiTransport) : StickerGateway {
     override suspend fun packs(offset: Int, size: Int): Result<List<FilesApiOuterClass.StickerPackInfo>> =
         grpc.listStickerPacks(offset, size)?.let { Result.success(it) }
             ?: Result.failure(IllegalStateException("Sticker packs are unavailable"))
@@ -295,7 +295,7 @@ class GrpcStickerGateway(private val grpc: GrpcTransportFacade) : StickerGateway
             ?: Result.failure(IllegalStateException("Sticker pack is unavailable"))
 }
 
-private fun toDomain(value: GrpcTransportFacade.SessionData): SessionData = SessionData(
+private fun toDomain(value: GrpcApiTransport.SessionData): SessionData = SessionData(
     id = value.id,
     createdAt = value.createdAt,
     expirationAt = value.expirationAt,
@@ -307,7 +307,7 @@ private fun toDomain(value: GrpcTransportFacade.SessionData): SessionData = Sess
     location = value.location,
 )
 
-private fun toDomain(value: GrpcTransportFacade.StorageInfo): StorageInfo = StorageInfo(
+private fun toDomain(value: GrpcApiTransport.StorageInfo): StorageInfo = StorageInfo(
     totalUsed = value.totalUsed,
     limit = value.limit,
     byType = value.byType,
@@ -357,13 +357,13 @@ class GrpcCallGateway(private val repository: CallRepository) : CallGateway {
     ): Result<Unit> = repository.setAudioQuality(callId, quality)
 }
 
-class GrpcFastAuthGateway(private val grpc: GrpcTransportFacade) : FastAuthGateway {
+class GrpcFastAuthGateway(private val grpc: GrpcApiTransport) : FastAuthGateway {
     override suspend fun scan(fastAuthId: String) = grpc.scanFastAuth(fastAuthId)
     override suspend fun accept(fastAuthId: String, confirmationCode: String) = grpc.acceptFastAuth(fastAuthId, confirmationCode)
     override suspend fun reject(fastAuthId: String, confirmationCode: String) = grpc.rejectFastAuth(fastAuthId, confirmationCode)
 }
 
-class GrpcPrekeyGateway(private val grpc: GrpcTransportFacade) : PrekeyGateway {
+class GrpcPrekeyGateway(private val grpc: GrpcApiTransport) : PrekeyGateway {
     override suspend fun register(
         registrationId: Int,
         identityPubkey: ByteArray,

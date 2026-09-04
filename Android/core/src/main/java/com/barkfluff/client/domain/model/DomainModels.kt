@@ -1,7 +1,7 @@
 package com.barkfluff.client.domain.model
 
 import com.barkfluff.client.data.ClientColors
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.grpc.GrpcApiTransport
 import barkfluff.messages.MessagesApiOuterClass
 
 /** Stable domain names; gRPC generated messages stay below the gateway boundary. */
@@ -119,7 +119,7 @@ data class PinnedMessagePage(
 )
 
 /** Mapping helpers remain in the production adapter, not in UI code. */
-internal fun GrpcTransportFacade.ServerInfo.toDomain() = ServerInfo(
+internal fun GrpcApiTransport.ServerInfo.toDomain() = ServerInfo(
     name = name,
     description = description,
     color = color,
@@ -135,7 +135,7 @@ internal fun GrpcTransportFacade.ServerInfo.toDomain() = ServerInfo(
     filesMediaEndpoint = filesMediaEndpoint,
 )
 
-internal fun GrpcTransportFacade.UserData.toDomain() = UserProfile(
+internal fun GrpcApiTransport.UserData.toDomain() = UserProfile(
     userId = userId,
     username = username,
     firstName = firstName,
@@ -149,7 +149,7 @@ internal fun GrpcTransportFacade.UserData.toDomain() = UserProfile(
     registrationDate = registrationDate,
 )
 
-internal fun GrpcTransportFacade.ChatData.toDomain() = ChatSummary(
+internal fun GrpcApiTransport.ChatData.toDomain() = ChatSummary(
     id = id,
     title = title,
     picture = picture,
@@ -169,7 +169,7 @@ internal fun GrpcTransportFacade.ChatData.toDomain() = ChatSummary(
     hasDraft = hasDraft,
 )
 
-internal fun GrpcTransportFacade.ChatFolder.toDomain() = ChatFolder(
+internal fun GrpcApiTransport.ChatFolder.toDomain() = ChatFolder(
     folderId = folderId,
     folderName = folderName,
     folderIcon = folderIcon,
@@ -207,10 +207,10 @@ internal fun MessagesApiOuterClass.Chat.toDomain() = ChatSummary(
     passphraseVerifier = passphraseVerifier.toByteArray(),
 )
 
-internal fun GrpcTransportFacade.AuthResult.toDomain() = when (this) {
-    is GrpcTransportFacade.AuthResult.Success -> AuthenticationResult.Success(
+internal fun GrpcApiTransport.AuthResult.toDomain() = when (this) {
+    is GrpcApiTransport.AuthResult.Success -> AuthenticationResult.Success(
         AuthSession(accessToken, accessTokenExpiration, refreshToken, refreshTokenExpiration)
     )
-    GrpcTransportFacade.AuthResult.OtpRequired -> AuthenticationResult.OtpRequired
-    is GrpcTransportFacade.AuthResult.Error -> AuthenticationResult.Error(message)
+    GrpcApiTransport.AuthResult.OtpRequired -> AuthenticationResult.OtpRequired
+    is GrpcApiTransport.AuthResult.Error -> AuthenticationResult.Error(message)
 }
