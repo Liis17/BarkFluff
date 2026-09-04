@@ -24,7 +24,8 @@ import com.barkfluff.client.adapter.FolderTabsAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.FragmentChatsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
@@ -39,7 +40,8 @@ class ChatsFragment : Fragment() {
     private val viewModel: ChatsViewModel by viewModels()
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    @javax.inject.Inject
+    lateinit var fileMediaGateway: FileMediaGateway
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
@@ -83,9 +85,7 @@ class ChatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val app = requireActivity().application as BarkFluffApplication
         globalParam = GlobalParam(requireContext())
-        grpcManager = app.grpcManager
         initialScrollPending = true
 
         setupToolbar()
@@ -359,7 +359,7 @@ class ChatsFragment : Fragment() {
             userId = globalParam.userId,
             size = 64
         ) {
-            val result = grpcManager.getFileDownloadUrl(useFileId)
+            val result = fileMediaGateway.downloadUrl(useFileId)
             if (result.isSuccess) result.getOrNull() else null
         }
     }
@@ -369,7 +369,7 @@ class ChatsFragment : Fragment() {
             onChatClicked(chat)
         }) { fileId ->
             Log.d(TAG, "setupChatList: Requesting URL for fileId=$fileId")
-            val result = grpcManager.getFileDownloadUrl(fileId)
+            val result = fileMediaGateway.downloadUrl(fileId)
             if (result.isSuccess) {
                 val url = result.getOrNull()
                 Log.d(TAG, "setupChatList: Got URL for fileId=$fileId")
@@ -473,7 +473,7 @@ class ChatsFragment : Fragment() {
         if (_binding != null) binding.chatRecyclerView.smoothScrollToPosition(0)
     }
 
-    private fun onChatClicked(chat: GrpcManager.ChatData) {
+    private fun onChatClicked(chat: ChatSummary) {
         // Находим display item для получения дополнительной информации
         val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
 

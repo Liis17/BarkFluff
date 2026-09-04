@@ -25,6 +25,7 @@ import com.barkfluff.client.cache.OutgoingFailureCategory
 import com.barkfluff.client.cache.OutgoingMessageRecord
 import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.TokenCoordinator
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.ChatRepository.UploadHttpException
@@ -78,7 +79,8 @@ class OutgoingMessageQueue(
     private val context: Context,
     private val cache: ChatCacheRepository,
     private val chatRepository: ChatRepository,
-    private val tokenCoordinator: TokenCoordinator
+    private val tokenCoordinator: TokenCoordinator,
+    private val composerAttachmentStore: ComposerAttachmentStore? = null,
 ) {
     companion object {
         private const val LEASE_MILLIS = 10 * 60 * 1000L
@@ -113,6 +115,9 @@ class OutgoingMessageQueue(
         } catch (e: Throwable) {
             operationIds.forEach { cancel(it) }
             throw e
+        }
+        request.draftGeneration?.let { generation ->
+            composerAttachmentStore?.clearAfterEnqueue(scope, request.chatId, generation)
         }
         wake()
         return operationIds
@@ -490,7 +495,7 @@ class OutgoingMessageQueue(
         spec: AttachmentSpec,
         sendAsFile: Boolean
     ): OutgoingAttachmentRecord {
-        val (kind, source, fileName, mime, type, trimStart, trimEnd, compress) = when (spec) {
+        val staged = when (spec) {
             is AttachmentSpec.RawImage -> {
                 val mime = appContext.contentResolver.getType(spec.uri)
                 val name = displayName(spec.uri) ?: "image_$index"
@@ -541,14 +546,38 @@ class OutgoingMessageQueue(
                 spec.file.inputStream().use { input -> file.outputStream().use { input.copyTo(it) } }
                 StagedAttachmentInput(OutgoingAttachmentKind.VOICE, file, "voice.ogg", "audio/ogg", UploadFileType.MESSAGE_ATTACHMENT_VOICE, 0L, -1L, false)
             }
+            is AttachmentSpec.StagedFile -> {
+                require(spec.file.isFile) { "Staged composer attachment is missing" }
+                val file = File(directory, "source_$index${extension(spec.fileName, spec.mimeType)}")
+                spec.file.inputStream().use { input -> file.outputStream().use { input.copyTo(it) } }
+                StagedAttachmentInput(
+                    kind = spec.kind,
+                    source = file,
+                    fileName = spec.fileName,
+                    mime = spec.mimeType,
+                    type = spec.uploadFileType,
+                    trimStart = 0L,
+                    trimEnd = -1L,
+                    compress = false,
+                    preview = spec.preview,
+                )
+            }
         }
+        val kind = staged.kind
+        val source = staged.source
+        val fileName = staged.fileName
+        val mime = staged.mime
+        val type = staged.type
+        val trimStart = staged.trimStart
+        val trimEnd = staged.trimEnd
+        val compress = staged.compress
         return OutgoingAttachmentRecord(
             attachmentIndex = index,
             kind = kind,
             uploadFileTypeNumber = type.number,
             sourcePath = source.absolutePath,
             preparedPath = null,
-            previewPath = if (kind == OutgoingAttachmentKind.RAW_IMAGE || kind == OutgoingAttachmentKind.EDITED_IMAGE || kind == OutgoingAttachmentKind.VIDEO) source.absolutePath else null,
+            previewPath = if (staged.preview) source.absolutePath else null,
             fileName = fileName,
             mimeType = mime,
             uploadOperationId = UUID.randomUUID().toString(),
@@ -693,7 +722,9 @@ class OutgoingMessageQueue(
         val type: UploadFileType,
         val trimStart: Long,
         val trimEnd: Long,
-        val compress: Boolean
+        val compress: Boolean,
+        val preview: Boolean = kind == OutgoingAttachmentKind.RAW_IMAGE ||
+            kind == OutgoingAttachmentKind.EDITED_IMAGE || kind == OutgoingAttachmentKind.VIDEO
     )
 
     private class PermanentOutgoingException(

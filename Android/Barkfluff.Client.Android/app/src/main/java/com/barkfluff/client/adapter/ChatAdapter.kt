@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import barkfluff.shared.Shared
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.MarkdownRenderer
 import java.text.SimpleDateFormat
@@ -23,14 +23,14 @@ import java.util.Date
 import java.util.Locale
 
 class ChatAdapter(
-    private val onChatClick: (GrpcManager.ChatData) -> Unit,
+    private val onChatClick: (ChatSummary) -> Unit,
     private val getFileUrl: suspend (String) -> String?
 ) : ListAdapter<ChatAdapter.ChatDisplayItem, RecyclerView.ViewHolder>(ChatDiffCallback()) {
 
     var currentUserId: Long = 0
 
     data class ChatDisplayItem(
-        val chatData: GrpcManager.ChatData,
+        val chatData: ChatSummary,
         val displayTitle: String,
         val displayAvatarFileId: String?,
         val otherUserId: Long = 0,
@@ -43,7 +43,7 @@ class ChatAdapter(
 
         /** Прозрачный спейсер, всегда находящийся в конце списка. */
         private val FOOTER_ITEM = ChatDisplayItem(
-            chatData = GrpcManager.ChatData(
+            chatData = ChatSummary(
                 id = "__footer__",
                 title = "",
                 picture = "",

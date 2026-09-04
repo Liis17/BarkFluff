@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -44,6 +45,24 @@ object FirebaseTokenHelper {
 
         } catch (e: Exception) {
             Log.e(TAG, "getTokenAndSendToServer: ошибка", e)
+        }
+    }
+
+    suspend fun getTokenAndSendToServer(context: Context, profileGateway: UserProfileGateway) {
+        sendTokenWith(context, profileGateway)
+    }
+
+    private suspend fun sendTokenWith(context: Context, profileGateway: UserProfileGateway) {
+        try {
+            val globalParam = GlobalParam(context)
+            var token = globalParam.firebaseToken
+            if (token.isBlank()) {
+                token = withContext(Dispatchers.IO) { FirebaseMessaging.getInstance().token.await() }
+                globalParam.firebaseToken = token
+            }
+            profileGateway.setFirebaseToken(token)
+        } catch (e: Exception) {
+            Log.e(TAG, "sendTokenWith: ошибка", e)
         }
     }
 

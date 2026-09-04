@@ -10,8 +10,13 @@ import com.barkfluff.client.cache.CachedChatDisplay
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.drafts.ChatDraftRepository
-import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.ChatFolderGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.model.ChatFolder
+import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,8 +36,8 @@ import kotlinx.coroutines.launch
 enum class ChatsSyncStatus { UPDATING, OFFLINE }
 
 data class ChatsUiState(
-    val allChats: List<GrpcManager.ChatData> = emptyList(),
-    val folders: List<GrpcManager.ChatFolder> = emptyList(),
+    val allChats: List<ChatSummary> = emptyList(),
+    val folders: List<ChatFolder> = emptyList(),
     val selectedFolderId: String? = null,
     val totalChatsCount: Int = 0,
     val displayItems: List<ChatAdapter.ChatDisplayItem> = emptyList(),
@@ -59,7 +64,10 @@ sealed interface ChatsEvent {
 @HiltViewModel
 class ChatsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
-    private val grpcManager: GrpcManager,
+    private val authGateway: AuthGateway,
+    private val userProfileGateway: UserProfileGateway,
+    private val chatDirectoryGateway: ChatDirectoryGateway,
+    private val chatFolderGateway: ChatFolderGateway,
     private val realtimeService: RealtimeService,
     private val chatCacheRepository: ChatCacheRepository,
     private val chatDraftRepository: ChatDraftRepository,
@@ -156,11 +164,9 @@ class ChatsViewModel @Inject constructor(
                 }
             }
 
-            grpcManager.initAllClients(appContext, globalParam)
-
             if (globalParam.pictureFileId.isBlank() && globalParam.picturePreviewFileId.isBlank()) {
                 Log.d(TAG, "checkTokenAndLoadChats: Аватар не загружен, загружаем данные пользователя")
-                val userDataResult = grpcManager.getCurrentUserData()
+                val userDataResult = userProfileGateway.currentUser()
                 if (userDataResult.isSuccess) {
                     val userData = userDataResult.getOrNull()
                     if (userData != null) {
@@ -185,8 +191,8 @@ class ChatsViewModel @Inject constructor(
 
             // Параллельно: чаты и папки. Чаты критичны, папки — нет (если упали — log + пустой список).
             val (chatsResult, foldersResult) = coroutineScope {
-                val chatsDeferred = async { grpcManager.getChatsPage() }
-                val foldersDeferred = async { grpcManager.getChatFolders() }
+                val chatsDeferred = async { chatDirectoryGateway.chats() }
+                val foldersDeferred = async { chatFolderGateway.folders() }
                 chatsDeferred.await() to foldersDeferred.await()
             }
 
@@ -196,8 +202,7 @@ class ChatsViewModel @Inject constructor(
                 var nextOffset = refreshedChats.size
                 for (pageIndex in 1 until 3) {
                     if (nextOffset >= page.totalCount) break
-                    val nextPageResult = grpcManager.getChatsPage(offset = nextOffset)
-                    val nextPage = nextPageResult.getOrNull() ?: break
+                    val nextPage = chatDirectoryGateway.chats(offset = nextOffset).getOrNull() ?: break
                     refreshedChats += nextPage.chats
                     nextOffset += nextPage.chats.size
                     if (nextPage.chats.isEmpty()) break
@@ -252,7 +257,7 @@ class ChatsViewModel @Inject constructor(
         if (state.isLoadingNextPage || state.allChats.size >= state.totalChatsCount) return
         _uiState.value = state.copy(isLoadingNextPage = true)
         viewModelScope.launch {
-            grpcManager.getChatsPage(offset = _uiState.value.allChats.size).onSuccess { page ->
+            chatDirectoryGateway.chats(offset = _uiState.value.allChats.size).onSuccess { page ->
                 val merged = (_uiState.value.allChats + page.chats).associateBy { it.id }.values
                     .sortedByDescending { it.lastActivityAt }
                 _uiState.value = _uiState.value.copy(
@@ -273,10 +278,10 @@ class ChatsViewModel @Inject constructor(
 
     /** Возврат из фона: realtime-события терялись — проверяем токен и перезагружаем список. */
     fun reloadFromBackground() {
-        if (grpcManager.messagesClient == null) return
+        if (globalParam.socketMessages.isBlank()) return
         Log.d(TAG, "reloadFromBackground: checking token and reloading chats")
         viewModelScope.launch {
-            val tokenValid = grpcManager.ensureTokenValid(appContext)
+            val tokenValid = authGateway.ensureValid()
             if (!tokenValid) {
                 Log.w(TAG, "reloadFromBackground: Token refresh failed, keeping cached chats")
                 _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.OFFLINE)
@@ -302,7 +307,7 @@ class ChatsViewModel @Inject constructor(
         refreshDisplayJob?.cancel()
         refreshDisplayJob = viewModelScope.launch {
             val state = _uiState.value
-            val filtered: List<GrpcManager.ChatData> = if (state.selectedFolderId == null) {
+            val filtered: List<ChatSummary> = if (state.selectedFolderId == null) {
                 if (globalParam.excludeFolderChatsFromAll && state.folders.isNotEmpty()) {
                     val inFolders = chatsInUserFolders()
                     state.allChats.filter { it.id !in inFolders }
@@ -328,7 +333,7 @@ class ChatsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {
+    private suspend fun resolveDisplayItem(chat: ChatSummary): ChatAdapter.ChatDisplayItem {
         if (!hasAppliedRemoteChats) {
             cachedDisplays[chat.id]?.let { display ->
                 return ChatAdapter.ChatDisplayItem(
@@ -342,7 +347,7 @@ class ChatsViewModel @Inject constructor(
         if (!chat.isGroupChat && chat.title.isBlank()) {
             val otherUserId = chat.memberIds.firstOrNull { it != globalParam.userId }
             if (otherUserId != null) {
-                val userResult = grpcManager.getUserData(otherUserId)
+                val userResult = userProfileGateway.user(otherUserId)
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
@@ -373,7 +378,7 @@ class ChatsViewModel @Inject constructor(
         return s
     }
 
-    private fun totalUnread(chats: List<GrpcManager.ChatData>): Int =
+    private fun totalUnread(chats: List<ChatSummary>): Int =
         chats.fold(0L) { total, chat ->
             (total + chat.countUnread).coerceAtMost(Int.MAX_VALUE.toLong())
         }.toInt()
@@ -482,13 +487,13 @@ class ChatsViewModel @Inject constructor(
         if (idx < 0) {
             // Новый чат — добавим минимальный объект, бейдж пересчитается корректно.
             val isOwn = senderId == globalParam.userId
-            val newChat = GrpcManager.ChatData(
+            val newChat = ChatSummary(
                 id = chatId,
                 title = "",
                 picture = "",
                 pictureFileId = "",
                 isGroupChat = false,
-                lastMessage = GrpcManager.LastMessageData(
+                lastMessage = com.barkfluff.client.domain.model.LastMessageSummary(
                     id = messageId,
                     senderId = senderId,
                     text = text,
@@ -507,7 +512,7 @@ class ChatsViewModel @Inject constructor(
         updateAllChats(chatId) { chat ->
             val isOwn = senderId == globalParam.userId
             chat.copy(
-                lastMessage = GrpcManager.LastMessageData(
+                lastMessage = com.barkfluff.client.domain.model.LastMessageSummary(
                     id = messageId,
                     senderId = senderId,
                     text = text,
@@ -525,7 +530,7 @@ class ChatsViewModel @Inject constructor(
         }
     }
 
-    private fun updateAllChats(chatId: String, transform: (GrpcManager.ChatData) -> GrpcManager.ChatData) {
+    private fun updateAllChats(chatId: String, transform: (ChatSummary) -> ChatSummary) {
         val existing = _uiState.value.allChats
         val idx = existing.indexOfFirst { it.id == chatId }
         if (idx < 0) return
@@ -562,12 +567,8 @@ class ChatsViewModel @Inject constructor(
             val identityAddress = globalParam.socketIdentity
             if (identityAddress.isBlank()) return false
 
-            val createResult = grpcManager.createIdentityClient(identityAddress, appContext)
-            if (createResult.isFailure) return false
-
             val refreshToken = globalParam.refreshToken ?: return false
-
-            val refreshResult = grpcManager.refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
+            val refreshResult = authGateway.refresh(refreshToken, globalParam.refreshTokenExpiration)
             if (refreshResult.isSuccess) {
                 val (newAccessToken, newAccessTokenExpiration, newRefreshToken, newRefreshTokenExpiration) = refreshResult.getOrNull()!!
                 globalParam.accessToken = newAccessToken
@@ -589,7 +590,7 @@ class ChatsViewModel @Inject constructor(
      */
     private fun sendFirebaseToken() {
         viewModelScope.launch {
-            FirebaseTokenHelper.getTokenAndSendToServer(appContext, grpcManager)
+            FirebaseTokenHelper.getTokenAndSendToServer(appContext, userProfileGateway)
         }
     }
 }

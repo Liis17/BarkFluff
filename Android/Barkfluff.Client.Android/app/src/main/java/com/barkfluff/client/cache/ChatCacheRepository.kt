@@ -19,7 +19,9 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.ChatFolder
+import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.LastMessageSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -50,8 +52,8 @@ data class CachedChatDisplay(
 )
 
 data class CachedChatList(
-    val chats: List<GrpcManager.ChatData>,
-    val folders: List<GrpcManager.ChatFolder>,
+    val chats: List<ChatSummary>,
+    val folders: List<ChatFolder>,
     val displays: Map<String, CachedChatDisplay>,
     val totalCount: Int
 )
@@ -69,6 +71,17 @@ data class CachedChatDraft(
     val revision: String,
     val generation: Long,
     val syncState: Int
+)
+
+/** Durable composer preview metadata. The bytes live below noBackupFilesDir/composer. */
+data class ComposerAttachment(
+    val attachmentIndex: Int,
+    val path: String,
+    val kind: String,
+    val fileName: String?,
+    val mimeType: String?,
+    val generation: Long,
+    val createdAtMillis: Long,
 )
 
 @Entity(tableName = "chat_cache_meta")
@@ -111,6 +124,23 @@ data class CachedChatDraftEntity(
     val revision: String,
     val generation: Long,
     val syncState: Int
+)
+
+@Entity(
+    tableName = "composer_attachments",
+    primaryKeys = ["scopeId", "chatId", "attachmentIndex"],
+    indices = [androidx.room.Index(value = ["scopeId", "chatId"])]
+)
+data class ComposerAttachmentEntity(
+    val scopeId: String,
+    val chatId: String,
+    val attachmentIndex: Int,
+    val path: String,
+    val kind: String,
+    val fileName: String?,
+    val mimeType: String?,
+    val generation: Long,
+    val createdAtMillis: Long,
 )
 
 @Entity(tableName = "cached_chat_folders", primaryKeys = ["scopeId", "folderId"])
@@ -213,6 +243,21 @@ interface ChatCacheDao {
     @Query("DELETE FROM cached_chat_drafts WHERE scopeId = :scopeId AND chatId = :chatId")
     suspend fun deleteDraft(scopeId: String, chatId: String)
 
+    @Query("SELECT * FROM composer_attachments WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY attachmentIndex")
+    suspend fun composerAttachments(scopeId: String, chatId: String): List<ComposerAttachmentEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertComposerAttachments(attachments: List<ComposerAttachmentEntity>)
+
+    @Query("DELETE FROM composer_attachments WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteComposerAttachments(scopeId: String, chatId: String)
+
+    @Query("DELETE FROM composer_attachments WHERE scopeId = :scopeId")
+    suspend fun deleteAllComposerAttachments(scopeId: String)
+
+    @Query("SELECT DISTINCT chatId FROM composer_attachments WHERE scopeId = :scopeId")
+    suspend fun composerChatIds(scopeId: String): List<String>
+
     @Query("SELECT * FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY sentAtMillis DESC LIMIT :limit")
     suspend fun latestMessages(scopeId: String, chatId: String, limit: Int): List<CachedMessageEntity>
 
@@ -265,13 +310,14 @@ interface ChatCacheDao {
         CachedChatFolderEntity::class,
         CachedChatDisplayEntity::class,
         CachedChatDraftEntity::class,
+        ComposerAttachmentEntity::class,
         CachedMessageEntity::class,
         CachedPrivateMessageEntity::class,
         CachedSecretMessageEntity::class,
         OutgoingMessageEntity::class,
         OutgoingAttachmentEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
@@ -317,9 +363,9 @@ class ChatCacheRepository(context: Context) {
 
     suspend fun saveChatPage(
         scope: CacheScope,
-        chats: List<GrpcManager.ChatData>,
+        chats: List<ChatSummary>,
         totalCount: Int,
-        folders: List<GrpcManager.ChatFolder>? = null
+        folders: List<ChatFolder>? = null
     ) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
@@ -354,6 +400,35 @@ class ChatCacheRepository(context: Context) {
 
     suspend fun deleteChatDraft(scope: CacheScope, chatId: String) = withContext(Dispatchers.IO) {
         database().cacheDao().deleteDraft(scope.id, chatId)
+    }
+
+    suspend fun readComposerAttachments(scope: CacheScope, chatId: String): List<ComposerAttachment> =
+        withContext(Dispatchers.IO) {
+            database().cacheDao().composerAttachments(scope.id, chatId).map { it.toComposerAttachment() }
+        }
+
+    suspend fun saveComposerAttachments(
+        scope: CacheScope,
+        chatId: String,
+        attachments: List<ComposerAttachment>,
+    ) = withContext(Dispatchers.IO) {
+        val dao = database().cacheDao()
+        dao.deleteComposerAttachments(scope.id, chatId)
+        if (attachments.isNotEmpty()) {
+            dao.upsertComposerAttachments(attachments.map { it.toEntity(scope.id, chatId) })
+        }
+    }
+
+    suspend fun deleteComposerAttachments(scope: CacheScope, chatId: String) = withContext(Dispatchers.IO) {
+        database().cacheDao().deleteComposerAttachments(scope.id, chatId)
+    }
+
+    suspend fun deleteAllComposerAttachments(scope: CacheScope) = withContext(Dispatchers.IO) {
+        database().cacheDao().deleteAllComposerAttachments(scope.id)
+    }
+
+    suspend fun composerChatIds(scope: CacheScope): List<String> = withContext(Dispatchers.IO) {
+        database().cacheDao().composerChatIds(scope.id)
     }
 
     suspend fun latestMessages(scope: CacheScope, chatId: String, limit: Int): List<Shared.Message> =
@@ -598,7 +673,7 @@ class ChatCacheRepository(context: Context) {
         val passphrase = databasePassphrase()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
             .openHelperFactory(SupportOpenHelperFactory(passphrase))
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 
@@ -717,7 +792,7 @@ class ChatCacheRepository(context: Context) {
         }
     )
 
-    private fun GrpcManager.ChatData.toEntity(scopeId: String): CachedChatEntity =
+    private fun ChatSummary.toEntity(scopeId: String): CachedChatEntity =
         CachedChatEntity(
             scopeId = scopeId,
             chatId = id,
@@ -741,13 +816,13 @@ class ChatCacheRepository(context: Context) {
             hasDraft = hasDraft
         )
 
-    private fun CachedChatEntity.toChatData(): GrpcManager.ChatData {
+    private fun CachedChatEntity.toChatData(): ChatSummary {
         val lastMessage = if (lastMessageId == null || lastMessageSenderId == null ||
             lastMessageText == null || lastMessageSentAt == null
         ) {
             null
         } else {
-            GrpcManager.LastMessageData(
+            LastMessageSummary(
                 id = lastMessageId,
                 senderId = lastMessageSenderId,
                 text = lastMessageText,
@@ -755,7 +830,7 @@ class ChatCacheRepository(context: Context) {
                 readBy = lastMessageReadBy.toLongList()
             )
         }
-        return GrpcManager.ChatData(
+        return ChatSummary(
             id = chatId,
             title = title,
             picture = picture,
@@ -775,7 +850,29 @@ class ChatCacheRepository(context: Context) {
         )
     }
 
-    private fun GrpcManager.ChatFolder.toEntity(scopeId: String) = CachedChatFolderEntity(
+    private fun ComposerAttachmentEntity.toComposerAttachment() = ComposerAttachment(
+        attachmentIndex = attachmentIndex,
+        path = path,
+        kind = kind,
+        fileName = fileName,
+        mimeType = mimeType,
+        generation = generation,
+        createdAtMillis = createdAtMillis,
+    )
+
+    private fun ComposerAttachment.toEntity(scopeId: String, chatId: String) = ComposerAttachmentEntity(
+        scopeId = scopeId,
+        chatId = chatId,
+        attachmentIndex = attachmentIndex,
+        path = path,
+        kind = kind,
+        fileName = fileName,
+        mimeType = mimeType,
+        generation = generation,
+        createdAtMillis = createdAtMillis,
+    )
+
+    private fun ChatFolder.toEntity(scopeId: String) = CachedChatFolderEntity(
         scopeId = scopeId,
         folderId = folderId,
         folderName = folderName,
@@ -784,7 +881,7 @@ class ChatCacheRepository(context: Context) {
         sortOrder = sortOrder
     )
 
-    private fun CachedChatFolderEntity.toChatFolder() = GrpcManager.ChatFolder(
+    private fun CachedChatFolderEntity.toChatFolder() = ChatFolder(
         folderId = folderId,
         folderName = folderName,
         folderIcon = folderIcon,
@@ -850,6 +947,23 @@ class ChatCacheRepository(context: Context) {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_outgoing_attachments_scopeId_operationId " +
                         "ON outgoing_attachments(scopeId, operationId)"
+                )
+            }
+        }
+
+        /** Composer previews are metadata in SQLCipher; the actual bytes stay app-private. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS composer_attachments (" +
+                        "scopeId TEXT NOT NULL, chatId TEXT NOT NULL, attachmentIndex INTEGER NOT NULL, " +
+                        "path TEXT NOT NULL, kind TEXT NOT NULL, fileName TEXT, mimeType TEXT, " +
+                        "generation INTEGER NOT NULL, createdAtMillis INTEGER NOT NULL, " +
+                        "PRIMARY KEY(scopeId, chatId, attachmentIndex))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_composer_attachments_scopeId_chatId " +
+                        "ON composer_attachments(scopeId, chatId)"
                 )
             }
         }

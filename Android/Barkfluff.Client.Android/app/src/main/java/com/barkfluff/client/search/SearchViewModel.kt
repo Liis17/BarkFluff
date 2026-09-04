@@ -2,7 +2,7 @@ package com.barkfluff.client.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.UserProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -23,7 +23,7 @@ enum class SearchPhase {
 }
 
 data class SearchUser(
-    val userData: GrpcManager.UserData,
+    val userData: UserProfile,
     val displayFullName: String,
     val displayUsername: String,
     val displayAvatarFileId: String?
@@ -137,7 +137,7 @@ class SearchViewModel @Inject constructor(
         )
     }
 
-    private fun toSearchUser(user: GrpcManager.UserData): SearchUser {
+    private fun toSearchUser(user: UserProfile): SearchUser {
         val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
         val displayUsername = user.username.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty()
         val avatarFileId = user.profilePicturePreviewFileId

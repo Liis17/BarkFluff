@@ -95,6 +95,33 @@ class GrpcTokenCoordinatorTest {
     }
 
     @Test
+    fun `concurrent force refreshes share one identity request`() = runBlocking {
+        val store = FakeTokenStore(
+            accessToken = "access",
+            accessTokenExpiration = 2_000_000L,
+            refreshToken = "refresh",
+            refreshTokenExpiration = 3_000_000L,
+        )
+        var refreshCalls = 0
+        val coordinator = coordinator(store, now = { 1_000_000L }) {
+            refreshCalls += 1
+            delay(20)
+            TokenRefreshResult("new-access", 5_000_000L, "refresh", 3_000_000L)
+        }
+
+        val results = coroutineScope {
+            listOf(
+                async { coordinator.ensureValid(forceRefresh = true) },
+                async { coordinator.ensureValid(forceRefresh = true) },
+                async { coordinator.ensureValid(forceRefresh = true) },
+            ).map { it.await() }
+        }
+
+        assertTrue(results.all { it })
+        assertEquals(1, refreshCalls)
+    }
+
+    @Test
     fun `missing refresh credentials fail without invoking identity`() = runBlocking {
         val store = FakeTokenStore(
             accessToken = null,

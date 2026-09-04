@@ -2,6 +2,8 @@ package com.barkfluff.client.send
 
 import android.net.Uri
 import com.barkfluff.client.editor.EditedVideoSpec
+import com.barkfluff.client.cache.OutgoingAttachmentKind
+import barkfluff.files.FilesApiOuterClass.UploadFileType
 import java.io.File
 
 /**
@@ -29,6 +31,16 @@ sealed class AttachmentSpec {
 
     /** Голосовое сообщение — записанный OGG/Opus-файл во внутреннем кеше приложения. */
     data class Voice(val file: File) : AttachmentSpec()
+
+    /** Already staged composer bytes; enqueue must adopt them without copying from a URI again. */
+    data class StagedFile(
+        val file: File,
+        val kind: OutgoingAttachmentKind,
+        val uploadFileType: UploadFileType,
+        val fileName: String?,
+        val mimeType: String?,
+        val preview: Boolean = true,
+    ) : AttachmentSpec()
 }
 
 /**
