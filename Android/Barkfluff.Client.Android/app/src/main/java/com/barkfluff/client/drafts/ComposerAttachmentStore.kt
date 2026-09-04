@@ -93,6 +93,24 @@ class ComposerAttachmentStore(
     }
 
     /**
+     * Binds all currently accepted previews to the draft generation that is about to enter the
+     * durable outbox. The operation is serialized with staging/removal so a crash after QUEUED
+     * can match the same generation during the next restore.
+     */
+    suspend fun rebindGeneration(
+        scope: CacheScope,
+        chatId: String,
+        generation: Long,
+    ): List<ComposerAttachment> = mutex.withLock {
+        require(generation >= 0L) { "Composer generation cannot be negative" }
+        val current = cache.readComposerAttachments(scope, chatId)
+        if (current.isEmpty()) return@withLock emptyList()
+        val rebound = current.map { it.copy(generation = generation) }
+        cache.saveComposerAttachments(scope, chatId, rebound)
+        rebound
+    }
+
+    /**
      * Completes the composer-to-outbox handoff. A newer generation is deliberately retained when
      * the user picked another attachment while an older send was being enqueued.
      */

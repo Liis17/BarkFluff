@@ -206,6 +206,7 @@ interface RealtimeGateway {
     fun shutdown()
     fun changeOnlineSubscription(userIds: List<Long>)
     fun changeTypingSubscription(chatIds: List<String>)
+    fun sendTypingStatus(chatId: String, typing: Boolean)
 }
 
 interface CallGateway {

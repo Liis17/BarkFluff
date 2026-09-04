@@ -33,8 +33,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Менеджер для работы с gRPC
- * Аналог WebApiClientManager из WPF клиента
+ * Internal RPC transport adapter kept while individual domain gateways migrate to typed ports.
+ * Channel/stub lifecycle belongs to [GrpcClientRegistry]; this class only preserves the existing
+ * request/response mapping for production adapters and background workers.
  */
 class GrpcApiTransport(context: Context) {
 

@@ -38,11 +38,12 @@ internal class ClientSlotRegistry<K, C>(
 
     fun get(key: K): C? = synchronized(lock) {
         if (shutdownRequested) return null
-        slots[key]?.second ?: run {
-            val address = endpointFor(key)
-            if (address.isBlank()) return null
-            putLocked(key, address, force = false)
+        val address = endpointFor(key)
+        if (address.isBlank()) {
+            slots.remove(key)?.second?.let(closeAction)
+            return null
         }
+        putLocked(key, address, force = false)
     }
 
     fun create(key: K, address: String, force: Boolean = false): Result<Unit> = synchronized(lock) {
@@ -301,8 +302,9 @@ class GrpcClientRegistry(
      */
     fun recreateAllClients(globalParam: GlobalParam = GlobalParam(appContext), context: Context = appContext) {
         val existing = synchronized(lock) { entries.keys.toList() }
-        val clientsToRecreate = (existing + configuredClientIds()).distinct()
-        clientsToRecreate.forEach { id ->
+        // Recreate only live slots. Keeping uncreated services lazy is important for workers and
+        // killed-app callbacks: a server switch must not eagerly open every channel.
+        existing.forEach { id ->
             val address = if (id == ClientId.NAVIGATOR || id == ClientId.BEACON) {
                 synchronized(lock) { entries[id]?.address.orEmpty() }
             } else {
@@ -366,10 +368,23 @@ class GrpcClientRegistry(
     ): T? {
         synchronized(lock) {
             if (shutdownRequested) return null
-            entries[id]?.let { return it.stub as? T }
+            if (id == ClientId.NAVIGATOR || id == ClientId.BEACON) {
+                return entries[id]?.stub as? T
+            }
             val address = endpointFor(id, GlobalParam(appContext))
+            entries[id]?.let { current ->
+                val normalized = runCatching { tlsTransport.normalizeGrpcAddress(address) }.getOrNull()
+                if (normalized == current.address) return current.stub as? T
+                if (address.isBlank()) {
+                    entries.remove(id)
+                    close(current.managedChannel)
+                    return null
+                }
+                // GlobalParam can change while a process remains alive (server switch). Replace
+                // the stale slot on the next lazy read instead of serving requests to old node.
+            }
             if (address.isBlank()) return null
-            return createLocked(id, address, appContext, includeAuth = id != ClientId.NAVIGATOR && id != ClientId.BEACON, includeDeviceInfo = true, force = false, builder)
+            return createLocked(id, address, appContext, includeAuth = id != ClientId.NAVIGATOR && id != ClientId.BEACON, includeDeviceInfo = true, force = true, builder)
                 ?.stub as? T
         }
     }

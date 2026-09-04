@@ -58,7 +58,6 @@ import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.CallGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
-import com.barkfluff.client.domain.gateway.PresenceGateway
 import com.barkfluff.client.domain.gateway.StickerGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
@@ -134,7 +133,6 @@ class ChatActivity : AppCompatActivity() {
     @Inject lateinit var callGateway: CallGateway
     @Inject lateinit var fileMediaGateway: FileMediaGateway
     @Inject lateinit var mediaHttpTransport: MediaHttpTransport
-    @Inject lateinit var presenceGateway: PresenceGateway
     @Inject lateinit var stickerGateway: StickerGateway
     @Inject lateinit var userProfileGateway: UserProfileGateway
     @Inject lateinit var userSettingsGateway: UserSettingsGateway
@@ -155,9 +153,7 @@ class ChatActivity : AppCompatActivity() {
     // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, URL/fileId аватара)
     private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
 
-    // Индикатор набора текста ("печатает...")
-    private var typingHeartbeatJob: Job? = null
-    @Volatile private var lastTypingInputAt = 0L
+    // Индикатор набора текста ("печатает...") — подписка и heartbeat принадлежат ViewModel.
     private var suppressTypingInput = false
     private var renderedTypingUserIds: Set<Long> = emptySet()
     private val pendingTypingNameFetches = mutableSetOf<Long>()
@@ -218,6 +214,14 @@ class ChatActivity : AppCompatActivity() {
             val croppedUri = UCrop.getOutput(result.data!!)
             if (croppedUri != null) {
                 pendingPastedImages.add(croppedUri)
+                viewModel.dispatch(
+                    ChatIntent.StageAttachment(
+                        uri = croppedUri,
+                        kind = com.barkfluff.client.cache.OutgoingAttachmentKind.RAW_IMAGE.name,
+                        fileName = "pasted_image.jpg",
+                        mimeType = "image/jpeg",
+                    )
+                )
                 updateAttachmentPreview()
             }
         }
@@ -365,11 +369,6 @@ class ChatActivity : AppCompatActivity() {
         NotificationHelper.dismissForChat(applicationContext, chatId)
 
         // ViewModel владеет подпиской на typing; Activity только рендерит immutable state.
-        realtimeService.changeTypingSubscription(listOf(chatId))
-        if (!isGroupChat && otherUserId > 0) {
-            realtimeService.changeOnlineSubscription(listOf(otherUserId))
-            loadOnlineStatus(otherUserId)
-        }
     }
 
     /**
@@ -386,6 +385,7 @@ class ChatActivity : AppCompatActivity() {
             var previousPinnedCount = -1
             var previousPinnedPreview: String? = null
             var previousComposerAttachments: List<String> = emptyList()
+            var previousPresence: PresenceState? = null
             var observedOnlineUserId = 0L
             viewModel.state.collect { state ->
                 // Кэш значений для синхронных читателей (шапка, звонки, меню, forward)
@@ -394,6 +394,10 @@ class ChatActivity : AppCompatActivity() {
                 isGroupChat = state.isGroupChat
                 isChatMuted = state.isChatMuted
                 otherUserId = state.otherUserId
+
+                if (previousPresence != state.presence) {
+                    renderPresenceState(state.presence)
+                }
 
                 if (state.presence.typingUserIds != renderedTypingUserIds) {
                     renderedTypingUserIds = state.presence.typingUserIds
@@ -412,8 +416,6 @@ class ChatActivity : AppCompatActivity() {
                 // otherUserId выяснился из chatInfo — подписываемся на онлайн-статус
                 if (!state.isGroupChat && state.otherUserId > 0 && state.otherUserId != observedOnlineUserId) {
                     observedOnlineUserId = state.otherUserId
-                    realtimeService.changeOnlineSubscription(listOf(state.otherUserId))
-                    loadOnlineStatus(state.otherUserId)
                     binding.onlineStatusTextView.visibility = View.VISIBLE
                 }
 
@@ -466,6 +468,7 @@ class ChatActivity : AppCompatActivity() {
                 }
 
                 previousState = state
+                previousPresence = state.presence
             }
         }
 
@@ -487,6 +490,18 @@ class ChatActivity : AppCompatActivity() {
                         suppressTypingInput = false
                         suppressDraftSave = false
                         updateSendButtonMode()
+                    }
+                    is ChatEffect.AttachmentStaged -> {
+                        pendingPastedImages.remove(event.source)
+                        pendingStickerUris.remove(event.source)
+                        pendingDocumentUris.remove(event.source)
+                        updateAttachmentPreview()
+                    }
+                    is ChatEffect.AttachmentStageFailed -> {
+                        pendingPastedImages.remove(event.source)
+                        pendingStickerUris.remove(event.source)
+                        pendingDocumentUris.remove(event.source)
+                        updateAttachmentPreview()
                     }
                     is ChatEffect.SendAccepted -> {
                         if (pendingAttachmentsAwaitingOutbox) {
@@ -1577,6 +1592,14 @@ class ChatActivity : AppCompatActivity() {
                         if (isStickerContent(uri, desc, i)) {
                             Log.d(TAG, "onReceiveContent: detected sticker → skip cropper")
                             pendingStickerUris.add(uri)
+                            viewModel.dispatch(
+                                ChatIntent.StageAttachment(
+                                    uri = uri,
+                                    kind = com.barkfluff.client.cache.OutgoingAttachmentKind.STICKER.name,
+                                    fileName = "sticker.webp",
+                                    mimeType = "image/webp",
+                                )
+                            )
                             updateAttachmentPreview()
                         } else {
                             Log.d(TAG, "onReceiveContent: not WebP → cropper")
@@ -1677,32 +1700,11 @@ class ChatActivity : AppCompatActivity() {
      */
     private fun onTypingInput(s: CharSequence?) {
         if (suppressTypingInput) return
-        if (s.isNullOrBlank()) {
-            stopTypingHeartbeat(sendCancel = true)
-            return
-        }
-        lastTypingInputAt = System.currentTimeMillis()
-        if (typingHeartbeatJob == null) {
-            typingHeartbeatJob = lifecycleScope.launch {
-                while (isActive) {
-                    realtimeService.sendTypingStatus(chatId, typing = true)
-                    delay(4_000)
-                    if (System.currentTimeMillis() - lastTypingInputAt >= 5_000) break
-                }
-                typingHeartbeatJob = null
-            }
-        }
+        viewModel.dispatch(ChatIntent.TypingChanged(s?.toString().orEmpty()))
     }
 
     private fun stopTypingHeartbeat(sendCancel: Boolean) {
-        val job = typingHeartbeatJob
-        if (job != null) {
-            job.cancel()
-            typingHeartbeatJob = null
-            if (sendCancel) {
-                realtimeService.sendTypingStatus(chatId, typing = false)
-            }
-        }
+        if (sendCancel) viewModel.dispatch(ChatIntent.StopTyping)
     }
 
     private fun handleVoiceButtonTouch(event: MotionEvent): Boolean {
@@ -2165,16 +2167,37 @@ class ChatActivity : AppCompatActivity() {
         val uris = result.uris
         if (uris.isEmpty()) return
 
-        // Если выбраны документы — добавить в pendingDocumentUris и показать превью
+        // Документы проходят durable staging; preview появится только после AttachmentStaged.
         if (result.isDocuments) {
-            pendingDocumentUris.addAll(uris)
+            uris.take(ImagePickerBottomSheet.MAX_SELECTION).forEach { uri ->
+                pendingDocumentUris.add(uri)
+                val (fileName, mimeType) = getDocumentInfo(uri)
+                viewModel.dispatch(
+                    ChatIntent.StageAttachment(
+                        uri = uri,
+                        kind = com.barkfluff.client.cache.OutgoingAttachmentKind.DOCUMENT.name,
+                        fileName = fileName,
+                        mimeType = mimeType,
+                    )
+                )
+            }
             updateAttachmentPreview()
             return
         }
 
-        // Если фото с камеры — добавить в pendingPastedImages и показать превью
+        // Фото с камеры также принимаются только после durable staging.
         if (result.fromCamera) {
-            pendingPastedImages.addAll(uris)
+            uris.take(ImagePickerBottomSheet.MAX_SELECTION).forEach { uri ->
+                pendingPastedImages.add(uri)
+                viewModel.dispatch(
+                    ChatIntent.StageAttachment(
+                        uri = uri,
+                        kind = com.barkfluff.client.cache.OutgoingAttachmentKind.RAW_IMAGE.name,
+                        fileName = "camera_image.jpg",
+                        mimeType = contentResolver.getType(uri) ?: "image/jpeg",
+                    )
+                )
+            }
             updateAttachmentPreview()
             return
         }
@@ -2236,38 +2259,6 @@ class ChatActivity : AppCompatActivity() {
         return false
     }
 
-    private suspend fun convertToWebp(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
-        try {
-            val mimeType = contentResolver.getType(uri)
-            // Уже WebP — просто читаем байты
-            if (mimeType == "image/webp") {
-                return@withContext contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            }
-            // Декодируем и конвертируем в WebP (с прозрачностью)
-            val bitmap = contentResolver.openInputStream(uri)?.use {
-                android.graphics.BitmapFactory.decodeStream(it)
-            } ?: return@withContext null
-            val outputStream = java.io.ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSLESS, 100, outputStream)
-            bitmap.recycle()
-            outputStream.toByteArray()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error converting to WebP", e)
-            null
-        }
-    }
-
-    private suspend fun readBytesFromUri(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
-        try {
-            contentResolver.openInputStream(uri)?.use { inputStream ->
-                inputStream.readBytes()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error reading bytes from uri", e)
-            null
-        }
-    }
-
     /**
      * Возвращает (displayName, mimeType) для документа по URI.
      * displayName ищется через OpenableColumns.DISPLAY_NAME, mimeType — через ContentResolver.getType().
@@ -2320,9 +2311,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun updateAttachmentPreview() {
-        val persistedCount = viewModel.state.value.composer.attachmentPaths.size
-        val photosCount = pendingPastedImages.size + pendingStickerUris.size + persistedCount
-        val filesCount = pendingDocumentUris.size
+        val composer = viewModel.state.value.composer
+        // Pending URI lists are only staging work; accepted previews come from Room-backed paths.
+        val filesCount = composer.attachmentKinds.count {
+            it == com.barkfluff.client.cache.OutgoingAttachmentKind.DOCUMENT.name
+        }
+        val photosCount = composer.attachmentPaths.size - filesCount
 
         if (photosCount == 0 && filesCount == 0) {
             binding.attachmentPreviewBar.visibility = View.GONE
@@ -2342,37 +2336,17 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessageWithPendingAttachments() {
         if (pendingAttachmentsAwaitingOutbox) return
+        // The ViewModel copies sources asynchronously. Wait until all source URIs have either
+        // produced an AttachmentStaged effect or a failure effect before enqueueing.
+        if (pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() || pendingDocumentUris.isNotEmpty()) {
+            return
+        }
         val text = binding.messageEditText.text.toString().trim()
-        val photos = pendingPastedImages.toList()
-        val stickers = pendingStickerUris.toList()
-        val documents = pendingDocumentUris.toList()
-        lifecycleScope.launch {
-            val stickerAttachments = stickers.mapNotNull { uri ->
-                convertToWebp(uri)?.let { bytes ->
-                    com.barkfluff.client.send.AttachmentSpec.Sticker(bytes)
-                }
-            }
-            val attachments = stickerAttachments + photos.map {
-                com.barkfluff.client.send.AttachmentSpec.RawImage(it)
-            } + documents.map {
-                com.barkfluff.client.send.AttachmentSpec.Document(it)
-            }
-            if (attachments.isEmpty() && viewModel.state.value.composer.attachmentPaths.isNotEmpty()) {
-                viewModel.dispatch(ChatIntent.Send(text))
-                return@launch
-            }
-            if (attachments.isEmpty()) {
-                Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
-                return@launch
-            }
+        if (viewModel.state.value.composer.attachmentPaths.isNotEmpty()) {
             pendingAttachmentsAwaitingOutbox = true
-            viewModel.dispatch(ChatIntent.SendMedia(com.barkfluff.client.send.SendJob(
-                chatId = chatId,
-                chatTitle = chatTitle,
-                text = text,
-                attachments = attachments,
-                replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L
-            )))
+            viewModel.dispatch(ChatIntent.Send(text))
+        } else {
+            Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -2916,9 +2890,6 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private var onlineStatusJob: Job? = null
-    private var onlineStatusSubscription: Job? = null
-
     /**
      * Записывает онлайн-статус, не давая индикатору набора текста быть перезаписанным:
      * пока хотя бы один собеседник печатает — onlineStatusTextView остаётся отведён под typing-текст.
@@ -2932,62 +2903,26 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadOnlineStatus(userId: Long) {
-        // Отменяем предыдущий job если есть
-        onlineStatusJob?.cancel()
-
-        onlineStatusJob = lifecycleScope.launch {
-            try {
-                // Первоначальная загрузка
-                fetchAndDisplayOnlineStatus(userId)
-
-                // Периодическое обновление каждые 30 секунд
-                while (true) {
-                    delay(30_000)
-                    fetchAndDisplayOnlineStatus(userId)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading online status", e)
+    /** Renders the immutable presence snapshot; subscriptions and polling stay in ChatViewModel. */
+    private fun renderPresenceState(presence: PresenceState) {
+        if (isGroupChat) {
+            if (presence.typingUserIds.isEmpty()) {
+                binding.onlineStatusTextView.visibility = View.GONE
+            }
+            return
+        }
+        val isOnline = otherUserId > 0L && otherUserId in presence.onlineUserIds
+        val statusText = if (isOnline) {
+            getString(R.string.profile_online)
+        } else {
+            val lastSeen = presence.lastSeenEpochMillisByUser[otherUserId]
+            if (lastSeen != null && lastSeen > 0L) {
+                OnlineTimeFormatter.formatLastSeen(this, lastSeen)
+            } else {
+                getString(R.string.status_recently_seen)
             }
         }
-
-        // Подписка на streaming обновления онлайн-статуса через RealtimeService
-        onlineStatusSubscription?.cancel()
-        onlineStatusSubscription = lifecycleScope.launch {
-            realtimeService.onlineStatuses.collect { status ->
-                if (status.userId == userId) {
-                    withContext(Dispatchers.Main) {
-                        val isOnline = status.status.number == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.number
-                        if (isOnline) {
-                            applyOnlineStatus(getString(R.string.profile_online), true)
-                        } else {
-                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, status.lastSeen.seconds * 1000)
-                            applyOnlineStatus(lastSeen, false)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun fetchAndDisplayOnlineStatus(userId: Long) {
-        try {
-            val userStatus = presenceGateway.status(listOf(userId)).getOrNull()?.firstOrNull()
-            withContext(Dispatchers.Main) {
-                if (userStatus != null) {
-                    if (userStatus.isOnline) {
-                        applyOnlineStatus(getString(R.string.profile_online), true)
-                    } else {
-                        val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeenEpochMillis)
-                        applyOnlineStatus(lastSeen, false)
-                    }
-                } else {
-                    applyOnlineStatus(getString(R.string.status_recently_seen), false)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching online status", e)
-        }
+        applyOnlineStatus(statusText, isOnline)
     }
 
     private fun getMimeType(fileName: String): String? {
@@ -3108,10 +3043,7 @@ class ChatActivity : AppCompatActivity() {
         super.onDestroy()
         // Сбрасываем открытый чат
         OpenChatManager.closeChat()
-        onlineStatusJob?.cancel()
-        onlineStatusSubscription?.cancel()
         stopTypingHeartbeat(sendCancel = true)
-        realtimeService.changeTypingSubscription(emptyList())
         headerNameAnimator?.cancel()
         headerStatusAnimator?.cancel()
         sendButtonMorphAnimator?.cancel()

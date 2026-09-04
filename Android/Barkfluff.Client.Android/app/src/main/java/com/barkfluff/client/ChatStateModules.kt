@@ -1,6 +1,13 @@
 package com.barkfluff.client
 
+import com.barkfluff.client.cache.ComposerAttachment
+import com.barkfluff.client.domain.gateway.RealtimeGateway
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /** Pure reducer for message selection. No RecyclerView or Activity state is required. */
 class SelectionReducer {
@@ -49,21 +56,57 @@ class ChatComposer {
 
     fun clearEdit(state: ComposerState): ComposerState = state.copy(pendingEdit = null)
 
-    fun stagedAttachment(state: ComposerState, path: String): ComposerState {
+    fun stagedAttachment(state: ComposerState, path: String, kind: String = "DOCUMENT"): ComposerState {
         if (path.isBlank() || path in state.attachmentPaths) return state
-        return state.copy(attachmentPaths = state.attachmentPaths + path)
+        val alignedKinds = state.attachmentKinds
+            .take(state.attachmentPaths.size)
+            .let { kinds ->
+                if (kinds.size == state.attachmentPaths.size) kinds
+                else kinds + List(state.attachmentPaths.size - kinds.size) { "DOCUMENT" }
+            }
+        return state.copy(
+            attachmentPaths = state.attachmentPaths + path,
+            attachmentKinds = alignedKinds + kind,
+        )
     }
 
-    fun removeAttachment(state: ComposerState, path: String): ComposerState =
-        state.copy(attachmentPaths = state.attachmentPaths - path)
+    fun removeAttachment(state: ComposerState, path: String): ComposerState {
+        val index = state.attachmentPaths.indexOf(path)
+        if (index < 0) return state
+        return state.copy(
+            attachmentPaths = state.attachmentPaths.filterIndexed { itemIndex, _ -> itemIndex != index },
+            attachmentKinds = state.attachmentKinds.filterIndexed { itemIndex, _ -> itemIndex != index },
+        )
+    }
 
     fun clearAfterDurableEnqueue(state: ComposerState, generation: Long?): ComposerState = state.copy(
         text = "",
         pendingReply = null,
         pendingEdit = null,
         attachmentPaths = emptyList(),
+        attachmentKinds = emptyList(),
         draftGeneration = generation,
     )
+
+    /**
+     * Completes one send while retaining previews staged after the handoff started. The outbox
+     * and [ComposerAttachmentStore] use generations to distinguish those newer records.
+     */
+    fun clearAfterDurableEnqueue(
+        state: ComposerState,
+        generation: Long?,
+        remaining: List<ComposerAttachment>,
+    ): ComposerState {
+        val ordered = remaining.sortedBy { it.attachmentIndex }
+        return state.copy(
+            text = "",
+            pendingReply = null,
+            pendingEdit = null,
+            attachmentPaths = ordered.map { it.path },
+            attachmentKinds = ordered.map { it.kind },
+            draftGeneration = ordered.maxOfOrNull { it.generation } ?: generation,
+        )
+    }
 }
 
 /**
@@ -73,11 +116,21 @@ class ChatComposer {
 class ChatPresence(private val currentUserId: Long) {
     private val typingExpiry = ConcurrentHashMap<String, Long>()
 
-    fun online(state: PresenceState, userId: Long, isOnline: Boolean): PresenceState {
+    fun online(
+        state: PresenceState,
+        userId: Long,
+        isOnline: Boolean,
+        lastSeenEpochMillis: Long = 0L,
+    ): PresenceState {
         if (userId <= 0L || userId == currentUserId) return state
         val ids = state.onlineUserIds.toMutableSet()
         if (isOnline) ids.add(userId) else ids.remove(userId)
-        return state.copy(onlineUserIds = ids)
+        val lastSeen = state.lastSeenEpochMillisByUser.toMutableMap()
+        if (lastSeenEpochMillis > 0L) lastSeen[userId] = lastSeenEpochMillis
+        return state.copy(
+            onlineUserIds = ids,
+            lastSeenEpochMillisByUser = lastSeen,
+        )
     }
 
     fun typing(
@@ -113,5 +166,69 @@ class ChatPresence(private val currentUserId: Long) {
         val activeIds = typingExpiry.keys.mapNotNull { it.substringAfter(':', "").toLongOrNull() }.toSet()
         ids.retainAll(activeIds)
         return state.copy(typingUserIds = ids)
+    }
+}
+
+/**
+ * Owns the side effects around a regular-chat presence subscription. The reducer above remains
+ * pure; this small coordinator is the only place that starts typing heartbeats or changes the
+ * server subscription, so an Activity recreation cannot leave duplicate loops behind.
+ */
+class ChatPresenceSession(
+    private val realtime: RealtimeGateway,
+    private val scope: CoroutineScope,
+    private val heartbeatIntervalMillis: Long = 4_000L,
+    private val idleTimeoutMillis: Long = 5_000L,
+    private val nowMillis: () -> Long = { System.currentTimeMillis() },
+) {
+    private var chatId: String = ""
+    private var lastTypingInputAt = 0L
+    private var heartbeatJob: Job? = null
+    private var typingAnnounced = false
+
+    fun start(chatId: String, onlineUserIds: List<Long>) {
+        if (this.chatId != chatId) stopTyping(sendCancel = true)
+        this.chatId = chatId
+        realtime.changeTypingSubscription(chatId.takeIf { it.isNotBlank() }?.let(::listOf).orEmpty())
+        realtime.changeOnlineSubscription(onlineUserIds.filter { it > 0L }.distinct())
+    }
+
+    fun textChanged(text: String) {
+        if (chatId.isBlank()) return
+        if (text.isBlank()) {
+            stopTyping(sendCancel = true)
+            return
+        }
+        lastTypingInputAt = nowMillis()
+        if (heartbeatJob?.isActive == true) return
+        heartbeatJob = scope.launch {
+            typingAnnounced = true
+            while (isActive && chatId.isNotBlank()) {
+                realtime.sendTypingStatus(chatId, typing = true)
+                delay(heartbeatIntervalMillis)
+                if (nowMillis() - lastTypingInputAt >= idleTimeoutMillis) break
+            }
+            if (isActive && chatId.isNotBlank() && typingAnnounced) {
+                realtime.sendTypingStatus(chatId, typing = false)
+                typingAnnounced = false
+            }
+            heartbeatJob = null
+        }
+    }
+
+    fun stopTyping(sendCancel: Boolean) {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        if (sendCancel && chatId.isNotBlank() && typingAnnounced) {
+            realtime.sendTypingStatus(chatId, typing = false)
+        }
+        typingAnnounced = false
+    }
+
+    fun stop() {
+        stopTyping(sendCancel = true)
+        realtime.changeTypingSubscription(emptyList())
+        realtime.changeOnlineSubscription(emptyList())
+        chatId = ""
     }
 }
