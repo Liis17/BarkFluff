@@ -3,7 +3,8 @@ package com.barkfluff.client.send
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.di.OutgoingQueueEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,9 +21,10 @@ class OutgoingMessageCancelReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                (context.applicationContext as? BarkFluffApplication)
-                    ?.outgoingMessageQueue
-                    ?.cancel(operationId)
+                EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    OutgoingQueueEntryPoint::class.java,
+                ).outgoingMessageQueue().cancel(operationId)
             } finally {
                 pendingResult.finish()
             }

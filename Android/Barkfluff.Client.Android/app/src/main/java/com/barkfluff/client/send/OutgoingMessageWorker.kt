@@ -4,7 +4,8 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.di.OutgoingQueueEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 
 /**
  * Persistent WorkManager trigger for [OutgoingMessageQueue]. The worker owns no message data:
@@ -16,9 +17,12 @@ class OutgoingMessageWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val application = applicationContext as? BarkFluffApplication ?: return Result.failure()
+        val queue = EntryPointAccessors.fromApplication(
+            applicationContext,
+            OutgoingQueueEntryPoint::class.java,
+        ).outgoingMessageQueue()
         return try {
-            application.outgoingMessageQueue.processReady { snapshot ->
+            queue.processReady { snapshot ->
                 MediaSendNotification.ensureChannel(applicationContext)
                 setForeground(
                     ForegroundInfo(

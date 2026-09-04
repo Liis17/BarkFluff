@@ -4,7 +4,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.di.MessageGatewayEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class MarkAsReadReceiver : BroadcastReceiver() {
 
@@ -25,8 +30,17 @@ class MarkAsReadReceiver : BroadcastReceiver() {
 
         // Mark the message as read via gRPC
         if (messageId > 0) {
-            val app = context.applicationContext as BarkFluffApplication
-            app.realtimeService.markAsRead(messageId)
+            val pendingResult = goAsync()
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                try {
+                    EntryPointAccessors.fromApplication(
+                        context.applicationContext,
+                        MessageGatewayEntryPoint::class.java,
+                    ).messageGateway().markAsRead(listOf(messageId))
+                } finally {
+                    pendingResult.finish()
+                }
+            }
         }
     }
 }
