@@ -19,7 +19,8 @@ import coil.request.SuccessResult
 import com.barkfluff.client.ChatActivity
 import com.barkfluff.client.MainActivity
 import com.barkfluff.client.R
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.utils.AvatarLoader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -54,9 +55,9 @@ object WidgetRenderer {
         context: Context,
         appWidgetId: Int,
         config: WidgetConfig,
-        chats: List<GrpcTransportFacade.ChatData>,
+        chats: List<ChatSummary>,
         loggedIn: Boolean,
-        legacyTransport: GrpcTransportFacade?
+        fileMediaGateway: FileMediaGateway,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_pinned_chats)
 
@@ -94,7 +95,7 @@ object WidgetRenderer {
         // и не укладывается в бюджет обновления.
         val avatarBitmaps = coroutineScope {
             orderedChats
-                .map { chat -> async { loadAvatarBitmap(context, chat, legacyTransport) } }
+                .map { chat -> async { loadAvatarBitmap(context, chat, fileMediaGateway) } }
                 .awaitAll()
         }
 
@@ -129,7 +130,7 @@ object WidgetRenderer {
         return views
     }
 
-    private fun buildPreview(context: Context, chat: GrpcTransportFacade.ChatData): String {
+    private fun buildPreview(context: Context, chat: ChatSummary): String {
         val last = chat.lastMessage
         if (last != null) {
             val text = last.text
@@ -141,8 +142,8 @@ object WidgetRenderer {
 
     private suspend fun loadAvatarBitmap(
         context: Context,
-        chat: GrpcTransportFacade.ChatData,
-        legacyTransport: GrpcTransportFacade?
+        chat: ChatSummary,
+        fileMediaGateway: FileMediaGateway,
     ): Bitmap? {
         val sizePx = dpToPx(context, AVATAR_SIZE_DP)
         val seedId = chat.id.hashCode().toLong()
@@ -160,8 +161,8 @@ object WidgetRenderer {
                 if (url == null) {
                     url = AvatarLoader.getUrlFromCache(fileId)
                 }
-                if (url == null && legacyTransport != null) {
-                    url = runCatching { legacyTransport.getFileDownloadUrl(fileId).getOrNull() }.getOrNull()
+                if (url == null) {
+                    url = runCatching { fileMediaGateway.downloadUrl(fileId).getOrNull() }.getOrNull()
                     if (!url.isNullOrBlank()) {
                         AvatarLoader.urlCache[fileId] = url!!
                         AvatarLoader.putUrlInCache(fileId, url!!)

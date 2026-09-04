@@ -12,13 +12,15 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.FolderChatPickerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ActivityWidgetConfigureBinding
 import com.barkfluff.client.databinding.ItemWidgetSelectedChatBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.utils.AvatarLoader
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
@@ -27,6 +29,7 @@ import kotlinx.coroutines.launch
  * Срабатывает при добавлении виджета с рабочего стола (ACTION_APPWIDGET_CONFIGURE)
  * либо открывается из WidgetsSettingsActivity в edit-mode (EXTRA_EDIT_MODE=true).
  */
+@AndroidEntryPoint
 class WidgetConfigureActivity : AppCompatActivity() {
 
     companion object {
@@ -35,13 +38,14 @@ class WidgetConfigureActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityWidgetConfigureBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
     private lateinit var adapter: SelectedChatsAdapter
 
     private var appWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
     private var editMode: Boolean = false
 
-    private var allChats: List<GrpcTransportFacade.ChatData> = emptyList()
+    private var allChats: List<ChatSummary> = emptyList()
     private val selectedChatIds = ArrayList<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,9 +56,6 @@ class WidgetConfigureActivity : AppCompatActivity() {
 
         binding = ActivityWidgetConfigureBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
 
         appWidgetId = intent.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -114,9 +115,9 @@ class WidgetConfigureActivity : AppCompatActivity() {
 
     private fun loadChats() {
         lifecycleScope.launch {
-            val result = legacyTransport.getChats()
+            val result = chatDirectoryGateway.chats(offset = 0, size = 100)
             if (result.isSuccess) {
-                allChats = result.getOrNull() ?: emptyList()
+                allChats = result.getOrNull()?.chats.orEmpty()
                 adapter.notifyDataSetChanged()
             }
         }
@@ -167,7 +168,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
         }
 
         inner class VH(val b: ItemWidgetSelectedChatBinding) : RecyclerView.ViewHolder(b.root) {
-            fun bind(chatId: String, chat: GrpcTransportFacade.ChatData?) {
+            fun bind(chatId: String, chat: ChatSummary?) {
                 val title = chat?.title?.takeIf { it.isNotBlank() } ?: getString(R.string.chat_title_default)
                 b.chatTitle.text = title
 
@@ -184,7 +185,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
                         userId = chatId.hashCode().toLong(),
                         size = 64
                     ) {
-                        legacyTransport.getFileDownloadUrl(fileId).getOrNull()
+                        fileMediaGateway.downloadUrl(fileId).getOrNull()
                     }
                 }
 
