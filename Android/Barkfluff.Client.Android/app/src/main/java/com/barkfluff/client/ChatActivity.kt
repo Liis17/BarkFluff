@@ -47,6 +47,7 @@ import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.adapter.StickerPanelAdapter
@@ -110,6 +111,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var realtimeService: RealtimeService
 
     @Inject lateinit var chatRepository: ChatRepository
+    @Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
     private lateinit var messageAdapter: MessageAdapter
     private val messageRowProjector = MessageRowProjector()
 
@@ -598,7 +600,7 @@ class ChatActivity : AppCompatActivity() {
             KIND_PRIVATE -> {
                 val inviteState = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
                 val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
-                PrivateChatController(this, binding, e2eAdapter, app, globalParam, chatId)
+                PrivateChatController(this, binding, e2eAdapter, app, globalParam, chatId, chatDirectoryGateway)
                     .start(inviteState, inviterUserId)
             }
             KIND_SECRET -> {

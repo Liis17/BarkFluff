@@ -65,6 +65,9 @@ data class ChatSummary(
         barkfluff.shared.Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED,
     val privateInviterUserId: Long = 0L,
     val hasDraft: Boolean = false,
+    /** E2E handshake material used only by the private-chat controller. */
+    val kdfSalt: ByteArray = byteArrayOf(),
+    val passphraseVerifier: ByteArray = byteArrayOf(),
 )
 
 data class LastMessageSummary(
@@ -200,6 +203,8 @@ internal fun MessagesApiOuterClass.Chat.toDomain() = ChatSummary(
     privateInviteState = privateInviteState,
     privateInviterUserId = privateInviterUserId,
     hasDraft = hasDraft,
+    kdfSalt = kdfSalt.toByteArray(),
+    passphraseVerifier = passphraseVerifier.toByteArray(),
 )
 
 internal fun GrpcTransportFacade.AuthResult.toDomain() = when (this) {
