@@ -5,6 +5,24 @@ import com.barkfluff.client.data.GlobalParam
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+private data class RefreshKey(
+    val identityAddress: String,
+    val refreshToken: String?,
+)
+
+/** Process-wide serialization shared by every coordinator instance in this process. */
+private object ProcessWideTokenRefresh {
+    val mutex = Mutex()
+    private val lock = Any()
+    private val generations = mutableMapOf<RefreshKey, Long>()
+
+    fun generation(key: RefreshKey): Long = synchronized(lock) { generations[key] ?: 0L }
+
+    fun markRefreshed(key: RefreshKey) = synchronized(lock) {
+        generations[key] = (generations[key] ?: 0L) + 1L
+    }
+}
+
 /**
  * The small seam used by streams, workers and repositories before making an
  * authenticated request.
@@ -82,13 +100,10 @@ class GrpcTokenCoordinator(
         const val TOKEN_BUFFER_MINUTES = 5
     }
 
-    private val refreshMutex = Mutex()
-    /** Monotonic generation lets concurrent force-refresh callers share one RPC. */
-    private var refreshGeneration = 0L
-
     override suspend fun ensureValid(forceRefresh: Boolean): Boolean {
         val tokenBeforeRefresh = store.accessToken
-        val generationBeforeRefresh = refreshGeneration
+        val refreshKeyBefore = RefreshKey(store.identityAddress, store.refreshToken)
+        val generationBeforeRefresh = ProcessWideTokenRefresh.generation(refreshKeyBefore)
         val bufferMs = TOKEN_BUFFER_MINUTES * 60 * 1000L
         val expiration = store.accessTokenExpiration
 
@@ -96,14 +111,16 @@ class GrpcTokenCoordinator(
             return true
         }
 
-        return refreshMutex.withLock {
+        return ProcessWideTokenRefresh.mutex.withLock {
             val currentExpiration = store.accessTokenExpiration
             val currentToken = store.accessToken
+            val currentRefreshKey = RefreshKey(store.identityAddress, store.refreshToken)
 
             // Another caller can have refreshed while this caller waited. This check is also
             // intentionally applied to force-refresh requests: a burst of UNAUTHENTICATED
             // responses must result in one Identity RPC, not one RPC per failing stream.
-            if (refreshGeneration != generationBeforeRefresh ||
+            if ((currentRefreshKey == refreshKeyBefore &&
+                    ProcessWideTokenRefresh.generation(currentRefreshKey) != generationBeforeRefresh) ||
                 (!forceRefresh && currentExpiration > 0 && nowMillis() + bufferMs < currentExpiration)
             ) {
                 return@withLock true
@@ -128,7 +145,7 @@ class GrpcTokenCoordinator(
             store.accessTokenExpiration = refreshed.accessTokenExpiration
             store.refreshToken = refreshed.refreshToken
             store.refreshTokenExpiration = refreshed.refreshTokenExpiration
-            refreshGeneration += 1
+            ProcessWideTokenRefresh.markRefreshed(refreshKeyBefore)
             true
         }
     }
