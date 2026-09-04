@@ -13,7 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.UserAdapter
 import com.barkfluff.client.databinding.ActivitySearchBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.google.android.material.color.DynamicColors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 class AddGroupMemberActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySearchBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var userAdapter: UserAdapter
 
     private var chatId: String = ""
@@ -52,7 +52,7 @@ class AddGroupMemberActivity : AppCompatActivity() {
         binding = ActivitySearchBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        grpcManager = (application as BarkFluffApplication).grpcManager
+        legacyTransport = (application as BarkFluffApplication).legacyTransport
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run { finish(); return }
 
         binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
@@ -90,7 +90,7 @@ class AddGroupMemberActivity : AppCompatActivity() {
     private fun setupResultsList() {
         userAdapter = UserAdapter(
             onUserClick = { userData -> addMember(userData) },
-            getFileUrlCallback = { fileId -> grpcManager.getFileDownloadUrl(fileId).getOrNull() }
+            getFileUrlCallback = { fileId -> legacyTransport.getFileDownloadUrl(fileId).getOrNull() }
         )
         binding.searchResultsRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@AddGroupMemberActivity)
@@ -102,7 +102,7 @@ class AddGroupMemberActivity : AppCompatActivity() {
     private fun searchUsers(query: String) {
         lifecycleScope.launch {
             showLoading(true)
-            val result = grpcManager.searchUsers(query)
+            val result = legacyTransport.searchUsers(query)
             if (result.isSuccess) {
                 val users = result.getOrNull() ?: emptyList()
                 val displayItems = users.map { user ->
@@ -123,10 +123,10 @@ class AddGroupMemberActivity : AppCompatActivity() {
         }
     }
 
-    private fun addMember(userData: GrpcManager.UserData) {
+    private fun addMember(userData: GrpcTransportFacade.UserData) {
         lifecycleScope.launch {
             showLoading(true)
-            val result = grpcManager.addUser(chatId, userData.userId)
+            val result = legacyTransport.addUser(chatId, userData.userId)
             showLoading(false)
             if (result.isSuccess) {
                 Toast.makeText(this@AddGroupMemberActivity, R.string.group_member_added, Toast.LENGTH_SHORT).show()

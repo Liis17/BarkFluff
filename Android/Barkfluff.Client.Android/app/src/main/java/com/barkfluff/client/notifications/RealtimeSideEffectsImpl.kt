@@ -9,7 +9,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.widget.WidgetUpdater
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class RealtimeSideEffectsImpl(
     private val context: Context,
-    private val grpcManager: GrpcManager
+    private val legacyTransport: GrpcTransportFacade
 ) : RealtimeSideEffects {
 
     private val globalParam = GlobalParam(context)
@@ -53,7 +53,7 @@ class RealtimeSideEffectsImpl(
 
         // Инфо об отправителе (cache first)
         val userInfo = userInfoCache[senderId] ?: run {
-            val result = grpcManager.getUserData(senderId)
+            val result = legacyTransport.getUserData(senderId)
             if (result.isFailure) {
                 Log.w(TAG, "Failed to get user data for notification: senderId=$senderId")
                 return
@@ -117,7 +117,7 @@ class RealtimeSideEffectsImpl(
             // Сначала проверяем URL-кэш (заполняется AvatarLoader при загрузке списка чатов)
             var url = AvatarLoader.urlCache[fileId]
             if (url == null) {
-                val urlResult = grpcManager.getFileDownloadUrl(fileId)
+                val urlResult = legacyTransport.getFileDownloadUrl(fileId)
                 if (urlResult.isFailure) {
                     Log.w(TAG, "Failed to get download URL for fileId=$fileId: ${urlResult.exceptionOrNull()?.message}")
                     return null

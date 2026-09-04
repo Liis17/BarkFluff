@@ -21,7 +21,8 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.send.OutgoingMessageQueue
@@ -57,7 +58,10 @@ import java.util.concurrent.TimeUnit
 @HiltAndroidApp
 class BarkFluffApplication : Application() {
 
-    @Inject lateinit var grpcManager: GrpcManager
+    /** Temporary application-scoped bridge for workers/controllers not yet moved to gateways. */
+    @Inject lateinit var legacyTransport: GrpcTransportFacade
+
+    @Inject lateinit var clientRegistry: GrpcClientRegistry
 
     @Inject lateinit var chatCacheRepository: ChatCacheRepository
 
@@ -174,7 +178,7 @@ class BarkFluffApplication : Application() {
         stopCallEventsUiBridge()
         callEventsService.shutdown()
         applicationScope.cancel()
-        grpcManager.shutdown()
+        clientRegistry.shutdown()
         super.onTerminate()
     }
 

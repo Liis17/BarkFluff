@@ -11,7 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentProfileBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.LogoutHelper
 import com.barkfluff.client.utils.UpdateChecker
@@ -26,7 +26,7 @@ class ProfileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private var previousMainBackground: Drawable? = null
     private var mainBackgroundCaptured = false
 
@@ -44,7 +44,7 @@ class ProfileFragment : Fragment() {
 
         val app = requireActivity().application as BarkFluffApplication
         globalParam = GlobalParam(requireContext())
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         setupClickListeners()
         updateUI()
@@ -113,7 +113,7 @@ class ProfileFragment : Fragment() {
                 .setMessage(R.string.logout_dialog_message)
                 .setPositiveButton(R.string.logout_dialog_confirm) { _, _ ->
                     lifecycleScope.launch {
-                        LogoutHelper.performFullLogout(requireContext(), grpcManager)
+                        LogoutHelper.performFullLogout(requireContext(), legacyTransport)
                     }
                 }
                 .setNegativeButton(R.string.btn_cancel, null)
@@ -164,7 +164,7 @@ class ProfileFragment : Fragment() {
                 size = 192,
                 circleCrop = false
             ) {
-                val result = grpcManager.getFileDownloadUrl(fileId)
+                val result = legacyTransport.getFileDownloadUrl(fileId)
                 if (result.isSuccess) result.getOrNull() else null
             }
         } else {
@@ -227,7 +227,7 @@ class ProfileFragment : Fragment() {
     private fun refreshUserData() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val result = grpcManager.getCurrentUserData()
+                val result = legacyTransport.getCurrentUserData()
                 if (result.isSuccess) {
                     val userData = result.getOrNull() ?: return@launch
                     globalParam.userName = userData.username

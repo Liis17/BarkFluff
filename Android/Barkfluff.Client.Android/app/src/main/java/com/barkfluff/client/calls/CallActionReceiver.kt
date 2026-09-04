@@ -26,10 +26,10 @@ class CallActionReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as BarkFluffApplication
-                if (app.grpcManager.callsClient == null) {
+                if (app.legacyTransport.callsClient == null) {
                     val callsAddress = GlobalParam(context).socketCalls
                     if (callsAddress.isNotBlank()) {
-                        app.grpcManager.createCallsClient(callsAddress, context, includeDeviceInfo = true)
+                        app.legacyTransport.createCallsClient(callsAddress, context, includeDeviceInfo = true)
                     }
                 }
                 if (action == CallExtras.ACTION_END_CALL) {

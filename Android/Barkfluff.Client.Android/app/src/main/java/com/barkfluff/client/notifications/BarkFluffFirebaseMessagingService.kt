@@ -9,7 +9,7 @@ import com.barkfluff.client.R
 import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -306,14 +306,14 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         serviceScope.launch {
             try {
                 val app = context.applicationContext as BarkFluffApplication
-                val grpcManager = app.grpcManager
+                val legacyTransport = app.legacyTransport
 
-                if (grpcManager.usersClient == null) {
+                if (legacyTransport.usersClient == null) {
                     Log.d(TAG, "sendTokenToServer: usersClient не инициализирован, токен будет отправлен позже")
                     return@launch
                 }
 
-                val result = grpcManager.setFirebaseToken(token)
+                val result = legacyTransport.setFirebaseToken(token)
                 if (result.isSuccess) {
                     Log.i(TAG, "sendTokenToServer: токен успешно отправлен на сервер")
                 } else {

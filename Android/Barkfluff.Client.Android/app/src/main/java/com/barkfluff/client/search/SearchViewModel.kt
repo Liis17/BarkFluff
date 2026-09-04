@@ -115,7 +115,7 @@ class SearchViewModel @Inject constructor(
     private suspend fun loadUsers(query: String) {
         val result = searchUsersGateway.search(query)
 
-        // GrpcManager wraps CancellationException in Result.failure. The checks below make sure
+        // GrpcTransportFacade wraps CancellationException in Result.failure. The checks below make sure
         // an obsolete response can never replace the state for the newer query.
         if (!currentCoroutineContext().isActive) return
         if (_uiState.value.query.trim() != query) return

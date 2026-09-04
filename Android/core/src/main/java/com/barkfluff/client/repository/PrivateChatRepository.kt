@@ -9,12 +9,12 @@ import androidx.security.crypto.MasterKeys
 import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.shared.Shared
 import com.barkfluff.client.crypto.PrivateChatCrypto
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Репозиторий приватных чатов: связывает [GrpcManager] и [PrivateChatCrypto].
+ * Репозиторий приватных чатов: связывает [GrpcTransportFacade] и [PrivateChatCrypto].
  *
  * Ключ AES-256 каждого чата выводится из passphrase + Chat.kdf_salt через Argon2id;
  * хранится локально в EncryptedSharedPreferences (один раз после ввода passphrase).
@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
  */
 class PrivateChatRepository(
     context: Context,
-    private val grpc: GrpcManager
+    private val grpc: GrpcTransportFacade
 ) {
     private val tag = "PrivateChatRepo"
     private val keyPrefs: SharedPreferences = run {
@@ -59,7 +59,7 @@ class PrivateChatRepository(
         peerUserId: Long,
         passphrase: String,
         rememberKey: Boolean = false
-    ): Result<GrpcManager.PrivateChatCreateResult> =
+    ): Result<GrpcTransportFacade.PrivateChatCreateResult> =
         withContext(Dispatchers.Default) {
             try {
                 val salt = PrivateChatCrypto.generateSalt()

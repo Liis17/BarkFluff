@@ -10,7 +10,7 @@ import java.net.URL
 /**
  * HTTP boundary for media URLs returned by the Files service.
  *
- * URL rewriting and TLS setup used to be reached through [GrpcManager], which forced upload,
+ * URL rewriting and TLS setup used to be reached through [GrpcTransportFacade], which forced upload,
  * download and preview code to depend on the entire RPC facade. Keeping both policies here makes
  * the boundary injectable in repositories and straightforward to fake in tests.
  */

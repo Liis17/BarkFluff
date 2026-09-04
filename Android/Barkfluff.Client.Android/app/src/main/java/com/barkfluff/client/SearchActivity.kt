@@ -15,7 +15,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.search.BarkFluffSearchTheme
 import com.barkfluff.client.search.SearchScreen
 import com.barkfluff.client.search.SearchUser
@@ -39,7 +42,9 @@ class SearchActivity : AppCompatActivity() {
 
     private val searchViewModel: SearchViewModel by viewModels()
 
-    private lateinit var grpcManager: GrpcManager
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var privateChatRepository: PrivateChatRepository
     private var isPrivateMode = false
     private var isActionInProgress by mutableStateOf(false)
 
@@ -55,7 +60,6 @@ class SearchActivity : AppCompatActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        grpcManager = (application as BarkFluffApplication).grpcManager
         isPrivateMode = intent.getStringExtra(EXTRA_MODE) == MODE_PRIVATE
 
         setContent {
@@ -72,7 +76,7 @@ class SearchActivity : AppCompatActivity() {
                     onClear = { searchViewModel.onQueryChanged("") },
                     onBack = { onBackPressedDispatcher.onBackPressed() },
                     onUserClick = ::onUserClick,
-                    getAvatarUrl = { fileId -> grpcManager.getFileDownloadUrl(fileId).getOrNull() }
+                    getAvatarUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() }
                 )
             }
         }
@@ -87,13 +91,13 @@ class SearchActivity : AppCompatActivity() {
         }
     }
 
-    private fun openChatWithUser(userData: GrpcManager.UserData) {
+    private fun openChatWithUser(userData: UserProfile) {
         Log.d(TAG, "openChatWithUser: userId=${userData.userId}, username=${userData.username}")
 
         lifecycleScope.launch {
             isActionInProgress = true
             try {
-                val result = grpcManager.getPersonChatId(userData.userId)
+                val result = userDirectoryGateway.personChatId(userData.userId)
                 if (result.isSuccess) {
                     val chatId = result.getOrNull()
                     Log.d(TAG, "openChatWithUser: Got chatId=$chatId")
@@ -130,7 +134,7 @@ class SearchActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPrivateChatPassword(userData: GrpcManager.UserData) {
+    private fun showPrivateChatPassword(userData: UserProfile) {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val margin = (24 * resources.displayMetrics.density).toInt()
@@ -175,15 +179,14 @@ class SearchActivity : AppCompatActivity() {
     }
 
     private fun createPrivateChat(
-        userData: GrpcManager.UserData,
+        userData: UserProfile,
         passphrase: String,
         rememberKey: Boolean
     ) {
         lifecycleScope.launch {
             isActionInProgress = true
             try {
-                val app = application as BarkFluffApplication
-                val result = app.privateChatRepository.createPrivateChat(
+                val result = privateChatRepository.createPrivateChat(
                     userData.userId,
                     passphrase,
                     rememberKey

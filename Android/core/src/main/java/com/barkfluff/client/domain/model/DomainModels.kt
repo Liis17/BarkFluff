@@ -1,7 +1,7 @@
 package com.barkfluff.client.domain.model
 
 import com.barkfluff.client.data.ClientColors
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import barkfluff.messages.MessagesApiOuterClass
 
 /** Stable domain names; gRPC generated messages stay below the gateway boundary. */
@@ -110,7 +110,7 @@ data class PinnedMessagePage(
 )
 
 /** Mapping helpers remain in the production adapter, not in UI code. */
-internal fun GrpcManager.ServerInfo.toDomain() = ServerInfo(
+internal fun GrpcTransportFacade.ServerInfo.toDomain() = ServerInfo(
     name = name,
     description = description,
     color = color,
@@ -126,7 +126,7 @@ internal fun GrpcManager.ServerInfo.toDomain() = ServerInfo(
     filesMediaEndpoint = filesMediaEndpoint,
 )
 
-internal fun GrpcManager.UserData.toDomain() = UserProfile(
+internal fun GrpcTransportFacade.UserData.toDomain() = UserProfile(
     userId = userId,
     username = username,
     firstName = firstName,
@@ -140,7 +140,7 @@ internal fun GrpcManager.UserData.toDomain() = UserProfile(
     registrationDate = registrationDate,
 )
 
-internal fun GrpcManager.ChatData.toDomain() = ChatSummary(
+internal fun GrpcTransportFacade.ChatData.toDomain() = ChatSummary(
     id = id,
     title = title,
     picture = picture,
@@ -160,7 +160,7 @@ internal fun GrpcManager.ChatData.toDomain() = ChatSummary(
     hasDraft = hasDraft,
 )
 
-internal fun GrpcManager.ChatFolder.toDomain() = ChatFolder(
+internal fun GrpcTransportFacade.ChatFolder.toDomain() = ChatFolder(
     folderId = folderId,
     folderName = folderName,
     folderIcon = folderIcon,
@@ -196,10 +196,10 @@ internal fun MessagesApiOuterClass.Chat.toDomain() = ChatSummary(
     hasDraft = hasDraft,
 )
 
-internal fun GrpcManager.AuthResult.toDomain() = when (this) {
-    is GrpcManager.AuthResult.Success -> AuthenticationResult.Success(
+internal fun GrpcTransportFacade.AuthResult.toDomain() = when (this) {
+    is GrpcTransportFacade.AuthResult.Success -> AuthenticationResult.Success(
         AuthSession(accessToken, accessTokenExpiration, refreshToken, refreshTokenExpiration)
     )
-    GrpcManager.AuthResult.OtpRequired -> AuthenticationResult.OtpRequired
-    is GrpcManager.AuthResult.Error -> AuthenticationResult.Error(message)
+    GrpcTransportFacade.AuthResult.OtpRequired -> AuthenticationResult.OtpRequired
+    is GrpcTransportFacade.AuthResult.Error -> AuthenticationResult.Error(message)
 }

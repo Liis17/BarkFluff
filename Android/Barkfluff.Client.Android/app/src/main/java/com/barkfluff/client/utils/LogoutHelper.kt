@@ -6,7 +6,7 @@ import android.util.Log
 import com.barkfluff.client.LoginActivity
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -28,9 +28,9 @@ object LogoutHelper {
     /**
      * Выполняет полный разлогин и переходит на экран входа.
      * @param context контекст Activity или Fragment
-     * @param grpcManager экземпляр GrpcManager
+     * @param legacyTransport экземпляр GrpcTransportFacade
      */
-    suspend fun performFullLogout(context: Context, grpcManager: GrpcManager) {
+    suspend fun performFullLogout(context: Context, legacyTransport: GrpcTransportFacade) {
         // 1. Остановка realtime-стримов — первым делом, чтобы они не писали в кеши
         //    во время очистки и не ушли в бесконечный retry после сброса токенов
         (context.applicationContext as? BarkFluffApplication)?.let { app ->
@@ -92,10 +92,10 @@ object LogoutHelper {
         globalParam.clearUserData()
         Log.i(TAG, "Настройки аккаунта очищены (device_id сброшен)")
 
-        // 5. Серверный разлогин — выполняется последним, т.к. требует токен из памяти grpcManager
-        //    (токен уже недоступен из GlobalParam после шага 3, но grpcManager держит его в канале)
+        // 5. Серверный разлогин — выполняется последним, т.к. требует токен из памяти legacyTransport
+        //    (токен уже недоступен из GlobalParam после шага 3, но legacyTransport держит его в канале)
         try {
-            val result = grpcManager.logout()
+            val result = legacyTransport.logout()
             if (result.isSuccess) {
                 Log.i(TAG, "Серверный разлогин выполнен успешно")
             } else {

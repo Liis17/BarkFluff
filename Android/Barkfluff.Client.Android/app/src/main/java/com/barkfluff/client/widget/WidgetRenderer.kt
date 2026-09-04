@@ -19,7 +19,7 @@ import coil.request.SuccessResult
 import com.barkfluff.client.ChatActivity
 import com.barkfluff.client.MainActivity
 import com.barkfluff.client.R
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.AvatarLoader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -54,9 +54,9 @@ object WidgetRenderer {
         context: Context,
         appWidgetId: Int,
         config: WidgetConfig,
-        chats: List<GrpcManager.ChatData>,
+        chats: List<GrpcTransportFacade.ChatData>,
         loggedIn: Boolean,
-        grpcManager: GrpcManager?
+        legacyTransport: GrpcTransportFacade?
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_pinned_chats)
 
@@ -94,7 +94,7 @@ object WidgetRenderer {
         // и не укладывается в бюджет обновления.
         val avatarBitmaps = coroutineScope {
             orderedChats
-                .map { chat -> async { loadAvatarBitmap(context, chat, grpcManager) } }
+                .map { chat -> async { loadAvatarBitmap(context, chat, legacyTransport) } }
                 .awaitAll()
         }
 
@@ -129,7 +129,7 @@ object WidgetRenderer {
         return views
     }
 
-    private fun buildPreview(context: Context, chat: GrpcManager.ChatData): String {
+    private fun buildPreview(context: Context, chat: GrpcTransportFacade.ChatData): String {
         val last = chat.lastMessage
         if (last != null) {
             val text = last.text
@@ -141,8 +141,8 @@ object WidgetRenderer {
 
     private suspend fun loadAvatarBitmap(
         context: Context,
-        chat: GrpcManager.ChatData,
-        grpcManager: GrpcManager?
+        chat: GrpcTransportFacade.ChatData,
+        legacyTransport: GrpcTransportFacade?
     ): Bitmap? {
         val sizePx = dpToPx(context, AVATAR_SIZE_DP)
         val seedId = chat.id.hashCode().toLong()
@@ -160,8 +160,8 @@ object WidgetRenderer {
                 if (url == null) {
                     url = AvatarLoader.getUrlFromCache(fileId)
                 }
-                if (url == null && grpcManager != null) {
-                    url = runCatching { grpcManager.getFileDownloadUrl(fileId).getOrNull() }.getOrNull()
+                if (url == null && legacyTransport != null) {
+                    url = runCatching { legacyTransport.getFileDownloadUrl(fileId).getOrNull() }.getOrNull()
                     if (!url.isNullOrBlank()) {
                         AvatarLoader.urlCache[fileId] = url!!
                         AvatarLoader.putUrlInCache(fileId, url!!)

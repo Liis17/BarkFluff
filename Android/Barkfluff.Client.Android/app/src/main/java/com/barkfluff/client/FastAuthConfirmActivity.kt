@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 class FastAuthConfirmActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFastAuthConfirmBinding
-    private lateinit var grpcManager: com.barkfluff.client.grpc.GrpcManager
+    private lateinit var legacyTransport: com.barkfluff.client.grpc.GrpcTransportFacade
 
     private lateinit var fastAuthId: String
     private lateinit var confirmationCode: String
@@ -33,7 +33,7 @@ class FastAuthConfirmActivity : AppCompatActivity() {
         binding = ActivityFastAuthConfirmBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        grpcManager = (application as BarkFluffApplication).grpcManager
+        legacyTransport = (application as BarkFluffApplication).legacyTransport
 
         fastAuthId = intent.getStringExtra(EXTRA_FAST_AUTH_ID) ?: run {
             finish()
@@ -65,7 +65,7 @@ class FastAuthConfirmActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            val result = grpcManager.acceptFastAuth(fastAuthId, confirmationCode)
+            val result = legacyTransport.acceptFastAuth(fastAuthId, confirmationCode)
             binding.progressLoading.visibility = View.GONE
 
             if (result.isSuccess) {
@@ -89,7 +89,7 @@ class FastAuthConfirmActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            grpcManager.rejectFastAuth(fastAuthId, confirmationCode)
+            legacyTransport.rejectFastAuth(fastAuthId, confirmationCode)
             setResult(RESULT_OK)
             finish()
         }

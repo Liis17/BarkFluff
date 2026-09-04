@@ -8,11 +8,11 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatFolderBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 
 class ChatFoldersAdapter(
-    private val onClick: (GrpcManager.ChatFolder) -> Unit
-) : ListAdapter<GrpcManager.ChatFolder, ChatFoldersAdapter.VH>(Diff()) {
+    private val onClick: (GrpcTransportFacade.ChatFolder) -> Unit
+) : ListAdapter<GrpcTransportFacade.ChatFolder, ChatFoldersAdapter.VH>(Diff()) {
 
     fun moveItem(from: Int, to: Int) {
         val list = currentList.toMutableList()
@@ -32,7 +32,7 @@ class ChatFoldersAdapter(
     }
 
     inner class VH(private val binding: ItemChatFolderBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(folder: GrpcManager.ChatFolder, isLast: Boolean) {
+        fun bind(folder: GrpcTransportFacade.ChatFolder, isLast: Boolean) {
             binding.folderIcon.text = folder.folderIcon.ifBlank { "📁" }
             binding.folderName.text = folder.folderName
             val count = folder.chatIds.size
@@ -45,8 +45,8 @@ class ChatFoldersAdapter(
         }
     }
 
-    private class Diff : DiffUtil.ItemCallback<GrpcManager.ChatFolder>() {
-        override fun areItemsTheSame(a: GrpcManager.ChatFolder, b: GrpcManager.ChatFolder) = a.folderId == b.folderId
-        override fun areContentsTheSame(a: GrpcManager.ChatFolder, b: GrpcManager.ChatFolder) = a == b
+    private class Diff : DiffUtil.ItemCallback<GrpcTransportFacade.ChatFolder>() {
+        override fun areItemsTheSame(a: GrpcTransportFacade.ChatFolder, b: GrpcTransportFacade.ChatFolder) = a.folderId == b.folderId
+        override fun areContentsTheSame(a: GrpcTransportFacade.ChatFolder, b: GrpcTransportFacade.ChatFolder) = a == b
     }
 }

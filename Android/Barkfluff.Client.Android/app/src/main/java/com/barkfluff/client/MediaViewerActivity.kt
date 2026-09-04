@@ -69,7 +69,7 @@ class MediaViewerActivity : AppCompatActivity() {
         binding = ActivityMediaViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        chatRepository = ChatRepository(this, (application as BarkFluffApplication).grpcManager)
+        chatRepository = ChatRepository(this, (application as BarkFluffApplication).legacyTransport)
 
         fileId = intent.getStringExtra(EXTRA_FILE_ID) ?: ""
         fileName = intent.getStringExtra(EXTRA_FILE_NAME) ?: "video"

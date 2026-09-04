@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.ChatFoldersAdapter
 import com.barkfluff.client.databinding.ActivityChatFoldersSettingsBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import kotlinx.coroutines.launch
 
 /**
@@ -28,7 +28,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityChatFoldersSettingsBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var adapter: ChatFoldersAdapter
 
     private val editLauncher = registerForActivityResult(
@@ -43,7 +43,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         binding.toolbar.setNavigationOnClickListener {
             setResult(Activity.RESULT_OK)
@@ -97,7 +97,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
                 // По окончании drag — отправляем новый порядок на сервер
                 val orders = adapter.currentList.mapIndexed { idx, folder -> folder.folderId to idx }
                 lifecycleScope.launch {
-                    val result = grpcManager.reorderChatFolders(orders)
+                    val result = legacyTransport.reorderChatFolders(orders)
                     if (result.isFailure) {
                         Toast.makeText(this@ChatFoldersSettingsActivity, R.string.chat_folders_reorder_error, Toast.LENGTH_SHORT).show()
                         loadFolders()
@@ -110,7 +110,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
 
     private fun loadFolders() {
         lifecycleScope.launch {
-            val result = grpcManager.getChatFolders()
+            val result = legacyTransport.getChatFolders()
             if (result.isSuccess) {
                 val folders = result.getOrNull() ?: emptyList()
                 adapter.submitList(folders)

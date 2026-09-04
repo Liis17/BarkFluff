@@ -52,7 +52,7 @@ class DeepLinkActivity : AppCompatActivity() {
                 val app = applicationContext as BarkFluffApplication
                 val globalParam = GlobalParam(this)
                 val hasToken = globalParam.refreshToken != null
-                val grpcReady = app.grpcManager.isInitialized()
+                val grpcReady = app.legacyTransport.isInitialized()
                 val cameFromBackground = app.cameFromBackground
 
                 if (hasToken && grpcReady && !cameFromBackground) {
@@ -69,10 +69,10 @@ class DeepLinkActivity : AppCompatActivity() {
 
     private fun resolveAndOpenChat(username: String) {
         val app = applicationContext as BarkFluffApplication
-        val grpcManager = app.grpcManager
+        val legacyTransport = app.legacyTransport
 
         lifecycleScope.launch {
-            val searchResult = grpcManager.searchUsers(username, size = 20)
+            val searchResult = legacyTransport.searchUsers(username, size = 20)
             if (searchResult.isFailure) {
                 Toast.makeText(this@DeepLinkActivity, R.string.deep_link_user_search_error, Toast.LENGTH_SHORT).show()
                 finish()
@@ -92,7 +92,7 @@ class DeepLinkActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val chatResult = grpcManager.getPersonChatId(user.userId)
+            val chatResult = legacyTransport.getPersonChatId(user.userId)
             if (chatResult.isFailure) {
                 Toast.makeText(this@DeepLinkActivity, R.string.deep_link_chat_open_failed, Toast.LENGTH_SHORT).show()
                 finish()

@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Готовит аватар звонящего до показа входящего звонка.
  *
  * При убитом приложении процесс поднимает FCM, а основной флоу инициализации gRPC-клиентов
- * (Splash/Login/Main) не выполняется — поэтому клиенты в GrpcManager теперь поднимаются
+ * (Splash/Login/Main) не выполняется — поэтому клиенты в GrpcTransportFacade теперь поднимаются
  * лениво при первом чтении свойств (по адресам из GlobalParam). Здесь остаётся только
  * проверка токена, скачивание аватара в кэш Coil и готовый Bitmap в [avatarBitmaps] —
  * оттуда его берут нотификация и IncomingCallActivity.
@@ -42,25 +42,25 @@ object IncomingCallPrefetch {
 
     /**
      * Обновляет токен и проверяет доступность files-клиента.
-     * Клиенты поднимаются лениво самими свойствами GrpcManager при чтении.
+     * Клиенты поднимаются лениво самими свойствами GrpcTransportFacade при чтении.
      *
      * @return true если files-клиент доступен (по нему запрашивается URL аватара)
      */
     suspend fun ensureClients(context: Context): Boolean = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
-        val grpcManager = (appContext as BarkFluffApplication).grpcManager
+        val legacyTransport = (appContext as BarkFluffApplication).legacyTransport
         val globalParam = GlobalParam(appContext)
 
         if (globalParam.refreshToken.isNullOrBlank()) {
             Log.d(TAG, "ensureClients: пользователь не авторизован")
             return@withContext false
         }
-        if (!grpcManager.ensureTokenValid(appContext)) {
+        if (!legacyTransport.ensureTokenValid(appContext)) {
             Log.w(TAG, "ensureClients: не удалось обновить токен")
             return@withContext false
         }
 
-        grpcManager.filesClient != null
+        legacyTransport.filesClient != null
     }
 
     /**
@@ -94,8 +94,8 @@ object IncomingCallPrefetch {
     private suspend fun fetchAvatarFromProfile(context: Context, callerUserId: Long): String? {
         if (callerUserId <= 0L) return null
 
-        val grpcManager = (context.applicationContext as BarkFluffApplication).grpcManager
-        val user = grpcManager.getUserData(callerUserId).getOrNull() ?: return null
+        val legacyTransport = (context.applicationContext as BarkFluffApplication).legacyTransport
+        val user = legacyTransport.getUserData(callerUserId).getOrNull() ?: return null
         return user.profilePicturePreviewFileId.takeIf { it.isNotBlank() }
             ?: user.profilePictureFileId.takeIf { it.isNotBlank() }
     }
@@ -112,8 +112,8 @@ object IncomingCallPrefetch {
             return it
         }
 
-        val grpcManager = (context.applicationContext as BarkFluffApplication).grpcManager
-        val url = grpcManager.getFileDownloadUrl(fileId).getOrNull() ?: return null
+        val legacyTransport = (context.applicationContext as BarkFluffApplication).legacyTransport
+        val url = legacyTransport.getFileDownloadUrl(fileId).getOrNull() ?: return null
         AvatarLoader.urlCache[fileId] = url
         AvatarLoader.putUrlInCache(fileId, url)
         return url

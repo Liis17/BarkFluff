@@ -17,7 +17,7 @@ import com.barkfluff.client.FolderChatPickerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ActivityWidgetConfigureBinding
 import com.barkfluff.client.databinding.ItemWidgetSelectedChatBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.utils.AvatarLoader
 import kotlinx.coroutines.launch
 
@@ -35,13 +35,13 @@ class WidgetConfigureActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityWidgetConfigureBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var adapter: SelectedChatsAdapter
 
     private var appWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
     private var editMode: Boolean = false
 
-    private var allChats: List<GrpcManager.ChatData> = emptyList()
+    private var allChats: List<GrpcTransportFacade.ChatData> = emptyList()
     private val selectedChatIds = ArrayList<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,7 +54,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         appWidgetId = intent.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -114,7 +114,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
 
     private fun loadChats() {
         lifecycleScope.launch {
-            val result = grpcManager.getChats()
+            val result = legacyTransport.getChats()
             if (result.isSuccess) {
                 allChats = result.getOrNull() ?: emptyList()
                 adapter.notifyDataSetChanged()
@@ -167,7 +167,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
         }
 
         inner class VH(val b: ItemWidgetSelectedChatBinding) : RecyclerView.ViewHolder(b.root) {
-            fun bind(chatId: String, chat: GrpcManager.ChatData?) {
+            fun bind(chatId: String, chat: GrpcTransportFacade.ChatData?) {
                 val title = chat?.title?.takeIf { it.isNotBlank() } ?: getString(R.string.chat_title_default)
                 b.chatTitle.text = title
 
@@ -184,7 +184,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
                         userId = chatId.hashCode().toLong(),
                         size = 64
                     ) {
-                        grpcManager.getFileDownloadUrl(fileId).getOrNull()
+                        legacyTransport.getFileDownloadUrl(fileId).getOrNull()
                     }
                 }
 

@@ -82,8 +82,8 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
         }
 
         val app = requireActivity().application as BarkFluffApplication
-        val grpcManager = app.grpcManager
-        chatRepository = ChatRepository(requireContext(), grpcManager)
+        val legacyTransport = app.legacyTransport
+        chatRepository = ChatRepository(requireContext(), legacyTransport)
 
         adapter = ForwardChatPickerAdapter(
             getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
@@ -106,14 +106,14 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             performForward()
         }
 
-        loadChats(grpcManager)
+        loadChats(legacyTransport)
     }
 
-    private fun loadChats(grpcManager: com.barkfluff.client.grpc.GrpcManager) {
+    private fun loadChats(legacyTransport: com.barkfluff.client.grpc.GrpcTransportFacade) {
         binding.loadingProgress.visibility = View.VISIBLE
         binding.chatsRecyclerView.visibility = View.GONE
         lifecycleScope.launch {
-            val result = grpcManager.getChats()
+            val result = legacyTransport.getChats()
             binding.loadingProgress.visibility = View.GONE
             binding.chatsRecyclerView.visibility = View.VISIBLE
             if (result.isSuccess) {

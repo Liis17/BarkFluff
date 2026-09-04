@@ -18,7 +18,7 @@ import com.barkfluff.client.R
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityShareReceiverBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.model.LastMessageSummary
 import kotlinx.coroutines.async
@@ -34,7 +34,7 @@ class ShareReceiverActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityShareReceiverBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var chatAdapter: ChatAdapter
 
     /** Прочитываемый из бот-шита payload — держится только в этой Activity на время share-сессии. */
@@ -55,7 +55,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         // привязаны к жизненному циклу этой Activity (исключаем race на холодном старте).
         globalParam = GlobalParam(applicationContext)
         val app = applicationContext as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         binding.toolbar.setNavigationOnClickListener { finish() }
 
@@ -182,7 +182,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         chatAdapter = ChatAdapter(
             onChatClick = { chat -> onChatClicked(chat) },
             getFileUrl = { fileId ->
-                val r = grpcManager.getFileDownloadUrl(fileId)
+                val r = legacyTransport.getFileDownloadUrl(fileId)
                 if (r.isSuccess) r.getOrNull() else null
             }
         )
@@ -205,7 +205,7 @@ class ShareReceiverActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val result = grpcManager.getChats()
+            val result = legacyTransport.getChats()
             if (result.isFailure) {
                 Log.e(TAG, "getChats failed", result.exceptionOrNull())
                 binding.loadingIndicator.visibility = View.GONE
@@ -251,17 +251,17 @@ class ShareReceiverActivity : AppCompatActivity() {
 
     private suspend fun ensureTokenAndClients(): Boolean {
         return try {
-            val tokenOk = grpcManager.ensureTokenValid(applicationContext)
+            val tokenOk = legacyTransport.ensureTokenValid(applicationContext)
             if (!tokenOk) {
                 Log.w(TAG, "ensureTokenValid returned false")
                 return false
             }
-            grpcManager.initAllClients(applicationContext, globalParam)
-            val ok = grpcManager.messagesClient != null && grpcManager.usersClient != null
+            legacyTransport.initAllClients(applicationContext, globalParam)
+            val ok = legacyTransport.messagesClient != null && legacyTransport.usersClient != null
             if (!ok) {
                 Log.w(TAG, "initAllClients did not create messages/users clients: " +
-                        "messages=${grpcManager.messagesClient != null}, " +
-                        "users=${grpcManager.usersClient != null}, " +
+                        "messages=${legacyTransport.messagesClient != null}, " +
+                        "users=${legacyTransport.usersClient != null}, " +
                         "socketUsers='${globalParam.socketUsers}', " +
                         "socketMessages='${globalParam.socketMessages}'")
             }
@@ -276,7 +276,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         if (!chat.isGroupChat && chat.title.isBlank()) {
             val otherUserId = chat.memberIds.firstOrNull { it != globalParam.userId }
             if (otherUserId != null) {
-                val userResult = grpcManager.getUserData(otherUserId)
+                val userResult = legacyTransport.getUserData(otherUserId)
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }

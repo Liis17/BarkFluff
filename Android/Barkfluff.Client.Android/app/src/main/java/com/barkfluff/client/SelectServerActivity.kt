@@ -12,7 +12,7 @@ import com.barkfluff.client.adapter.ServerAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.security.TlsCertificateInfo
 import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
@@ -44,7 +44,7 @@ class SelectServerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySelectServerBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var serverAdapter: ServerAdapter
     private lateinit var tlsTrustStore: TlsTrustStore
     private val certificateProbe = TlsCertificateProbe()
@@ -62,7 +62,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         // Инициализация
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager(applicationContext)
+        legacyTransport = GrpcTransportFacade(applicationContext)
         tlsTrustStore = TlsTrustStore(applicationContext)
         certificatePreflight = TlsServerCertificatePreflight(tlsTrustStore, certificateProbe)
 
@@ -100,7 +100,7 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
-        val pingManager = GrpcManager(applicationContext)
+        val pingManager = GrpcTransportFacade(applicationContext)
         try {
             if (pingManager.createOnlyBeaconClient(address).isFailure) return@withTimeoutOrNull null
             val start = System.currentTimeMillis()
@@ -148,7 +148,7 @@ class SelectServerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Создаем Navigator клиент
-                val createResult = grpcManager.createNavigatorClient()
+                val createResult = legacyTransport.createNavigatorClient()
                 if (createResult.isFailure) {
                     showError(
                         createResult.exceptionOrNull()?.message
@@ -158,7 +158,7 @@ class SelectServerActivity : AppCompatActivity() {
                 }
 
                 // Получаем список серверов
-                val result = grpcManager.getServerList()
+                val result = legacyTransport.getServerList()
 
                 if (result.isSuccess) {
                     val servers = result.getOrNull()
@@ -224,7 +224,7 @@ class SelectServerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Создаем Beacon клиент
-                val createResult = grpcManager.createOnlyBeaconClient(address)
+                val createResult = legacyTransport.createOnlyBeaconClient(address)
                 if (createResult.isFailure) {
                     showError(
                         createResult.exceptionOrNull()?.message
@@ -236,9 +236,9 @@ class SelectServerActivity : AppCompatActivity() {
 
                 // Получаем информацию о сервере. Для self-signed Beacon сперва показываем
                 // fingerprint, а адрес сохраняем только после завершения trust flow.
-                var infoResult = grpcManager.getServerInfo()
+                var infoResult = legacyTransport.getServerInfo()
                 if (infoResult.isFailure && approveCertificateIfEligible(address)) {
-                    infoResult = grpcManager.getServerInfo()
+                    infoResult = legacyTransport.getServerInfo()
                 }
 
                 if (infoResult.isSuccess) {
@@ -261,7 +261,7 @@ class SelectServerActivity : AppCompatActivity() {
                         Log.d(TAG, "Успешное подключение к серверу: ${effectiveServerInfo.name}")
 
                         // Создаем Identity клиент для проверки доступности (без interceptor, так как токена еще нет)
-                        val identityResult = grpcManager.createIdentityClient(globalParam.socketIdentity)
+                        val identityResult = legacyTransport.createIdentityClient(globalParam.socketIdentity)
                         if (identityResult.isFailure) {
                             Log.e(TAG, "Не удалось создать Identity клиент")
                         }
@@ -295,12 +295,12 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun normalizeServerAddress(input: String): String? = runCatching {
-        grpcManager.normalizeEndpointAddress(input)
+        legacyTransport.normalizeEndpointAddress(input)
     }.onFailure {
         showError(getString(R.string.tls_invalid_endpoint))
     }.getOrNull()
 
-    private suspend fun preflightServerCertificates(serverInfo: GrpcManager.ServerInfo): Boolean {
+    private suspend fun preflightServerCertificates(serverInfo: GrpcTransportFacade.ServerInfo): Boolean {
         while (true) {
             val certificate = try {
                 withContext(Dispatchers.IO) {
@@ -410,6 +410,6 @@ class SelectServerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        grpcManager.shutdown()
+        legacyTransport.shutdown()
     }
 }

@@ -22,7 +22,7 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityUserProfileBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.repository.ChatRepository
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
@@ -47,7 +47,7 @@ import java.util.Locale
 class UserProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityUserProfileBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
     private lateinit var chatRepository: ChatRepository
     private lateinit var globalParam: GlobalParam
 
@@ -92,8 +92,8 @@ class UserProfileActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
-        chatRepository = ChatRepository(this, grpcManager)
+        legacyTransport = app.legacyTransport
+        chatRepository = ChatRepository(this, legacyTransport)
         globalParam = GlobalParam(this)
 
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run { finish(); return }
@@ -165,7 +165,7 @@ class UserProfileActivity : AppCompatActivity() {
 
     private fun showChatBackgroundDialog() {
         lifecycleScope.launch {
-            val fileIds = grpcManager.getPersonalization().getOrElse {
+            val fileIds = legacyTransport.getPersonalization().getOrElse {
                 Toast.makeText(this@UserProfileActivity, R.string.profile_background_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
@@ -180,7 +180,7 @@ class UserProfileActivity : AppCompatActivity() {
                 .setPositiveButton(R.string.btn_apply) { _, _ ->
                     lifecycleScope.launch {
                         val fileId = if (selected == 0) "" else fileIds[selected - 1]
-                        val result = grpcManager.setChatBackground(chatId, fileId)
+                        val result = legacyTransport.setChatBackground(chatId, fileId)
                         if (result.isSuccess) {
                             globalParam.setChatBackgroundOverride(chatId, fileId)
                             Toast.makeText(this@UserProfileActivity, R.string.profile_background_updated, Toast.LENGTH_SHORT).show()
@@ -206,7 +206,7 @@ class UserProfileActivity : AppCompatActivity() {
     private fun toggleChatMute() {
         val newMuted = !isChatMuted
         lifecycleScope.launch {
-            val result = grpcManager.setChatMuted(chatId, newMuted)
+            val result = legacyTransport.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
                 isChatMuted = newMuted
                 globalParam.setChatMutedLocal(chatId, newMuted)
@@ -262,7 +262,7 @@ class UserProfileActivity : AppCompatActivity() {
 
     private fun ensureCallsClient(): Boolean {
         val app = application as BarkFluffApplication
-        if (app.grpcManager.callsClient != null) return true
+        if (app.legacyTransport.callsClient != null) return true
 
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) {
@@ -270,7 +270,7 @@ class UserProfileActivity : AppCompatActivity() {
             return false
         }
 
-        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
+        val result = app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true)
         if (result.isFailure) {
             Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
         }
@@ -657,7 +657,7 @@ class UserProfileActivity : AppCompatActivity() {
         // Онлайн-статус
         lifecycleScope.launch {
             try {
-                val onlinerClient = grpcManager.onlinerClient
+                val onlinerClient = legacyTransport.onlinerClient
                 if (onlinerClient != null) {
                     val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
                         .addUserIds(otherUserId)
@@ -700,7 +700,7 @@ class UserProfileActivity : AppCompatActivity() {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+    private fun avatarSourceFor(user: GrpcTransportFacade.UserData): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }

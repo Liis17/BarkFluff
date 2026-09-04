@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.databinding.ActivityFolderEditBinding
 import com.barkfluff.client.databinding.ItemFolderIconBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import kotlinx.coroutines.launch
 
 /**
@@ -39,7 +39,7 @@ class FolderEditActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityFolderEditBinding
-    private lateinit var grpcManager: GrpcManager
+    private lateinit var legacyTransport: GrpcTransportFacade
 
     private var folderId: String? = null
     private var selectedIcon: String = ""
@@ -61,7 +61,7 @@ class FolderEditActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as BarkFluffApplication
-        grpcManager = app.grpcManager
+        legacyTransport = app.legacyTransport
 
         folderId = intent.getStringExtra(EXTRA_FOLDER_ID)
         val initialName = intent.getStringExtra(EXTRA_FOLDER_NAME).orEmpty()
@@ -122,10 +122,10 @@ class FolderEditActivity : AppCompatActivity() {
             val id = folderId
             val result = if (id == null) {
                 // Создание + при необходимости — добавление чатов через UpdateChatFolder
-                val createResult = grpcManager.createChatFolder(name, selectedIcon)
+                val createResult = legacyTransport.createChatFolder(name, selectedIcon)
                 if (createResult.isSuccess && selectedChatIds.isNotEmpty()) {
                     val created = createResult.getOrNull()!!
-                    grpcManager.updateChatFolder(
+                    legacyTransport.updateChatFolder(
                         folderId = created.folderId,
                         chatList = selectedChatIds
                     )
@@ -133,7 +133,7 @@ class FolderEditActivity : AppCompatActivity() {
                     createResult
                 }
             } else {
-                grpcManager.updateChatFolder(
+                legacyTransport.updateChatFolder(
                     folderId = id,
                     name = name,
                     icon = selectedIcon,
@@ -157,7 +157,7 @@ class FolderEditActivity : AppCompatActivity() {
             .setMessage(R.string.folder_delete_message)
             .setPositiveButton(R.string.btn_delete) { _, _ ->
                 lifecycleScope.launch {
-                    val result = grpcManager.deleteChatFolder(id)
+                    val result = legacyTransport.deleteChatFolder(id)
                     if (result.isSuccess) {
                         setResult(Activity.RESULT_OK)
                         finish()

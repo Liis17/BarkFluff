@@ -65,7 +65,7 @@ class PrivateChatController(
             return
         }
         activity.lifecycleScope.launch {
-            val chat = app.grpcManager.getChat(chatId).getOrNull()
+            val chat = app.legacyTransport.getChat(chatId).getOrNull()
             if (chat == null) {
                 Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                 activity.finish()
@@ -128,7 +128,7 @@ class PrivateChatController(
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
                 if (passphrase.isEmpty()) return@setPositiveButton
                 activity.lifecycleScope.launch {
-                    val chat = app.grpcManager.getChat(chatId).getOrNull()
+                    val chat = app.legacyTransport.getChat(chatId).getOrNull()
                     if (chat == null) {
                         Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                         return@launch
@@ -239,7 +239,7 @@ class PrivateChatController(
                     return@setPositiveButton
                 }
                 activity.lifecycleScope.launch {
-                    val chat = app.grpcManager.getChat(chatId).getOrNull()
+                    val chat = app.legacyTransport.getChat(chatId).getOrNull()
                     if (chat == null) {
                         Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                         activity.finish()

@@ -6,7 +6,7 @@ import barkfluff.files.FilesApiOuterClass
 import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.MediaHttpTransport
 import java.io.File
 import java.io.OutputStream
@@ -25,11 +25,11 @@ import kotlinx.coroutines.withContext
 /**
  * Репозиторий для работы с чатами и сообщениями.
  * Инкапсулирует логику взаимодействия с gRPC Messages API.
- * Использует общий GrpcManager из Application.
+ * Использует общий GrpcTransportFacade из Application.
  */
 class ChatRepository(
     private val context: Context,
-    private val grpcManager: GrpcManager,
+    private val legacyTransport: GrpcTransportFacade,
     private val mediaTransport: MediaHttpTransport = MediaHttpTransport(context),
 ) {
 
@@ -56,7 +56,7 @@ class ChatRepository(
         count: Int = DEFAULT_PAGE_SIZE
     ): Result<List<Shared.Message>> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (legacyTransport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -81,7 +81,7 @@ class ChatRepository(
             }
 
             val request = requestBuilder.build()
-            val response = grpcManager.messagesClient!!.listMessages(request)
+            val response = legacyTransport.messagesClient!!.listMessages(request)
 
             Log.d(TAG, "Loaded ${response.messagesList.size} messages for chat $chatId")
             Result.success(response.messagesList)
@@ -112,7 +112,7 @@ class ChatRepository(
         clientOperationId: String? = null
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (legacyTransport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -133,7 +133,7 @@ class ChatRepository(
 
             Log.d(TAG, "sendMessage: request.message.filesIdsCount=${request.message.filesIdsCount}")
 
-            val response = grpcManager.messagesClient!!.sendMessage(request)
+            val response = legacyTransport.messagesClient!!.sendMessage(request)
             Log.d(TAG, "Message sent to chat $chatId, id=${response.message.id}, attachments=${response.message.content.attachmentsList.size}")
             Result.success(response.message)
         } catch (e: Exception) {
@@ -148,7 +148,7 @@ class ChatRepository(
      * Отмечает сообщения как прочитанные.
      */
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit> {
-        return grpcManager.markAsRead(messageIds)
+        return legacyTransport.markAsRead(messageIds)
     }
 
     /**
@@ -163,7 +163,7 @@ class ChatRepository(
         fileIds: List<String> = emptyList()
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (legacyTransport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -173,7 +173,7 @@ class ChatRepository(
                 .addAllFilesIds(fileIds)
                 .build()
 
-            val response = grpcManager.messagesClient!!.editMessage(request)
+            val response = legacyTransport.messagesClient!!.editMessage(request)
             Log.d(TAG, "Message edited, id=${response.message.id}")
             Result.success(response.message)
         } catch (e: Exception) {
@@ -187,7 +187,7 @@ class ChatRepository(
      */
     suspend fun deleteMessage(messageId: Long): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (legacyTransport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -195,7 +195,7 @@ class ChatRepository(
                 .setMessageId(messageId)
                 .build()
 
-            grpcManager.messagesClient!!.deleteMessage(request)
+            legacyTransport.messagesClient!!.deleteMessage(request)
             Log.d(TAG, "Message $messageId deleted")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -209,7 +209,7 @@ class ChatRepository(
      */
     suspend fun getChatInfo(chatId: String): Result<ChatInfo> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (legacyTransport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -217,13 +217,13 @@ class ChatRepository(
                 .setChatId(chatId)
                 .build()
 
-            val response = grpcManager.messagesClient!!.getChatInfo(request)
+            val response = legacyTransport.messagesClient!!.getChatInfo(request)
 
             Result.success(
                 ChatInfo(
                     chatId = chatId,
                     title = response.title,
-                    pictureFileId = grpcManager.extractGuidFromUrl(response.picture),
+                    pictureFileId = legacyTransport.extractGuidFromUrl(response.picture),
                     isGroupChat = response.isGroupChat,
                     lastMessageId = response.lastMessageId,
                     firstUnreadMessageId = response.firstUnreadMessageId,
@@ -240,7 +240,7 @@ class ChatRepository(
 
     suspend fun getChatDraft(chatId: String): Result<ChatDraft?> = withContext(Dispatchers.IO) {
         try {
-            val client = grpcManager.messagesClient
+            val client = legacyTransport.messagesClient
                 ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
             val response = client.getChatDraft(
                 MessagesApiOuterClass.GetChatDraftRequest.newBuilder().setChatId(chatId).build()
@@ -256,7 +256,7 @@ class ChatRepository(
     suspend fun upsertChatDraft(chatId: String, text: String, replyToMessageId: Long): Result<ChatDraft> =
         withContext(Dispatchers.IO) {
             try {
-                val client = grpcManager.messagesClient
+                val client = legacyTransport.messagesClient
                     ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
                 val response = client.upsertChatDraft(
                     MessagesApiOuterClass.UpsertChatDraftRequest.newBuilder()
@@ -275,7 +275,7 @@ class ChatRepository(
     suspend fun deleteChatDraft(chatId: String, expectedRevision: String): Result<Boolean> =
         withContext(Dispatchers.IO) {
             try {
-                val client = grpcManager.messagesClient
+                val client = legacyTransport.messagesClient
                     ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
                 val response = client.deleteChatDraft(
                     MessagesApiOuterClass.DeleteChatDraftRequest.newBuilder()
@@ -293,15 +293,15 @@ class ChatRepository(
     /**
      * Получает данные пользователя по ID.
      */
-    suspend fun getUserData(userId: Long): Result<GrpcManager.UserData> {
-        return grpcManager.getUserData(userId)
+    suspend fun getUserData(userId: Long): Result<GrpcTransportFacade.UserData> {
+        return legacyTransport.getUserData(userId)
     }
 
     /**
      * Получает URL для скачивания файла.
      */
     suspend fun getFileDownloadUrl(fileId: String): Result<String> {
-        return grpcManager.getFileDownloadUrl(fileId)
+        return legacyTransport.getFileDownloadUrl(fileId)
     }
 
     /**
@@ -312,7 +312,7 @@ class ChatRepository(
         clientOperationId: String? = null
     ): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.filesClient == null) {
+            if (legacyTransport.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
@@ -321,7 +321,7 @@ class ChatRepository(
             clientOperationId?.takeIf { it.isNotBlank() }?.let(requestBuilder::setClientOperationId)
             val request = requestBuilder.build()
 
-            val response = grpcManager.filesClient!!.getUploadUrl(request)
+            val response = legacyTransport.filesClient!!.getUploadUrl(request)
             Result.success(UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting upload URL", e)
@@ -459,7 +459,7 @@ class ChatRepository(
     ): Result<String> = withContext(Dispatchers.IO) {
         var connection: java.net.HttpURLConnection? = null
         try {
-            if (grpcManager.filesClient == null) {
+            if (legacyTransport.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
@@ -467,7 +467,7 @@ class ChatRepository(
             // (для картинок это уже сжатый JPEG из ImageCompressor — совпадает с тем,
             // что хеширует backend в UploadFileCommandHandler).
             val fileHash = source.sha256Hex(shouldCancel)
-            val existingFileId = grpcManager.checkFileHash(fileHash).getOrNull()
+            val existingFileId = legacyTransport.checkFileHash(fileHash).getOrNull()
             if (!existingFileId.isNullOrEmpty()) {
                 Log.d(TAG, "File already exists on server (hash=$fileHash), reusing fileId: $existingFileId")
                 try { onProgress(100) } catch (_: Throwable) {}
@@ -485,7 +485,7 @@ class ChatRepository(
                         clientOperationId?.takeIf { it.isNotBlank() }?.let(builder::setClientOperationId)
                     }
                     .build()
-                val response = grpcManager.filesClient!!.getUploadUrl(uploadUrlRequest)
+                val response = legacyTransport.filesClient!!.getUploadUrl(uploadUrlRequest)
                 UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId)
             }
             val fileId = target.fileId
@@ -575,7 +575,7 @@ class ChatRepository(
         fileNameQuery: String = ""
     ): Result<List<MessagesApiOuterClass.ChatAttachmentInfo>> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (legacyTransport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -592,7 +592,7 @@ class ChatRepository(
                 )
                 .build()
 
-            val response = grpcManager.messagesClient!!.listChatAttachments(request)
+            val response = legacyTransport.messagesClient!!.listChatAttachments(request)
             Log.d(TAG, "Loaded ${response.attachmentsList.size} attachments for chat $chatId")
             Result.success(response.attachmentsList)
         } catch (e: Exception) {
@@ -643,10 +643,10 @@ class ChatRepository(
     }
 
     /**
-     * No-op для совместимости. Каналы управляются GrpcManager.
+     * No-op для совместимости. Каналы управляются GrpcTransportFacade.
      */
     fun close() {
-        // Каналы управляются общим GrpcManager — не закрываем здесь
+        // Каналы управляются общим GrpcTransportFacade — не закрываем здесь
     }
 
     data class ChatInfo(
