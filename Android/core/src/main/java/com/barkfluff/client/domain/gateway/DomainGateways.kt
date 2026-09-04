@@ -42,6 +42,8 @@ interface ChatDraftGateway {
 interface ServerDiscoveryGateway {
     suspend fun listServers(): Result<List<com.barkfluff.client.data.ServerDataElement>>
     suspend fun serverInfo(): Result<ServerInfo>
+    /** Probe an arbitrary beacon without exposing a stub to the UI. */
+    suspend fun probe(address: String): Result<ServerInfo>
     fun createNavigator(address: String = "https://navigator.barkfluff.com"): Result<Unit>
     fun createBeacon(address: String): Result<Unit>
     fun normalizeEndpoint(address: String): String

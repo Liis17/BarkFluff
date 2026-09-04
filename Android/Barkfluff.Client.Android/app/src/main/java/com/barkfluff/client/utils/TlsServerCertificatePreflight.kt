@@ -1,6 +1,6 @@
 package com.barkfluff.client.utils
 
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.security.TlsCertificateInfo
 import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
@@ -18,7 +18,7 @@ class TlsServerCertificatePreflight(
     private val trustStore: TlsTrustStore,
     private val certificateProbe: TlsCertificateProbe
 ) {
-    fun approvalRequired(serverInfo: GrpcTransportFacade.ServerInfo): TlsCertificateInfo? {
+    fun approvalRequired(serverInfo: ServerInfo): TlsCertificateInfo? {
         val inspectedHosts = mutableSetOf<String>()
         for (address in serverInfo.endpointAddresses()) {
             val certificate = try {
@@ -40,7 +40,7 @@ class TlsServerCertificatePreflight(
         return null
     }
 
-    private fun GrpcTransportFacade.ServerInfo.endpointAddresses(): List<String> = listOf(
+    private fun ServerInfo.endpointAddresses(): List<String> = listOf(
         identityEndpoint,
         usersEndpoint,
         filesEndpoint,

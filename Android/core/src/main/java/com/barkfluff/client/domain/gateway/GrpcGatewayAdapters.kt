@@ -17,6 +17,11 @@ import kotlinx.coroutines.flow.Flow
 class GrpcServerDiscoveryGateway(private val grpc: GrpcTransportFacade) : ServerDiscoveryGateway {
     override suspend fun listServers(): Result<List<ServerDataElement>> = grpc.getServerList()
     override suspend fun serverInfo(): Result<ServerInfo> = grpc.getServerInfo().map { it.toDomain() }
+    override suspend fun probe(address: String): Result<ServerInfo> =
+        grpc.createOnlyBeaconClient(address).fold(
+            onSuccess = { grpc.getServerInfo().map { it.toDomain() } },
+            onFailure = { Result.failure(it) },
+        )
     override fun createNavigator(address: String): Result<Unit> = grpc.createNavigatorClient(address)
     override fun createBeacon(address: String): Result<Unit> = grpc.createOnlyBeaconClient(address)
     override fun normalizeEndpoint(address: String): String = grpc.normalizeEndpointAddress(address)
