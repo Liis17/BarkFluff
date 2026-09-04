@@ -20,18 +20,20 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityResetPasswordBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AccountSecurityGateway
 import com.google.android.material.color.MaterialColors
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
  * Экран восстановления/сброса пароля
  * 4 шага: email/логин → код из письма → новый пароль → успех
  */
+@AndroidEntryPoint
 class ResetPasswordActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityResetPasswordBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
 
     private var resetId: String? = null
     private var currentStep = 1
@@ -67,9 +69,6 @@ class ResetPasswordActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityResetPasswordBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
@@ -369,7 +368,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = legacyTransport.resetPassword(email, username)
+            val result = accountSecurityGateway.resetPassword(email, username)
             setLoading(false)
 
             if (result.isSuccess) {
@@ -391,7 +390,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = legacyTransport.confirmResetPassword(resetId!!, otpCode)
+            val result = accountSecurityGateway.confirmResetPassword(resetId!!, otpCode)
             setLoading(false)
 
             if (result.isSuccess) {
@@ -423,7 +422,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = legacyTransport.resetPassword(email, username)
+            val result = accountSecurityGateway.resetPassword(email, username)
             setLoading(false)
 
             if (result.isSuccess) {
@@ -441,7 +440,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = legacyTransport.setPasswordAfterReset(newPassword)
+            val result = accountSecurityGateway.setPasswordAfterReset(newPassword)
             setLoading(false)
 
             if (result.isSuccess) {

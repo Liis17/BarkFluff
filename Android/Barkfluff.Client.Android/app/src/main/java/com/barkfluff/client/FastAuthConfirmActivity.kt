@@ -7,12 +7,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.databinding.ActivityFastAuthConfirmBinding
+import com.barkfluff.client.domain.gateway.FastAuthGateway
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class FastAuthConfirmActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFastAuthConfirmBinding
-    private lateinit var legacyTransport: com.barkfluff.client.grpc.GrpcTransportFacade
+    @javax.inject.Inject lateinit var fastAuthGateway: FastAuthGateway
 
     private lateinit var fastAuthId: String
     private lateinit var confirmationCode: String
@@ -32,8 +35,6 @@ class FastAuthConfirmActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityFastAuthConfirmBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        legacyTransport = (application as BarkFluffApplication).legacyTransport
 
         fastAuthId = intent.getStringExtra(EXTRA_FAST_AUTH_ID) ?: run {
             finish()
@@ -65,7 +66,7 @@ class FastAuthConfirmActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            val result = legacyTransport.acceptFastAuth(fastAuthId, confirmationCode)
+            val result = fastAuthGateway.accept(fastAuthId, confirmationCode)
             binding.progressLoading.visibility = View.GONE
 
             if (result.isSuccess) {
@@ -89,7 +90,7 @@ class FastAuthConfirmActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            legacyTransport.rejectFastAuth(fastAuthId, confirmationCode)
+            fastAuthGateway.reject(fastAuthId, confirmationCode)
             setResult(RESULT_OK)
             finish()
         }

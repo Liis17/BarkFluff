@@ -12,16 +12,21 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import barkfluff.identity.IdentityApiOuterClass
 import com.barkfluff.client.databinding.ActivitySecuritySettingsBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AccountSecurityGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.model.OtpSetupResult
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class SecuritySettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySecuritySettingsBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     private var isUpdatingSwitch = false
 
     companion object {
@@ -32,9 +37,6 @@ class SecuritySettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySecuritySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
 
         setupToolbar()
         setupClickListeners()
@@ -77,7 +79,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun loadOtpStatus() {
         lifecycleScope.launch {
-            val result = legacyTransport.listOtpVerification()
+            val result = userProfileGateway.otpStatus()
             if (result.isSuccess) {
                 val status = result.getOrNull()!!
                 isUpdatingSwitch = true
@@ -196,7 +198,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         // Шаг 1: Отправка кода
         sendCodeButton.setOnClickListener {
             lifecycleScope.launch {
-                val result = legacyTransport.resetPassword()
+                val result = accountSecurityGateway.resetPassword(null, null)
                 if (result.isSuccess) {
                     resetId = result.getOrNull()
                     currentStep = 2
@@ -220,7 +222,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             }
             
             lifecycleScope.launch {
-                val result = legacyTransport.confirmResetPassword(resetId!!, code)
+                val result = accountSecurityGateway.confirmResetPassword(resetId!!, code)
                 if (result.isSuccess) {
                     currentStep = 3
                     stepIndicator.text = getString(R.string.security_password_step, 3, getString(R.string.security_password_step_new_password))
@@ -249,7 +251,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             }
             
             lifecycleScope.launch {
-                val result = legacyTransport.setPasswordAfterReset(newPassword)
+                val result = accountSecurityGateway.setPasswordAfterReset(newPassword)
                 if (result.isSuccess) {
                     Toast.makeText(this@SecuritySettingsActivity, R.string.security_password_changed, Toast.LENGTH_SHORT).show()
                     dialog.dismiss()
@@ -264,7 +266,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun enableAuthenticator2FA() {
         lifecycleScope.launch {
-            val result = legacyTransport.getOtpSetup()
+            val result = userProfileGateway.otpSetup()
             if (result.isSuccess) {
                 val setup = result.getOrNull()!!
                 showOtpSetupDialog(setup)
@@ -277,7 +279,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun showOtpSetupDialog(setup: GrpcTransportFacade.OtpSetupResult) {
+    private fun showOtpSetupDialog(setup: OtpSetupResult) {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL
@@ -336,7 +338,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
                 lifecycleScope.launch {
-                    val result = legacyTransport.confirmOtpSetup(code)
+                    val result = userProfileGateway.confirmOtpSetup(code)
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_enabled, Toast.LENGTH_SHORT).show()
                     } else {
@@ -358,7 +360,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun enableEmail2FA() {
         lifecycleScope.launch {
-            val result = legacyTransport.enableOtpEmail()
+            val result = userProfileGateway.enableOtpEmail()
             if (result.isSuccess) {
                 showEmailOtpConfirmDialog()
             } else {
@@ -393,7 +395,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setPositiveButton(R.string.btn_confirm) { _, _ ->
                 val code = otpEdit.text?.toString() ?: ""
                 lifecycleScope.launch {
-                    val result = legacyTransport.confirmOtpSetup(code)
+                    val result = userProfileGateway.confirmOtpSetup(code)
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_enabled, Toast.LENGTH_SHORT).show()
                     } else {
@@ -436,7 +438,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setPositiveButton(R.string.security_disable) { _, _ ->
                 val code = otpEdit.text?.toString() ?: ""
                 lifecycleScope.launch {
-                    val result = legacyTransport.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Authenticator, code)
+                    val result = userProfileGateway.disableOtp(IdentityApiOuterClass.OtpTypeId.Authenticator, code)
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_disabled, Toast.LENGTH_SHORT).show()
                     } else {
@@ -462,7 +464,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setMessage(R.string.security_disable_2fa_email_message)
             .setPositiveButton(R.string.security_disable) { _, _ ->
                 lifecycleScope.launch {
-                    val result = legacyTransport.disableOtpVerification(IdentityApiOuterClass.OtpTypeId.Email, "")
+                    val result = userProfileGateway.disableOtp(IdentityApiOuterClass.OtpTypeId.Email, "")
                     if (result.isSuccess) {
                         Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_disabled, Toast.LENGTH_SHORT).show()
                     } else {
