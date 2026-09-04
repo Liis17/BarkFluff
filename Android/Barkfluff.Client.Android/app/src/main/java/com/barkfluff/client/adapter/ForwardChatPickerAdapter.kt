@@ -6,7 +6,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.databinding.ItemChatForwardPickerBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.utils.AvatarLoader
 
 /**
@@ -16,7 +16,7 @@ import com.barkfluff.client.utils.AvatarLoader
 class ForwardChatPickerAdapter(
     private val getFileUrl: suspend (String) -> String?,
     private val onSelectionChanged: (selectedCount: Int) -> Unit
-) : ListAdapter<GrpcTransportFacade.ChatData, ForwardChatPickerAdapter.ChatViewHolder>(DiffCallback) {
+) : ListAdapter<ChatSummary, ForwardChatPickerAdapter.ChatViewHolder>(DiffCallback) {
 
     private val selectedIds = linkedSetOf<String>()
 
@@ -37,7 +37,7 @@ class ForwardChatPickerAdapter(
         private val binding: ItemChatForwardPickerBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(chat: GrpcTransportFacade.ChatData) {
+        fun bind(chat: ChatSummary) {
             binding.chatTitle.text = chat.title
             binding.checkbox.isChecked = selectedIds.contains(chat.id)
 
@@ -73,10 +73,10 @@ class ForwardChatPickerAdapter(
         }
     }
 
-    private object DiffCallback : DiffUtil.ItemCallback<GrpcTransportFacade.ChatData>() {
-        override fun areItemsTheSame(old: GrpcTransportFacade.ChatData, new: GrpcTransportFacade.ChatData): Boolean =
+    private object DiffCallback : DiffUtil.ItemCallback<ChatSummary>() {
+        override fun areItemsTheSame(old: ChatSummary, new: ChatSummary): Boolean =
             old.id == new.id
-        override fun areContentsTheSame(old: GrpcTransportFacade.ChatData, new: GrpcTransportFacade.ChatData): Boolean =
+        override fun areContentsTheSame(old: ChatSummary, new: ChatSummary): Boolean =
             old == new
     }
 }

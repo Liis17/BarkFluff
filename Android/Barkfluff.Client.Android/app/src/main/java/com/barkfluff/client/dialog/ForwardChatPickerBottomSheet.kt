@@ -9,14 +9,16 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.adapter.ForwardChatPickerAdapter
 import com.barkfluff.client.databinding.BottomSheetForwardChatsBinding
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.MessageGateway
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
  * Модалка для пересылки сообщений в один или несколько чатов.
  * Принимает ID исходных сообщений и отправляет их одним сообщением в каждый выбранный чат.
  */
+@AndroidEntryPoint
 class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
@@ -45,7 +48,9 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetForwardChatsBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var chatRepository: ChatRepository
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var messageGateway: MessageGateway
     private lateinit var adapter: ForwardChatPickerAdapter
     private var messageIds: LongArray = longArrayOf()
 
@@ -81,12 +86,8 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             return
         }
 
-        val app = requireActivity().application as BarkFluffApplication
-        val legacyTransport = app.legacyTransport
-        chatRepository = ChatRepository(requireContext(), legacyTransport)
-
         adapter = ForwardChatPickerAdapter(
-            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onSelectionChanged = { count ->
                 binding.sendButton.isEnabled = count > 0
                 binding.sendButton.text = if (count > 0) {
@@ -106,18 +107,18 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
             performForward()
         }
 
-        loadChats(legacyTransport)
+        loadChats()
     }
 
-    private fun loadChats(legacyTransport: com.barkfluff.client.grpc.GrpcTransportFacade) {
+    private fun loadChats() {
         binding.loadingProgress.visibility = View.VISIBLE
         binding.chatsRecyclerView.visibility = View.GONE
         lifecycleScope.launch {
-            val result = legacyTransport.getChats()
+            val result = chatDirectoryGateway.chats()
             binding.loadingProgress.visibility = View.GONE
             binding.chatsRecyclerView.visibility = View.VISIBLE
             if (result.isSuccess) {
-                adapter.submitList(result.getOrNull().orEmpty())
+                adapter.submitList(result.getOrNull()?.chats.orEmpty())
             } else {
                 Toast.makeText(
                     requireContext(),
@@ -142,7 +143,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
                 async {
                     // Пачка уезжает одним сообщением на чат, а не N сообщениями:
                     // получатель видит пересылку так же, как её собрал отправитель.
-                    chatRepository.sendMessage(
+                    messageGateway.sendMessage(
                         chatId = chatId,
                         text = comment,
                         forwardedMessageIds = messageIds.toList()
