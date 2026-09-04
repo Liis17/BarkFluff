@@ -1,5 +1,9 @@
 package com.barkfluff.client.adapter
 
+import com.barkfluff.client.utils.AudioCallbacks
+import com.barkfluff.client.utils.AudioPlayerHelper
+import java.io.File
+
 /** View-independent ownership of audio auto-download and waveform caches. */
 class AudioPlaybackController {
     private val autoDownloads = mutableSetOf<String>()
@@ -13,4 +17,15 @@ class AudioPlaybackController {
         autoDownloads.remove(fileId)
         waveforms.remove(fileId)
     }
+
+    fun isActiveFile(fileId: String): Boolean = AudioPlayerHelper.isActiveFile(fileId)
+    fun isPlaying(): Boolean = AudioPlayerHelper.isPlaying()
+    fun play(fileId: String, file: File, callbacks: AudioCallbacks) =
+        AudioPlayerHelper.play(fileId, file, callbacks)
+    fun pause() = AudioPlayerHelper.pause()
+    fun resume() = AudioPlayerHelper.resume()
+    fun stop() = AudioPlayerHelper.stop()
+    fun seekTo(positionMs: Int) = AudioPlayerHelper.seekTo(positionMs)
+    fun currentPosition(): Int = AudioPlayerHelper.getCurrentPosition()
+    fun duration(): Int = AudioPlayerHelper.getDuration()
 }

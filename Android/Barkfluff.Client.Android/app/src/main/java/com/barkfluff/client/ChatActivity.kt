@@ -38,6 +38,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.MessageAdapter
+import com.barkfluff.client.adapter.FileMediaAttachmentLoader
+import com.barkfluff.client.adapter.MessageRowEventSink
 import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
@@ -1091,22 +1093,25 @@ class ChatActivity : AppCompatActivity() {
         messageAdapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
-            getFileUrl = { fileId ->
-                fileMediaGateway.downloadUrl(fileId).getOrNull()
-            },
-            downloadToCache = { fileId, onProgress ->
-                fileMediaGateway.download(fileId, onProgress)
-            },
+            attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway),
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
             stickerSizeDp = globalParam.chatStickerSizeDp,
-            onMessageActionRequested = { bubble, item ->
-                showMessageActionMenu(bubble, item)
-            },
-            onReplyQuoteClick = { originalMessageId ->
-                scrollToAndHighlightMessage(originalMessageId)
-            },
-            senderInfoProvider = { senderId -> groupMemberInfoCache[senderId] },
-            onSelectionToggle = { messageId -> toggleSelection(messageId) }
+            eventSink = object : MessageRowEventSink {
+                override fun onMessageActionRequested(bubble: View, item: MessageItem) {
+                    showMessageActionMenu(bubble, item)
+                }
+
+                override fun onReplyQuoteClick(originalMessageId: Long) {
+                    scrollToAndHighlightMessage(originalMessageId)
+                }
+
+                override fun onSelectionToggle(messageId: Long) {
+                    toggleSelection(messageId)
+                }
+
+                override fun senderInfo(senderId: Long): Pair<String?, String?>? =
+                    groupMemberInfoCache[senderId]
+            }
         )
 
         if (isGroupChat) {
