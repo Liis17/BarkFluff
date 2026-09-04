@@ -15,14 +15,18 @@ import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityFolderChatPickerBinding
 import com.barkfluff.client.databinding.ItemPickerChatBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.utils.AvatarLoader
 import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * Полноэкранный экран мультивыбора чатов для добавления в папку.
  * Возвращает выбранные ID через RESULT_SELECTED_CHAT_IDS.
  */
+@AndroidEntryPoint
 class FolderChatPickerActivity : AppCompatActivity() {
 
     companion object {
@@ -33,10 +37,11 @@ class FolderChatPickerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFolderChatPickerBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
     private lateinit var adapter: PickerAdapter
 
-    private var allChats: List<GrpcTransportFacade.ChatData> = emptyList()
+    private var allChats: List<ChatSummary> = emptyList()
     private val selectedIds = LinkedHashSet<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,9 +49,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
         binding = ActivityFolderChatPickerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        legacyTransport = app.legacyTransport
 
         intent.getStringArrayListExtra(EXTRA_INITIAL_SELECTED)?.let { selectedIds.addAll(it) }
 
@@ -77,13 +80,13 @@ class FolderChatPickerActivity : AppCompatActivity() {
     private fun loadChats() {
         binding.loadingIndicator.visibility = View.VISIBLE
         lifecycleScope.launch {
-            val result = legacyTransport.getChats()
+            val result = chatDirectoryGateway.chats(size = 100)
             binding.loadingIndicator.visibility = View.GONE
             if (result.isFailure) {
                 Toast.makeText(this@FolderChatPickerActivity, R.string.folder_chat_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            allChats = result.getOrNull() ?: emptyList()
+            allChats = result.getOrNull()?.chats ?: emptyList()
             adapter.notifyDataSetChanged()
         }
     }
@@ -102,7 +105,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
         }
 
         inner class VH(val binding: ItemPickerChatBinding) : RecyclerView.ViewHolder(binding.root) {
-            fun bind(chat: GrpcTransportFacade.ChatData) {
+            fun bind(chat: ChatSummary) {
                 val title = if (chat.title.isNotBlank()) chat.title else getString(R.string.chat_default_title)
                 binding.chatTitle.text = title
 
@@ -118,7 +121,7 @@ class FolderChatPickerActivity : AppCompatActivity() {
                         userId = chat.id.hashCode().toLong(),
                         size = 64
                     ) {
-                        val r = legacyTransport.getFileDownloadUrl(avatarFileId)
+                        val r = fileMediaGateway.downloadUrl(avatarFileId)
                         if (r.isSuccess) r.getOrNull() else null
                     }
                 }
