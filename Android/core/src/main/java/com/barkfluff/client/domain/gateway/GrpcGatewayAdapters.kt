@@ -5,15 +5,7 @@ import barkfluff.files.FilesApiOuterClass
 import barkfluff.shared.Shared
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.data.ServerDataElement
-import com.barkfluff.client.domain.model.AuthenticationResult
-import com.barkfluff.client.domain.model.ChatFolder
-import com.barkfluff.client.domain.model.ChatMember
-import com.barkfluff.client.domain.model.ChatPage
-import com.barkfluff.client.domain.model.ChatSummary
-import com.barkfluff.client.domain.model.MediaUpload
-import com.barkfluff.client.domain.model.PinnedMessagePage
-import com.barkfluff.client.domain.model.ServerInfo
-import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.*
 import com.barkfluff.client.domain.model.toDomain
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
@@ -25,6 +17,24 @@ import kotlinx.coroutines.flow.Flow
 class GrpcServerDiscoveryGateway(private val grpc: GrpcManager) : ServerDiscoveryGateway {
     override suspend fun listServers(): Result<List<ServerDataElement>> = grpc.getServerList()
     override suspend fun serverInfo(): Result<ServerInfo> = grpc.getServerInfo().map { it.toDomain() }
+    override fun createNavigator(address: String): Result<Unit> = grpc.createNavigatorClient(address)
+    override fun createBeacon(address: String): Result<Unit> = grpc.createOnlyBeaconClient(address)
+    override fun normalizeEndpoint(address: String): String = grpc.normalizeEndpointAddress(address)
+}
+
+class GrpcChatDraftGateway(private val repository: ChatRepository) : ChatDraftGateway {
+    override suspend fun get(chatId: String): Result<ChatDraftData?> =
+        repository.getChatDraft(chatId).map { it?.let { draft ->
+            ChatDraftData(draft.text, draft.replyToMessageId, draft.revision, draft.updatedAtMillis)
+        } }
+
+    override suspend fun upsert(chatId: String, text: String, replyToMessageId: Long): Result<ChatDraftData> =
+        repository.upsertChatDraft(chatId, text, replyToMessageId).map { draft ->
+            ChatDraftData(draft.text, draft.replyToMessageId, draft.revision, draft.updatedAtMillis)
+        }
+
+    override suspend fun delete(chatId: String, expectedRevision: String): Result<Boolean> =
+        repository.deleteChatDraft(chatId, expectedRevision)
 }
 
 class GrpcAuthGateway(
@@ -40,6 +50,15 @@ class GrpcAuthGateway(
 
     override suspend fun ensureValid(forceRefresh: Boolean): Boolean =
         grpc.tokenCoordinator().ensureValid(forceRefresh)
+
+    override suspend fun refresh(
+        refreshToken: String,
+        currentRefreshTokenExpiration: Long,
+    ): Result<com.barkfluff.client.grpc.TokenRefreshResult> =
+        grpc.refreshAccessToken(refreshToken, currentRefreshTokenExpiration)
+
+    override fun createIdentity(address: String, context: Context?, includeDeviceInfo: Boolean): Result<Unit> =
+        grpc.createIdentityClient(address, context, includeDeviceInfo)
 }
 
 class GrpcAccountSecurityGateway(private val grpc: GrpcManager) : AccountSecurityGateway {
@@ -49,20 +68,66 @@ class GrpcAccountSecurityGateway(private val grpc: GrpcManager) : AccountSecurit
     override suspend fun resetPassword(email: String?, username: String?): Result<String> =
         grpc.resetPassword(email, username)
 
-    override suspend fun confirmResetPassword(resetId: String, code: String): Result<Unit> =
-        grpc.confirmResetPassword(resetId, code).map { Unit }
+    override suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult> =
+        grpc.confirmAccount(codeId, verificationCode).map {
+            ConfirmAccountResult(it.refreshToken, it.refreshTokenExpiration)
+        }
+
+    override suspend fun confirmResetPassword(resetId: String, code: String): Result<ConfirmResetPasswordResult> =
+        grpc.confirmResetPassword(resetId, code).map {
+            ConfirmResetPasswordResult(
+                accessToken = it.accessToken,
+                accessTokenExpiration = it.accessTokenExpiration,
+                refreshToken = it.refreshToken,
+                refreshTokenExpiration = it.refreshTokenExpiration,
+            )
+        }
+
+    override suspend fun setPasswordAfterReset(newPassword: String): Result<Unit> =
+        grpc.setPasswordAfterReset(newPassword)
 }
 
 class GrpcUserProfileGateway(private val grpc: GrpcManager) : UserProfileGateway {
     override suspend fun currentUser(): Result<UserProfile> = grpc.getCurrentUserData().map { it.toDomain() }
     override suspend fun user(userId: Long): Result<UserProfile> = grpc.getUserData(userId).map { it.toDomain() }
     override suspend fun setFirebaseToken(token: String): Result<Unit> = grpc.setFirebaseToken(token)
+    override suspend fun changeName(firstName: String, lastName: String): Result<Unit> = grpc.changeName(firstName, lastName)
+    override suspend fun changeBio(bio: String): Result<Unit> = grpc.changeBio(bio)
+    override suspend fun changeUsername(username: String): Result<Unit> = grpc.changeUsername(username)
+    override suspend fun setProfilePicture(fileId: String): Result<Unit> = grpc.setProfilePicture(fileId)
+    override suspend fun uploadAvatar(bytes: ByteArray): Result<String> = grpc.uploadUserAvatar(bytes)
+    override suspend fun getProfilePoster(): Result<String> = grpc.getProfilePoster()
+    override suspend fun setProfilePoster(fileId: String): Result<Unit> = grpc.setProfilePoster(fileId)
+    override suspend fun uploadProfilePoster(bytes: ByteArray): Result<String> = grpc.uploadProfilePoster(bytes)
+    override suspend fun getActiveSessions(context: Context): Result<List<SessionData>> =
+        grpc.getActiveSessions(context).map { sessions -> sessions.map(::toDomain) }
+    override suspend fun renameDevice(deviceId: String, customName: String): Result<Unit> = grpc.renameDevice(deviceId, customName)
+    override suspend fun removeActiveSession(deviceId: String): Result<Unit> = grpc.removeActiveSession(deviceId)
+    override suspend fun password(password: String): Result<Unit> = grpc.setPassword(password)
+    override suspend fun otpSetup(): Result<OtpSetupResult> = grpc.getOtpSetup().map { OtpSetupResult(it.qrBase64, it.justCode) }
+    override suspend fun confirmOtpSetup(code: String): Result<Unit> = grpc.confirmOtpSetup(code)
+    override suspend fun otpStatus(): Result<OtpStatus> = grpc.listOtpVerification().map { OtpStatus(it.authenticatorEnabled, it.emailEnabled) }
+    override suspend fun enableOtpEmail(): Result<Unit> = grpc.enableOtpEmail()
+    override suspend fun disableOtp(type: barkfluff.identity.IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit> = grpc.disableOtpVerification(type, code)
+    override suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = grpc.changePassword(oldPassword, newPassword)
+    override suspend fun storageInfo(): Result<StorageInfo> = grpc.getUserStorageInfo().map(::toDomain)
 }
 
 class GrpcUserSettingsGateway(private val grpc: GrpcManager) : UserSettingsGateway {
     override suspend fun notificationsEnabled(): Result<Boolean> = grpc.getNotificationsEnabled()
     override suspend fun setNotificationsEnabled(enabled: Boolean): Result<Unit> = grpc.setNotificationsEnabled(enabled)
     override suspend fun privacySettings(): Result<UsersApiOuterClass.PrivacySettings> = grpc.getPrivacySettings()
+    override suspend fun updatePrivacySettings(settings: UsersApiOuterClass.PrivacySettings): Result<Unit> = grpc.updatePrivacySettings(settings)
+    override suspend fun setChatMuted(chatId: String, muted: Boolean, mutedUntilEpochSeconds: Long?): Result<Unit> =
+        grpc.setChatMuted(chatId, muted, mutedUntilEpochSeconds)
+    override suspend fun mutedChats(): Result<Set<String>> = grpc.getMutedChats()
+    override suspend fun personalization(): Result<List<String>> = grpc.getPersonalization()
+    override suspend fun updatePersonalizationBackgrounds(fileIds: List<String>): Result<Unit> = grpc.updatePersonalizationBackgrounds(fileIds)
+    override suspend fun syncedChatBackgrounds(): Result<SyncedChatBackgroundSettings> = grpc.getUserSettings().map {
+        SyncedChatBackgroundSettings(it.globalChatBackgroundFileId, it.chatBackgroundFileIds)
+    }
+    override suspend fun setGlobalChatBackground(fileId: String): Result<Unit> = grpc.setGlobalChatBackground(fileId)
+    override suspend fun setChatBackground(chatId: String, fileId: String): Result<Unit> = grpc.setChatBackground(chatId, fileId)
 }
 
 class GrpcUserDirectoryGateway(private val grpc: GrpcManager) : UserDirectoryGateway {
@@ -71,6 +136,8 @@ class GrpcUserDirectoryGateway(private val grpc: GrpcManager) : UserDirectoryGat
 
     override suspend fun checkEmail(email: String): Result<Boolean> = grpc.checkEmail(email)
     override suspend fun checkUsername(username: String): Result<Boolean> = grpc.checkUsername(username)
+    override suspend fun personChatId(userId: Long): Result<String> = grpc.getPersonChatId(userId)
+    override suspend fun peerDevices(userId: Long): Result<List<barkfluff.users.UsersApiOuterClass.PeerDeviceInfo>> = grpc.listPeerDevices(userId)
 }
 
 class GrpcChatDirectoryGateway(private val grpc: GrpcManager) : ChatDirectoryGateway {
@@ -83,6 +150,13 @@ class GrpcChatDirectoryGateway(private val grpc: GrpcManager) : ChatDirectoryGat
 
     override suspend fun members(chatId: String): Result<List<ChatMember>> =
         grpc.listChatMembers(chatId).map { members -> members.map { ChatMember(it.userId, it.firstName, it.lastName) } }
+
+    override suspend fun addMember(chatId: String, userId: Long): Result<Unit> = grpc.addUser(chatId, userId)
+    override suspend fun removeMember(chatId: String, userId: Long): Result<Unit> = grpc.kickUser(chatId, userId)
+    override suspend fun createGroup(userIds: List<Long>, title: String, pictureFileId: String?): Result<ChatSummary> =
+        grpc.createGroupChat(userIds, title, pictureFileId).map { it.toDomain() }
+    override suspend fun updateGroup(chatId: String, title: String?, pictureFileId: String?): Result<ChatSummary> =
+        grpc.updateGroupChat(chatId, title, pictureFileId).map { it.toDomain() }
 }
 
 class GrpcMessageGateway(
@@ -118,13 +192,32 @@ class GrpcMessageGateway(
 
     override suspend fun deleteMessage(messageId: Long): Result<Unit> = repository.deleteMessage(messageId)
     override suspend fun markAsRead(messageIds: List<Long>): Result<Unit> = repository.markAsRead(messageIds)
-    override suspend fun chatInfo(chatId: String): Result<ChatRepository.ChatInfo> = repository.getChatInfo(chatId)
+    override suspend fun chatInfo(chatId: String): Result<ChatInfo> = repository.getChatInfo(chatId).map { value ->
+        ChatInfo(
+            chatId = value.chatId,
+            title = value.title,
+            pictureFileId = value.pictureFileId,
+            isGroupChat = value.isGroupChat,
+            lastMessageId = value.lastMessageId,
+            firstUnreadMessageId = value.firstUnreadMessageId,
+            countUnread = value.countUnread,
+            memberIds = value.memberIds,
+            muted = value.muted,
+        )
+    }
 
     override suspend fun pinnedMessages(chatId: String, offset: Int, size: Int): Result<PinnedMessagePage> =
         grpc.listPinnedMessages(chatId, offset, size).map { (messages, total) -> PinnedMessagePage(messages, total) }
 
-    override suspend fun pinMessage(chatId: String, messageId: Long): Result<Shared.PinnedMessageInfo> =
-        grpc.pinMessage(chatId, messageId)
+    override suspend fun pinMessage(chatId: String, messageId: Long): Result<Shared.PinnedMessageInfo> {
+        val result = grpc.pinMessage(chatId, messageId)
+        val cause = result.exceptionOrNull()
+        return if (cause is GrpcManager.PinErrorException) {
+            Result.failure(PinErrorException(cause.errorCode, cause))
+        } else {
+            result
+        }
+    }
 
     override suspend fun unpinMessage(chatId: String, messageId: Long): Result<Unit> =
         grpc.unpinMessage(chatId, messageId)
@@ -134,6 +227,13 @@ class GrpcMessageGateway(
 
 class GrpcChatFolderGateway(private val grpc: GrpcManager) : ChatFolderGateway {
     override suspend fun folders(): Result<List<ChatFolder>> = grpc.getChatFolders().map { folders -> folders.map { it.toDomain() } }
+    override suspend fun create(name: String, icon: String): Result<ChatFolder> = grpc.createChatFolder(name, icon).map { it.toDomain() }
+    override suspend fun update(folderId: String, name: String, icon: String, chatIds: List<String>): Result<ChatFolder> =
+        grpc.updateChatFolder(folderId, name, icon, chatIds).map { it.toDomain() }
+    override suspend fun delete(folderId: String): Result<Unit> = grpc.deleteChatFolder(folderId)
+    override suspend fun addChat(folderId: String, chatId: String): Result<ChatFolder> = grpc.addChatToFolder(folderId, chatId).map { it.toDomain() }
+    override suspend fun removeChat(folderId: String, chatId: String): Result<ChatFolder> = grpc.removeChatFromFolder(folderId, chatId).map { it.toDomain() }
+    override suspend fun reorder(orders: List<Pair<String, Int>>): Result<Unit> = grpc.reorderChatFolders(orders)
 }
 
 class GrpcFileMediaGateway(private val repository: ChatRepository) : FileMediaGateway {
@@ -150,10 +250,32 @@ class GrpcFileMediaGateway(private val repository: ChatRepository) : FileMediaGa
 }
 
 class GrpcStickerGateway(private val grpc: GrpcManager) : StickerGateway {
-    override suspend fun stickerPack(packId: String): Result<Any> =
+    override suspend fun packs(offset: Int, size: Int): Result<List<FilesApiOuterClass.StickerPackInfo>> =
+        grpc.listStickerPacks(offset, size)?.let { Result.success(it) }
+            ?: Result.failure(IllegalStateException("Sticker packs are unavailable"))
+
+    override suspend fun stickerPack(packId: String): Result<List<FilesApiOuterClass.StickerInfo>> =
         grpc.getStickerPack(packId)?.let { Result.success(it) }
             ?: Result.failure(IllegalStateException("Sticker pack is unavailable"))
 }
+
+private fun toDomain(value: GrpcManager.SessionData): SessionData = SessionData(
+    id = value.id,
+    createdAt = value.createdAt,
+    expirationAt = value.expirationAt,
+    deviceId = value.deviceId,
+    originalName = value.originalName,
+    customName = value.customName,
+    appName = value.appName,
+    os = value.os,
+    location = value.location,
+)
+
+private fun toDomain(value: GrpcManager.StorageInfo): StorageInfo = StorageInfo(
+    totalUsed = value.totalUsed,
+    limit = value.limit,
+    byType = value.byType,
+)
 
 class GrpcRealtimeGateway(private val realtime: RealtimeService) : RealtimeGateway {
     override val newMessages: Flow<barkfluff.updates.UpdatesApiOuterClass.NewMessageEvent> = realtime.newMessages

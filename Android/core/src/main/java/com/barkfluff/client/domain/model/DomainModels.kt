@@ -59,6 +59,11 @@ data class ChatSummary(
     val memberIds: List<Long>,
     val countUnread: Long,
     val firstUnreadMessageId: Long,
+    val chatType: barkfluff.shared.Shared.ChatType = barkfluff.shared.Shared.ChatType.CHAT_TYPE_REGULAR,
+    val lastActivityAt: Long = lastMessage?.sentAt ?: 0L,
+    val privateInviteState: barkfluff.shared.Shared.PrivateChatInviteState =
+        barkfluff.shared.Shared.PrivateChatInviteState.PRIVATE_CHAT_INVITE_STATE_ACCEPTED,
+    val privateInviterUserId: Long = 0L,
     val hasDraft: Boolean = false,
 )
 
@@ -71,6 +76,18 @@ data class LastMessageSummary(
 )
 
 data class ChatPage(val chats: List<ChatSummary>, val totalCount: Int)
+
+data class ChatInfo(
+    val chatId: String,
+    val title: String,
+    val pictureFileId: String,
+    val isGroupChat: Boolean,
+    val lastMessageId: Long,
+    val firstUnreadMessageId: Long,
+    val countUnread: Long,
+    val memberIds: List<Long>,
+    val muted: Boolean = false,
+)
 
 data class ChatMember(val userId: Long, val firstName: String, val lastName: String)
 
@@ -136,6 +153,10 @@ internal fun GrpcManager.ChatData.toDomain() = ChatSummary(
     memberIds = memberIds,
     countUnread = countUnread,
     firstUnreadMessageId = firstUnreadMessageId,
+    chatType = chatType,
+    lastActivityAt = lastActivityAt,
+    privateInviteState = privateInviteState,
+    privateInviterUserId = privateInviterUserId,
     hasDraft = hasDraft,
 )
 
@@ -168,6 +189,10 @@ internal fun MessagesApiOuterClass.Chat.toDomain() = ChatSummary(
     memberIds = membersList.map { it.userId },
     countUnread = countUnread,
     firstUnreadMessageId = firstUnreadMessageId,
+    chatType = chatType,
+    lastActivityAt = lastActivityAt.seconds * 1000,
+    privateInviteState = privateInviteState,
+    privateInviterUserId = privateInviterUserId,
     hasDraft = hasDraft,
 )
 

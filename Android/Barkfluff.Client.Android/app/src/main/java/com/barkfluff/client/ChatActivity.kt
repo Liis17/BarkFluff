@@ -39,6 +39,7 @@ import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.MessageAdapter
 import com.barkfluff.client.adapter.MessageItem
+import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.calls.CallActivity
@@ -110,6 +111,7 @@ class ChatActivity : AppCompatActivity() {
 
     @Inject lateinit var chatRepository: ChatRepository
     private lateinit var messageAdapter: MessageAdapter
+    private val messageRowProjector = MessageRowProjector()
 
     // Кэш рендера из ChatViewModel.uiState: шапка/звонки/меню читают эти значения синхронно.
     private var chatId: String = ""
@@ -180,9 +182,6 @@ class ChatActivity : AppCompatActivity() {
 
     // Оверлей меню действий над сообщением (Telegram-стиль)
     private lateinit var messageActionsOverlay: MessageActionsOverlay
-
-    // Режим множественного выделения сообщений
-    private val selectedMessageIds = mutableSetOf<Long>()
 
     private val pasteUCropLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -325,14 +324,14 @@ class ChatActivity : AppCompatActivity() {
         setupKeyboardTracking()
         setupChatBackground()
         setupPinnedBar()
-        viewModel.initialize(
+        viewModel.dispatch(ChatIntent.Initialize(
             chatId = chatId,
             title = chatTitle,
             avatarFileId = chatAvatarFileId,
             isGroupChat = isGroupChat,
             otherUserId = otherUserId,
             supportsDrafts = supportsDrafts,
-        )
+        ))
         observeViewModel()
 
         // Устанавливаем этот чат как открытый
@@ -384,8 +383,9 @@ class ChatActivity : AppCompatActivity() {
             var previousAvatarFileId: String? = null
             var previousPinnedCount = -1
             var previousPinnedPreview: String? = null
+            var previousComposerAttachments: List<String> = emptyList()
             var observedOnlineUserId = 0L
-            viewModel.uiState.collect { state ->
+            viewModel.state.collect { state ->
                 // Кэш значений для синхронных читателей (шапка, звонки, меню, forward)
                 chatTitle = state.chatTitle
                 chatAvatarFileId = state.chatAvatarFileId
@@ -419,7 +419,7 @@ class ChatActivity : AppCompatActivity() {
                 val ownAtTail = lastMessage?.senderId == currentUserId
 
                 if (state.items != previousItems) {
-                    messageAdapter.submitList(state.items) {
+                    messageAdapter.submitList(messageRowProjector.project(state.items)) {
                         if (unreadAppeared) {
                             val idx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.UNREAD_SEPARATOR }
                             if (idx >= 0) {
@@ -446,6 +446,10 @@ class ChatActivity : AppCompatActivity() {
                 if (previousState?.pendingEdit != state.pendingEdit) {
                     renderPendingEdit(previousState?.pendingEdit, state.pendingEdit)
                 }
+                if (previousComposerAttachments != state.composer.attachmentPaths) {
+                    previousComposerAttachments = state.composer.attachmentPaths
+                    updateAttachmentPreview()
+                }
 
                 // Закрепы
                 if (previousPinnedCount != state.pinnedCount || previousPinnedPreview != state.pinnedPreview) {
@@ -459,9 +463,9 @@ class ChatActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            viewModel.events.collect { event ->
+            viewModel.effects.collect { event ->
                 when (event) {
-                    is ChatEvent.ToastRes -> {
+                    is ChatEffect.ToastRes -> {
                         val text = if (event.formatArg != null) {
                             getString(event.resId, event.formatArg)
                         } else {
@@ -469,7 +473,7 @@ class ChatActivity : AppCompatActivity() {
                         }
                         Toast.makeText(this@ChatActivity, text, Toast.LENGTH_SHORT).show()
                     }
-                    is ChatEvent.DraftRestored -> {
+                    is ChatEffect.DraftRestored -> {
                         suppressDraftSave = true
                         suppressTypingInput = true
                         binding.messageEditText.setText(event.text)
@@ -477,7 +481,7 @@ class ChatActivity : AppCompatActivity() {
                         suppressDraftSave = false
                         updateSendButtonMode()
                     }
-                    is ChatEvent.SendAccepted -> {
+                    is ChatEffect.SendAccepted -> {
                         if (pendingAttachmentsAwaitingOutbox) {
                             pendingAttachmentsAwaitingOutbox = false
                             pendingPastedImages.clear()
@@ -493,10 +497,10 @@ class ChatActivity : AppCompatActivity() {
                             updateSendButtonMode()
                         }
                     }
-                    ChatEvent.SendRejected -> {
+                    ChatEffect.SendRejected -> {
                         pendingAttachmentsAwaitingOutbox = false
                     }
-                    ChatEvent.FinishActivity -> finish()
+                    ChatEffect.FinishActivity -> finish()
                 }
             }
         }
@@ -1094,7 +1098,6 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessagesRecyclerView() {
-        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
         messageAdapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
@@ -1104,7 +1107,6 @@ class ChatActivity : AppCompatActivity() {
             downloadToCache = { fileId, onProgress ->
                 chatRepository.downloadFile(fileId, onProgress)
             },
-            scope = scope,
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
             stickerSizeDp = globalParam.chatStickerSizeDp,
             onMessageActionRequested = { bubble, item ->
@@ -1154,12 +1156,12 @@ class ChatActivity : AppCompatActivity() {
 
                     // Подгрузка вверх (история)
                     if (firstVisibleItem < 10) {
-                        viewModel.loadMessagesUp()
+                        viewModel.dispatch(ChatIntent.LoadUp)
                     }
 
                     // Подгрузка вниз (новые сообщения)
                     if (lastVisibleItem >= totalItemCount - 10) {
-                        viewModel.loadMessagesDown()
+                        viewModel.dispatch(ChatIntent.LoadDown)
                     }
 
                     // Показ/скрытие кнопки прокрутки вниз
@@ -1171,7 +1173,7 @@ class ChatActivity : AppCompatActivity() {
                     // Safety-net: долистали до самого низа и подгружать больше нечего —
                     // помечаем прочитанными все загруженные чужие сообщения (страхует от
                     // случаев, когда прогрессивная пометка при пагинации что-то не зацепила).
-                    viewModel.onReachedBottom()
+                    viewModel.dispatch(ChatIntent.ReachedBottom)
                 }
             })
         }
@@ -1388,7 +1390,7 @@ class ChatActivity : AppCompatActivity() {
         binding.sendButton.applySpringPress()
         binding.sendButton.setOnClickListener {
             when {
-                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() ->
+                hasPendingAttachments() ->
                     sendMessageWithPendingAttachments()
                 else ->
                     sendMessage()
@@ -1401,6 +1403,7 @@ class ChatActivity : AppCompatActivity() {
         binding.messageEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.dispatch(ChatIntent.TextChanged(s?.toString().orEmpty()))
                 updateSendButtonMode()
                 onTypingInput(s)
                 scheduleDraftSave()
@@ -1410,7 +1413,7 @@ class ChatActivity : AppCompatActivity() {
 
         binding.messageEditText.setOnEditorActionListener { _, _, _ ->
             when {
-                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() ->
+                hasPendingAttachments() ->
                     sendMessageWithPendingAttachments()
                 else ->
                     sendMessage()
@@ -1438,6 +1441,9 @@ class ChatActivity : AppCompatActivity() {
             pendingPastedImages.clear()
             pendingStickerUris.clear()
             pendingDocumentUris.clear()
+            viewModel.state.value.composer.attachmentPaths.indices
+                .reversed()
+                .forEach { viewModel.dispatch(ChatIntent.RemoveAttachment(it)) }
             updateAttachmentPreview()
         }
 
@@ -1488,7 +1494,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun hasPendingAttachments(): Boolean =
-        pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty()
+        pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() ||
+            pendingStickerUris.isNotEmpty() || viewModel.state.value.composer.attachmentPaths.isNotEmpty()
 
     private fun shouldShowVoiceButton(): Boolean {
         val text = binding.messageEditText.text?.toString().orEmpty()
@@ -1833,12 +1840,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendVoiceMessage(file: File) {
-        viewModel.enqueueMedia(com.barkfluff.client.send.SendJob(
+                viewModel.dispatch(ChatIntent.SendMedia(com.barkfluff.client.send.SendJob(
             chatId = chatId,
             chatTitle = chatTitle,
             text = "",
             attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file))
-        ))
+                )))
     }
 
     private fun pickImages() {
@@ -1920,7 +1927,7 @@ class ChatActivity : AppCompatActivity() {
         backCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
                 when {
-                    messageAdapter.selectionMode -> exitSelectionMode()
+                    viewModel.state.value.selection.isActive -> exitSelectionMode()
                     messageActionsOverlay.isShowing -> messageActionsOverlay.dismiss()
                     binding.stickerPreviewOverlay.visibility == View.VISIBLE -> hideStickerPreview()
                     inputPanelState == InputPanelState.STICKER_PANEL -> hideStickerPanel()
@@ -2102,7 +2109,7 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
-        viewModel.enqueueMedia(com.barkfluff.client.send.SendJob(
+        viewModel.dispatch(ChatIntent.SendMedia(com.barkfluff.client.send.SendJob(
             chatId = chatId,
             chatTitle = chatTitle,
             text = result.captionText,
@@ -2110,7 +2117,7 @@ class ChatActivity : AppCompatActivity() {
             replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L,
             sendSeparately = result.sendSeparately,
             sendAsFile = result.sendAsFile
-        ))
+        )))
     }
 
     private fun isStickerContent(uri: Uri, clipDescription: android.content.ClipDescription?, index: Int): Boolean {
@@ -2218,7 +2225,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun updateAttachmentPreview() {
-        val photosCount = pendingPastedImages.size + pendingStickerUris.size
+        val persistedCount = viewModel.state.value.composer.attachmentPaths.size
+        val photosCount = pendingPastedImages.size + pendingStickerUris.size + persistedCount
         val filesCount = pendingDocumentUris.size
 
         if (photosCount == 0 && filesCount == 0) {
@@ -2254,18 +2262,22 @@ class ChatActivity : AppCompatActivity() {
             } + documents.map {
                 com.barkfluff.client.send.AttachmentSpec.Document(it)
             }
+            if (attachments.isEmpty() && viewModel.state.value.composer.attachmentPaths.isNotEmpty()) {
+                viewModel.dispatch(ChatIntent.Send(text))
+                return@launch
+            }
             if (attachments.isEmpty()) {
                 Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
             pendingAttachmentsAwaitingOutbox = true
-            viewModel.enqueueMedia(com.barkfluff.client.send.SendJob(
+            viewModel.dispatch(ChatIntent.SendMedia(com.barkfluff.client.send.SendJob(
                 chatId = chatId,
                 chatTitle = chatTitle,
                 text = text,
                 attachments = attachments,
                 replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L
-            ))
+            )))
         }
     }
 
@@ -2276,32 +2288,32 @@ class ChatActivity : AppCompatActivity() {
         // Если активен режим редактирования — редактируем существующее сообщение.
         // fileIds игнорируем (вложения не меняются), VM использует сохранённые fileIds.
         if (state.pendingEdit != null) {
-            viewModel.sendMessage(messageText)
+            viewModel.dispatch(ChatIntent.Send(messageText))
             return
         }
 
         // Reply без текста и без файлов — отправляем сам факт пересылки
         if (messageText.isBlank() && fileIds.isEmpty() && state.pendingReply == null) return
 
-        viewModel.sendMessage(messageText, fileIds)
+        viewModel.dispatch(ChatIntent.Send(messageText, fileIds))
     }
 
     // ─── Reply / Forward UX ────────────────────────────────────────────────────
 
     private fun setPendingReply(item: MessageItem) {
-        viewModel.setPendingReply(item)
+        viewModel.dispatch(ChatIntent.SetReply(item))
         binding.messageEditText.requestFocus()
         scheduleDraftSave()
     }
 
     private fun clearPendingReply(saveDraft: Boolean = true) {
-        viewModel.clearPendingReply()
+        viewModel.dispatch(ChatIntent.ClearReply)
         if (saveDraft) scheduleDraftSave()
     }
 
     private fun scheduleDraftSave(immediate: Boolean = false) {
         if (!supportsDrafts || suppressDraftSave) return
-        viewModel.saveDraft(binding.messageEditText.text?.toString().orEmpty(), immediate)
+        viewModel.dispatch(ChatIntent.SaveDraft(binding.messageEditText.text?.toString().orEmpty(), immediate))
     }
 
     // ─── Edit / Delete UX ─────────────────────────────────────────────────────
@@ -2309,11 +2321,11 @@ class ChatActivity : AppCompatActivity() {
     private fun setPendingEdit(item: MessageItem) {
         // Edit и reply — взаимоисключающие режимы (VM чистит reply сам).
         // Поле ввода синхронизирует renderPendingEdit по смене состояния.
-        viewModel.setPendingEdit(item)
+        viewModel.dispatch(ChatIntent.SetEdit(item))
     }
 
     private fun clearPendingEdit() {
-        viewModel.clearPendingEdit()
+        viewModel.dispatch(ChatIntent.ClearEdit)
         suppressDraftSave = true
         binding.messageEditText.text?.clear()
         suppressDraftSave = false
@@ -2326,7 +2338,7 @@ class ChatActivity : AppCompatActivity() {
             .setMessage(R.string.delete_message_message)
             .setNegativeButton(R.string.btn_cancel, null)
             .setPositiveButton(R.string.btn_delete) { _, _ ->
-                viewModel.deleteMessage(item.messageId)
+                viewModel.dispatch(ChatIntent.Delete(item.messageId))
             }
             .show()
     }
@@ -2465,8 +2477,8 @@ class ChatActivity : AppCompatActivity() {
             ) { actionId ->
                 item.localId?.let { operationId ->
                     when (actionId) {
-                        MessageActionId.OUTGOING_RETRY -> viewModel.retryOutgoing(operationId)
-                        MessageActionId.OUTGOING_CANCEL -> viewModel.cancelOutgoing(operationId)
+                        MessageActionId.OUTGOING_RETRY -> viewModel.dispatch(ChatIntent.RetryOutgoing(operationId))
+                        MessageActionId.OUTGOING_CANCEL -> viewModel.dispatch(ChatIntent.CancelOutgoing(operationId))
                     }
                 }
             }
@@ -2523,7 +2535,7 @@ class ChatActivity : AppCompatActivity() {
             onDismiss = {
                 // Закрытие анимированное (~180мс) — за это время действие могло уже включить
                 // режим выделения (SELECT), который сам управляет backCallback. Не перетираем.
-                if (!messageAdapter.selectionMode) {
+                if (!viewModel.state.value.selection.isActive) {
                     backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
                         inputPanelState == InputPanelState.STICKER_PANEL
                 }
@@ -2552,7 +2564,7 @@ class ChatActivity : AppCompatActivity() {
                         .newInstance(sourceIds.toLongArray())
                         .show(supportFragmentManager, "forward_picker")
                 }
-                MessageActionId.PIN -> viewModel.togglePinForMessage(item)
+                MessageActionId.PIN -> viewModel.dispatch(ChatIntent.TogglePin(item))
                 MessageActionId.PROPERTIES -> showMessageProperties(item)
                 MessageActionId.SELECT -> enterSelectionMode(item)
             }
@@ -2605,9 +2617,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun enterSelectionMode(item: MessageItem) {
-        selectedMessageIds.clear()
-        selectedMessageIds.add(item.messageId)
-        messageAdapter.setSelectionMode(true, selectedMessageIds.toSet())
+        viewModel.dispatch(ChatIntent.ClearSelection)
+        viewModel.dispatch(ChatIntent.ToggleSelection(item.messageId))
         updateSelectionToolbar()
         // INVISIBLE, не GONE: pinnedMessageBar и e2eBanner привязаны к нижнему краю
         // chatHeaderBar constraint-цепочкой — GONE обнулил бы её высоту, и они уехали
@@ -2618,8 +2629,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun exitSelectionMode() {
-        selectedMessageIds.clear()
-        messageAdapter.setSelectionMode(false)
+        viewModel.dispatch(ChatIntent.ClearSelection)
         binding.selectionToolbar.visibility = View.GONE
         binding.chatHeaderBar.visibility = View.VISIBLE
         backCallback.isEnabled = messageActionsOverlay.isShowing ||
@@ -2628,27 +2638,28 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun toggleSelection(messageId: Long) {
-        if (!messageAdapter.selectionMode) return
-        if (selectedMessageIds.contains(messageId)) {
-            selectedMessageIds.remove(messageId)
-        } else {
-            selectedMessageIds.add(messageId)
-        }
-        if (selectedMessageIds.isEmpty()) {
+        if (!viewModel.state.value.selection.isActive) return
+        viewModel.dispatch(ChatIntent.ToggleSelection(messageId))
+        if (!viewModel.state.value.selection.isActive) {
             exitSelectionMode()
         } else {
-            messageAdapter.setSelected(messageId, selectedMessageIds.toSet())
             updateSelectionToolbar()
         }
     }
 
     private fun updateSelectionToolbar() {
-        binding.selectionCountText.text = getString(R.string.create_group_members_count, selectedMessageIds.size)
+        binding.selectionCountText.text = getString(
+            R.string.create_group_members_count,
+            viewModel.state.value.selection.selectedMessageIds.size
+        )
     }
 
     /** Сообщения из выбранных ID в порядке их следования в текущем списке чата. */
     private fun selectedMessagesInOrder(): List<MessageItem> =
-        messageAdapter.currentList.filter { it.type == MessageType.MESSAGE && it.messageId in selectedMessageIds }
+        messageAdapter.currentList.filter {
+            it.type == MessageType.MESSAGE &&
+                it.messageId in viewModel.state.value.selection.selectedMessageIds
+        }
 
     private fun copySelectedMessages() {
         val texts = selectedMessagesInOrder().map { MarkdownRenderer.strip(it.text) }.filter { it.isNotBlank() }
@@ -2799,7 +2810,7 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = grpcManager.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
-                viewModel.setChatMuted(newMuted)
+                viewModel.dispatch(ChatIntent.SetMuted(newMuted))
                 isChatMuted = newMuted
                 globalParam.setChatMutedLocal(chatId, newMuted)
                 val msg = if (newMuted) getString(R.string.chat_muted) else getString(R.string.chat_unmuted)
@@ -2968,7 +2979,7 @@ class ChatActivity : AppCompatActivity() {
         super.onStart()
         // При возврате из фона — подгружаем пропущенное и синхронизируем edit/delete
         // (токен, ожидание переподключения стримов и догрузка — в ChatViewModel).
-        viewModel.onStartCatchUp()
+        viewModel.dispatch(ChatIntent.StartCatchUp)
     }
 
     override fun onResume() {

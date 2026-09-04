@@ -1,6 +1,6 @@
 package com.barkfluff.client.search
 
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.UserProfile
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -146,13 +146,13 @@ class SearchViewModelTest {
     }
 
     private class FakeSearchUsersGateway(
-        private val response: suspend (String) -> Result<List<GrpcManager.UserData>> = {
+        private val response: suspend (String) -> Result<List<UserProfile>> = {
             Result.success(emptyList())
         }
     ) : SearchUsersGateway {
         val queries = mutableListOf<String>()
 
-        override suspend fun search(query: String): Result<List<GrpcManager.UserData>> {
+        override suspend fun search(query: String): Result<List<UserProfile>> {
             queries += query
             return response(query)
         }
@@ -163,7 +163,7 @@ class SearchViewModelTest {
         val oldRequestStarted = CompletableDeferred<Unit>()
         var oldRequestCancelled = false
 
-        override suspend fun search(query: String): Result<List<GrpcManager.UserData>> {
+        override suspend fun search(query: String): Result<List<UserProfile>> {
             queries += query
             if (query == "old") {
                 oldRequestStarted.complete(Unit)
@@ -185,7 +185,7 @@ class SearchViewModelTest {
             lastName: String,
             previewFileId: String = "",
             fullFileId: String = ""
-        ) = GrpcManager.UserData(
+        ) = UserProfile(
             userId = id,
             username = username,
             firstName = firstName,

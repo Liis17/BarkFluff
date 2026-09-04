@@ -19,6 +19,8 @@ import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityShareReceiverBinding
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.LastMessageSummary
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -211,7 +213,27 @@ class ShareReceiverActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val chats = result.getOrNull().orEmpty()
+            val chats = result.getOrNull().orEmpty().map { chat ->
+                ChatSummary(
+                    id = chat.id,
+                    title = chat.title,
+                    picture = chat.picture,
+                    pictureFileId = chat.pictureFileId,
+                    picturePreviewFileId = chat.picturePreviewFileId,
+                    isGroupChat = chat.isGroupChat,
+                    lastMessage = chat.lastMessage?.let {
+                        LastMessageSummary(it.id, it.senderId, it.text, it.sentAt, it.readBy)
+                    },
+                    memberIds = chat.memberIds,
+                    countUnread = chat.countUnread,
+                    firstUnreadMessageId = chat.firstUnreadMessageId,
+                    chatType = chat.chatType,
+                    lastActivityAt = chat.lastActivityAt,
+                    privateInviteState = chat.privateInviteState,
+                    privateInviterUserId = chat.privateInviterUserId,
+                    hasDraft = chat.hasDraft,
+                )
+            }
             if (chats.isEmpty()) {
                 binding.loadingIndicator.visibility = View.GONE
                 binding.emptyState.visibility = View.VISIBLE
@@ -250,7 +272,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {
+    private suspend fun resolveDisplayItem(chat: ChatSummary): ChatAdapter.ChatDisplayItem {
         if (!chat.isGroupChat && chat.title.isBlank()) {
             val otherUserId = chat.memberIds.firstOrNull { it != globalParam.userId }
             if (otherUserId != null) {
@@ -275,7 +297,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         )
     }
 
-    private fun onChatClicked(chat: GrpcManager.ChatData) {
+    private fun onChatClicked(chat: ChatSummary) {
         val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
         val title = displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) }
 

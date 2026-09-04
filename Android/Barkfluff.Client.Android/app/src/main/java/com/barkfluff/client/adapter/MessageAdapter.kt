@@ -53,7 +53,6 @@ import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,7 +72,6 @@ class MessageAdapter(
     private val isGroupChat: Boolean,
     private val getFileUrl: suspend (String) -> String? = { null },
     private val downloadToCache: suspend (fileId: String, onProgress: (Int) -> Unit) -> java.io.File? = { _, _ -> null },
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     /** Закругление облачков сообщений в dp (0..30). */
     var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
@@ -85,8 +83,13 @@ class MessageAdapter(
     /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
     private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null,
     /** Вызывается при тапе по пузырю/индикатору в режиме выделения — переключить выбор сообщения. */
-    private val onSelectionToggle: ((messageId: Long) -> Unit)? = null
+    private val onSelectionToggle: ((messageId: Long) -> Unit)? = null,
+    /** Preferred cohesive event sink; legacy callbacks remain source-compatible during migration. */
+    private val eventSink: MessageRowEventSink? = null,
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
+
+    private val audioPlaybackController = AudioPlaybackController()
+    private val viewOperations = ViewBoundOperationController()
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
     fun getMessageAt(position: Int): MessageItem? {
@@ -95,38 +98,22 @@ class MessageAdapter(
         return if (item.type == MessageType.MESSAGE) item else null
     }
 
-    /** Режим множественного выделения сообщений — состоянием владеет ChatActivity. */
-    var selectionMode: Boolean = false
-        private set
-    private var selectedIds: Set<Long> = emptySet()
-
-    /** Включает/выключает режим выделения — меняется видимость индикатора у всех строк. */
-    fun setSelectionMode(enabled: Boolean, selected: Set<Long> = emptySet()) {
-        selectionMode = enabled
-        selectedIds = selected
-        notifyDataSetChanged()
-    }
-
-    /** Обновляет набор выбранных ID после переключения одного сообщения — точечный ребинд. */
-    fun setSelected(messageId: Long, allSelected: Set<Long>) {
-        selectedIds = allSelected
-        val position = currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
-        if (position >= 0) notifyItemChanged(position)
-    }
-
     /**
      * Показывает/скрывает индикатор выделения и переключает его иконку по состоянию выбора.
      * Для [contentColumn] (только у входящих — у исходящих под индикатор уже есть готовый
      * отступ) сдвигает содержимое вправо через translationX, освобождая место слева.
      */
     private fun bindSelectionIndicator(indicator: ImageView, contentColumn: View?, item: MessageItem) {
-        val isSelectable = selectionMode && item.type == MessageType.MESSAGE
+        val isSelectable = item.selectionEnabled && item.type == MessageType.MESSAGE
         indicator.visibility = if (isSelectable) View.VISIBLE else View.GONE
         if (isSelectable) {
             indicator.setImageResource(
-                if (item.messageId in selectedIds) R.drawable.ic_action_select else R.drawable.ic_circle_outline
+                if (item.isSelected) R.drawable.ic_action_select else R.drawable.ic_circle_outline
             )
-            indicator.setOnClickListener { onSelectionToggle?.invoke(item.messageId) }
+            indicator.setOnClickListener {
+                eventSink?.onSelectionToggle(item.messageId)
+                    ?: onSelectionToggle?.invoke(item.messageId)
+            }
         } else {
             indicator.setOnClickListener(null)
         }
@@ -163,35 +150,6 @@ class MessageAdapter(
         /** Сдвиг contentColumn у входящих в режиме выделения: 24dp индикатор + 8dp зазор. */
         private const val SELECTION_SHIFT_DP = 32f
 
-        private val voiceAutoDownloads = mutableSetOf<String>()
-        private val voiceWaveformCache = mutableMapOf<String, FloatArray>()
-
-        private val FOOTER_ITEM = MessageItem(
-            messageId = Long.MIN_VALUE,
-            senderId = 0,
-            text = "",
-            timestamp = 0,
-            attachments = emptyList(),
-            type = MessageType.FOOTER
-        )
-    }
-
-    /** Удаляет все footer-элементы из списка и добавляет один в конец. */
-    private fun MutableList<MessageItem>.ensureFooter() {
-        removeAll { it.type == MessageType.FOOTER }
-        add(FOOTER_ITEM)
-    }
-
-    /**
-     * Отфильтровывает повторяющиеся по messageId items типа MESSAGE/SYSTEM —
-     * страховка от случайных дублей при пересечении realtime-event и пагинации.
-     */
-    private fun List<MessageItem>.dedupMessages(): List<MessageItem> {
-        val seen = HashSet<Long>()
-        return filter { item ->
-            if (item.type != MessageType.MESSAGE && item.type != MessageType.SYSTEM) true
-            else seen.add(item.messageId)
-        }
     }
 
     /** Резолвит цветной theme-атрибут (?attr/colorPrimary и т.п.) в int color. */
@@ -242,19 +200,6 @@ class MessageAdapter(
                 view.visibility = View.VISIBLE
             }
         }
-    }
-
-    /** Переопределяем submitList — footer всегда в конце списка. */
-    override fun submitList(list: List<MessageItem>?) {
-        val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
-        mutable.ensureFooter()
-        super.submitList(mutable)
-    }
-
-    override fun submitList(list: List<MessageItem>?, commitCallback: Runnable?) {
-        val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
-        mutable.ensureFooter()
-        super.submitList(mutable, commitCallback)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -318,6 +263,16 @@ class MessageAdapter(
         if (holder is ReceivedMessageViewHolder) {
             holder.bindSenderInfo(getItem(position))
         }
+    }
+
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        viewOperations.cancelTree(holder.itemView)
+        super.onViewRecycled(holder)
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        viewOperations.cancelAll()
+        super.onDetachedFromRecyclerView(recyclerView)
     }
 
     /** Место сообщения в серии подряд идущих сообщений одного отправителя. */
@@ -442,7 +397,11 @@ class MessageAdapter(
             // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
+                if (item.selectionEnabled) {
+                    eventSink?.onSelectionToggle(item.messageId) ?: onSelectionToggle?.invoke(item.messageId)
+                } else {
+                    eventSink?.onMessageActionRequested(v, item) ?: onMessageActionRequested?.invoke(v, item)
+                }
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
@@ -635,7 +594,11 @@ class MessageAdapter(
             // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
+                if (item.selectionEnabled) {
+                    eventSink?.onSelectionToggle(item.messageId) ?: onSelectionToggle?.invoke(item.messageId)
+                } else {
+                    eventSink?.onMessageActionRequested(v, item) ?: onMessageActionRequested?.invoke(v, item)
+                }
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
@@ -824,7 +787,7 @@ class MessageAdapter(
         val origId = data.messageId
         quote.replyView.isClickable = true
         quote.replyView.setOnClickListener {
-            onReplyQuoteClick?.invoke(origId)
+            eventSink?.onReplyQuoteClick(origId) ?: onReplyQuoteClick?.invoke(origId)
         }
     }
 
@@ -1419,7 +1382,7 @@ class MessageAdapter(
         }
 
         fun startDownload(auto: Boolean) {
-            if (auto && !voiceAutoDownloads.add(fileId)) {
+            if (auto && !audioPlaybackController.claimAutoDownload(fileId)) {
                 updateUiForDownloading()
                 return
             }
@@ -1429,16 +1392,16 @@ class MessageAdapter(
             binding.root.tag = fileId
             binding.downloadButton.tag = fileId
 
-            scope.launch {
+            viewOperations.launch(binding.root) {
                 val file = downloadToCache(fileId) { progress ->
-                    scope.launch(Dispatchers.Main) {
+                    binding.root.post {
                         if (binding.root.tag == fileId) {
                             binding.downloadProgressBar.progress = progress
                         }
                     }
                 }
                 withContext(Dispatchers.Main) {
-                    if (auto) voiceAutoDownloads.remove(fileId)
+                    if (auto) audioPlaybackController.releaseAutoDownload(fileId)
                     if (binding.root.tag != fileId) return@withContext
 
                     if (file != null) {
@@ -1572,7 +1535,7 @@ class MessageAdapter(
                         AudioPlayerHelper.stop()
                     }
                     FileCache.deleteFile(fileId)
-                    voiceWaveformCache.remove(fileId)
+                    audioPlaybackController.remove(fileId)
                     binding.downloadButton.visibility = View.VISIBLE
                     binding.downloadButton.isEnabled = true
                     binding.downloadButton.alpha = 1f
@@ -1627,22 +1590,20 @@ class MessageAdapter(
     ) {
         if (binding.voiceWaveform.visibility != View.VISIBLE) return
 
-        val cached = voiceWaveformCache[fileId]
+        val cached = audioPlaybackController.waveform(fileId)
         if (cached != null) {
             binding.voiceWaveform.setAmplitudes(cached)
             return
         }
 
         binding.voiceWaveform.resetAmplitudes()
-        scope.launch {
+        viewOperations.launch(binding.voiceWaveform) {
             val waveform = withContext(Dispatchers.IO) {
                 AudioWaveformExtractor.extract(file)
             }
-            withContext(Dispatchers.Main) {
-                if (binding.root.tag == fileId) {
-                    voiceWaveformCache[fileId] = waveform
-                    binding.voiceWaveform.setAmplitudes(waveform)
-                }
+            if (binding.root.tag == fileId) {
+                audioPlaybackController.cacheWaveform(fileId, waveform)
+                binding.voiceWaveform.setAmplitudes(waveform)
             }
         }
     }
@@ -1726,16 +1687,14 @@ class MessageAdapter(
             binding.videoDownloadButton.visibility = View.GONE
             binding.videoDownloadProgress.visibility = View.VISIBLE
 
-            scope.launch {
+            viewOperations.launch(binding.root) {
                 val file = downloadToCache(fileId) { _ -> }
-                withContext(Dispatchers.Main) {
-                    binding.videoDownloadProgress.visibility = View.GONE
-                    if (file != null) {
-                        binding.videoPlayButton.alpha = 1f
-                        binding.videoPlayButton.isEnabled = true
-                    } else {
-                        binding.videoDownloadButton.visibility = View.VISIBLE
-                    }
+                binding.videoDownloadProgress.visibility = View.GONE
+                if (file != null) {
+                    binding.videoPlayButton.alpha = 1f
+                    binding.videoPlayButton.isEnabled = true
+                } else {
+                    binding.videoDownloadButton.visibility = View.VISIBLE
                 }
             }
         }
@@ -1812,18 +1771,16 @@ class MessageAdapter(
         binding.docDownloadButton.setOnClickListener {
             updateUiForDownloading()
 
-            scope.launch {
+            viewOperations.launch(binding.root) {
                 val file = downloadToCache(fileId) { progress ->
-                    scope.launch(Dispatchers.Main) {
+                    binding.root.post {
                         binding.docDownloadProgress.progress = progress
                     }
                 }
-                withContext(Dispatchers.Main) {
-                    if (file != null) {
-                        updateUiForCached()
-                    } else {
-                        updateUiForNotCached()
-                    }
+                if (file != null) {
+                    updateUiForCached()
+                } else {
+                    updateUiForNotCached()
                 }
             }
         }
@@ -2031,60 +1988,8 @@ class MessageAdapter(
     }
 }
 
-// ─── Data Classes & Enums ─────────────────────────────────────────────────────
-
-enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR, FOOTER, SYSTEM }
-
-data class MessageItem(
-    val messageId: Long,
-    val senderId: Long,
-    val senderName: String? = null,
-    val senderAvatarFileId: String? = null,
-    val text: String,
-    val timestamp: Long,
-    val attachments: List<Shared.MessageAttachment>,
-    /**
-     * Цитируемое сообщение, если это ответ. Приходит с сервера явным полем — раньше reply и
-     * forward различались догадкой «есть ли оригинал в загруженной истории», из-за чего ответ
-     * превращался в пересылку, стоило прокрутить чат.
-     */
-    val replyTo: Shared.ReplyInfo? = null,
-    val readStatus: ReadStatus = ReadStatus.NONE,
-    val type: MessageType = MessageType.MESSAGE,
-    val dateText: String = "",
-    val isEdited: Boolean = false,
-    /** Локальный clientMessageId оптимистичных сообщений (для трекинга SENDING→SENT перехода). null для серверных. */
-    val localId: String? = null,
-    /** Idempotency key echoed by the server; preferred over content matching for reconciliation. */
-    val clientOperationId: String? = null,
-    /** Durable local outbox state. Delivery/read status remains a separate server concern. */
-    val outgoingState: OutgoingMessageState? = null,
-    /** Прогресс загрузки медиа 0..100. null если не идёт upload. */
-    val uploadProgress: Int? = null,
-    /** Локальные URI медиа для превью оптимистичного сообщения (пока вложения ещё не загружены на сервер). */
-    val localPreviewUris: List<android.net.Uri> = emptyList()
-) {
-    companion object {
-        fun createDateSeparator(dateText: String) = MessageItem(
-            messageId = 0, senderId = 0, text = "", timestamp = 0,
-            attachments = emptyList(), type = MessageType.DATE_SEPARATOR, dateText = dateText
-        )
-
-        fun createUnreadSeparator(label: String) = MessageItem(
-            messageId = -2, senderId = 0, text = "", timestamp = 0,
-            attachments = emptyList(), type = MessageType.UNREAD_SEPARATOR,
-            dateText = label
-        )
-    }
-}
-
-/**
- * Статус доставки/прочтения исходящего сообщения. Расширен под M3 Expressive feedback:
- * - NONE — для входящих и системных
- * - SENDING — оптимистичный item, отправка в процессе (часы)
- * - SENT — отправлено на сервер, ACK получен (одна галочка)
- * - DELIVERED — доставлено получателю (двойная outline)
- * - READ — прочитано получателем (двойная filled, primary tint)
- * - FAILED — ошибка при отправке (восклицательный знак, tap to retry)
- */
-enum class ReadStatus { NONE, SENDING, SENT, DELIVERED, READ, FAILED }
+// Compatibility aliases keep existing pinned/E2E imports stable while the row model lives outside
+// the adapter package.
+typealias MessageItem = com.barkfluff.client.chat.MessageItem
+typealias MessageType = com.barkfluff.client.chat.MessageType
+typealias ReadStatus = com.barkfluff.client.chat.ReadStatus

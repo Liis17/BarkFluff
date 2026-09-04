@@ -83,22 +83,32 @@ class GrpcTokenCoordinator(
     }
 
     private val refreshMutex = Mutex()
+    /** Monotonic generation lets concurrent force-refresh callers share one RPC. */
+    private var refreshGeneration = 0L
 
     override suspend fun ensureValid(forceRefresh: Boolean): Boolean {
         val tokenBeforeRefresh = store.accessToken
-        val expiration = store.accessTokenExpiration
+        val generationBeforeRefresh = refreshGeneration
         val bufferMs = TOKEN_BUFFER_MINUTES * 60 * 1000L
+        val expiration = store.accessTokenExpiration
 
         if (!forceRefresh && expiration > 0 && nowMillis() + bufferMs < expiration) {
             return true
         }
 
         return refreshMutex.withLock {
-            // Another caller can have refreshed while this caller waited.
-            if (!forceRefresh && expiration > 0 && nowMillis() + bufferMs < expiration) {
+            val currentExpiration = store.accessTokenExpiration
+            val currentToken = store.accessToken
+
+            // Another caller can have refreshed while this caller waited. This check is also
+            // intentionally applied to force-refresh requests: a burst of UNAUTHENTICATED
+            // responses must result in one Identity RPC, not one RPC per failing stream.
+            if (refreshGeneration != generationBeforeRefresh ||
+                (!forceRefresh && currentExpiration > 0 && nowMillis() + bufferMs < currentExpiration)
+            ) {
                 return@withLock true
             }
-            if (!tokenBeforeRefresh.isNullOrBlank() && store.accessToken != tokenBeforeRefresh) {
+            if (!tokenBeforeRefresh.isNullOrBlank() && currentToken != tokenBeforeRefresh) {
                 return@withLock true
             }
 
@@ -118,6 +128,7 @@ class GrpcTokenCoordinator(
             store.accessTokenExpiration = refreshed.accessTokenExpiration
             store.refreshToken = refreshed.refreshToken
             store.refreshTokenExpiration = refreshed.refreshTokenExpiration
+            refreshGeneration += 1
             true
         }
     }

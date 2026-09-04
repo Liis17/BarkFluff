@@ -8,6 +8,7 @@ import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.drafts.ChatDraftRepository
+import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.MediaHttpTransport
@@ -17,12 +18,14 @@ import com.barkfluff.client.grpc.TokenCoordinator
 import com.barkfluff.client.domain.gateway.AccountSecurityGateway
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.ChatDraftGateway
 import com.barkfluff.client.domain.gateway.ChatFolderGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.FastAuthGateway
 import com.barkfluff.client.domain.gateway.GrpcAccountSecurityGateway
 import com.barkfluff.client.domain.gateway.GrpcAuthGateway
 import com.barkfluff.client.domain.gateway.GrpcChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.GrpcChatDraftGateway
 import com.barkfluff.client.domain.gateway.GrpcChatFolderGateway
 import com.barkfluff.client.domain.gateway.GrpcFileMediaGateway
 import com.barkfluff.client.domain.gateway.GrpcFastAuthGateway
@@ -127,6 +130,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideChatDraftGateway(chatRepository: ChatRepository): ChatDraftGateway =
+        GrpcChatDraftGateway(chatRepository)
+
+    @Provides
+    @Singleton
     fun provideMessageGateway(
         chatRepository: ChatRepository,
         grpcManager: GrpcManager,
@@ -166,9 +174,16 @@ object AppModule {
     @Singleton
     fun provideChatDraftRepository(
         @ApplicationContext context: Context,
-        grpcManager: GrpcManager,
-        chatCacheRepository: ChatCacheRepository
-    ): ChatDraftRepository = ChatDraftRepository(context, grpcManager, chatCacheRepository)
+        chatCacheRepository: ChatCacheRepository,
+        chatDraftGateway: ChatDraftGateway,
+    ): ChatDraftRepository = ChatDraftRepository(context, chatCacheRepository, chatDraftGateway)
+
+    @Provides
+    @Singleton
+    fun provideComposerAttachmentStore(
+        @ApplicationContext context: Context,
+        chatCacheRepository: ChatCacheRepository,
+    ): ComposerAttachmentStore = ComposerAttachmentStore(context, chatCacheRepository)
 
     @Provides
     @Singleton
@@ -212,8 +227,15 @@ object AppModule {
         @ApplicationContext context: Context,
         chatCacheRepository: ChatCacheRepository,
         chatRepository: ChatRepository,
-        tokenCoordinator: TokenCoordinator
-    ): OutgoingMessageQueue = OutgoingMessageQueue(context, chatCacheRepository, chatRepository, tokenCoordinator)
+        tokenCoordinator: TokenCoordinator,
+        composerAttachmentStore: ComposerAttachmentStore,
+    ): OutgoingMessageQueue = OutgoingMessageQueue(
+        context,
+        chatCacheRepository,
+        chatRepository,
+        tokenCoordinator,
+        composerAttachmentStore,
+    )
 
     @Provides
     @Singleton
