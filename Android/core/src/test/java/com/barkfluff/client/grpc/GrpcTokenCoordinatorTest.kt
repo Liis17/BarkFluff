@@ -133,7 +133,9 @@ class GrpcTokenCoordinatorTest {
         fun newCoordinator() = coordinator(store, now = { 1_000_000L }) {
             refreshCalls += 1
             delay(20)
-            TokenRefreshResult("new-access", 5_000_000L, store.refreshToken!!, 3_000_000L)
+            // Keep the access value stable to prove refresh-token rotation alone closes the
+            // concurrent force-refresh window.
+            TokenRefreshResult("old-access", 5_000_000L, "rotated-refresh", 3_000_000L)
         }
         val first = newCoordinator()
         val second = newCoordinator()

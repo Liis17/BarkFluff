@@ -119,8 +119,8 @@ class GrpcTokenCoordinator(
             // Another caller can have refreshed while this caller waited. This check is also
             // intentionally applied to force-refresh requests: a burst of UNAUTHENTICATED
             // responses must result in one Identity RPC, not one RPC per failing stream.
-            if ((currentRefreshKey == refreshKeyBefore &&
-                    ProcessWideTokenRefresh.generation(currentRefreshKey) != generationBeforeRefresh) ||
+            if (currentRefreshKey != refreshKeyBefore ||
+                ProcessWideTokenRefresh.generation(currentRefreshKey) != generationBeforeRefresh ||
                 (!forceRefresh && currentExpiration > 0 && nowMillis() + bufferMs < currentExpiration)
             ) {
                 return@withLock true
