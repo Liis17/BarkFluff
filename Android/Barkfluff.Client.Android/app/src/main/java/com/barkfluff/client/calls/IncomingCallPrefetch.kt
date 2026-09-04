@@ -7,9 +7,15 @@ import android.util.Log
 import coil.request.ImageRequest
 import coil.size.Size
 import coil.transform.CircleCropTransformation
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.utils.AvatarLoader
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -24,6 +30,14 @@ import java.util.concurrent.ConcurrentHashMap
  * оттуда его берут нотификация и IncomingCallActivity.
  */
 object IncomingCallPrefetch {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface Dependencies {
+        fun authGateway(): AuthGateway
+        fun fileMediaGateway(): FileMediaGateway
+        fun userProfileGateway(): UserProfileGateway
+    }
 
     private const val TAG = "IncomingCallPrefetch"
 
@@ -48,19 +62,21 @@ object IncomingCallPrefetch {
      */
     suspend fun ensureClients(context: Context): Boolean = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
-        val legacyTransport = (appContext as BarkFluffApplication).legacyTransport
         val globalParam = GlobalParam(appContext)
+        val dependencies = EntryPointAccessors.fromApplication(appContext, Dependencies::class.java)
 
         if (globalParam.refreshToken.isNullOrBlank()) {
             Log.d(TAG, "ensureClients: пользователь не авторизован")
             return@withContext false
         }
-        if (!legacyTransport.ensureTokenValid(appContext)) {
+        if (!dependencies.authGateway().ensureValid()) {
             Log.w(TAG, "ensureClients: не удалось обновить токен")
             return@withContext false
         }
 
-        legacyTransport.filesClient != null
+        // File transport is lazy; the actual URL lookup below creates it on demand. An empty
+        // endpoint still means the profile fallback cannot be resolved safely.
+        globalParam.socketFiles.isNotBlank()
     }
 
     /**
@@ -94,8 +110,11 @@ object IncomingCallPrefetch {
     private suspend fun fetchAvatarFromProfile(context: Context, callerUserId: Long): String? {
         if (callerUserId <= 0L) return null
 
-        val legacyTransport = (context.applicationContext as BarkFluffApplication).legacyTransport
-        val user = legacyTransport.getUserData(callerUserId).getOrNull() ?: return null
+        val dependencies = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            Dependencies::class.java,
+        )
+        val user = dependencies.userProfileGateway().user(callerUserId).getOrNull() ?: return null
         return user.profilePicturePreviewFileId.takeIf { it.isNotBlank() }
             ?: user.profilePictureFileId.takeIf { it.isNotBlank() }
     }
@@ -112,8 +131,11 @@ object IncomingCallPrefetch {
             return it
         }
 
-        val legacyTransport = (context.applicationContext as BarkFluffApplication).legacyTransport
-        val url = legacyTransport.getFileDownloadUrl(fileId).getOrNull() ?: return null
+        val dependencies = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            Dependencies::class.java,
+        )
+        val url = dependencies.fileMediaGateway().downloadUrl(fileId).getOrNull() ?: return null
         AvatarLoader.urlCache[fileId] = url
         AvatarLoader.putUrlInCache(fileId, url)
         return url

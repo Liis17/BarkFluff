@@ -346,6 +346,9 @@ class GrpcCallGateway(private val repository: CallRepository) : CallGateway {
         chatId: String,
         mediaType: barkfluff.calls.CallsApiOuterClass.CallMediaType,
     ) = repository.initiateGroup(chatId, mediaType)
+
+    override suspend fun end(callId: String): Result<Unit> = repository.end(callId)
+    override suspend fun reject(callId: String): Result<Unit> = repository.reject(callId)
 }
 
 class GrpcFastAuthGateway(private val grpc: GrpcTransportFacade) : FastAuthGateway {

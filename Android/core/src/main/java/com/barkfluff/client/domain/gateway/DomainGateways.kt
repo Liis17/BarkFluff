@@ -222,6 +222,9 @@ interface CallGateway {
         chatId: String,
         mediaType: CallsApiOuterClass.CallMediaType,
     ): Result<CallsApiOuterClass.InitiateCallResponse>
+
+    suspend fun end(callId: String): Result<Unit>
+    suspend fun reject(callId: String): Result<Unit>
 }
 
 interface FastAuthGateway {
