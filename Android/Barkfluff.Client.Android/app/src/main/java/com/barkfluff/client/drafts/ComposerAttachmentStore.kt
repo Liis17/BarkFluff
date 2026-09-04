@@ -121,9 +121,31 @@ class ComposerAttachmentStore(
         val chatIds = cache.composerChatIds(scope).toSet()
         val liveDirectories = chatIds.mapTo(mutableSetOf(), ::safeSegment)
         liveDirectories += knownChatIds.map(::safeSegment)
-        scopeDirectory(scope).listFiles()?.filter(File::isDirectory)?.forEach { chatDirectory ->
+        val directories = scopeDirectory(scope).listFiles()?.filter(File::isDirectory).orEmpty()
+        directories.forEach { chatDirectory ->
             if (chatDirectory.name !in liveDirectories) {
                 chatDirectory.deleteRecursively()
+            }
+        }
+        // A process can die after copying bytes but before the metadata transaction. Remove
+        // every unreferenced file, including hidden *.tmp files, from directories that remain.
+        // Only paths owned by the current scope/chat are retained; nested directories are never
+        // valid attachment targets and are treated as orphaned staging output.
+        val recordsByDirectory = chatIds.associateBy(::safeSegment)
+        directories.filter { it.name in liveDirectories }.forEach { chatDirectory ->
+            val chatId = recordsByDirectory[chatDirectory.name]
+            val retainedPaths = if (chatId == null) {
+                emptySet()
+            } else {
+                cache.readComposerAttachments(scope, chatId)
+                    .filter { isOwnedPath(scope, chatId, File(it.path)) && File(it.path).isFile }
+                    .mapTo(mutableSetOf()) { runCatching { File(it.path).canonicalPath }.getOrNull() }
+            }
+            chatDirectory.listFiles().orEmpty().forEach { file ->
+                val canonicalPath = runCatching { file.canonicalPath }.getOrNull()
+                if (canonicalPath == null || canonicalPath !in retainedPaths) {
+                    file.deleteRecursively()
+                }
             }
         }
         chatIds.forEach { chatId ->

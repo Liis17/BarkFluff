@@ -16,6 +16,7 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -34,14 +35,14 @@ class PrivateChatController(
     private val activity: AppCompatActivity,
     private val binding: ActivityChatBinding,
     private val adapter: MessageAdapter,
-    private val app: BarkFluffApplication,
+    private val repo: PrivateChatRepository,
+    private val chatCacheRepository: ChatCacheRepository,
+    private val realtimeService: RealtimeService,
     private val globalParam: GlobalParam,
     private val chatId: String,
     private val chatDirectoryGateway: ChatDirectoryGateway,
 ) {
 
-    private val repo: PrivateChatRepository = app.privateChatRepository
-    private val chatCacheRepository: ChatCacheRepository = app.chatCacheRepository
     private val cacheScope: CacheScope? = CacheScope.from(globalParam)
 
     companion object {
@@ -178,7 +179,7 @@ class PrivateChatController(
         binding.e2eBanner.text = activity.getString(R.string.private_chat_invite_waiting)
         binding.e2eBanner.visibility = View.VISIBLE
         activity.lifecycleScope.launch {
-            app.realtimeService.privateChatInviteResolutions
+            realtimeService.privateChatInviteResolutions
                 .filter { it.chatId == chatId }
                 .collect { event ->
                     if (event.accepted) {
@@ -337,7 +338,7 @@ class PrivateChatController(
 
     private fun observeRealtime() {
         activity.lifecycleScope.launch {
-            app.realtimeService.privateMessages
+            realtimeService.privateMessages
                 .filter { it.chatId == chatId }
                 .collect { event ->
                     cacheScope?.let { scope ->
@@ -353,7 +354,7 @@ class PrivateChatController(
                 }
         }
         activity.lifecycleScope.launch {
-            app.realtimeService.privateMessageDeletes
+            realtimeService.privateMessageDeletes
                 .filter { it.chatId == chatId }
                 .collect { event ->
                     cacheScope?.let { scope ->

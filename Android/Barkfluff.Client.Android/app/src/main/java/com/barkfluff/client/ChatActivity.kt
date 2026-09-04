@@ -46,6 +46,7 @@ import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
@@ -60,6 +61,8 @@ import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.model.UserProfile
 import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.adapter.StickerPanelAdapter
 import com.barkfluff.client.adapter.StickerPanelItem
 import com.barkfluff.client.picker.ImagePickerBottomSheet
@@ -116,7 +119,10 @@ class ChatActivity : AppCompatActivity() {
     private val viewModel: ChatViewModel by viewModels()
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var realtimeService: RealtimeService
+    @Inject lateinit var realtimeService: RealtimeService
+    @Inject lateinit var privateChatRepository: PrivateChatRepository
+    @Inject lateinit var secretChatRepository: SecretChatRepository
+    @Inject lateinit var chatCacheRepository: ChatCacheRepository
 
     @Inject lateinit var messageGateway: MessageGateway
     @Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
@@ -308,8 +314,6 @@ class ChatActivity : AppCompatActivity() {
         messageActionsOverlay = MessageActionsOverlay(binding.chatRootLayout)
 
         globalParam = GlobalParam(this)
-        realtimeService = (application as BarkFluffApplication).realtimeService
-
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
             finish()
@@ -591,16 +595,25 @@ class ChatActivity : AppCompatActivity() {
             itemAnimator = MessageItemAnimator()
         }
 
-        val app = application as BarkFluffApplication
         when (chatKind) {
             KIND_PRIVATE -> {
                 val inviteState = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
                 val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
-                PrivateChatController(this, binding, e2eAdapter, app, globalParam, chatId, chatDirectoryGateway)
+                PrivateChatController(
+                    activity = this,
+                    binding = binding,
+                    adapter = e2eAdapter,
+                    repo = privateChatRepository,
+                    chatCacheRepository = chatCacheRepository,
+                    realtimeService = realtimeService,
+                    globalParam = globalParam,
+                    chatId = chatId,
+                    chatDirectoryGateway = chatDirectoryGateway,
+                )
                     .start(inviteState, inviterUserId)
             }
             KIND_SECRET -> {
-                val chat = app.secretChatRepository.getChat(chatId)
+                val chat = secretChatRepository.getChat(chatId)
                 if (chat == null) {
                     Toast.makeText(this, R.string.secret_chat_not_found, Toast.LENGTH_LONG).show()
                     finish()
@@ -608,7 +621,16 @@ class ChatActivity : AppCompatActivity() {
                 }
                 binding.chatNameTextView.text = getString(R.string.secret_chat_title, chat.peerUserId)
                 binding.chatAvatarPlaceholder.text = "🔒"
-                SecretChatController(this, binding, e2eAdapter, app, globalParam, chat)
+                SecretChatController(
+                    activity = this,
+                    binding = binding,
+                    adapter = e2eAdapter,
+                    repo = secretChatRepository,
+                    chatCacheRepository = chatCacheRepository,
+                    realtimeService = realtimeService,
+                    globalParam = globalParam,
+                    chat = chat,
+                )
                     .start(intent.getStringExtra(EXTRA_INITIAL_MESSAGE))
             }
         }
