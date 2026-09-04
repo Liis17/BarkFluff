@@ -31,8 +31,6 @@ import io.grpc.*
 import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
@@ -45,7 +43,6 @@ class GrpcManager(context: Context) {
 
     companion object {
         private const val TAG = "GrpcManager"
-        private const val TOKEN_BUFFER_MINUTES = 5
         const val DEFAULT_NAVIGATOR_URL = "https://navigator.barkfluff.com:443"
 
         // Error codes from x-error-code trailer
@@ -59,12 +56,34 @@ class GrpcManager(context: Context) {
             Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
     }
 
-    // Единый мьютекс на обновление токена — все стримы и операции (RealtimeService,
-    // CallEventsService, виджет, 401-retry) рефрешат через него, чтобы параллельные
-    // обновления не аннулировали refresh-токен друг друга (сервер ротирует refresh-токен).
-    private val tokenRefreshMutex = Mutex()
     private val appContext = context.applicationContext
     private val tlsTransport = TlsTransportFactory(appContext)
+
+    /** Единая политика freshness/refresh для всех legacy и новых consumers. */
+    private val tokenCoordinator: TokenCoordinator by lazy {
+        val store = GlobalParamTokenStore(appContext)
+        GrpcTokenCoordinator(
+            store = store,
+            ensureIdentityClient = {
+                val address = store.identityAddress
+                address.isNotBlank() && createIdentityClient(
+                    address,
+                    appContext,
+                    includeDeviceInfo = true
+                ).isSuccess
+            },
+            refreshAccessToken = { refreshToken, expiration ->
+                refreshAccessToken(refreshToken, expiration).map { result ->
+                    TokenRefreshResult(
+                        accessToken = result.accessToken,
+                        accessTokenExpiration = result.accessTokenExpiration,
+                        refreshToken = result.refreshToken,
+                        refreshTokenExpiration = result.refreshTokenExpiration,
+                    )
+                }
+            },
+        )
+    }
 
     /**
      * True после [shutdown]: ленивый подъём клиентов отключён, чтобы терминальная очистка
@@ -481,7 +500,7 @@ class GrpcManager(context: Context) {
      * Обновляет access токен используя refresh токен
      * Аналог TokenUpdate в WebApiTokenManager
      */
-    suspend fun refreshAccessToken(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<RefreshTokenResult> = withContext(Dispatchers.IO) {
+    suspend fun refreshAccessToken(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<TokenRefreshResult> = withContext(Dispatchers.IO) {
         try {
             if (identityClient == null) {
                 return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
@@ -495,7 +514,7 @@ class GrpcManager(context: Context) {
 
             // CreateTokenResponse возвращает только accessToken, refresh token не обновляется
             Result.success(
-                RefreshTokenResult(
+                TokenRefreshResult(
                     accessToken = response.accessToken.value,
                     accessTokenExpiration = response.accessToken.expirationDate.seconds * 1000,
                     refreshToken = refreshToken, // Используем тот же refresh token
@@ -515,20 +534,7 @@ class GrpcManager(context: Context) {
      * @param context Контекст приложения
      * @return true если токен валиден или успешно обновлён, false если обновление не удалось
      */
-    suspend fun ensureTokenValid(context: Context): Boolean {
-        val globalParam = GlobalParam(context)
-        val expiration = globalParam.accessTokenExpiration
-        val now = System.currentTimeMillis()
-        val bufferMs = TOKEN_BUFFER_MINUTES * 60 * 1000L
-
-        // Токен ещё валиден
-        if (expiration > 0 && now + bufferMs < expiration) {
-            return true
-        }
-
-        Log.d(TAG, "ensureTokenValid: Token expiring soon, refreshing")
-        return refreshTokenInternal(globalParam, context, globalParam.accessToken)
-    }
+    suspend fun ensureTokenValid(context: Context): Boolean = tokenCoordinator.ensureValid()
 
     /**
      * Принудительно обновляет токен, игнорируя время истечения.
@@ -537,57 +543,7 @@ class GrpcManager(context: Context) {
      * @param context Контекст приложения
      * @return true если токен успешно обновлён
      */
-    suspend fun forceRefreshToken(context: Context): Boolean {
-        val globalParam = GlobalParam(context)
-        Log.d(TAG, "forceRefreshToken: Force refreshing token")
-        return refreshTokenInternal(globalParam, context, globalParam.accessToken)
-    }
-
-    private suspend fun refreshTokenInternal(
-        globalParam: GlobalParam,
-        context: Context,
-        tokenBeforeRefresh: String?
-    ): Boolean = tokenRefreshMutex.withLock {
-        // Double-check после захвата лока: если access-токен уже сменился пока ждали лок —
-        // другой вызов успел обновить. Не рефрешим повторно (иначе аннулируем свежий refresh-токен).
-        if (!tokenBeforeRefresh.isNullOrBlank() && globalParam.accessToken != tokenBeforeRefresh) {
-            return@withLock true
-        }
-
-        val refreshToken = globalParam.refreshToken
-        if (refreshToken.isNullOrBlank()) {
-            Log.e(TAG, "refreshTokenInternal: No refresh token available")
-            return@withLock false
-        }
-
-        val identityAddress = globalParam.socketIdentity
-        if (identityAddress.isBlank()) {
-            Log.e(TAG, "refreshTokenInternal: No identity address available")
-            return@withLock false
-        }
-
-        try {
-            // Убеждаемся что identity клиент инициализирован
-            createIdentityClient(identityAddress, context, includeDeviceInfo = true)
-            val result = refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
-
-            if (result.isSuccess) {
-                val tokenResult = result.getOrNull()!!
-                globalParam.accessToken = tokenResult.accessToken
-                globalParam.accessTokenExpiration = tokenResult.accessTokenExpiration
-                globalParam.refreshToken = tokenResult.refreshToken
-                globalParam.refreshTokenExpiration = tokenResult.refreshTokenExpiration
-                Log.i(TAG, "refreshTokenInternal: Token refreshed successfully")
-                true
-            } else {
-                Log.e(TAG, "refreshTokenInternal: Token refresh failed: ${result.exceptionOrNull()?.message}")
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "refreshTokenInternal: Error refreshing token", e)
-            false
-        }
-    }
+    suspend fun forceRefreshToken(context: Context): Boolean = tokenCoordinator.ensureValid(forceRefresh = true)
 
     /**
      * Получает данные текущего пользователя
@@ -2294,13 +2250,6 @@ class GrpcManager(context: Context) {
             Result.failure(Exception("Ошибка отметки как прочитано: ${e.message}"))
         }
     }
-
-    data class RefreshTokenResult(
-        val accessToken: String,
-        val accessTokenExpiration: Long,
-        val refreshToken: String,
-        val refreshTokenExpiration: Long
-    )
 
     data class ConfirmAccountResult(
         val refreshToken: String,
