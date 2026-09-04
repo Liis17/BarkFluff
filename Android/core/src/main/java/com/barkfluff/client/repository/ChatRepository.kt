@@ -7,6 +7,7 @@ import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.MediaHttpTransport
 import java.io.File
 import java.io.OutputStream
 import java.util.concurrent.CancellationException
@@ -26,7 +27,11 @@ import kotlinx.coroutines.withContext
  * Инкапсулирует логику взаимодействия с gRPC Messages API.
  * Использует общий GrpcManager из Application.
  */
-class ChatRepository(private val context: Context, private val grpcManager: GrpcManager) {
+class ChatRepository(
+    private val context: Context,
+    private val grpcManager: GrpcManager,
+    private val mediaTransport: MediaHttpTransport = MediaHttpTransport(context),
+) {
 
     companion object {
         private const val TAG = "ChatRepository"
@@ -317,7 +322,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val request = requestBuilder.build()
 
             val response = grpcManager.filesClient!!.getUploadUrl(request)
-            Result.success(UploadUrlResult(grpcManager.toMediaUrl(response.url), response.fileId))
+            Result.success(UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting upload URL", e)
             Result.failure(e)
@@ -415,9 +420,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         return try {
             if (shouldCancel()) throw CancellationException("Outgoing upload status was cancelled")
             val statusUrl = uploadUrl.trimEnd('/') + "/status"
-            connection = java.net.URL(statusUrl).openConnection() as java.net.HttpURLConnection
+            connection = mediaTransport.openConnection(statusUrl)
             connectionRef.set(connection)
-            grpcManager.configureHttpConnection(connection)
             connection.requestMethod = "GET"
             connection.connectTimeout = 30_000
             connection.readTimeout = 60_000
@@ -482,7 +486,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                     }
                     .build()
                 val response = grpcManager.filesClient!!.getUploadUrl(uploadUrlRequest)
-                UploadUrlResult(grpcManager.toMediaUrl(response.url), response.fileId)
+                UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId)
             }
             val fileId = target.fileId
             val uploadUrl = target.url
@@ -491,10 +495,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
             // Выполняем HTTP POST multipart/form-data
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
-            val url = java.net.URL(uploadUrl)
-            connection = url.openConnection() as java.net.HttpURLConnection
-
-            grpcManager.configureHttpConnection(connection)
+            connection = mediaTransport.openConnection(uploadUrl)
 
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
@@ -612,10 +613,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val downloadUrl = getFileDownloadUrl(fileId).getOrNull()
                 ?: return@withContext null
 
-            val url = java.net.URL(downloadUrl)
-            val connection = url.openConnection() as java.net.HttpURLConnection
-
-            grpcManager.configureHttpConnection(connection)
+            val connection = mediaTransport.openConnection(downloadUrl)
 
             connection.connectTimeout = 30000
             connection.readTimeout = 60000

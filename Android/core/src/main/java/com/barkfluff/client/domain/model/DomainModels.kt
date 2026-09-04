@@ -1,0 +1,180 @@
+package com.barkfluff.client.domain.model
+
+import com.barkfluff.client.data.ClientColors
+import com.barkfluff.client.grpc.GrpcManager
+import barkfluff.messages.MessagesApiOuterClass
+
+/** Stable domain names; gRPC generated messages stay below the gateway boundary. */
+data class AuthSession(
+    val accessToken: String,
+    val accessTokenExpiration: Long,
+    val refreshToken: String,
+    val refreshTokenExpiration: Long,
+)
+
+sealed interface AuthenticationResult {
+    data class Success(val session: AuthSession) : AuthenticationResult
+    data object OtpRequired : AuthenticationResult
+    data class Error(val message: String) : AuthenticationResult
+}
+
+data class ServerInfo(
+    val name: String,
+    val description: String,
+    val color: ClientColors,
+    val identityEndpoint: String,
+    val usersEndpoint: String,
+    val filesEndpoint: String,
+    val messagesEndpoint: String,
+    val updatesEndpoint: String,
+    val onlinerEndpoint: String,
+    val fastAuthEndpoint: String,
+    val callsEndpoint: String,
+    val livekitUrl: String,
+    val filesMediaEndpoint: String = "",
+)
+
+data class UserProfile(
+    val userId: Long,
+    val username: String,
+    val firstName: String,
+    val lastName: String,
+    val bio: String,
+    val profilePictureUrl: String,
+    val profilePicturePreviewUrl: String,
+    val profilePictureFileId: String = "",
+    val profilePicturePreviewFileId: String = "",
+    val profilePosterFileId: String = "",
+    val registrationDate: Long,
+)
+
+data class ChatSummary(
+    val id: String,
+    val title: String,
+    val picture: String,
+    val pictureFileId: String = "",
+    val picturePreviewFileId: String = "",
+    val isGroupChat: Boolean,
+    val lastMessage: LastMessageSummary?,
+    val memberIds: List<Long>,
+    val countUnread: Long,
+    val firstUnreadMessageId: Long,
+    val hasDraft: Boolean = false,
+)
+
+data class LastMessageSummary(
+    val id: Long,
+    val senderId: Long,
+    val text: String,
+    val sentAt: Long,
+    val readBy: List<Long>,
+)
+
+data class ChatPage(val chats: List<ChatSummary>, val totalCount: Int)
+
+data class ChatMember(val userId: Long, val firstName: String, val lastName: String)
+
+data class ChatFolder(
+    val folderId: String,
+    val folderName: String,
+    val folderIcon: String,
+    val chatIds: List<String>,
+    val sortOrder: Int,
+)
+
+data class MediaUpload(
+    val url: String,
+    val fileId: String,
+)
+
+data class PinnedMessagePage(
+    val messages: List<barkfluff.shared.Shared.PinnedMessageInfo>,
+    val totalCount: Int,
+)
+
+/** Mapping helpers remain in the production adapter, not in UI code. */
+internal fun GrpcManager.ServerInfo.toDomain() = ServerInfo(
+    name = name,
+    description = description,
+    color = color,
+    identityEndpoint = identityEndpoint,
+    usersEndpoint = usersEndpoint,
+    filesEndpoint = filesEndpoint,
+    messagesEndpoint = messagesEndpoint,
+    updatesEndpoint = updatesEndpoint,
+    onlinerEndpoint = onlinerEndpoint,
+    fastAuthEndpoint = fastAuthEndpoint,
+    callsEndpoint = callsEndpoint,
+    livekitUrl = livekitUrl,
+    filesMediaEndpoint = filesMediaEndpoint,
+)
+
+internal fun GrpcManager.UserData.toDomain() = UserProfile(
+    userId = userId,
+    username = username,
+    firstName = firstName,
+    lastName = lastName,
+    bio = bio,
+    profilePictureUrl = profilePictureUrl,
+    profilePicturePreviewUrl = profilePicturePreviewUrl,
+    profilePictureFileId = profilePictureFileId,
+    profilePicturePreviewFileId = profilePicturePreviewFileId,
+    profilePosterFileId = profilePosterFileId,
+    registrationDate = registrationDate,
+)
+
+internal fun GrpcManager.ChatData.toDomain() = ChatSummary(
+    id = id,
+    title = title,
+    picture = picture,
+    pictureFileId = pictureFileId,
+    picturePreviewFileId = picturePreviewFileId,
+    isGroupChat = isGroupChat,
+    lastMessage = lastMessage?.let {
+        LastMessageSummary(it.id, it.senderId, it.text, it.sentAt, it.readBy)
+    },
+    memberIds = memberIds,
+    countUnread = countUnread,
+    firstUnreadMessageId = firstUnreadMessageId,
+    hasDraft = hasDraft,
+)
+
+internal fun GrpcManager.ChatFolder.toDomain() = ChatFolder(
+    folderId = folderId,
+    folderName = folderName,
+    folderIcon = folderIcon,
+    chatIds = chatIds,
+    sortOrder = sortOrder,
+)
+
+internal fun MessagesApiOuterClass.Chat.toDomain() = ChatSummary(
+    id = id,
+    title = title,
+    picture = picture,
+    pictureFileId = "",
+    picturePreviewFileId = "",
+    isGroupChat = isGroupChat,
+    lastMessage = if (hasLastMessage()) {
+        lastMessage.let { message ->
+            LastMessageSummary(
+                id = message.id,
+                senderId = message.senderId,
+                text = message.content?.text.orEmpty(),
+                sentAt = message.sentAt.seconds * 1000,
+                readBy = message.readByList,
+            )
+        }
+    } else null,
+    memberIds = membersList.map { it.userId },
+    countUnread = countUnread,
+    firstUnreadMessageId = firstUnreadMessageId,
+    hasDraft = hasDraft,
+)
+
+internal fun GrpcManager.AuthResult.toDomain() = when (this) {
+    is GrpcManager.AuthResult.Success -> AuthenticationResult.Success(
+        AuthSession(accessToken, accessTokenExpiration, refreshToken, refreshTokenExpiration)
+    )
+    GrpcManager.AuthResult.OtpRequired -> AuthenticationResult.OtpRequired
+    is GrpcManager.AuthResult.Error -> AuthenticationResult.Error(message)
+}
