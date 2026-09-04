@@ -2,7 +2,9 @@ package com.barkfluff.client.send
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.barkfluff.client.R
@@ -37,16 +39,33 @@ object MediaSendNotification {
         title: String,
         text: String,
         progress: Int,
-        indeterminate: Boolean
-    ) = NotificationCompat.Builder(context, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_send_filled)
-        .setContentTitle(title)
-        .setContentText(text)
-        .setProgress(100, progress.coerceIn(0, 100), indeterminate)
-        .setOngoing(true)
-        .setOnlyAlertOnce(true)
-        .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-        .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setSilent(true)
-        .build()
+        indeterminate: Boolean,
+        cancelOperationId: String? = null
+    ): android.app.Notification {
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_send_filled)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setProgress(100, progress.coerceIn(0, 100), indeterminate)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+
+        cancelOperationId?.let { operationId ->
+            val intent = Intent(context, OutgoingMessageCancelReceiver::class.java)
+                .setAction(OutgoingMessageCancelReceiver.ACTION_CANCEL)
+                .putExtra(OutgoingMessageCancelReceiver.EXTRA_OPERATION_ID, operationId)
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                operationId.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(R.drawable.ic_close, context.getString(R.string.btn_cancel), pendingIntent)
+        }
+
+        return builder.build()
+    }
 }

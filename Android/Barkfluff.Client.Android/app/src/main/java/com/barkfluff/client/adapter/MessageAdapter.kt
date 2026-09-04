@@ -46,6 +46,7 @@ import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.ImageCompressor
+import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
@@ -2054,6 +2055,10 @@ data class MessageItem(
     val isEdited: Boolean = false,
     /** Локальный clientMessageId оптимистичных сообщений (для трекинга SENDING→SENT перехода). null для серверных. */
     val localId: String? = null,
+    /** Idempotency key echoed by the server; preferred over content matching for reconciliation. */
+    val clientOperationId: String? = null,
+    /** Durable local outbox state. Delivery/read status remains a separate server concern. */
+    val outgoingState: OutgoingMessageState? = null,
     /** Прогресс загрузки медиа 0..100. null если не идёт upload. */
     val uploadProgress: Int? = null,
     /** Локальные URI медиа для превью оптимистичного сообщения (пока вложения ещё не загружены на сервер). */

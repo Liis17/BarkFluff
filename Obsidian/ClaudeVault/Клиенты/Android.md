@@ -310,34 +310,17 @@ Backend заполняет эти поля при доставке сообще�
 
 ## Отправка файлов и pre-upload дедупликация (SHA-256)
 
-Перед заливкой файла на S3 клиент проверяет, не существует ли уже такой файл на сервере по SHA-256-хешу — это экономит мобильный трафик при повторных отправках.
+### Durable outbox обычных чатов
 
-**Цепочка отправки** (`MediaSendService.processJob` → `ChatRepository.uploadFile`):
+`OutgoingMessageQueue` — единственный публичный seam отправки обычных чатов: `enqueue`, `observeChat`, `retry`, `cancel`. До успешного `enqueue` текст/медиа **не** считаются принятыми: все `content://` URI, voice/cache-файлы и edited/sticker `ByteArray` копируются в `noBackupFilesDir/outgoing/<scope>/<operationId>`. Затем SQLCipher Room `offline_chat_cache.db` v3 фиксирует `QUEUED`; после этого process kill, перезапуск устройства и пропажа сети не теряют работу.
 
-1. `MediaSendService.prepareAttachment` готовит байты (`PreparedAttachment.bytes`):
-   - Документы — читаются как есть (`AttachmentSpec.Document`).
-   - Картинки — сжимаются через `ImageCompressor.compressImage` (JPEG q=90, max 2500px по длинной стороне).
-   - Видео — обрезка/перекодировка через `Transformer` в MP4.
-   - Голосовые сообщения — `AttachmentSpec.Voice` читает записанный во внутреннем кеше `.ogg` и отправляет его как `UploadFileType.MESSAGE_ATTACHMENT_VOICE`.
-2. `ChatRepository.uploadFile(jpegImageBytes, fileType, ...)` (`repository/ChatRepository.kt`) ДО получения upload URL:
-   - Считает SHA-256 от итоговых байт через приватный extension `ByteArray.sha256Hex()` → lowercase hex, 64 символа.
-   - Вызывает `grpcManager.checkFileHash(hash)` → `FilesApi.CheckFileHash` (gRPC, см. [[Backend/Files]] и [[Shared/Proto]]).
-   - Если сервер вернул непустой `fileId` — `onProgress(100)` и сразу `Result.success(existingFileId)`, никакого HTTP POST. В Logcat: `File already exists on server (hash=..., reusing fileId: ...)`.
-   - Если пустой ответ или ошибка вызова — fallback к обычному multipart-upload через `getUploadUrl` + S3 POST. Серверная пост-дедупликация (`UploadFileCommandHandler`) всё равно вернёт существующий `fileId` в JSON-ответе, если контент совпал.
-3. `GrpcManager.checkFileHash(fileHash: String): Result<String>` — обёртка над `filesClient.checkFileHash(CheckFileHashRequest)`. На любом исключении (нет filesClient, gRPC error) возвращает `Result.failure` — вызывающая сторона (`uploadFile`) использует `getOrNull()` и тихо переходит к обычной загрузке.
-
-**Что хешируется:** именно те байты, которые были бы залиты на сервер. Для картинки — уже сжатый JPEG, не оригинал из галереи. Это совпадает с тем, что хеширует backend при загрузке (`Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs`), поэтому дедупликация работает кросс-клиентно: файл, залитый с macOS-клиента, дедуплицируется при отправке с Android и наоборот.
-
-**Не покрывается этим check'ом** (заливают мимо `ChatRepository.uploadFile`): загрузка аватара через `GrpcManager.uploadAvatar`/`uploadProfilePoster` — там свой путь, дедупликация только на сервере.
-
-### Оптимистичный UI и прогресс отправки медиа
-
-При отправке фото/видео `ChatActivity.handleMediaSend` сразу добавляет оптимистичное сообщение (`MessageItem` с `localId`, `uploadProgress`, `localPreviewUris`) и кидает `SendJob` в `MediaSendService`. Сообщение видно мгновенно — с локальным превью медиа и оверлеем прогресса поверх.
-
-- **Локальное превью.** `MessageItem.localPreviewUris: List<Uri>` — URI исходных медиа (RawImage→uri, EditedImage→originalUri, Video→spec.uri; документы/стикеры превью не имеют). `MessageAdapter.buildLocalMediaGrid` рендерит ту же сетку, что и серверные вложения (`determineLayout` + `item_attachment_media_cell`, загрузка через Coil `.load(uri)`). Поэтому количество загружаемых файлов видно сразу как N миниатюр.
-- **Прогресс.** `MediaSendService.aggregateProgress(idx, pct)`: при `sendSeparately` прогресс пофайловый (у каждого файла своё сообщение/localId), иначе — агрегированный по всем N файлам одного сообщения `(idx*100+pct)/total`, чтобы бар не сбрасывался в 0 на каждом следующем файле. События идут через `MediaSendService.uploadEvents` (`UploadEvent`: PREPARING/UPLOADING/SENDING/SENT/FAILED + `progress` + `serverMessageId`).
-- **Реальная скорость.** `ChatRepository.uploadFile` ставит `connection.setFixedLengthStreamingMode(...)` и флашит каждый чанк — без этого `HttpURLConnection` буферизует тело в память и `onProgress` прыгал бы в 100% ещё до сетевой отправки.
-- **Реконсиляция (защита от дубликата/пустого сообщения).** `ChatActivity.addNewMessage` ищет оптимистичный плейсхолдер ДО проверки дубликата, в обоих порядках прихода: realtime-эхо раньше ответа `sendMessage` (матч по контенту + `uploadProgress != null`/`localPreviewUris`, т.к. вложения плейсхолдера ещё пустые) ИЛИ `SENT` раньше эха (матч по уже проставленному `messageId` + `localId`). Без этого эхо с фото добавлялось бы вторым item'ом, а `clearOptimisticUploadProgress` оставлял первый с пустыми вложениями → два item с одним `messageId` → коллизия `DiffUtil.areItemsTheSame` (сравнение по `messageId`) → пустой bubble до переоткрытия чата.
+- В БД есть scoped (`Beacon-server|userId`) таблицы `outgoing_messages` и упорядоченные `outgoing_attachments`. Сообщение хранит стабильный `operationId`, batch, текст/reply, draft generation, lease, attempts/backoff, безопасную категорию ошибки и ACK; вложение — stable upload operation ID, durable source/prepared path, final file ID и параметры видео.
+- Жизненный цикл: `STAGING → QUEUED → PREPARING → UPLOADING → SENDING → SENT`; `FAILED` блокирует только следующие сообщения того же чата до Retry/Cancel. Истёкший lease после kill возвращается в `QUEUED`. Cancel удаляет запись и staged directory, но не отзывает уже принятый сервером message.
+- `OutgoingMessageWorker` — `CoroutineWorker` с `NetworkType.CONNECTED`; WorkManager только планирует пробуждение. Queue выбирает максимум две chat-head одновременно и строго FIFO внутри каждого chat. На старте, возврате в foreground, login и появлении сети queue пробуждается снова; foreground notification предлагает cooperative Cancel активной операции.
+- Временные network/timeout/5xx/429 ошибки повторяются 10s, 30s, 2m, 5m, 15m, затем каждые 30m. Auth/access/validation становятся `FAILED`; перед транспортом вызывается `GrpcManager.ensureTokenValid`.
+- `SendMessageRequest.client_operation_id`, `Message.client_operation_id` и `GetUploadUrlRequest.client_operation_id` обеспечивают идемпотентность. Незавершённый upload повторно запрашивает slot с тем же upload ID и проверяет `/status`; отправка повторяет тот же message ID, поэтому потерянный ACK не создаёт дубль.
+- `ChatRepository.uploadFile(File, ...)` считает hash и пишет multipart из durable file потоком, проверяя coroutine/Cancel между 64-KiB чанками. Видео преобразуется `Transformer` после staging; итоговый MP4 также остаётся в private directory до ACK.
+- `ChatViewModel` накладывает Flow outbox на history/cache: pending bubble, local preview и progress восстанавливаются после Activity/process recreation. ACK/realtime/history сначала сопоставляются по `clientOperationId`, legacy content-match остаётся fallback. `FAILED` показывает Retry/Cancel, остальные pending состояния — Cancel. Draft очищается только если ACK относится к сохранённой generation.
 
 ### Голосовые сообщения
 
@@ -345,7 +328,7 @@ Backend заполняет эти поля при доставке сообще�
 
 - Запись: `MediaRecorder` пишет OGG/Opus (`OutputFormat.OGG`, `AudioEncoder.OPUS`) во временный файл `cacheDir`.
 - Индикация записи (`showVoiceRecordingBar` / `hideVoiceRecordingBar`): на время записи `inputBar` уходит в `INVISIBLE` (кросс-фейд 160 мс), а поверх него, по тем же констрейнтам и с тем же фоном `bg_chat_input_bar`, показывается `voiceRecordBar` — мигающая точка `colorError` (`ValueAnimator` alpha 1↔0.25, REVERSE INFINITE), счётчик `M:SS` (корутина с тиком 200 мс) и подсказка отмены. Поле ввода не остаётся видимым, поэтому состояние записи нельзя спутать с обычным вводом.
-- Отправка: отпускание кнопки создаёт оптимистичный `MessageItem` с `uploadProgress=0` и ставит `SendJob(AttachmentSpec.Voice)` в `MediaSendService`; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
+- Отправка: отпускание кнопки создаёт `SendJob(AttachmentSpec.Voice)` и сначала durable-stage'ит OGG в outbox; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
 - Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, подсказка едет за пальцем (0.35 смещения) и меняет текст на «Отпустите для отмены», при отпускании запись удаляется и сообщение не отправляется.
 - Cleanup: `onStop()` отменяет активную запись и удаляет временный файл. Слишком короткая запись (`<500ms`) не отправляется.
 - Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые вложения размером `1..2 МБ` автоматически скачиваются в `FileCache`; более крупные остаются с ручной кнопкой загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
@@ -713,8 +696,8 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
   - `SharePayload.Text` → текст в EditText (редактируется), без превью изображения, отправляется как `SendJob(text=..., attachments=[])`.
   - `SharePayload.SingleFile`: image → Coil `imageView.load(uri)` в `ShapeableImageView` (corner Large); video → `contentResolver.loadThumbnail(uri, Size(512,512))` (API 29+); прочее → filled `MaterialCardView` (`colorSurfaceContainerHigh`, corner 16dp) с filled-tonal плашкой иконки (`colorPrimaryContainer`, corner 14dp) + имя/размер (`OpenableColumns.DISPLAY_NAME` / `SIZE`).
   - `SharePayload.MultipleFiles` → горизонтальный `RecyclerView` миниатюр (`item_share_preview_thumb.xml`, 96×96dp, corner Medium).
-- **Постановка в очередь**: MIME → `AttachmentSpec`: `image/*` → `RawImage(uri)`, `video/*` → `Video(EditedVideoSpec(uri))`, остальное → `Document(uri)`. Дальше — обычный `MediaSendService.enqueue(ctx, SendJob(...))`, и SendJob проходит существующий конвейер (compress/upload/sendMessage) без изменений.
-- **После отправки**: Toast `share_sent_toast`, `dismissAllowingStateLoss()`, `activity.finish()` — задача live в foreground-сервисе и без открытого UI.
+- **Постановка в очередь**: MIME → `AttachmentSpec`: `image/*` → `RawImage(uri)`, `video/*` → `Video(EditedVideoSpec(uri))`, остальное → `Document(uri)`. `ShareConfirmBottomSheet` ждёт успешного `OutgoingMessageQueue.enqueue(SendJob(...))`; только durable local copy разрешает Toast, закрытие sheet и `activity.finish()`.
+- **После отправки**: Worker продолжает задачу без share-UI и восстанавливает её после process kill/перезапуска, как описано в durable outbox выше.
 - **Payload через Activity**: `SharePayload` содержит `Uri`-списки и не парселится — bottom-sheet читает его через `(activity as ShareReceiverActivity).payload`.
 
 Связанные файлы:
@@ -801,8 +784,8 @@ Android/
 - \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. «Обновление…», offline-подсказка и «Соединение…» сменяют имя в одной строке шапки с короткой fade/slide-анимацией; повтор синхронизации остаётся кнопкой рядом. «Соединение…» показывается только при переподключении основного realtime-стрима новых сообщений, а не при первичном подключении или ошибке вспомогательного стрима.
 - \`ChatActivity\` немедленно показывает последние 30 кешированных сообщений, а затем обновляет серверную страницу только для открытого чата. Страницы пагинации и события realtime (new/read/edit/delete) сохраняются обратно в кеш.
 - `ChatDraftRepository` хранит в той же зашифрованной БД scoped-журнал обычных чатов: текст, `replyToMessageId`, server revision, локальное поколение и sync-state. Изменение фиксируется локально сразу, upsert отправляется через 2 секунды бездействия и при уходе с `ChatActivity`; недоставленные upsert/delete повторяются при старте/возврате приложения и восстановлении сети. Tombstone удаляет только известную revision, поэтому поздний ответ или другой клиент не стирает новую правку.
-- При открытии обычного чата несинхронизированный локальный черновик имеет приоритет, иначе запрашивается `GetChatDraft`. Reply восстанавливается из кеша или загружается по ID; у удалённого сообщения остаётся текст без reply. V1 намеренно не сохраняет файлы, upload-очередь, attachment-диалог, edit-режим, private- и secret-чаты. После успешной отправки удаляется только generation отправленного текста/reply.
-- Настройки хранилища показывают серверные категории и две локальные величины: Coil/bitmap изображения и encrypted Room-кеш чатов с количеством чатов/сообщений. «Очистить кеш» удаляет оба отображаемых источника, включая БД и её ключ. \`LogoutHelper\` также очищает кеш, поэтому данные другого аккаунта не отображаются.
+- При открытии обычного чата несинхронизированный локальный черновик имеет приоритет, иначе запрашивается `GetChatDraft`. Reply восстанавливается из кеша или загружается по ID; у удалённого сообщения остаётся текст без reply. Обычные text/media outbox-записи и staged media также переживают restart; Private/Secret по-прежнему вне этого конвейера. После ACK удаляется только generation отправленного текста/reply.
+- Настройки хранилища показывают серверные категории и две локальные величины: Coil/bitmap изображения и encrypted Room-кеш чатов с количеством чатов/сообщений. «Очистить кеш» удаляет оба отображаемых источника, включая БД и её ключ. `LogoutHelper` сначала отменяет tagged outbox work и очищает scoped staged media, затем удаляет cache, поэтому данные другого аккаунта не отображаются.
 ## Логирование и приватность (V1)
 
 - В release-сборке `Log.v/d/i/w/println` полностью вырезаются R8 через `-assumenosideeffects` в `Barkfluff.Client.Android/app/proguard-rules.pro`. Вместе с вызовом устраняется и конкатенация аргументов — строковые константы не попадают в dex (проверяется поиском по `classes*.dex`).

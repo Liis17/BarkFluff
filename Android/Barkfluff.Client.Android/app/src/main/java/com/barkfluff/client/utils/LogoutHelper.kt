@@ -36,6 +36,9 @@ object LogoutHelper {
         (context.applicationContext as? BarkFluffApplication)?.let { app ->
             app.realtimeService.shutdown()
             app.callEventsService.shutdown()
+            // WorkManager inputs contain no payload; cancel jobs before removing the scoped DB
+            // rows and no-backup media so an old account can never resume after a switch.
+            app.outgoingMessageQueue.cancelAllForCurrentScope()
             Log.i(TAG, "Realtime-стримы остановлены")
         }
 

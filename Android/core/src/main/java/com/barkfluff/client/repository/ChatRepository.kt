@@ -7,7 +7,12 @@ import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
+import java.io.File
+import java.io.OutputStream
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -92,7 +97,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         text: String,
         fileIds: List<String> = emptyList(),
         replyToMessageId: Long = 0L,
-        forwardedMessageIds: List<Long> = emptyList()
+        forwardedMessageIds: List<Long> = emptyList(),
+        clientOperationId: String? = null
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.messagesClient == null) {
@@ -108,10 +114,11 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
             Log.d(TAG, "sendMessage: chatId=$chatId, textLength=${text.length}, fileIds=$fileIds, replyToMessageId=$replyToMessageId, forwardedMessageIds=$forwardedMessageIds")
 
-            val request = MessagesApiOuterClass.SendMessageRequest.newBuilder()
+            val requestBuilder = MessagesApiOuterClass.SendMessageRequest.newBuilder()
                 .setChatId(chatId)
                 .setMessage(outgoingMessage)
-                .build()
+            clientOperationId?.takeIf { it.isNotBlank() }?.let(requestBuilder::setClientOperationId)
+            val request = requestBuilder.build()
 
             Log.d(TAG, "sendMessage: request.message.filesIdsCount=${request.message.filesIdsCount}")
 
@@ -120,7 +127,9 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             Result.success(response.message)
         } catch (e: Exception) {
             Log.e(TAG, "Error sending message to chat $chatId", e)
-            Result.failure(Exception("Ошибка отправки сообщения: ${e.message}"))
+            // Keep the transport cause intact: the durable outbox distinguishes permanent
+            // auth/access/validation errors from a retryable network failure.
+            Result.failure(e)
         }
     }
 
@@ -287,21 +296,25 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     /**
      * Получает URL для загрузки файла.
      */
-    suspend fun getUploadUrl(fileType: FilesApiOuterClass.UploadFileType): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
+    suspend fun getUploadUrl(
+        fileType: FilesApiOuterClass.UploadFileType,
+        clientOperationId: String? = null
+    ): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
-            val request = FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
+            val requestBuilder = FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
                 .setFileType(fileType)
-                .build()
+            clientOperationId?.takeIf { it.isNotBlank() }?.let(requestBuilder::setClientOperationId)
+            val request = requestBuilder.build()
 
             val response = grpcManager.filesClient!!.getUploadUrl(request)
             Result.success(UploadUrlResult(grpcManager.toMediaUrl(response.url), response.fileId))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting upload URL", e)
-            Result.failure(Exception("Ошибка получения URL загрузки: ${e.message}"))
+            Result.failure(e)
         }
     }
 
@@ -318,8 +331,85 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         fileType: barkfluff.files.FilesApiOuterClass.UploadFileType,
         fileName: String? = null,
         mimeType: String? = null,
-        onProgress: (Int) -> Unit = {}
+        onProgress: (Int) -> Unit = {},
+        clientOperationId: String? = null,
+        shouldCancel: () -> Boolean = { false }
+    ): Result<String> = uploadFileInternal(
+        source = UploadSource.Bytes(jpegImageBytes),
+        fileType = fileType,
+        fileName = fileName,
+        mimeType = mimeType,
+        onProgress = onProgress,
+        clientOperationId = clientOperationId,
+        shouldCancel = shouldCancel,
+        uploadTarget = null
+    )
+
+    /** Streams a durable local file instead of loading it into process memory. */
+    suspend fun uploadFile(
+        file: File,
+        fileType: FilesApiOuterClass.UploadFileType,
+        fileName: String? = null,
+        mimeType: String? = null,
+        onProgress: (Int) -> Unit = {},
+        clientOperationId: String? = null,
+        shouldCancel: () -> Boolean = { false },
+        /** Reuses the slot whose status was just checked by the durable outbox. */
+        uploadTarget: UploadUrlResult? = null
+    ): Result<String> {
+        if (!file.isFile) return Result.failure(IllegalArgumentException("Upload source is unavailable"))
+        return uploadFileInternal(
+            source = UploadSource.FileSource(file),
+            fileType = fileType,
+            fileName = fileName,
+            mimeType = mimeType,
+            onProgress = onProgress,
+            clientOperationId = clientOperationId,
+            shouldCancel = shouldCancel,
+            uploadTarget = uploadTarget
+        )
+    }
+
+    suspend fun getUploadStatus(uploadUrl: String): Result<UploadStatus?> = withContext(Dispatchers.IO) {
+        var connection: java.net.HttpURLConnection? = null
+        try {
+            val statusUrl = uploadUrl.trimEnd('/') + "/status"
+            connection = java.net.URL(statusUrl).openConnection() as java.net.HttpURLConnection
+            grpcManager.configureHttpConnection(connection)
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 60_000
+            val code = connection.responseCode
+            if (code == java.net.HttpURLConnection.HTTP_NOT_FOUND) return@withContext Result.success(null)
+            if (code !in 200..299) return@withContext Result.failure(UploadHttpException(code))
+            val json = org.json.JSONObject(connection.inputStream.bufferedReader().readText())
+            Result.success(
+                UploadStatus(
+                    state = json.optString("state"),
+                    fileId = json.optString("fileId"),
+                    retryAfterSeconds = json.optInt("retryAfterSeconds", 0)
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    private suspend fun uploadFileInternal(
+        source: UploadSource,
+        fileType: FilesApiOuterClass.UploadFileType,
+        fileName: String?,
+        mimeType: String?,
+        onProgress: (Int) -> Unit,
+        clientOperationId: String?,
+        shouldCancel: () -> Boolean,
+        uploadTarget: UploadUrlResult?
     ): Result<String> = withContext(Dispatchers.IO) {
+        var connection: java.net.HttpURLConnection? = null
         try {
             if (grpcManager.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
@@ -328,7 +418,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             // Дедупликация: считаем SHA-256 от тех самых байт, которые ушли бы на сервер
             // (для картинок это уже сжатый JPEG из ImageCompressor — совпадает с тем,
             // что хеширует backend в UploadFileCommandHandler).
-            val fileHash = jpegImageBytes.sha256Hex()
+            val fileHash = source.sha256Hex(shouldCancel)
             val existingFileId = grpcManager.checkFileHash(fileHash).getOrNull()
             if (!existingFileId.isNullOrEmpty()) {
                 Log.d(TAG, "File already exists on server (hash=$fileHash), reusing fileId: $existingFileId")
@@ -338,21 +428,27 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             // На промахе или сетевой ошибке checkFileHash продолжаем обычный upload —
             // серверная пост-дедупликация всё равно отработает после полной загрузки.
 
-            // Получаем URL для загрузки
-            val uploadUrlRequest = barkfluff.files.FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
-                .setFileType(fileType)
-                .build()
-
-            val uploadUrlResponse = grpcManager.filesClient!!.getUploadUrl(uploadUrlRequest)
-            val fileId = uploadUrlResponse.fileId
-            val uploadUrl = grpcManager.toMediaUrl(uploadUrlResponse.url)
+            // The durable outbox may already have acquired this idempotent slot to inspect
+            // its status. The HTTP body must target the same slot, not request a second one.
+            val target = uploadTarget ?: run {
+                val uploadUrlRequest = barkfluff.files.FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
+                    .setFileType(fileType)
+                    .also { builder ->
+                        clientOperationId?.takeIf { it.isNotBlank() }?.let(builder::setClientOperationId)
+                    }
+                    .build()
+                val response = grpcManager.filesClient!!.getUploadUrl(uploadUrlRequest)
+                UploadUrlResult(grpcManager.toMediaUrl(response.url), response.fileId)
+            }
+            val fileId = target.fileId
+            val uploadUrl = target.url
 
             Log.d(TAG, "Upload URL received, fileId: $fileId")
 
             // Выполняем HTTP POST multipart/form-data
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
             val url = java.net.URL(uploadUrl)
-            val connection = url.openConnection() as java.net.HttpURLConnection
+            connection = url.openConnection() as java.net.HttpURLConnection
 
             grpcManager.configureHttpConnection(connection)
 
@@ -387,30 +483,12 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             // прыгает в 100% ещё до реальной отправки. С fixed-length onProgress отражает
             // действительную скорость загрузки на сервер.
             connection.setFixedLengthStreamingMode(
-                (header.size + jpegImageBytes.size + footer.size).toLong()
+                header.size.toLong() + source.length + footer.size.toLong()
             )
 
             connection.outputStream.use { out ->
                 out.write(header)
-
-                // Записываем тело чанками, чтобы отслеживать прогресс
-                val total = jpegImageBytes.size
-                if (total > 0) {
-                    val chunk = 64 * 1024
-                    var written = 0
-                    var lastReported = -1
-                    while (written < total) {
-                        val len = minOf(chunk, total - written)
-                        out.write(jpegImageBytes, written, len)
-                        out.flush()
-                        written += len
-                        val pct = (written.toLong() * 100L / total.toLong()).toInt()
-                        if (pct != lastReported) {
-                            try { onProgress(pct) } catch (_: Throwable) {}
-                            lastReported = pct
-                        }
-                    }
-                }
+                source.writeTo(out, onProgress, shouldCancel)
                 out.write(footer)
                 out.flush()
             }
@@ -419,10 +497,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val responseBody = if (responseCode in 200..299) {
                 connection.inputStream.bufferedReader().readText()
             } else {
-                connection.disconnect()
-                return@withContext Result.failure(Exception("Upload failed: HTTP $responseCode"))
+                return@withContext Result.failure(UploadHttpException(responseCode))
             }
-            connection.disconnect()
 
             // Сервер может вернуть другой fileId при дедупликации (тот же контент уже загружен)
             val actualFileId = try {
@@ -434,9 +510,13 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
             Log.d(TAG, "File uploaded successfully, fileId: $actualFileId (original: $fileId)")
             Result.success(actualFileId)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error uploading file", e)
-            Result.failure(Exception("Ошибка загрузки файла: ${e.message}"))
+            Result.failure(e)
+        } finally {
+            connection?.disconnect()
         }
     }
 
@@ -557,9 +637,95 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         val url: String,
         val fileId: String
     )
+
+    data class UploadStatus(
+        val state: String,
+        val fileId: String,
+        val retryAfterSeconds: Int
+    )
+
+    class UploadHttpException(val statusCode: Int) : Exception("Upload failed: HTTP $statusCode")
 }
 
 private fun ByteArray.sha256Hex(): String {
     val digest = java.security.MessageDigest.getInstance("SHA-256").digest(this)
     return digest.joinToString("") { "%02x".format(it) }
+}
+
+private sealed interface UploadSource {
+    val length: Long
+    suspend fun sha256Hex(shouldCancel: () -> Boolean): String
+    suspend fun writeTo(output: OutputStream, onProgress: (Int) -> Unit, shouldCancel: () -> Boolean)
+
+    data class Bytes(private val bytes: ByteArray) : UploadSource {
+        override val length: Long get() = bytes.size.toLong()
+        override suspend fun sha256Hex(shouldCancel: () -> Boolean): String {
+            ensureUploadActive(shouldCancel)
+            return bytes.sha256Hex()
+        }
+
+        override suspend fun writeTo(output: OutputStream, onProgress: (Int) -> Unit, shouldCancel: () -> Boolean) {
+            var offset = 0
+            var lastReported = -1
+            while (offset < bytes.size) {
+                ensureUploadActive(shouldCancel)
+                val count = minOf(64 * 1024, bytes.size - offset)
+                output.write(bytes, offset, count)
+                output.flush()
+                offset += count
+                lastReported = reportUploadProgress(offset.toLong(), length, lastReported, onProgress)
+            }
+        }
+    }
+
+    data class FileSource(private val file: File) : UploadSource {
+        override val length: Long get() = file.length()
+        override suspend fun sha256Hex(shouldCancel: () -> Boolean): String = file.inputStream().use { input ->
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                ensureUploadActive(shouldCancel)
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+            digest.digest().joinToString("") { "%02x".format(it) }
+        }
+
+        override suspend fun writeTo(output: OutputStream, onProgress: (Int) -> Unit, shouldCancel: () -> Boolean) {
+            file.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                var written = 0L
+                var lastReported = -1
+                while (true) {
+                    ensureUploadActive(shouldCancel)
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    output.write(buffer, 0, read)
+                    output.flush()
+                    written += read
+                    lastReported = reportUploadProgress(written, length, lastReported, onProgress)
+                }
+            }
+        }
+    }
+}
+
+private suspend fun ensureUploadActive(shouldCancel: () -> Boolean) {
+    currentCoroutineContext().ensureActive()
+    if (shouldCancel()) throw CancellationException("Outgoing upload was cancelled")
+}
+
+private fun reportUploadProgress(
+    written: Long,
+    total: Long,
+    lastReported: Int,
+    onProgress: (Int) -> Unit
+): Int {
+    if (total <= 0) return lastReported
+    val percent = (written * 100L / total).toInt()
+    if (percent != lastReported) {
+        onProgress(percent)
+    }
+    return percent
 }

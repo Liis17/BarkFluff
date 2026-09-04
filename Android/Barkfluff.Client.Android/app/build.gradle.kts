@@ -310,6 +310,9 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("androidx.work:work-testing:2.9.1")
+    androidTestImplementation("androidx.room:room-testing:2.7.1")
+    androidTestImplementation("androidx.work:work-testing:2.9.1")
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

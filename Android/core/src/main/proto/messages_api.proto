@@ -234,6 +234,9 @@ message SendMessageRequest {
   }
   
   OutgoingMessage message = 3; // Отправляемое сообщение
+
+  // UUID логической отправки. Повтор с тем же ключом возвращает уже созданное сообщение.
+  string client_operation_id = 5;
   
 }
 

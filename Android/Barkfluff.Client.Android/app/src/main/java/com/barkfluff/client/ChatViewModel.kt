@@ -11,13 +11,15 @@ import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.ChatRepository
-import com.barkfluff.client.send.MediaSendService
-import com.barkfluff.client.send.UploadState
+import com.barkfluff.client.send.OutgoingMessageQueue
+import com.barkfluff.client.send.OutgoingMessageSnapshot
+import com.barkfluff.client.send.SendJob
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.text.SimpleDateFormat
@@ -79,6 +81,8 @@ data class ChatUiState(
 sealed interface ChatEvent {
     data class ToastRes(val resId: Int, val formatArg: String? = null) : ChatEvent
     data class DraftRestored(val text: String) : ChatEvent
+    data class SendAccepted(val text: String) : ChatEvent
+    data object SendRejected : ChatEvent
     data object FinishActivity : ChatEvent
 }
 
@@ -97,6 +101,7 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val chatCacheRepository: ChatCacheRepository,
     private val chatDraftRepository: ChatDraftRepository,
+    private val outgoingMessageQueue: OutgoingMessageQueue,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -136,6 +141,9 @@ class ChatViewModel @Inject constructor(
     private var draftSaveJob: Job? = null
     private var draftRestored = false
     private var isRestoringDraft = false
+    private var observedOutgoingOperationIds = emptySet<String>()
+    private val clearedDraftOperations = mutableSetOf<String>()
+    private var latestOutgoingSnapshots: List<OutgoingMessageSnapshot> = emptyList()
 
     // Закреплённые сообщения
     private val pinnedById = mutableMapOf<Long, Shared.PinnedMessageInfo>()
@@ -175,6 +183,7 @@ class ChatViewModel @Inject constructor(
 
         restoreFromSavedState()
         subscribeToRealtimeEvents()
+        subscribeToOutgoingMessages()
         loadChatInfoAndMessages()
         loadPinnedMessages()
         restoreDraft()
@@ -531,52 +540,43 @@ class ChatViewModel @Inject constructor(
         val replyId = _uiState.value.pendingReply?.messageId ?: 0L
         if (messageText.isBlank() && fileIds.isEmpty() && replyId == 0L) return
 
-        Log.d(TAG, "sendMessage: textLength=${messageText.length}, fileIds=$fileIds, replyId=$replyId")
-
-        val localId = java.util.UUID.randomUUID().toString()
-        val optimisticItem = MessageItem(
-            messageId = -System.nanoTime(),
-            senderId = currentUserId,
-            text = messageText,
-            timestamp = System.currentTimeMillis(),
-            attachments = emptyList(),
-            readStatus = ReadStatus.SENDING,
-            type = MessageType.MESSAGE,
-            localId = localId
-        )
-        addOptimisticMessage(optimisticItem)
-
         viewModelScope.launch {
             try {
                 val sentDraft = chatDraftRepository.edit(chatId, messageText, replyId)
-                val result = chatRepository.sendMessage(
+                outgoingMessageQueue.enqueue(SendJob(
                     chatId = chatId,
+                    chatTitle = _uiState.value.chatTitle,
                     text = messageText,
-                    fileIds = fileIds,
-                    replyToMessageId = replyId
-                )
-
-                if (result.isSuccess) {
-                    val real = result.getOrNull()
-                    if (real != null) {
-                        replaceOptimisticByLocalId(localId, toMessageItem(real).copy(readStatus = ReadStatus.SENT))
-                    } else {
-                        updateOptimisticStatus(localId, ReadStatus.SENT)
-                    }
-                    sentDraft?.let { chatDraftRepository.clearAfterSent(chatId, it.generation) }
-                } else {
-                    updateOptimisticStatus(localId, ReadStatus.FAILED)
-                    _events.tryEmit(
-                        ChatEvent.ToastRes(R.string.message_send_error, result.exceptionOrNull()?.message.orEmpty())
-                    )
-                }
+                    attachments = emptyList(),
+                    replyId = replyId,
+                    existingFileIds = fileIds,
+                    draftGeneration = sentDraft?.generation
+                ))
+                _events.tryEmit(ChatEvent.SendAccepted(messageText))
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending message", e)
-                updateOptimisticStatus(localId, ReadStatus.FAILED)
                 _events.tryEmit(ChatEvent.ToastRes(R.string.message_send_error, e.message.orEmpty()))
             }
         }
     }
+
+    fun enqueueMedia(job: SendJob) {
+        viewModelScope.launch {
+            try {
+                val draft = chatDraftRepository.edit(job.chatId, job.text, job.replyId)
+                outgoingMessageQueue.enqueue(job.copy(draftGeneration = draft?.generation))
+                _events.tryEmit(ChatEvent.SendAccepted(job.text))
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to stage outgoing media", e)
+                _events.tryEmit(ChatEvent.SendRejected)
+                _events.tryEmit(ChatEvent.ToastRes(R.string.message_send_error, e.message.orEmpty()))
+            }
+        }
+    }
+
+    fun retryOutgoing(operationId: String) = viewModelScope.launch { outgoingMessageQueue.retry(operationId) }
+
+    fun cancelOutgoing(operationId: String) = viewModelScope.launch { outgoingMessageQueue.cancel(operationId) }
 
     private fun sendEdit(messageId: Long, text: String) {
         val fileIds = _uiState.value.pendingEdit?.fileIds ?: emptyList()
@@ -802,23 +802,6 @@ class ChatViewModel @Inject constructor(
             }
         }
 
-        // Прогресс аплоада медиа — обновляем uploadProgress и статус оптимистичных сообщений.
-        viewModelScope.launch {
-            MediaSendService.uploadEvents.collect { event ->
-                if (event.chatId != chatId) return@collect
-                when (event.state) {
-                    UploadState.PREPARING -> updateOptimisticUploadProgress(event.localId, event.progress)
-                    UploadState.UPLOADING -> updateOptimisticUploadProgress(event.localId, event.progress)
-                    UploadState.SENDING -> updateOptimisticUploadProgress(event.localId, 100)
-                    UploadState.SENT -> clearOptimisticUploadProgress(event.localId, event.serverMessageId)
-                    UploadState.FAILED -> {
-                        updateOptimisticStatus(event.localId, ReadStatus.FAILED)
-                        clearOptimisticUploadProgress(event.localId, 0L)
-                    }
-                }
-            }
-        }
-
         viewModelScope.launch {
             realtimeService.messagesRead.collect { event ->
                 if (event.chatId == chatId) {
@@ -877,6 +860,57 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    private fun subscribeToOutgoingMessages() {
+        viewModelScope.launch {
+            outgoingMessageQueue.observeChat(chatId).collect { snapshots ->
+                latestOutgoingSnapshots = snapshots
+                val active = snapshots.filter { it.state != OutgoingMessageState.SENT }
+                val activeIds = active.map { it.operationId }.toSet()
+                val current = _uiState.value.items.toMutableList()
+                current.removeAll { item ->
+                    item.type == MessageType.MESSAGE && item.localId != null &&
+                        item.localId in observedOutgoingOperationIds && item.localId !in activeIds
+                }
+                active.forEach { snapshot -> upsertOutgoingBubble(current, snapshot) }
+                observedOutgoingOperationIds = activeIds
+                submitItems(current)
+
+                snapshots.filter { it.state == OutgoingMessageState.SENT && it.draftGeneration != null }
+                    .filter { clearedDraftOperations.add(it.operationId) }
+                    .forEach { sent ->
+                        viewModelScope.launch {
+                            chatDraftRepository.clearAfterSent(chatId, sent.draftGeneration!!)
+                        }
+                    }
+                snapshots.filter { it.state == OutgoingMessageState.SENT && it.serverMessageId > 0L }
+                    .forEach { sent ->
+                        val scope = cacheScope ?: return@forEach
+                        viewModelScope.launch {
+                            chatCacheRepository.cachedMessage(scope, chatId, sent.serverMessageId)?.let(::addNewMessage)
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun upsertOutgoingBubble(target: MutableList<MessageItem>, snapshot: OutgoingMessageSnapshot) {
+        val item = MessageItem(
+            messageId = -10_000_000_000L - (snapshot.operationId.hashCode().toLong() and 0x7fff_ffffL),
+            senderId = currentUserId,
+            text = snapshot.text,
+            timestamp = snapshot.createdAtMillis,
+            attachments = emptyList(),
+            readStatus = if (snapshot.state == OutgoingMessageState.FAILED) ReadStatus.FAILED else ReadStatus.SENDING,
+            type = MessageType.MESSAGE,
+            localId = snapshot.operationId,
+            outgoingState = snapshot.state,
+            uploadProgress = snapshot.progress.takeIf { snapshot.state != OutgoingMessageState.FAILED },
+            localPreviewUris = snapshot.previewPaths.map { android.net.Uri.fromFile(java.io.File(it)) }
+        )
+        val existing = target.indexOfFirst { it.type == MessageType.MESSAGE && it.localId == snapshot.operationId }
+        if (existing >= 0) target[existing] = item else target.add(item)
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // Список сообщений (разделители, реконсиляция)
     // ═══════════════════════════════════════════════════════════════
@@ -896,6 +930,8 @@ class ChatViewModel @Inject constructor(
             }
         }
 
+        latestOutgoingSnapshots.filter { it.state != OutgoingMessageState.SENT }
+            .forEach { snapshot -> upsertOutgoingBubble(messageItems, snapshot) }
         submitItems(messageItems)
     }
 
@@ -932,7 +968,8 @@ class ChatViewModel @Inject constructor(
             },
             type = if (isSystem) MessageType.SYSTEM else MessageType.MESSAGE,
             isEdited = msg.isEdited,
-            replyTo = if (msg.hasReplyTo()) msg.replyTo else null
+            replyTo = if (msg.hasReplyTo()) msg.replyTo else null,
+            clientOperationId = msg.clientOperationId.takeIf { it.isNotBlank() }
         )
     }
 
@@ -1005,7 +1042,8 @@ class ChatViewModel @Inject constructor(
         if (msg.senderId == currentUserId) {
             val optIdx = currentList.indexOfFirst {
                 it.type == MessageType.MESSAGE && it.localId != null && (
-                    it.messageId == msg.id ||
+                    it.localId == msg.clientOperationId ||
+                        it.messageId == msg.id ||
                         (it.readStatus == ReadStatus.SENDING &&
                             it.text == (msg.content?.text ?: "") &&
                             (it.uploadProgress != null || it.localPreviewUris.isNotEmpty() ||

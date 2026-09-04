@@ -169,15 +169,18 @@
 
 ---
 
-## Очередь отправки медиа (`send/`)
+## Долговечная очередь исходящих (`send/`)
 
-Foreground-загрузка вложений с прогрессом, включая перекодирование видео.
+SQLCipher Room + app-private staging для text/media обычных чатов; WorkManager только будит обработчик с network constraint.
 
 | Файл | Роль |
 |------|------|
-| `send/MediaSendService.kt` | Foreground `Service` очереди отправки: перекодирование видео при необходимости, загрузка в Files, отправка сообщения. `UploadState` (PREPARING/UPLOADING/SENDING/SENT/FAILED), `UploadEvent` |
-| `send/SendJob.kt` | Data class задачи отправки (вложения, текст, chat/user назначение); `SendPayloadCache` — временное хранилище payload |
-| `send/MediaSendNotification.kt` | Уведомление о прогрессе отправки (progress bar в шторке) |
+| `cache/OutgoingMessageStore.kt` | Room entities/DAO outbox v3: state, lease, retry, ordered attachments, operation IDs |
+| `send/OutgoingMessageQueue.kt` | Public seam `enqueue/observeChat/retry/cancel`, durable staging, FIFO/parallel drain, resume/status/idempotency |
+| `send/OutgoingMessageWorker.kt` | Persistent `CoroutineWorker`; запускает queue с `NetworkType.CONNECTED` и foreground notification |
+| `send/OutgoingRetryPolicy.kt` | Бессрочная retry-политика 10s → 30m |
+| `send/SendJob.kt` | Input для staging: text/reply, attachments, batch/separate send и existing server file IDs |
+| `send/MediaSendNotification.kt` + `OutgoingMessageCancelReceiver.kt` | Foreground-уведомление Worker с прогрессом и cooperative Cancel |
 
 ---
 
