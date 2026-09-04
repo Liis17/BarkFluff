@@ -11,6 +11,7 @@ import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityChatBinding
+import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.SecretChatRepository
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
@@ -26,13 +27,13 @@ class SecretChatController(
     private val activity: AppCompatActivity,
     private val binding: ActivityChatBinding,
     private val adapter: MessageAdapter,
-    private val app: BarkFluffApplication,
+    private val repo: SecretChatRepository,
+    private val chatCacheRepository: ChatCacheRepository,
+    private val realtimeService: RealtimeService,
     private val globalParam: GlobalParam,
     private val chat: SecretChatRepository.SecretChat,
 ) {
 
-    private val repo: SecretChatRepository = app.secretChatRepository
-    private val chatCacheRepository: ChatCacheRepository = app.chatCacheRepository
     private val cacheScope: CacheScope? = CacheScope.from(globalParam)
 
     // Секретные сообщения идентифицируются строкой (envelope.messageId), а MessageItem требует
@@ -133,7 +134,7 @@ class SecretChatController(
 
     private fun observeRealtime() {
         activity.lifecycleScope.launch {
-            app.realtimeService.secretMessages
+            realtimeService.secretMessages
                 .filter {
                     it.envelope.senderUserId == chat.peerUserId &&
                         it.envelope.senderDeviceId == chat.peerDeviceId
