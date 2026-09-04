@@ -230,6 +230,12 @@ class GrpcManager(context: Context) {
         return identityClient != null && usersClient != null && filesClient != null && messagesClient != null
     }
 
+    /**
+     * Typed access to the shared token policy for services that do not need the
+     * rest of the legacy RPC facade.
+     */
+    fun tokenCoordinator(): TokenCoordinator = tokenCoordinator
+
     fun normalizeEndpointAddress(address: String): String = tlsTransport.normalizeGrpcAddress(address)
 
     /**

@@ -25,6 +25,7 @@ import kotlin.math.pow
 class RealtimeService(
     private val context: Context,
     private val grpcManager: GrpcManager,
+    private val tokenCoordinator: TokenCoordinator,
     private val sideEffects: RealtimeSideEffects? = null
 ) {
 
@@ -561,13 +562,11 @@ class RealtimeService(
 
     // --- Token management ---
 
-    // Обновление токена делегируется в GrpcManager — единый мьютекс на все стримы и операции,
-    // чтобы параллельные рефреши не аннулировали refresh-токен друг друга.
     private suspend fun ensureTokenValid() {
-        grpcManager.ensureTokenValid(context)
+        tokenCoordinator.ensureValid()
     }
 
     private suspend fun forceRefreshToken() {
-        grpcManager.forceRefreshToken(context)
+        tokenCoordinator.ensureValid(forceRefresh = true)
     }
 }

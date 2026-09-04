@@ -11,6 +11,7 @@ import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.grpc.RealtimeSideEffects
+import com.barkfluff.client.grpc.TokenCoordinator
 import com.barkfluff.client.notifications.RealtimeSideEffectsImpl
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.PrivateChatRepository
@@ -38,6 +39,11 @@ object AppModule {
     @Singleton
     fun provideGrpcManager(@ApplicationContext context: Context): GrpcManager =
         GrpcManager(context)
+
+    @Provides
+    @Singleton
+    fun provideTokenCoordinator(grpcManager: GrpcManager): TokenCoordinator =
+        grpcManager.tokenCoordinator()
 
     @Provides
     @Singleton
@@ -69,8 +75,9 @@ object AppModule {
     fun provideRealtimeService(
         @ApplicationContext context: Context,
         grpcManager: GrpcManager,
+        tokenCoordinator: TokenCoordinator,
         sideEffects: RealtimeSideEffects
-    ): RealtimeService = RealtimeService(context, grpcManager, sideEffects)
+    ): RealtimeService = RealtimeService(context, grpcManager, tokenCoordinator, sideEffects)
 
     @Provides
     @Singleton
@@ -97,8 +104,8 @@ object AppModule {
         @ApplicationContext context: Context,
         chatCacheRepository: ChatCacheRepository,
         chatRepository: ChatRepository,
-        grpcManager: GrpcManager
-    ): OutgoingMessageQueue = OutgoingMessageQueue(context, chatCacheRepository, chatRepository, grpcManager)
+        tokenCoordinator: TokenCoordinator
+    ): OutgoingMessageQueue = OutgoingMessageQueue(context, chatCacheRepository, chatRepository, tokenCoordinator)
 
     @Provides
     @Singleton
@@ -125,6 +132,7 @@ object AppModule {
     fun provideCallEventsService(
         @ApplicationContext context: Context,
         grpcManager: GrpcManager,
-        callRepository: CallRepository
-    ): CallEventsService = CallEventsService(context, grpcManager, callRepository)
+        callRepository: CallRepository,
+        tokenCoordinator: TokenCoordinator,
+    ): CallEventsService = CallEventsService(context, grpcManager, callRepository, tokenCoordinator)
 }
