@@ -212,10 +212,11 @@ object AppModule {
     @Singleton
     fun provideRealtimeService(
         @ApplicationContext context: Context,
-        legacyTransport: GrpcTransportFacade,
+        clientRegistry: GrpcClientRegistry,
         tokenCoordinator: TokenCoordinator,
+        messageGateway: MessageGateway,
         sideEffects: RealtimeSideEffects
-    ): RealtimeService = RealtimeService(context, legacyTransport, tokenCoordinator, sideEffects)
+    ): RealtimeService = RealtimeService(context, clientRegistry, tokenCoordinator, messageGateway, sideEffects)
 
     @Provides
     @Singleton
