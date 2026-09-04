@@ -151,6 +151,7 @@ class ChatActivity : AppCompatActivity() {
     private val pendingPastedImages = mutableListOf<Uri>()
     private val pendingStickerUris = mutableListOf<Uri>()
     private val pendingDocumentUris = mutableListOf<Uri>()
+    private var pendingAttachmentsAwaitingOutbox = false
     private val pendingCropQueue = ArrayDeque<Uri>()
 
     // Голосовые сообщения
@@ -475,6 +476,25 @@ class ChatActivity : AppCompatActivity() {
                         suppressTypingInput = false
                         suppressDraftSave = false
                         updateSendButtonMode()
+                    }
+                    is ChatEvent.SendAccepted -> {
+                        if (pendingAttachmentsAwaitingOutbox) {
+                            pendingAttachmentsAwaitingOutbox = false
+                            pendingPastedImages.clear()
+                            pendingStickerUris.clear()
+                            pendingDocumentUris.clear()
+                            updateAttachmentPreview()
+                        }
+                        if (binding.messageEditText.text?.toString()?.trim() == event.text.trim()) {
+                            suppressDraftSave = true
+                            binding.messageEditText.text?.clear()
+                            suppressDraftSave = false
+                            clearPendingReply(saveDraft = false)
+                            updateSendButtonMode()
+                        }
+                    }
+                    ChatEvent.SendRejected -> {
+                        pendingAttachmentsAwaitingOutbox = false
                     }
                     ChatEvent.FinishActivity -> finish()
                 }
@@ -1813,29 +1833,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendVoiceMessage(file: File) {
-        val localId = java.util.UUID.randomUUID().toString()
-        viewModel.addOptimisticMessage(
-            MessageItem(
-                messageId = -System.nanoTime(),
-                senderId = currentUserId,
-                text = "",
-                timestamp = System.currentTimeMillis(),
-                attachments = emptyList(),
-                readStatus = ReadStatus.SENDING,
-                type = MessageType.MESSAGE,
-                localId = localId,
-                uploadProgress = 0
-            )
-        )
-
-        val job = com.barkfluff.client.send.SendJob(
+        viewModel.enqueueMedia(com.barkfluff.client.send.SendJob(
             chatId = chatId,
             chatTitle = chatTitle,
             text = "",
-            attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file)),
-            localIds = listOf(localId)
-        )
-        com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
+            attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file))
+        ))
     }
 
     private fun pickImages() {
@@ -2090,79 +2093,24 @@ class ChatActivity : AppCompatActivity() {
                 }
                 com.barkfluff.client.editor.MediaEditCache.has(uri) -> {
                     val edited = com.barkfluff.client.editor.MediaEditCache.get(uri)!!
-                    val key = com.barkfluff.client.send.SendPayloadCache.put(edited.bytes)
-                    com.barkfluff.client.send.AttachmentSpec.EditedImage(cacheKey = key, originalUri = uri)
+                    com.barkfluff.client.send.AttachmentSpec.EditedImage(
+                        originalUri = uri,
+                        bytes = edited.bytes
+                    )
                 }
                 else -> com.barkfluff.client.send.AttachmentSpec.RawImage(uri)
             }
         }
 
-        // URI для локального превью оптимистичного сообщения (картинки/видео показываются сразу,
-        // ещё до загрузки на сервер). Документы/стикеры превью не имеют.
-        val previewUris: List<Uri?> = attachments.map { spec ->
-            when (spec) {
-                is com.barkfluff.client.send.AttachmentSpec.RawImage -> spec.uri
-                is com.barkfluff.client.send.AttachmentSpec.EditedImage -> spec.originalUri
-                is com.barkfluff.client.send.AttachmentSpec.Video -> spec.spec.uri
-                else -> null
-            }
-        }
-
-        // Генерим localId на каждое будущее сообщение и добавляем оптимистичные items в чат —
-        // пользователь сразу видит карточки с прогрессом аплоада (M3 Expressive inline feedback).
-        val localIds: List<String> = if (result.sendSeparately) {
-            attachments.map { java.util.UUID.randomUUID().toString() }
-        } else {
-            listOf(java.util.UUID.randomUUID().toString())
-        }
-
-        if (result.sendSeparately) {
-            attachments.forEachIndexed { idx, _ ->
-                val captionForFirst = if (idx == 0) result.captionText else ""
-                viewModel.addOptimisticMessage(
-                    MessageItem(
-                        messageId = -(System.nanoTime() + idx),
-                        senderId = currentUserId,
-                        text = captionForFirst,
-                        timestamp = System.currentTimeMillis(),
-                        attachments = emptyList(),
-                        readStatus = ReadStatus.SENDING,
-                        type = MessageType.MESSAGE,
-                        localId = localIds[idx],
-                        uploadProgress = 0,
-                        localPreviewUris = listOfNotNull(previewUris.getOrNull(idx))
-                    )
-                )
-            }
-        } else {
-            viewModel.addOptimisticMessage(
-                MessageItem(
-                    messageId = -System.nanoTime(),
-                    senderId = currentUserId,
-                    text = result.captionText,
-                    timestamp = System.currentTimeMillis(),
-                    attachments = emptyList(),
-                    readStatus = ReadStatus.SENDING,
-                    type = MessageType.MESSAGE,
-                    localId = localIds[0],
-                    uploadProgress = 0,
-                    localPreviewUris = previewUris.filterNotNull()
-                )
-            )
-        }
-
-        val job = com.barkfluff.client.send.SendJob(
+        viewModel.enqueueMedia(com.barkfluff.client.send.SendJob(
             chatId = chatId,
             chatTitle = chatTitle,
             text = result.captionText,
             attachments = attachments,
             replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L,
             sendSeparately = result.sendSeparately,
-            sendAsFile = result.sendAsFile,
-            localIds = localIds
-        )
-        com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
-        clearPendingReply()
+            sendAsFile = result.sendAsFile
+        ))
     }
 
     private fun isStickerContent(uri: Uri, clipDescription: android.content.ClipDescription?, index: Int): Boolean {
@@ -2290,87 +2238,34 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendMessageWithPendingAttachments() {
+        if (pendingAttachmentsAwaitingOutbox) return
         val text = binding.messageEditText.text.toString().trim()
         val photos = pendingPastedImages.toList()
         val stickers = pendingStickerUris.toList()
         val documents = pendingDocumentUris.toList()
-        pendingPastedImages.clear()
-        pendingStickerUris.clear()
-        pendingDocumentUris.clear()
-        updateAttachmentPreview()
-        suppressDraftSave = true
-        binding.messageEditText.text?.clear()
-        suppressDraftSave = false
-
         lifecycleScope.launch {
-            val fileIds = mutableListOf<String>()
-
-            // Загружаем стикеры (конвертируем в WebP)
-            for ((index, uri) in stickers.withIndex()) {
-                try {
-                    val bytes = convertToWebp(uri) ?: continue
-                    val uploadResult = chatRepository.uploadFile(
-                        bytes,
-                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER
-                    )
-                    if (uploadResult.isSuccess) {
-                        fileIds.add(uploadResult.getOrNull()!!)
-                    } else {
-                        Log.e(TAG, "Sticker ${index + 1}/${stickers.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing sticker ${index + 1}/${stickers.size}", e)
+            val stickerAttachments = stickers.mapNotNull { uri ->
+                convertToWebp(uri)?.let { bytes ->
+                    com.barkfluff.client.send.AttachmentSpec.Sticker(bytes)
                 }
             }
-
-            // Загружаем фото (со сжатием)
-            for ((index, uri) in photos.withIndex()) {
-                try {
-                    val bytes = ImageCompressor.compressImage(uri, this@ChatActivity).getOrNull()
-                        ?: continue
-
-                    val uploadType = barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
-
-                    val uploadResult = chatRepository.uploadFile(bytes, uploadType)
-                    if (uploadResult.isSuccess) {
-                        fileIds.add(uploadResult.getOrNull()!!)
-                    } else {
-                        Log.e(TAG, "Photo ${index + 1}/${photos.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing photo ${index + 1}/${photos.size}", e)
-                }
+            val attachments = stickerAttachments + photos.map {
+                com.barkfluff.client.send.AttachmentSpec.RawImage(it)
+            } + documents.map {
+                com.barkfluff.client.send.AttachmentSpec.Document(it)
             }
-
-            // Загружаем документы (без сжатия)
-            for ((index, uri) in documents.withIndex()) {
-                try {
-                    val bytes = readBytesFromUri(uri) ?: continue
-                    val (docName, docMime) = getDocumentInfo(uri)
-                    val uploadResult = chatRepository.uploadFile(
-                        bytes,
-                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT,
-                        fileName = docName,
-                        mimeType = docMime
-                    )
-                    if (uploadResult.isSuccess) {
-                        fileIds.add(uploadResult.getOrNull()!!)
-                    } else {
-                        Log.e(TAG, "Document ${index + 1}/${documents.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing document ${index + 1}/${documents.size}", e)
-                }
-            }
-
-            if (fileIds.isNotEmpty()) {
-                sendMessage(text = text, fileIds = fileIds)
-            } else {
+            if (attachments.isEmpty()) {
                 Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
-                if (text.isNotBlank()) {
-                    sendMessage(text = text)
-                }
+                return@launch
             }
+            pendingAttachmentsAwaitingOutbox = true
+            viewModel.enqueueMedia(com.barkfluff.client.send.SendJob(
+                chatId = chatId,
+                chatTitle = chatTitle,
+                text = text,
+                attachments = attachments,
+                replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L
+            ))
         }
     }
 
@@ -2387,13 +2282,6 @@ class ChatActivity : AppCompatActivity() {
 
         // Reply без текста и без файлов — отправляем сам факт пересылки
         if (messageText.isBlank() && fileIds.isEmpty() && state.pendingReply == null) return
-
-        // Освобождаем поле ввода и reply-bar моментально — оптимистичный SENDING-item
-        // добавит VM, пользователь не ждёт сетевого ответа.
-        suppressDraftSave = true
-        binding.messageEditText.text?.clear()
-        suppressDraftSave = false
-        clearPendingReply(saveDraft = false)
 
         viewModel.sendMessage(messageText, fileIds)
     }
@@ -2547,9 +2435,44 @@ class ChatActivity : AppCompatActivity() {
         const val COPY_MARKDOWN = 10
         const val PROPERTIES = 11
         const val SELECT = 12
+        const val OUTGOING_RETRY = 13
+        const val OUTGOING_CANCEL = 14
     }
 
     private fun showMessageActionMenu(bubble: View, item: MessageItem) {
+        val outgoingState = item.outgoingState
+        if (outgoingState != null) {
+            val actions = buildList {
+                if (outgoingState == com.barkfluff.client.cache.OutgoingMessageState.FAILED) {
+                    add(MessageActionsOverlay.Action(
+                        MessageActionId.OUTGOING_RETRY,
+                        R.drawable.ic_refresh,
+                        getString(R.string.search_retry)
+                    ))
+                }
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.OUTGOING_CANCEL,
+                    R.drawable.ic_close,
+                    getString(R.string.btn_cancel),
+                    danger = outgoingState == com.barkfluff.client.cache.OutgoingMessageState.FAILED
+                ))
+            }
+            messageActionsOverlay.show(
+                bubble = bubble,
+                actions = actions,
+                alignEnd = true,
+                onDismiss = { backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE || inputPanelState == InputPanelState.STICKER_PANEL }
+            ) { actionId ->
+                item.localId?.let { operationId ->
+                    when (actionId) {
+                        MessageActionId.OUTGOING_RETRY -> viewModel.retryOutgoing(operationId)
+                        MessageActionId.OUTGOING_CANCEL -> viewModel.cancelOutgoing(operationId)
+                    }
+                }
+            }
+            backCallback.isEnabled = true
+            return
+        }
         val isOwnMessage = item.senderId == currentUserId
         val imageAtts = item.attachments.filter {
             it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE ||

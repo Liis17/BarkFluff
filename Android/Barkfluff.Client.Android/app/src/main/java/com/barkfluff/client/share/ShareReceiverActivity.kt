@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 /**
  * Принимает системные ACTION_SEND / ACTION_SEND_MULTIPLE и даёт пользователю выбрать
  * чат-получатель. После выбора чата открывает [ShareConfirmBottomSheet], который ставит
- * задачу в [com.barkfluff.client.send.MediaSendService].
+ * задачу в durable [com.barkfluff.client.send.OutgoingMessageQueue].
  */
 class ShareReceiverActivity : AppCompatActivity() {
 

@@ -119,6 +119,7 @@ class MainActivity : AppCompatActivity() {
         val app = applicationContext as BarkFluffApplication
         app.realtimeService.resume()
         app.callEventsService.resume()
+        app.outgoingMessageQueue.resume()
     }
 
     private fun registerPrekeyBundleIfNeeded() {

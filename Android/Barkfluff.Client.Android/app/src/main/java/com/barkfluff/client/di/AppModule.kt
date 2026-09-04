@@ -2,6 +2,7 @@ package com.barkfluff.client.di
 
 import android.content.Context
 import com.barkfluff.client.cache.ChatCacheRepository
+import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.crypto.BarkFluffSignalStore
@@ -89,6 +90,15 @@ object AppModule {
         @ApplicationContext context: Context,
         grpcManager: GrpcManager
     ): ChatRepository = ChatRepository(context, grpcManager)
+
+    @Provides
+    @Singleton
+    fun provideOutgoingMessageQueue(
+        @ApplicationContext context: Context,
+        chatCacheRepository: ChatCacheRepository,
+        chatRepository: ChatRepository,
+        grpcManager: GrpcManager
+    ): OutgoingMessageQueue = OutgoingMessageQueue(context, chatCacheRepository, chatRepository, grpcManager)
 
     @Provides
     @Singleton

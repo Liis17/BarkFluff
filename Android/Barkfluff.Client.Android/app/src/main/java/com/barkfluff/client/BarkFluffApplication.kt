@@ -24,6 +24,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
@@ -62,6 +63,8 @@ class BarkFluffApplication : Application() {
 
     @Inject lateinit var chatDraftRepository: ChatDraftRepository
 
+    @Inject lateinit var outgoingMessageQueue: OutgoingMessageQueue
+
     @Inject lateinit var realtimeService: RealtimeService
 
     @Inject lateinit var signalStore: BarkFluffSignalStore
@@ -81,7 +84,10 @@ class BarkFluffApplication : Application() {
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            applicationScope.launch(Dispatchers.IO) { chatDraftRepository.flushAll() }
+            applicationScope.launch(Dispatchers.IO) {
+                chatDraftRepository.flushAll()
+                outgoingMessageQueue.resume()
+            }
         }
     }
 
@@ -135,6 +141,7 @@ class BarkFluffApplication : Application() {
 
         // Periodic refresh App Widget'ов раз в 30 минут — fallback когда приложение убито
         scheduleWidgetRefreshWorker()
+        outgoingMessageQueue.resume()
 
         // Подписываемся на lifecycle всего приложения (foreground/background)
         // resume() вызывается когда ЛЮБАЯ activity приложения выходит на передний план
@@ -142,7 +149,10 @@ class BarkFluffApplication : Application() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 realtimeService.resume()
-                applicationScope.launch(Dispatchers.IO) { chatDraftRepository.flushAll() }
+                applicationScope.launch(Dispatchers.IO) {
+                    chatDraftRepository.flushAll()
+                    outgoingMessageQueue.resume()
+                }
                 startCallEventsUiBridge()
                 callEventsService.resume()
             }
