@@ -9,24 +9,40 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.barkfluff.client.cache.ChatCacheRepository
+import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentProfileBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.LogoutHelper
 import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.color.MaterialColors
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+@AndroidEntryPoint
 class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var realtimeService: RealtimeService
+    @javax.inject.Inject lateinit var callEventsService: CallEventsService
+    @javax.inject.Inject lateinit var outgoingMessageQueue: OutgoingMessageQueue
+    @javax.inject.Inject lateinit var chatCacheRepository: ChatCacheRepository
+    @javax.inject.Inject lateinit var privateChatRepository: PrivateChatRepository
     private var previousMainBackground: Drawable? = null
     private var mainBackgroundCaptured = false
 
@@ -42,9 +58,7 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val app = requireActivity().application as BarkFluffApplication
         globalParam = GlobalParam(requireContext())
-        legacyTransport = app.legacyTransport
 
         setupClickListeners()
         updateUI()
@@ -113,7 +127,15 @@ class ProfileFragment : Fragment() {
                 .setMessage(R.string.logout_dialog_message)
                 .setPositiveButton(R.string.logout_dialog_confirm) { _, _ ->
                     lifecycleScope.launch {
-                        LogoutHelper.performFullLogout(requireContext(), legacyTransport)
+                        LogoutHelper.performFullLogout(
+                            requireContext(),
+                            authGateway,
+                            realtimeService,
+                            callEventsService,
+                            outgoingMessageQueue,
+                            chatCacheRepository,
+                            privateChatRepository,
+                        )
                     }
                 }
                 .setNegativeButton(R.string.btn_cancel, null)
@@ -164,7 +186,7 @@ class ProfileFragment : Fragment() {
                 size = 192,
                 circleCrop = false
             ) {
-                val result = legacyTransport.getFileDownloadUrl(fileId)
+                val result = fileMediaGateway.downloadUrl(fileId)
                 if (result.isSuccess) result.getOrNull() else null
             }
         } else {
@@ -227,7 +249,7 @@ class ProfileFragment : Fragment() {
     private fun refreshUserData() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val result = legacyTransport.getCurrentUserData()
+                val result = userProfileGateway.currentUser()
                 if (result.isSuccess) {
                     val userData = result.getOrNull() ?: return@launch
                     globalParam.userName = userData.username
