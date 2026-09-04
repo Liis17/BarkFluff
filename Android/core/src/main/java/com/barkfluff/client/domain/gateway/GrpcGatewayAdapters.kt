@@ -362,3 +362,16 @@ class GrpcFastAuthGateway(private val grpc: GrpcTransportFacade) : FastAuthGatew
     override suspend fun accept(fastAuthId: String, confirmationCode: String) = grpc.acceptFastAuth(fastAuthId, confirmationCode)
     override suspend fun reject(fastAuthId: String, confirmationCode: String) = grpc.rejectFastAuth(fastAuthId, confirmationCode)
 }
+
+class GrpcPrekeyGateway(private val grpc: GrpcTransportFacade) : PrekeyGateway {
+    override suspend fun register(
+        registrationId: Int,
+        identityPubkey: ByteArray,
+        signedPreKey: barkfluff.users.UsersApiOuterClass.SignedPreKey,
+        oneTimePreKeys: List<barkfluff.users.UsersApiOuterClass.OneTimePreKey>,
+    ): Result<Unit> = grpc.registerPrekeyBundle(registrationId, identityPubkey, signedPreKey, oneTimePreKeys)
+
+    override suspend fun replenish(
+        prekeys: List<barkfluff.users.UsersApiOuterClass.OneTimePreKey>,
+    ): Result<Int> = grpc.replenishOneTimePrekeys(prekeys)
+}

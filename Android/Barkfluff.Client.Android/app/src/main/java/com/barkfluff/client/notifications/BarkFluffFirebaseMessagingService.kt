@@ -4,12 +4,11 @@ import android.graphics.Bitmap
 import android.util.Log
 import coil.ImageLoader
 import coil.request.ImageRequest
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -23,6 +22,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 @AndroidEntryPoint
 class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
+
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
 
     companion object {
         private const val TAG = "BarkFluffFCM"
@@ -305,15 +306,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
     fun sendTokenToServer(context: android.content.Context, token: String) {
         serviceScope.launch {
             try {
-                val app = context.applicationContext as BarkFluffApplication
-                val legacyTransport = app.legacyTransport
-
-                if (legacyTransport.usersClient == null) {
-                    Log.d(TAG, "sendTokenToServer: usersClient не инициализирован, токен будет отправлен позже")
-                    return@launch
-                }
-
-                val result = legacyTransport.setFirebaseToken(token)
+                val result = userProfileGateway.setFirebaseToken(token)
                 if (result.isSuccess) {
                     Log.i(TAG, "sendTokenToServer: токен успешно отправлен на сервер")
                 } else {

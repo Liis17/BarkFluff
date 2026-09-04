@@ -6,6 +6,7 @@ import barkfluff.fast.auth.FastAuthApiOuterClass
 import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.shared.Shared
 import barkfluff.updates.UpdatesApiOuterClass
+import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.domain.model.AuthenticationResult
 import com.barkfluff.client.domain.model.AuthResult
 import com.barkfluff.client.domain.model.ChatFolder
@@ -248,7 +249,14 @@ interface SecretChatGateway {
 }
 
 interface PrekeyGateway {
-    suspend fun replenish(): Result<Unit>
+    suspend fun register(
+        registrationId: Int,
+        identityPubkey: ByteArray,
+        signedPreKey: UsersApiOuterClass.SignedPreKey,
+        oneTimePreKeys: List<UsersApiOuterClass.OneTimePreKey>,
+    ): Result<Unit>
+
+    suspend fun replenish(prekeys: List<UsersApiOuterClass.OneTimePreKey>): Result<Int>
 }
 
 /** Common fake-friendly token dependency for workers and gateways. */

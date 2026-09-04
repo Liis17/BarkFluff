@@ -3,7 +3,6 @@ package com.barkfluff.client.utils
 import android.content.Context
 import android.util.Log
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
@@ -17,36 +16,6 @@ import kotlinx.coroutines.withContext
 object FirebaseTokenHelper {
 
     private const val TAG = "FirebaseTokenHelper"
-
-    /**
-     * Получает Firebase токен и отправляет его на сервер.
-     * Если токен уже сохранен локально, использует его.
-     * Иначе запрашивает новый у Firebase.
-     */
-    suspend fun getTokenAndSendToServer(context: Context, legacyTransport: GrpcTransportFacade) {
-        try {
-            val globalParam = GlobalParam(context)
-            var token = globalParam.firebaseToken
-
-            // Если токен еще не сохранен, получаем его из Firebase
-            if (token.isBlank()) {
-                Log.d(TAG, "getTokenAndSendToServer: локальный токен пуст, запрашиваем у Firebase")
-                token = withContext(Dispatchers.IO) {
-                    FirebaseMessaging.getInstance().token.await()
-                }
-                globalParam.firebaseToken = token
-                Log.d(TAG, "getTokenAndSendToServer: получен новый токен")
-            } else {
-                Log.d(TAG, "getTokenAndSendToServer: используем сохраненный токен")
-            }
-
-            // Отправляем токен на сервер
-            sendTokenToServer(legacyTransport, token)
-
-        } catch (e: Exception) {
-            Log.e(TAG, "getTokenAndSendToServer: ошибка", e)
-        }
-    }
 
     suspend fun getTokenAndSendToServer(context: Context, profileGateway: UserProfileGateway) {
         sendTokenWith(context, profileGateway)
@@ -71,7 +40,7 @@ object FirebaseTokenHelper {
      * Используется при свежем логине с LoginActivity — гарантирует отправку нового токена
      * (а не унаследованного от предыдущего аккаунта).
      */
-    suspend fun deleteAndRefreshTokenThenSend(context: Context, legacyTransport: GrpcTransportFacade) {
+    suspend fun deleteAndRefreshTokenThenSend(context: Context, profileGateway: UserProfileGateway) {
         try {
             Log.d(TAG, "deleteAndRefreshTokenThenSend: удаляем старый токен")
             withContext(Dispatchers.IO) {
@@ -89,7 +58,7 @@ object FirebaseTokenHelper {
             globalParam.firebaseToken = token
 
             Log.d(TAG, "deleteAndRefreshTokenThenSend: новый токен получен")
-            sendTokenToServer(legacyTransport, token)
+            sendTokenToServer(profileGateway, token)
         } catch (e: Exception) {
             Log.e(TAG, "deleteAndRefreshTokenThenSend: ошибка", e)
         }
@@ -99,7 +68,7 @@ object FirebaseTokenHelper {
      * Принудительно запрашивает новый токен у Firebase и отправляет на сервер.
      * Используется при обновлении токена (onNewToken в сервисе).
      */
-    suspend fun refreshTokenAndSendToServer(context: Context, legacyTransport: GrpcTransportFacade) {
+    suspend fun refreshTokenAndSendToServer(context: Context, profileGateway: UserProfileGateway) {
         try {
             Log.d(TAG, "refreshTokenAndSendToServer: запрашиваем новый токен")
 
@@ -112,16 +81,16 @@ object FirebaseTokenHelper {
 
             Log.d(TAG, "refreshTokenAndSendToServer: получен токен")
 
-            sendTokenToServer(legacyTransport, token)
+            sendTokenToServer(profileGateway, token)
 
         } catch (e: Exception) {
             Log.e(TAG, "refreshTokenAndSendToServer: ошибка", e)
         }
     }
 
-    private suspend fun sendTokenToServer(legacyTransport: GrpcTransportFacade, token: String) {
+    private suspend fun sendTokenToServer(profileGateway: UserProfileGateway, token: String) {
         try {
-            val result = legacyTransport.setFirebaseToken(token)
+            val result = profileGateway.setFirebaseToken(token)
             if (result.isSuccess) {
                 Log.i(TAG, "sendTokenToServer: токен успешно отправлен на сервер")
             } else {

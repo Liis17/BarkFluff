@@ -31,6 +31,7 @@ import com.barkfluff.client.domain.gateway.GrpcChatFolderGateway
 import com.barkfluff.client.domain.gateway.GrpcFileMediaGateway
 import com.barkfluff.client.domain.gateway.GrpcFastAuthGateway
 import com.barkfluff.client.domain.gateway.GrpcMessageGateway
+import com.barkfluff.client.domain.gateway.GrpcPrekeyGateway
 import com.barkfluff.client.domain.gateway.GrpcRealtimeGateway
 import com.barkfluff.client.domain.gateway.GrpcServerDiscoveryGateway
 import com.barkfluff.client.domain.gateway.GrpcStickerGateway
@@ -38,6 +39,7 @@ import com.barkfluff.client.domain.gateway.GrpcUserDirectoryGateway
 import com.barkfluff.client.domain.gateway.GrpcUserProfileGateway
 import com.barkfluff.client.domain.gateway.GrpcUserSettingsGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.PrekeyGateway
 import com.barkfluff.client.domain.gateway.RealtimeGateway
 import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.domain.gateway.StickerGateway
@@ -175,6 +177,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun providePrekeyGateway(legacyTransport: GrpcTransportFacade): PrekeyGateway =
+        GrpcPrekeyGateway(legacyTransport)
+
+    @Provides
+    @Singleton
     fun provideChatCacheRepository(@ApplicationContext context: Context): ChatCacheRepository =
         ChatCacheRepository(context)
 
@@ -197,8 +204,9 @@ object AppModule {
     @Singleton
     fun provideRealtimeSideEffects(
         @ApplicationContext context: Context,
-        legacyTransport: GrpcTransportFacade
-    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, legacyTransport)
+        userProfileGateway: UserProfileGateway,
+        fileMediaGateway: FileMediaGateway,
+    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, userProfileGateway, fileMediaGateway)
 
     @Provides
     @Singleton
