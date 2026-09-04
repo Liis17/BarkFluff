@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Готовит аватар звонящего до показа входящего звонка.
  *
  * При убитом приложении процесс поднимает FCM, а основной флоу инициализации gRPC-клиентов
- * (Splash/Login/Main) не выполняется — поэтому клиенты в GrpcTransportFacade теперь поднимаются
+ * (Splash/Login/Main) не выполняется — поэтому клиенты в GrpcClientRegistry теперь поднимаются
  * лениво при первом чтении свойств (по адресам из GlobalParam). Здесь остаётся только
  * проверка токена, скачивание аватара в кэш Coil и готовый Bitmap в [avatarBitmaps] —
  * оттуда его берут нотификация и IncomingCallActivity.
@@ -56,7 +56,7 @@ object IncomingCallPrefetch {
 
     /**
      * Обновляет токен и проверяет доступность files-клиента.
-     * Клиенты поднимаются лениво самими свойствами GrpcTransportFacade при чтении.
+     * Клиенты поднимаются лениво typed-свойствами GrpcClientRegistry при чтении.
      *
      * @return true если files-клиент доступен (по нему запрашивается URL аватара)
      */

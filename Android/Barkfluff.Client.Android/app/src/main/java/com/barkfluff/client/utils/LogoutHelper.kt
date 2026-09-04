@@ -4,11 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.barkfluff.client.LoginActivity
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.AuthGateway
-import com.barkfluff.client.grpc.GrpcTransportFacade
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.send.OutgoingMessageQueue
@@ -30,24 +28,6 @@ import kotlinx.coroutines.withContext
 object LogoutHelper {
 
     private const val TAG = "LogoutHelper"
-
-    /**
-     * Выполняет полный разлогин и переходит на экран входа.
-     * @param context контекст Activity или Fragment
-     * @param legacyTransport экземпляр GrpcTransportFacade
-     */
-    suspend fun performFullLogout(context: Context, legacyTransport: GrpcTransportFacade) {
-        val app = context.applicationContext as? BarkFluffApplication
-        performFullLogoutInternal(
-            context = context,
-            serverLogout = { legacyTransport.logout() },
-            realtimeShutdown = { app?.realtimeService?.shutdown() },
-            callEventsShutdown = { app?.callEventsService?.shutdown() },
-            cancelOutgoing = { app?.outgoingMessageQueue?.cancelAllForCurrentScope() },
-            clearChatCache = { app?.chatCacheRepository?.clearAll() },
-            forgetPrivateChats = { app?.privateChatRepository?.forgetAll() },
-        )
-    }
 
     /** Gateway-only entry point used by migrated screens and tests. */
     suspend fun performFullLogout(
