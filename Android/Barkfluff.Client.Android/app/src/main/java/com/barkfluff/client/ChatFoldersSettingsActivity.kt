@@ -14,13 +14,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.ChatFoldersAdapter
 import com.barkfluff.client.databinding.ActivityChatFoldersSettingsBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.ChatFolderGateway
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
  * Экран настроек папок чатов.
  * Показывает список папок текущего пользователя, FAB для создания, drag-drop для порядка.
  */
+@AndroidEntryPoint
 class ChatFoldersSettingsActivity : AppCompatActivity() {
 
     companion object {
@@ -28,7 +30,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityChatFoldersSettingsBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var chatFolderGateway: ChatFolderGateway
     private lateinit var adapter: ChatFoldersAdapter
 
     private val editLauncher = registerForActivityResult(
@@ -41,9 +43,6 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityChatFoldersSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
 
         binding.toolbar.setNavigationOnClickListener {
             setResult(Activity.RESULT_OK)
@@ -97,7 +96,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
                 // По окончании drag — отправляем новый порядок на сервер
                 val orders = adapter.currentList.mapIndexed { idx, folder -> folder.folderId to idx }
                 lifecycleScope.launch {
-                    val result = legacyTransport.reorderChatFolders(orders)
+                    val result = chatFolderGateway.reorder(orders)
                     if (result.isFailure) {
                         Toast.makeText(this@ChatFoldersSettingsActivity, R.string.chat_folders_reorder_error, Toast.LENGTH_SHORT).show()
                         loadFolders()
@@ -110,7 +109,7 @@ class ChatFoldersSettingsActivity : AppCompatActivity() {
 
     private fun loadFolders() {
         lifecycleScope.launch {
-            val result = legacyTransport.getChatFolders()
+            val result = chatFolderGateway.folders()
             if (result.isSuccess) {
                 val folders = result.getOrNull() ?: emptyList()
                 adapter.submitList(folders)

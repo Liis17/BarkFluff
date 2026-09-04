@@ -6,14 +6,14 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.databinding.ItemUserBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.model.UserProfile
 import com.barkfluff.client.utils.AvatarLoader
 
 /**
  * Адаптер для отображения списка пользователей в результатах поиска
  */
 class UserAdapter(
-    private val onUserClick: (GrpcTransportFacade.UserData) -> Unit,
+    private val onUserClick: (UserProfile) -> Unit,
     private val getFileUrlCallback: suspend (String) -> String?
 ) : ListAdapter<UserAdapter.UserDisplayItem, UserAdapter.UserViewHolder>(UserDiffCallback()) {
 
@@ -59,7 +59,7 @@ class UserAdapter(
     }
 
     data class UserDisplayItem(
-        val userData: GrpcTransportFacade.UserData,
+        val userData: UserProfile,
         val displayAvatarFileId: String?,
         val displayFullName: String,
         val displayUsername: String
