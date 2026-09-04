@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.TokenCoordinator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +27,7 @@ import kotlin.math.pow
 
 class CallEventsService(
     private val context: Context,
-    private val legacyTransport: GrpcTransportFacade,
+    private val clientRegistry: GrpcClientRegistry,
     private val callRepository: CallRepository,
     private val tokenCoordinator: TokenCoordinator,
 ) {
@@ -76,7 +76,7 @@ class CallEventsService(
             return
         }
 
-        legacyTransport.createCallsClient(callsAddress, context, includeDeviceInfo = true)
+        clientRegistry.createCallsClient(callsAddress, context, includeDeviceInfo = true)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
         streamJob = scope.launch { streamWithReconnect() }
@@ -189,10 +189,10 @@ class CallEventsService(
     }
 
     private fun ensureCallsClient(force: Boolean = false) {
-        if (!force && legacyTransport.callsClient != null) return
+        if (!force && clientRegistry.callsClient != null) return
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) throw IllegalStateException("Calls endpoint is empty")
-        legacyTransport.createCallsClient(callsAddress, context, includeDeviceInfo = true).getOrThrow()
+        clientRegistry.createCallsClient(callsAddress, context, includeDeviceInfo = true).getOrThrow()
     }
 
     companion object {
