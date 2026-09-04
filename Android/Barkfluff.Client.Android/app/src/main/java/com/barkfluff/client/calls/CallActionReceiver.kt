@@ -5,15 +5,24 @@ import android.content.Context
 import android.content.Intent
 import android.telecom.DisconnectCause
 import android.util.Log
-import com.barkfluff.client.BarkFluffApplication
-import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.gateway.CallGateway
 import com.barkfluff.client.notifications.NotificationHelper
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class CallActionReceiver : BroadcastReceiver() {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface Dependencies {
+        fun callGateway(): CallGateway
+    }
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
@@ -25,19 +34,16 @@ class CallActionReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                val app = context.applicationContext as BarkFluffApplication
-                if (app.legacyTransport.callsClient == null) {
-                    val callsAddress = GlobalParam(context).socketCalls
-                    if (callsAddress.isNotBlank()) {
-                        app.legacyTransport.createCallsClient(callsAddress, context, includeDeviceInfo = true)
-                    }
-                }
+                val gateway = EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    Dependencies::class.java,
+                ).callGateway()
                 if (action == CallExtras.ACTION_END_CALL) {
-                    app.callRepository.end(callId)
+                    gateway.end(callId)
                     CallTelecomRegistry.disconnect(callId, DisconnectCause.LOCAL)
                     CallForegroundService.stop(context)
                 } else {
-                    app.callRepository.reject(callId)
+                    gateway.reject(callId)
                     CallTelecomRegistry.disconnect(callId, DisconnectCause.REJECTED)
                 }
                 NotificationHelper.dismissCall(context, callId)
