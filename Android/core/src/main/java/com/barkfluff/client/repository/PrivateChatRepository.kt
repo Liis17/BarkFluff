@@ -109,9 +109,26 @@ class PrivateChatRepository(
      * но локально ключ не сохранён.
      */
     fun unlockExistingChat(chat: MessagesApiOuterClass.Chat, passphrase: String, rememberKey: Boolean = false): Boolean {
-        val key = PrivateChatCrypto.deriveKey(passphrase, chat.kdfSalt.toByteArray())
-        if (!PrivateChatCrypto.validateVerifier(key, chat.passphraseVerifier.toByteArray())) return false
-        rememberKey(chat.id, key, rememberKey)
+        return unlockExistingChat(
+            chatId = chat.id,
+            kdfSalt = chat.kdfSalt.toByteArray(),
+            passphraseVerifier = chat.passphraseVerifier.toByteArray(),
+            passphrase = passphrase,
+            rememberKey = rememberKey,
+        )
+    }
+
+    /** Domain-friendly unlock seam; wire protobufs do not leak into controllers. */
+    fun unlockExistingChat(
+        chatId: String,
+        kdfSalt: ByteArray,
+        passphraseVerifier: ByteArray,
+        passphrase: String,
+        rememberKey: Boolean = false,
+    ): Boolean {
+        val key = PrivateChatCrypto.deriveKey(passphrase, kdfSalt)
+        if (!PrivateChatCrypto.validateVerifier(key, passphraseVerifier)) return false
+        rememberKey(chatId, key, rememberKey)
         return true
     }
 

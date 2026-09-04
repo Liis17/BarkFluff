@@ -8,6 +8,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.databinding.ActivityCreateEncryptedChatBinding
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
@@ -16,11 +20,15 @@ import kotlinx.coroutines.launch
  *
  * MVP: peerId вводится вручную. В дальнейшем заменить на User picker (UserSearchActivity).
  */
+@AndroidEntryPoint
 class CreateEncryptedChatActivity : AppCompatActivity() {
 
     private enum class Type { PRIVATE, SECRET }
 
     private lateinit var binding: ActivityCreateEncryptedChatBinding
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
+    @javax.inject.Inject lateinit var privateChatRepository: PrivateChatRepository
+    @javax.inject.Inject lateinit var secretChatRepository: SecretChatRepository
     private var type: Type = Type.PRIVATE
     private var peerDevices: List<UsersApiOuterClass.PeerDeviceInfo> = emptyList()
 
@@ -74,9 +82,8 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
 
     private fun loadPeerDevices() {
         val peerId = binding.peerIdEditText.text?.toString()?.toLongOrNull() ?: return
-        val app = applicationContext as BarkFluffApplication
         lifecycleScope.launch {
-            val result = app.legacyTransport.listPeerDevices(peerId)
+            val result = userDirectoryGateway.peerDevices(peerId)
             result.onSuccess { devices ->
                 peerDevices = devices.filter { it.hasBundle }
                 val labels = if (peerDevices.isEmpty()) listOf(getString(R.string.encrypted_devices_empty))
@@ -114,11 +121,10 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.encrypted_passphrase_too_short, Toast.LENGTH_SHORT).show()
             return
         }
-        val app = applicationContext as BarkFluffApplication
         binding.progressBar.visibility = View.VISIBLE
         binding.createButton.isEnabled = false
         lifecycleScope.launch {
-            val result = app.privateChatRepository.createPrivateChat(peerId, passphrase)
+            val result = privateChatRepository.createPrivateChat(peerId, passphrase)
             binding.progressBar.visibility = View.GONE
             binding.createButton.isEnabled = true
             result.onSuccess { creation ->
@@ -155,11 +161,10 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             return
         }
         val peerDeviceId = peerDevices[selectedIndex].deviceId
-        val app = applicationContext as BarkFluffApplication
         binding.progressBar.visibility = View.VISIBLE
         binding.createButton.isEnabled = false
         lifecycleScope.launch {
-            val result = app.secretChatRepository.createSecretChat(peerId, peerDeviceId, initialMessage)
+            val result = secretChatRepository.createSecretChat(peerId, peerDeviceId, initialMessage)
             binding.progressBar.visibility = View.GONE
             binding.createButton.isEnabled = true
             result.onSuccess { chat ->

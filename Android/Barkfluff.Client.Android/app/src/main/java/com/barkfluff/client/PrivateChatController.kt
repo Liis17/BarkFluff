@@ -15,6 +15,7 @@ import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityChatBinding
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -36,6 +37,7 @@ class PrivateChatController(
     private val app: BarkFluffApplication,
     private val globalParam: GlobalParam,
     private val chatId: String,
+    private val chatDirectoryGateway: ChatDirectoryGateway,
 ) {
 
     private val repo: PrivateChatRepository = app.privateChatRepository
@@ -65,7 +67,7 @@ class PrivateChatController(
             return
         }
         activity.lifecycleScope.launch {
-            val chat = app.legacyTransport.getChat(chatId).getOrNull()
+            val chat = chatDirectoryGateway.chat(chatId).getOrNull()
             if (chat == null) {
                 Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                 activity.finish()
@@ -128,7 +130,7 @@ class PrivateChatController(
                 val passphrase = edit.text?.toString()?.trim().orEmpty()
                 if (passphrase.isEmpty()) return@setPositiveButton
                 activity.lifecycleScope.launch {
-                    val chat = app.legacyTransport.getChat(chatId).getOrNull()
+                    val chat = chatDirectoryGateway.chat(chatId).getOrNull()
                     if (chat == null) {
                         Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                         return@launch
@@ -136,8 +138,10 @@ class PrivateChatController(
                     repo.acceptPrivateChatInvite(
                         chatId,
                         passphrase,
-                        chat.kdfSalt.toByteArray(),
-                        chat.passphraseVerifier.toByteArray(),
+                        // The repository still owns E2E wire material; only chat lookup crosses
+                        // the UI seam through the typed directory gateway.
+                        chat.kdfSalt,
+                        chat.passphraseVerifier,
                         remember.isChecked
                     ).onSuccess {
                         binding.e2eInviteContainer.visibility = View.GONE
@@ -239,13 +243,19 @@ class PrivateChatController(
                     return@setPositiveButton
                 }
                 activity.lifecycleScope.launch {
-                    val chat = app.legacyTransport.getChat(chatId).getOrNull()
+                    val chat = chatDirectoryGateway.chat(chatId).getOrNull()
                     if (chat == null) {
                         Toast.makeText(activity, R.string.chat_not_found, Toast.LENGTH_LONG).show()
                         activity.finish()
                         return@launch
                     }
-                    val ok = repo.unlockExistingChat(chat, passphrase, remember.isChecked)
+                    val ok = repo.unlockExistingChat(
+                        chatId = chat.id,
+                        kdfSalt = chat.kdfSalt,
+                        passphraseVerifier = chat.passphraseVerifier,
+                        passphrase = passphrase,
+                        rememberKey = remember.isChecked,
+                    )
                     if (ok) {
                         loadCachedHistory()
                         loadHistory()
