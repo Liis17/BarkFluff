@@ -36,10 +36,10 @@ import java.net.URL
  * Менеджер для работы с gRPC
  * Аналог WebApiClientManager из WPF клиента
  */
-class GrpcTransportFacade(context: Context) {
+class GrpcApiTransport(context: Context) {
 
     companion object {
-        private const val TAG = "GrpcTransportFacade"
+        private const val TAG = "GrpcApiTransport"
         const val DEFAULT_NAVIGATOR_URL = "https://navigator.barkfluff.com:443"
 
         // Error codes from x-error-code trailer

@@ -6,7 +6,7 @@ import barkfluff.files.FilesApiOuterClass
 import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.grpc.GrpcApiTransport
 import com.barkfluff.client.grpc.MediaHttpTransport
 import java.io.File
 import java.io.OutputStream
@@ -25,11 +25,11 @@ import kotlinx.coroutines.withContext
 /**
  * Репозиторий для работы с чатами и сообщениями.
  * Инкапсулирует логику взаимодействия с gRPC Messages API.
- * Использует общий GrpcTransportFacade из Application.
+ * Использует общий typed RPC transport из DI.
  */
 class ChatRepository(
     private val context: Context,
-    private val legacyTransport: GrpcTransportFacade,
+    private val legacyTransport: GrpcApiTransport,
     private val mediaTransport: MediaHttpTransport = MediaHttpTransport(context),
 ) {
 
@@ -293,7 +293,7 @@ class ChatRepository(
     /**
      * Получает данные пользователя по ID.
      */
-    suspend fun getUserData(userId: Long): Result<GrpcTransportFacade.UserData> {
+    suspend fun getUserData(userId: Long): Result<GrpcApiTransport.UserData> {
         return legacyTransport.getUserData(userId)
     }
 
@@ -643,10 +643,10 @@ class ChatRepository(
     }
 
     /**
-     * No-op для совместимости. Каналы управляются GrpcTransportFacade.
+     * No-op для совместимости. Каналы управляются GrpcClientRegistry.
      */
     fun close() {
-        // Каналы управляются общим GrpcTransportFacade — не закрываем здесь
+        // Каналы управляются общим GrpcClientRegistry — не закрываем здесь
     }
 
     data class ChatInfo(
