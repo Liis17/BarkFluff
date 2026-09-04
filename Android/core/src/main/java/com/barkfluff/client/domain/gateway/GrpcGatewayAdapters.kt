@@ -57,6 +57,8 @@ class GrpcAuthGateway(
     ): Result<com.barkfluff.client.grpc.TokenRefreshResult> =
         grpc.refreshAccessToken(refreshToken, currentRefreshTokenExpiration)
 
+    override suspend fun logout(): Result<Unit> = grpc.logout()
+
     override fun createIdentity(address: String, context: Context?, includeDeviceInfo: Boolean): Result<Unit> =
         grpc.createIdentityClient(address, context, includeDeviceInfo)
 }

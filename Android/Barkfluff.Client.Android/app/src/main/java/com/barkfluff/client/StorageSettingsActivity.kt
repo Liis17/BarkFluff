@@ -14,18 +14,21 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.ChatCacheStats
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.databinding.ActivityStorageSettingsBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.model.StorageInfo
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+@AndroidEntryPoint
 class StorageSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityStorageSettingsBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     private lateinit var chatCacheRepository: ChatCacheRepository
 
     companion object {
@@ -53,9 +56,7 @@ class StorageSettingsActivity : AppCompatActivity() {
         binding = ActivityStorageSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
-        chatCacheRepository = app.chatCacheRepository
+        chatCacheRepository = (application as BarkFluffApplication).chatCacheRepository
 
         setupToolbar()
         setupClickListeners()
@@ -77,7 +78,7 @@ class StorageSettingsActivity : AppCompatActivity() {
 
     private fun loadStorageInfo() {
         lifecycleScope.launch {
-            val result = legacyTransport.getUserStorageInfo()
+            val result = userProfileGateway.storageInfo()
             if (result.isSuccess) {
                 val info = result.getOrNull()!!
                 binding.textStorageUsage.text = formatBytes(info.totalUsed)
@@ -96,7 +97,7 @@ class StorageSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun populateStorageBar(info: GrpcTransportFacade.StorageInfo) {
+    private fun populateStorageBar(info: StorageInfo) {
         binding.storageBarLayout.removeAllViews()
 
         if (info.limit <= 0) return
@@ -120,7 +121,7 @@ class StorageSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun populateStorageLegend(info: GrpcTransportFacade.StorageInfo) {
+    private fun populateStorageLegend(info: StorageInfo) {
         binding.storageLegendLayout.removeAllViews()
 
         val categoryBytes = storageCategoryBytes(info)
@@ -157,7 +158,7 @@ class StorageSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun storageCategoryBytes(info: GrpcTransportFacade.StorageInfo): List<Pair<StorageCategory, Long>> =
+    private fun storageCategoryBytes(info: StorageInfo): List<Pair<StorageCategory, Long>> =
         categories.map { category ->
             category to category.typeNames.sumOf { typeName -> info.byType[typeName] ?: 0L }
         }
