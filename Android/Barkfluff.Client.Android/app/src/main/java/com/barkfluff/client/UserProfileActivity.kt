@@ -22,8 +22,13 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityUserProfileBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.CallGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.PresenceGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.model.UserProfile
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
@@ -31,6 +36,7 @@ import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -44,12 +50,18 @@ import java.util.Locale
  * Экран профиля пользователя / группового чата.
  * Открывается как отдельная Activity из ChatActivity.
  */
+@AndroidEntryPoint
 class UserProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityUserProfileBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
-    private lateinit var chatRepository: ChatRepository
     private lateinit var globalParam: GlobalParam
+
+    @javax.inject.Inject lateinit var callGateway: CallGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var messageGateway: MessageGateway
+    @javax.inject.Inject lateinit var presenceGateway: PresenceGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
 
     private var chatId: String = ""
     private var otherUserId: Long = 0L
@@ -91,9 +103,6 @@ class UserProfileActivity : AppCompatActivity() {
         binding = ActivityUserProfileBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
-        chatRepository = ChatRepository(this, legacyTransport)
         globalParam = GlobalParam(this)
 
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run { finish(); return }
@@ -165,7 +174,7 @@ class UserProfileActivity : AppCompatActivity() {
 
     private fun showChatBackgroundDialog() {
         lifecycleScope.launch {
-            val fileIds = legacyTransport.getPersonalization().getOrElse {
+            val fileIds = userSettingsGateway.personalization().getOrElse {
                 Toast.makeText(this@UserProfileActivity, R.string.profile_background_load_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
@@ -180,7 +189,7 @@ class UserProfileActivity : AppCompatActivity() {
                 .setPositiveButton(R.string.btn_apply) { _, _ ->
                     lifecycleScope.launch {
                         val fileId = if (selected == 0) "" else fileIds[selected - 1]
-                        val result = legacyTransport.setChatBackground(chatId, fileId)
+                        val result = userSettingsGateway.setChatBackground(chatId, fileId)
                         if (result.isSuccess) {
                             globalParam.setChatBackgroundOverride(chatId, fileId)
                             Toast.makeText(this@UserProfileActivity, R.string.profile_background_updated, Toast.LENGTH_SHORT).show()
@@ -206,7 +215,7 @@ class UserProfileActivity : AppCompatActivity() {
     private fun toggleChatMute() {
         val newMuted = !isChatMuted
         lifecycleScope.launch {
-            val result = legacyTransport.setChatMuted(chatId, newMuted)
+            val result = userSettingsGateway.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
                 isChatMuted = newMuted
                 globalParam.setChatMutedLocal(chatId, newMuted)
@@ -236,14 +245,12 @@ class UserProfileActivity : AppCompatActivity() {
 
     private fun startCall() {
         lifecycleScope.launch {
-            if (!ensureCallsClient()) return@launch
             if (otherUserId <= 0L) {
                 Toast.makeText(this@UserProfileActivity, R.string.chat_call_user_missing, Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
-            val app = application as BarkFluffApplication
-            val result = app.callRepository.initiateDirect(otherUserId, CallsApiOuterClass.CallMediaType.CALL_MEDIA_AUDIO)
+            val result = callGateway.initiateDirect(otherUserId, CallsApiOuterClass.CallMediaType.CALL_MEDIA_AUDIO)
             result.onSuccess { response ->
                 startActivity(Intent(this@UserProfileActivity, CallActivity::class.java).apply {
                     putExtra(CallExtras.EXTRA_CALL_ID, response.callId)
@@ -258,23 +265,6 @@ class UserProfileActivity : AppCompatActivity() {
                 Toast.makeText(this@UserProfileActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun ensureCallsClient(): Boolean {
-        val app = application as BarkFluffApplication
-        if (app.legacyTransport.callsClient != null) return true
-
-        val callsAddress = globalParam.socketCalls
-        if (callsAddress.isBlank()) {
-            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        val result = app.legacyTransport.createCallsClient(callsAddress, this, includeDeviceInfo = true)
-        if (result.isFailure) {
-            Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
-        }
-        return result.isSuccess
     }
 
     // ── Attachments ───────────────────────────────────────────────────────────
@@ -328,7 +318,7 @@ class UserProfileActivity : AppCompatActivity() {
     ): AttachmentsPanel {
         lateinit var adapter: AttachmentPreviewAdapter
         adapter = AttachmentPreviewAdapter(
-            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onAttachmentClick = { attachmentInfo ->
                 val att = attachmentInfo.attachment
                 when (att.type) {
@@ -366,7 +356,7 @@ class UserProfileActivity : AppCompatActivity() {
                             try {
                                 val file = withContext(Dispatchers.IO) {
                                     FileCache.getFile(att.fileId)
-                                        ?: chatRepository.downloadFile(att.fileId)
+                                        ?: fileMediaGateway.download(att.fileId)
                                 }
                                 if (file != null) {
                                     val uri = androidx.core.content.FileProvider.getUriForFile(
@@ -392,7 +382,7 @@ class UserProfileActivity : AppCompatActivity() {
                 }
             },
             downloadToCache = { fileId ->
-                FileCache.getFile(fileId) ?: chatRepository.downloadFile(fileId)
+                FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId)
             },
             scope = lifecycleScope
         )
@@ -478,9 +468,9 @@ class UserProfileActivity : AppCompatActivity() {
         showLoading(Tab.MEDIA)
         lifecycleScope.launch {
             try {
-                val images = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.IMAGE).getOrNull().orEmpty()
-                val gifs = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.GIF).getOrNull().orEmpty()
-                val videos = chatRepository.getChatAttachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.VIDEO).getOrNull().orEmpty()
+                val images = messageGateway.attachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.IMAGE).getOrNull().orEmpty()
+                val gifs = messageGateway.attachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.GIF).getOrNull().orEmpty()
+                val videos = messageGateway.attachments(chatId, barkfluff.shared.Shared.MessageAttachmentType.VIDEO).getOrNull().orEmpty()
                 val merged = (images + gifs + videos).sortedByDescending { it.sentAt.seconds }
                 if (!isCurrentLoad(Tab.MEDIA, version, requestedChatId)) return@launch
                 if (merged.isEmpty()) showEmpty(Tab.MEDIA, getString(R.string.media_no_attachments)) else showList(Tab.MEDIA, merged)
@@ -500,7 +490,7 @@ class UserProfileActivity : AppCompatActivity() {
         showLoading(Tab.FILES)
         lifecycleScope.launch {
             try {
-                val result = chatRepository.getChatAttachments(
+                val result = messageGateway.attachments(
                     chatId,
                     barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT,
                     pageSize = if (query.isBlank()) 100 else 30,
@@ -526,7 +516,7 @@ class UserProfileActivity : AppCompatActivity() {
         showLoading(tab)
         lifecycleScope.launch {
             try {
-                val attachments = chatRepository.getChatAttachments(chatId, type).getOrNull()
+                val attachments = messageGateway.attachments(chatId, type).getOrNull()
                 if (!isCurrentLoad(tab, version, requestedChatId)) return@launch
                 if (attachments.isNullOrEmpty()) showEmpty(tab, getString(R.string.profile_no_voice)) else showList(tab, attachments)
             } catch (e: Exception) {
@@ -586,7 +576,7 @@ class UserProfileActivity : AppCompatActivity() {
                 displayName = chatTitle,
                 userId = chatId.hashCode().toLong()
             ) {
-                chatRepository.getFileDownloadUrl(chatAvatarFileId!!).getOrNull()
+                fileMediaGateway.downloadUrl(chatAvatarFileId!!).getOrNull()
             }
         } else {
             AvatarLoader.showPlaceholder(binding.profileAvatarPlaceholder, chatTitle, chatId.hashCode().toLong())
@@ -599,7 +589,7 @@ class UserProfileActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val userResult = chatRepository.getUserData(otherUserId)
+                val userResult = userProfileGateway.user(otherUserId)
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val displayName = "${user.firstName} ${user.lastName}".trim()
@@ -633,7 +623,7 @@ class UserProfileActivity : AppCompatActivity() {
                             displayName = displayName.ifBlank { user.username },
                             userId = otherUserId
                         ) {
-                            chatRepository.getFileDownloadUrl(avatarFileId).getOrNull()
+                            fileMediaGateway.downloadUrl(avatarFileId).getOrNull()
                         }
                     } else {
                         AvatarLoader.showPlaceholder(
@@ -657,17 +647,9 @@ class UserProfileActivity : AppCompatActivity() {
         // Онлайн-статус
         lifecycleScope.launch {
             try {
-                val onlinerClient = legacyTransport.onlinerClient
-                if (onlinerClient != null) {
-                    val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
-                        .addUserIds(otherUserId)
-                        .build()
-                    val response = onlinerClient.getOnlineStatus(request)
-                    val userStatus = response.usersStatusesList.firstOrNull()
+                val userStatus = presenceGateway.status(listOf(otherUserId)).getOrNull()?.firstOrNull()
                     if (userStatus != null) {
-                        val isOnline = userStatus.status.getNumber() ==
-                                barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
-                        if (isOnline) {
+                        if (userStatus.isOnline) {
                             binding.profileOnlineStatusTextView.text = getString(R.string.profile_online)
                             binding.profileOnlineStatusTextView.setTextColor(
                                 ContextCompat.getColor(this@UserProfileActivity, R.color.profile_presence_online)
@@ -676,7 +658,7 @@ class UserProfileActivity : AppCompatActivity() {
                             binding.onlineIndicator.visibility = View.VISIBLE
                         } else {
                             binding.profileOnlineStatusTextView.text =
-                                OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeen.seconds * 1000)
+                                OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeenEpochMillis)
                             binding.profileOnlineStatusTextView.setTextColor(
                                 MaterialColors.getColor(
                                     binding.root,
@@ -691,7 +673,6 @@ class UserProfileActivity : AppCompatActivity() {
                         binding.statusDot.visibility = View.GONE
                         binding.onlineIndicator.visibility = View.GONE
                     }
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading online status", e)
             }
@@ -700,7 +681,7 @@ class UserProfileActivity : AppCompatActivity() {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun avatarSourceFor(user: GrpcTransportFacade.UserData): String? {
+    private fun avatarSourceFor(user: UserProfile): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }
@@ -723,7 +704,7 @@ class UserProfileActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val urlResult = chatRepository.getFileDownloadUrl(posterFileId)
+                val urlResult = fileMediaGateway.downloadUrl(posterFileId)
                 val url = urlResult.getOrNull()
                 if (!url.isNullOrBlank()) {
                     AvatarLoader.urlCache[posterFileId] = url
@@ -760,6 +741,5 @@ class UserProfileActivity : AppCompatActivity() {
     override fun onDestroy() {
         fileSearchJob?.cancel()
         super.onDestroy()
-        chatRepository.close()
     }
 }

@@ -44,6 +44,8 @@ import com.barkfluff.client.domain.gateway.StickerGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.gateway.PresenceGateway
+import com.barkfluff.client.domain.gateway.GrpcPresenceGateway
 import com.barkfluff.client.notifications.RealtimeSideEffectsImpl
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.PrivateChatRepository
@@ -123,6 +125,11 @@ object AppModule {
     @Singleton
     fun provideUserDirectoryGateway(legacyTransport: GrpcTransportFacade): UserDirectoryGateway =
         GrpcUserDirectoryGateway(legacyTransport)
+
+    @Provides
+    @Singleton
+    fun providePresenceGateway(clientRegistry: GrpcClientRegistry): PresenceGateway =
+        GrpcPresenceGateway(clientRegistry)
 
     @Provides
     @Singleton

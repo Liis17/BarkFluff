@@ -11,19 +11,22 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.databinding.ActivityQrScannerBinding
+import com.barkfluff.client.domain.gateway.FastAuthGateway
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
+@AndroidEntryPoint
 class QrScannerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityQrScannerBinding
-    private lateinit var legacyTransport: com.barkfluff.client.grpc.GrpcTransportFacade
+    @javax.inject.Inject lateinit var fastAuthGateway: FastAuthGateway
     private lateinit var cameraExecutor: ExecutorService
 
     private val isProcessing = AtomicBoolean(false)
@@ -37,7 +40,6 @@ class QrScannerActivity : AppCompatActivity() {
         binding = ActivityQrScannerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        legacyTransport = (application as BarkFluffApplication).legacyTransport
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         binding.buttonClose.setOnClickListener { finish() }
@@ -122,7 +124,7 @@ class QrScannerActivity : AppCompatActivity() {
         binding.textScanHint.text = getString(R.string.qr_device_data_loading)
 
         lifecycleScope.launch {
-            val result = legacyTransport.scanFastAuth(fastAuthId)
+            val result = fastAuthGateway.scan(fastAuthId)
             binding.progressScanning.visibility = View.GONE
 
             if (result.isSuccess) {
