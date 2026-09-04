@@ -52,6 +52,7 @@ import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.CallGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.MessageGateway
 import com.barkfluff.client.domain.gateway.PresenceGateway
 import com.barkfluff.client.domain.gateway.StickerGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
@@ -63,7 +64,6 @@ import com.barkfluff.client.adapter.StickerPanelAdapter
 import com.barkfluff.client.adapter.StickerPanelItem
 import com.barkfluff.client.picker.ImagePickerBottomSheet
 import com.barkfluff.client.picker.ImagePickerResult
-import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
@@ -118,7 +118,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var globalParam: GlobalParam
     private lateinit var realtimeService: RealtimeService
 
-    @Inject lateinit var chatRepository: ChatRepository
+    @Inject lateinit var messageGateway: MessageGateway
     @Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
     @Inject lateinit var callGateway: CallGateway
     @Inject lateinit var fileMediaGateway: FileMediaGateway
@@ -148,7 +148,7 @@ class ChatActivity : AppCompatActivity() {
     private var typingHeartbeatJob: Job? = null
     @Volatile private var lastTypingInputAt = 0L
     private var suppressTypingInput = false
-    private val typingUsers = LinkedHashMap<Long, Job>()
+    private var renderedTypingUserIds: Set<Long> = emptySet()
     private val pendingTypingNameFetches = mutableSetOf<Long>()
     private var lastStatusText: CharSequence? = null
     private var lastIndicatorVisible = false
@@ -355,33 +355,11 @@ class ChatActivity : AppCompatActivity() {
         // Убираем уведомление этого чата из шторки если оно висит
         NotificationHelper.dismissForChat(applicationContext, chatId)
 
-        // Подписка на индикатор набора текста в этом чате (online-статус и typing — UI-слой)
+        // ViewModel владеет подпиской на typing; Activity только рендерит immutable state.
         realtimeService.changeTypingSubscription(listOf(chatId))
-        subscribeToTypingEvents()
         if (!isGroupChat && otherUserId > 0) {
             realtimeService.changeOnlineSubscription(listOf(otherUserId))
             loadOnlineStatus(otherUserId)
-        }
-    }
-
-    /** Индикатор «печатает…»: realtime typing-события → анимация шапки (UI-слой). */
-    private fun subscribeToTypingEvents() {
-        lifecycleScope.launch {
-            realtimeService.typingEvents.collect { event ->
-                if (!event.chatId.equals(chatId, ignoreCase = true)) return@collect
-                if (event.userId == currentUserId) return@collect
-                if (event.action == barkfluff.onliner.OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED) {
-                    typingUsers.remove(event.userId)?.cancel()
-                } else {
-                    typingUsers.remove(event.userId)?.cancel()
-                    typingUsers[event.userId] = lifecycleScope.launch {
-                        delay(6_000)
-                        typingUsers.remove(event.userId)
-                        renderTypingIndicator()
-                    }
-                }
-                renderTypingIndicator()
-            }
         }
     }
 
@@ -407,6 +385,11 @@ class ChatActivity : AppCompatActivity() {
                 isGroupChat = state.isGroupChat
                 isChatMuted = state.isChatMuted
                 otherUserId = state.otherUserId
+
+                if (state.presence.typingUserIds != renderedTypingUserIds) {
+                    renderedTypingUserIds = state.presence.typingUserIds
+                    renderTypingIndicator(renderedTypingUserIds)
+                }
 
                 if (previousTitle != state.chatTitle) {
                     previousTitle = state.chatTitle
@@ -1211,8 +1194,8 @@ class ChatActivity : AppCompatActivity() {
      * Перерисовывает индикатор "печатает..." в onlineStatusTextView поверх онлайн-статуса.
      * Если никто не печатает — восстанавливает предыдущее содержимое (статус онлайна / скрытие для группы).
      */
-    private fun renderTypingIndicator() {
-        if (typingUsers.isEmpty()) {
+    private fun renderTypingIndicator(userIds: Set<Long> = renderedTypingUserIds) {
+        if (userIds.isEmpty()) {
             if (isGroupChat) {
                 binding.onlineStatusTextView.visibility = View.GONE
             } else {
@@ -1228,7 +1211,7 @@ class ChatActivity : AppCompatActivity() {
 
         binding.onlineStatusTextView.visibility = View.VISIBLE
         val names = mutableListOf<String>()
-        for (userId in typingUsers.keys) {
+        for (userId in userIds) {
             val fullName = groupMemberInfoCache[userId]?.first
             if (fullName != null) {
                 names.add(fullName.substringBefore(' '))
@@ -1242,7 +1225,7 @@ class ChatActivity : AppCompatActivity() {
         } else {
             resources.getQuantityString(
                 R.plurals.typing_indicator_named,
-                typingUsers.size,
+                userIds.size,
                 names.take(3).joinToString(", ")
             )
         }
@@ -1266,7 +1249,7 @@ class ChatActivity : AppCompatActivity() {
             } finally {
                 pendingTypingNameFetches.remove(userId)
             }
-            renderTypingIndicator()
+            renderTypingIndicator(renderedTypingUserIds)
         }
     }
 
@@ -2684,7 +2667,7 @@ class ChatActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     var failed = 0
                     for (id in ownIds) {
-                        val result = chatRepository.deleteMessage(id)
+                        val result = messageGateway.deleteMessage(id)
                         if (result.isSuccess) viewModel.removeMessageById(id) else failed++
                     }
                     if (failed > 0) {
@@ -2825,7 +2808,7 @@ class ChatActivity : AppCompatActivity() {
         lastStatusText = text
         lastIndicatorVisible = indicatorVisible
         binding.onlineIndicator.visibility = if (indicatorVisible) View.VISIBLE else View.GONE
-        if (typingUsers.isEmpty()) {
+        if (renderedTypingUserIds.isEmpty()) {
             binding.onlineStatusTextView.text = text
         }
     }

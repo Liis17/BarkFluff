@@ -1979,5 +1979,6 @@ class MessageAdapter(
 // Compatibility aliases keep existing pinned/E2E imports stable while the row model lives outside
 // the adapter package.
 typealias MessageItem = com.barkfluff.client.chat.MessageItem
+typealias MessageRowUi = com.barkfluff.client.chat.MessageRowUi
 typealias MessageType = com.barkfluff.client.chat.MessageType
 typealias ReadStatus = com.barkfluff.client.chat.ReadStatus

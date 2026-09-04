@@ -626,6 +626,20 @@ class ChatCacheRepository(context: Context) {
         database().outgoingDao().operationIds(scope.id).toSet()
     }
 
+    suspend fun hasActiveOutgoingHandoff(
+        scope: CacheScope,
+        chatId: String,
+        generation: Long,
+    ): Boolean = withContext(Dispatchers.IO) {
+        generation > 0L && database().outgoingDao().activeHandoffs(
+            scopeId = scope.id,
+            chatId = chatId,
+            generation = generation,
+            sentState = OutgoingMessageState.SENT.name,
+            cancelledState = OutgoingMessageState.CANCEL_REQUESTED.name,
+        ) > 0
+    }
+
     suspend fun discardStagingOutgoing(scope: CacheScope) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {

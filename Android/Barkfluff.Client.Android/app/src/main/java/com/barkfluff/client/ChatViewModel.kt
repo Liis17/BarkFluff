@@ -22,6 +22,7 @@ import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.RealtimeGateway
 import com.barkfluff.client.domain.model.PinErrorException
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.send.OutgoingMessageSnapshot
@@ -47,6 +48,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.channels.Channel
 
@@ -207,6 +209,7 @@ class ChatViewModel @Inject constructor(
     private val authGateway: AuthGateway,
     private val messageGateway: MessageGateway,
     private val realtimeService: RealtimeService,
+    private val realtimeGateway: RealtimeGateway,
     private val chatCacheRepository: ChatCacheRepository,
     private val chatDraftRepository: ChatDraftRepository,
     private val composerAttachmentStore: ComposerAttachmentStore,
@@ -281,6 +284,7 @@ class ChatViewModel @Inject constructor(
 
     private val globalParam = GlobalParam(appContext)
     private val currentUserId = globalParam.userId
+    private val chatPresence = ChatPresence(currentUserId)
 
     private var initialized = false
     private var chatId: String = ""
@@ -401,12 +405,23 @@ class ChatViewModel @Inject constructor(
             val attachments = composerAttachmentStore.restore(scope, chatId)
             if (attachments.isEmpty()) return@launch
             val state = _uiState.value
+            val generation = attachments.maxOf { it.generation }
+            if (outgoingMessageQueue.hasDurableHandoff(chatId, generation)) {
+                composerAttachmentStore.clearAfterEnqueue(scope, chatId, generation)
+                _uiState.value = state.copy(
+                    composer = composerReducer.clearAfterDurableEnqueue(
+                        state.composer,
+                        generation,
+                    )
+                )
+                return@launch
+            }
             val paths = attachments.sortedBy { it.attachmentIndex }.map { it.path }
             _uiState.value = state.copy(
                 composer = state.composer.copy(
                     attachmentPaths = paths,
                     draftGeneration = state.composer.draftGeneration
-                        ?: attachments.maxOf { it.generation },
+                        ?: generation,
                 )
             )
         }
@@ -1091,7 +1106,7 @@ class ChatViewModel @Inject constructor(
 
     private fun subscribeToRealtimeEvents() {
         viewModelScope.launch {
-            realtimeService.newMessages.collect { event ->
+            realtimeGateway.newMessages.collect { event ->
                 if (event.chatId == chatId) {
                     val msg = event.message
                     regularChatSession.cacheMessage(cacheScope, chatId, msg)
@@ -1101,7 +1116,7 @@ class ChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            realtimeService.messagesRead.collect { event ->
+            realtimeGateway.messagesRead.collect { event ->
                 if (event.chatId == chatId) {
                     updateMessageReadStatus(event.messageId, event.newReadByList)
                     cacheScope?.let { scope ->
@@ -1112,7 +1127,7 @@ class ChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            realtimeService.messageEdited.collect { event ->
+            realtimeGateway.messageEdited.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     applyEditedMessage(event.message)
                     regularChatSession.cacheMessage(cacheScope, chatId, event.message)
@@ -1121,7 +1136,7 @@ class ChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            realtimeService.messageDeleted.collect { event ->
+            realtimeGateway.messageDeleted.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     removeMessageById(event.messageId)
                     cacheScope?.let { scope ->
@@ -1132,7 +1147,7 @@ class ChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            realtimeService.messagePinned.collect { event ->
+            realtimeGateway.messagePinned.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     onMessagePinnedRemote(event.messageId)
                 }
@@ -1140,7 +1155,7 @@ class ChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            realtimeService.messageUnpinned.collect { event ->
+            realtimeGateway.messageUnpinned.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     onMessageUnpinnedRemote(event.messageId)
                 }
@@ -1148,9 +1163,48 @@ class ChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            realtimeService.allMessagesUnpinned.collect { event ->
+            realtimeGateway.allMessagesUnpinned.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     onAllMessagesUnpinnedRemote()
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            realtimeGateway.onlineStatuses.collect { event ->
+                val next = chatPresence.online(
+                    _uiState.value.presence,
+                    event.userId,
+                    event.status == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE,
+                )
+                if (next != _uiState.value.presence) {
+                    _uiState.value = _uiState.value.copy(presence = next)
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            realtimeGateway.typingEvents.collect { event ->
+                val next = chatPresence.typing(
+                    state = _uiState.value.presence,
+                    chatId = chatId,
+                    eventChatId = event.chatId,
+                    userId = event.userId,
+                    isTyping = event.action != barkfluff.onliner.OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED,
+                    nowMillis = System.currentTimeMillis(),
+                )
+                if (next != _uiState.value.presence) {
+                    _uiState.value = _uiState.value.copy(presence = next)
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            while (kotlin.coroutines.coroutineContext.isActive) {
+                delay(1_000)
+                val next = chatPresence.expire(_uiState.value.presence, System.currentTimeMillis())
+                if (next != _uiState.value.presence) {
+                    _uiState.value = _uiState.value.copy(presence = next)
                 }
             }
         }
