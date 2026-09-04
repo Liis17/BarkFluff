@@ -7,4 +7,5 @@ interface MessageRowEventSink {
     fun onMessageActionRequested(bubble: View, item: MessageItem) {}
     fun onReplyQuoteClick(originalMessageId: Long) {}
     fun onSelectionToggle(messageId: Long) {}
+    fun senderInfo(senderId: Long): Pair<String?, String?>? = null
 }

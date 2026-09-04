@@ -41,9 +41,7 @@ import com.barkfluff.client.databinding.ItemMessageReceivedBinding
 import com.barkfluff.client.databinding.ItemMessageSentBinding
 import com.barkfluff.client.databinding.ViewMessageQuoteBinding
 import com.barkfluff.client.utils.AudioCallbacks
-import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.AudioWaveformExtractor
-import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.cache.OutgoingMessageState
@@ -70,21 +68,12 @@ import java.util.Locale
 class MessageAdapter(
     private val currentUserId: Long,
     private val isGroupChat: Boolean,
-    private val getFileUrl: suspend (String) -> String? = { null },
-    private val downloadToCache: suspend (fileId: String, onProgress: (Int) -> Unit) -> java.io.File? = { _, _ -> null },
+    private val attachmentLoader: AttachmentLoader = EmptyAttachmentLoader,
     /** Закругление облачков сообщений в dp (0..30). */
     var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
-    /** Вызывается при клике на пузырь сообщения — открыть меню действий. bubble = messageCard/stickerContainer, для позиционирования оверлея. */
-    private val onMessageActionRequested: ((bubble: View, item: MessageItem) -> Unit)? = null,
-    /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
-    private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
-    /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
-    private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null,
-    /** Вызывается при тапе по пузырю/индикатору в режиме выделения — переключить выбор сообщения. */
-    private val onSelectionToggle: ((messageId: Long) -> Unit)? = null,
-    /** Preferred cohesive event sink; legacy callbacks remain source-compatible during migration. */
+    /** Единственная граница событий строки; adapter не знает о навигации и domain side effects. */
     private val eventSink: MessageRowEventSink? = null,
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
@@ -112,7 +101,6 @@ class MessageAdapter(
             )
             indicator.setOnClickListener {
                 eventSink?.onSelectionToggle(item.messageId)
-                    ?: onSelectionToggle?.invoke(item.messageId)
             }
         } else {
             indicator.setOnClickListener(null)
@@ -398,9 +386,9 @@ class MessageAdapter(
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
                 if (item.selectionEnabled) {
-                    eventSink?.onSelectionToggle(item.messageId) ?: onSelectionToggle?.invoke(item.messageId)
+                    eventSink?.onSelectionToggle(item.messageId)
                 } else {
-                    eventSink?.onMessageActionRequested(v, item) ?: onMessageActionRequested?.invoke(v, item)
+                    eventSink?.onMessageActionRequested(v, item)
                 }
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
@@ -557,7 +545,7 @@ class MessageAdapter(
 
             // Имя и аватар отправителя берём из резолвера (кэш участников чата),
             // с фолбэком на поля самого сообщения.
-            val resolved = senderInfoProvider?.invoke(item.senderId)
+            val resolved = eventSink?.senderInfo(item.senderId)
             val senderName = resolved?.first ?: item.senderName
             val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
 
@@ -572,7 +560,7 @@ class MessageAdapter(
                     userId = item.senderId,
                     size = 48
                 ) {
-                    getFileUrl(senderAvatarFileId)
+                    attachmentLoader.url(senderAvatarFileId)
                 }
             } else {
                 binding.senderAvatarImageView.visibility = View.GONE
@@ -595,9 +583,9 @@ class MessageAdapter(
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
                 if (item.selectionEnabled) {
-                    eventSink?.onSelectionToggle(item.messageId) ?: onSelectionToggle?.invoke(item.messageId)
+                    eventSink?.onSelectionToggle(item.messageId)
                 } else {
-                    eventSink?.onMessageActionRequested(v, item) ?: onMessageActionRequested?.invoke(v, item)
+                    eventSink?.onMessageActionRequested(v, item)
                 }
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
@@ -787,7 +775,7 @@ class MessageAdapter(
         val origId = data.messageId
         quote.replyView.isClickable = true
         quote.replyView.setOnClickListener {
-            eventSink?.onReplyQuoteClick(origId) ?: onReplyQuoteClick?.invoke(origId)
+            eventSink?.onReplyQuoteClick(origId)
         }
     }
 
@@ -850,7 +838,7 @@ class MessageAdapter(
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
         } else {
-            { getFileUrl(fileId) }
+            { attachmentLoader.url(fileId) }
         }
 
         ImageLoadHelper.loadByFileId(
@@ -1218,7 +1206,7 @@ class MessageAdapter(
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
         } else {
-            { getFileUrl(previewFileId) }
+            { attachmentLoader.url(previewFileId) }
         }
 
         ImageLoadHelper.loadByFileId(
@@ -1232,7 +1220,7 @@ class MessageAdapter(
         if (isVideo) {
             cellView.setOnClickListener {
                 val ctx = cellView.context
-                val cachedPath = FileCache.getFile(attachment.fileId)?.absolutePath
+                val cachedPath = attachmentLoader.cached(attachment.fileId)?.absolutePath
                 ctx.startActivity(
                     MediaViewerActivity.createIntent(
                         ctx,
@@ -1393,7 +1381,7 @@ class MessageAdapter(
             binding.downloadButton.tag = fileId
 
             viewOperations.launch(binding.root) {
-                val file = downloadToCache(fileId) { progress ->
+                val file = attachmentLoader.download(fileId) { progress ->
                     binding.root.post {
                         if (binding.root.tag == fileId) {
                             binding.downloadProgressBar.progress = progress
@@ -1415,19 +1403,19 @@ class MessageAdapter(
             }
         }
 
-        val cachedFile = FileCache.getFile(fileId)
+        val cachedFile = attachmentLoader.cached(fileId)
         if (cachedFile != null) {
             val durationMs = getAudioDuration(cachedFile)
             updateUiForCached(durationMs)
             loadVoiceWaveform(fileId, cachedFile, binding)
-            if (AudioPlayerHelper.isActiveFile(fileId)) {
-                updateAudioPlaybackUI(binding, AudioPlayerHelper.isPlaying())
-                val duration = AudioPlayerHelper.getDuration()
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                updateAudioPlaybackUI(binding, audioPlaybackController.isPlaying())
+                val duration = audioPlaybackController.duration()
                 if (duration > 0) {
-                    val progress = AudioPlayerHelper.getCurrentPosition().toFloat() / duration
+                    val progress = audioPlaybackController.currentPosition().toFloat() / duration
                     if (isVoice) binding.voiceWaveform.setProgress(progress) else binding.audioSeekBar.progress = (progress * 1000).toInt()
                 }
-                if (AudioPlayerHelper.isPlaying()) startAudioProgressPolling(fileId, binding)
+                if (audioPlaybackController.isPlaying()) startAudioProgressPolling(fileId, binding)
             }
         } else {
             updateUiForNotCached()
@@ -1441,18 +1429,18 @@ class MessageAdapter(
         }
 
         binding.playPauseButton.setOnClickListener {
-            val file = FileCache.getFile(fileId) ?: return@setOnClickListener
-            if (AudioPlayerHelper.isActiveFile(fileId)) {
-                if (AudioPlayerHelper.isPlaying()) {
-                    AudioPlayerHelper.pause()
+            val file = attachmentLoader.cached(fileId) ?: return@setOnClickListener
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                if (audioPlaybackController.isPlaying()) {
+                    audioPlaybackController.pause()
                     updateAudioPlaybackUI(binding, false)
                 } else {
-                    AudioPlayerHelper.resume()
+                    audioPlaybackController.resume()
                     updateAudioPlaybackUI(binding, true)
                     startAudioProgressPolling(fileId, binding)
                 }
             } else {
-                AudioPlayerHelper.play(fileId, file, object : AudioCallbacks {
+                audioPlaybackController.play(fileId, file, object : AudioCallbacks {
                     override fun onStateChanged(isPlaying: Boolean) {
                         updateAudioPlaybackUI(binding, isPlaying)
                         if (isPlaying) startAudioProgressPolling(fileId, binding)
@@ -1463,7 +1451,7 @@ class MessageAdapter(
                         binding.audioSeekBar.progress = 0
                         binding.voiceWaveform.setProgress(0f)
                         binding.durationText.text = formatAudioTime(
-                            AudioPlayerHelper.getDuration().toLong()
+                            audioPlaybackController.duration().toLong()
                         )
                     }
                     override fun onError() {
@@ -1475,10 +1463,10 @@ class MessageAdapter(
 
         binding.audioSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                if (fromUser && AudioPlayerHelper.isActiveFile(fileId)) {
-                    val duration = AudioPlayerHelper.getDuration()
+                if (fromUser && audioPlaybackController.isActiveFile(fileId)) {
+                    val duration = audioPlaybackController.duration()
                     if (duration > 0) {
-                        AudioPlayerHelper.seekTo((progress.toLong() * duration / 1000L).toInt())
+                        audioPlaybackController.seekTo((progress.toLong() * duration / 1000L).toInt())
                     }
                 }
             }
@@ -1487,10 +1475,10 @@ class MessageAdapter(
         })
 
         binding.voiceWaveform.onSeekRequested = { progress ->
-            if (AudioPlayerHelper.isActiveFile(fileId)) {
-                val duration = AudioPlayerHelper.getDuration()
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                val duration = audioPlaybackController.duration()
                 if (duration > 0) {
-                    AudioPlayerHelper.seekTo((progress * duration).toInt())
+                    audioPlaybackController.seekTo((progress * duration).toInt())
                 }
             }
         }
@@ -1514,14 +1502,14 @@ class MessageAdapter(
         val menuInflater = popup.menuInflater
         menuInflater.inflate(R.menu.menu_audio_attachment, popup.menu)
 
-        val isCached = FileCache.hasFile(fileId)
+        val isCached = attachmentLoader.hasCached(fileId)
         popup.menu.findItem(R.id.action_delete_from_cache).isVisible = isCached
 
         popup.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_save_audio -> {
-                    if (FileCache.hasFile(fileId)) {
-                        val cachedFile = FileCache.getFile(fileId)
+                    if (attachmentLoader.hasCached(fileId)) {
+                        val cachedFile = attachmentLoader.cached(fileId)
                         if (cachedFile != null) {
                             saveFileToDownloads(context, cachedFile, fileName)
                         }
@@ -1531,10 +1519,10 @@ class MessageAdapter(
                     true
                 }
                 R.id.action_delete_from_cache -> {
-                    if (AudioPlayerHelper.isActiveFile(fileId)) {
-                        AudioPlayerHelper.stop()
+                    if (audioPlaybackController.isActiveFile(fileId)) {
+                        audioPlaybackController.stop()
                     }
-                    FileCache.deleteFile(fileId)
+                    attachmentLoader.deleteCached(fileId)
                     audioPlaybackController.remove(fileId)
                     binding.downloadButton.visibility = View.VISIBLE
                     binding.downloadButton.isEnabled = true
@@ -1621,10 +1609,10 @@ class MessageAdapter(
         val runnable = object : Runnable {
             override fun run() {
                 if (binding.root.tag != fileId) return
-                if (!AudioPlayerHelper.isActiveFile(fileId)) return
-                if (!AudioPlayerHelper.isPlaying()) return
-                val pos = AudioPlayerHelper.getCurrentPosition()
-                val dur = AudioPlayerHelper.getDuration()
+                if (!audioPlaybackController.isActiveFile(fileId)) return
+                if (!audioPlaybackController.isPlaying()) return
+                val pos = audioPlaybackController.currentPosition()
+                val dur = audioPlaybackController.duration()
                 if (dur > 0) {
                     val progress = (pos.toFloat() / dur).coerceIn(0f, 1f)
                     if (binding.voiceWaveform.visibility == View.VISIBLE) {
@@ -1667,12 +1655,12 @@ class MessageAdapter(
             ImageLoadHelper.loadByFileId(
                 imageView = binding.videoThumbnail,
                 fileId = thumbnailFileId,
-                getUrlCallback = { getFileUrl(thumbnailFileId) },
+                getUrlCallback = { attachmentLoader.url(thumbnailFileId) },
                 onError = { binding.videoThumbnail.setImageResource(R.drawable.ic_image_placeholder) }
             )
         }
 
-        if (FileCache.hasFile(fileId)) {
+        if (attachmentLoader.hasCached(fileId)) {
             binding.videoDownloadButton.visibility = View.GONE
             binding.videoPlayButton.alpha = 1f
             binding.videoPlayButton.isEnabled = true
@@ -1688,7 +1676,7 @@ class MessageAdapter(
             binding.videoDownloadProgress.visibility = View.VISIBLE
 
             viewOperations.launch(binding.root) {
-                val file = downloadToCache(fileId) { _ -> }
+                val file = attachmentLoader.download(fileId) { _ -> }
                 binding.videoDownloadProgress.visibility = View.GONE
                 if (file != null) {
                     binding.videoPlayButton.alpha = 1f
@@ -1701,7 +1689,7 @@ class MessageAdapter(
 
         // Play button
         binding.videoPlayButton.setOnClickListener {
-            val cachedPath = FileCache.getFile(fileId)?.absolutePath
+            val cachedPath = attachmentLoader.cached(fileId)?.absolutePath
             val intent = MediaViewerActivity.createIntent(
                 binding.root.context, fileId, fileName, cachedPath
             )
@@ -1761,7 +1749,7 @@ class MessageAdapter(
             binding.docDownloadProgress.progress = 0
         }
 
-        if (FileCache.hasFile(fileId)) {
+        if (attachmentLoader.hasCached(fileId)) {
             updateUiForCached()
         } else {
             updateUiForNotCached()
@@ -1772,7 +1760,7 @@ class MessageAdapter(
             updateUiForDownloading()
 
             viewOperations.launch(binding.root) {
-                val file = downloadToCache(fileId) { progress ->
+                val file = attachmentLoader.download(fileId) { progress ->
                     binding.root.post {
                         binding.docDownloadProgress.progress = progress
                     }
@@ -1787,7 +1775,7 @@ class MessageAdapter(
 
         // Open button
         binding.docOpenButton.setOnClickListener {
-            val cachedFile = FileCache.getFile(fileId) ?: return@setOnClickListener
+            val cachedFile = attachmentLoader.cached(fileId) ?: return@setOnClickListener
             openFile(context, cachedFile, fileName, fileId, previewUrl)
         }
 
@@ -1807,7 +1795,7 @@ class MessageAdapter(
         fileName: String,
         binding: ItemAttachmentDocumentBinding
     ) {
-        val isCached = FileCache.hasFile(fileId)
+        val isCached = attachmentLoader.hasCached(fileId)
         if (!isCached) {
             // Меню сводилось к одному пункту "Удалить из кеша" — для нескачанного файла нет смысла показывать
             return
@@ -1819,7 +1807,7 @@ class MessageAdapter(
         popup.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_delete_doc_from_cache -> {
-                    FileCache.deleteFile(fileId)
+                    attachmentLoader.deleteCached(fileId)
                     binding.docDownloadButton.visibility = View.VISIBLE
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE

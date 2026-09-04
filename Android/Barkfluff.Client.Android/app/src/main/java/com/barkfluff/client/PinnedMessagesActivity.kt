@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.MessageAdapter
+import com.barkfluff.client.adapter.FileMediaAttachmentLoader
+import com.barkfluff.client.adapter.MessageRowEventSink
 import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
@@ -81,11 +83,12 @@ class PinnedMessagesActivity : AppCompatActivity() {
         adapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = true,
-            getFileUrl = { fileId ->
-                val r = fileMediaGateway.downloadUrl(fileId)
-                if (r.isSuccess) r.getOrNull() else null
+            attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway),
+            eventSink = object : MessageRowEventSink {
+                override fun onMessageActionRequested(bubble: View, item: MessageItem) {
+                    showUnpinMenu(item)
+                }
             },
-            onMessageActionRequested = { _, item -> showUnpinMenu(item) },
         )
         binding.pinnedRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.pinnedRecyclerView.adapter = adapter
