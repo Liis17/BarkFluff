@@ -7,14 +7,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.databinding.ActivityPrivacySettingsBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class PrivacySettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPrivacySettingsBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
 
     private var isUpdatingSwitch = false
     private var currentSettings: UsersApiOuterClass.PrivacySettings? = null
@@ -27,9 +29,6 @@ class PrivacySettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityPrivacySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val app = application as BarkFluffApplication
-        legacyTransport = app.legacyTransport
 
         binding.toolbar.setNavigationOnClickListener {
             onBackPressedDispatcher.onBackPressed()
@@ -45,7 +44,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
 
     private fun loadPrivacySettings() {
         lifecycleScope.launch {
-            val result = legacyTransport.getPrivacySettings()
+            val result = userSettingsGateway.privacySettings()
             if (result.isSuccess) {
                 currentSettings = result.getOrNull()
                 applySettingsToUi(currentSettings!!)
@@ -143,7 +142,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
         currentSettings = updated
 
         lifecycleScope.launch {
-            val result = legacyTransport.updatePrivacySettings(updated)
+            val result = userSettingsGateway.updatePrivacySettings(updated)
             if (result.isFailure) {
                 Log.e(TAG, "Ошибка сохранения настроек приватности", result.exceptionOrNull())
                 Toast.makeText(

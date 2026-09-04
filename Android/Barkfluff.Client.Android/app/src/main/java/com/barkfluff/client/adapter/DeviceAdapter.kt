@@ -7,11 +7,11 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemDeviceBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.model.SessionData
 
 class DeviceAdapter(
-    private val onItemClick: (GrpcTransportFacade.SessionData) -> Unit
-) : ListAdapter<GrpcTransportFacade.SessionData, DeviceAdapter.DeviceViewHolder>(DeviceDiffCallback()) {
+    private val onItemClick: (SessionData) -> Unit
+) : ListAdapter<SessionData, DeviceAdapter.DeviceViewHolder>(DeviceDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
         val binding = ItemDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -26,7 +26,7 @@ class DeviceAdapter(
         private val binding: ItemDeviceBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(session: GrpcTransportFacade.SessionData) {
+        fun bind(session: SessionData) {
             // Если есть кастомное имя - показываем его, иначе только оригинальное
             if (session.customName.isNotEmpty()) {
                 binding.textDeviceName.text = session.customName
@@ -77,7 +77,7 @@ class DeviceAdapter(
          * Возвращает ID ресурса иконки в зависимости от типа устройства.
          * Доступен извне для использования в DevicesActivity (текущее устройство).
          */
-        fun getDeviceIcon(session: GrpcTransportFacade.SessionData): Int {
+        fun getDeviceIcon(session: SessionData): Int {
             val os = session.os.lowercase()
             val originalName = session.originalName.lowercase()
             val customName = session.customName.lowercase()
@@ -143,12 +143,12 @@ class DeviceAdapter(
         }
     }
 
-    class DeviceDiffCallback : DiffUtil.ItemCallback<GrpcTransportFacade.SessionData>() {
-        override fun areItemsTheSame(oldItem: GrpcTransportFacade.SessionData, newItem: GrpcTransportFacade.SessionData): Boolean {
+    class DeviceDiffCallback : DiffUtil.ItemCallback<SessionData>() {
+        override fun areItemsTheSame(oldItem: SessionData, newItem: SessionData): Boolean {
             return oldItem.id == newItem.id
         }
 
-        override fun areContentsTheSame(oldItem: GrpcTransportFacade.SessionData, newItem: GrpcTransportFacade.SessionData): Boolean {
+        override fun areContentsTheSame(oldItem: SessionData, newItem: SessionData): Boolean {
             return oldItem == newItem
         }
     }

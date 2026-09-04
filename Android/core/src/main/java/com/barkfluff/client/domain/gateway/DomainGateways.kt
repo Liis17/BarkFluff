@@ -57,6 +57,7 @@ interface AuthGateway {
 
     suspend fun ensureValid(forceRefresh: Boolean = false): Boolean
     suspend fun refresh(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<com.barkfluff.client.grpc.TokenRefreshResult>
+    suspend fun logout(): Result<Unit>
     fun createIdentity(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit>
 }
 

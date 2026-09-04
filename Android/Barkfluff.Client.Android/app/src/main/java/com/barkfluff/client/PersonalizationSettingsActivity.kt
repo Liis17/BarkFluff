@@ -19,12 +19,14 @@ import com.barkfluff.client.adapter.ChatBackgroundAdapter
 import com.barkfluff.client.adapter.ChatBackgroundItem
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityPersonalizationSettingsBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import barkfluff.files.FilesApiOuterClass
 import com.yalantis.ucrop.UCrop
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -42,12 +44,14 @@ import java.io.File
  *       - Слайдер затемнения (0..100 %)
  *  3. Блок фонов чата — сетка 3 колонки + кнопка добавить
  */
+@AndroidEntryPoint
 class PersonalizationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPersonalizationSettingsBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
-    private lateinit var chatRepository: ChatRepository
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
     private lateinit var backgroundAdapter: ChatBackgroundAdapter
 
     /** Список всех пузырей превью для пакетного обновления радиуса */
@@ -99,10 +103,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         binding = ActivityPersonalizationSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        legacyTransport = app.legacyTransport
-        chatRepository = ChatRepository(this, legacyTransport)
 
         setupToolbar()
         setupPoster()
@@ -192,7 +193,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun loadCurrentUserForPoster() {
         lifecycleScope.launch {
             try {
-                val result = (application as BarkFluffApplication).legacyTransport.getCurrentUserData()
+                val result = userProfileGateway.currentUser()
                 if (result.isSuccess) {
                     val userData = result.getOrNull() ?: return@launch
                     val globalParam = GlobalParam(this@PersonalizationSettingsActivity)
@@ -221,7 +222,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                             binding.profilePreviewAvatarPlaceholder,
                             fileId, displayName, userData.userId, size = 192
                         ) {
-                            legacyTransport.getFileDownloadUrl(fileId).getOrNull()
+                            fileMediaGateway.downloadUrl(fileId).getOrNull()
                         }
                     } else {
                         AvatarLoader.showPlaceholder(
@@ -260,7 +261,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val urlResult = legacyTransport.getFileDownloadUrl(currentPosterFileId)
+                val urlResult = fileMediaGateway.downloadUrl(currentPosterFileId)
                 if (urlResult.isSuccess) {
                     val url = urlResult.getOrNull() ?: return@launch
                     // Кэшируем URL
@@ -309,14 +310,14 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val uploadResult = legacyTransport.uploadProfilePoster(jpegBytes)
+                val uploadResult = userProfileGateway.uploadProfilePoster(jpegBytes)
                 if (uploadResult.isFailure) {
                     Toast.makeText(this@PersonalizationSettingsActivity, R.string.personalization_poster_upload_failed, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
                 val fileId = uploadResult.getOrNull()!!
-                val setResult = legacyTransport.setProfilePoster(fileId)
+                val setResult = userProfileGateway.setProfilePoster(fileId)
                 if (setResult.isSuccess) {
                     currentPosterFileId = fileId
                     loadPosterPreview()
@@ -360,7 +361,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                     cached, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
                 ) { crossfade(true) }
             } else {
-                val url = chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                val url = fileMediaGateway.downloadUrl(fileId).getOrNull()
                 if (url != null) {
                     binding.previewBackgroundImage.load(
                         url, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
@@ -468,12 +469,10 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun setupBackgroundsGrid() {
         backgroundAdapter = ChatBackgroundAdapter(
             scope = lifecycleScope,
-            getFileUrl = { fileId ->
-                chatRepository.getFileDownloadUrl(fileId).getOrNull()
-            },
+            getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onSelect = { fileId ->
                 lifecycleScope.launch {
-                    val result = legacyTransport.setGlobalChatBackground(fileId)
+                    val result = userSettingsGateway.setGlobalChatBackground(fileId)
                     if (result.isSuccess) {
                         globalParam.chatBackgroundFileId = fileId
                         backgroundAdapter.selectedFileId = fileId
@@ -516,7 +515,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun loadPersonalizationFromServer() {
         lifecycleScope.launch {
             try {
-                val result = legacyTransport.getPersonalization()
+                val result = userSettingsGateway.personalization()
                 if (result.isSuccess) {
                     val ids = result.getOrNull() ?: emptyList()
                     backgroundFileIds.clear()
@@ -578,7 +577,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val uploadResult = chatRepository.uploadFile(
+                val uploadResult = fileMediaGateway.upload(
                     bytes,
                     FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
                 )
@@ -632,9 +631,9 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun syncPersonalizationToServer() {
         lifecycleScope.launch {
             try {
-                val result = legacyTransport.updatePersonalizationBackgrounds(backgroundFileIds.toList())
+                val result = userSettingsGateway.updatePersonalizationBackgrounds(backgroundFileIds.toList())
                 if (result.isSuccess) {
-                    legacyTransport.getUserSettings().onSuccess { settings ->
+                    userSettingsGateway.syncedChatBackgrounds().onSuccess { settings ->
                         globalParam.applyChatBackgroundSettings(
                             settings.globalChatBackgroundFileId,
                             settings.chatBackgroundFileIds
