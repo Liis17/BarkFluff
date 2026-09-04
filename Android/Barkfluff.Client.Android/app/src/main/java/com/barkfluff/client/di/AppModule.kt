@@ -20,6 +20,7 @@ import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.ChatDraftGateway
 import com.barkfluff.client.domain.gateway.ChatFolderGateway
+import com.barkfluff.client.domain.gateway.CallGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.FastAuthGateway
 import com.barkfluff.client.domain.gateway.GrpcAccountSecurityGateway
@@ -256,6 +257,11 @@ object AppModule {
     @Singleton
     fun provideCallRepository(legacyTransport: GrpcTransportFacade): CallRepository =
         CallRepository(legacyTransport)
+
+    @Provides
+    @Singleton
+    fun provideCallGateway(callRepository: CallRepository): CallGateway =
+        com.barkfluff.client.domain.gateway.GrpcCallGateway(callRepository)
 
     @Provides
     @Singleton

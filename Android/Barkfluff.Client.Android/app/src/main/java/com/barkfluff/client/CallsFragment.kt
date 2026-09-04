@@ -17,19 +17,29 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentCallsBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.gateway.CallGateway
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.grpc.GrpcClientRegistry
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class CallsFragment : Fragment() {
 
     private var _binding: FragmentCallsBinding? = null
     private val binding get() = _binding!!
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var legacyTransport: GrpcTransportFacade
+    @javax.inject.Inject lateinit var callGateway: CallGateway
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
     private lateinit var adapter: CallHistoryAdapter
 
     private var missedOnly = false
@@ -46,9 +56,7 @@ class CallsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val app = requireActivity().application as BarkFluffApplication
         globalParam = GlobalParam(requireContext())
-        legacyTransport = app.legacyTransport
 
         adapter = CallHistoryAdapter(
             onRowClick = { openChat(it) },
@@ -81,8 +89,7 @@ class CallsFragment : Fragment() {
                 CallsApiOuterClass.CallHistoryFilter.CALL_HISTORY_ALL
             }
 
-            val result = (requireActivity().application as BarkFluffApplication)
-                .callRepository.listCallHistory(filter, limit = 50)
+            val result = callGateway.listHistory(filter, limit = 50)
 
             result.onSuccess { response ->
                 val rows = resolveRows(response.itemsList)
@@ -103,7 +110,7 @@ class CallsFragment : Fragment() {
     ): List<CallHistoryAdapter.Row> = coroutineScope {
         // Заголовки групповых чатов из списка чатов (один запрос).
         val groupTitles: Map<String, String> = if (items.any { it.isGroup }) {
-            legacyTransport.getChats().getOrNull()
+            chatDirectoryGateway.chats(size = 100).getOrNull()?.chats
                 ?.associate { it.id to it.title.ifBlank { getString(R.string.call_group_title) } }
                 ?: emptyMap()
         } else {
@@ -124,7 +131,8 @@ class CallsFragment : Fragment() {
 
     private suspend fun resolvePeerName(peerUserId: Long): String {
         if (peerUserId <= 0L) return getString(R.string.call_default_user)
-        val user = legacyTransport.getUserData(peerUserId).getOrNull() ?: return getString(R.string.call_default_user)
+        val user = userProfileGateway.user(peerUserId).getOrNull()
+            ?: return getString(R.string.call_default_user)
         return "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
     }
 
@@ -183,7 +191,7 @@ class CallsFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val chatId = legacyTransport.getPersonChatId(row.peerUserId).getOrNull()
+            val chatId = userDirectoryGateway.personChatId(row.peerUserId).getOrNull()
             if (chatId.isNullOrBlank() || _binding == null) {
                 if (_binding != null) {
                     Toast.makeText(requireContext(), R.string.call_open_chat_failed, Toast.LENGTH_SHORT).show()
@@ -203,7 +211,6 @@ class CallsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             if (!ensureCallsClient()) return@launch
 
-            val app = requireActivity().application as BarkFluffApplication
             val mediaType = if (row.isVideo) {
                 CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
             } else {
@@ -211,9 +218,9 @@ class CallsFragment : Fragment() {
             }
 
             val result = if (row.isGroup) {
-                app.callRepository.initiateGroup(row.chatId, mediaType)
+                callGateway.initiateGroup(row.chatId, mediaType)
             } else {
-                app.callRepository.initiateDirect(row.peerUserId, mediaType)
+                callGateway.initiateDirect(row.peerUserId, mediaType)
             }
 
             result.onSuccess { response ->
@@ -236,12 +243,7 @@ class CallsFragment : Fragment() {
     }
 
     private fun ensureCallsClient(): Boolean {
-        if (legacyTransport.callsClient != null) return true
-
-        val callsAddress = globalParam.socketCalls
-        if (callsAddress.isBlank()) return false
-
-        return legacyTransport.createCallsClient(callsAddress, requireContext(), includeDeviceInfo = true).isSuccess
+        return clientRegistry.callsClient != null
     }
 
     private fun showEmpty() {

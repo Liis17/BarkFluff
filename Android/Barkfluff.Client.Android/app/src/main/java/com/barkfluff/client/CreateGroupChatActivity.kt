@@ -13,22 +13,27 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import barkfluff.files.FilesApiOuterClass
 import com.barkfluff.client.adapter.GroupMemberPickerAdapter
 import com.barkfluff.client.databinding.ActivityCreateGroupChatBinding
-import com.barkfluff.client.grpc.GrpcTransportFacade
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.domain.model.UserProfile
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@AndroidEntryPoint
 class CreateGroupChatActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityCreateGroupChatBinding
-    private lateinit var legacyTransport: GrpcTransportFacade
-    private lateinit var chatRepository: ChatRepository
+    @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
     private lateinit var adapter: GroupMemberPickerAdapter
-    private val selectedUsers = linkedMapOf<Long, GrpcTransportFacade.UserData>()
-    private var searchResults: List<GrpcTransportFacade.UserData> = emptyList()
+    private val selectedUsers = linkedMapOf<Long, UserProfile>()
+    private var searchResults: List<UserProfile> = emptyList()
     private var searchJob: Job? = null
     private var avatarUri: Uri? = null
 
@@ -42,8 +47,6 @@ class CreateGroupChatActivity : AppCompatActivity() {
         binding = ActivityCreateGroupChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        legacyTransport = (application as BarkFluffApplication).legacyTransport
-        chatRepository = ChatRepository(this, legacyTransport)
         adapter = GroupMemberPickerAdapter(::toggleUser)
         binding.usersRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.usersRecyclerView.adapter = adapter
@@ -64,14 +67,14 @@ class CreateGroupChatActivity : AppCompatActivity() {
         searchJob = lifecycleScope.launch {
             delay(300)
             binding.loadingIndicator.visibility = View.VISIBLE
-            val users = legacyTransport.searchUsers(query).getOrDefault(emptyList())
+            val users = userDirectoryGateway.search(query).getOrDefault(emptyList())
             searchResults = users.filter { it.userId != com.barkfluff.client.data.GlobalParam(this@CreateGroupChatActivity).userId }
             adapter.submit(searchResults, selectedUsers.keys)
             binding.loadingIndicator.visibility = View.GONE
         }
     }
 
-    private fun toggleUser(user: GrpcTransportFacade.UserData) {
+    private fun toggleUser(user: UserProfile) {
         if (selectedUsers.remove(user.userId) == null) selectedUsers[user.userId] = user
         binding.selectedCount.text = getString(R.string.create_group_members_count, selectedUsers.size)
         adapter.submit(searchResults, selectedUsers.keys)
@@ -96,7 +99,7 @@ class CreateGroupChatActivity : AppCompatActivity() {
                 binding.loadingIndicator.visibility = View.GONE
                 return@launch
             }
-            val result = legacyTransport.createGroupChat(selectedUsers.keys.toList(), title, pictureId)
+            val result = chatDirectoryGateway.createGroup(selectedUsers.keys.toList(), title, pictureId)
             result.onSuccess { chat ->
                 startActivity(Intent(this@CreateGroupChatActivity, ChatActivity::class.java).apply {
                     putExtra("chat_id", chat.id)
@@ -115,14 +118,13 @@ class CreateGroupChatActivity : AppCompatActivity() {
     private suspend fun uploadAvatar(uri: Uri): String? {
         val bytes = withContext(Dispatchers.IO) { contentResolver.openInputStream(uri)?.use { it.readBytes() } }
         if (bytes == null) return null
-        val result = chatRepository.uploadFile(bytes, FilesApiOuterClass.UploadFileType.CHAT_PICTURE)
+        val result = fileMediaGateway.upload(bytes, FilesApiOuterClass.UploadFileType.CHAT_PICTURE)
         if (result.isFailure) Toast.makeText(this, R.string.create_group_avatar_failed, Toast.LENGTH_LONG).show()
         return result.getOrNull()
     }
 
     override fun onDestroy() {
         searchJob?.cancel()
-        chatRepository.close()
         super.onDestroy()
     }
 }

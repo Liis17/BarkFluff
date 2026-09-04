@@ -5,16 +5,16 @@ import android.view.ViewGroup
 import android.widget.CheckedTextView
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
-import com.barkfluff.client.grpc.GrpcTransportFacade
+import com.barkfluff.client.domain.model.UserProfile
 
 class GroupMemberPickerAdapter(
-    private val onToggle: (GrpcTransportFacade.UserData) -> Unit
+    private val onToggle: (UserProfile) -> Unit
 ) : RecyclerView.Adapter<GroupMemberPickerAdapter.ViewHolder>() {
 
-    private var users: List<GrpcTransportFacade.UserData> = emptyList()
+    private var users: List<UserProfile> = emptyList()
     private var selectedIds: Set<Long> = emptySet()
 
-    fun submit(users: List<GrpcTransportFacade.UserData>, selectedIds: Set<Long>) {
+    fun submit(users: List<UserProfile>, selectedIds: Set<Long>) {
         this.users = users
         this.selectedIds = selectedIds
         notifyDataSetChanged()
@@ -29,7 +29,7 @@ class GroupMemberPickerAdapter(
     override fun getItemCount(): Int = users.size
 
     inner class ViewHolder(private val view: CheckedTextView) : RecyclerView.ViewHolder(view) {
-        fun bind(user: GrpcTransportFacade.UserData) {
+        fun bind(user: UserProfile) {
             val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
             view.text = if (user.username.isBlank()) name else view.context.getString(
                 R.string.group_member_with_username,
