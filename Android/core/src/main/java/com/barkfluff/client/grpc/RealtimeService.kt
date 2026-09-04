@@ -3,6 +3,7 @@ package com.barkfluff.client.grpc
 import android.content.Context
 import android.util.Log
 import com.barkfluff.client.data.OpenChatManager
+import com.barkfluff.client.domain.gateway.MessageGateway
 import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.data.GlobalParam
@@ -19,13 +20,14 @@ import kotlin.math.pow
  * Сервис реального времени — подписывается на обновления сообщений, прочтений и онлайн-статусов.
  * Аналог RealtimeUpdateService + OnlineStatusService из WPF клиента.
  *
- * Использует общий GrpcTransportFacade из Application для всех gRPC вызовов.
+ * Использует типизированный GrpcClientRegistry для всех gRPC стримов.
  * Поддерживает resume/pause для корректной работы при сворачивании/разворачивании.
  */
 class RealtimeService(
     private val context: Context,
-    private val legacyTransport: GrpcTransportFacade,
+    private val clientRegistry: GrpcClientRegistry,
     private val tokenCoordinator: TokenCoordinator,
+    private val messageGateway: MessageGateway,
     private val sideEffects: RealtimeSideEffects? = null
 ) {
 
@@ -137,7 +139,7 @@ class RealtimeService(
         Log.i(TAG, "Resuming realtime streams")
 
         // Пересоздаём каналы принудительно — старые могли сломаться (DNS failure после фона)
-        legacyTransport.recreateAllClients(context, globalParam)
+        clientRegistry.recreateAllClients(globalParam, context)
 
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
@@ -168,7 +170,7 @@ class RealtimeService(
 
     /**
      * Приостанавливает все стримы (при сворачивании приложения).
-     * Каналы НЕ закрываются — они управляются GrpcTransportFacade.
+     * Каналы НЕ закрываются — они управляются GrpcClientRegistry.
      */
     fun pause() {
         Log.i(TAG, "Pausing realtime streams")
@@ -200,7 +202,7 @@ class RealtimeService(
         val scope = serviceScope ?: return
         scope.launch {
             try {
-                val client = legacyTransport.onlinerClient ?: return@launch
+                val client = clientRegistry.onlinerClient ?: return@launch
                 val request = OnlinerApiOuterClass.ChangeUsersInSubscriptionRequest.newBuilder()
                     .addAllUserIds(userIds)
                     .build()
@@ -222,7 +224,7 @@ class RealtimeService(
         val scope = serviceScope ?: return
         scope.launch {
             try {
-                val client = legacyTransport.onlinerClient ?: return@launch
+                val client = clientRegistry.onlinerClient ?: return@launch
                 val request = OnlinerApiOuterClass.ChangeChatsInTypingSubscriptionRequest.newBuilder()
                     .addAllChatIds(chatIds)
                     .build()
@@ -232,7 +234,7 @@ class RealtimeService(
                 Log.w(TAG, "Failed to change typing subscription, retrying", e)
                 delay(2000)
                 try {
-                    val client = legacyTransport.onlinerClient ?: return@launch
+                    val client = clientRegistry.onlinerClient ?: return@launch
                     val request = OnlinerApiOuterClass.ChangeChatsInTypingSubscriptionRequest.newBuilder()
                         .addAllChatIds(chatIds)
                         .build()
@@ -252,7 +254,7 @@ class RealtimeService(
         val scope = serviceScope ?: return
         scope.launch {
             try {
-                val client = legacyTransport.onlinerClient ?: return@launch
+                val client = clientRegistry.onlinerClient ?: return@launch
                 val request = OnlinerApiOuterClass.SetTypingStatusRequest.newBuilder()
                     .setChatId(chatId)
                     .setAction(
@@ -274,7 +276,7 @@ class RealtimeService(
         val scope = serviceScope ?: return
         scope.launch {
             try {
-                legacyTransport.markAsRead(listOf(messageId))
+                messageGateway.markAsRead(listOf(messageId))
                 Log.v(TAG, "Marked message $messageId as read")
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to mark message as read: ${e.message}")
@@ -285,7 +287,7 @@ class RealtimeService(
     // --- Stream collectors ---
 
     private suspend fun collectNewMessages() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeNewMessagesRequest.getDefaultInstance()
         hasEstablishedMessagesConnection = true
         _connectionState.value = ConnectionState.CONNECTED
@@ -309,7 +311,7 @@ class RealtimeService(
     }
 
     private suspend fun collectMessagesRead() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesReadRequest.getDefaultInstance()
         client.subscribeMessagesRead(request).collect { event ->
             Log.v(TAG, "Message read: chatId=${event.chatId}, msgId=${event.messageId}")
@@ -324,7 +326,7 @@ class RealtimeService(
     }
 
     private suspend fun collectMessagesEdited() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesEditedRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to MessagesEdited stream")
         client.subscribeMessagesEdited(request).collect { event ->
@@ -335,7 +337,7 @@ class RealtimeService(
     }
 
     private suspend fun collectMessagesDeleted() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesDeletedRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to MessagesDeleted stream")
         client.subscribeMessagesDeleted(request).collect { event ->
@@ -346,7 +348,7 @@ class RealtimeService(
     }
 
     private suspend fun collectMessagesPinned() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesPinnedRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to MessagesPinned stream")
         client.subscribeMessagesPinned(request).collect { event ->
@@ -356,7 +358,7 @@ class RealtimeService(
     }
 
     private suspend fun collectMessagesUnpinned() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesUnpinnedRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to MessagesUnpinned stream")
         client.subscribeMessagesUnpinned(request).collect { event ->
@@ -366,7 +368,7 @@ class RealtimeService(
     }
 
     private suspend fun collectAllMessagesUnpinned() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeAllMessagesUnpinnedRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to AllMessagesUnpinned stream")
         client.subscribeAllMessagesUnpinned(request).collect { event ->
@@ -376,7 +378,7 @@ class RealtimeService(
     }
 
     private suspend fun collectPrivateMessages() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateMessagesRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to PrivateMessages stream")
         client.subscribePrivateMessages(request).collect { event ->
@@ -386,7 +388,7 @@ class RealtimeService(
     }
 
     private suspend fun collectPrivateMessageEdits() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateMessageEditsRequest.getDefaultInstance()
         client.subscribePrivateMessageEdits(request).collect { event ->
             Log.v(TAG, "Private msg edited: chatId=${event.chatId}, msgId=${event.message.id}")
@@ -395,7 +397,7 @@ class RealtimeService(
     }
 
     private suspend fun collectPrivateMessageDeletes() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateMessageDeletesRequest.getDefaultInstance()
         client.subscribePrivateMessageDeletes(request).collect { event ->
             Log.v(TAG, "Private msg deleted: chatId=${event.chatId}, msgId=${event.messageId}")
@@ -404,7 +406,7 @@ class RealtimeService(
     }
 
     private suspend fun collectPrivateMessagesRead() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateMessagesReadRequest.getDefaultInstance()
         client.subscribePrivateMessagesRead(request).collect { event ->
             Log.v(TAG, "Private messages read: chatId=${event.chatId}, userId=${event.userId}")
@@ -413,7 +415,7 @@ class RealtimeService(
     }
 
     private suspend fun collectPrivateChatInvites() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateChatInvitesRequest.getDefaultInstance()
         client.subscribePrivateChatInvites(request).collect { event ->
             Log.d(TAG, "Private chat invite received: chatId=${event.chatId}, inviter=${event.inviterUserId}")
@@ -422,7 +424,7 @@ class RealtimeService(
     }
 
     private suspend fun collectPrivateChatInviteResolutions() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateChatInviteResolutionsRequest.getDefaultInstance()
         client.subscribePrivateChatInviteResolutions(request).collect { event ->
             Log.d(TAG, "Private chat invite resolution: chatId=${event.chatId}, accepted=${event.accepted}")
@@ -431,7 +433,7 @@ class RealtimeService(
     }
 
     private suspend fun collectSecretChatInvites() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatInvitesRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to SecretChatInvites stream (device-scope)")
         client.subscribeSecretChatInvites(request).collect { event ->
@@ -441,7 +443,7 @@ class RealtimeService(
     }
 
     private suspend fun collectSecretChatResolutions() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatResolutionsRequest.getDefaultInstance()
         client.subscribeSecretChatResolutions(request).collect { event ->
             Log.d(TAG, "Secret chat resolution: inviteId=${event.inviteId}, accepted=${event.accepted}")
@@ -450,7 +452,7 @@ class RealtimeService(
     }
 
     private suspend fun collectSecretMessages() {
-        val client = legacyTransport.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretMessagesRequest.getDefaultInstance()
         Log.d(TAG, "Subscribing to SecretMessages stream (device-scope)")
         client.subscribeSecretMessages(request).collect { event ->
@@ -460,7 +462,7 @@ class RealtimeService(
     }
 
     private suspend fun collectOnlineStatus() {
-        val client = legacyTransport.onlinerClient ?: throw IllegalStateException("Onliner client not created")
+        val client = clientRegistry.onlinerClient ?: throw IllegalStateException("Onliner client not created")
         val request = OnlinerApiOuterClass.SubscribeToOnlineStatusRequest.newBuilder()
             .addAllUserIds(subscribedUserIds)
             .build()
@@ -471,7 +473,7 @@ class RealtimeService(
     }
 
     private suspend fun collectTyping() {
-        val client = legacyTransport.onlinerClient ?: throw IllegalStateException("Onliner client not created")
+        val client = clientRegistry.onlinerClient ?: throw IllegalStateException("Onliner client not created")
         val request = OnlinerApiOuterClass.SubscribeToTypingRequest.newBuilder()
             .addAllChatIds(subscribedTypingChatIds)
             .build()
@@ -484,7 +486,7 @@ class RealtimeService(
     private suspend fun onlinePingLoop() {
         while (coroutineContext.isActive) {
             try {
-                val client = legacyTransport.onlinerClient
+                val client = clientRegistry.onlinerClient
                 if (client != null) {
                     val request = OnlinerApiOuterClass.SetOnlineStatusRequest.getDefaultInstance()
                     client.setOnlineStatus(request)
@@ -555,7 +557,7 @@ class RealtimeService(
                 delay(backoff)
 
                 // Переинициализируем клиенты (каналы могли сломаться)
-                legacyTransport.recreateAllClients(context, globalParam)
+                clientRegistry.recreateAllClients(globalParam, context)
             }
         }
     }
