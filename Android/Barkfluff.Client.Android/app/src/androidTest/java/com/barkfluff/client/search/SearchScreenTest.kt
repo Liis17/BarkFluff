@@ -9,7 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.UserProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -144,7 +144,7 @@ class SearchScreenTest {
         firstName: String,
         lastName: String
     ) = SearchUser(
-        userData = GrpcManager.UserData(
+        userData = UserProfile(
             userId = id,
             username = username,
             firstName = firstName,
