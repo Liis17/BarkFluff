@@ -32,16 +32,20 @@ import com.barkfluff.client.domain.gateway.GrpcFileMediaGateway
 import com.barkfluff.client.domain.gateway.GrpcFastAuthGateway
 import com.barkfluff.client.domain.gateway.GrpcMessageGateway
 import com.barkfluff.client.domain.gateway.GrpcPrekeyGateway
+import com.barkfluff.client.domain.gateway.GrpcPrivateChatGateway
 import com.barkfluff.client.domain.gateway.GrpcRealtimeGateway
 import com.barkfluff.client.domain.gateway.GrpcServerDiscoveryGateway
+import com.barkfluff.client.domain.gateway.GrpcSecretChatGateway
 import com.barkfluff.client.domain.gateway.GrpcStickerGateway
 import com.barkfluff.client.domain.gateway.GrpcUserDirectoryGateway
 import com.barkfluff.client.domain.gateway.GrpcUserProfileGateway
 import com.barkfluff.client.domain.gateway.GrpcUserSettingsGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
 import com.barkfluff.client.domain.gateway.PrekeyGateway
+import com.barkfluff.client.domain.gateway.PrivateChatGateway
 import com.barkfluff.client.domain.gateway.RealtimeGateway
 import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
+import com.barkfluff.client.domain.gateway.SecretChatGateway
 import com.barkfluff.client.domain.gateway.StickerGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
@@ -177,6 +181,16 @@ object AppModule {
     @Singleton
     fun providePrekeyGateway(transport: GrpcApiTransport): PrekeyGateway =
         GrpcPrekeyGateway(transport)
+
+    @Provides
+    @Singleton
+    fun providePrivateChatGateway(repository: PrivateChatRepository): PrivateChatGateway =
+        GrpcPrivateChatGateway(repository)
+
+    @Provides
+    @Singleton
+    fun provideSecretChatGateway(repository: SecretChatRepository): SecretChatGateway =
+        GrpcSecretChatGateway(repository)
 
     @Provides
     @Singleton

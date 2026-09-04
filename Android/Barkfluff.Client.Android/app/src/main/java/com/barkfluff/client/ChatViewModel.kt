@@ -39,12 +39,9 @@ import barkfluff.files.FilesApiOuterClass.UploadFileType
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -200,9 +197,6 @@ sealed interface ChatEffect {
     data object FinishActivity : ChatEffect
 }
 
-/** Source compatibility for the pre-migration Activity observer. */
-typealias ChatEvent = ChatEffect
-
 /**
  * Состояние экрана чата, переживающее пересоздание Activity (recreate при смене chatId
  * очищает ViewModelStore, поэтому каждый чат получает свежий VM). Владеет списком сообщений
@@ -235,12 +229,9 @@ class ChatViewModel @Inject constructor(
     }
 
     private val _uiState = MutableStateFlow(ChatUiState())
-    val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
-    /** Public state contract; [uiState] remains as a source-compatible alias during migration. */
-    val state: StateFlow<ChatUiState> = uiState
+    /** The only state surface exposed to the regular-chat Activity. */
+    val state: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableSharedFlow<ChatEffect>(extraBufferCapacity = 16)
-    val events: SharedFlow<ChatEvent> = _events.asSharedFlow()
     private val effectChannel = Channel<ChatEffect>(Channel.BUFFERED)
     val effects: Flow<ChatEffect> = effectChannel.receiveAsFlow()
 
@@ -251,7 +242,6 @@ class ChatViewModel @Inject constructor(
     private val presenceSession by lazy { ChatPresenceSession(realtimeGateway, viewModelScope) }
 
     private fun emitEffect(effect: ChatEffect) {
-        _events.tryEmit(effect)
         effectChannel.trySend(effect)
     }
 
@@ -437,6 +427,8 @@ class ChatViewModel @Inject constructor(
     private fun restoreComposerAttachments() {
         val scope = cacheScope ?: return
         viewModelScope.launch {
+            runCatching { composerAttachmentStore.cleanupOrphans(scope) }
+                .onFailure { Log.w(TAG, "Composer orphan cleanup failed", it) }
             val restored = composerAttachmentStore.restore(scope, chatId)
             if (restored.isEmpty()) return@launch
             composerGenerationCounter = maxOf(
@@ -1642,7 +1634,7 @@ class ChatViewModel @Inject constructor(
 
     /**
      * Скролл к сообщению (закрепы, search): если не загружено — подгружает окно вокруг.
-     * @return true если сообщение доступно в [uiState] после вызова.
+     * @return true если сообщение доступно в [state] после вызова.
      */
     suspend fun ensureMessageLoaded(messageId: Long): Boolean {
         if (_uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }) {

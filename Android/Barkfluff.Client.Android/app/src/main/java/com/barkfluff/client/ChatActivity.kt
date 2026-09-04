@@ -139,7 +139,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var messageAdapter: MessageAdapter
     private val messageRowProjector = MessageRowProjector()
 
-    // Кэш рендера из ChatViewModel.uiState: шапка/звонки/меню читают эти значения синхронно.
+    // Кэш рендера из ChatViewModel.state: шапка/звонки/меню читают эти значения синхронно.
     private var chatId: String = ""
     private var chatTitle: String = ""
     private var isChatMuted: Boolean = false
@@ -1401,7 +1401,7 @@ class ChatActivity : AppCompatActivity() {
      * Если расстояние до конца > 500px: рывок на 120dp выше финала → плавное торможение по кривой.
      */
     private fun scrollToLatestMessages() {
-        if (viewModel.uiState.value.isLoading) return
+        if (viewModel.state.value.isLoading) return
         lifecycleScope.launch {
             val lm = binding.messagesRecyclerView.layoutManager as? LinearLayoutManager
 
@@ -1619,7 +1619,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun shouldShowVoiceButton(): Boolean {
         val text = binding.messageEditText.text?.toString().orEmpty()
-        val state = viewModel.uiState.value
+        val state = viewModel.state.value
         return text.isBlank() &&
             !hasPendingAttachments() &&
             state.pendingReply == null &&
@@ -2232,7 +2232,7 @@ class ChatActivity : AppCompatActivity() {
             chatTitle = chatTitle,
             text = result.captionText,
             attachments = attachments,
-            replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L,
+            replyId = viewModel.state.value.pendingReply?.messageId ?: 0L,
             sendSeparately = result.sendSeparately,
             sendAsFile = result.sendAsFile
         )))
@@ -2352,7 +2352,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
         val messageText = text.trim()
-        val state = viewModel.uiState.value
+        val state = viewModel.state.value
 
         // Если активен режим редактирования — редактируем существующее сообщение.
         // fileIds игнорируем (вложения не меняются), VM использует сохранённые fileIds.
@@ -2875,7 +2875,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun toggleChatMute() {
-        val newMuted = !viewModel.uiState.value.isChatMuted
+        val newMuted = !viewModel.state.value.isChatMuted
         lifecycleScope.launch {
             val result = userSettingsGateway.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
@@ -2948,7 +2948,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupPinnedBar() {
         binding.pinnedMessageBar.setOnClickListener {
-            val first = viewModel.uiState.value.firstPinnedMessageId
+            val first = viewModel.state.value.firstPinnedMessageId
             if (first > 0L) scrollToMessageId(first)
         }
         binding.pinnedListButton.setOnClickListener {
