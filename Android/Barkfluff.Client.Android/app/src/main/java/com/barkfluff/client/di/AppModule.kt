@@ -270,8 +270,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCallRepository(legacyTransport: GrpcTransportFacade): CallRepository =
-        CallRepository(legacyTransport)
+    fun provideCallRepository(clientRegistry: GrpcClientRegistry): CallRepository =
+        CallRepository(clientRegistry)
 
     @Provides
     @Singleton
@@ -282,8 +282,8 @@ object AppModule {
     @Singleton
     fun provideCallEventsService(
         @ApplicationContext context: Context,
-        legacyTransport: GrpcTransportFacade,
+        clientRegistry: GrpcClientRegistry,
         callRepository: CallRepository,
         tokenCoordinator: TokenCoordinator,
-    ): CallEventsService = CallEventsService(context, legacyTransport, callRepository, tokenCoordinator)
+    ): CallEventsService = CallEventsService(context, clientRegistry, callRepository, tokenCoordinator)
 }
