@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 
@@ -58,7 +59,8 @@ public class S3BrowserService
                     ServiceUrl = g.FirstOrDefault(c => c.Key == "ServiceUrl")?.Value ?? "",
                     BucketName = g.FirstOrDefault(c => c.Key == "BucketName")?.Value ?? "",
                     AccessKey = g.FirstOrDefault(c => c.Key == "AccessKey")?.Value ?? "",
-                    SecretKey = g.FirstOrDefault(c => c.Key == "SecretKey")?.Value ?? ""
+                    SecretKey = g.FirstOrDefault(c => c.Key == "SecretKey")?.Value ?? "",
+                    Region = g.FirstOrDefault(c => c.Key == "Region")?.Value ?? ""
                 }
             );
 
@@ -78,8 +80,13 @@ public class S3BrowserService
             var s3Config = new AmazonS3Config
             {
                 ServiceURL = config.ServiceUrl,
-                ForcePathStyle = true
+                ForcePathStyle = true,
+                RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+                ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
             };
+
+            if (!string.IsNullOrWhiteSpace(config.Region))
+                s3Config.AuthenticationRegion = config.Region;
 
             return new AmazonS3Client(config.AccessKey, config.SecretKey, s3Config);
         });
@@ -241,6 +248,7 @@ public class S3BrowserService
         public string BucketName { get; set; } = "";
         public string AccessKey { get; set; } = "";
         public string SecretKey { get; set; } = "";
+        public string Region { get; set; } = "";
     }
 }
 
