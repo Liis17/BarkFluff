@@ -1,9 +1,11 @@
 package com.barkfluff.client.send
 
 import android.content.Context
+import android.content.pm.ServiceInfo
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.di.OutgoingQueueEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 
@@ -23,20 +25,7 @@ class OutgoingMessageWorker(
         ).outgoingMessageQueue()
         return try {
             queue.processReady { snapshot ->
-                MediaSendNotification.ensureChannel(applicationContext)
-                setForeground(
-                    ForegroundInfo(
-                        MediaSendNotification.FOREGROUND_NOTIFICATION_ID,
-                        MediaSendNotification.build(
-                            context = applicationContext,
-                            title = snapshot.chatId,
-                            text = "${snapshot.state.name.lowercase()} · ${snapshot.progress}%",
-                            progress = snapshot.progress,
-                            indeterminate = snapshot.state == com.barkfluff.client.cache.OutgoingMessageState.PREPARING,
-                            cancelOperationId = snapshot.operationId
-                        )
-                    )
-                )
+                setForeground(buildOutgoingMessageForegroundInfo(applicationContext, snapshot))
             }
             Result.success()
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -47,4 +36,23 @@ class OutgoingMessageWorker(
             Result.retry()
         }
     }
+}
+
+internal fun buildOutgoingMessageForegroundInfo(
+    context: Context,
+    snapshot: OutgoingMessageSnapshot,
+): ForegroundInfo {
+    MediaSendNotification.ensureChannel(context)
+    return ForegroundInfo(
+        MediaSendNotification.FOREGROUND_NOTIFICATION_ID,
+        MediaSendNotification.build(
+            context = context,
+            title = snapshot.chatId,
+            text = "${snapshot.state.name.lowercase()} · ${snapshot.progress}%",
+            progress = snapshot.progress,
+            indeterminate = snapshot.state == OutgoingMessageState.PREPARING,
+            cancelOperationId = snapshot.operationId,
+        ),
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+    )
 }
