@@ -30,7 +30,7 @@
     <string name="legal_tab_terms">Condiciones</string>
     <string name="legal_tab_privacy">Privacidad</string>
     <string name="legal_accept_checkbox">He leído y acepto</string>
-    <string name="legal_accept_button">Aceptar</string>
+    <string name="legal_continue_button">Continuar</string>
     <string name="legal_load_error">No se han podido cargar los documentos</string>
     <string name="btn_close">Cerrar</string>
 
@@ -51,8 +51,9 @@
     <string name="btn_confirm">Confirmar</string>
 
     <!-- Select Server -->
-    <string name="server_title">"Elige\nun nodo"</string>
+    <string name="server_title">Elige un nodo</string>
     <string name="server_subtitle">¿A qué manada nos conectamos hoy?</string>
+    <string name="server_public_nodes_label">Nodos públicos</string>
     <string name="server_custom_row_title">Nodo propio</string>
     <string name="server_custom_row_subtitle">Introducir la dirección manualmente</string>
     <string name="server_custom">Conectar a otro servidor</string>

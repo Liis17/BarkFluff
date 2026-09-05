@@ -623,8 +623,19 @@ object MarkdownRenderer {
     private fun isSafeHtmlImageUrl(url: String): Boolean =
         Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(url.trim())
 
-    /** Линкует «голые» URL, не затирая уже проставленные markdown-ссылки. */
+    /** Линкует email целиком и «голые» URL, не затирая уже проставленные markdown-ссылки. */
     private fun linkifyBareUrls(sb: SpannableStringBuilder) {
+        val existing = sb.getSpans(0, sb.length, URLSpan::class.java)
+            .map { sb.getSpanStart(it) to sb.getSpanEnd(it) }
+
+        val emailMatcher = Patterns.EMAIL_ADDRESS.matcher(sb)
+        while (emailMatcher.find()) {
+            val s = emailMatcher.start()
+            val e = emailMatcher.end()
+            if (existing.any { s < it.second && e > it.first }) continue
+            sb.setSpan(URLSpan("mailto:${sb.substring(s, e)}"), s, e, FLAG)
+        }
+
         val taken = sb.getSpans(0, sb.length, URLSpan::class.java)
             .map { sb.getSpanStart(it) to sb.getSpanEnd(it) }
         val m = Patterns.WEB_URL.matcher(sb)

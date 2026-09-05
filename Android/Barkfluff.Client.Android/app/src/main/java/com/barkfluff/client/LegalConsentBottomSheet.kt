@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import androidx.core.os.bundleOf
 import com.barkfluff.client.databinding.SheetLegalConsentBinding
 import com.barkfluff.client.utils.LegalDocsRepository
@@ -18,8 +19,9 @@ import com.google.android.material.tabs.TabLayout
  * Соглашение и политика конфиденциальности перед началом использования.
  *
  * Два режима:
- * - согласие (по умолчанию) — чекбокс + «Принять»/«Отмена», результат уходит через
- *   [RESULT_KEY]; принятая редакция сохраняется вызывающей стороной;
+ * - согласие (по умолчанию) — последовательное чтение соглашения и конфиденциальности,
+ *   затем чекбокс + «Продолжить»/«Отмена», результат уходит через [RESULT_KEY];
+ *   принятая редакция сохраняется вызывающей стороной;
  * - read-only ([ARG_READ_ONLY]) — только чтение и «Закрыть».
  */
 class LegalConsentBottomSheet : BottomSheetDialogFragment() {
@@ -29,6 +31,8 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
 
     private val readOnly: Boolean get() = arguments?.getBoolean(ARG_READ_ONLY) == true
     private val initialTab: Int get() = arguments?.getInt(ARG_INITIAL_TAB) ?: TAB_TERMS
+    private var consentStep = TAB_TERMS
+    private var documentReachedEnd = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = SheetLegalConsentBinding.inflate(inflater, container, false)
@@ -41,6 +45,7 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
 
         binding.consentPanel.visibility = if (readOnly) View.GONE else View.VISIBLE
         binding.closeButton.visibility = if (readOnly) View.VISIBLE else View.GONE
+        binding.legalTabs.visibility = if (readOnly) View.VISIBLE else View.GONE
 
         binding.legalTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) = showDoc(tab.position)
@@ -48,17 +53,27 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
             override fun onTabReselected(tab: TabLayout.Tab) = Unit
         })
 
-        binding.acceptCheckBox.setOnCheckedChangeListener { _, checked ->
-            binding.acceptButton.isEnabled = checked
+        binding.legalScroll.setOnScrollChangeListener { _, _, _, _, _ ->
+            updateConsentActions()
         }
 
-        binding.acceptButton.setOnClickListener {
-            parentFragmentManager.setFragmentResult(RESULT_KEY, bundleOf(RESULT_ACCEPTED to true))
-            dismiss()
+        binding.acceptCheckBox.setOnCheckedChangeListener { _, _ ->
+            updateConsentActions()
+        }
+
+        binding.continueButton.setOnClickListener {
+            if (consentStep == TAB_TERMS) {
+                consentStep = TAB_PRIVACY
+                showDoc(TAB_PRIVACY)
+            } else if (binding.acceptCheckBox.isChecked) {
+                parentFragmentManager.setFragmentResult(RESULT_KEY, bundleOf(RESULT_ACCEPTED to true))
+                dismiss()
+            }
         }
         binding.declineButton.setOnClickListener { dismiss() }
         binding.closeButton.setOnClickListener { dismiss() }
 
+        consentStep = if (readOnly) initialTab else TAB_TERMS
         binding.legalTabs.getTabAt(initialTab)?.select()
         showDoc(initialTab)
     }
@@ -87,8 +102,45 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
         val text = runCatching { LegalDocsRepository.load(requireContext(), doc) }
             .getOrElse { getString(R.string.legal_load_error) }
 
+        documentReachedEnd = false
         MarkdownRenderer.applyTo(binding.legalText, text)
         binding.legalScroll.scrollTo(0, 0)
+
+        if (!readOnly) {
+            binding.acceptCheckBox.isChecked = false
+            binding.acceptCheckBox.visibility = View.GONE
+            binding.continueButton.visibility = View.GONE
+            binding.continueButton.isEnabled = false
+            updateDeclineButtonLayout(showContinue = false)
+            binding.legalScroll.post { updateConsentActions() }
+        }
+    }
+
+    private fun updateConsentActions() {
+        if (readOnly) return
+
+        if (binding.legalScroll.height == 0 || binding.legalText.height == 0) return
+
+        if (!documentReachedEnd && !binding.legalScroll.canScrollVertically(1)) {
+            documentReachedEnd = true
+        }
+
+        val reachedEnd = documentReachedEnd
+        val isPrivacyStep = consentStep == TAB_PRIVACY
+
+        binding.acceptCheckBox.visibility =
+            if (isPrivacyStep && reachedEnd) View.VISIBLE else View.GONE
+        binding.continueButton.visibility = if (reachedEnd) View.VISIBLE else View.GONE
+        binding.continueButton.isEnabled = reachedEnd &&
+            (!isPrivacyStep || binding.acceptCheckBox.isChecked)
+        updateDeclineButtonLayout(showContinue = reachedEnd)
+    }
+
+    private fun updateDeclineButtonLayout(showContinue: Boolean) {
+        val params = binding.declineButton.layoutParams as? LinearLayout.LayoutParams ?: return
+        params.width = if (showContinue) 0 else ViewGroup.LayoutParams.MATCH_PARENT
+        params.weight = if (showContinue) 1f else 0f
+        binding.declineButton.layoutParams = params
     }
 
     override fun onDestroyView() {

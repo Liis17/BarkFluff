@@ -103,6 +103,11 @@ class WelcomeActivity : AppCompatActivity() {
             if (legalConsentRequired()) requestLegalConsent() else navigateToSelectServer()
         }
 
+        binding.termsLink.setOnClickListener {
+            LegalConsentBottomSheet.forReading(LegalConsentBottomSheet.TAB_TERMS)
+                .show(supportFragmentManager, LegalConsentBottomSheet.TAG)
+        }
+
         binding.privacyLink.setOnClickListener {
             LegalConsentBottomSheet.forReading(LegalConsentBottomSheet.TAB_PRIVACY)
                 .show(supportFragmentManager, LegalConsentBottomSheet.TAG)

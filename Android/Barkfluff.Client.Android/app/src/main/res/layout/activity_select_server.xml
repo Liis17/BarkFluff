@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
+    android:background="?attr/colorSurface"
     android:fitsSystemWindows="true">
 
     <androidx.core.widget.NestedScrollView
@@ -20,13 +20,13 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="24dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp">
+            android:paddingTop="24dp"
+            android:paddingBottom="24dp">
 
-            <!-- H1 по макету 2c -->
+            <!-- H1 по макету 2d -->
             <TextView
                 android:id="@+id/titleText"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/server_title"
                 android:textAppearance="@style/TextAppearance.Barkfluff.Onboarding.Headline" />
@@ -36,12 +36,20 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:layout_marginBottom="24dp"
                 android:text="@string/server_subtitle"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <!-- Список нод -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/server_public_nodes_label"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorPrimary" />
+
+            <!-- Публичные ноды -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/serverListRecyclerView"
                 android:layout_width="match_parent"
@@ -60,23 +68,34 @@
                 android:visibility="gone"
                 app:indicatorColor="?attr/colorPrimary" />
 
-            <!-- «Своя нода» — dashed-строка, разворачивает поле ручного ввода -->
-            <LinearLayout
+            <!-- «Своя нода» — раскрывает поле ручного ввода -->
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/customServerRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_dashed_outline_row"
+                android:layout_marginTop="20dp"
                 android:clickable="true"
                 android:focusable="true"
-                android:gravity="center_vertical"
-                android:minHeight="64dp"
-                android:orientation="horizontal"
-                android:paddingHorizontal="16dp">
+                android:minHeight="72dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                app:cardCornerRadius="@dimen/shape_corner_extra_large"
+                app:cardElevation="0dp"
+                app:rippleColor="?attr/colorPrimaryContainer"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="72dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="12dp">
 
                 <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_link"
                     app:tint="?attr/colorPrimary" />
@@ -84,7 +103,7 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="16dp"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
@@ -92,27 +111,29 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/server_custom_row_title"
-                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textColor="?attr/colorOnSurface" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/server_custom_row_subtitle"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
                 </LinearLayout>
 
                 <ImageView
                     android:id="@+id/customServerChevron"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_arrow_down"
                     app:tint="?attr/colorPrimary" />
 
-            </LinearLayout>
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Раскрываемая часть: адрес + подключение -->
             <LinearLayout
@@ -157,7 +178,7 @@
                     android:textAppearance="?attr/textAppearanceTitleSmall"
                     android:textColor="?attr/colorOnPrimary"
                     app:backgroundTint="?attr/colorPrimary"
-                    app:cornerRadius="@dimen/shape_corner_full"
+                    app:cornerRadius="@dimen/shape_corner_large_increased"
                     app:icon="@drawable/ic_arrow_forward"
                     app:iconGravity="textEnd"
                     app:iconPadding="10dp"
@@ -184,29 +205,46 @@
         android:id="@+id/infoPanel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceContainerLow"
         android:orientation="vertical"
         android:paddingHorizontal="24dp"
-        android:paddingTop="12dp"
+        android:paddingTop="16dp"
         android:paddingBottom="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <!-- Предупреждение о доверии к владельцу ноды -->
-        <TextView
-            android:id="@+id/nodeTrustWarning"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/node_trust_warning"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant" />
+            android:gravity="top"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginTop="1dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_info"
+                app:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:id="@+id/nodeTrustWarning"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/node_trust_warning"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+        </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="10dp"
             android:text="@string/server_help_hint"
             android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="?attr/colorOnSurfaceVariant" />

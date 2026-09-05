@@ -30,7 +30,7 @@
     <string name="legal_tab_terms">Bedingungen</string>
     <string name="legal_tab_privacy">Datenschutz</string>
     <string name="legal_accept_checkbox">Ich habe gelesen und akzeptiere</string>
-    <string name="legal_accept_button">Akzeptieren</string>
+    <string name="legal_continue_button">Weiter</string>
     <string name="legal_load_error">Dokumente konnten nicht geladen werden</string>
     <string name="btn_close">Schließen</string>
 
@@ -51,8 +51,9 @@
     <string name="btn_confirm">Bestätigen</string>
 
     <!-- Select Server -->
-    <string name="server_title">"Wähle\neine Node"</string>
+    <string name="server_title">Wähle eine Node</string>
     <string name="server_subtitle">Zu welchem Rudel verbinden wir uns heute?</string>
+    <string name="server_public_nodes_label">Öffentliche Nodes</string>
     <string name="server_custom_row_title">Eigene Node</string>
     <string name="server_custom_row_subtitle">Adresse manuell eingeben</string>
     <string name="server_custom">Mit anderem Server verbinden</string>
