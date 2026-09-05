@@ -431,6 +431,12 @@
             android:name=".calls.CallForegroundService"
             android:exported="false"
             android:foregroundServiceType="microphone|camera|mediaProjection|phoneCall" />
+
+        <!-- WorkManager outbox sends run as data-sync foreground work on Android 14+. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
         <!-- FileProvider for sharing camera images -->
         <provider
             android:name="androidx.core.content.FileProvider"

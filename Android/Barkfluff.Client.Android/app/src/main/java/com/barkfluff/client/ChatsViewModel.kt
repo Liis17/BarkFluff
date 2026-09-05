@@ -226,6 +226,7 @@ class ChatsViewModel @Inject constructor(
                     folders = newFolders,
                     totalChatsCount = page.totalCount,
                     selectedFolderId = selectedFolder,
+                    contentAvailable = true,
                     syncStatus = null,
                 )
                 Log.d(TAG, "Загружено ${merged.size} из ${page.totalCount} чатов")
