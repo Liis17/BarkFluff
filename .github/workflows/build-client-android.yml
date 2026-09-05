@@ -92,25 +92,33 @@ jobs:
       - name: Автоподнятие версии
         id: version
         run: |
-          # Версию поднимает только nightly, dev и master переиздают её как есть,
-          # поэтому источник правды для всех трёх веток — канал nightly.
-          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffkotlin/nightly/version" || echo "")
+          # Ночная сборка увеличивает patch. Берём максимум опубликованных каналов,
+          # чтобы повреждённое/устаревшее значение nightly не откатило нумерацию.
+          version_for_channel() {
+            local channel="$1"
+            local response
+            response=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem \
+              "https://storage.barkfluff.com/get/barkfluffkotlin/${channel}/version" || true)
+            printf '%s\n' "$response" | grep -oP '"version"\s*:\s*"\K\d+\.\d+\.\d+' | head -1 || true
+          }
 
-          if [ -z "$RESPONSE" ]; then
-            # Канал nightly пуст до первой nightly-сборки — подхватываем версию из beta,
-            # чтобы не откатить нумерацию к значению из build.gradle.kts.
-            echo "Канал nightly пуст, пробуем beta"
-            RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
+          VERSIONS=()
+          for channel in nightly dev release beta; do
+            CHANNEL_VERSION=$(version_for_channel "$channel")
+            if [ -n "$CHANNEL_VERSION" ]; then
+              echo "$channel version: $CHANNEL_VERSION"
+              VERSIONS+=("$CHANNEL_VERSION")
+            else
+              echo "$channel version: <not found>"
+            fi
+          done
+
+          if [ "${#VERSIONS[@]}" -eq 0 ]; then
+            echo "Не удалось получить ни одной опубликованной Android-версии из ClientStorage" >&2
+            exit 1
           fi
 
-          if [ -n "$RESPONSE" ]; then
-            SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
-          else
-            SERVER_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' Barkfluff.Client.Android/app/build.gradle.kts || echo "0.0.0")
-          fi
-
-          # Стрипаем любой нечисловой суффикс (в beta-канале версии вида "0.0.7 beta")
-          SERVER_VERSION=$(echo "$SERVER_VERSION" | grep -oP '^\d+\.\d+\.\d+' || echo "0.0.0")
+          SERVER_VERSION=$(printf '%s\n' "${VERSIONS[@]}" | sort -V | tail -1)
 
           echo "Server version: $SERVER_VERSION"
 
