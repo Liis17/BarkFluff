@@ -30,7 +30,7 @@
     <string name="legal_tab_terms">协议</string>
     <string name="legal_tab_privacy">隐私</string>
     <string name="legal_accept_checkbox">我已阅读并接受</string>
-    <string name="legal_accept_button">接受</string>
+    <string name="legal_continue_button">继续</string>
     <string name="legal_load_error">无法加载文件</string>
     <string name="btn_close">关闭</string>
 
@@ -51,8 +51,9 @@
     <string name="btn_confirm">确认</string>
 
     <!-- Select Server -->
-    <string name="server_title">"选择\n节点"</string>
+    <string name="server_title">选择节点</string>
     <string name="server_subtitle">今天连接到哪个伙伴群？</string>
+    <string name="server_public_nodes_label">公共节点</string>
     <string name="server_custom_row_title">自有节点</string>
     <string name="server_custom_row_subtitle">手动输入地址</string>
     <string name="server_custom">连接到其他服务器</string>

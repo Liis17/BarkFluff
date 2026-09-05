@@ -28,7 +28,7 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 - `drawable/ic_launcher_layer_{master,dev,nightly}.xml` помещает соответствующий PNG в квадрат 66dp — безопасную зону adaptive-иконки. Прозрачные углы исходного скруглённого квадрата сохраняются.
 - `mipmap-anydpi-v26/ic_launcher.xml` / `ic_launcher_round.xml` используют прозрачный `background` и flavor-specific `foreground`; `ic_launcher_foreground.xml` оставлен только для monochrome-слоя Android 13+.
 - Растровые WebP `ic_launcher*.webp` из `mipmap-*hdpi` удалены.
-- ⚠️ In-app использование (`activity_splash`, `activity_login`, `activity_welcome`, `activity_register`, `step_register_07_bio`, `activity_about` → `@mipmap/ic_launcher(_round)`) всё ещё рисует `AdaptiveIconDrawable` без launcher-маски, поэтому арт находится в 66dp safe zone и может выглядеть меньше, чем в лаунчере. Отдельный in-app drawable — отдельная будущая задача.
+- Внутри Welcome используется отдельный `@drawable/app_icon_vector` — Android-native VectorDrawable из `app_icon_vector.svg`, без adaptive-icon safe zone и launcher-маски. Остальные экраны, которые ещё используют `@mipmap/ic_launcher(_round)`, сохраняют channel-specific adaptive artwork до отдельной задачи по унификации in-app иконок.
 - ViewBinding + Hilt 2.57.2 через KSP2. `@HiltAndroidApp` остаётся только composition root; новые Activity/worker/provider получают typed-зависимости через конструктор или Hilt entry point.
 - Transport и доменные seams: `grpc/GrpcClientRegistry.kt` лениво создаёт typed stubs (Navigator/Beacon — explicit), `TokenCoordinator` сериализует refresh, `MediaHttpTransport` применяет TLS и media-origin policy. UI получает только `ServerDiscoveryGateway`, `AuthGateway`, `User*Gateway`, `Chat*Gateway`, `MessageGateway`, `FileMediaGateway`, `RealtimeGateway`, `CallGateway`, `FastAuthGateway`, `PrivateChatGateway`, `SecretChatGateway`, `PrekeyGateway` через `di/AppModule.kt`.
 
@@ -57,15 +57,18 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 ### Экран 1 — Welcome (макет 1c)
 
 - Композиция: две распорки `layout_weight=1` отжимают hero-блок от верха и прижимают CTA к низу.
+- Логотип рендерится напрямую как `@drawable/app_icon_vector` (Android-native VectorDrawable из `app_icon_vector.svg`) без `MaterialCardView`, elevation и PNG-маски.
 - Чипы-фичи — стиль `Widget.Barkfluff.Welcome.FeatureChip`; высота через `chipMinHeight`, а не `layout_height` (фиксированная высота сжимает текст с иконкой).
-- Под CTA — только ссылка «Конфиденциальность», открывает legal-лист в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
+- Под CTA находятся ссылки «Соглашение» и «Конфиденциальность» в одной строке; обе открывают соответствующий таб legal-листа в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
 - «Начать» → модалка согласия (см. ниже) → `SelectServerActivity`.
 
-### Экран 2 — SelectServer (макет 2c)
+### Экран 2 — SelectServer (макет 2d)
 
-- Карточка ноды (`item_server.xml`): чипы «Онлайн» / пинг / регион одной строкой, публичное имя `@handle` отдельной строкой, CTA «Подключиться» 52dp внутри карточки.
-- «Своя нода» — кликабельная dashed-строка, разворачивает поле адреса и свою кнопку подключения; шеврон поворачивается на 180°. Свёрнуто по умолчанию.
-- Внизу — предупреждение `node_trust_warning`: данные хранятся у владельца ноды, разработчик приложения за них не отвечает.
+- Экран использует динамическую Material-палитру: заголовок в одну строку, подпись секции «Публичные ноды», tonal-карточка без тени с outlineVariant и выразительным скруглением.
+- Карточка ноды (`item_server.xml`): icon-tile 56dp, название/описание, заметный публичный адрес `@handle` сразу под описанием, компактные чипы «Онлайн» / пинг / регион на нейтральном surface-контейнере, CTA «Подключиться» 52dp с 20dp-скруглением внутри карточки.
+- «Своя нода» — кликабельный tonal-контейнер с outlineVariant и ripple вместо пунктирной рамки; текстовый блок выровнен по левому краю и вертикально центрирован между иконкой и шевроном, контейнер разворачивает поле адреса и свою кнопку подключения, шеврон поворачивается на 180°. Свёрнуто по умолчанию.
+- Список публичных нод загружается через Navigator с явным TLS-портом `443` (`https://navigator.barkfluff.com:443`): gRPC-нормализатор не принимает URL без порта.
+- Внизу — отдельная tonal-инфопанель с `ic_info`, предупреждением `node_trust_warning` и подсказкой по настройке ноды.
 
 ### Экран 3 — Login (макет 3c)
 
@@ -85,7 +88,8 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 - **Сборка.** Gradle-таск `copyLegalDocs` (`app/build.gradle.kts`) копирует `TERMS_OF_SERVICE.*.md` и `PRIVACY_POLICY.*.md` в `assets/legal/`. Подключён через `androidComponents.onVariants { ... addGeneratedSourceDirectory(...) }`, а не `preBuild.dependsOn` — Gradle 9 строг к неявным зависимостям с merge-assets. Путь вывода назначает AGP (`build/generated/assets/copyLegalDocs/`), задавать `outputDirectory` вручную бессмысленно. Пустой результат копирования **останавливает сборку**: APK без актуальных соглашений выпускать нельзя. CI `build-client-android.yml` триггерится на `Backend/Barkfluff.WebServer/html/legal/**`.
 - **`utils/LegalDocsRepository.kt`** — читает `legal/<DOC>.<lang>.md` по активной локали (маппинг как в `LocaleManager`), fallback — `ru`. Таблицы markdown намеренно разворачивает в списки: consent sheet использует одиночный `TextView`, тогда как нативная сетка таблиц поддержана только внутри bubble сообщений.
 - **Редакция.** `revision()` берёт дату «Последнее обновление» из шапки и **всегда из русского файла**: значение уходит в `GlobalParam.acceptedLegalRevision`, и локализованная строка превращала бы смену языка приложения в «новую редакцию». Regex не требует ASCII-двоеточия — в zh-CN шапка использует полноширинное `：`.
-- **`LegalConsentBottomSheet`** — два таба (соглашение / конфиденциальность), рендер через `MarkdownRenderer`, чекбокс + «Принять»/«Отмена». В режиме согласия лист неотменяемый (`isCancelable = false`, свайп запрещён) — решение обязательно. Режим `forReading(tab)` — только чтение и «Закрыть».
+- **`LegalConsentBottomSheet`** — в режиме согласия документы проходят последовательно: сначала соглашение, после прокрутки до конца появляется «Продолжить», затем открывается конфиденциальность; после её конца показываются чекбокс и финальная кнопка «Продолжить». Табы скрыты, чтобы нельзя было пропустить документ; «Отмена» остаётся доступной. Лист неотменяемый (`isCancelable = false`, свайп запрещён) — решение обязательно. Режим `forReading(tab)` сохраняет два таба, свободное переключение и кнопку «Закрыть».
+- `MarkdownRenderer` распознаёт голые email-адреса раньше обычных URL и ставит один `mailto`-span на весь адрес; поэтому контакты вроде `support@barkfluff.com` отображаются и открываются целиком, а не как отдельный домен.
 - **Согласие хранится как редакция, а не флаг** (`GlobalParam.acceptedLegalRevision`): обновили соглашение — согласие запрашивается заново.
 
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
@@ -781,7 +785,7 @@ Android/
 ## Offline-first кеш чатов (V1)
 
 - \`:app-v1\` хранит список чатов, папки, отображаемые данные личных чатов и всю просмотренную историю в зашифрованной Room/SQLCipher БД. Ключ создаётся случайно и хранится в \`EncryptedSharedPreferences\`; scope включает Beacon-сервер и ID пользователя.
-- \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. «Обновление…», offline-подсказка и «Соединение…» сменяют имя в одной строке шапки с короткой fade/slide-анимацией; повтор синхронизации остаётся кнопкой рядом. «Соединение…» показывается только при переподключении основного realtime-стрима новых сообщений, а не при первичном подключении или ошибке вспомогательного стрима.
+- \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. Успешный полный серверный снимок заменяет локальный список и очищает устаревшие строки кэша; записи без GUID отбрасываются до отображения, поэтому удалённый/повреждённый чат не открывается с пустым \`chatId\`. «Обновление…», offline-подсказка и «Соединение…» сменяют имя в одной строке шапки с короткой fade/slide-анимацией; повтор синхронизации остаётся кнопкой рядом. «Соединение…» показывается только при переподключении основного realtime-стрима новых сообщений, а не при первичном подключении или ошибке вспомогательного стрима.
 - \`ChatActivity\` немедленно показывает последние 30 кешированных сообщений, а затем обновляет серверную страницу только для открытого чата. Страницы пагинации и события realtime (new/read/edit/delete) сохраняются обратно в кеш.
 - `ChatDraftRepository` хранит в той же зашифрованной БД scoped-журнал обычных чатов: текст, `replyToMessageId`, server revision, локальное поколение и sync-state. Изменение фиксируется локально сразу, upsert отправляется через 2 секунды бездействия и при уходе с `ChatActivity`; недоставленные upsert/delete повторяются при старте/возврате приложения и восстановлении сети. Tombstone удаляет только известную revision, поэтому поздний ответ или другой клиент не стирает новую правку.
 - При открытии обычного чата несинхронизированный локальный черновик имеет приоритет, иначе запрашивается `GetChatDraft`. Reply восстанавливается из кеша или загружается по ID; у удалённого сообщения остаётся текст без reply. Обычные text/media outbox-записи и staged media также переживают restart; Private/Secret по-прежнему вне этого конвейера. После ACK удаляется только generation отправленного текста/reply.

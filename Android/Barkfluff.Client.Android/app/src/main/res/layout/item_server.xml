@@ -4,20 +4,22 @@
     android:id="@+id/serverCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="8dp"
+    android:layout_marginVertical="6dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
     app:cardCornerRadius="@dimen/shape_corner_extra_large"
-    app:cardElevation="2dp"
-    app:rippleColor="?attr/colorPrimary">
+    app:cardElevation="0dp"
+    app:rippleColor="?attr/colorPrimaryContainer"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -30,9 +32,9 @@
                 android:id="@+id/serverIconTile"
                 android:layout_width="@dimen/server_icon_tile_size"
                 android:layout_height="@dimen/server_icon_tile_size"
-                android:layout_marginEnd="14dp"
+                android:layout_marginEnd="16dp"
                 app:cardBackgroundColor="?attr/colorPrimary"
-                app:cardCornerRadius="@dimen/shape_corner_large"
+                app:cardCornerRadius="@dimen/shape_corner_large_increased"
                 app:cardElevation="0dp">
 
                 <ImageView
@@ -40,7 +42,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:contentDescription="@null"
-                    android:padding="13dp"
+                    android:padding="15dp"
                     android:src="@drawable/ic_storage"
                     app:tint="?attr/colorOnPrimary" />
 
@@ -66,7 +68,7 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@string/server_item_name_placeholder"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textAppearance="?attr/textAppearanceTitleLarge"
                         android:textColor="?attr/colorOnSurface"
                         android:textStyle="bold" />
 
@@ -83,14 +85,26 @@
 
                 <TextView
                     android:id="@+id/serverDescription"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:ellipsize="end"
                     android:maxLines="2"
                     android:text="@string/server_item_description_placeholder"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <!-- Публичное имя ноды — заметный адрес под описанием -->
+                <TextView
+                    android:id="@+id/serverHandle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorPrimary"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
 
             </LinearLayout>
 
@@ -101,7 +115,7 @@
             android:id="@+id/serverChipsGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="14dp"
             app:chipSpacingHorizontal="8dp"
             app:singleLine="false">
 
@@ -135,18 +149,6 @@
 
         </com.google.android.material.chip.ChipGroup>
 
-        <!-- Публичное имя ноды -->
-        <TextView
-            android:id="@+id/serverHandle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="?attr/textAppearanceLabelMedium"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:visibility="gone" />
-
         <!-- CTA «Подключиться» внутри карточки -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/serverConnectCta"
@@ -158,7 +160,7 @@
             android:textAppearance="?attr/textAppearanceTitleSmall"
             android:textColor="?attr/colorOnPrimary"
             app:backgroundTint="?attr/colorPrimary"
-            app:cornerRadius="@dimen/shape_corner_full"
+            app:cornerRadius="@dimen/shape_corner_large_increased"
             app:icon="@drawable/ic_arrow_forward"
             app:iconGravity="textEnd"
             app:iconPadding="10dp"

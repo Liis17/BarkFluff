@@ -219,6 +219,9 @@ interface ChatCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertChats(chats: List<CachedChatEntity>)
 
+    @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId")
+    suspend fun deleteChats(scopeId: String)
+
     @Query("SELECT * FROM cached_chat_folders WHERE scopeId = :scopeId ORDER BY sortOrder")
     suspend fun folders(scopeId: String): List<CachedChatFolderEntity>
 
@@ -365,12 +368,14 @@ class ChatCacheRepository(context: Context) {
         scope: CacheScope,
         chats: List<ChatSummary>,
         totalCount: Int,
-        folders: List<ChatFolder>? = null
+        folders: List<ChatFolder>? = null,
+        replaceExisting: Boolean = false,
     ) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
             val dao = db.cacheDao()
             dao.upsertMeta(CachedChatMetaEntity(scope.id, totalCount, System.currentTimeMillis()))
+            if (replaceExisting) dao.deleteChats(scope.id)
             if (chats.isNotEmpty()) dao.upsertChats(chats.map { it.toEntity(scope.id) })
             if (folders != null) {
                 dao.deleteFolders(scope.id)

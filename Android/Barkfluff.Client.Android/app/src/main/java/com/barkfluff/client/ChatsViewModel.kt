@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 enum class ChatsSyncStatus { UPDATING, OFFLINE }
 
@@ -54,6 +55,23 @@ sealed interface ChatsEvent {
     /** Аватар/профиль могли подтянуться при первом входе — перерисовать шапку. */
     data object RefreshUserAvatar : ChatsEvent
     data class ChatLoadError(val message: String) : ChatsEvent
+}
+
+internal fun validChatSummaries(chats: List<ChatSummary>): List<ChatSummary> =
+    chats.filter { chat -> runCatching { UUID.fromString(chat.id) }.isSuccess }
+
+internal fun reconcileChatList(
+    cachedChats: List<ChatSummary>,
+    remoteChats: List<ChatSummary>,
+    isCompleteSnapshot: Boolean,
+): List<ChatSummary> {
+    val validRemoteChats = validChatSummaries(remoteChats)
+    val candidates = if (isCompleteSnapshot) {
+        validRemoteChats
+    } else {
+        validChatSummaries(cachedChats) + validRemoteChats
+    }
+    return candidates.associateBy { it.id }.values.sortedByDescending { it.lastActivityAt }
 }
 
 /**
@@ -126,14 +144,15 @@ class ChatsViewModel @Inject constructor(
                 ?: return@launch
             if (hasAppliedRemoteChats) return@launch
 
+            val cachedChats = validChatSummaries(snapshot.chats)
             _uiState.value = _uiState.value.copy(
-                allChats = snapshot.chats,
+                allChats = cachedChats,
                 folders = snapshot.folders,
                 totalChatsCount = snapshot.totalCount,
                 contentAvailable = true,
             )
             cachedDisplays = snapshot.displays
-            realtimeService.changeOnlineSubscription(snapshot.chats.flatMap { it.memberIds }.distinct())
+            realtimeService.changeOnlineSubscription(cachedChats.flatMap { it.memberIds }.distinct())
             applyFolderFilter()
         }
     }
@@ -209,8 +228,9 @@ class ChatsViewModel @Inject constructor(
                 }
                 hasAppliedRemoteChats = true
                 val state = _uiState.value
-                val merged = (state.allChats + refreshedChats).associateBy { it.id }.values
-                    .sortedByDescending { it.lastActivityAt }
+                val isCompleteSnapshot = refreshedChats.size >= page.totalCount
+                val remoteChats = validChatSummaries(refreshedChats)
+                val merged = reconcileChatList(state.allChats, remoteChats, isCompleteSnapshot)
                 val newFolders = if (foldersResult.isSuccess) foldersResult.getOrNull() ?: emptyList() else {
                     Log.w(TAG, "Не удалось загрузить папки, продолжаем с пустым списком", foldersResult.exceptionOrNull())
                     state.folders
@@ -236,9 +256,10 @@ class ChatsViewModel @Inject constructor(
                     runCatching {
                         chatCacheRepository.saveChatPage(
                             scope = scope,
-                            chats = refreshedChats,
+                            chats = remoteChats,
                             totalCount = page.totalCount,
-                            folders = foldersResult.getOrNull()
+                            folders = foldersResult.getOrNull(),
+                            replaceExisting = isCompleteSnapshot,
                         )
                     }.onFailure { Log.w(TAG, "Не удалось сохранить кеш чатов", it) }
                 }
