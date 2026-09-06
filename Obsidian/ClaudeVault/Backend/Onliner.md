@@ -60,7 +60,7 @@ Client → SetOnlineStatus (gRPC)
 
 - **OfflineDetectionService**: **single-runner** (Redis-лок `RedisSingleRunner`) — каждую секунду один инстанс находит в presence пользователей без активности >5 сек, снимает их (`ZREM`), пишет offline last-seen в БД и публикует fan-out событие подписчикам. Инкрементирует `offline_detection_runs`/`status_changes.offline`/`offline_detection_errors`
 - **DatabasePersistenceService**: **single-runner** (Redis-лок) — каждые 10 минут один инстанс читает снимок онлайн-пользователей из presence-стора и апсертит их last-seen в PostgreSQL (через `Entry().CurrentValues.SetValues()`; свойства `init`-only). Offline last-seen пишет `OfflineDetectionService` в момент перехода. Метрики: `db_persistence_runs`, `db_persistence_errors`, `db_records_saved_total`
-- **MetricsSnapshotService**: каждые 2 секунды снимает gauge-показатели (`active_subscriptions`, `tracked_unique_users` — per-instance; `online_users_count` — глобальный из Redis) в `MetricsCollector.Set`. Без него gauge-метрики через `Increment`/`Add(-1)` не работают, потому что `_counters` сбрасываются в `SnapshotAndReset` каждые 5 секунд
+- **MetricsSnapshotService**: каждые 2 секунды снимает gauge-показатели (`active_subscriptions`, `tracked_unique_users` — per-instance; `online_users_count` — глобальный из Redis) в `MetricsCollector.Set`. Без него gauge-метрики через `Increment`/`Add(-1)` не работают, потому что `_counters` сбрасываются в `SnapshotAndReset` каждые 5 секунд. Ошибки Redis (`RedisException` и `TimeoutException`, включая `RedisTimeoutException`) логируются как warning, текущий снимок пропускается, worker продолжает следующий цикл.
 
 ### Метрики
 

@@ -161,8 +161,11 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
         logger.LogDebug("Генерация refresh token для пользователя {UserId}", code.OwnerId!.Value);
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
+        var deviceId = Guid.TryParse(requestContext.DeviceId, out var parsedDeviceId)
+            ? parsedDeviceId.ToString()
+            : Guid.NewGuid().ToString();
 
-        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, requestContext.DeviceId ?? requestContext.DeviceName, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, deviceId, ExpDaysRefreshToken);
 
         metrics.Increment("accounts_confirmed");
         metrics.Increment("sessions_created");

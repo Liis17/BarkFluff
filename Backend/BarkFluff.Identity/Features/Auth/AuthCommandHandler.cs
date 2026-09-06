@@ -79,10 +79,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             requestContext.TrustedIpAddress,
             cancellationToken);
 
-        // Если DeviceId не передан, генерируем временный для обратной совместимости
-        var deviceId = string.IsNullOrEmpty(requestContext.DeviceId)
-            ? Guid.NewGuid().ToString()
-            : requestContext.DeviceId;
+        // Если DeviceId не передан или некорректен, генерируем новый для обратной совместимости.
+        var deviceId = Guid.TryParse(requestContext.DeviceId, out var parsedDeviceId)
+            ? parsedDeviceId.ToString()
+            : Guid.NewGuid().ToString();
 
         var usersRequest = new FindByLoginRequest();
 

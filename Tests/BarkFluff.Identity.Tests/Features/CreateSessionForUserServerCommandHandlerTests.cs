@@ -27,6 +27,8 @@ namespace BarkFluff.Identity.Tests.Features;
 
 public class CreateSessionForUserServerCommandHandlerTests
 {
+    private const string ValidDeviceId = "11111111-1111-1111-1111-111111111111";
+
     private readonly Mock<UsersServerApi.UsersServerApiClient> _usersClient;
     private readonly Mock<IMediator> _mediator;
     private readonly Mock<IPublishEndpoint> _publishEndpoint;
@@ -105,7 +107,7 @@ public class CreateSessionForUserServerCommandHandlerTests
     public async Task Handle_EmptyDeviceName_ThrowsRpcException()
     {
         var handler = CreateHandler();
-        var cmd = new CreateSessionForUserServerCommand { UserId = 1, DeviceId = "d", DeviceName = "", OperationSystem = "os", AppName = "app" };
+        var cmd = new CreateSessionForUserServerCommand { UserId = 1, DeviceId = ValidDeviceId, DeviceName = "", OperationSystem = "os", AppName = "app" };
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => handler.Handle(cmd, CancellationToken.None));
         Assert.Equal(StatusCode.InvalidArgument, ex.StatusCode);
@@ -115,7 +117,7 @@ public class CreateSessionForUserServerCommandHandlerTests
     public async Task Handle_EmptyOs_ThrowsRpcException()
     {
         var handler = CreateHandler();
-        var cmd = new CreateSessionForUserServerCommand { UserId = 1, DeviceId = "d", DeviceName = "n", OperationSystem = "", AppName = "app" };
+        var cmd = new CreateSessionForUserServerCommand { UserId = 1, DeviceId = ValidDeviceId, DeviceName = "n", OperationSystem = "", AppName = "app" };
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => handler.Handle(cmd, CancellationToken.None));
         Assert.Equal(StatusCode.InvalidArgument, ex.StatusCode);
@@ -125,7 +127,7 @@ public class CreateSessionForUserServerCommandHandlerTests
     public async Task Handle_EmptyAppName_ThrowsRpcException()
     {
         var handler = CreateHandler();
-        var cmd = new CreateSessionForUserServerCommand { UserId = 1, DeviceId = "d", DeviceName = "n", OperationSystem = "os", AppName = "" };
+        var cmd = new CreateSessionForUserServerCommand { UserId = 1, DeviceId = ValidDeviceId, DeviceName = "n", OperationSystem = "os", AppName = "" };
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => handler.Handle(cmd, CancellationToken.None));
         Assert.Equal(StatusCode.InvalidArgument, ex.StatusCode);
@@ -137,7 +139,7 @@ public class CreateSessionForUserServerCommandHandlerTests
         var handler = CreateHandler();
         var cmd = new CreateSessionForUserServerCommand
         {
-            UserId = 1, DeviceId = "dev1", DeviceName = "MyPhone",
+            UserId = 1, DeviceId = ValidDeviceId, DeviceName = "MyPhone",
             OperationSystem = "Android", AppName = "BF v1", IpAddress = "1.1.1.1"
         };
 
@@ -145,8 +147,8 @@ public class CreateSessionForUserServerCommandHandlerTests
 
         Assert.NotNull(result);
         Assert.Equal("at", result.AccessToken.Value);
-        Assert.Empty(_context.RefreshTokens.Where(t => t.DeviceId != "dev1"));
-        Assert.Single(_context.RefreshTokens.Where(t => t.DeviceId == "dev1"));
+        Assert.Empty(_context.RefreshTokens.Where(t => t.DeviceId != ValidDeviceId));
+        Assert.Single(_context.RefreshTokens.Where(t => t.DeviceId == ValidDeviceId));
         _usersClient.Verify(c => c.RegisterDeviceAsync(It.IsAny<RegisterDeviceRequest>(), null, null, CancellationToken.None), Times.Once);
     }
 
@@ -160,7 +162,7 @@ public class CreateSessionForUserServerCommandHandlerTests
         var handler = CreateHandler();
         var cmd = new CreateSessionForUserServerCommand
         {
-            UserId = 1, DeviceId = "dev1", DeviceName = "MyPhone",
+            UserId = 1, DeviceId = ValidDeviceId, DeviceName = "MyPhone",
             OperationSystem = "Android", AppName = "BF v1", IpAddress = "1.1.1.1"
         };
 
@@ -180,7 +182,7 @@ public class CreateSessionForUserServerCommandHandlerTests
         var handler = CreateHandler();
         var cmd = new CreateSessionForUserServerCommand
         {
-            UserId = 1, DeviceId = "dev1", DeviceName = "MyPhone",
+            UserId = 1, DeviceId = ValidDeviceId, DeviceName = "MyPhone",
             OperationSystem = "Android", AppName = "BF v1", IpAddress = "1.1.1.1"
         };
 
@@ -201,12 +203,29 @@ public class CreateSessionForUserServerCommandHandlerTests
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => CreateHandler().Handle(new CreateSessionForUserServerCommand
         {
-            UserId = 1, DeviceId = "dev1", DeviceName = "MyPhone", OperationSystem = "Android", AppName = "BF v1"
+            UserId = 1, DeviceId = ValidDeviceId, DeviceName = "MyPhone", OperationSystem = "Android", AppName = "BF v1"
         }, CancellationToken.None));
 
         Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
         Assert.Empty(_context.RefreshTokens);
         _usersClient.Verify(c => c.RegisterDeviceAsync(It.IsAny<RegisterDeviceRequest>(), null, null, CancellationToken.None), Times.Never);
         _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_InvalidDeviceId_ThrowsRpcException()
+    {
+        var ex = await Assert.ThrowsAsync<RpcException>(() => CreateHandler().Handle(
+            new CreateSessionForUserServerCommand
+            {
+                UserId = 1,
+                DeviceId = "Android",
+                DeviceName = "MyPhone",
+                OperationSystem = "Android",
+                AppName = "BF v1"
+            }, CancellationToken.None));
+
+        Assert.Equal(StatusCode.InvalidArgument, ex.StatusCode);
+        Assert.Empty(_context.RefreshTokens);
     }
 }

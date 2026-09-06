@@ -200,6 +200,49 @@ public class ConfirmAccountCommandHandlerTests
         _usersClient.Verify(c => c.ConfirmUserAsync(It.IsAny<ConfirmUserRequest>(), null, null, CancellationToken.None), Times.Once);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Android")]
+    public async Task Handle_WithoutValidDeviceId_GeneratesGuidForRefreshToken(string? deviceId)
+    {
+        var codeId = Guid.NewGuid();
+        _context.ConfirmationCodes.Add(new ConfirmationCode
+        {
+            Id = codeId,
+            Type = ConfirmationCodeType.Registration,
+            Expires = DateTime.UtcNow.AddHours(1),
+            Value = "123456",
+            OwnerId = 42
+        });
+        _context.SaveChanges();
+
+        _usersClient
+            .Setup(c => c.ConfirmUserAsync(It.IsAny<ConfirmUserRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<ConfirmUserResponse>(
+                Task.FromResult(new ConfirmUserResponse()), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        _usersClient
+            .Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetByIdResponse>(
+                Task.FromResult(new GetByIdResponse { User = new User { Id = 42, Username = "user" } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        _usersClient
+            .Setup(c => c.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetUserContactsResponse>(
+                Task.FromResult(new GetUserContactsResponse { User = new User { Id = 42 }, Contact = new UserContact { Email = "test@test.com" } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var handler = CreateHandler(BuildRequestContext(deviceId: deviceId));
+
+        await handler.Handle(
+            new ConfirmAccountCommand { Code = "123456", CodeId = codeId.ToString() },
+            CancellationToken.None);
+
+        Assert.Single(_context.RefreshTokens);
+        Assert.True(Guid.TryParse(_context.RefreshTokens.Single().DeviceId, out _));
+    }
+
     [Fact]
     public async Task Handle_CodeCaseInsensitive_Works()
     {

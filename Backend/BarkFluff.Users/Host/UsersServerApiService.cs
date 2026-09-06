@@ -290,7 +290,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         _metrics.Increment("device_registrations");
         var response = await _mediator.Send(new RegisterDeviceCommand
         {
-            DeviceId = Guid.Parse(request.DeviceId),
+            DeviceId = ParseDeviceId(request.DeviceId),
             UserId = request.UserId,
             OriginalName = request.OriginalName,
             AppName = request.AppName,
@@ -306,7 +306,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         _metrics.Increment("device_app_info_updates");
         return _mediator.Send(new UpdateDeviceAppInfoCommand
         {
-            DeviceId = Guid.Parse(request.DeviceId),
+            DeviceId = ParseDeviceId(request.DeviceId),
             UserId = request.UserId,
             OriginalName = request.OriginalName,
             AppName = request.AppName
@@ -329,11 +329,23 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         _metrics.Increment("device_deletions");
         var command = new DeleteUserDeviceCommand
         {
-            DeviceId = Guid.Parse(request.DeviceId),
+            DeviceId = ParseDeviceId(request.DeviceId),
             UserId = request.UserId
         };
 
         return _mediator.Send(command);
+    }
+
+    private static Guid ParseDeviceId(string deviceId)
+    {
+        if (Guid.TryParse(deviceId, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new RpcException(new Status(
+            StatusCode.InvalidArgument,
+            "DeviceId must be a valid GUID."));
     }
 
     // Получение публичной информации пользователя по юзернейму (для веб-сервера)

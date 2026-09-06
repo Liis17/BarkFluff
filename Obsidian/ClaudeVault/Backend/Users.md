@@ -81,7 +81,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 **Бейджи**: уникальное ограничение (UserId, BadgeId). `Priority` — меньше = выше приоритет (default 1000). Только активные баджи включаются при `GetUserBadges`. Создание всегда устанавливает `IsActive=true`.
 
-**Устройства**: `RegisterDevice` — upsert по DeviceId (Guid), обновляет все поля + `AuthorizedAt` (вызывается при логине). Хранит AppName, OS, Location, FirebaseDeviceToken. `UpdateDeviceAppInfo` — лёгкое обновление только `OriginalName` + `AppName` при refresh access-токена; пишет в БД только если значения изменились, `AuthorizedAt`/OS/Location не трогает (`DevicesStorage.UpdateDeviceAppInfoIfChanged`).
+**Устройства**: `RegisterDevice` — upsert по DeviceId (Guid), обновляет все поля + `AuthorizedAt` (вызывается при логине). Хранит AppName, OS, Location, FirebaseDeviceToken. `UpdateDeviceAppInfo` — лёгкое обновление только `OriginalName` + `AppName` при refresh access-токена; пишет в БД только если значения изменились, `AuthorizedAt`/OS/Location не трогает (`DevicesStorage.UpdateDeviceAppInfoIfChanged`). `RegisterDevice`, `UpdateDeviceAppInfo` и `DeleteUserDevice` проверяют строковый DeviceId через `Guid.TryParse`; некорректный ID возвращается межсервисному клиенту как gRPC `InvalidArgument`, а не как необработанный `FormatException`.
 
 FCM-привязка также хранит `UserDevice.PushPlatform` (`Android` или `Web`). Миграция задаёт existing token-ам `Android`, а web-клиент обязан передавать `WEB` в `SetFirebaseToken`. `ClearFirebaseToken` очищает токен **текущего** устройства по `UserContext.DeviceId`; применяется при выключении browser-push и logout. Server-запросы токенов возвращают платформу, чтобы [[Backend/CloudMessaging]] выбирал безопасный Web payload.
 

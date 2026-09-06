@@ -94,7 +94,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `DisableOtpVerificationServer` | `UserId`, `OtpType` | Принудительно отключить 2FA |
 | `GetActiveSessionsServer` | `UserId` | Список сессий по userId |
 | `RemoveActiveSessionServer` | `UserId`, `DeviceId` | Удалить сессию по userId + deviceId |
-| `CreateSessionForUserServer` | `UserId`, `DeviceId`, `DeviceName`, `OperationSystem`, `AppName`, `IpAddress` | Выпустить пару `access_token`+`refresh_token` для пользователя из другого сервиса (например [[Backend/FastAuth]] после Accept). Регистрирует устройство в Users + отправляет email-уведомление `SuccessfulLogin`. |
+| `CreateSessionForUserServer` | `UserId`, `DeviceId`, `DeviceName`, `OperationSystem`, `AppName`, `IpAddress` | Выпустить пару `access_token`+`refresh_token` для пользователя из другого сервиса (например [[Backend/FastAuth]] после Accept). `DeviceId` должен быть GUID, иначе возвращается `InvalidArgument`. Регистрирует устройство в Users + отправляет email-уведомление `SuccessfulLogin`. |
 | `ForceSetPasswordServer` | `UserId`, `NewPassword` | Принудительная смена пароля администратором (без OldPassword). Хеширует BCrypt, обновляет `UserPassword`, отправляет уведомление `PasswordChangedByAdmin`. Вызывается из AdminPanel. |
 | `CreateBotTokenServer` | `BotUserId` | Выпустить долгоживущий bot-JWT (`TokenType.Bot`, exp 9999, claims `x-user-id`, `x-token-type=Bot`, `x-bot-token-id`). `token_id` генерирует Identity, возвращает `{token, token_id}`. Вызывается сервисом [[Backend/Bots]]; отзыв — сверка `token_id` на стороне Bots. |
 | `GetBotTokenServer` | `BotUserId`, существующий `TokenId` | Повторно выпустить долгоживущий bot-JWT с тем же `x-bot-token-id`, не меняя и не отзывая текущий идентификатор. Plaintext-токен не хранится. |
@@ -111,7 +111,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 ### Регистрация (2 шага)
 1. `CreateAccount` → создаётся draft-пользователь в Users-сервисе (`AddDraftUser` / `OverrideDraftUser`), генерируется `ConfirmationCode` (6 цифр, TTL 6 ч.), код отправляется на email → возврат `CodeId`
-2. `ConfirmAccount` → код проверяется, пользователь подтверждается в Users-сервисе, выдаётся `RefreshToken`
+2. `ConfirmAccount` → код проверяется, пользователь подтверждается в Users-сервисе, выдаётся `RefreshToken`. Если `x-device-id` отсутствует или не является GUID, для токена генерируется новый UUID; имя устройства не используется как DeviceId.
 
 ### Аутентификация (`Auth`)
 1. Проверка username/email + обязательных заголовков
@@ -122,7 +122,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
    - Email OTP → сравнение с `LastEmailAuthCode`
 4. Проверка пароля через `PasswordHasher.VerifyPassword` (BCrypt; legacy SHA-256 поддерживается для старых хешей до смены пароля)
 5. Удаление старого `RefreshToken` для данного DeviceId
-6. Создание нового `RefreshToken` (TTL 9999 дней) + JWT access token
+6. Создание нового `RefreshToken` (TTL 9999 дней) + JWT access token; отсутствующий или некорректный `x-device-id` заменяется новым UUID
 7. Регистрация/обновление устройства в Users-сервисе (`RegisterDevice`)
 8. Email-уведомления через RabbitMQ: успех (`SuccessfulLogin`) или неудача (`FailedLogin`)
 
@@ -140,7 +140,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 1. Поиск `RefreshToken` по значению
 2. Проверка срока действия и наличия `DeviceId`
 3. Генерация нового JWT access token через `JwtService.GenerateUserToken`
-4. Обновление имени устройства + версии приложения в Users через `UpdateDeviceAppInfo` (только если изменились). Поля `DeviceName/AppName/AppVersion` берутся из `RequestContext` и кладутся в `CreateTokenCommand` **только** в `IdentityApiService.CreateToken` — внутренние вызывающие (`Auth`, `ConfirmResetPassword`, `CreateSessionForUserServer`) их не передают, чтобы серверный сценарий не перезаписал устройство целевого юзера метаданными вызывающего. `AuthorizedAt` при refresh не трогается.
+4. Обновление имени устройства + версии приложения в Users через `UpdateDeviceAppInfo` (только если изменились). Поля `DeviceName/AppName/AppVersion` берутся из `RequestContext` и кладутся в `CreateTokenCommand` **только** в `IdentityApiService.CreateToken` — внутренние вызывающие (`Auth`, `ConfirmResetPassword`, `CreateSessionForUserServer`) их не передают, чтобы серверный сценарий не перезаписал устройство целевого юзера метаданными вызывающего. Для исторического refresh token с невалидным `DeviceId` обновление Users пропускается, но access token продолжает выдаваться. `AuthorizedAt` при refresh не трогается.
 
 ### Сброс пароля (2 шага)
 1. `ResetPassword` → поиск пользователя, создание `ResetPassword`-записи:
@@ -148,7 +148,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
    - **Email OTP**: генерируется 6-значный код, высылается на email, код сохраняется в `ResetPassword.OtpCode`, `ExpiresAt` = +5 мин
    - Для несуществующего пользователя возвращается фейковый `ResetId` (защита от энумерации)
 2. `ConfirmResetPassword` → проверка `ExpiresAt`, валидация OTP-кода по типу → `IsApproved = true`, обнуление `PasswordHash`, выдача новых токенов
-   - Если `DeviceId` не передан — генерируется UUID
+   - Если `DeviceId` не передан или некорректен — генерируется UUID
 
 ### Разлогин (`Logout`) — `[Authorize]`
 1. `DeviceId` берётся из JWT-claim (`UserContext.DeviceId`) — аргументов нет

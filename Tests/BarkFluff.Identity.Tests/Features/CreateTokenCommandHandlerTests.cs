@@ -100,4 +100,31 @@ public class CreateTokenCommandHandlerTests
         Assert.False(string.IsNullOrEmpty(result.AccessToken.Value));
         Assert.Equal(1, _metrics.SnapshotAndReset().GetValueOrDefault("tokens_refreshed"));
     }
+
+    [Fact]
+    public async Task Handle_InvalidStoredDeviceId_SkipsUsersAppInfoUpdate()
+    {
+        _context.RefreshTokens.Add(new Domain.RefreshToken
+        {
+            Value = "legacy", UserId = 42, DeviceId = "Android",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        });
+        _context.SaveChanges();
+
+        var handler = CreateHandler();
+        var cmd = new CreateTokenCommand
+        {
+            RefreshToken = "legacy",
+            DeviceName = "Phone",
+            AppName = "BarkFluff",
+            AppVersion = "1.0"
+        };
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        Assert.NotNull(result);
+        _usersClient.Verify(
+            c => c.UpdateDeviceAppInfoAsync(It.IsAny<UpdateDeviceAppInfoRequest>(), null, null, CancellationToken.None),
+            Times.Never);
+    }
 }
