@@ -88,13 +88,37 @@ public class MetricsSnapshotServiceTests
         snapshot["online_users_count"].Should().Be(0);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_RedisTimeout_DoesNotEscapeWorker()
+    {
+        using var cts = new CancellationTokenSource();
+        var presence = new Mock<IPresenceStore>();
+        presence
+            .Setup(p => p.GetOnlineCountAsync(It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                cts.Cancel();
+                return Task.FromException<long>(new StackExchange.Redis.RedisTimeoutException(
+                    "synthetic timeout", StackExchange.Redis.CommandStatus.Unknown));
+            });
+
+        var service = new TestableMetricsSnapshotService(
+            presence.Object,
+            _h.SubscriptionsManager,
+            _h.Metrics);
+
+        Func<Task> act = () => service.StartAsync(cts.Token);
+
+        await act.Should().NotThrowAsync();
+    }
+
     private class TestableMetricsSnapshotService : MetricsSnapshotService
     {
         public TestableMetricsSnapshotService(
             IPresenceStore presence,
             OnlineStatusSubscriptionsManager subscriptionsManager,
             MetricsCollector metrics)
-            : base(presence, subscriptionsManager, metrics) { }
+            : base(presence, subscriptionsManager, metrics, TestHelper.CreateLogger<MetricsSnapshotService>()) { }
 
         public new Task StartAsync(CancellationToken ct) => ExecuteAsync(ct);
     }

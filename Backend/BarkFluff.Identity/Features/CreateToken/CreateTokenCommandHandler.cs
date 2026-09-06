@@ -48,7 +48,8 @@ public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage
         // Обновляем имя устройства и версию приложения в Users при refresh токена.
         // Поля заполнены только для настоящего внешнего refresh (IdentityApiService.CreateToken),
         // внутренние вызовы (логин, серверная сессия) их не передают.
-        if (!string.IsNullOrEmpty(request.DeviceName)
+        if (Guid.TryParse(accessToken.DeviceId, out _)
+            && !string.IsNullOrEmpty(request.DeviceName)
             && !string.IsNullOrEmpty(request.AppName)
             && !string.IsNullOrEmpty(request.AppVersion))
         {
