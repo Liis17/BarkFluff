@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
@@ -19,14 +20,14 @@ import com.barkfluff.client.R
 import com.barkfluff.client.databinding.SheetShareConfirmBinding
 import com.barkfluff.client.editor.EditedVideoSpec
 import com.barkfluff.client.send.AttachmentSpec
-import com.barkfluff.client.send.MediaSendService
 import com.barkfluff.client.send.SendJob
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 
 /**
  * Bottom-sheet с превью контента из share-intent и полем подписи.
- * По кнопке «Отправить» ставит задачу в [MediaSendService] и завершает share-сессию.
+ * По кнопке «Отправить» дожидается durable staging в outbox и только затем закрывает share-сессию.
  */
 class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
 
@@ -219,15 +220,28 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
             sendSeparately = false,
             sendAsFile = false
         )
-        MediaSendService.enqueue(requireContext().applicationContext, job)
-
-        Toast.makeText(
-            requireContext(),
-            getString(R.string.share_sent_toast, chatTitle),
-            Toast.LENGTH_SHORT
-        ).show()
-        dismissAllowingStateLoss()
-        activity?.finish()
+        binding.sendButton.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                val app = requireContext().applicationContext as com.barkfluff.client.BarkFluffApplication
+                app.outgoingMessageQueue.enqueue(job)
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.share_sent_toast, chatTitle),
+                    Toast.LENGTH_SHORT
+                ).show()
+                dismissAllowingStateLoss()
+                activity?.finish()
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to stage shared content", e)
+                binding.sendButton.isEnabled = true
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.message_send_error, e.message.orEmpty()),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     private fun toAttachment(uri: Uri, mime: String): AttachmentSpec = when {

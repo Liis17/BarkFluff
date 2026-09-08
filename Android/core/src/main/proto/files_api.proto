@@ -101,6 +101,7 @@ message UploadFileInfo {
 
 message GetUploadUrlRequest {
   UploadFileType file_type = 1; // Тип загружаемого файла
+  string client_operation_id = 2; // UUID логической загрузки для идемпотентного резервирования слота
 }
 
 message GetUploadUrlResponse {

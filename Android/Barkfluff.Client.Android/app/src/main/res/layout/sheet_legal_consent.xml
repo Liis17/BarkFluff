@@ -87,7 +87,8 @@
             android:layout_height="wrap_content"
             android:text="@string/legal_accept_checkbox"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurface" />
+            android:textColor="?attr/colorOnSurface"
+            android:visibility="gone" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -100,21 +101,22 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
                 android:layout_height="52dp"
-                android:layout_weight="1"
+                android:layout_weight="0"
                 android:text="@string/btn_cancel"
                 android:textAllCaps="false"
                 app:cornerRadius="@dimen/shape_corner_full" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/acceptButton"
+                android:id="@+id/continueButton"
                 android:layout_width="0dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1.4"
                 android:enabled="false"
-                android:text="@string/legal_accept_button"
+                android:text="@string/legal_continue_button"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:visibility="gone"
                 app:cornerRadius="@dimen/shape_corner_full"
                 app:icon="@drawable/ic_arrow_forward"
                 app:iconGravity="textEnd" />

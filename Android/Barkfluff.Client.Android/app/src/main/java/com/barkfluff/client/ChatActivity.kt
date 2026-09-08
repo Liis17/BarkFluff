@@ -4,6 +4,7 @@ import barkfluff.calls.CallsApiOuterClass
 import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.content.ContentValues
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -15,6 +16,7 @@ import android.graphics.Typeface
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -24,6 +26,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.PathInterpolator
+import android.webkit.MimeTypeMap
 import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
@@ -38,21 +41,35 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.MessageAdapter
+import com.barkfluff.client.adapter.FileMediaAttachmentLoader
+import com.barkfluff.client.adapter.MessageAttachmentAction
+import com.barkfluff.client.adapter.MessageRowEventSink
 import com.barkfluff.client.adapter.MessageItem
+import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.CallGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.StickerGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.adapter.StickerPanelAdapter
 import com.barkfluff.client.adapter.StickerPanelItem
 import com.barkfluff.client.picker.ImagePickerBottomSheet
 import com.barkfluff.client.picker.ImagePickerResult
-import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
@@ -85,6 +102,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import coil.load
 import java.io.File
+import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -105,13 +123,23 @@ class ChatActivity : AppCompatActivity() {
     private val viewModel: ChatViewModel by viewModels()
 
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
-    private lateinit var realtimeService: RealtimeService
+    @Inject lateinit var realtimeService: RealtimeService
+    @Inject lateinit var privateChatRepository: PrivateChatRepository
+    @Inject lateinit var secretChatRepository: SecretChatRepository
+    @Inject lateinit var chatCacheRepository: ChatCacheRepository
 
-    @Inject lateinit var chatRepository: ChatRepository
+    @Inject lateinit var messageGateway: MessageGateway
+    @Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @Inject lateinit var callGateway: CallGateway
+    @Inject lateinit var fileMediaGateway: FileMediaGateway
+    @Inject lateinit var mediaHttpTransport: MediaHttpTransport
+    @Inject lateinit var stickerGateway: StickerGateway
+    @Inject lateinit var userProfileGateway: UserProfileGateway
+    @Inject lateinit var userSettingsGateway: UserSettingsGateway
     private lateinit var messageAdapter: MessageAdapter
+    private val messageRowProjector = MessageRowProjector()
 
-    // Кэш рендера из ChatViewModel.uiState: шапка/звонки/меню читают эти значения синхронно.
+    // Кэш рендера из ChatViewModel.state: шапка/звонки/меню читают эти значения синхронно.
     private var chatId: String = ""
     private var chatTitle: String = ""
     private var isChatMuted: Boolean = false
@@ -125,11 +153,9 @@ class ChatActivity : AppCompatActivity() {
     // Кэш информации об участниках группы для рендера аватарок/имён чужих сообщений: senderId -> (имя, URL/fileId аватара)
     private val groupMemberInfoCache = HashMap<Long, Pair<String?, String?>>()
 
-    // Индикатор набора текста ("печатает...")
-    private var typingHeartbeatJob: Job? = null
-    @Volatile private var lastTypingInputAt = 0L
+    // Индикатор набора текста ("печатает...") — подписка и heartbeat принадлежат ViewModel.
     private var suppressTypingInput = false
-    private val typingUsers = LinkedHashMap<Long, Job>()
+    private var renderedTypingUserIds: Set<Long> = emptySet()
     private val pendingTypingNameFetches = mutableSetOf<Long>()
     private var lastStatusText: CharSequence? = null
     private var lastIndicatorVisible = false
@@ -151,6 +177,7 @@ class ChatActivity : AppCompatActivity() {
     private val pendingPastedImages = mutableListOf<Uri>()
     private val pendingStickerUris = mutableListOf<Uri>()
     private val pendingDocumentUris = mutableListOf<Uri>()
+    private var pendingAttachmentsAwaitingOutbox = false
     private val pendingCropQueue = ArrayDeque<Uri>()
 
     // Голосовые сообщения
@@ -180,9 +207,6 @@ class ChatActivity : AppCompatActivity() {
     // Оверлей меню действий над сообщением (Telegram-стиль)
     private lateinit var messageActionsOverlay: MessageActionsOverlay
 
-    // Режим множественного выделения сообщений
-    private val selectedMessageIds = mutableSetOf<Long>()
-
     private val pasteUCropLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -190,6 +214,14 @@ class ChatActivity : AppCompatActivity() {
             val croppedUri = UCrop.getOutput(result.data!!)
             if (croppedUri != null) {
                 pendingPastedImages.add(croppedUri)
+                viewModel.dispatch(
+                    ChatIntent.StageAttachment(
+                        uri = croppedUri,
+                        kind = com.barkfluff.client.cache.OutgoingAttachmentKind.RAW_IMAGE.name,
+                        fileName = "pasted_image.jpg",
+                        mimeType = "image/jpeg",
+                    )
+                )
                 updateAttachmentPreview()
             }
         }
@@ -290,11 +322,7 @@ class ChatActivity : AppCompatActivity() {
         setContentView(binding.root)
         messageActionsOverlay = MessageActionsOverlay(binding.chatRootLayout)
 
-        val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = app.grpcManager
-        realtimeService = app.realtimeService
-
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
             finish()
@@ -324,14 +352,14 @@ class ChatActivity : AppCompatActivity() {
         setupKeyboardTracking()
         setupChatBackground()
         setupPinnedBar()
-        viewModel.initialize(
+        viewModel.dispatch(ChatIntent.Initialize(
             chatId = chatId,
             title = chatTitle,
             avatarFileId = chatAvatarFileId,
             isGroupChat = isGroupChat,
             otherUserId = otherUserId,
             supportsDrafts = supportsDrafts,
-        )
+        ))
         observeViewModel()
 
         // Устанавливаем этот чат как открытый
@@ -340,34 +368,7 @@ class ChatActivity : AppCompatActivity() {
         // Убираем уведомление этого чата из шторки если оно висит
         NotificationHelper.dismissForChat(applicationContext, chatId)
 
-        // Подписка на индикатор набора текста в этом чате (online-статус и typing — UI-слой)
-        realtimeService.changeTypingSubscription(listOf(chatId))
-        subscribeToTypingEvents()
-        if (!isGroupChat && otherUserId > 0) {
-            realtimeService.changeOnlineSubscription(listOf(otherUserId))
-            loadOnlineStatus(otherUserId)
-        }
-    }
-
-    /** Индикатор «печатает…»: realtime typing-события → анимация шапки (UI-слой). */
-    private fun subscribeToTypingEvents() {
-        lifecycleScope.launch {
-            realtimeService.typingEvents.collect { event ->
-                if (!event.chatId.equals(chatId, ignoreCase = true)) return@collect
-                if (event.userId == currentUserId) return@collect
-                if (event.action == barkfluff.onliner.OnlinerApiOuterClass.TypingAction.TYPING_ACTION_CANCELLED) {
-                    typingUsers.remove(event.userId)?.cancel()
-                } else {
-                    typingUsers.remove(event.userId)?.cancel()
-                    typingUsers[event.userId] = lifecycleScope.launch {
-                        delay(6_000)
-                        typingUsers.remove(event.userId)
-                        renderTypingIndicator()
-                    }
-                }
-                renderTypingIndicator()
-            }
-        }
+        // ViewModel владеет подпиской на typing; Activity только рендерит immutable state.
     }
 
     /**
@@ -383,14 +384,25 @@ class ChatActivity : AppCompatActivity() {
             var previousAvatarFileId: String? = null
             var previousPinnedCount = -1
             var previousPinnedPreview: String? = null
+            var previousComposerAttachments: List<String> = emptyList()
+            var previousPresence: PresenceState? = null
             var observedOnlineUserId = 0L
-            viewModel.uiState.collect { state ->
+            viewModel.state.collect { state ->
                 // Кэш значений для синхронных читателей (шапка, звонки, меню, forward)
                 chatTitle = state.chatTitle
                 chatAvatarFileId = state.chatAvatarFileId
                 isGroupChat = state.isGroupChat
                 isChatMuted = state.isChatMuted
                 otherUserId = state.otherUserId
+
+                if (previousPresence != state.presence) {
+                    renderPresenceState(state.presence)
+                }
+
+                if (state.presence.typingUserIds != renderedTypingUserIds) {
+                    renderedTypingUserIds = state.presence.typingUserIds
+                    renderTypingIndicator(renderedTypingUserIds)
+                }
 
                 if (previousTitle != state.chatTitle) {
                     previousTitle = state.chatTitle
@@ -404,8 +416,6 @@ class ChatActivity : AppCompatActivity() {
                 // otherUserId выяснился из chatInfo — подписываемся на онлайн-статус
                 if (!state.isGroupChat && state.otherUserId > 0 && state.otherUserId != observedOnlineUserId) {
                     observedOnlineUserId = state.otherUserId
-                    realtimeService.changeOnlineSubscription(listOf(state.otherUserId))
-                    loadOnlineStatus(state.otherUserId)
                     binding.onlineStatusTextView.visibility = View.VISIBLE
                 }
 
@@ -418,7 +428,7 @@ class ChatActivity : AppCompatActivity() {
                 val ownAtTail = lastMessage?.senderId == currentUserId
 
                 if (state.items != previousItems) {
-                    messageAdapter.submitList(state.items) {
+                    messageAdapter.submitList(messageRowProjector.project(state.items)) {
                         if (unreadAppeared) {
                             val idx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.UNREAD_SEPARATOR }
                             if (idx >= 0) {
@@ -445,6 +455,10 @@ class ChatActivity : AppCompatActivity() {
                 if (previousState?.pendingEdit != state.pendingEdit) {
                     renderPendingEdit(previousState?.pendingEdit, state.pendingEdit)
                 }
+                if (previousComposerAttachments != state.composer.attachmentPaths) {
+                    previousComposerAttachments = state.composer.attachmentPaths
+                    updateAttachmentPreview()
+                }
 
                 // Закрепы
                 if (previousPinnedCount != state.pinnedCount || previousPinnedPreview != state.pinnedPreview) {
@@ -454,13 +468,14 @@ class ChatActivity : AppCompatActivity() {
                 }
 
                 previousState = state
+                previousPresence = state.presence
             }
         }
 
         lifecycleScope.launch {
-            viewModel.events.collect { event ->
+            viewModel.effects.collect { event ->
                 when (event) {
-                    is ChatEvent.ToastRes -> {
+                    is ChatEffect.ToastRes -> {
                         val text = if (event.formatArg != null) {
                             getString(event.resId, event.formatArg)
                         } else {
@@ -468,7 +483,7 @@ class ChatActivity : AppCompatActivity() {
                         }
                         Toast.makeText(this@ChatActivity, text, Toast.LENGTH_SHORT).show()
                     }
-                    is ChatEvent.DraftRestored -> {
+                    is ChatEffect.DraftRestored -> {
                         suppressDraftSave = true
                         suppressTypingInput = true
                         binding.messageEditText.setText(event.text)
@@ -476,7 +491,38 @@ class ChatActivity : AppCompatActivity() {
                         suppressDraftSave = false
                         updateSendButtonMode()
                     }
-                    ChatEvent.FinishActivity -> finish()
+                    is ChatEffect.AttachmentStaged -> {
+                        pendingPastedImages.remove(event.source)
+                        pendingStickerUris.remove(event.source)
+                        pendingDocumentUris.remove(event.source)
+                        updateAttachmentPreview()
+                    }
+                    is ChatEffect.AttachmentStageFailed -> {
+                        pendingPastedImages.remove(event.source)
+                        pendingStickerUris.remove(event.source)
+                        pendingDocumentUris.remove(event.source)
+                        updateAttachmentPreview()
+                    }
+                    is ChatEffect.SendAccepted -> {
+                        if (pendingAttachmentsAwaitingOutbox) {
+                            pendingAttachmentsAwaitingOutbox = false
+                            pendingPastedImages.clear()
+                            pendingStickerUris.clear()
+                            pendingDocumentUris.clear()
+                            updateAttachmentPreview()
+                        }
+                        if (binding.messageEditText.text?.toString()?.trim() == event.text.trim()) {
+                            suppressDraftSave = true
+                            binding.messageEditText.text?.clear()
+                            suppressDraftSave = false
+                            clearPendingReply(saveDraft = false)
+                            updateSendButtonMode()
+                        }
+                    }
+                    ChatEffect.SendRejected -> {
+                        pendingAttachmentsAwaitingOutbox = false
+                    }
+                    ChatEffect.FinishActivity -> finish()
                 }
             }
         }
@@ -569,16 +615,25 @@ class ChatActivity : AppCompatActivity() {
             itemAnimator = MessageItemAnimator()
         }
 
-        val app = application as BarkFluffApplication
         when (chatKind) {
             KIND_PRIVATE -> {
                 val inviteState = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
                 val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
-                PrivateChatController(this, binding, e2eAdapter, app, globalParam, chatId)
+                PrivateChatController(
+                    activity = this,
+                    binding = binding,
+                    adapter = e2eAdapter,
+                    repo = privateChatRepository,
+                    chatCacheRepository = chatCacheRepository,
+                    realtimeService = realtimeService,
+                    globalParam = globalParam,
+                    chatId = chatId,
+                    chatDirectoryGateway = chatDirectoryGateway,
+                )
                     .start(inviteState, inviterUserId)
             }
             KIND_SECRET -> {
-                val chat = app.secretChatRepository.getChat(chatId)
+                val chat = secretChatRepository.getChat(chatId)
                 if (chat == null) {
                     Toast.makeText(this, R.string.secret_chat_not_found, Toast.LENGTH_LONG).show()
                     finish()
@@ -586,7 +641,16 @@ class ChatActivity : AppCompatActivity() {
                 }
                 binding.chatNameTextView.text = getString(R.string.secret_chat_title, chat.peerUserId)
                 binding.chatAvatarPlaceholder.text = "🔒"
-                SecretChatController(this, binding, e2eAdapter, app, globalParam, chat)
+                SecretChatController(
+                    activity = this,
+                    binding = binding,
+                    adapter = e2eAdapter,
+                    repo = secretChatRepository,
+                    chatCacheRepository = chatCacheRepository,
+                    realtimeService = realtimeService,
+                    globalParam = globalParam,
+                    chat = chat,
+                )
                     .start(intent.getStringExtra(EXTRA_INITIAL_MESSAGE))
             }
         }
@@ -781,9 +845,6 @@ class ChatActivity : AppCompatActivity() {
 
     private fun startCall(video: Boolean) {
         lifecycleScope.launch {
-            if (!ensureCallsClient()) return@launch
-
-            val app = application as BarkFluffApplication
             val mediaType = if (video) {
                 CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
             } else {
@@ -791,13 +852,13 @@ class ChatActivity : AppCompatActivity() {
             }
 
             val result = if (isGroupChat) {
-                app.callRepository.initiateGroup(chatId, mediaType)
+                callGateway.initiateGroup(chatId, mediaType)
             } else {
                 if (otherUserId <= 0L) {
                     Toast.makeText(this@ChatActivity, R.string.chat_call_user_missing, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
-                app.callRepository.initiateDirect(otherUserId, mediaType)
+                callGateway.initiateDirect(otherUserId, mediaType)
             }
 
             result.onSuccess { response ->
@@ -816,23 +877,6 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun ensureCallsClient(): Boolean {
-        val app = application as BarkFluffApplication
-        if (app.grpcManager.callsClient != null) return true
-
-        val callsAddress = globalParam.socketCalls
-        if (callsAddress.isBlank()) {
-            Toast.makeText(this, R.string.call_server_not_configured, Toast.LENGTH_SHORT).show()
-            return false
-        }
-
-        val result = app.grpcManager.createCallsClient(callsAddress, this, includeDeviceInfo = true)
-        if (result.isFailure) {
-            Toast.makeText(this, R.string.call_server_connection_failed, Toast.LENGTH_SHORT).show()
-        }
-        return result.isSuccess
-    }
-
     private fun loadChatAvatar() {
         if (!chatAvatarFileId.isNullOrBlank()) {
             val fileId = chatAvatarFileId!!
@@ -844,7 +888,7 @@ class ChatActivity : AppCompatActivity() {
                 userId = chatId.hashCode().toLong(),
                 size = 80
             ) {
-                chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                fileMediaGateway.downloadUrl(fileId).getOrNull()
             }
         } else {
             AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, chatTitle, chatId.hashCode().toLong())
@@ -936,7 +980,7 @@ class ChatActivity : AppCompatActivity() {
             }
             // Иначе скачиваем через Files API
             val url = withContext(Dispatchers.IO) {
-                chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                fileMediaGateway.downloadUrl(fileId).getOrNull()
             } ?: return@launch
 
             if (loadVersion != chatBackgroundLoadVersion) return@launch
@@ -967,9 +1011,7 @@ class ChatActivity : AppCompatActivity() {
             // Кешируем в дисковый кэш приложения
             withContext(Dispatchers.IO) {
                 try {
-                    val connection = java.net.URL(url)
-                        .openConnection() as java.net.HttpURLConnection
-                    grpcManager.configureHttpConnection(connection)
+                    val connection = mediaHttpTransport.openConnection(url)
                     connection.connect()
                     val bytes = connection.inputStream.readBytes()
                     connection.disconnect()
@@ -1047,8 +1089,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
         return try {
-            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-            grpcManager.configureHttpConnection(conn)
+            val conn = mediaHttpTransport.openConnection(url)
             conn.connect()
             val bmp = android.graphics.BitmapFactory.decodeStream(conn.inputStream)
             conn.disconnect()
@@ -1074,27 +1115,32 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessagesRecyclerView() {
-        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
         messageAdapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
-            getFileUrl = { fileId ->
-                chatRepository.getFileDownloadUrl(fileId).getOrNull()
-            },
-            downloadToCache = { fileId, onProgress ->
-                chatRepository.downloadFile(fileId, onProgress)
-            },
-            scope = scope,
+            attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway),
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
             stickerSizeDp = globalParam.chatStickerSizeDp,
-            onMessageActionRequested = { bubble, item ->
-                showMessageActionMenu(bubble, item)
-            },
-            onReplyQuoteClick = { originalMessageId ->
-                scrollToAndHighlightMessage(originalMessageId)
-            },
-            senderInfoProvider = { senderId -> groupMemberInfoCache[senderId] },
-            onSelectionToggle = { messageId -> toggleSelection(messageId) }
+            eventSink = object : MessageRowEventSink {
+                override fun onMessageActionRequested(bubble: View, item: MessageItem) {
+                    showMessageActionMenu(bubble, item)
+                }
+
+                override fun onReplyQuoteClick(originalMessageId: Long) {
+                    scrollToAndHighlightMessage(originalMessageId)
+                }
+
+                override fun onSelectionToggle(messageId: Long) {
+                    toggleSelection(messageId)
+                }
+
+                override fun senderInfo(senderId: Long): Pair<String?, String?>? =
+                    groupMemberInfoCache[senderId]
+
+                override fun onAttachmentAction(action: MessageAttachmentAction) {
+                    handleAttachmentAction(action)
+                }
+            }
         )
 
         if (isGroupChat) {
@@ -1134,12 +1180,12 @@ class ChatActivity : AppCompatActivity() {
 
                     // Подгрузка вверх (история)
                     if (firstVisibleItem < 10) {
-                        viewModel.loadMessagesUp()
+                        viewModel.dispatch(ChatIntent.LoadUp)
                     }
 
                     // Подгрузка вниз (новые сообщения)
                     if (lastVisibleItem >= totalItemCount - 10) {
-                        viewModel.loadMessagesDown()
+                        viewModel.dispatch(ChatIntent.LoadDown)
                     }
 
                     // Показ/скрытие кнопки прокрутки вниз
@@ -1151,7 +1197,7 @@ class ChatActivity : AppCompatActivity() {
                     // Safety-net: долистали до самого низа и подгружать больше нечего —
                     // помечаем прочитанными все загруженные чужие сообщения (страхует от
                     // случаев, когда прогрессивная пометка при пагинации что-то не зацепила).
-                    viewModel.onReachedBottom()
+                    viewModel.dispatch(ChatIntent.ReachedBottom)
                 }
             })
         }
@@ -1162,20 +1208,108 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /** Executes system-facing attachment actions outside the stateless message adapter. */
+    private fun handleAttachmentAction(action: MessageAttachmentAction) {
+        when (action) {
+            is MessageAttachmentAction.OpenImage -> {
+                startActivity(
+                    ImageViewerActivity.createIntent(
+                        this,
+                        action.fileIds,
+                        action.previewUrls,
+                        action.clickedIndex,
+                        fileNames = action.fileNames,
+                        sourceMessageIds = action.sourceMessageIds,
+                    )
+                )
+            }
+            is MessageAttachmentAction.OpenVideo -> {
+                startActivity(
+                    MediaViewerActivity.createIntent(
+                        this,
+                        action.fileId,
+                        action.fileName,
+                        action.cachedPath,
+                    )
+                )
+            }
+            is MessageAttachmentAction.OpenDocument -> openDocumentAttachment(action)
+            is MessageAttachmentAction.Save -> {
+                lifecycleScope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        FileSaveUtils.saveToDownloads(this@ChatActivity, action.cachedFile, action.fileName)
+                    }
+                    Toast.makeText(
+                        this@ChatActivity,
+                        if (saved) R.string.file_saved_to_downloads else R.string.file_save_failed,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+            is MessageAttachmentAction.ToastRes -> {
+                val text = action.formatArg?.let { getString(action.resId, it) } ?: getString(action.resId)
+                Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun openDocumentAttachment(action: MessageAttachmentAction.OpenDocument) {
+        val mimeType = getMimeType(action.fileName) ?: "application/octet-stream"
+        try {
+            when {
+                mimeType.startsWith("image/") -> startActivity(
+                    ImageViewerActivity.createIntent(
+                        this,
+                        listOf(action.fileId),
+                        listOf(action.previewUrl),
+                        0,
+                        fileNames = listOf(action.fileName),
+                    )
+                )
+                mimeType.startsWith("video/") -> startActivity(
+                    MediaViewerActivity.createIntent(
+                        this,
+                        action.fileId,
+                        action.fileName,
+                        action.cachedFile.absolutePath,
+                    )
+                )
+                else -> {
+                    val uri = FileProvider.getUriForFile(
+                        this,
+                        "${packageName}.fileprovider",
+                        action.cachedFile,
+                    )
+                    startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, mimeType)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            },
+                            getString(R.string.open_with),
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.file_open_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     /**
      * Загружает имена и аватары участников группы в кэш, после чего обновляет список
      * сообщений, чтобы у чужих сообщений отрисовались мини-аватарки.
      */
     private fun loadGroupMemberInfo() {
         lifecycleScope.launch {
-            val members = grpcManager.listChatMembers(chatId).getOrNull() ?: return@launch
+            val members = chatDirectoryGateway.members(chatId).getOrNull() ?: return@launch
 
             for (member in members) {
                 if (member.userId == currentUserId) continue
                 val name = "${member.firstName} ${member.lastName}".trim().ifBlank {
                     getString(R.string.group_member_id, member.userId)
                 }
-                val avatarSource = grpcManager.getUserData(member.userId).getOrNull()?.let { user ->
+                val avatarSource = userProfileGateway.user(member.userId).getOrNull()?.let { user ->
                     avatarSourceFor(user)
                 }
                 groupMemberInfoCache[member.userId] = name to avatarSource
@@ -1194,8 +1328,8 @@ class ChatActivity : AppCompatActivity() {
      * Перерисовывает индикатор "печатает..." в onlineStatusTextView поверх онлайн-статуса.
      * Если никто не печатает — восстанавливает предыдущее содержимое (статус онлайна / скрытие для группы).
      */
-    private fun renderTypingIndicator() {
-        if (typingUsers.isEmpty()) {
+    private fun renderTypingIndicator(userIds: Set<Long> = renderedTypingUserIds) {
+        if (userIds.isEmpty()) {
             if (isGroupChat) {
                 binding.onlineStatusTextView.visibility = View.GONE
             } else {
@@ -1211,7 +1345,7 @@ class ChatActivity : AppCompatActivity() {
 
         binding.onlineStatusTextView.visibility = View.VISIBLE
         val names = mutableListOf<String>()
-        for (userId in typingUsers.keys) {
+        for (userId in userIds) {
             val fullName = groupMemberInfoCache[userId]?.first
             if (fullName != null) {
                 names.add(fullName.substringBefore(' '))
@@ -1225,7 +1359,7 @@ class ChatActivity : AppCompatActivity() {
         } else {
             resources.getQuantityString(
                 R.plurals.typing_indicator_named,
-                typingUsers.size,
+                userIds.size,
                 names.take(3).joinToString(", ")
             )
         }
@@ -1239,7 +1373,7 @@ class ChatActivity : AppCompatActivity() {
         if (!pendingTypingNameFetches.add(userId)) return
         lifecycleScope.launch {
             try {
-                val user = grpcManager.getUserData(userId).getOrNull()
+                val user = userProfileGateway.user(userId).getOrNull()
                 if (user != null) {
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank {
                         getString(R.string.group_member_id, userId)
@@ -1249,11 +1383,11 @@ class ChatActivity : AppCompatActivity() {
             } finally {
                 pendingTypingNameFetches.remove(userId)
             }
-            renderTypingIndicator()
+            renderTypingIndicator(renderedTypingUserIds)
         }
     }
 
-    private fun avatarSourceFor(user: GrpcManager.UserData): String? {
+    private fun avatarSourceFor(user: UserProfile): String? {
         return user.profilePicturePreviewUrl
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }
@@ -1267,7 +1401,7 @@ class ChatActivity : AppCompatActivity() {
      * Если расстояние до конца > 500px: рывок на 120dp выше финала → плавное торможение по кривой.
      */
     private fun scrollToLatestMessages() {
-        if (viewModel.uiState.value.isLoading) return
+        if (viewModel.state.value.isLoading) return
         lifecycleScope.launch {
             val lm = binding.messagesRecyclerView.layoutManager as? LinearLayoutManager
 
@@ -1368,7 +1502,7 @@ class ChatActivity : AppCompatActivity() {
         binding.sendButton.applySpringPress()
         binding.sendButton.setOnClickListener {
             when {
-                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() ->
+                hasPendingAttachments() ->
                     sendMessageWithPendingAttachments()
                 else ->
                     sendMessage()
@@ -1381,6 +1515,7 @@ class ChatActivity : AppCompatActivity() {
         binding.messageEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.dispatch(ChatIntent.TextChanged(s?.toString().orEmpty()))
                 updateSendButtonMode()
                 onTypingInput(s)
                 scheduleDraftSave()
@@ -1390,7 +1525,7 @@ class ChatActivity : AppCompatActivity() {
 
         binding.messageEditText.setOnEditorActionListener { _, _, _ ->
             when {
-                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() ->
+                hasPendingAttachments() ->
                     sendMessageWithPendingAttachments()
                 else ->
                     sendMessage()
@@ -1418,6 +1553,9 @@ class ChatActivity : AppCompatActivity() {
             pendingPastedImages.clear()
             pendingStickerUris.clear()
             pendingDocumentUris.clear()
+            viewModel.state.value.composer.attachmentPaths.indices
+                .reversed()
+                .forEach { viewModel.dispatch(ChatIntent.RemoveAttachment(it)) }
             updateAttachmentPreview()
         }
 
@@ -1454,6 +1592,14 @@ class ChatActivity : AppCompatActivity() {
                         if (isStickerContent(uri, desc, i)) {
                             Log.d(TAG, "onReceiveContent: detected sticker → skip cropper")
                             pendingStickerUris.add(uri)
+                            viewModel.dispatch(
+                                ChatIntent.StageAttachment(
+                                    uri = uri,
+                                    kind = com.barkfluff.client.cache.OutgoingAttachmentKind.STICKER.name,
+                                    fileName = "sticker.webp",
+                                    mimeType = "image/webp",
+                                )
+                            )
                             updateAttachmentPreview()
                         } else {
                             Log.d(TAG, "onReceiveContent: not WebP → cropper")
@@ -1468,11 +1614,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun hasPendingAttachments(): Boolean =
-        pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty()
+        pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() ||
+            pendingStickerUris.isNotEmpty() || viewModel.state.value.composer.attachmentPaths.isNotEmpty()
 
     private fun shouldShowVoiceButton(): Boolean {
         val text = binding.messageEditText.text?.toString().orEmpty()
-        val state = viewModel.uiState.value
+        val state = viewModel.state.value
         return text.isBlank() &&
             !hasPendingAttachments() &&
             state.pendingReply == null &&
@@ -1553,32 +1700,11 @@ class ChatActivity : AppCompatActivity() {
      */
     private fun onTypingInput(s: CharSequence?) {
         if (suppressTypingInput) return
-        if (s.isNullOrBlank()) {
-            stopTypingHeartbeat(sendCancel = true)
-            return
-        }
-        lastTypingInputAt = System.currentTimeMillis()
-        if (typingHeartbeatJob == null) {
-            typingHeartbeatJob = lifecycleScope.launch {
-                while (isActive) {
-                    realtimeService.sendTypingStatus(chatId, typing = true)
-                    delay(4_000)
-                    if (System.currentTimeMillis() - lastTypingInputAt >= 5_000) break
-                }
-                typingHeartbeatJob = null
-            }
-        }
+        viewModel.dispatch(ChatIntent.TypingChanged(s?.toString().orEmpty()))
     }
 
     private fun stopTypingHeartbeat(sendCancel: Boolean) {
-        val job = typingHeartbeatJob
-        if (job != null) {
-            job.cancel()
-            typingHeartbeatJob = null
-            if (sendCancel) {
-                realtimeService.sendTypingStatus(chatId, typing = false)
-            }
-        }
+        if (sendCancel) viewModel.dispatch(ChatIntent.StopTyping)
     }
 
     private fun handleVoiceButtonTouch(event: MotionEvent): Boolean {
@@ -1813,29 +1939,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendVoiceMessage(file: File) {
-        val localId = java.util.UUID.randomUUID().toString()
-        viewModel.addOptimisticMessage(
-            MessageItem(
-                messageId = -System.nanoTime(),
-                senderId = currentUserId,
-                text = "",
-                timestamp = System.currentTimeMillis(),
-                attachments = emptyList(),
-                readStatus = ReadStatus.SENDING,
-                type = MessageType.MESSAGE,
-                localId = localId,
-                uploadProgress = 0
-            )
-        )
-
-        val job = com.barkfluff.client.send.SendJob(
+                viewModel.dispatch(ChatIntent.SendMedia(com.barkfluff.client.send.SendJob(
             chatId = chatId,
             chatTitle = chatTitle,
             text = "",
-            attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file)),
-            localIds = listOf(localId)
-        )
-        com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
+            attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file))
+                )))
     }
 
     private fun pickImages() {
@@ -1873,7 +1982,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupStickerPanel() {
         stickerPanelAdapter = StickerPanelAdapter(
-            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onStickerClick = { sticker ->
                 sendStickerMessage(sticker)
             },
@@ -1917,7 +2026,7 @@ class ChatActivity : AppCompatActivity() {
         backCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
                 when {
-                    messageAdapter.selectionMode -> exitSelectionMode()
+                    viewModel.state.value.selection.isActive -> exitSelectionMode()
                     messageActionsOverlay.isShowing -> messageActionsOverlay.dismiss()
                     binding.stickerPreviewOverlay.visibility == View.VISIBLE -> hideStickerPreview()
                     inputPanelState == InputPanelState.STICKER_PANEL -> hideStickerPanel()
@@ -1972,7 +2081,7 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val url = try {
                 withContext(Dispatchers.IO) {
-                    chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                    fileMediaGateway.downloadUrl(fileId).getOrNull()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading sticker preview url", e)
@@ -2009,8 +2118,8 @@ class ChatActivity : AppCompatActivity() {
     private fun refreshStickerDataFromServer() {
         lifecycleScope.launch {
             try {
-                val packs = withContext(Dispatchers.IO) { grpcManager.listStickerPacks() }
-                if (packs.isNullOrEmpty()) {
+                val packs = stickerGateway.packs().getOrNull().orEmpty()
+                if (packs.isEmpty()) {
                     if (!stickerDataLoaded) stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
                     return@launch
                 }
@@ -2023,10 +2132,8 @@ class ChatActivity : AppCompatActivity() {
                         stickerCount = pack.stickerCount,
                         coverStickerId = pack.coverStickerId
                     ))
-                    val stickers = withContext(Dispatchers.IO) { grpcManager.getStickerPack(pack.id) }
-                    if (stickers != null) {
-                        allItems.addAll(stickers.map { StickerPanelItem.Sticker(it, pack.id) })
-                    }
+                    val stickers = stickerGateway.stickerPack(pack.id).getOrNull().orEmpty()
+                    allItems.addAll(stickers.map { StickerPanelItem.Sticker(it, pack.id) })
                 }
                 stickerPanelAdapter.submitList(allItems)
                 stickerDataLoaded = true
@@ -2060,16 +2167,37 @@ class ChatActivity : AppCompatActivity() {
         val uris = result.uris
         if (uris.isEmpty()) return
 
-        // Если выбраны документы — добавить в pendingDocumentUris и показать превью
+        // Документы проходят durable staging; preview появится только после AttachmentStaged.
         if (result.isDocuments) {
-            pendingDocumentUris.addAll(uris)
+            uris.take(ImagePickerBottomSheet.MAX_SELECTION).forEach { uri ->
+                pendingDocumentUris.add(uri)
+                val (fileName, mimeType) = getDocumentInfo(uri)
+                viewModel.dispatch(
+                    ChatIntent.StageAttachment(
+                        uri = uri,
+                        kind = com.barkfluff.client.cache.OutgoingAttachmentKind.DOCUMENT.name,
+                        fileName = fileName,
+                        mimeType = mimeType,
+                    )
+                )
+            }
             updateAttachmentPreview()
             return
         }
 
-        // Если фото с камеры — добавить в pendingPastedImages и показать превью
+        // Фото с камеры также принимаются только после durable staging.
         if (result.fromCamera) {
-            pendingPastedImages.addAll(uris)
+            uris.take(ImagePickerBottomSheet.MAX_SELECTION).forEach { uri ->
+                pendingPastedImages.add(uri)
+                viewModel.dispatch(
+                    ChatIntent.StageAttachment(
+                        uri = uri,
+                        kind = com.barkfluff.client.cache.OutgoingAttachmentKind.RAW_IMAGE.name,
+                        fileName = "camera_image.jpg",
+                        mimeType = contentResolver.getType(uri) ?: "image/jpeg",
+                    )
+                )
+            }
             updateAttachmentPreview()
             return
         }
@@ -2090,79 +2218,24 @@ class ChatActivity : AppCompatActivity() {
                 }
                 com.barkfluff.client.editor.MediaEditCache.has(uri) -> {
                     val edited = com.barkfluff.client.editor.MediaEditCache.get(uri)!!
-                    val key = com.barkfluff.client.send.SendPayloadCache.put(edited.bytes)
-                    com.barkfluff.client.send.AttachmentSpec.EditedImage(cacheKey = key, originalUri = uri)
+                    com.barkfluff.client.send.AttachmentSpec.EditedImage(
+                        originalUri = uri,
+                        bytes = edited.bytes
+                    )
                 }
                 else -> com.barkfluff.client.send.AttachmentSpec.RawImage(uri)
             }
         }
 
-        // URI для локального превью оптимистичного сообщения (картинки/видео показываются сразу,
-        // ещё до загрузки на сервер). Документы/стикеры превью не имеют.
-        val previewUris: List<Uri?> = attachments.map { spec ->
-            when (spec) {
-                is com.barkfluff.client.send.AttachmentSpec.RawImage -> spec.uri
-                is com.barkfluff.client.send.AttachmentSpec.EditedImage -> spec.originalUri
-                is com.barkfluff.client.send.AttachmentSpec.Video -> spec.spec.uri
-                else -> null
-            }
-        }
-
-        // Генерим localId на каждое будущее сообщение и добавляем оптимистичные items в чат —
-        // пользователь сразу видит карточки с прогрессом аплоада (M3 Expressive inline feedback).
-        val localIds: List<String> = if (result.sendSeparately) {
-            attachments.map { java.util.UUID.randomUUID().toString() }
-        } else {
-            listOf(java.util.UUID.randomUUID().toString())
-        }
-
-        if (result.sendSeparately) {
-            attachments.forEachIndexed { idx, _ ->
-                val captionForFirst = if (idx == 0) result.captionText else ""
-                viewModel.addOptimisticMessage(
-                    MessageItem(
-                        messageId = -(System.nanoTime() + idx),
-                        senderId = currentUserId,
-                        text = captionForFirst,
-                        timestamp = System.currentTimeMillis(),
-                        attachments = emptyList(),
-                        readStatus = ReadStatus.SENDING,
-                        type = MessageType.MESSAGE,
-                        localId = localIds[idx],
-                        uploadProgress = 0,
-                        localPreviewUris = listOfNotNull(previewUris.getOrNull(idx))
-                    )
-                )
-            }
-        } else {
-            viewModel.addOptimisticMessage(
-                MessageItem(
-                    messageId = -System.nanoTime(),
-                    senderId = currentUserId,
-                    text = result.captionText,
-                    timestamp = System.currentTimeMillis(),
-                    attachments = emptyList(),
-                    readStatus = ReadStatus.SENDING,
-                    type = MessageType.MESSAGE,
-                    localId = localIds[0],
-                    uploadProgress = 0,
-                    localPreviewUris = previewUris.filterNotNull()
-                )
-            )
-        }
-
-        val job = com.barkfluff.client.send.SendJob(
+        viewModel.dispatch(ChatIntent.SendMedia(com.barkfluff.client.send.SendJob(
             chatId = chatId,
             chatTitle = chatTitle,
             text = result.captionText,
             attachments = attachments,
-            replyId = viewModel.uiState.value.pendingReply?.messageId ?: 0L,
+            replyId = viewModel.state.value.pendingReply?.messageId ?: 0L,
             sendSeparately = result.sendSeparately,
-            sendAsFile = result.sendAsFile,
-            localIds = localIds
-        )
-        com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
-        clearPendingReply()
+            sendAsFile = result.sendAsFile
+        )))
     }
 
     private fun isStickerContent(uri: Uri, clipDescription: android.content.ClipDescription?, index: Int): Boolean {
@@ -2184,38 +2257,6 @@ class ChatActivity : AppCompatActivity() {
         if (authority.contains("inputmethod") && path.contains("/sticker/", ignoreCase = true)) return true
 
         return false
-    }
-
-    private suspend fun convertToWebp(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
-        try {
-            val mimeType = contentResolver.getType(uri)
-            // Уже WebP — просто читаем байты
-            if (mimeType == "image/webp") {
-                return@withContext contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            }
-            // Декодируем и конвертируем в WebP (с прозрачностью)
-            val bitmap = contentResolver.openInputStream(uri)?.use {
-                android.graphics.BitmapFactory.decodeStream(it)
-            } ?: return@withContext null
-            val outputStream = java.io.ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSLESS, 100, outputStream)
-            bitmap.recycle()
-            outputStream.toByteArray()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error converting to WebP", e)
-            null
-        }
-    }
-
-    private suspend fun readBytesFromUri(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
-        try {
-            contentResolver.openInputStream(uri)?.use { inputStream ->
-                inputStream.readBytes()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error reading bytes from uri", e)
-            null
-        }
     }
 
     /**
@@ -2270,8 +2311,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun updateAttachmentPreview() {
-        val photosCount = pendingPastedImages.size + pendingStickerUris.size
-        val filesCount = pendingDocumentUris.size
+        val composer = viewModel.state.value.composer
+        // Pending URI lists are only staging work; accepted previews come from Room-backed paths.
+        val filesCount = composer.attachmentKinds.count {
+            it == com.barkfluff.client.cache.OutgoingAttachmentKind.DOCUMENT.name
+        }
+        val photosCount = composer.attachmentPaths.size - filesCount
 
         if (photosCount == 0 && filesCount == 0) {
             binding.attachmentPreviewBar.visibility = View.GONE
@@ -2290,130 +2335,54 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendMessageWithPendingAttachments() {
+        if (pendingAttachmentsAwaitingOutbox) return
+        // The ViewModel copies sources asynchronously. Wait until all source URIs have either
+        // produced an AttachmentStaged effect or a failure effect before enqueueing.
+        if (pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() || pendingDocumentUris.isNotEmpty()) {
+            return
+        }
         val text = binding.messageEditText.text.toString().trim()
-        val photos = pendingPastedImages.toList()
-        val stickers = pendingStickerUris.toList()
-        val documents = pendingDocumentUris.toList()
-        pendingPastedImages.clear()
-        pendingStickerUris.clear()
-        pendingDocumentUris.clear()
-        updateAttachmentPreview()
-        suppressDraftSave = true
-        binding.messageEditText.text?.clear()
-        suppressDraftSave = false
-
-        lifecycleScope.launch {
-            val fileIds = mutableListOf<String>()
-
-            // Загружаем стикеры (конвертируем в WebP)
-            for ((index, uri) in stickers.withIndex()) {
-                try {
-                    val bytes = convertToWebp(uri) ?: continue
-                    val uploadResult = chatRepository.uploadFile(
-                        bytes,
-                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER
-                    )
-                    if (uploadResult.isSuccess) {
-                        fileIds.add(uploadResult.getOrNull()!!)
-                    } else {
-                        Log.e(TAG, "Sticker ${index + 1}/${stickers.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing sticker ${index + 1}/${stickers.size}", e)
-                }
-            }
-
-            // Загружаем фото (со сжатием)
-            for ((index, uri) in photos.withIndex()) {
-                try {
-                    val bytes = ImageCompressor.compressImage(uri, this@ChatActivity).getOrNull()
-                        ?: continue
-
-                    val uploadType = barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
-
-                    val uploadResult = chatRepository.uploadFile(bytes, uploadType)
-                    if (uploadResult.isSuccess) {
-                        fileIds.add(uploadResult.getOrNull()!!)
-                    } else {
-                        Log.e(TAG, "Photo ${index + 1}/${photos.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing photo ${index + 1}/${photos.size}", e)
-                }
-            }
-
-            // Загружаем документы (без сжатия)
-            for ((index, uri) in documents.withIndex()) {
-                try {
-                    val bytes = readBytesFromUri(uri) ?: continue
-                    val (docName, docMime) = getDocumentInfo(uri)
-                    val uploadResult = chatRepository.uploadFile(
-                        bytes,
-                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT,
-                        fileName = docName,
-                        mimeType = docMime
-                    )
-                    if (uploadResult.isSuccess) {
-                        fileIds.add(uploadResult.getOrNull()!!)
-                    } else {
-                        Log.e(TAG, "Document ${index + 1}/${documents.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing document ${index + 1}/${documents.size}", e)
-                }
-            }
-
-            if (fileIds.isNotEmpty()) {
-                sendMessage(text = text, fileIds = fileIds)
-            } else {
-                Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
-                if (text.isNotBlank()) {
-                    sendMessage(text = text)
-                }
-            }
+        if (viewModel.state.value.composer.attachmentPaths.isNotEmpty()) {
+            pendingAttachmentsAwaitingOutbox = true
+            viewModel.dispatch(ChatIntent.Send(text))
+        } else {
+            Toast.makeText(this@ChatActivity, R.string.files_upload_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
         val messageText = text.trim()
-        val state = viewModel.uiState.value
+        val state = viewModel.state.value
 
         // Если активен режим редактирования — редактируем существующее сообщение.
         // fileIds игнорируем (вложения не меняются), VM использует сохранённые fileIds.
         if (state.pendingEdit != null) {
-            viewModel.sendMessage(messageText)
+            viewModel.dispatch(ChatIntent.Send(messageText))
             return
         }
 
         // Reply без текста и без файлов — отправляем сам факт пересылки
         if (messageText.isBlank() && fileIds.isEmpty() && state.pendingReply == null) return
 
-        // Освобождаем поле ввода и reply-bar моментально — оптимистичный SENDING-item
-        // добавит VM, пользователь не ждёт сетевого ответа.
-        suppressDraftSave = true
-        binding.messageEditText.text?.clear()
-        suppressDraftSave = false
-        clearPendingReply(saveDraft = false)
-
-        viewModel.sendMessage(messageText, fileIds)
+        viewModel.dispatch(ChatIntent.Send(messageText, fileIds))
     }
 
     // ─── Reply / Forward UX ────────────────────────────────────────────────────
 
     private fun setPendingReply(item: MessageItem) {
-        viewModel.setPendingReply(item)
+        viewModel.dispatch(ChatIntent.SetReply(item))
         binding.messageEditText.requestFocus()
         scheduleDraftSave()
     }
 
     private fun clearPendingReply(saveDraft: Boolean = true) {
-        viewModel.clearPendingReply()
+        viewModel.dispatch(ChatIntent.ClearReply)
         if (saveDraft) scheduleDraftSave()
     }
 
     private fun scheduleDraftSave(immediate: Boolean = false) {
         if (!supportsDrafts || suppressDraftSave) return
-        viewModel.saveDraft(binding.messageEditText.text?.toString().orEmpty(), immediate)
+        viewModel.dispatch(ChatIntent.SaveDraft(binding.messageEditText.text?.toString().orEmpty(), immediate))
     }
 
     // ─── Edit / Delete UX ─────────────────────────────────────────────────────
@@ -2421,11 +2390,11 @@ class ChatActivity : AppCompatActivity() {
     private fun setPendingEdit(item: MessageItem) {
         // Edit и reply — взаимоисключающие режимы (VM чистит reply сам).
         // Поле ввода синхронизирует renderPendingEdit по смене состояния.
-        viewModel.setPendingEdit(item)
+        viewModel.dispatch(ChatIntent.SetEdit(item))
     }
 
     private fun clearPendingEdit() {
-        viewModel.clearPendingEdit()
+        viewModel.dispatch(ChatIntent.ClearEdit)
         suppressDraftSave = true
         binding.messageEditText.text?.clear()
         suppressDraftSave = false
@@ -2438,7 +2407,7 @@ class ChatActivity : AppCompatActivity() {
             .setMessage(R.string.delete_message_message)
             .setNegativeButton(R.string.btn_cancel, null)
             .setPositiveButton(R.string.btn_delete) { _, _ ->
-                viewModel.deleteMessage(item.messageId)
+                viewModel.dispatch(ChatIntent.Delete(item.messageId))
             }
             .show()
     }
@@ -2547,9 +2516,44 @@ class ChatActivity : AppCompatActivity() {
         const val COPY_MARKDOWN = 10
         const val PROPERTIES = 11
         const val SELECT = 12
+        const val OUTGOING_RETRY = 13
+        const val OUTGOING_CANCEL = 14
     }
 
     private fun showMessageActionMenu(bubble: View, item: MessageItem) {
+        val outgoingState = item.outgoingState
+        if (outgoingState != null) {
+            val actions = buildList {
+                if (outgoingState == com.barkfluff.client.cache.OutgoingMessageState.FAILED) {
+                    add(MessageActionsOverlay.Action(
+                        MessageActionId.OUTGOING_RETRY,
+                        R.drawable.ic_refresh,
+                        getString(R.string.search_retry)
+                    ))
+                }
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.OUTGOING_CANCEL,
+                    R.drawable.ic_close,
+                    getString(R.string.btn_cancel),
+                    danger = outgoingState == com.barkfluff.client.cache.OutgoingMessageState.FAILED
+                ))
+            }
+            messageActionsOverlay.show(
+                bubble = bubble,
+                actions = actions,
+                alignEnd = true,
+                onDismiss = { backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE || inputPanelState == InputPanelState.STICKER_PANEL }
+            ) { actionId ->
+                item.localId?.let { operationId ->
+                    when (actionId) {
+                        MessageActionId.OUTGOING_RETRY -> viewModel.dispatch(ChatIntent.RetryOutgoing(operationId))
+                        MessageActionId.OUTGOING_CANCEL -> viewModel.dispatch(ChatIntent.CancelOutgoing(operationId))
+                    }
+                }
+            }
+            backCallback.isEnabled = true
+            return
+        }
         val isOwnMessage = item.senderId == currentUserId
         val imageAtts = item.attachments.filter {
             it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE ||
@@ -2600,7 +2604,7 @@ class ChatActivity : AppCompatActivity() {
             onDismiss = {
                 // Закрытие анимированное (~180мс) — за это время действие могло уже включить
                 // режим выделения (SELECT), который сам управляет backCallback. Не перетираем.
-                if (!messageAdapter.selectionMode) {
+                if (!viewModel.state.value.selection.isActive) {
                     backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
                         inputPanelState == InputPanelState.STICKER_PANEL
                 }
@@ -2629,7 +2633,7 @@ class ChatActivity : AppCompatActivity() {
                         .newInstance(sourceIds.toLongArray())
                         .show(supportFragmentManager, "forward_picker")
                 }
-                MessageActionId.PIN -> viewModel.togglePinForMessage(item)
+                MessageActionId.PIN -> viewModel.dispatch(ChatIntent.TogglePin(item))
                 MessageActionId.PROPERTIES -> showMessageProperties(item)
                 MessageActionId.SELECT -> enterSelectionMode(item)
             }
@@ -2682,9 +2686,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun enterSelectionMode(item: MessageItem) {
-        selectedMessageIds.clear()
-        selectedMessageIds.add(item.messageId)
-        messageAdapter.setSelectionMode(true, selectedMessageIds.toSet())
+        viewModel.dispatch(ChatIntent.ClearSelection)
+        viewModel.dispatch(ChatIntent.ToggleSelection(item.messageId))
         updateSelectionToolbar()
         // INVISIBLE, не GONE: pinnedMessageBar и e2eBanner привязаны к нижнему краю
         // chatHeaderBar constraint-цепочкой — GONE обнулил бы её высоту, и они уехали
@@ -2695,8 +2698,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun exitSelectionMode() {
-        selectedMessageIds.clear()
-        messageAdapter.setSelectionMode(false)
+        viewModel.dispatch(ChatIntent.ClearSelection)
         binding.selectionToolbar.visibility = View.GONE
         binding.chatHeaderBar.visibility = View.VISIBLE
         backCallback.isEnabled = messageActionsOverlay.isShowing ||
@@ -2705,27 +2707,28 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun toggleSelection(messageId: Long) {
-        if (!messageAdapter.selectionMode) return
-        if (selectedMessageIds.contains(messageId)) {
-            selectedMessageIds.remove(messageId)
-        } else {
-            selectedMessageIds.add(messageId)
-        }
-        if (selectedMessageIds.isEmpty()) {
+        if (!viewModel.state.value.selection.isActive) return
+        viewModel.dispatch(ChatIntent.ToggleSelection(messageId))
+        if (!viewModel.state.value.selection.isActive) {
             exitSelectionMode()
         } else {
-            messageAdapter.setSelected(messageId, selectedMessageIds.toSet())
             updateSelectionToolbar()
         }
     }
 
     private fun updateSelectionToolbar() {
-        binding.selectionCountText.text = getString(R.string.create_group_members_count, selectedMessageIds.size)
+        binding.selectionCountText.text = getString(
+            R.string.create_group_members_count,
+            viewModel.state.value.selection.selectedMessageIds.size
+        )
     }
 
     /** Сообщения из выбранных ID в порядке их следования в текущем списке чата. */
     private fun selectedMessagesInOrder(): List<MessageItem> =
-        messageAdapter.currentList.filter { it.type == MessageType.MESSAGE && it.messageId in selectedMessageIds }
+        messageAdapter.currentList.filter {
+            it.type == MessageType.MESSAGE &&
+                it.messageId in viewModel.state.value.selection.selectedMessageIds
+        }
 
     private fun copySelectedMessages() {
         val texts = selectedMessagesInOrder().map { MarkdownRenderer.strip(it.text) }.filter { it.isNotBlank() }
@@ -2757,7 +2760,7 @@ class ChatActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     var failed = 0
                     for (id in ownIds) {
-                        val result = chatRepository.deleteMessage(id)
+                        val result = messageGateway.deleteMessage(id)
                         if (result.isSuccess) viewModel.removeMessageById(id) else failed++
                     }
                     if (failed > 0) {
@@ -2774,7 +2777,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun copyMessageImage(att: barkfluff.shared.Shared.MessageAttachment) {
         lifecycleScope.launch {
-            val srcFile = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+            val srcFile = FileCache.getFile(att.fileId) ?: fileMediaGateway.download(att.fileId)
             if (srcFile == null) {
                 Toast.makeText(this@ChatActivity, R.string.message_image_download_failed, Toast.LENGTH_SHORT).show()
                 return@launch
@@ -2816,7 +2819,7 @@ class ChatActivity : AppCompatActivity() {
             var saved = 0
             for (att in images) {
                 val name = att.fileName.ifBlank { "image_${att.fileId.take(8)}.jpg" }
-                val file = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                val file = FileCache.getFile(att.fileId) ?: fileMediaGateway.download(att.fileId)
                 if (file != null) {
                     val ok = withContext(Dispatchers.IO) {
                         FileSaveUtils.saveImageToGallery(this@ChatActivity, file, name)
@@ -2839,7 +2842,7 @@ class ChatActivity : AppCompatActivity() {
             var saved = 0
             for (att in docs) {
                 val name = att.fileName.ifBlank { "file_${att.fileId.take(8)}" }
-                val file = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                val file = FileCache.getFile(att.fileId) ?: fileMediaGateway.download(att.fileId)
                 if (file != null) {
                     val ok = withContext(Dispatchers.IO) {
                         FileSaveUtils.saveToDownloads(this@ChatActivity, file, name)
@@ -2872,11 +2875,11 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun toggleChatMute() {
-        val newMuted = !viewModel.uiState.value.isChatMuted
+        val newMuted = !viewModel.state.value.isChatMuted
         lifecycleScope.launch {
-            val result = grpcManager.setChatMuted(chatId, newMuted)
+            val result = userSettingsGateway.setChatMuted(chatId, newMuted)
             if (result.isSuccess) {
-                viewModel.setChatMuted(newMuted)
+                viewModel.dispatch(ChatIntent.SetMuted(newMuted))
                 isChatMuted = newMuted
                 globalParam.setChatMutedLocal(chatId, newMuted)
                 val msg = if (newMuted) getString(R.string.chat_muted) else getString(R.string.chat_unmuted)
@@ -2887,9 +2890,6 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private var onlineStatusJob: Job? = null
-    private var onlineStatusSubscription: Job? = null
-
     /**
      * Записывает онлайн-статус, не давая индикатору набора текста быть перезаписанным:
      * пока хотя бы один собеседник печатает — onlineStatusTextView остаётся отведён под typing-текст.
@@ -2898,75 +2898,31 @@ class ChatActivity : AppCompatActivity() {
         lastStatusText = text
         lastIndicatorVisible = indicatorVisible
         binding.onlineIndicator.visibility = if (indicatorVisible) View.VISIBLE else View.GONE
-        if (typingUsers.isEmpty()) {
+        if (renderedTypingUserIds.isEmpty()) {
             binding.onlineStatusTextView.text = text
         }
     }
 
-    private fun loadOnlineStatus(userId: Long) {
-        // Отменяем предыдущий job если есть
-        onlineStatusJob?.cancel()
-
-        onlineStatusJob = lifecycleScope.launch {
-            try {
-                // Первоначальная загрузка
-                fetchAndDisplayOnlineStatus(userId)
-
-                // Периодическое обновление каждые 30 секунд
-                while (true) {
-                    delay(30_000)
-                    fetchAndDisplayOnlineStatus(userId)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading online status", e)
+    /** Renders the immutable presence snapshot; subscriptions and polling stay in ChatViewModel. */
+    private fun renderPresenceState(presence: PresenceState) {
+        if (isGroupChat) {
+            if (presence.typingUserIds.isEmpty()) {
+                binding.onlineStatusTextView.visibility = View.GONE
+            }
+            return
+        }
+        val isOnline = otherUserId > 0L && otherUserId in presence.onlineUserIds
+        val statusText = if (isOnline) {
+            getString(R.string.profile_online)
+        } else {
+            val lastSeen = presence.lastSeenEpochMillisByUser[otherUserId]
+            if (lastSeen != null && lastSeen > 0L) {
+                OnlineTimeFormatter.formatLastSeen(this, lastSeen)
+            } else {
+                getString(R.string.status_recently_seen)
             }
         }
-
-        // Подписка на streaming обновления онлайн-статуса через RealtimeService
-        onlineStatusSubscription?.cancel()
-        onlineStatusSubscription = lifecycleScope.launch {
-            realtimeService.onlineStatuses.collect { status ->
-                if (status.userId == userId) {
-                    withContext(Dispatchers.Main) {
-                        val isOnline = status.status.number == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.number
-                        if (isOnline) {
-                            applyOnlineStatus(getString(R.string.profile_online), true)
-                        } else {
-                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, status.lastSeen.seconds * 1000)
-                            applyOnlineStatus(lastSeen, false)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun fetchAndDisplayOnlineStatus(userId: Long) {
-        try {
-            val onlinerClient = grpcManager.onlinerClient
-            if (onlinerClient != null) {
-                val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
-                    .addUserIds(userId)
-                    .build()
-                val response = onlinerClient.getOnlineStatus(request)
-                val userStatus = response.usersStatusesList.firstOrNull()
-                withContext(Dispatchers.Main) {
-                    if (userStatus != null) {
-                        val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
-                        if (isOnline) {
-                            applyOnlineStatus(getString(R.string.profile_online), true)
-                        } else {
-                            val lastSeen = OnlineTimeFormatter.formatLastSeen(this@ChatActivity, userStatus.lastSeen.seconds * 1000)
-                            applyOnlineStatus(lastSeen, false)
-                        }
-                    } else {
-                        applyOnlineStatus(getString(R.string.status_recently_seen), false)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching online status", e)
-        }
+        applyOnlineStatus(statusText, isOnline)
     }
 
     private fun getMimeType(fileName: String): String? {
@@ -2992,7 +2948,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupPinnedBar() {
         binding.pinnedMessageBar.setOnClickListener {
-            val first = viewModel.uiState.value.firstPinnedMessageId
+            val first = viewModel.state.value.firstPinnedMessageId
             if (first > 0L) scrollToMessageId(first)
         }
         binding.pinnedListButton.setOnClickListener {
@@ -3045,7 +3001,7 @@ class ChatActivity : AppCompatActivity() {
         super.onStart()
         // При возврате из фона — подгружаем пропущенное и синхронизируем edit/delete
         // (токен, ожидание переподключения стримов и догрузка — в ChatViewModel).
-        viewModel.onStartCatchUp()
+        viewModel.dispatch(ChatIntent.StartCatchUp)
     }
 
     override fun onResume() {
@@ -3065,7 +3021,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun refreshChatBackgroundSettings() {
         lifecycleScope.launch {
-            grpcManager.getUserSettings().onSuccess { settings ->
+            userSettingsGateway.syncedChatBackgrounds().onSuccess { settings ->
                 globalParam.applyChatBackgroundSettings(
                     settings.globalChatBackgroundFileId,
                     settings.chatBackgroundFileIds
@@ -3087,10 +3043,7 @@ class ChatActivity : AppCompatActivity() {
         super.onDestroy()
         // Сбрасываем открытый чат
         OpenChatManager.closeChat()
-        onlineStatusJob?.cancel()
-        onlineStatusSubscription?.cancel()
         stopTypingHeartbeat(sendCancel = true)
-        realtimeService.changeTypingSubscription(emptyList())
         headerNameAnimator?.cancel()
         headerStatusAnimator?.cancel()
         sendButtonMorphAnimator?.cancel()

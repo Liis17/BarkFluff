@@ -1,32 +1,22 @@
 package com.barkfluff.client.adapter
 
-import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.MimeTypeMap
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.SeekBar
-import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import com.barkfluff.client.ImageViewerActivity
-import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
@@ -41,26 +31,18 @@ import com.barkfluff.client.databinding.ItemMessageReceivedBinding
 import com.barkfluff.client.databinding.ItemMessageSentBinding
 import com.barkfluff.client.databinding.ViewMessageQuoteBinding
 import com.barkfluff.client.utils.AudioCallbacks
-import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.AudioWaveformExtractor
-import com.barkfluff.client.utils.FileCache
-import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.ImageCompressor
+import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.utils.ImageLoadHelper
-import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Адаптер для отображения сообщений в чате с разделителями дат.
@@ -70,22 +52,20 @@ import java.util.Locale
 class MessageAdapter(
     private val currentUserId: Long,
     private val isGroupChat: Boolean,
-    private val getFileUrl: suspend (String) -> String? = { null },
-    private val downloadToCache: suspend (fileId: String, onProgress: (Int) -> Unit) -> java.io.File? = { _, _ -> null },
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
+    private val attachmentLoader: AttachmentLoader = EmptyAttachmentLoader,
     /** Закругление облачков сообщений в dp (0..30). */
     var messageCornerRadiusDp: Int = 28,
     /** Размер стикеров в чате в dp. */
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
-    /** Вызывается при клике на пузырь сообщения — открыть меню действий. bubble = messageCard/stickerContainer, для позиционирования оверлея. */
-    private val onMessageActionRequested: ((bubble: View, item: MessageItem) -> Unit)? = null,
-    /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
-    private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null,
-    /** Резолвер информации об отправителе в групповом чате: senderId -> (имя, URL/fileId аватара). null = брать из самого MessageItem. */
-    private val senderInfoProvider: ((senderId: Long) -> Pair<String?, String?>?)? = null,
-    /** Вызывается при тапе по пузырю/индикатору в режиме выделения — переключить выбор сообщения. */
-    private val onSelectionToggle: ((messageId: Long) -> Unit)? = null
+    /** Единственная граница событий строки; adapter не знает о навигации и domain side effects. */
+    private val eventSink: MessageRowEventSink? = null,
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
+
+    private val audioPlaybackController = AudioPlaybackController()
+    private val viewOperations = ViewBoundOperationController()
+    private val contentRenderer = MessageContentRenderer()
+    private val attachmentRenderer = MessageAttachmentRenderer(attachmentLoader)
+    private val audioRenderer = MessageAudioRenderer(audioPlaybackController)
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
     fun getMessageAt(position: Int): MessageItem? {
@@ -94,38 +74,21 @@ class MessageAdapter(
         return if (item.type == MessageType.MESSAGE) item else null
     }
 
-    /** Режим множественного выделения сообщений — состоянием владеет ChatActivity. */
-    var selectionMode: Boolean = false
-        private set
-    private var selectedIds: Set<Long> = emptySet()
-
-    /** Включает/выключает режим выделения — меняется видимость индикатора у всех строк. */
-    fun setSelectionMode(enabled: Boolean, selected: Set<Long> = emptySet()) {
-        selectionMode = enabled
-        selectedIds = selected
-        notifyDataSetChanged()
-    }
-
-    /** Обновляет набор выбранных ID после переключения одного сообщения — точечный ребинд. */
-    fun setSelected(messageId: Long, allSelected: Set<Long>) {
-        selectedIds = allSelected
-        val position = currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
-        if (position >= 0) notifyItemChanged(position)
-    }
-
     /**
      * Показывает/скрывает индикатор выделения и переключает его иконку по состоянию выбора.
      * Для [contentColumn] (только у входящих — у исходящих под индикатор уже есть готовый
      * отступ) сдвигает содержимое вправо через translationX, освобождая место слева.
      */
     private fun bindSelectionIndicator(indicator: ImageView, contentColumn: View?, item: MessageItem) {
-        val isSelectable = selectionMode && item.type == MessageType.MESSAGE
+        val isSelectable = item.selectionEnabled && item.type == MessageType.MESSAGE
         indicator.visibility = if (isSelectable) View.VISIBLE else View.GONE
         if (isSelectable) {
             indicator.setImageResource(
-                if (item.messageId in selectedIds) R.drawable.ic_action_select else R.drawable.ic_circle_outline
+                if (item.isSelected) R.drawable.ic_action_select else R.drawable.ic_circle_outline
             )
-            indicator.setOnClickListener { onSelectionToggle?.invoke(item.messageId) }
+            indicator.setOnClickListener {
+                eventSink?.onSelectionToggle(item.messageId)
+            }
         } else {
             indicator.setOnClickListener(null)
         }
@@ -162,35 +125,6 @@ class MessageAdapter(
         /** Сдвиг contentColumn у входящих в режиме выделения: 24dp индикатор + 8dp зазор. */
         private const val SELECTION_SHIFT_DP = 32f
 
-        private val voiceAutoDownloads = mutableSetOf<String>()
-        private val voiceWaveformCache = mutableMapOf<String, FloatArray>()
-
-        private val FOOTER_ITEM = MessageItem(
-            messageId = Long.MIN_VALUE,
-            senderId = 0,
-            text = "",
-            timestamp = 0,
-            attachments = emptyList(),
-            type = MessageType.FOOTER
-        )
-    }
-
-    /** Удаляет все footer-элементы из списка и добавляет один в конец. */
-    private fun MutableList<MessageItem>.ensureFooter() {
-        removeAll { it.type == MessageType.FOOTER }
-        add(FOOTER_ITEM)
-    }
-
-    /**
-     * Отфильтровывает повторяющиеся по messageId items типа MESSAGE/SYSTEM —
-     * страховка от случайных дублей при пересечении realtime-event и пагинации.
-     */
-    private fun List<MessageItem>.dedupMessages(): List<MessageItem> {
-        val seen = HashSet<Long>()
-        return filter { item ->
-            if (item.type != MessageType.MESSAGE && item.type != MessageType.SYSTEM) true
-            else seen.add(item.messageId)
-        }
     }
 
     /** Резолвит цветной theme-атрибут (?attr/colorPrimary и т.п.) в int color. */
@@ -241,19 +175,6 @@ class MessageAdapter(
                 view.visibility = View.VISIBLE
             }
         }
-    }
-
-    /** Переопределяем submitList — footer всегда в конце списка. */
-    override fun submitList(list: List<MessageItem>?) {
-        val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
-        mutable.ensureFooter()
-        super.submitList(mutable)
-    }
-
-    override fun submitList(list: List<MessageItem>?, commitCallback: Runnable?) {
-        val mutable = (list ?: emptyList()).dedupMessages().toMutableList()
-        mutable.ensureFooter()
-        super.submitList(mutable, commitCallback)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -317,6 +238,16 @@ class MessageAdapter(
         if (holder is ReceivedMessageViewHolder) {
             holder.bindSenderInfo(getItem(position))
         }
+    }
+
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        viewOperations.cancelTree(holder.itemView)
+        super.onViewRecycled(holder)
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        viewOperations.cancelAll()
+        super.onDetachedFromRecyclerView(recyclerView)
     }
 
     /** Место сообщения в серии подряд идущих сообщений одного отправителя. */
@@ -441,7 +372,11 @@ class MessageAdapter(
             // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
+                if (item.selectionEnabled) {
+                    eventSink?.onSelectionToggle(item.messageId)
+                } else {
+                    eventSink?.onMessageActionRequested(v, item)
+                }
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
@@ -469,7 +404,7 @@ class MessageAdapter(
                 applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
-                binding.stickerTimeTextView.text = formatTime(item.timestamp)
+                binding.stickerTimeTextView.text = contentRenderer.formatTime(item.timestamp)
                 applyDeliveryStatusIcon(binding.stickerReadStatusImageView, item.readStatus, useLightTint = true)
             } else {
                 // Обычное сообщение с облачком
@@ -487,20 +422,20 @@ class MessageAdapter(
                     binding.forwardQuotesContainer.visibility != View.VISIBLE
 
                 if (item.text.isNotBlank()) {
-                    MarkdownRenderer.renderMessageInto(
+                    contentRenderer.renderText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView,
                         item.text
                     )
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
-                    MarkdownRenderer.clearMessageContent(
+                    contentRenderer.clearText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView
                     )
                 }
 
-                binding.timeTextView.text = formatTime(item.timestamp)
+                binding.timeTextView.text = contentRenderer.formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
                 applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
@@ -597,7 +532,7 @@ class MessageAdapter(
 
             // Имя и аватар отправителя берём из резолвера (кэш участников чата),
             // с фолбэком на поля самого сообщения.
-            val resolved = senderInfoProvider?.invoke(item.senderId)
+            val resolved = eventSink?.senderInfo(item.senderId)
             val senderName = resolved?.first ?: item.senderName
             val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
 
@@ -612,7 +547,7 @@ class MessageAdapter(
                     userId = item.senderId,
                     size = 48
                 ) {
-                    getFileUrl(senderAvatarFileId)
+                    attachmentLoader.url(senderAvatarFileId)
                 }
             } else {
                 binding.senderAvatarImageView.visibility = View.GONE
@@ -634,7 +569,11 @@ class MessageAdapter(
             // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (selectionMode) onSelectionToggle?.invoke(item.messageId) else onMessageActionRequested?.invoke(v, item)
+                if (item.selectionEnabled) {
+                    eventSink?.onSelectionToggle(item.messageId)
+                } else {
+                    eventSink?.onMessageActionRequested(v, item)
+                }
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
@@ -664,7 +603,7 @@ class MessageAdapter(
                 applyStickerSize(binding.stickerImageView)
                 loadStickerImage(binding.stickerImageView, attachment)
 
-                binding.stickerTimeTextView.text = formatTime(item.timestamp)
+                binding.stickerTimeTextView.text = contentRenderer.formatTime(item.timestamp)
             } else {
                 // Обычное сообщение с облачком
                 binding.messageCard.visibility = View.VISIBLE
@@ -681,20 +620,20 @@ class MessageAdapter(
                     binding.forwardQuotesContainer.visibility != View.VISIBLE
 
                 if (item.text.isNotBlank()) {
-                    MarkdownRenderer.renderMessageInto(
+                    contentRenderer.renderText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView,
                         item.text
                     )
                     binding.messageTextView.visibility = View.VISIBLE
                 } else {
-                    MarkdownRenderer.clearMessageContent(
+                    contentRenderer.clearText(
                         binding.messageMarkdownContainer,
                         binding.messageTextView
                     )
                 }
 
-                binding.timeTextView.text = formatTime(item.timestamp)
+                binding.timeTextView.text = contentRenderer.formatTime(item.timestamp)
                 binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
                 val showMediaTimeOverlay = item.text.isBlank() && displayedAttachments.isPureMedia()
@@ -823,13 +762,13 @@ class MessageAdapter(
         val origId = data.messageId
         quote.replyView.isClickable = true
         quote.replyView.setOnClickListener {
-            onReplyQuoteClick?.invoke(origId)
+            eventSink?.onReplyQuoteClick(origId)
         }
     }
 
     /** Превью для reply: текст оригинала, а если его нет — тип первого вложения. */
     private fun buildReplyPreviewLine(data: Shared.ReplyInfo, context: Context): String {
-        if (data.textPreview.isNotBlank()) return MarkdownRenderer.strip(data.textPreview)
+        if (data.textPreview.isNotBlank()) return contentRenderer.plainText(data.textPreview)
 
         return when (data.firstAttachmentType) {
             Shared.MessageAttachmentType.IMAGE, Shared.MessageAttachmentType.GIF -> context.getString(R.string.reply_photo)
@@ -870,7 +809,7 @@ class MessageAdapter(
         }
 
         if (data.text.isNotBlank()) {
-            quote.forwardTextTextView.text = MarkdownRenderer.strip(data.text)
+            quote.forwardTextTextView.text = contentRenderer.plainText(data.text)
             quote.forwardTextTextView.visibility = View.VISIBLE
         } else {
             quote.forwardTextTextView.visibility = View.GONE
@@ -881,12 +820,12 @@ class MessageAdapter(
 
     private fun loadStickerImage(imageView: ImageView, attachment: Shared.MessageAttachment) {
         val fileId = if (attachment.previewFileId.isNotBlank()) attachment.previewFileId else attachment.fileId
-        val previewUrl = FileMediaUrl.rewrite(imageView.context, attachment.previewUrl)
+        val previewUrl = attachmentRenderer.previewUrl(imageView.context, attachment)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
         } else {
-            { getFileUrl(fileId) }
+            { attachmentLoader.url(fileId) }
         }
 
         ImageLoadHelper.loadByFileId(
@@ -919,7 +858,8 @@ class MessageAdapter(
     ) {
         val overlay = LayoutInflater.from(container.context)
             .inflate(R.layout.view_media_time_status, container, false)
-        overlay.findViewById<android.widget.TextView>(R.id.mediaTimeTextView).text = formatTime(item.timestamp)
+        overlay.findViewById<android.widget.TextView>(R.id.mediaTimeTextView).text =
+            contentRenderer.formatTime(item.timestamp)
         applyDeliveryStatusIcon(
             overlay.findViewById(R.id.mediaReadStatusImageView),
             item.readStatus,
@@ -1249,12 +1189,12 @@ class MessageAdapter(
 
         // Загружаем превью (previewFileId → fileId как fallback)
         val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
-        val previewUrl    = FileMediaUrl.rewrite(thumbnail.context, attachment.previewUrl)
+        val previewUrl    = attachmentRenderer.previewUrl(thumbnail.context, attachment)
 
         val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
             { previewUrl }
         } else {
-            { getFileUrl(previewFileId) }
+            { attachmentLoader.url(previewFileId) }
         }
 
         ImageLoadHelper.loadByFileId(
@@ -1264,38 +1204,34 @@ class MessageAdapter(
             onError = { thumbnail.setImageResource(R.drawable.ic_image_placeholder) }
         )
 
-        // Клик: видео → MediaViewerActivity, картинка/gif → ImageViewerActivity
+        // Navigation is owned by the Activity/controller; recycled rows only emit a typed event.
         if (isVideo) {
             cellView.setOnClickListener {
-                val ctx = cellView.context
-                val cachedPath = FileCache.getFile(attachment.fileId)?.absolutePath
-                ctx.startActivity(
-                    MediaViewerActivity.createIntent(
-                        ctx,
-                        attachment.fileId,
-                        attachment.fileName.ifBlank { "video" },
-                        cachedPath
+                val cachedPath = attachmentLoader.cached(attachment.fileId)?.absolutePath
+                eventSink?.onAttachmentAction(
+                    MessageAttachmentAction.OpenVideo(
+                        fileId = attachment.fileId,
+                        fileName = attachment.fileName.ifBlank { "video" },
+                        cachedPath = cachedPath,
                     )
                 )
             }
         } else {
             cellView.setOnClickListener {
-                val ctx = cellView.context
                 val imageItems = allMedia.filter {
                     it.type == Shared.MessageAttachmentType.IMAGE ||
                     it.type == Shared.MessageAttachmentType.GIF
                 }
                 val clickedIndex = imageItems.indexOf(attachment).coerceAtLeast(0)
                 val allFileIds    = imageItems.map { it.fileId }
-                val allPreviewUrls = imageItems.map { FileMediaUrl.rewrite(ctx, it.previewUrl) }
-                ctx.startActivity(
-                    ImageViewerActivity.createIntent(
-                        ctx,
-                        allFileIds,
-                        allPreviewUrls,
-                        clickedIndex,
+                val allPreviewUrls = imageItems.map { attachmentRenderer.previewUrl(cellView.context, it) }
+                eventSink?.onAttachmentAction(
+                    MessageAttachmentAction.OpenImage(
+                        fileIds = allFileIds,
+                        previewUrls = allPreviewUrls,
+                        clickedIndex = clickedIndex,
                         fileNames = imageItems.map { it.fileName },
-                        sourceMessageIds = List(imageItems.size) { sourceMessageId ?: 0L }
+                        sourceMessageIds = List(imageItems.size) { sourceMessageId ?: 0L },
                     )
                 )
             }
@@ -1418,7 +1354,7 @@ class MessageAdapter(
         }
 
         fun startDownload(auto: Boolean) {
-            if (auto && !voiceAutoDownloads.add(fileId)) {
+            if (auto && !audioPlaybackController.claimAutoDownload(fileId)) {
                 updateUiForDownloading()
                 return
             }
@@ -1428,20 +1364,20 @@ class MessageAdapter(
             binding.root.tag = fileId
             binding.downloadButton.tag = fileId
 
-            scope.launch {
-                val file = downloadToCache(fileId) { progress ->
-                    scope.launch(Dispatchers.Main) {
+            viewOperations.launch(binding.root) {
+                val file = attachmentLoader.download(fileId) { progress ->
+                    binding.root.post {
                         if (binding.root.tag == fileId) {
                             binding.downloadProgressBar.progress = progress
                         }
                     }
                 }
                 withContext(Dispatchers.Main) {
-                    if (auto) voiceAutoDownloads.remove(fileId)
+                    if (auto) audioPlaybackController.releaseAutoDownload(fileId)
                     if (binding.root.tag != fileId) return@withContext
 
                     if (file != null) {
-                        val durationMs = getAudioDuration(file)
+                        val durationMs = audioRenderer.duration(file)
                         updateUiForCached(durationMs)
                         loadVoiceWaveform(fileId, file, binding)
                     } else {
@@ -1451,19 +1387,19 @@ class MessageAdapter(
             }
         }
 
-        val cachedFile = FileCache.getFile(fileId)
+        val cachedFile = attachmentLoader.cached(fileId)
         if (cachedFile != null) {
-            val durationMs = getAudioDuration(cachedFile)
+            val durationMs = audioRenderer.duration(cachedFile)
             updateUiForCached(durationMs)
             loadVoiceWaveform(fileId, cachedFile, binding)
-            if (AudioPlayerHelper.isActiveFile(fileId)) {
-                updateAudioPlaybackUI(binding, AudioPlayerHelper.isPlaying())
-                val duration = AudioPlayerHelper.getDuration()
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                updateAudioPlaybackUI(binding, audioPlaybackController.isPlaying())
+                val duration = audioPlaybackController.duration()
                 if (duration > 0) {
-                    val progress = AudioPlayerHelper.getCurrentPosition().toFloat() / duration
+                    val progress = audioPlaybackController.currentPosition().toFloat() / duration
                     if (isVoice) binding.voiceWaveform.setProgress(progress) else binding.audioSeekBar.progress = (progress * 1000).toInt()
                 }
-                if (AudioPlayerHelper.isPlaying()) startAudioProgressPolling(fileId, binding)
+                if (audioPlaybackController.isPlaying()) startAudioProgressPolling(fileId, binding)
             }
         } else {
             updateUiForNotCached()
@@ -1477,18 +1413,18 @@ class MessageAdapter(
         }
 
         binding.playPauseButton.setOnClickListener {
-            val file = FileCache.getFile(fileId) ?: return@setOnClickListener
-            if (AudioPlayerHelper.isActiveFile(fileId)) {
-                if (AudioPlayerHelper.isPlaying()) {
-                    AudioPlayerHelper.pause()
+            val file = attachmentLoader.cached(fileId) ?: return@setOnClickListener
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                if (audioPlaybackController.isPlaying()) {
+                    audioPlaybackController.pause()
                     updateAudioPlaybackUI(binding, false)
                 } else {
-                    AudioPlayerHelper.resume()
+                    audioPlaybackController.resume()
                     updateAudioPlaybackUI(binding, true)
                     startAudioProgressPolling(fileId, binding)
                 }
             } else {
-                AudioPlayerHelper.play(fileId, file, object : AudioCallbacks {
+                audioPlaybackController.play(fileId, file, object : AudioCallbacks {
                     override fun onStateChanged(isPlaying: Boolean) {
                         updateAudioPlaybackUI(binding, isPlaying)
                         if (isPlaying) startAudioProgressPolling(fileId, binding)
@@ -1499,7 +1435,7 @@ class MessageAdapter(
                         binding.audioSeekBar.progress = 0
                         binding.voiceWaveform.setProgress(0f)
                         binding.durationText.text = formatAudioTime(
-                            AudioPlayerHelper.getDuration().toLong()
+                            audioPlaybackController.duration().toLong()
                         )
                     }
                     override fun onError() {
@@ -1511,10 +1447,10 @@ class MessageAdapter(
 
         binding.audioSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                if (fromUser && AudioPlayerHelper.isActiveFile(fileId)) {
-                    val duration = AudioPlayerHelper.getDuration()
+                if (fromUser && audioPlaybackController.isActiveFile(fileId)) {
+                    val duration = audioPlaybackController.duration()
                     if (duration > 0) {
-                        AudioPlayerHelper.seekTo((progress.toLong() * duration / 1000L).toInt())
+                        audioPlaybackController.seekTo((progress.toLong() * duration / 1000L).toInt())
                     }
                 }
             }
@@ -1523,10 +1459,10 @@ class MessageAdapter(
         })
 
         binding.voiceWaveform.onSeekRequested = { progress ->
-            if (AudioPlayerHelper.isActiveFile(fileId)) {
-                val duration = AudioPlayerHelper.getDuration()
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                val duration = audioPlaybackController.duration()
                 if (duration > 0) {
-                    AudioPlayerHelper.seekTo((progress * duration).toInt())
+                    audioPlaybackController.seekTo((progress * duration).toInt())
                 }
             }
         }
@@ -1550,28 +1486,32 @@ class MessageAdapter(
         val menuInflater = popup.menuInflater
         menuInflater.inflate(R.menu.menu_audio_attachment, popup.menu)
 
-        val isCached = FileCache.hasFile(fileId)
+        val isCached = attachmentLoader.hasCached(fileId)
         popup.menu.findItem(R.id.action_delete_from_cache).isVisible = isCached
 
         popup.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_save_audio -> {
-                    if (FileCache.hasFile(fileId)) {
-                        val cachedFile = FileCache.getFile(fileId)
+                    if (attachmentLoader.hasCached(fileId)) {
+                        val cachedFile = attachmentLoader.cached(fileId)
                         if (cachedFile != null) {
-                            saveFileToDownloads(context, cachedFile, fileName)
+                            eventSink?.onAttachmentAction(
+                                MessageAttachmentAction.Save(fileName = fileName, cachedFile = cachedFile)
+                            )
                         }
                     } else {
-                        Toast.makeText(context, R.string.audio_download_required, Toast.LENGTH_SHORT).show()
+                        eventSink?.onAttachmentAction(
+                            MessageAttachmentAction.ToastRes(R.string.audio_download_required)
+                        )
                     }
                     true
                 }
                 R.id.action_delete_from_cache -> {
-                    if (AudioPlayerHelper.isActiveFile(fileId)) {
-                        AudioPlayerHelper.stop()
+                    if (audioPlaybackController.isActiveFile(fileId)) {
+                        audioPlaybackController.stop()
                     }
-                    FileCache.deleteFile(fileId)
-                    voiceWaveformCache.remove(fileId)
+                    attachmentLoader.deleteCached(fileId)
+                    audioPlaybackController.remove(fileId)
                     binding.downloadButton.visibility = View.VISIBLE
                     binding.downloadButton.isEnabled = true
                     binding.downloadButton.alpha = 1f
@@ -1584,7 +1524,9 @@ class MessageAdapter(
                     binding.playPauseButton.isEnabled = false
                     binding.playPauseButton.alpha = 0.4f
                     binding.durationText.text = "0:00"
-                    Toast.makeText(context, R.string.audio_removed_from_cache, Toast.LENGTH_SHORT).show()
+                    eventSink?.onAttachmentAction(
+                        MessageAttachmentAction.ToastRes(R.string.audio_removed_from_cache)
+                    )
                     true
                 }
                 else -> false
@@ -1592,18 +1534,6 @@ class MessageAdapter(
         }
         popup.show()
     }
-    private fun getAudioDuration(file: File): Int {
-        return try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(file.absolutePath)
-            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toIntOrNull() ?: 0
-            retriever.release()
-            duration
-        } catch (e: Exception) {
-            0
-        }
-    }
-
     private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
         return try {
             val retriever = MediaMetadataRetriever()
@@ -1626,22 +1556,20 @@ class MessageAdapter(
     ) {
         if (binding.voiceWaveform.visibility != View.VISIBLE) return
 
-        val cached = voiceWaveformCache[fileId]
+        val cached = audioPlaybackController.waveform(fileId)
         if (cached != null) {
             binding.voiceWaveform.setAmplitudes(cached)
             return
         }
 
         binding.voiceWaveform.resetAmplitudes()
-        scope.launch {
+        viewOperations.launch(binding.voiceWaveform) {
             val waveform = withContext(Dispatchers.IO) {
                 AudioWaveformExtractor.extract(file)
             }
-            withContext(Dispatchers.Main) {
-                if (binding.root.tag == fileId) {
-                    voiceWaveformCache[fileId] = waveform
-                    binding.voiceWaveform.setAmplitudes(waveform)
-                }
+            if (binding.root.tag == fileId) {
+                audioPlaybackController.cacheWaveform(fileId, waveform)
+                binding.voiceWaveform.setAmplitudes(waveform)
             }
         }
     }
@@ -1659,10 +1587,10 @@ class MessageAdapter(
         val runnable = object : Runnable {
             override fun run() {
                 if (binding.root.tag != fileId) return
-                if (!AudioPlayerHelper.isActiveFile(fileId)) return
-                if (!AudioPlayerHelper.isPlaying()) return
-                val pos = AudioPlayerHelper.getCurrentPosition()
-                val dur = AudioPlayerHelper.getDuration()
+                if (!audioPlaybackController.isActiveFile(fileId)) return
+                if (!audioPlaybackController.isPlaying()) return
+                val pos = audioPlaybackController.currentPosition()
+                val dur = audioPlaybackController.duration()
                 if (dur > 0) {
                     val progress = (pos.toFloat() / dur).coerceIn(0f, 1f)
                     if (binding.voiceWaveform.visibility == View.VISIBLE) {
@@ -1692,7 +1620,7 @@ class MessageAdapter(
 
         // Load thumbnail
         val thumbnailFileId = attachment.previewFileId.ifBlank { "" }
-        val thumbnailUrl = FileMediaUrl.rewrite(binding.root.context, attachment.previewUrl)
+        val thumbnailUrl = attachmentRenderer.previewUrl(binding.root.context, attachment)
 
         if (thumbnailUrl.isNotBlank()) {
             ImageLoadHelper.loadByFileId(
@@ -1705,12 +1633,12 @@ class MessageAdapter(
             ImageLoadHelper.loadByFileId(
                 imageView = binding.videoThumbnail,
                 fileId = thumbnailFileId,
-                getUrlCallback = { getFileUrl(thumbnailFileId) },
+                getUrlCallback = { attachmentLoader.url(thumbnailFileId) },
                 onError = { binding.videoThumbnail.setImageResource(R.drawable.ic_image_placeholder) }
             )
         }
 
-        if (FileCache.hasFile(fileId)) {
+        if (attachmentLoader.hasCached(fileId)) {
             binding.videoDownloadButton.visibility = View.GONE
             binding.videoPlayButton.alpha = 1f
             binding.videoPlayButton.isEnabled = true
@@ -1725,27 +1653,28 @@ class MessageAdapter(
             binding.videoDownloadButton.visibility = View.GONE
             binding.videoDownloadProgress.visibility = View.VISIBLE
 
-            scope.launch {
-                val file = downloadToCache(fileId) { _ -> }
-                withContext(Dispatchers.Main) {
-                    binding.videoDownloadProgress.visibility = View.GONE
-                    if (file != null) {
-                        binding.videoPlayButton.alpha = 1f
-                        binding.videoPlayButton.isEnabled = true
-                    } else {
-                        binding.videoDownloadButton.visibility = View.VISIBLE
-                    }
+            viewOperations.launch(binding.root) {
+                val file = attachmentLoader.download(fileId) { _ -> }
+                binding.videoDownloadProgress.visibility = View.GONE
+                if (file != null) {
+                    binding.videoPlayButton.alpha = 1f
+                    binding.videoPlayButton.isEnabled = true
+                } else {
+                    binding.videoDownloadButton.visibility = View.VISIBLE
                 }
             }
         }
 
         // Play button
         binding.videoPlayButton.setOnClickListener {
-            val cachedPath = FileCache.getFile(fileId)?.absolutePath
-            val intent = MediaViewerActivity.createIntent(
-                binding.root.context, fileId, fileName, cachedPath
+            val cachedPath = attachmentLoader.cached(fileId)?.absolutePath
+            eventSink?.onAttachmentAction(
+                MessageAttachmentAction.OpenVideo(
+                    fileId = fileId,
+                    fileName = fileName,
+                    cachedPath = cachedPath,
+                )
             )
-            binding.root.context.startActivity(intent)
         }
 
         return binding.root
@@ -1760,7 +1689,7 @@ class MessageAdapter(
         val context = container.context
         val fileId = attachment.fileId
         val fileName = attachment.fileName.ifBlank { context.getString(R.string.attachment_file) }
-        val previewUrl = FileMediaUrl.rewrite(context, attachment.previewUrl)
+        val previewUrl = attachmentRenderer.previewUrl(context, attachment)
 
         binding.docFileName.text = fileName
         binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
@@ -1801,7 +1730,7 @@ class MessageAdapter(
             binding.docDownloadProgress.progress = 0
         }
 
-        if (FileCache.hasFile(fileId)) {
+        if (attachmentLoader.hasCached(fileId)) {
             updateUiForCached()
         } else {
             updateUiForNotCached()
@@ -1811,26 +1740,31 @@ class MessageAdapter(
         binding.docDownloadButton.setOnClickListener {
             updateUiForDownloading()
 
-            scope.launch {
-                val file = downloadToCache(fileId) { progress ->
-                    scope.launch(Dispatchers.Main) {
+            viewOperations.launch(binding.root) {
+                val file = attachmentLoader.download(fileId) { progress ->
+                    binding.root.post {
                         binding.docDownloadProgress.progress = progress
                     }
                 }
-                withContext(Dispatchers.Main) {
-                    if (file != null) {
-                        updateUiForCached()
-                    } else {
-                        updateUiForNotCached()
-                    }
+                if (file != null) {
+                    updateUiForCached()
+                } else {
+                    updateUiForNotCached()
                 }
             }
         }
 
         // Open button
         binding.docOpenButton.setOnClickListener {
-            val cachedFile = FileCache.getFile(fileId) ?: return@setOnClickListener
-            openFile(context, cachedFile, fileName, fileId, previewUrl)
+            val cachedFile = attachmentLoader.cached(fileId) ?: return@setOnClickListener
+            eventSink?.onAttachmentAction(
+                MessageAttachmentAction.OpenDocument(
+                    fileId = fileId,
+                    fileName = fileName,
+                    cachedFile = cachedFile,
+                    previewUrl = previewUrl,
+                )
+            )
         }
 
         // Long press → context menu
@@ -1849,7 +1783,7 @@ class MessageAdapter(
         fileName: String,
         binding: ItemAttachmentDocumentBinding
     ) {
-        val isCached = FileCache.hasFile(fileId)
+        val isCached = attachmentLoader.hasCached(fileId)
         if (!isCached) {
             // Меню сводилось к одному пункту "Удалить из кеша" — для нескачанного файла нет смысла показывать
             return
@@ -1861,12 +1795,14 @@ class MessageAdapter(
         popup.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_delete_doc_from_cache -> {
-                    FileCache.deleteFile(fileId)
+                    attachmentLoader.deleteCached(fileId)
                     binding.docDownloadButton.visibility = View.VISIBLE
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE
                     binding.docDownloadProgress.visibility = View.GONE
-                    Toast.makeText(context, R.string.file_removed_from_cache, Toast.LENGTH_SHORT).show()
+                    eventSink?.onAttachmentAction(
+                        MessageAttachmentAction.ToastRes(R.string.file_removed_from_cache)
+                    )
                     true
                 }
                 else -> false
@@ -1875,120 +1811,7 @@ class MessageAdapter(
         popup.show()
     }
 
-    private fun openFile(context: Context, file: File, fileName: String, fileId: String, previewUrl: String) {
-        val mimeType = getMimeType(fileName)
-
-        when {
-            isImageFile(fileName) -> {
-                // Open in ImageViewerActivity
-                val intent = ImageViewerActivity.createIntent(
-                    context,
-                    listOf(fileId),
-                    listOf(previewUrl),
-                    0,
-                    fileNames = listOf(fileName)
-                )
-                context.startActivity(intent)
-            }
-            isVideoFile(fileName) -> {
-                // Open in MediaViewerActivity
-                val intent = MediaViewerActivity.createIntent(
-                    context,
-                    fileId,
-                    fileName,
-                    file.absolutePath
-                )
-                context.startActivity(intent)
-            }
-            else -> {
-                // Open with system chooser
-                try {
-                    val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            file
-                        )
-                    } else {
-                        Uri.fromFile(file)
-                    }
-
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, mimeType)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                    }
-
-                    val chooser = Intent.createChooser(intent, context.getString(R.string.open_with))
-                    context.startActivity(chooser)
-                } catch (e: Exception) {
-                    Toast.makeText(context, R.string.file_open_failed, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
-    private fun isImageFile(fileName: String): Boolean {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        return ext in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif")
-    }
-
-    private fun isVideoFile(fileName: String): Boolean {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        return ext in setOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "flv", "wmv")
-    }
-
-    private fun getMimeType(fileName: String): String {
-        val ext = fileName.substringAfterLast('.', "")
-        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
-    }
-
-    private fun saveFileToDownloads(context: Context, sourceFile: File, fileName: String) {
-        try {
-            val resolver = context.contentResolver
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, getMimeType(fileName))
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/BarkFluff")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-            }
-
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-
-            if (uri != null) {
-                resolver.openOutputStream(uri).use { outputStream ->
-                    FileInputStream(sourceFile).use { inputStream ->
-                        inputStream.copyTo(outputStream!!)
-                    }
-                }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    resolver.update(uri, contentValues, null, null)
-                }
-
-                Toast.makeText(context, R.string.file_saved_to_downloads, Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, R.string.file_save_failed, Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.file_save_error, e.message.orEmpty()),
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
     // ─── Formatting Helpers ───────────────────────────────────────────────────
-
-    private fun formatTime(timestampMillis: Long): String {
-        if (timestampMillis <= 0) return ""
-        return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestampMillis))
-    }
 
     private fun formatAudioTime(ms: Long): String {
         if (ms <= 0) return "0:00"
@@ -2030,56 +1853,9 @@ class MessageAdapter(
     }
 }
 
-// ─── Data Classes & Enums ─────────────────────────────────────────────────────
-
-enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR, FOOTER, SYSTEM }
-
-data class MessageItem(
-    val messageId: Long,
-    val senderId: Long,
-    val senderName: String? = null,
-    val senderAvatarFileId: String? = null,
-    val text: String,
-    val timestamp: Long,
-    val attachments: List<Shared.MessageAttachment>,
-    /**
-     * Цитируемое сообщение, если это ответ. Приходит с сервера явным полем — раньше reply и
-     * forward различались догадкой «есть ли оригинал в загруженной истории», из-за чего ответ
-     * превращался в пересылку, стоило прокрутить чат.
-     */
-    val replyTo: Shared.ReplyInfo? = null,
-    val readStatus: ReadStatus = ReadStatus.NONE,
-    val type: MessageType = MessageType.MESSAGE,
-    val dateText: String = "",
-    val isEdited: Boolean = false,
-    /** Локальный clientMessageId оптимистичных сообщений (для трекинга SENDING→SENT перехода). null для серверных. */
-    val localId: String? = null,
-    /** Прогресс загрузки медиа 0..100. null если не идёт upload. */
-    val uploadProgress: Int? = null,
-    /** Локальные URI медиа для превью оптимистичного сообщения (пока вложения ещё не загружены на сервер). */
-    val localPreviewUris: List<android.net.Uri> = emptyList()
-) {
-    companion object {
-        fun createDateSeparator(dateText: String) = MessageItem(
-            messageId = 0, senderId = 0, text = "", timestamp = 0,
-            attachments = emptyList(), type = MessageType.DATE_SEPARATOR, dateText = dateText
-        )
-
-        fun createUnreadSeparator(label: String) = MessageItem(
-            messageId = -2, senderId = 0, text = "", timestamp = 0,
-            attachments = emptyList(), type = MessageType.UNREAD_SEPARATOR,
-            dateText = label
-        )
-    }
-}
-
-/**
- * Статус доставки/прочтения исходящего сообщения. Расширен под M3 Expressive feedback:
- * - NONE — для входящих и системных
- * - SENDING — оптимистичный item, отправка в процессе (часы)
- * - SENT — отправлено на сервер, ACK получен (одна галочка)
- * - DELIVERED — доставлено получателю (двойная outline)
- * - READ — прочитано получателем (двойная filled, primary tint)
- * - FAILED — ошибка при отправке (восклицательный знак, tap to retry)
- */
-enum class ReadStatus { NONE, SENDING, SENT, DELIVERED, READ, FAILED }
+// Compatibility aliases keep existing pinned/E2E imports stable while the row model lives outside
+// the adapter package.
+typealias MessageItem = com.barkfluff.client.chat.MessageItem
+typealias MessageRowUi = com.barkfluff.client.chat.MessageRowUi
+typealias MessageType = com.barkfluff.client.chat.MessageType
+typealias ReadStatus = com.barkfluff.client.chat.ReadStatus

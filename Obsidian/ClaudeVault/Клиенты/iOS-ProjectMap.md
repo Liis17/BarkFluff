@@ -11,6 +11,20 @@
 - `BFProto` — Proto-контракты и сгенерированный gRPC-код
 - `BFNetworking` — gRPC-клиент, соединение, репозитории, интерсепторы
 - `BFCore` — бизнес-сервисы, модели, кеши, mappers, локальный GRDB-кеш
+- `BFMarkdown` — общий SwiftUI-рендерер Markdown-сообщений поверх `BFCore`
+
+---
+
+## Shared Markdown packages
+
+Пакеты расположены в `Mac/Barkfluff/Packages/` и подключаются к iOS напрямую через локальную Swift Package dependency.
+
+| Пакет/файл | Назначение |
+|------|-----------|
+| `BFCore/Markdown/MarkdownDocument.swift` | AST блоков, строк, inline runs, таблиц и изображений |
+| `BFCore/Markdown/MarkdownParser.swift` | Foundation-only Markdown V1 parser и URL/HTML safety rules |
+| `BFCore/Markdown/MarkdownText.swift` | `MarkdownText.strip(_:)` для plain compact previews |
+| `BFMarkdown/MarkdownMessageView.swift` | SwiftUI renderer с выделением текста, code/quote, таблицами и `AsyncImage` fallback |
 
 ---
 
@@ -97,11 +111,11 @@
 | Файл | Назначение |
 |------|-----------|
 | `Conversation/Views/ConversationView.swift` | Корневой экран: ChatBackgroundView (фон), MessagesListView, EditPreview/ReplyPreview над инпутом, .confirmationDialog для удаления, `.fullScreenCover` для медиа |
-| `Conversation/Views/MessageBubbleView.swift` | `.contextMenu` (Изменить/Ответить/Переслать/Копировать/Сохранить/Удалить); чтение `bubbleCornerRadius` из PersonalizationSettings; рендер `ForwardedMessageView` и `StickerMessageView` |
+| `Conversation/Views/MessageBubbleView.swift` | `BFMarkdown.MarkdownMessageView` для обычных/системных Markdown-сообщений; `.contextMenu` (Изменить/Ответить/Переслать/Копировать/Сохранить/Удалить); чтение `bubbleCornerRadius` из PersonalizationSettings; рендер `ForwardedMessageView` и `StickerMessageView` |
 | `Conversation/Views/MessagesListView.swift` | Прокидывает все callback-и в MessageBubbleView |
 | `Conversation/Views/EditPreviewView.swift` | Превью редактируемого сообщения над инпутом |
-| `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над инпутом, `makeSnippet()` |
-| `Conversation/Views/ForwardedMessageView.swift` | Карточка пересланного сообщения внутри пузыря |
+| `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над инпутом с `MarkdownText.strip`, `makeSnippet()` |
+| `Conversation/Views/ForwardedMessageView.swift` | Карточка пересланного сообщения внутри пузыря с plain preview текста |
 | `Conversation/Views/ForwardChatPickerView.swift` | Заглушка экрана пересылки (полная реализация: VM есть, UI ещё в разработке) |
 | `Conversation/Views/Input/MessageInputView.swift` | Поле ввода: paperclip + кнопка-смайлик стикеров (между attach и текстовым полем) + TextField + send. Открытие пикера через `onStickerTap` callback |
 | `Conversation/Views/Input/AttachmentPreviewStrip.swift` | Полоса предпросмотра |

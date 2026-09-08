@@ -584,7 +584,7 @@ final class ConversationViewModel {
 
     /// Локальный placeholder forwarded-attachment для optimistic UI до подтверждения сервером.
     private static func makeForwardedPlaceholder(from original: Message) -> MessageAttachment {
-        let snippet = String(original.content.text.prefix(80))
+        let snippet = String(MarkdownText.strip(original.content.text).prefix(80))
         return MessageAttachment(
             id: -Int64.random(in: 1...Int64.max / 2),
             type: .forwardedMessage,

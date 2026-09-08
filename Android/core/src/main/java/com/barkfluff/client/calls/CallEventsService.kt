@@ -4,7 +4,8 @@ import android.content.Context
 import android.util.Log
 import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.grpc.TokenCoordinator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +27,9 @@ import kotlin.math.pow
 
 class CallEventsService(
     private val context: Context,
-    private val grpcManager: GrpcManager,
-    private val callRepository: CallRepository
+    private val clientRegistry: GrpcClientRegistry,
+    private val callRepository: CallRepository,
+    private val tokenCoordinator: TokenCoordinator,
 ) {
     enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
     enum class Phase { INCOMING, RINGING, CONNECTING, ACTIVE, ENDED }
@@ -74,7 +76,7 @@ class CallEventsService(
             return
         }
 
-        grpcManager.createCallsClient(callsAddress, context, includeDeviceInfo = true)
+        clientRegistry.createCallsClient(callsAddress, context, includeDeviceInfo = true)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
         streamJob = scope.launch { streamWithReconnect() }
@@ -98,7 +100,7 @@ class CallEventsService(
             try {
                 _connectionState.value = ConnectionState.CONNECTING
                 ensureCallsClient()
-                if (!grpcManager.ensureTokenValid(context)) {
+                if (!tokenCoordinator.ensureValid()) {
                     throw IllegalStateException("Access token is not valid")
                 }
 
@@ -116,7 +118,7 @@ class CallEventsService(
                 Log.w(TAG, "Call events stream error (attempt $attempts): ${e.message}")
 
                 if (attempts >= TOKEN_REFRESH_AFTER_ATTEMPTS) {
-                    grpcManager.forceRefreshToken(context)
+                    tokenCoordinator.ensureValid(forceRefresh = true)
                 }
 
                 val backoff = min(
@@ -187,10 +189,10 @@ class CallEventsService(
     }
 
     private fun ensureCallsClient(force: Boolean = false) {
-        if (!force && grpcManager.callsClient != null) return
+        if (!force && clientRegistry.callsClient != null) return
         val callsAddress = globalParam.socketCalls
         if (callsAddress.isBlank()) throw IllegalStateException("Calls endpoint is empty")
-        grpcManager.createCallsClient(callsAddress, context, includeDeviceInfo = true).getOrThrow()
+        clientRegistry.createCallsClient(callsAddress, context, includeDeviceInfo = true).getOrThrow()
     }
 
     companion object {

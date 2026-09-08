@@ -28,15 +28,17 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 - `drawable/ic_launcher_layer_{master,dev,nightly}.xml` помещает соответствующий PNG в квадрат 66dp — безопасную зону adaptive-иконки. Прозрачные углы исходного скруглённого квадрата сохраняются.
 - `mipmap-anydpi-v26/ic_launcher.xml` / `ic_launcher_round.xml` используют прозрачный `background` и flavor-specific `foreground`; `ic_launcher_foreground.xml` оставлен только для monochrome-слоя Android 13+.
 - Растровые WebP `ic_launcher*.webp` из `mipmap-*hdpi` удалены.
-- ⚠️ In-app использование (`activity_splash`, `activity_login`, `activity_welcome`, `activity_register`, `step_register_07_bio`, `activity_about` → `@mipmap/ic_launcher(_round)`) всё ещё рисует `AdaptiveIconDrawable` без launcher-маски, поэтому арт находится в 66dp safe zone и может выглядеть меньше, чем в лаунчере. Отдельный in-app drawable — отдельная будущая задача.
-- ViewBinding + Hilt (без MVVM-ViewModel — миграция на ViewModel в процессе)
-- DI: Hilt 2.57.2 через KSP2 (плагин Hilt 2.58+ требует AGP 9 — не поднимать выше 2.57.x при AGP 8.9). `@HiltAndroidApp` на `BarkFluffApplication`, composition root — `di/AppModule.kt` (GrpcManager, RealtimeService, репозитории, E2E-инфраструктура). Публичные свойства Application инъектируются (`@Inject lateinit`), поэтому старые касты `(application as BarkFluffApplication).*` работают
+- Внутри Welcome используется отдельный `@drawable/app_icon_vector` — Android-native VectorDrawable из `app_icon_vector.svg`, без adaptive-icon safe zone и launcher-маски. Остальные экраны, которые ещё используют `@mipmap/ic_launcher(_round)`, сохраняют channel-specific adaptive artwork до отдельной задачи по унификации in-app иконок.
+- ViewBinding + Hilt 2.57.2 через KSP2. `@HiltAndroidApp` остаётся только composition root; новые Activity/worker/provider получают typed-зависимости через конструктор или Hilt entry point.
+- Transport и доменные seams: `grpc/GrpcClientRegistry.kt` лениво создаёт typed stubs (Navigator/Beacon — explicit), `TokenCoordinator` сериализует refresh, `MediaHttpTransport` применяет TLS и media-origin policy. UI получает только `ServerDiscoveryGateway`, `AuthGateway`, `User*Gateway`, `Chat*Gateway`, `MessageGateway`, `FileMediaGateway`, `RealtimeGateway`, `CallGateway`, `FastAuthGateway`, `PrivateChatGateway`, `SecretChatGateway`, `PrekeyGateway` через `di/AppModule.kt`.
 
 ## Архитектура
 
-- Activity-based + ViewModel (этапы миграции): `ChatViewModel` (сообщения/пагинация/realtime/оптимистика/закрепы/reply-edit/черновики, `StateFlow<ChatUiState>`) и `ChatsViewModel` (список чатов/папки/unread/realtime-зеркалирование) — `@HiltViewModel`. Поворот в ChatActivity залочен (portrait), VM переживaет `recreate()`; при смене chatId в `onNewIntent` выполняется `viewModelStore.clear()` перед `recreate()` — иначе ViewModelStore подсунет новому чату состояние старого. Process death: `SavedStateHandle` (pendingReply/pendingEdit) + Room-кэш + черновики
-- DI: Hilt (`AppModule`, `@HiltAndroidApp`); новые компоненты получают зависимости через конструктор/`@Inject`, legacy-касты к Application сохранены как делегаты. Activity и Fragment, которые получают `@HiltViewModel` через `by viewModels()`, должны быть помечены `@AndroidEntryPoint` (в частности, `MainActivity`/`ChatsFragment` и `ChatActivity`).
-- gRPC-клиенты `GrpcManager` (кроме navigator/beacon) **лениво самоподнимаются** при первом чтении свойств по адресам из `GlobalParam` (identity/users/files/messages/updates/onliner/fastAuth/calls) — процесс, поднятый FCM/виджетом, больше не ловит «клиент не создан»; после `shutdown()` ленивый подъём отключён
+- Обычный чат имеет единственную внешнюю границу `ChatViewModel.state: StateFlow<ChatUiState>`, `effects: Flow<ChatEffect>`, `dispatch(ChatIntent)`. `ChatUiState` разделён на `ChatSessionState`, `TimelineState`, `ComposerState`, `SelectionState` и `PresenceState`; timeline живёт в `RegularChatSession`, composer — в `ChatComposer`, presence — в `ChatPresence` и `ChatPresenceSession` (включая heartbeat/subscriptions), selection — в `SelectionReducer`, строки строит чистый `MessageRowProjector`.
+- `ChatActivity` — lifecycle/rendering shell: input/IME/stickers/voice dispatch'ят intents, presence subscriptions и heartbeat остаются во ViewModel, header/background — chrome renderer, overlay/copy/save/forward — actions controller. `ChatViewModel` публикует только `state`, `effects` и `dispatch`; старые дублирующие `uiState/events` удалены. `PrivateChatController` и `SecretChatController` получают repositories/cache/realtime через typed-конструкторы и не читают `Application`.
+- `MessageAdapter` принимает immutable `List<MessageRowUi>` и один `MessageRowEventSink`; selection, dedup/footer mutation, download/playback и view-bound jobs вынесены в projector, `AttachmentLoader`, `AudioPlaybackController` и `ViewBoundOperationController`. Он остаётся общим для regular, pinned и E2E экранов.
+- Activity и Fragment, которые получают `@HiltViewModel` через `by viewModels()`, должны быть помечены `@AndroidEntryPoint` (в частности, `MainActivity`/`ChatsFragment` и `ChatActivity`).
+- После `GrpcClientRegistry.shutdown()` ленивый подъём отключён; `GrpcApiTransport` оставлен только как внутренний typed RPC adapter для production gateway-реализаций и не экспортируется в UI/Application. `GrpcPrivateChatGateway` и `GrpcSecretChatGateway` закрывают E2E send-port поверх соответствующих репозиториев; Hilt связывает их рядом с `PrekeyGateway`. `ChatCacheRepository.clearAll()` удаляет также no-backup composer journal, чтобы cache clear и logout не оставляли принятые preview-файлы.
 - Локальное хранилище: SharedPreferences + EncryptedSharedPreferences для токенов
 - Навигация: Welcome → SelectServer → Login → Chats
 
@@ -55,15 +57,18 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 ### Экран 1 — Welcome (макет 1c)
 
 - Композиция: две распорки `layout_weight=1` отжимают hero-блок от верха и прижимают CTA к низу.
+- Логотип рендерится напрямую как `@drawable/app_icon_vector` (Android-native VectorDrawable из `app_icon_vector.svg`) без `MaterialCardView`, elevation и PNG-маски.
 - Чипы-фичи — стиль `Widget.Barkfluff.Welcome.FeatureChip`; высота через `chipMinHeight`, а не `layout_height` (фиксированная высота сжимает текст с иконкой).
-- Под CTA — только ссылка «Конфиденциальность», открывает legal-лист в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
+- Под CTA находятся ссылки «Соглашение» и «Конфиденциальность» в одной строке; обе открывают соответствующий таб legal-листа в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
 - «Начать» → модалка согласия (см. ниже) → `SelectServerActivity`.
 
-### Экран 2 — SelectServer (макет 2c)
+### Экран 2 — SelectServer (макет 2d)
 
-- Карточка ноды (`item_server.xml`): чипы «Онлайн» / пинг / регион одной строкой, публичное имя `@handle` отдельной строкой, CTA «Подключиться» 52dp внутри карточки.
-- «Своя нода» — кликабельная dashed-строка, разворачивает поле адреса и свою кнопку подключения; шеврон поворачивается на 180°. Свёрнуто по умолчанию.
-- Внизу — предупреждение `node_trust_warning`: данные хранятся у владельца ноды, разработчик приложения за них не отвечает.
+- Экран использует динамическую Material-палитру: заголовок в одну строку, подпись секции «Публичные ноды», tonal-карточка без тени с outlineVariant и выразительным скруглением.
+- Карточка ноды (`item_server.xml`): icon-tile 56dp, название/описание, заметный публичный адрес `@handle` сразу под описанием, компактные чипы «Онлайн» / пинг / регион на нейтральном surface-контейнере, CTA «Подключиться» 52dp с 20dp-скруглением внутри карточки.
+- «Своя нода» — кликабельный tonal-контейнер с outlineVariant и ripple вместо пунктирной рамки; текстовый блок выровнен по левому краю и вертикально центрирован между иконкой и шевроном, контейнер разворачивает поле адреса и свою кнопку подключения, шеврон поворачивается на 180°. Свёрнуто по умолчанию.
+- Список публичных нод загружается через Navigator с явным TLS-портом `443` (`https://navigator.barkfluff.com:443`): gRPC-нормализатор не принимает URL без порта.
+- Внизу — отдельная tonal-инфопанель с `ic_info`, предупреждением `node_trust_warning` и подсказкой по настройке ноды.
 
 ### Экран 3 — Login (макет 3c)
 
@@ -83,7 +88,8 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 - **Сборка.** Gradle-таск `copyLegalDocs` (`app/build.gradle.kts`) копирует `TERMS_OF_SERVICE.*.md` и `PRIVACY_POLICY.*.md` в `assets/legal/`. Подключён через `androidComponents.onVariants { ... addGeneratedSourceDirectory(...) }`, а не `preBuild.dependsOn` — Gradle 9 строг к неявным зависимостям с merge-assets. Путь вывода назначает AGP (`build/generated/assets/copyLegalDocs/`), задавать `outputDirectory` вручную бессмысленно. Пустой результат копирования **останавливает сборку**: APK без актуальных соглашений выпускать нельзя. CI `build-client-android.yml` триггерится на `Backend/Barkfluff.WebServer/html/legal/**`.
 - **`utils/LegalDocsRepository.kt`** — читает `legal/<DOC>.<lang>.md` по активной локали (маппинг как в `LocaleManager`), fallback — `ru`. Таблицы markdown намеренно разворачивает в списки: consent sheet использует одиночный `TextView`, тогда как нативная сетка таблиц поддержана только внутри bubble сообщений.
 - **Редакция.** `revision()` берёт дату «Последнее обновление» из шапки и **всегда из русского файла**: значение уходит в `GlobalParam.acceptedLegalRevision`, и локализованная строка превращала бы смену языка приложения в «новую редакцию». Regex не требует ASCII-двоеточия — в zh-CN шапка использует полноширинное `：`.
-- **`LegalConsentBottomSheet`** — два таба (соглашение / конфиденциальность), рендер через `MarkdownRenderer`, чекбокс + «Принять»/«Отмена». В режиме согласия лист неотменяемый (`isCancelable = false`, свайп запрещён) — решение обязательно. Режим `forReading(tab)` — только чтение и «Закрыть».
+- **`LegalConsentBottomSheet`** — в режиме согласия документы проходят последовательно: сначала соглашение, после прокрутки до конца появляется «Продолжить», затем открывается конфиденциальность; после её конца показываются чекбокс и финальная кнопка «Продолжить». Табы скрыты, чтобы нельзя было пропустить документ; «Отмена» остаётся доступной. Лист неотменяемый (`isCancelable = false`, свайп запрещён) — решение обязательно. Режим `forReading(tab)` сохраняет два таба, свободное переключение и кнопку «Закрыть».
+- `MarkdownRenderer` распознаёт голые email-адреса раньше обычных URL и ставит один `mailto`-span на весь адрес; поэтому контакты вроде `support@barkfluff.com` отображаются и открываются целиком, а не как отдельный домен.
 - **Согласие хранится как редакция, а не флаг** (`GlobalParam.acceptedLegalRevision`): обновили соглашение — согласие запрашивается заново.
 
 ## UI — Экран списка чатов (MainActivity + ChatsFragment)
@@ -118,6 +124,17 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
+
+## Экран поиска (`SearchActivity`)
+
+Самостоятельный поиск пользователей перенесён на Compose + Material 3 Expressive; Compose подключён только в `:app-v1`, остальные V1-экраны остаются View/XML. `SearchActivity` сохраняется Activity-хостом, помечен `@AndroidEntryPoint` и использует `SearchViewModel` с `StateFlow<SearchUiState>`.
+
+- `SearchViewModel` сохраняет минимум 3 символа и debounce 300 мс, запускает запросы через `collectLatest`, поэтому устаревший результат не может перетереть новый. Состояния `SearchPhase`: `Idle`, `TooShort`, `Loading`, `Results`, `Empty`, `Error`; ошибка не маскируется под пустой список. `SearchUsersGateway` отделяет VM от общего `UserDirectoryGateway` и упрощает unit-тесты.
+- `SearchScreen` — edge-to-edge: кнопка «Назад» с touch target 48dp и единый 56dp pill `DockedSearchBar` на роли `surfaceContainerHigh`. При фокусе применяется primary state layer, clear-кнопка появляется только для непустого запроса, IME Search вызывает немедленный валидный запрос. Dynamic color используется на Android 12+, fallback берётся из ролей темы.
+- Начальное/служебное состояние центрируется по доступной высоте и использует 80dp `primaryContainer`; результаты — `LazyColumn` с двухстрочными tonal `ListItem` (минимум 72dp, аватар 48dp) без outline и тяжёлых теней. Переходы между фазами намеренно не анимируются, поэтому экран корректно следует reduced-motion настройкам.
+- Аватар результата рисуется Compose-обёрткой вокруг существующего `AvatarView`; `loadAvatarByFileId` продолжает использовать `AvatarLoader` с прежними runtime/persistent URL-кэшами и TLS-политикой. При отсутствии файла остаются инициалы.
+- `MODE_PRIVATE` и `EXTRA_MODE` сохранены: private-mode получает отдельные тексты, выбор пользователя по-прежнему открывает существующий password dialog и `ChatActivity.privateChatIntent`. Нормальный режим использует прежний `getPersonChatId` и extras.
+- `activity_search.xml`, `item_user.xml` и `UserAdapter` не удаляются: `AddGroupMemberActivity` продолжает переиспользовать legacy search-layout. Добавлены ViewModel unit-тесты debounce/cancellation/success/empty/error/retry и Compose UI-тесты шести фаз, semantics, clear/back и клика по результату.
 
 ## Экран «Профиль» (`ProfileFragment`)
 
@@ -184,15 +201,17 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - **`BuildConfig.UPDATE_CHANNEL`** — канал сборки. По нему `UpdateChecker.hasUpdate()` следит только за своим каналом, а `UpdateActivity` показывает кнопку обновления лишь в своей карточке: APK чужого канала не обновит приложение, а встанет вторым. Канал больше **не** определяется суффиксом « beta» в версии — `AppVersion.isBeta` для этого не используется.
 - **Ресурсы каналов** — `app/src/dev/res/` и `app/src/nightly/res/` перекрывают `main`: `app_name` во всех пяти локалях и adaptive-иконка. Для иконки используется цельный `StoreLogo`-арт канала из `Windows/BarkFluff.Client.WinUI/Assets/{branch}/`, скопированный в `drawable-nodpi/` и помещённый в `layer-list` размером 66dp — в безопасную зону adaptive-иконки. Внешний слой прозрачен, поэтому лаунчер сохраняет исходные скруглённые углы и фактуру вместо собственной маски поверх полноразмерной текстуры.
 - **`google-services.json`** содержит client-записи всех трёх пакетов. Без записи под конкретный `applicationId` плагин `com.google.gms.google-services` роняет сборку флейвора.
-- **Версия.** Сборка ветки `nightly` увеличивает patch относительно версии в канале `nightly`; `dev` и `master` переиздают эту же версию. CI передаёт значение в Gradle через `-PappVersionName`, а не переписывает исходник. `versionCode` вычисляется из SemVer (`MAJOR × 1 000 000 + MINOR × 1 000 + PATCH`) и растёт вместе с версией; локальный fallback остаётся `0.0.1`/`1`. Два пуша в `dev` подряд без промежуточной nightly-сборки по-прежнему дают одинаковую версию — это отдельное ограничение схемы каналов.
+- **Версия.** Сборка ветки `nightly` берёт максимальную опубликованную SemVer из каналов `nightly`, `dev`, `release`, `beta` и увеличивает patch; `dev` и `master` переиздают эту же версию. Если ClientStorage не отдаёт ни одной версии, CI завершается ошибкой вместо отката к `0.0.0`/`0.0.1`. CI передаёт значение в Gradle через `-PappVersionName`, а не переписывает исходник. `versionCode` вычисляется из SemVer (`MAJOR × 1 000 000 + MINOR × 1 000 + PATCH`) и растёт вместе с версией; локальный fallback остаётся `0.0.1`/`1`. Два пуша в `dev` подряд без промежуточной nightly-сборки по-прежнему дают одинаковую версию — это отдельное ограничение схемы каналов.
 - **Telegram CI-уведомления.** После успешной загрузки workflow отправляет в канал одну кнопку «Скачать последнюю версию» со ссылкой на `https://storage.barkfluff.com/get/barkfluffkotlin/{channel}`. При ошибке остаётся кнопка «Открыть GitHub Action».
-- **Незакрытый хвост.** Сайт (`VersionPollingService` в [[Backend/WebServer]]) по-прежнему опрашивает `kotlin/beta`, куда Android больше не публикует, — ссылка на beta-сборку на странице загрузок застыла (`0.0.121 beta` на момент проверки).
+- **WebServer.** `VersionPollingService` в [[Backend/WebServer]] опрашивает `kotlin` во всех каналах `release`, `beta`, `dev`, `nightly`; `beta` оставлен только для обратной совместимости. Главная показывает ссылку выбранного канала и состояние ожидания, если публикации ещё нет.
 
 ## Система обновлений и её TLS
 
 Сервер обновлений [[Backend/ClientStorage|ClientStorage]] (`storage.barkfluff.com`) сначала проверяется через системное хранилище Android. Для переходного сценария старый CA едет в APK строкой `BuildConfig.STORAGE_CA_PEM_B64`: `app/build.gradle.kts` заполняет её из переменной окружения `STORAGE_CA_PEM_B64`, а воркфлоу `build-client-android.yml` подставляет туда секрет `CLOUDFLARE_ORIGIN_CA_BUNDLE_B64` — тот же, которым он ходит на storage через `curl --cacert`. CA из APK разбирается лениво и используется только после TLS-ошибки системной попытки. Без переменной fallback недоступен, но публичный сертификат через системное хранилище продолжает работать.
 
 `utils/UpdateServerTls.kt` разворачивает base64 в `X509Certificate` → `KeyStore` → `TrustManagerFactory` → `SSLSocketFactory` лениво. `UpdateChecker` и OkHttp-клиент `UpdateActivity` сначала выполняют запрос без кастомного factory, а при TLS-ошибке создают новый запрос с этим factory. HTTP-ошибки, таймауты, обычные сетевые ошибки и отмена корутины не повторяются; hostname-проверка сохраняется.
+
+На Android 14+ `UpdateActivity` устанавливает скачанный APK через `PackageInstaller.Session`: перед созданием session читает фактическое состояние `USE_FULL_SCREEN_INTENT` через `NotificationHelper.canUseFullScreenIntent()` и передаёт его как `GRANTED` или `DENIED` через `SessionParams.setPermissionState()`. APK записывается в session как `base.apk` с `fsync()`, а результат установки обрабатывается через explicit mutable `PendingIntent` на `UpdateActivity`, включая системное подтверждение, отмену и повторную попытку. Для Android 12–13 сохраняется путь `FileProvider` + `ACTION_VIEW`.
 
 Два решения, которые важно не откатить:
 
@@ -231,7 +250,7 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - При применении ответа Beacon V1 не превращает пустой/offline Calls endpoint в URL, по умолчанию добавляет `https://` к адресам без схемы и пишет в Logcat raw-диагностику `Beacon calls: has/host/port/tls/livekit`.
 - `utils/ServerInfoPrefs.kt` централизует сохранение [[Backend/Beacon|Beacon]] `GetServerInfo` в `GlobalParam`; `SplashActivity` при запуске требует только сохранённый `socketBeacon`, обновляет остальные endpoint'ы из Beacon и продолжает вход только если после refresh есть Identity. Если старый Beacon не прислал уже сохранённый media-origin, он сохраняется. `AboutActivity` показывает сохранённый список сервисов: для обычных endpoint'ов запускается параллельный анонимный `GET /ping`, для Files HTTP — `GET /web/download/{UUID}`.
 - `utils/ServicePingChecker.kt` использует тот же `TlsTransportFactory`: обычные сервисы принимаются только при `HTTP 200`, `text/plain` и теле `pong`, а Files HTTP — при любом HTTP-ответе на случайный GUID; измеряется время каждого запроса в миллисекундах и показывается в строке `Доступен`/`Недоступен` вместе со временем. HTTPS следует системному trust-store или явному host pin; h2c (`H2_PRIOR_KNOWLEDGE`) доступен только в debug для gRPC `/ping`, а cleartext Files HTTP проверяется обычным HTTP/1.1. `LiveKit` отображается только как внешний адрес и не проверяется через endpoint liveness из [[Архитектура]].
-- `GrpcManager` умеет создавать `CallsApi` client (`createCallsClient`) и пересоздавать его через `initAllClients`/`recreateAllClients`.
+- `GrpcClientRegistry` лениво создаёт `CallsApi` client и умеет идемпотентно пересоздать его; UI вызывает операции через `CallGateway`.
 - `core/calls/CallRepository.kt` — тонкая обёртка над `InitiateCall`, `AcceptCall`, `RejectCall`, `JoinCall`, `EndCall`, `SetCallAudioQuality`, `SubscribeCallEvents`, `ListCallHistory`, `GetActiveCalls`.
 - `core/calls/CallEventsService.kt` подключается в `BarkFluffApplication` вместе с `RealtimeService`: держит lifecycle-подписку на `SubscribeCallEvents`, публикует raw events через `SharedFlow`, текущее состояние звонка через `StateFlow`, делает reconnect/backoff и auto-reject второго входящего звонка при уже активном звонке.
 - В `BarkFluffApplication` есть foreground bridge для `CallEventsService.events`: incoming открывает `IncomingCallActivity` и показывает call notification, accepted/rejected/ended закрывают входящий экран через package-local broadcast и убирают notification. Background/killed сценарий остаётся за FCM payload `incoming_call`/`dismiss_call`.
@@ -243,7 +262,7 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 - Для входящего звонка `NotificationHelper.showIncomingCallNotification` дополнительно запускает системный ringtone через `RingtoneManager.TYPE_RINGTONE` + `AudioAttributes.USAGE_NOTIFICATION_RINGTONE` в loop-режиме **после успешной публикации notification** — если `POST_NOTIFICATIONS` отключён, звук не маскирует отсутствие UI. Входящее call-уведомление показывается в отдельном канале `incoming_calls_v2` с `IMPORTANCE_HIGH`, vibration/default vibration и без `setSilent(true)`, чтобы Android мог показать heads-up баннер поверх экрана/lockscreen; ongoing-уведомление активного звонка остаётся в `calls` и `setSilent(true)`, чтобы не было короткого notification-звука поверх ringtone. `IncomingCallAlertPolicy` различает отключённые уведомления, неактивный канал и отключённый full-screen access. `MainActivity` направляет пользователя в системные настройки, если отключены уведомления или (на Android 14+) специальное разрешение `USE_FULL_SCREEN_INTENT`. После accept используется `NotificationHelper.clearIncomingCallAlert`, чтобы остановить ringtone и убрать входящий notification без разрыва активного Telecom `Connection`; полный `NotificationHelper.dismissCall` завершает Telecom connection для realtime/FCM `dismiss_call`, reject/end.
 - Добавлены IncomingCallActivity, CallActivity, CallActionReceiver и permissions для микрофона/camera/screen-share/full-screen intent.
 - `IncomingCallActivity` показывает аватар звонящего с локальными retry-попытками загрузки (3 попытки с короткой паузой; после провала cached URL запрашивается заново через `ChatRepository.getFileDownloadUrl`) и анимированными ring-pulse кольцами вокруг аватара.
-- **Аватар звонящего при killed app** (`calls/IncomingCallPrefetch.kt`): процесс поднимает FCM, а `BarkFluffApplication.onCreate()` создаёт `GrpcManager` **без клиентов** (их создают Splash/Login/Main) — поэтому `getUserData`/`getFileDownloadUrl` падали на `usersClient == null`, и звонок показывался с одними инициалами. Теперь клиенты GrpcManager поднимаются **лениво при чтении свойств** (адреса из `GlobalParam`), поэтому `IncomingCallPrefetch.ensureClients` не содержит ручного подъёма — только `ensureTokenValid`; `handleIncomingCall` до показа звонка (`withTimeoutOrNull`, 2.5 с) вызывает `IncomingCallPrefetch.prepareAvatar`: `avatar_url` из push (fallback — профиль по `caller_user_id`) → fileId → presigned URL через кэши `AvatarLoader` → Bitmap в Coil (`allowHardware(false)`, `CircleCropTransformation`). Готовый Bitmap лежит по `callId` и переиспользуется `NotificationHelper.showIncomingCallNotification` (иконка `Person` вместо placeholder) и `IncomingCallActivity` (рисуется сразу, без ожидания сети); чистится в `clearIncomingCallAlert`. Сервер шлёт `avatar_url` в push давно (`FirebaseService.SendIncomingCallBatchAsync`), клиент его просто игнорировал.
+- **Аватар звонящего при killed app** (`calls/IncomingCallPrefetch.kt`): FCM получает только нужные typed-зависимости через Hilt entry point. `GrpcClientRegistry` лениво поднимает users/files clients по адресам из `GlobalParam`, а `AuthGateway.ensureValid()` обновляет access token; ручная инициализация всех клиентов не нужна. `handleIncomingCall` до показа звонка (`withTimeoutOrNull`, 2.5 с) вызывает `IncomingCallPrefetch.prepareAvatar`: `avatar_url` из push (fallback — профиль по `caller_user_id`) → fileId → presigned URL через кэши `AvatarLoader` → Bitmap в Coil (`allowHardware(false)`, `CircleCropTransformation`). Готовый Bitmap лежит по `callId` и переиспользуется `NotificationHelper.showIncomingCallNotification` (иконка `Person` вместо placeholder) и `IncomingCallActivity`; чистится в `clearIncomingCallAlert`.
 - **TLS для LiveKit-сигнализации:** `LiveKitCallEngine.connect()` передаёт в `LiveKit.create` OkHttp из `TlsTransportFactory`, то есть применяет ту же системную/PIN-политику, что gRPC и HTTP-загрузки. Self-signed LiveKit endpoint должен быть подтверждён в certificate preflight выбранной ноды; `hostnameVerifier` не переопределяется. Медиа-плоскость (WebRTC DTLS) системный trust-store не использует. Неполная публичная цепочка nginx (см. [[Backend/Nginx]]) больше не обходится клиентом и требует server-side fullchain.
 - В `:app-v1` подключён LiveKit Android SDK `2.26.0` + `livekit-android-camerax`. `LiveKitCallEngine` управляет room lifecycle, mic/camera/screen-share и **отдаёт UI-модель участников** `StateFlow<List<CallParticipant>>` (камера+экран track, mic/camera enabled, speaking, connection quality) вместо хранения renderer'ов. Движок пересобирает список по событиям Room (`ParticipantConnected/Disconnected`, `TrackPublished/Subscribed/Muted`, `ActiveSpeakersChanged`, `ConnectionQualityChanged`), различает `Track.Source.CAMERA` и `SCREEN_SHARE`. Дополнительно: `flipCamera()` (`LocalVideoTrack.switchCamera`), `selectAudioDevice()` через `AudioSwitchHandler` (динамик/наушник/проводная/Bluetooth), `setRemoteVideoQuality()` (`RemoteTrackPublication.setVideoQuality`).
 - **UI-дизайн** (`activity_call.xml` + программная отрисовка плиток). Тёмный иммерсивный экран (`bg_call_root`), edge-to-edge с обработкой `WindowInsets` (верхняя панель не залезает под статус-бар, панель управления — над навигацией). Стиль повторяет веб-референс. Режимы раскладки в `CallActivity.renderTiles`:
@@ -297,34 +316,19 @@ Backend заполняет эти поля при доставке сообще�
 
 ## Отправка файлов и pre-upload дедупликация (SHA-256)
 
-Перед заливкой файла на S3 клиент проверяет, не существует ли уже такой файл на сервере по SHA-256-хешу — это экономит мобильный трафик при повторных отправках.
+### Durable outbox обычных чатов
 
-**Цепочка отправки** (`MediaSendService.processJob` → `ChatRepository.uploadFile`):
+`OutgoingMessageQueue` — единственный публичный seam отправки обычных чатов: `enqueue`, `observeChat`, `retry`, `cancel`. До успешного `enqueue` текст/медиа **не** считаются принятыми: все `content://` URI, voice/cache-файлы и edited/sticker `ByteArray` копируются в `noBackupFilesDir/outgoing/<scope>/<operationId>`. Затем SQLCipher Room `offline_chat_cache.db` v4 фиксирует `QUEUED`; после этого process kill, перезапуск устройства и пропажа сети не теряют работу.
 
-1. `MediaSendService.prepareAttachment` готовит байты (`PreparedAttachment.bytes`):
-   - Документы — читаются как есть (`AttachmentSpec.Document`).
-   - Картинки — сжимаются через `ImageCompressor.compressImage` (JPEG q=90, max 2500px по длинной стороне).
-   - Видео — обрезка/перекодировка через `Transformer` в MP4.
-   - Голосовые сообщения — `AttachmentSpec.Voice` читает записанный во внутреннем кеше `.ogg` и отправляет его как `UploadFileType.MESSAGE_ATTACHMENT_VOICE`.
-2. `ChatRepository.uploadFile(jpegImageBytes, fileType, ...)` (`repository/ChatRepository.kt`) ДО получения upload URL:
-   - Считает SHA-256 от итоговых байт через приватный extension `ByteArray.sha256Hex()` → lowercase hex, 64 символа.
-   - Вызывает `grpcManager.checkFileHash(hash)` → `FilesApi.CheckFileHash` (gRPC, см. [[Backend/Files]] и [[Shared/Proto]]).
-   - Если сервер вернул непустой `fileId` — `onProgress(100)` и сразу `Result.success(existingFileId)`, никакого HTTP POST. В Logcat: `File already exists on server (hash=..., reusing fileId: ...)`.
-   - Если пустой ответ или ошибка вызова — fallback к обычному multipart-upload через `getUploadUrl` + S3 POST. Серверная пост-дедупликация (`UploadFileCommandHandler`) всё равно вернёт существующий `fileId` в JSON-ответе, если контент совпал.
-3. `GrpcManager.checkFileHash(fileHash: String): Result<String>` — обёртка над `filesClient.checkFileHash(CheckFileHashRequest)`. На любом исключении (нет filesClient, gRPC error) возвращает `Result.failure` — вызывающая сторона (`uploadFile`) использует `getOrNull()` и тихо переходит к обычной загрузке.
+Принятые preview-вложения обычного чата хранятся отдельно в `noBackupFilesDir/composer/<scope>/<chatId>/`, а их упорядоченные записи — в `composer_attachments`. `ComposerAttachmentStore` публикует preview только после атомарного staging. `draftGeneration` связывает journal черновика с outbox: при crash между `QUEUED` и очисткой UI распознаёт уже переданную generation и удаляет только подтверждённые копии. `remove`, logout, cache clear и orphan cleanup удаляют и записи, и файлы.
 
-**Что хешируется:** именно те байты, которые были бы залиты на сервер. Для картинки — уже сжатый JPEG, не оригинал из галереи. Это совпадает с тем, что хеширует backend при загрузке (`Backend/BarkFluff.Files/Features/UploadFile/UploadFileCommandHandler.cs`), поэтому дедупликация работает кросс-клиентно: файл, залитый с macOS-клиента, дедуплицируется при отправке с Android и наоборот.
-
-**Не покрывается этим check'ом** (заливают мимо `ChatRepository.uploadFile`): загрузка аватара через `GrpcManager.uploadAvatar`/`uploadProfilePoster` — там свой путь, дедупликация только на сервере.
-
-### Оптимистичный UI и прогресс отправки медиа
-
-При отправке фото/видео `ChatActivity.handleMediaSend` сразу добавляет оптимистичное сообщение (`MessageItem` с `localId`, `uploadProgress`, `localPreviewUris`) и кидает `SendJob` в `MediaSendService`. Сообщение видно мгновенно — с локальным превью медиа и оверлеем прогресса поверх.
-
-- **Локальное превью.** `MessageItem.localPreviewUris: List<Uri>` — URI исходных медиа (RawImage→uri, EditedImage→originalUri, Video→spec.uri; документы/стикеры превью не имеют). `MessageAdapter.buildLocalMediaGrid` рендерит ту же сетку, что и серверные вложения (`determineLayout` + `item_attachment_media_cell`, загрузка через Coil `.load(uri)`). Поэтому количество загружаемых файлов видно сразу как N миниатюр.
-- **Прогресс.** `MediaSendService.aggregateProgress(idx, pct)`: при `sendSeparately` прогресс пофайловый (у каждого файла своё сообщение/localId), иначе — агрегированный по всем N файлам одного сообщения `(idx*100+pct)/total`, чтобы бар не сбрасывался в 0 на каждом следующем файле. События идут через `MediaSendService.uploadEvents` (`UploadEvent`: PREPARING/UPLOADING/SENDING/SENT/FAILED + `progress` + `serverMessageId`).
-- **Реальная скорость.** `ChatRepository.uploadFile` ставит `connection.setFixedLengthStreamingMode(...)` и флашит каждый чанк — без этого `HttpURLConnection` буферизует тело в память и `onProgress` прыгал бы в 100% ещё до сетевой отправки.
-- **Реконсиляция (защита от дубликата/пустого сообщения).** `ChatActivity.addNewMessage` ищет оптимистичный плейсхолдер ДО проверки дубликата, в обоих порядках прихода: realtime-эхо раньше ответа `sendMessage` (матч по контенту + `uploadProgress != null`/`localPreviewUris`, т.к. вложения плейсхолдера ещё пустые) ИЛИ `SENT` раньше эха (матч по уже проставленному `messageId` + `localId`). Без этого эхо с фото добавлялось бы вторым item'ом, а `clearOptimisticUploadProgress` оставлял первый с пустыми вложениями → два item с одним `messageId` → коллизия `DiffUtil.areItemsTheSame` (сравнение по `messageId`) → пустой bubble до переоткрытия чата.
+- В БД есть scoped (`Beacon-server|userId`) таблицы `outgoing_messages` и упорядоченные `outgoing_attachments`. Сообщение хранит стабильный `operationId`, batch, текст/reply, draft generation, lease, attempts/backoff, безопасную категорию ошибки и ACK; вложение — stable upload operation ID, durable source/prepared path, final file ID и параметры видео.
+- Жизненный цикл: `STAGING → QUEUED → PREPARING → UPLOADING → SENDING → SENT`; `FAILED` блокирует только следующие сообщения того же чата до Retry/Cancel. Истёкший lease после kill возвращается в `QUEUED`. Cancel удаляет запись и staged directory, но не отзывает уже принятый сервером message.
+- `OutgoingMessageWorker` — `CoroutineWorker` с `NetworkType.CONNECTED`; WorkManager только планирует пробуждение. Queue выбирает максимум две chat-head одновременно и строго FIFO внутри каждого chat. На старте, возврате в foreground, login и появлении сети queue пробуждается снова; foreground notification предлагает cooperative Cancel активной операции. Для target SDK 36 worker передаёт `ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC`, а `SystemForegroundService` объявлен в `AndroidManifest.xml` с `android:foregroundServiceType="dataSync"` (и `FOREGROUND_SERVICE_DATA_SYNC` permission), иначе Android 14+ завершает процесс с `InvalidForegroundServiceTypeException`.
+- Временные network/timeout/5xx/429 ошибки повторяются 10s, 30s, 2m, 5m, 15m, затем каждые 30m. Auth/access/validation становятся `FAILED`; перед транспортом вызывается `TokenCoordinator.ensureValid` через `AuthGateway`.
+- `SendMessageRequest.client_operation_id`, `Message.client_operation_id` и `GetUploadUrlRequest.client_operation_id` обеспечивают идемпотентность. Незавершённый upload повторно запрашивает slot с тем же upload ID и проверяет `/status`; отправка повторяет тот же message ID, поэтому потерянный ACK не создаёт дубль.
+- `ChatRepository.uploadFile(File, ...)` считает hash и пишет multipart из durable file потоком, проверяя coroutine/Cancel между 64-KiB чанками. Видео преобразуется `Transformer` после staging; итоговый MP4 также остаётся в private directory до ACK.
+- `ChatViewModel` накладывает Flow outbox на history/cache: pending bubble, local preview и progress восстанавливаются после Activity/process recreation. ACK/realtime/history сначала сопоставляются по `clientOperationId`, legacy content-match остаётся fallback. `FAILED` показывает Retry/Cancel, остальные pending состояния — Cancel. Draft очищается только если ACK относится к сохранённой generation. После успешной удалённой загрузки списка чатов `contentAvailable` переводится в `true`, чтобы skeleton не оставался поверх полученных данных.
 
 ### Голосовые сообщения
 
@@ -332,7 +336,7 @@ Backend заполняет эти поля при доставке сообще�
 
 - Запись: `MediaRecorder` пишет OGG/Opus (`OutputFormat.OGG`, `AudioEncoder.OPUS`) во временный файл `cacheDir`.
 - Индикация записи (`showVoiceRecordingBar` / `hideVoiceRecordingBar`): на время записи `inputBar` уходит в `INVISIBLE` (кросс-фейд 160 мс), а поверх него, по тем же констрейнтам и с тем же фоном `bg_chat_input_bar`, показывается `voiceRecordBar` — мигающая точка `colorError` (`ValueAnimator` alpha 1↔0.25, REVERSE INFINITE), счётчик `M:SS` (корутина с тиком 200 мс) и подсказка отмены. Поле ввода не остаётся видимым, поэтому состояние записи нельзя спутать с обычным вводом.
-- Отправка: отпускание кнопки создаёт оптимистичный `MessageItem` с `uploadProgress=0` и ставит `SendJob(AttachmentSpec.Voice)` в `MediaSendService`; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
+- Отправка: отпускание кнопки создаёт `SendJob(AttachmentSpec.Voice)` и сначала durable-stage'ит OGG в outbox; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
 - Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, подсказка едет за пальцем (0.35 смещения) и меняет текст на «Отпустите для отмены», при отпускании запись удаляется и сообщение не отправляется.
 - Cleanup: `onStop()` отменяет активную запись и удаляет временный файл. Слишком короткая запись (`<500ms`) не отправляется.
 - Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые вложения размером `1..2 МБ` автоматически скачиваются в `FileCache`; более крупные остаются с ручной кнопкой загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
@@ -352,11 +356,11 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
   данными Beacon; для ручного адреса остаётся fallback на значение из Beacon.
   Хранится в `GlobalParam.socketFilesMedia` (prefs-ключ `socket_files_media`, переживает
   `clearUserData` наравне с остальными адресами), заполняется в `ServerInfoPrefs.applyServerInfo`
-  из `GrpcManager.ServerInfo.filesMediaEndpoint`.
-- `FileMediaUrl.rewrite(url, origin)` (`core/utils/`) меняет в ссылке только схему/хост/порт — путь
-  `/web/...` тот же; обёртка `GrpcManager.toMediaUrl(url)` подставляет текущий адрес.
-- Применяется в `GrpcManager.getUploadUrl` / `getFileDownloadUrl` / `getFileDownloadUrls` и в
-  `ChatRepository.getUploadUrl` / `uploadFile` (там свой прямой вызов `filesClient`), поэтому
+  из domain-модели `ServerInfo.filesMediaEndpoint`.
+- `MediaHttpTransport.rewriteMediaOrigin(url)` меняет в ссылке только схему/хост/порт — путь
+  `/web/...` тот же; текущий origin подставляется централизованно.
+- Применяется в `FileMediaGateway` для `uploadUrl` / `downloadUrl` / batch-download и в
+  `ChatRepository` для upload/download, поэтому
   отправка, загрузка и встроенные ссылки на файлы идут через отдельный origin.
 - В диагностике «О приложении» media-origin проверяется запросом
   `GET /web/download/{случайный UUID}`; любой полученный HTTP-ответ (включая ожидаемый 404)
@@ -447,7 +451,7 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 
 `ForwardChatPickerBottomSheet` (`dialog/ForwardChatPickerBottomSheet.kt`):
 - `BottomSheetDialogFragment` с `STATE_EXPANDED` + `skipCollapsed=true`.
-- Загружает чаты через `grpcManager.getChats()` (та же сортировка по `lastMessage.sentAt`, что в `ChatsFragment`).
+- Загружает чаты через `ChatDirectoryGateway.chats()` (та же сортировка по `lastMessage.sentAt`, что в `ChatsFragment`).
 - `ForwardChatPickerAdapter` — multi-select через `selectedIds: LinkedHashSet<String>`, click тоглит CheckBox и вызывает `notifyItemChanged`.
 - Кнопка "Переслать (N)" активируется при `count > 0`. При нажатии — параллельный `async/awaitAll` вызов `chatRepository.sendMessage` для каждого выбранного чата со списком `forwardedMessageIds` и опциональным комментарием. `newInstance` принимает `LongArray`, поэтому пачка уезжает одним сообщением на чат.
 - Layouts: `bottom_sheet_forward_chats.xml`, `item_chat_forward_picker.xml`.
@@ -515,16 +519,12 @@ Layout цитаты: `view_message_quote.xml`. Reply — один `<include andr
 - ML Kit: `com.google.mlkit:barcode-scanning:17.3.0`
 
 **Файлы:**
-- `QrScannerActivity.kt` — CameraX + ML Kit (QR_CODE), при обнаружении QR вызывает `grpcManager.scanFastAuth()`, при успехе переходит в FastAuthConfirmActivity
+- `QrScannerActivity.kt` — CameraX + ML Kit (QR_CODE), при обнаружении QR вызывает `FastAuthGateway.scan()`, при успехе переходит в FastAuthConfirmActivity
 - `FastAuthConfirmActivity.kt` — отображает метаданные нового устройства (имя, ОС, приложение, IP), кнопки «Подтвердить» / «Отклонить», вызывает `acceptFastAuth` / `rejectFastAuth`
 - `views/ScannerOverlayView.kt` — кастомная View с полупрозрачным оверлеем и угловыми уголками (рисуется через Canvas, `LAYER_TYPE_SOFTWARE`)
 
-**GrpcManager — новые поля и методы:**
-- `fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub?`
-- `createFastAuthClient(address, context, includeDeviceInfo)` — с `AuthInterceptor` + `DeviceInfoInterceptor`
-- `suspend fun scanFastAuth(fastAuthId: String): Result<ScanFastAuthResponse>`
-- `suspend fun acceptFastAuth(fastAuthId, confirmationCode): Result<Unit>`
-- `suspend fun rejectFastAuth(fastAuthId, confirmationCode): Result<Unit>`
+**FastAuthGateway:**
+- `scan(fastAuthId)`, `accept(fastAuthId, confirmationCode)` и `reject(fastAuthId, confirmationCode)` скрывают typed stub и interceptor-конфигурацию.
 
 **DevicesActivity:**
 - `buttonConnectDevice` использует `ActivityResultLauncher<Intent>` → `QrScannerActivity`
@@ -563,12 +563,12 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
   - `sendMessage/decryptIncoming/ack` — runtime-операции через SessionCipher.
   - **Лимитация**: libsignal 0.86+ требует Kyber prekey в `PreKeyBundle` (PQXDH), а текущий proto `barkfluff.users.PrekeyBundle` хранит только X25519. Метод `toLibsignal()` бросает `UnsupportedOperationException` с пояснением — требуется расширить proto Kyber-полями + backend Users (в плане как future work). Приватные чаты от этого не зависят и работают полностью.
 
-### gRPC методы (в `GrpcManager.kt`)
+### E2E gateway-операции
 
-Добавлены 16 новых методов:
-- Приватные: `createPrivateChat`, `acceptPrivateChat`, `rejectPrivateChat`, `sendPrivateMessage`, `listPrivateMessages`, `editPrivateMessage`, `deletePrivateMessage`, `getChat`.
-- Секретные: `sendSecretChatInvite`, `acceptSecretChatInvite`, `rejectSecretChatInvite`, `sendSecretMessage`, `ackSecretMessage`.
-- Prekey-bundle: `registerPrekeyBundle`, `fetchPrekeyBundle`, `listPeerDevices`, `replenishOneTimePrekeys`, `rotateSignedPrekey`.
+E2E-операции доступны через typed gateways; protobuf envelope остаётся внутри transport/repository слоя:
+- Приватные: `PrivateChatRepository`/`PrivateChatGateway`.
+- Секретные: `SecretChatRepository`/`SecretChatGateway`.
+- Prekey-bundle: `PrekeyGateway` (`register`/`replenish`) и `UserDirectoryGateway.peerDevices`.
 
 ### RealtimeService — 8 новых SharedFlow + collectors
 
@@ -606,7 +606,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 ## Раздел «Персонализация» — локальные параметры
 
-Выбранное изображение фона синхронизируется через [[Backend/Users]]: при login и Splash `GrpcManager.getUserSettings()` загружается параллельно с профилем и обновляет кэш `GlobalParam`. `ChatActivity` повторяет запрос при открытии и возврате: это покрывает быстрый offline-start, в котором Splash сразу открывает сохранённый список чатов. `chatBackgroundFileId` — глобальный фон, `chatBackgroundOverrides` — map `chatId → fileId`; UUID-ключи нормализуются, а `ChatActivity` выбирает override, иначе глобальное значение. Устаревшая асинхронная загрузка глобального изображения не может перерисовать уже полученный override. Старые локальные выбранные изображения намеренно заменяются серверным ответом. Blur, затемнение и скругление пузырей остаются локальными.
+Выбранное изображение фона синхронизируется через [[Backend/Users]]: при login и Splash `UserSettingsGateway.syncedChatBackgrounds()` загружает данные параллельно с профилем и обновляет кэш `GlobalParam`. `ChatActivity` повторяет запрос при открытии и возврате: это покрывает быстрый offline-start, в котором Splash сразу открывает сохранённый список чатов. `chatBackgroundFileId` — глобальный фон, `chatBackgroundOverrides` — map `chatId → fileId`; UUID-ключи нормализуются, а `ChatActivity` выбирает override, иначе глобальное значение. Устаревшая асинхронная загрузка глобального изображения не может перерисовать уже полученный override. Старые локальные выбранные изображения намеренно заменяются серверным ответом. Blur, затемнение и скругление пузырей остаются локальными.
 
 `PersonalizationSettingsActivity` устанавливает глобальный фон через `SetGlobalChatBackground`. В `UserProfileActivity` и `GroupInfoActivity` доступен selector фона конкретного чата: «Использовать глобальный фон» удаляет override через `SetChatBackground(chatId, "")`; прочие пункты используют каталог `GetPersonalization`.
 
@@ -625,7 +625,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 
 ## Настройки → Аккаунт — поле «О себе»
 
-`AccountSettingsActivity` в карточке полей профиля содержит `itemBio` под `itemUsername` (разделитель `MaterialDivider`). Текущее значение читается из `globalParam.description` и отображается в `textBio` (placeholder «Не указано» при пустой строке). По клику — `showEditDialog("О себе", …, allowEmpty = true)` → `grpcManager.changeBio(newValue)` (`GrpcManager.kt:1674`). При успехе значение сохраняется в `globalParam.description` (тот же бэкенд-поле, что наполняется из `getCurrentUserData().bio` в `SplashActivity`/`LoginActivity`/`RegisterActivity`).
+`AccountSettingsActivity` в карточке полей профиля содержит `itemBio` под `itemUsername` (разделитель `MaterialDivider`). Текущее значение читается из `globalParam.description` и отображается в `textBio` (placeholder «Не указано» при пустой строке). По клику — `showEditDialog("О себе", …, allowEmpty = true)` → `UserProfileGateway.changeBio(newValue)`. При успехе значение сохраняется в `globalParam.description` (то же бэкенд-поле, что наполняется из `currentUser()` в `SplashActivity`/`LoginActivity`/`RegisterActivity`).
 
 ## App Widget «Закреплённые чаты»
 
@@ -643,7 +643,7 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
   - `refreshAllWidgets(context)` — для всех размещённых.
   - `scheduleRefreshForChat(context, chatId)` — дебаунсит 500мс через `ConcurrentHashMap<Int, Job>`, ранний return если ни один виджет не содержит `chatId`. Используется из realtime-стримов.
   - In-memory кеш `getChats()` на 10 секунд (`CACHE_TTL_MS`) — чтобы шторм real-time событий не дёргал gRPC по разу на каждый виджет.
-  - Если `messagesClient == null` (виджет работает в фоне без активного приложения) — переинициализирует через `grpcManager.createMessagesClient(globalParam.socketMessages, …)`.
+  - Если процесс поднят только виджетом, `ChatDirectoryGateway` получает messages client лениво через `GrpcClientRegistry`; ручной `createMessagesClient` не нужен.
   - Если `accessToken` пуст — виджет рендерится в режиме «Войдите в приложение».
 - `PinnedChatsWidgetProvider.kt` — `AppWidgetProvider`. `onUpdate` → под одним `goAsync()` последовательно обходит все id, общий бюджет `ON_UPDATE_BUDGET_MS = 9_000` (виджеты обновляются под мьютексом, поэтому бюджета одного виджета на цикл не хватает). `onDeleted` → `WidgetRepository.deleteConfig` для каждого id. `onReceive` ловит кастомный `ACTION_REFRESH = "com.barkfluff.client.widget.ACTION_REFRESH"` (от кнопки refresh в виджете), тоже через `goAsync()`.
   - Двойного `goAsync()` не возникает: `super.onReceive` при `ACTION_APPWIDGET_UPDATE` вызывает `onUpdate` (один вызов), а кастомный `ACTION_REFRESH` `AppWidgetProvider` игнорирует.
@@ -695,13 +695,13 @@ Stage 6 плана `messages-crystalline-axolotl.md` — на Android реали
 - **Activity**: `share/ShareReceiverActivity.kt` — экспортированная (`android:exported=true`) с `launchMode=singleTask`, `excludeFromRecents=true`, `taskAffinity=""`. Intent-filters в `AndroidManifest.xml` покрывают `text/*`, `image/*`, `video/*`, `audio/*`, `application/*`, `*/*`.
 - **Авторизация**: при отсутствии `refreshToken` / `socketUsers` / `socketMessages` — Toast `share_not_authorized` и `finish()`. Pending-share-payload **не** сохраняется (по решению UX).
 - **Парсинг**: `parseSend` / `parseSendMultiple` достают `EXTRA_STREAM` (один Uri или ArrayList) и `EXTRA_TEXT` / `EXTRA_SUBJECT`; для каждого Uri резолвится MIME через `contentResolver.getType`, делается `takePersistableUriPermission` под try/catch. Результат — `SharePayload` (`Text` / `SingleFile` / `MultipleFiles`).
-- **UI выбора чата**: `activity_share_receiver.xml` — `CoordinatorLayout` (`fitsSystemWindows=true`, фон `colorSurfaceContainerLowest`) + `AppBarLayout` с `liftOnScroll` + `MaterialToolbar` (иконка `ic_close`, заголовок «Куда отправить?», подзаголовок «Через Barkfluff») + `RecyclerView` с переиспользованным `ChatAdapter`. Чаты грузятся через `grpcManager.getChats()` после `ensureTokenValid` + `initAllClients`. Display-title для ЛС резолвится через `getUserData` (как в `ChatsFragment.resolveDisplayItem`). Window insets применяются вручную через `ViewCompat.setOnApplyWindowInsetsListener`: top → padding AppBar, bottom → padding RecyclerView (под gesture-nav). Пустое состояние — круглая M3-карта с `ic_chat_bubble` (как в `fragment_chats.xml`). Индикатор — `CircularProgressIndicator`.
+- **UI выбора чата**: `activity_share_receiver.xml` — `CoordinatorLayout` (`fitsSystemWindows=true`, фон `colorSurfaceContainerLowest`) + `AppBarLayout` с `liftOnScroll` + `MaterialToolbar` (иконка `ic_close`, заголовок «Куда отправить?», подзаголовок «Через Barkfluff») + `RecyclerView` с переиспользованным `ChatAdapter`. Чаты грузятся через `ChatDirectoryGateway.chats()` после `AuthGateway.ensureValid()`. Display-title для ЛС резолвится через `UserDirectoryGateway.user()` (как в `ChatsFragment.resolveDisplayItem`). Window insets применяются вручную через `ViewCompat.setOnApplyWindowInsetsListener`: top → padding AppBar, bottom → padding RecyclerView (под gesture-nav). Пустое состояние — круглая M3-карта с `ic_chat_bubble` (как в `fragment_chats.xml`). Индикатор — `CircularProgressIndicator`.
 - **Подтверждение**: клик по чату открывает `share/ShareConfirmBottomSheet.kt` (`BottomSheetDialogFragment`) — M3-bottom-sheet с `BottomSheetDragHandleView`, заголовком `headlineSmall`, label-подзаголовком, превью контента, `TextInputLayout` OutlinedBox для подписи и pill-кнопкой `MaterialButton` (56dp, corner 28dp) с иконкой `ic_send`. Bottom-padding динамически учитывает IME и navigation-bar инсеты (`max(ime, nav)`) — кнопка поднимается над клавиатурой.
   - `SharePayload.Text` → текст в EditText (редактируется), без превью изображения, отправляется как `SendJob(text=..., attachments=[])`.
   - `SharePayload.SingleFile`: image → Coil `imageView.load(uri)` в `ShapeableImageView` (corner Large); video → `contentResolver.loadThumbnail(uri, Size(512,512))` (API 29+); прочее → filled `MaterialCardView` (`colorSurfaceContainerHigh`, corner 16dp) с filled-tonal плашкой иконки (`colorPrimaryContainer`, corner 14dp) + имя/размер (`OpenableColumns.DISPLAY_NAME` / `SIZE`).
   - `SharePayload.MultipleFiles` → горизонтальный `RecyclerView` миниатюр (`item_share_preview_thumb.xml`, 96×96dp, corner Medium).
-- **Постановка в очередь**: MIME → `AttachmentSpec`: `image/*` → `RawImage(uri)`, `video/*` → `Video(EditedVideoSpec(uri))`, остальное → `Document(uri)`. Дальше — обычный `MediaSendService.enqueue(ctx, SendJob(...))`, и SendJob проходит существующий конвейер (compress/upload/sendMessage) без изменений.
-- **После отправки**: Toast `share_sent_toast`, `dismissAllowingStateLoss()`, `activity.finish()` — задача live в foreground-сервисе и без открытого UI.
+- **Постановка в очередь**: MIME → `AttachmentSpec`: `image/*` → `RawImage(uri)`, `video/*` → `Video(EditedVideoSpec(uri))`, остальное → `Document(uri)`. `ShareConfirmBottomSheet` ждёт успешного `OutgoingMessageQueue.enqueue(SendJob(...))`; только durable local copy разрешает Toast, закрытие sheet и `activity.finish()`.
+- **После отправки**: Worker продолжает задачу без share-UI и восстанавливает её после process kill/перезапуска, как описано в durable outbox выше.
 - **Payload через Activity**: `SharePayload` содержит `Uri`-списки и не парселится — bottom-sheet читает его через `(activity as ShareReceiverActivity).payload`.
 
 Связанные файлы:
@@ -761,7 +761,7 @@ Android/
 
 ### Состав `:core`
 
-`com.android.library`, namespace `com.barkfluff.client.core`, minSdk 31. Пакеты сохранили имена `com.barkfluff.client.*` (V1-код не правит импорты). Содержит: `grpc/` (GrpcManager, AuthInterceptor, DeviceInfoInterceptor, RealtimeService), `data/` (GlobalParam, ClientColors, ServerDataElement, OpenChatManager), `repository/` (Chat/Private/Secret), `crypto/` (BarkFluffSignalStore, PrekeyManager, PrivateChatCrypto), чистые `utils/` (FileCache, ImageCompressor, FileUrlCache, ImageCache, NetworkUtils, AudioPlayerHelper, FileSaveUtils, AppVersionUtil), `proto/` (protobuf-плагин, режим lite). `api(libsignal-android)`, `consumer-rules.pro` с keep-правилами.
+`com.android.library`, namespace `com.barkfluff.client.core`, minSdk 31. Пакеты сохранили имена `com.barkfluff.client.*` (V1-код не правит импорты). Содержит: `grpc/` (`GrpcClientRegistry`, `GrpcApiTransport`, `TokenCoordinator`, `MediaHttpTransport`, interceptors, `RealtimeService`), `domain/` (typed gateways, domain DTO и row/state seams), `data/` (GlobalParam, ClientColors, ServerDataElement, OpenChatManager), `repository/` (Chat/Private/Secret), `crypto/` (BarkFluffSignalStore, PrekeyManager, PrivateChatCrypto), чистые `utils/` (FileCache, ImageCompressor, FileUrlCache, ImageCache, NetworkUtils, AudioPlayerHelper, FileSaveUtils, AppVersionUtil), `proto/` (protobuf-плагин, режим lite). `api(libsignal-android)`, `consumer-rules.pro` с keep-правилами.
 
 **Развязка границы:** `RealtimeService` не зависит от UI/Notification/Widget — введён интерфейс `RealtimeSideEffects` (onChatChanged / dismissChatNotifications / showMessageNotification). Реализация `RealtimeSideEffectsImpl` живёт в app-слое (пакет `notifications/`, грузит уведомления через NotificationHelper + AvatarLoader/Coil).
 
@@ -776,8 +776,8 @@ Android/
 
 ## Per-chat mute (отключение уведомлений чата)
 
-- `ChatActivity` — пункт меню «три точки» (`btnMore` → `showChatMenu`) переключает mute через `GrpcManager.setChatMuted(chatId, muted, until?)`. Состояние читается из `GetChatInfo.muted`.
-- `GrpcManager`: `setChatMuted()`, `getMutedChats()` (Set<chatId>).
+- `ChatActivity` — пункт меню «три точки» (`btnMore` → `showChatMenu`) переключает mute через `UserSettingsGateway.setChatMuted(chatId, muted, until?)`. Состояние читается из `MessageGateway.chatInfo(chatId).muted`.
+- `UserSettingsGateway`: `setChatMuted()` и `mutedChats()` (Set<chatId>).
 - `ChatRepository.ChatInfo.muted` — маппится из proto `GetChatInfoResponse.muted`.
 - `GlobalParam.mutedChatIds` (StringSet) + `setChatMutedLocal()` — локальный кэш; `BarkFluffFirebaseMessagingService.onMessageReceived` пропускает уведомление, если `chatId` в кэше (guard от гонок кэша токенов; сервер и так подавляет push).
 - Строки: `chat_menu_mute/unmute`, `chat_muted/unmuted`, `chat_mute_error` (все 5 локалей). Серверная часть — [[Backend/Users]] → Per-chat mute.
@@ -785,11 +785,11 @@ Android/
 ## Offline-first кеш чатов (V1)
 
 - \`:app-v1\` хранит список чатов, папки, отображаемые данные личных чатов и всю просмотренную историю в зашифрованной Room/SQLCipher БД. Ключ создаётся случайно и хранится в \`EncryptedSharedPreferences\`; scope включает Beacon-сервер и ID пользователя.
-- \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. «Обновление…», offline-подсказка и «Соединение…» сменяют имя в одной строке шапки с короткой fade/slide-анимацией; повтор синхронизации остаётся кнопкой рядом. «Соединение…» показывается только при переподключении основного realtime-стрима новых сообщений, а не при первичном подключении или ошибке вспомогательного стрима.
+- \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. Успешный полный серверный снимок заменяет локальный список и очищает устаревшие строки кэша; записи без GUID отбрасываются до отображения, поэтому удалённый/повреждённый чат не открывается с пустым \`chatId\`. «Обновление…», offline-подсказка и «Соединение…» сменяют имя в одной строке шапки с короткой fade/slide-анимацией; повтор синхронизации остаётся кнопкой рядом. «Соединение…» показывается только при переподключении основного realtime-стрима новых сообщений, а не при первичном подключении или ошибке вспомогательного стрима.
 - \`ChatActivity\` немедленно показывает последние 30 кешированных сообщений, а затем обновляет серверную страницу только для открытого чата. Страницы пагинации и события realtime (new/read/edit/delete) сохраняются обратно в кеш.
 - `ChatDraftRepository` хранит в той же зашифрованной БД scoped-журнал обычных чатов: текст, `replyToMessageId`, server revision, локальное поколение и sync-state. Изменение фиксируется локально сразу, upsert отправляется через 2 секунды бездействия и при уходе с `ChatActivity`; недоставленные upsert/delete повторяются при старте/возврате приложения и восстановлении сети. Tombstone удаляет только известную revision, поэтому поздний ответ или другой клиент не стирает новую правку.
-- При открытии обычного чата несинхронизированный локальный черновик имеет приоритет, иначе запрашивается `GetChatDraft`. Reply восстанавливается из кеша или загружается по ID; у удалённого сообщения остаётся текст без reply. V1 намеренно не сохраняет файлы, upload-очередь, attachment-диалог, edit-режим, private- и secret-чаты. После успешной отправки удаляется только generation отправленного текста/reply.
-- Настройки хранилища показывают серверные категории и две локальные величины: Coil/bitmap изображения и encrypted Room-кеш чатов с количеством чатов/сообщений. «Очистить кеш» удаляет оба отображаемых источника, включая БД и её ключ. \`LogoutHelper\` также очищает кеш, поэтому данные другого аккаунта не отображаются.
+- При открытии обычного чата несинхронизированный локальный черновик имеет приоритет, иначе запрашивается `GetChatDraft`. Reply восстанавливается из кеша или загружается по ID; у удалённого сообщения остаётся текст без reply. Обычные text/media outbox-записи и staged media также переживают restart; Private/Secret по-прежнему вне этого конвейера. После ACK удаляется только generation отправленного текста/reply.
+- Настройки хранилища показывают серверные категории и две локальные величины: Coil/bitmap изображения и encrypted Room-кеш чатов с количеством чатов/сообщений. «Очистить кеш» удаляет оба отображаемых источника, включая БД и её ключ. `LogoutHelper` сначала отменяет tagged outbox work и очищает scoped staged media, затем удаляет cache, поэтому данные другого аккаунта не отображаются.
 ## Логирование и приватность (V1)
 
 - В release-сборке `Log.v/d/i/w/println` полностью вырезаются R8 через `-assumenosideeffects` в `Barkfluff.Client.Android/app/proguard-rules.pro`. Вместе с вызовом устраняется и конкатенация аргументов — строковые константы не попадают в dex (проверяется поиском по `classes*.dex`).

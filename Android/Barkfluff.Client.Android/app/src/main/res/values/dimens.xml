@@ -119,7 +119,7 @@
     <dimen name="welcome_decor_circle_small">180dp</dimen>
     <dimen name="feature_chip_height">40dp</dimen>
     <dimen name="welcome_cta_height">62dp</dimen>
-    <dimen name="server_icon_tile_size">54dp</dimen>
+    <dimen name="server_icon_tile_size">56dp</dimen>
     <dimen name="server_card_cta_height">52dp</dimen>
     <dimen name="login_decor_circle_size">220dp</dimen>
     <dimen name="login_field_height">60dp</dimen>

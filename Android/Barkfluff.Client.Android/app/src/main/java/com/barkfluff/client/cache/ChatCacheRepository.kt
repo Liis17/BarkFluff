@@ -19,10 +19,15 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.model.ChatFolder
+import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.LastMessageSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -47,8 +52,8 @@ data class CachedChatDisplay(
 )
 
 data class CachedChatList(
-    val chats: List<GrpcManager.ChatData>,
-    val folders: List<GrpcManager.ChatFolder>,
+    val chats: List<ChatSummary>,
+    val folders: List<ChatFolder>,
     val displays: Map<String, CachedChatDisplay>,
     val totalCount: Int
 )
@@ -66,6 +71,17 @@ data class CachedChatDraft(
     val revision: String,
     val generation: Long,
     val syncState: Int
+)
+
+/** Durable composer preview metadata. The bytes live below noBackupFilesDir/composer. */
+data class ComposerAttachment(
+    val attachmentIndex: Int,
+    val path: String,
+    val kind: String,
+    val fileName: String?,
+    val mimeType: String?,
+    val generation: Long,
+    val createdAtMillis: Long,
 )
 
 @Entity(tableName = "chat_cache_meta")
@@ -108,6 +124,23 @@ data class CachedChatDraftEntity(
     val revision: String,
     val generation: Long,
     val syncState: Int
+)
+
+@Entity(
+    tableName = "composer_attachments",
+    primaryKeys = ["scopeId", "chatId", "attachmentIndex"],
+    indices = [androidx.room.Index(value = ["scopeId", "chatId"])]
+)
+data class ComposerAttachmentEntity(
+    val scopeId: String,
+    val chatId: String,
+    val attachmentIndex: Int,
+    val path: String,
+    val kind: String,
+    val fileName: String?,
+    val mimeType: String?,
+    val generation: Long,
+    val createdAtMillis: Long,
 )
 
 @Entity(tableName = "cached_chat_folders", primaryKeys = ["scopeId", "folderId"])
@@ -186,6 +219,9 @@ interface ChatCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertChats(chats: List<CachedChatEntity>)
 
+    @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId")
+    suspend fun deleteChats(scopeId: String)
+
     @Query("SELECT * FROM cached_chat_folders WHERE scopeId = :scopeId ORDER BY sortOrder")
     suspend fun folders(scopeId: String): List<CachedChatFolderEntity>
 
@@ -209,6 +245,21 @@ interface ChatCacheDao {
 
     @Query("DELETE FROM cached_chat_drafts WHERE scopeId = :scopeId AND chatId = :chatId")
     suspend fun deleteDraft(scopeId: String, chatId: String)
+
+    @Query("SELECT * FROM composer_attachments WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY attachmentIndex")
+    suspend fun composerAttachments(scopeId: String, chatId: String): List<ComposerAttachmentEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertComposerAttachments(attachments: List<ComposerAttachmentEntity>)
+
+    @Query("DELETE FROM composer_attachments WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteComposerAttachments(scopeId: String, chatId: String)
+
+    @Query("DELETE FROM composer_attachments WHERE scopeId = :scopeId")
+    suspend fun deleteAllComposerAttachments(scopeId: String)
+
+    @Query("SELECT DISTINCT chatId FROM composer_attachments WHERE scopeId = :scopeId")
+    suspend fun composerChatIds(scopeId: String): List<String>
 
     @Query("SELECT * FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY sentAtMillis DESC LIMIT :limit")
     suspend fun latestMessages(scopeId: String, chatId: String, limit: Int): List<CachedMessageEntity>
@@ -262,15 +313,19 @@ interface ChatCacheDao {
         CachedChatFolderEntity::class,
         CachedChatDisplayEntity::class,
         CachedChatDraftEntity::class,
+        ComposerAttachmentEntity::class,
         CachedMessageEntity::class,
         CachedPrivateMessageEntity::class,
-        CachedSecretMessageEntity::class
+        CachedSecretMessageEntity::class,
+        OutgoingMessageEntity::class,
+        OutgoingAttachmentEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
     abstract fun cacheDao(): ChatCacheDao
+    abstract fun outgoingDao(): OutgoingMessageDao
 }
 
 class ChatCacheRepository(context: Context) {
@@ -311,14 +366,16 @@ class ChatCacheRepository(context: Context) {
 
     suspend fun saveChatPage(
         scope: CacheScope,
-        chats: List<GrpcManager.ChatData>,
+        chats: List<ChatSummary>,
         totalCount: Int,
-        folders: List<GrpcManager.ChatFolder>? = null
+        folders: List<ChatFolder>? = null,
+        replaceExisting: Boolean = false,
     ) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
             val dao = db.cacheDao()
             dao.upsertMeta(CachedChatMetaEntity(scope.id, totalCount, System.currentTimeMillis()))
+            if (replaceExisting) dao.deleteChats(scope.id)
             if (chats.isNotEmpty()) dao.upsertChats(chats.map { it.toEntity(scope.id) })
             if (folders != null) {
                 dao.deleteFolders(scope.id)
@@ -350,9 +407,46 @@ class ChatCacheRepository(context: Context) {
         database().cacheDao().deleteDraft(scope.id, chatId)
     }
 
+    suspend fun readComposerAttachments(scope: CacheScope, chatId: String): List<ComposerAttachment> =
+        withContext(Dispatchers.IO) {
+            database().cacheDao().composerAttachments(scope.id, chatId).map { it.toComposerAttachment() }
+        }
+
+    suspend fun saveComposerAttachments(
+        scope: CacheScope,
+        chatId: String,
+        attachments: List<ComposerAttachment>,
+    ) = withContext(Dispatchers.IO) {
+        val db = database()
+        db.withTransaction {
+            val dao = db.cacheDao()
+            dao.deleteComposerAttachments(scope.id, chatId)
+            if (attachments.isNotEmpty()) {
+                dao.upsertComposerAttachments(attachments.map { it.toEntity(scope.id, chatId) })
+            }
+        }
+    }
+
+    suspend fun deleteComposerAttachments(scope: CacheScope, chatId: String) = withContext(Dispatchers.IO) {
+        database().cacheDao().deleteComposerAttachments(scope.id, chatId)
+    }
+
+    suspend fun deleteAllComposerAttachments(scope: CacheScope) = withContext(Dispatchers.IO) {
+        database().cacheDao().deleteAllComposerAttachments(scope.id)
+    }
+
+    suspend fun composerChatIds(scope: CacheScope): List<String> = withContext(Dispatchers.IO) {
+        database().cacheDao().composerChatIds(scope.id)
+    }
+
     suspend fun latestMessages(scope: CacheScope, chatId: String, limit: Int): List<Shared.Message> =
         withContext(Dispatchers.IO) {
             database().cacheDao().latestMessages(scope.id, chatId, limit).toMessages()
+        }
+
+    suspend fun cachedMessage(scope: CacheScope, chatId: String, messageId: Long): Shared.Message? =
+        withContext(Dispatchers.IO) {
+            database().cacheDao().message(scope.id, chatId, messageId)?.let { parseMessage(it.payload) }
         }
 
     suspend fun messagesBefore(
@@ -464,6 +558,112 @@ class ChatCacheRepository(context: Context) {
             database().cacheDao().deleteMessage(scope.id, chatId, messageId)
         }
 
+    suspend fun saveOutgoing(scope: CacheScope, record: OutgoingMessageRecord) = withContext(Dispatchers.IO) {
+        val db = database()
+        db.withTransaction {
+            val dao = db.outgoingDao()
+            dao.upsertMessage(record.toEntity(scope.id))
+            dao.upsertAttachments(record.attachments.map { it.toEntity(scope.id, record.operationId) })
+        }
+    }
+
+    suspend fun outgoing(scope: CacheScope, operationId: String): OutgoingMessageRecord? =
+        withContext(Dispatchers.IO) {
+            val dao = database().outgoingDao()
+            dao.message(scope.id, operationId)?.toRecord(dao.attachments(scope.id, operationId))
+        }
+
+    fun observeOutgoing(scope: CacheScope, chatId: String) = flow {
+        val dao = database().outgoingDao()
+        emitAll(dao.observeMessages(scope.id, chatId).map { entities ->
+            entities.map { entity -> entity.toRecord(dao.attachments(scope.id, entity.operationId)) }
+        })
+    }
+
+    suspend fun readyOutgoing(scope: CacheScope, nowMillis: Long, limit: Int): List<OutgoingMessageRecord> =
+        withContext(Dispatchers.IO) {
+            val dao = database().outgoingDao()
+            dao.readyHeads(
+                scopeId = scope.id,
+                queuedState = OutgoingMessageState.QUEUED.name,
+                sentState = OutgoingMessageState.SENT.name,
+                cancelledState = OutgoingMessageState.CANCEL_REQUESTED.name,
+                nowMillis = nowMillis,
+                limit = limit
+            ).map { entity -> entity.toRecord(dao.attachments(scope.id, entity.operationId)) }
+        }
+
+    suspend fun recoverExpiredOutgoingLeases(scope: CacheScope, nowMillis: Long) = withContext(Dispatchers.IO) {
+        database().outgoingDao().recoverExpiredLeases(
+            scopeId = scope.id,
+            queuedState = OutgoingMessageState.QUEUED.name,
+            preparingState = OutgoingMessageState.PREPARING.name,
+            uploadingState = OutgoingMessageState.UPLOADING.name,
+            sendingState = OutgoingMessageState.SENDING.name,
+            nowMillis = nowMillis
+        )
+    }
+
+    suspend fun deleteOutgoing(scope: CacheScope, operationId: String) = withContext(Dispatchers.IO) {
+        val db = database()
+        db.withTransaction {
+            val dao = db.outgoingDao()
+            dao.deleteAttachments(scope.id, operationId)
+            dao.deleteMessage(scope.id, operationId)
+        }
+    }
+
+    suspend fun nextOutgoingAttempt(scope: CacheScope): Long? = withContext(Dispatchers.IO) {
+        database().outgoingDao().nextWakeAt(
+            scopeId = scope.id,
+            queuedState = OutgoingMessageState.QUEUED.name,
+            preparingState = OutgoingMessageState.PREPARING.name,
+            uploadingState = OutgoingMessageState.UPLOADING.name,
+            sendingState = OutgoingMessageState.SENDING.name
+        )
+    }
+
+    suspend fun oldSentOutgoing(scope: CacheScope, beforeMillis: Long): List<OutgoingMessageRecord> =
+        withContext(Dispatchers.IO) {
+            val dao = database().outgoingDao()
+            dao.oldSent(scope.id, OutgoingMessageState.SENT.name, beforeMillis)
+                .map { entity -> entity.toRecord(dao.attachments(scope.id, entity.operationId)) }
+        }
+
+    suspend fun outgoingOperationIds(scope: CacheScope): Set<String> = withContext(Dispatchers.IO) {
+        database().outgoingDao().operationIds(scope.id).toSet()
+    }
+
+    suspend fun hasActiveOutgoingHandoff(
+        scope: CacheScope,
+        chatId: String,
+        generation: Long,
+    ): Boolean = withContext(Dispatchers.IO) {
+        generation > 0L && database().outgoingDao().activeHandoffs(
+            scopeId = scope.id,
+            chatId = chatId,
+            generation = generation,
+            sentState = OutgoingMessageState.SENT.name,
+            cancelledState = OutgoingMessageState.CANCEL_REQUESTED.name,
+        ) > 0
+    }
+
+    suspend fun discardStagingOutgoing(scope: CacheScope) = withContext(Dispatchers.IO) {
+        val db = database()
+        db.withTransaction {
+            db.outgoingDao().deleteStaging(scope.id, OutgoingMessageState.STAGING.name)
+            db.outgoingDao().deleteDetachedAttachments(scope.id)
+        }
+    }
+
+    suspend fun clearOutgoing(scope: CacheScope) = withContext(Dispatchers.IO) {
+        val db = database()
+        db.withTransaction {
+            db.outgoingDao().deleteAllAttachments(scope.id)
+            db.outgoingDao().deleteAllMessages(scope.id)
+        }
+    }
+
     suspend fun stats(): ChatCacheStats = withContext(Dispatchers.IO) {
         val dao = database().cacheDao()
         ChatCacheStats(
@@ -481,6 +681,9 @@ class ChatCacheRepository(context: Context) {
                 appContext.deleteDatabase(DATABASE_NAME)
                 File(appContext.getDatabasePath(DATABASE_NAME).path + "-wal").delete()
                 File(appContext.getDatabasePath(DATABASE_NAME).path + "-shm").delete()
+                // Composer previews are deliberately outside Room so they survive process death;
+                // a full cache clear/logout must remove that journal and its private bytes too.
+                File(appContext.noBackupFilesDir, "composer").deleteRecursively()
                 securePreferences.edit().remove(KEY_PASSPHRASE).apply()
             }
         }
@@ -495,7 +698,7 @@ class ChatCacheRepository(context: Context) {
         val passphrase = databasePassphrase()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
             .openHelperFactory(SupportOpenHelperFactory(passphrase))
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 
@@ -527,7 +730,94 @@ class ChatCacheRepository(context: Context) {
     private fun parsePrivateMessage(payload: ByteArray): Shared.EncryptedMessage? =
         runCatching { Shared.EncryptedMessage.parseFrom(payload) }.getOrNull()
 
-    private fun GrpcManager.ChatData.toEntity(scopeId: String): CachedChatEntity =
+    private fun OutgoingMessageRecord.toEntity(scopeId: String) = OutgoingMessageEntity(
+        scopeId = scopeId,
+        operationId = operationId,
+        batchId = batchId,
+        chatId = chatId,
+        chatTitle = chatTitle,
+        text = text,
+        replyToMessageId = replyToMessageId,
+        draftGeneration = draftGeneration,
+        sendAsFile = sendAsFile,
+        existingFileIds = existingFileIds.joinToString("\u001f"),
+        createdAtMillis = createdAtMillis,
+        state = state.name,
+        progress = progress,
+        attemptCount = attemptCount,
+        nextAttemptAtMillis = nextAttemptAtMillis,
+        lastFailureCategory = failureCategory?.name,
+        lastFailureDetail = failureDetail,
+        leaseOwner = leaseOwner,
+        leaseExpiresAtMillis = leaseExpiresAtMillis,
+        serverMessageId = serverMessageId,
+        serverMessagePayload = serverMessagePayload
+    )
+
+    private fun OutgoingAttachmentRecord.toEntity(scopeId: String, operationId: String) = OutgoingAttachmentEntity(
+        scopeId = scopeId,
+        operationId = operationId,
+        attachmentIndex = attachmentIndex,
+        kind = kind.name,
+        uploadFileTypeNumber = uploadFileTypeNumber,
+        sourcePath = sourcePath,
+        preparedPath = preparedPath,
+        previewPath = previewPath,
+        fileName = fileName,
+        mimeType = mimeType,
+        uploadOperationId = uploadOperationId,
+        reservedFileId = reservedFileId,
+        finalFileId = finalFileId,
+        trimStartMs = trimStartMs,
+        trimEndMs = trimEndMs,
+        compressTo480p = compressTo480p
+    )
+
+    private fun OutgoingMessageEntity.toRecord(attachments: List<OutgoingAttachmentEntity>) = OutgoingMessageRecord(
+        operationId = operationId,
+        batchId = batchId,
+        chatId = chatId,
+        chatTitle = chatTitle,
+        text = text,
+        replyToMessageId = replyToMessageId,
+        draftGeneration = draftGeneration,
+        sendAsFile = sendAsFile,
+        existingFileIds = existingFileIds.split('\u001f').filter { it.isNotBlank() },
+        createdAtMillis = createdAtMillis,
+        state = runCatching { OutgoingMessageState.valueOf(state) }.getOrDefault(OutgoingMessageState.FAILED),
+        progress = progress,
+        attemptCount = attemptCount,
+        nextAttemptAtMillis = nextAttemptAtMillis,
+        failureCategory = lastFailureCategory?.let {
+            runCatching { OutgoingFailureCategory.valueOf(it) }.getOrNull()
+        },
+        failureDetail = lastFailureDetail,
+        leaseOwner = leaseOwner,
+        leaseExpiresAtMillis = leaseExpiresAtMillis,
+        serverMessageId = serverMessageId,
+        serverMessagePayload = serverMessagePayload,
+        attachments = attachments.map { attachment ->
+            OutgoingAttachmentRecord(
+                attachmentIndex = attachment.attachmentIndex,
+                kind = runCatching { OutgoingAttachmentKind.valueOf(attachment.kind) }
+                    .getOrDefault(OutgoingAttachmentKind.DOCUMENT),
+                uploadFileTypeNumber = attachment.uploadFileTypeNumber,
+                sourcePath = attachment.sourcePath,
+                preparedPath = attachment.preparedPath,
+                previewPath = attachment.previewPath,
+                fileName = attachment.fileName,
+                mimeType = attachment.mimeType,
+                uploadOperationId = attachment.uploadOperationId,
+                reservedFileId = attachment.reservedFileId,
+                finalFileId = attachment.finalFileId,
+                trimStartMs = attachment.trimStartMs,
+                trimEndMs = attachment.trimEndMs,
+                compressTo480p = attachment.compressTo480p
+            )
+        }
+    )
+
+    private fun ChatSummary.toEntity(scopeId: String): CachedChatEntity =
         CachedChatEntity(
             scopeId = scopeId,
             chatId = id,
@@ -551,13 +841,13 @@ class ChatCacheRepository(context: Context) {
             hasDraft = hasDraft
         )
 
-    private fun CachedChatEntity.toChatData(): GrpcManager.ChatData {
+    private fun CachedChatEntity.toChatData(): ChatSummary {
         val lastMessage = if (lastMessageId == null || lastMessageSenderId == null ||
             lastMessageText == null || lastMessageSentAt == null
         ) {
             null
         } else {
-            GrpcManager.LastMessageData(
+            LastMessageSummary(
                 id = lastMessageId,
                 senderId = lastMessageSenderId,
                 text = lastMessageText,
@@ -565,7 +855,7 @@ class ChatCacheRepository(context: Context) {
                 readBy = lastMessageReadBy.toLongList()
             )
         }
-        return GrpcManager.ChatData(
+        return ChatSummary(
             id = chatId,
             title = title,
             picture = picture,
@@ -585,7 +875,29 @@ class ChatCacheRepository(context: Context) {
         )
     }
 
-    private fun GrpcManager.ChatFolder.toEntity(scopeId: String) = CachedChatFolderEntity(
+    private fun ComposerAttachmentEntity.toComposerAttachment() = ComposerAttachment(
+        attachmentIndex = attachmentIndex,
+        path = path,
+        kind = kind,
+        fileName = fileName,
+        mimeType = mimeType,
+        generation = generation,
+        createdAtMillis = createdAtMillis,
+    )
+
+    private fun ComposerAttachment.toEntity(scopeId: String, chatId: String) = ComposerAttachmentEntity(
+        scopeId = scopeId,
+        chatId = chatId,
+        attachmentIndex = attachmentIndex,
+        path = path,
+        kind = kind,
+        fileName = fileName,
+        mimeType = mimeType,
+        generation = generation,
+        createdAtMillis = createdAtMillis,
+    )
+
+    private fun ChatFolder.toEntity(scopeId: String) = CachedChatFolderEntity(
         scopeId = scopeId,
         folderId = folderId,
         folderName = folderName,
@@ -594,7 +906,7 @@ class ChatCacheRepository(context: Context) {
         sortOrder = sortOrder
     )
 
-    private fun CachedChatFolderEntity.toChatFolder() = GrpcManager.ChatFolder(
+    private fun CachedChatFolderEntity.toChatFolder() = ChatFolder(
         folderId = folderId,
         folderName = folderName,
         folderIcon = folderIcon,
@@ -608,7 +920,7 @@ class ChatCacheRepository(context: Context) {
     private fun String.toStringList(): List<String> =
         if (isBlank()) emptyList() else split(SEPARATOR)
 
-    private companion object {
+    companion object {
         const val DATABASE_NAME = "offline_chat_cache.db"
         const val KEY_PREFERENCES = "offline_chat_cache_secure"
         const val KEY_PASSPHRASE = "database_passphrase"
@@ -622,6 +934,61 @@ class ChatCacheRepository(context: Context) {
                         "replyToMessageId INTEGER NOT NULL, revision TEXT NOT NULL, " +
                         "generation INTEGER NOT NULL, syncState INTEGER NOT NULL, " +
                         "PRIMARY KEY(scopeId, chatId))"
+                )
+            }
+        }
+        /** Exposed for the Room migration integration test; production uses it in [database]. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS outgoing_messages (" +
+                        "scopeId TEXT NOT NULL, operationId TEXT NOT NULL, batchId TEXT, " +
+                        "chatId TEXT NOT NULL, chatTitle TEXT NOT NULL, text TEXT NOT NULL, " +
+                        "replyToMessageId INTEGER NOT NULL, draftGeneration INTEGER, " +
+                        "sendAsFile INTEGER NOT NULL, existingFileIds TEXT NOT NULL, createdAtMillis INTEGER NOT NULL, " +
+                        "state TEXT NOT NULL, progress INTEGER NOT NULL, attemptCount INTEGER NOT NULL, " +
+                        "nextAttemptAtMillis INTEGER NOT NULL, lastFailureCategory TEXT, " +
+                        "lastFailureDetail TEXT, leaseOwner TEXT, leaseExpiresAtMillis INTEGER NOT NULL, " +
+                        "serverMessageId INTEGER NOT NULL, serverMessagePayload BLOB, " +
+                        "PRIMARY KEY(scopeId, operationId))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_outgoing_messages_scopeId_chatId_createdAtMillis " +
+                        "ON outgoing_messages(scopeId, chatId, createdAtMillis)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_outgoing_messages_scopeId_state_nextAttemptAtMillis " +
+                        "ON outgoing_messages(scopeId, state, nextAttemptAtMillis)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS outgoing_attachments (" +
+                        "scopeId TEXT NOT NULL, operationId TEXT NOT NULL, attachmentIndex INTEGER NOT NULL, " +
+                        "kind TEXT NOT NULL, uploadFileTypeNumber INTEGER NOT NULL, sourcePath TEXT NOT NULL, " +
+                        "preparedPath TEXT, previewPath TEXT, fileName TEXT, mimeType TEXT, " +
+                        "uploadOperationId TEXT NOT NULL, reservedFileId TEXT, finalFileId TEXT, " +
+                        "trimStartMs INTEGER NOT NULL, trimEndMs INTEGER NOT NULL, compressTo480p INTEGER NOT NULL, " +
+                        "PRIMARY KEY(scopeId, operationId, attachmentIndex))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_outgoing_attachments_scopeId_operationId " +
+                        "ON outgoing_attachments(scopeId, operationId)"
+                )
+            }
+        }
+
+        /** Composer previews are metadata in SQLCipher; the actual bytes stay app-private. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS composer_attachments (" +
+                        "scopeId TEXT NOT NULL, chatId TEXT NOT NULL, attachmentIndex INTEGER NOT NULL, " +
+                        "path TEXT NOT NULL, kind TEXT NOT NULL, fileName TEXT, mimeType TEXT, " +
+                        "generation INTEGER NOT NULL, createdAtMillis INTEGER NOT NULL, " +
+                        "PRIMARY KEY(scopeId, chatId, attachmentIndex))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_composer_attachments_scopeId_chatId " +
+                        "ON composer_attachments(scopeId, chatId)"
                 )
             }
         }

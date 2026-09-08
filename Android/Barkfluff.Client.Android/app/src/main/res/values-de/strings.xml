@@ -30,7 +30,7 @@
     <string name="legal_tab_terms">Bedingungen</string>
     <string name="legal_tab_privacy">Datenschutz</string>
     <string name="legal_accept_checkbox">Ich habe gelesen und akzeptiere</string>
-    <string name="legal_accept_button">Akzeptieren</string>
+    <string name="legal_continue_button">Weiter</string>
     <string name="legal_load_error">Dokumente konnten nicht geladen werden</string>
     <string name="btn_close">Schließen</string>
 
@@ -51,8 +51,9 @@
     <string name="btn_confirm">Bestätigen</string>
 
     <!-- Select Server -->
-    <string name="server_title">"Wähle\neine Node"</string>
+    <string name="server_title">Wähle eine Node</string>
     <string name="server_subtitle">Zu welchem Rudel verbinden wir uns heute?</string>
+    <string name="server_public_nodes_label">Öffentliche Nodes</string>
     <string name="server_custom_row_title">Eigene Node</string>
     <string name="server_custom_row_subtitle">Adresse manuell eingeben</string>
     <string name="server_custom">Mit anderem Server verbinden</string>
@@ -312,7 +313,17 @@
     <string name="search_nothing_found">Nichts gefunden</string>
     <string name="search_try_different">Versuche eine andere Suchanfrage</string>
     <string name="search_users_title">Nutzer suchen</string>
+    <string name="search_users_prompt_title">Wen suchst du?</string>
     <string name="search_users_hint_long">Gib Vorname, Nachname oder Benutzername ein (mindestens 3 Zeichen)</string>
+    <string name="search_private_hint">Nutzer für einen privaten Chat finden</string>
+    <string name="search_private_title">Wer soll dem privaten Chat beitreten?</string>
+    <string name="search_private_description">Wähle einen Nutzer für einen privaten Chat</string>
+    <string name="search_too_short">Gib mindestens 3 Zeichen ein</string>
+    <string name="search_loading">Nutzer werden gesucht…</string>
+    <string name="search_error_title">Suche konnte nicht ausgeführt werden</string>
+    <string name="search_error_description">Prüfe deine Verbindung und versuche es erneut</string>
+    <string name="search_retry">Erneut versuchen</string>
+    <string name="cd_clear_search">Suche löschen</string>
 
     <!-- Image Picker -->
     <string name="select_photos">Fotos auswählen</string>

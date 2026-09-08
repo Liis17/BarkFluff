@@ -36,24 +36,6 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Восстановление CA-бандла Cloudflare Origin CA
-        shell: pwsh
-        env:
-          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:CA_BUNDLE_B64)) {
-            throw 'Не задан секрет CLOUDFLARE_ORIGIN_CA_BUNDLE_B64'
-          }
-
-          $caPath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
-          [System.IO.File]::WriteAllBytes(
-            $caPath,
-            [Convert]::FromBase64String($env:CA_BUNDLE_B64))
-
-          if (-not (Test-Path -LiteralPath $caPath -PathType Leaf)) {
-            throw "Не удалось восстановить CA-бандл: $caPath"
-          }
-
       - name: Определение канала обновлений
         id: target
         shell: pwsh
@@ -118,11 +100,9 @@ jobs:
         run: |
           $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
           $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
-          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
           $backupDirectory = Join-Path $env:RUNNER_TEMP "BarkFluffWinUI-manifest-$($env:GITHUB_RUN_ID)"
-          $packageCaPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Resources\Update\storage-ca.pem'
 
-          foreach ($path in @($manifestPath, $applicationManifestPath, $caBundlePath)) {
+          foreach ($path in @($manifestPath, $applicationManifestPath)) {
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
               throw "Не найден обязательный файл: $path"
             }
@@ -182,9 +162,10 @@ jobs:
             param([string]$Url)
 
             try {
-              $jsonText = & curl.exe --fail --silent --show-error --cacert $caBundlePath $Url
+              $jsonText = & curl.exe --fail --silent --show-error $Url
               $curlExitCode = $LASTEXITCODE
               if ($curlExitCode -ne 0) {
+                $global:LASTEXITCODE = 0
                 return $null
               }
 
@@ -276,16 +257,13 @@ jobs:
             $preparedApplicationManifest,
             [System.Text.UTF8Encoding]::new($false))
 
-          New-Item -ItemType Directory -Path (Split-Path -Parent $packageCaPath) -Force | Out-Null
-          Copy-Item -LiteralPath $caBundlePath -Destination $packageCaPath -Force
-
           @(
             "version=$packageVersion"
             "manifest_version=$manifestVersion"
             "backup_directory=$backupDirectory"
-            "package_ca_path=$packageCaPath"
           ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
+          $global:LASTEXITCODE = 0
           Write-Host "Канал: $($env:CHANNEL)"
           Write-Host "Identity: $($env:IDENTITY_NAME)"
           Write-Host "Версия хранения: $packageVersion"
@@ -302,20 +280,65 @@ jobs:
             throw 'Не задан секрет WINUI_MSIX_CERTIFICATE_B64'
           }
 
+          $certificateB64 = $env:CERTIFICATE_B64.Trim().Trim([char]0xFEFF)
+          $certificateB64 = $certificateB64.Trim()
+          $hasDoubleQuotes = $certificateB64.StartsWith('"') -and $certificateB64.EndsWith('"')
+          $hasSingleQuotes = $certificateB64.StartsWith("'") -and $certificateB64.EndsWith("'")
+          if ($hasDoubleQuotes -or $hasSingleQuotes) {
+            $certificateB64 = $certificateB64.Substring(1, $certificateB64.Length - 2).Trim()
+          }
+
+          $base64Block = [regex]::Match(
+            $certificateB64,
+            '(?ms)BASE64_BEGIN\s*(?<payload>.*?)\s*BASE64_END')
+          if ($base64Block.Success) {
+            $certificateB64 = $base64Block.Groups['payload'].Value.Trim()
+          }
+
+          if ($certificateB64.StartsWith('```')) {
+            $certificateB64 = $certificateB64 -replace '^```[^\r\n]*\r?\n', ''
+            $certificateB64 = $certificateB64 -replace '\r?\n```\s*$', ''
+          }
+
+          $certificateB64 = $certificateB64 -replace '^(?:base64|pfx)\s*:\s*', ''
+          $certificateB64 = $certificateB64 -replace '^data:application/(?:x-)?pkcs12;base64,', ''
+          $certificateB64 = $certificateB64 -replace '\s', ''
+          if ($certificateB64 -match '-----BEGIN|^\s*(?:base64|pfx)\s*:') {
+            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 должен содержать Base64 PFX без PEM-заголовка или метки'
+          }
+          $invalidCharacterCount = [regex]::Matches(
+            $certificateB64,
+            '[^A-Za-z0-9+/=]').Count
+          if ($certificateB64.Length -eq 0 -or
+              ($certificateB64.Length % 4) -ne 0 -or
+              $certificateB64 -notmatch '^[A-Za-z0-9+/]*={0,2}$') {
+            throw "Секрет WINUI_MSIX_CERTIFICATE_B64 содержит недопустимые символы или имеет некорректную длину (нормализованная длина: $($certificateB64.Length), недопустимых символов: $invalidCharacterCount)"
+          }
+
           $certificatePath = Join-Path $env:RUNNER_TEMP 'BarkFluffWinUI-signing.pfx'
-          [System.IO.File]::WriteAllBytes(
-            $certificatePath,
-            [Convert]::FromBase64String($env:CERTIFICATE_B64))
+          try {
+            $certificateBytes = [Convert]::FromBase64String($certificateB64)
+          }
+          catch [FormatException] {
+            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 не удалось декодировать; нужен полный Base64 PFX'
+          }
+          [System.IO.File]::WriteAllBytes($certificatePath, $certificateBytes)
 
           if (-not (Test-Path -LiteralPath $certificatePath -PathType Leaf)) {
             throw "Не удалось восстановить сертификат: $certificatePath"
           }
 
           $password = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
-          $certificates = Import-PfxCertificate `
-            -FilePath $certificatePath `
-            -CertStoreLocation 'Cert:\CurrentUser\My' `
-            -Password $password
+          try {
+            $certificates = Import-PfxCertificate `
+              -FilePath $certificatePath `
+              -CertStoreLocation 'Cert:\CurrentUser\My' `
+              -Password $password `
+              -ErrorAction Stop
+          }
+          catch {
+            throw 'Не удалось импортировать PFX: проверьте полный Base64-секрет WINUI_MSIX_CERTIFICATE_B64 и пароль WINUI_MSIX_CERTIFICATE_PASSWORD'
+          }
           $certificate = $certificates |
             Where-Object HasPrivateKey |
             Select-Object -First 1
@@ -494,10 +517,6 @@ jobs:
             }
           }
 
-          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
-          if (-not (Test-Path -LiteralPath $caBundlePath -PathType Leaf)) {
-            throw "CA-бандл не найден: $caBundlePath"
-          }
           if (-not (Test-Path -LiteralPath $env:ARCHIVE_PATH -PathType Leaf)) {
             throw "Архив не найден: $env:ARCHIVE_PATH"
           }
@@ -505,7 +524,6 @@ jobs:
           $url = "$($env:CLIENT_STORAGE_URL.TrimEnd('/'))/$($env:UPLOAD_PATH)"
           & curl.exe `
             --fail `
-            --cacert $caBundlePath `
             --request POST `
             $url `
             --header "Authorization: Bearer $($env:CLIENT_STORAGE_TOKEN)" `
@@ -524,7 +542,6 @@ jobs:
           CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
           CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
           MANIFEST_BACKUP_DIRECTORY: ${{ runner.temp }}\BarkFluffWinUI-manifest-${{ github.run_id }}
-          PACKAGE_CA_PATH: ${{ github.workspace }}\Windows\BarkFluff.Client.WinUI\Resources\Update\storage-ca.pem
         run: |
           $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
           $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
@@ -543,8 +560,7 @@ jobs:
               Remove-Item -Force -ErrorAction SilentlyContinue
           }
 
-          $caBundlePath = Join-Path $env:GITHUB_WORKSPACE 'cloudflare-origin-ca-bundle.pem'
-          foreach ($path in @($env:CERTIFICATE_PATH, $caBundlePath, $env:PACKAGE_CA_PATH)) {
+          foreach ($path in @($env:CERTIFICATE_PATH)) {
             if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
               Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
             }

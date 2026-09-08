@@ -265,8 +265,10 @@ public class ConfirmResetPasswordCommandHandlerTests
         Assert.True(reset!.IsApproved);
     }
 
-    [Fact]
-    public async Task Handle_FallbackDeviceId_WhenDeviceIdIsNull()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Android")]
+    public async Task Handle_FallbackDeviceId_WhenDeviceIdIsInvalid(string? deviceId)
     {
         var resetId = Guid.NewGuid();
 
@@ -284,12 +286,14 @@ public class ConfirmResetPasswordCommandHandlerTests
         _mediator.Setup(m => m.Send(It.IsAny<CreateTokenCommand>(), CancellationToken.None))
             .ReturnsAsync(new BarkFluff.Proto.Identity.CreateTokenResponse { AccessToken = new BarkFluff.Proto.Identity.Token() });
 
-        var handler = CreateHandler(BuildRequestContext(deviceId: null));
+        var handler = CreateHandler(BuildRequestContext(deviceId: deviceId));
         var cmd = new ConfirmResetPasswordCommand { ResetId = resetId, OtpCode = "123456" };
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
         Assert.NotNull(result);
+        var token = await _context.RefreshTokens.SingleAsync();
+        Assert.True(Guid.TryParse(token.DeviceId, out _));
     }
 
     [Fact]

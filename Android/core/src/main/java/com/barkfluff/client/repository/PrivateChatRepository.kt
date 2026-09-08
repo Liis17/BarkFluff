@@ -9,12 +9,12 @@ import androidx.security.crypto.MasterKeys
 import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.shared.Shared
 import com.barkfluff.client.crypto.PrivateChatCrypto
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcApiTransport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Репозиторий приватных чатов: связывает [GrpcManager] и [PrivateChatCrypto].
+ * Репозиторий приватных чатов: связывает RPC transport и [PrivateChatCrypto].
  *
  * Ключ AES-256 каждого чата выводится из passphrase + Chat.kdf_salt через Argon2id;
  * хранится локально в EncryptedSharedPreferences (один раз после ввода passphrase).
@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
  */
 class PrivateChatRepository(
     context: Context,
-    private val grpc: GrpcManager
+    private val grpc: GrpcApiTransport
 ) {
     private val tag = "PrivateChatRepo"
     private val keyPrefs: SharedPreferences = run {
@@ -59,7 +59,7 @@ class PrivateChatRepository(
         peerUserId: Long,
         passphrase: String,
         rememberKey: Boolean = false
-    ): Result<GrpcManager.PrivateChatCreateResult> =
+    ): Result<GrpcApiTransport.PrivateChatCreateResult> =
         withContext(Dispatchers.Default) {
             try {
                 val salt = PrivateChatCrypto.generateSalt()
@@ -109,9 +109,26 @@ class PrivateChatRepository(
      * но локально ключ не сохранён.
      */
     fun unlockExistingChat(chat: MessagesApiOuterClass.Chat, passphrase: String, rememberKey: Boolean = false): Boolean {
-        val key = PrivateChatCrypto.deriveKey(passphrase, chat.kdfSalt.toByteArray())
-        if (!PrivateChatCrypto.validateVerifier(key, chat.passphraseVerifier.toByteArray())) return false
-        rememberKey(chat.id, key, rememberKey)
+        return unlockExistingChat(
+            chatId = chat.id,
+            kdfSalt = chat.kdfSalt.toByteArray(),
+            passphraseVerifier = chat.passphraseVerifier.toByteArray(),
+            passphrase = passphrase,
+            rememberKey = rememberKey,
+        )
+    }
+
+    /** Domain-friendly unlock seam; wire protobufs do not leak into controllers. */
+    fun unlockExistingChat(
+        chatId: String,
+        kdfSalt: ByteArray,
+        passphraseVerifier: ByteArray,
+        passphrase: String,
+        rememberKey: Boolean = false,
+    ): Boolean {
+        val key = PrivateChatCrypto.deriveKey(passphrase, kdfSalt)
+        if (!PrivateChatCrypto.validateVerifier(key, passphraseVerifier)) return false
+        rememberKey(chatId, key, rememberKey)
         return true
     }
 

@@ -446,8 +446,10 @@ public class AuthCommandHandlerTests
             device.Location == "Russia, Moscow, Moscow"), null, null, CancellationToken.None), Times.Once);
     }
 
-    [Fact]
-    public async Task Handle_FallbackDeviceId_WhenDeviceIdIsNull()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Android")]
+    public async Task Handle_FallbackDeviceId_WhenDeviceIdIsInvalid(string? deviceId)
     {
         var user = new FindByLoginResponse();
         user.User = new User { Id = 1, Username = "user" };
@@ -477,7 +479,7 @@ public class AuthCommandHandlerTests
         _mediator.Setup(m => m.Send(It.IsAny<CreateTokenCommand>(), CancellationToken.None))
             .ReturnsAsync(new CreateTokenResponse { AccessToken = new Token() });
 
-        var handler = CreateHandler(BuildRequestContext(deviceId: null));
+        var handler = CreateHandler(BuildRequestContext(deviceId: deviceId));
         var command = new AuthCommand { Username = "user", Password = "password123" };
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -485,6 +487,7 @@ public class AuthCommandHandlerTests
         Assert.NotNull(result);
         var tokens = await _context.RefreshTokens.ToListAsync();
         Assert.Single(tokens);
+        Assert.True(Guid.TryParse(tokens[0].DeviceId, out _));
     }
 
     [Fact]

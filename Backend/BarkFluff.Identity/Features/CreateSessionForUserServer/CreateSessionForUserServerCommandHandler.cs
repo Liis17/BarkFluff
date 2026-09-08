@@ -40,6 +40,13 @@ public class CreateSessionForUserServerCommandHandler(
             throw new RpcException(new Status(StatusCode.InvalidArgument, "DeviceId is required"));
         }
 
+        if (!Guid.TryParse(request.DeviceId, out var parsedDeviceId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "DeviceId must be a valid GUID"));
+        }
+
+        var deviceId = parsedDeviceId.ToString();
+
         if (string.IsNullOrEmpty(request.DeviceName))
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, "DeviceName is required"));
@@ -64,12 +71,12 @@ public class CreateSessionForUserServerCommandHandler(
 
         logger.LogInformation(
             "Создание серверной сессии для пользователя {UserId} на устройстве {DeviceId} ({DeviceName})",
-            request.UserId, request.DeviceId, request.DeviceName);
+            request.UserId, deviceId, request.DeviceName);
 
-        await refreshTokensStorage.DeleteRefreshTokensByDeviceIdSafe(request.DeviceId, request.UserId);
+        await refreshTokensStorage.DeleteRefreshTokensByDeviceIdSafe(deviceId, request.UserId);
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
-        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, request.UserId, request.DeviceId, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, request.UserId, deviceId, ExpDaysRefreshToken);
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
 
@@ -79,7 +86,7 @@ public class CreateSessionForUserServerCommandHandler(
         {
             await usersClient.RegisterDeviceAsync(new RegisterDeviceRequest
             {
-                DeviceId = request.DeviceId,
+                DeviceId = deviceId,
                 UserId = request.UserId,
                 OriginalName = request.DeviceName,
                 AppName = request.AppName,
@@ -90,7 +97,7 @@ public class CreateSessionForUserServerCommandHandler(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Не удалось зарегистрировать устройство {DeviceId} для пользователя {UserId}",
-                request.DeviceId, request.UserId);
+                deviceId, request.UserId);
         }
 
         try
@@ -131,7 +138,7 @@ public class CreateSessionForUserServerCommandHandler(
 
         logger.LogInformation(
             "Серверная сессия успешно создана для пользователя {UserId}, устройство {DeviceId}",
-            request.UserId, request.DeviceId);
+            request.UserId, deviceId);
 
         return new CreateSessionForUserServerResponse
         {

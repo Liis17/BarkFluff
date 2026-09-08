@@ -197,9 +197,9 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
 
             _logger.LogDebug("Генерация refresh token для пользователя {UserId}", resetPasswordInfo.UserId);
 
-            var deviceId = string.IsNullOrEmpty(requestContext.DeviceId)
-                ? Guid.NewGuid().ToString()
-                : requestContext.DeviceId;
+            var deviceId = Guid.TryParse(requestContext.DeviceId, out var parsedDeviceId)
+                ? parsedDeviceId.ToString()
+                : Guid.NewGuid().ToString();
 
             var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
             await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, resetPasswordInfo.UserId, deviceId, ExpDaysRefreshToken);
