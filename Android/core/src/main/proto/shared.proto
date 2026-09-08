@@ -33,6 +33,8 @@ message Message {
   google.protobuf.Timestamp edited_at = 8; // Дата последней правки сообщения
 
   ReplyInfo reply_to = 12; // Заполнено => сообщение является ответом. Резолвится сервером при выдаче
+
+  string client_operation_id = 13; // UUID клиентской операции отправителя; пусто у старых сообщений
 }
 
 // Превью цитируемого сообщения для reply. В отличие от ForwardedMessageAttachment это НЕ снапшот:
@@ -212,4 +214,3 @@ message SecretEnvelope {
 
   google.protobuf.Timestamp sent_at = 6; // Дата отправки (UTC, проставляется сервером)
 }
-

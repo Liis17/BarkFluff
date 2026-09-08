@@ -6,16 +6,32 @@ import barkfluff.files.FilesApiOuterClass
 import barkfluff.messages.MessagesApiOuterClass
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.GrpcApiTransport
+import com.barkfluff.client.grpc.MediaHttpTransport
+import java.io.File
+import java.io.OutputStream
+import java.util.concurrent.CancellationException
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * Репозиторий для работы с чатами и сообщениями.
  * Инкапсулирует логику взаимодействия с gRPC Messages API.
- * Использует общий GrpcManager из Application.
+ * Использует общий typed RPC transport из DI.
  */
-class ChatRepository(private val context: Context, private val grpcManager: GrpcManager) {
+class ChatRepository(
+    private val context: Context,
+    private val transport: GrpcApiTransport,
+    private val mediaTransport: MediaHttpTransport = MediaHttpTransport(context),
+) {
 
     companion object {
         private const val TAG = "ChatRepository"
@@ -40,7 +56,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         count: Int = DEFAULT_PAGE_SIZE
     ): Result<List<Shared.Message>> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -65,7 +81,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             }
 
             val request = requestBuilder.build()
-            val response = grpcManager.messagesClient!!.listMessages(request)
+            val response = transport.messagesClient!!.listMessages(request)
 
             Log.d(TAG, "Loaded ${response.messagesList.size} messages for chat $chatId")
             Result.success(response.messagesList)
@@ -92,10 +108,11 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         text: String,
         fileIds: List<String> = emptyList(),
         replyToMessageId: Long = 0L,
-        forwardedMessageIds: List<Long> = emptyList()
+        forwardedMessageIds: List<Long> = emptyList(),
+        clientOperationId: String? = null
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -108,19 +125,22 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
             Log.d(TAG, "sendMessage: chatId=$chatId, textLength=${text.length}, fileIds=$fileIds, replyToMessageId=$replyToMessageId, forwardedMessageIds=$forwardedMessageIds")
 
-            val request = MessagesApiOuterClass.SendMessageRequest.newBuilder()
+            val requestBuilder = MessagesApiOuterClass.SendMessageRequest.newBuilder()
                 .setChatId(chatId)
                 .setMessage(outgoingMessage)
-                .build()
+            clientOperationId?.takeIf { it.isNotBlank() }?.let(requestBuilder::setClientOperationId)
+            val request = requestBuilder.build()
 
             Log.d(TAG, "sendMessage: request.message.filesIdsCount=${request.message.filesIdsCount}")
 
-            val response = grpcManager.messagesClient!!.sendMessage(request)
+            val response = transport.messagesClient!!.sendMessage(request)
             Log.d(TAG, "Message sent to chat $chatId, id=${response.message.id}, attachments=${response.message.content.attachmentsList.size}")
             Result.success(response.message)
         } catch (e: Exception) {
             Log.e(TAG, "Error sending message to chat $chatId", e)
-            Result.failure(Exception("Ошибка отправки сообщения: ${e.message}"))
+            // Keep the transport cause intact: the durable outbox distinguishes permanent
+            // auth/access/validation errors from a retryable network failure.
+            Result.failure(e)
         }
     }
 
@@ -128,7 +148,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
      * Отмечает сообщения как прочитанные.
      */
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit> {
-        return grpcManager.markAsRead(messageIds)
+        return transport.markAsRead(messageIds)
     }
 
     /**
@@ -143,7 +163,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         fileIds: List<String> = emptyList()
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -153,7 +173,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 .addAllFilesIds(fileIds)
                 .build()
 
-            val response = grpcManager.messagesClient!!.editMessage(request)
+            val response = transport.messagesClient!!.editMessage(request)
             Log.d(TAG, "Message edited, id=${response.message.id}")
             Result.success(response.message)
         } catch (e: Exception) {
@@ -167,7 +187,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
      */
     suspend fun deleteMessage(messageId: Long): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -175,7 +195,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 .setMessageId(messageId)
                 .build()
 
-            grpcManager.messagesClient!!.deleteMessage(request)
+            transport.messagesClient!!.deleteMessage(request)
             Log.d(TAG, "Message $messageId deleted")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -189,7 +209,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
      */
     suspend fun getChatInfo(chatId: String): Result<ChatInfo> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -197,13 +217,13 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 .setChatId(chatId)
                 .build()
 
-            val response = grpcManager.messagesClient!!.getChatInfo(request)
+            val response = transport.messagesClient!!.getChatInfo(request)
 
             Result.success(
                 ChatInfo(
                     chatId = chatId,
                     title = response.title,
-                    pictureFileId = grpcManager.extractGuidFromUrl(response.picture),
+                    pictureFileId = transport.extractGuidFromUrl(response.picture),
                     isGroupChat = response.isGroupChat,
                     lastMessageId = response.lastMessageId,
                     firstUnreadMessageId = response.firstUnreadMessageId,
@@ -220,7 +240,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
     suspend fun getChatDraft(chatId: String): Result<ChatDraft?> = withContext(Dispatchers.IO) {
         try {
-            val client = grpcManager.messagesClient
+            val client = transport.messagesClient
                 ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
             val response = client.getChatDraft(
                 MessagesApiOuterClass.GetChatDraftRequest.newBuilder().setChatId(chatId).build()
@@ -236,7 +256,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     suspend fun upsertChatDraft(chatId: String, text: String, replyToMessageId: Long): Result<ChatDraft> =
         withContext(Dispatchers.IO) {
             try {
-                val client = grpcManager.messagesClient
+                val client = transport.messagesClient
                     ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
                 val response = client.upsertChatDraft(
                     MessagesApiOuterClass.UpsertChatDraftRequest.newBuilder()
@@ -255,7 +275,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     suspend fun deleteChatDraft(chatId: String, expectedRevision: String): Result<Boolean> =
         withContext(Dispatchers.IO) {
             try {
-                val client = grpcManager.messagesClient
+                val client = transport.messagesClient
                     ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
                 val response = client.deleteChatDraft(
                     MessagesApiOuterClass.DeleteChatDraftRequest.newBuilder()
@@ -273,35 +293,39 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     /**
      * Получает данные пользователя по ID.
      */
-    suspend fun getUserData(userId: Long): Result<GrpcManager.UserData> {
-        return grpcManager.getUserData(userId)
+    suspend fun getUserData(userId: Long): Result<GrpcApiTransport.UserData> {
+        return transport.getUserData(userId)
     }
 
     /**
      * Получает URL для скачивания файла.
      */
     suspend fun getFileDownloadUrl(fileId: String): Result<String> {
-        return grpcManager.getFileDownloadUrl(fileId)
+        return transport.getFileDownloadUrl(fileId)
     }
 
     /**
      * Получает URL для загрузки файла.
      */
-    suspend fun getUploadUrl(fileType: FilesApiOuterClass.UploadFileType): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
+    suspend fun getUploadUrl(
+        fileType: FilesApiOuterClass.UploadFileType,
+        clientOperationId: String? = null
+    ): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.filesClient == null) {
+            if (transport.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
-            val request = FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
+            val requestBuilder = FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
                 .setFileType(fileType)
-                .build()
+            clientOperationId?.takeIf { it.isNotBlank() }?.let(requestBuilder::setClientOperationId)
+            val request = requestBuilder.build()
 
-            val response = grpcManager.filesClient!!.getUploadUrl(request)
-            Result.success(UploadUrlResult(grpcManager.toMediaUrl(response.url), response.fileId))
+            val response = transport.filesClient!!.getUploadUrl(request)
+            Result.success(UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting upload URL", e)
-            Result.failure(Exception("Ошибка получения URL загрузки: ${e.message}"))
+            Result.failure(e)
         }
     }
 
@@ -318,18 +342,132 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         fileType: barkfluff.files.FilesApiOuterClass.UploadFileType,
         fileName: String? = null,
         mimeType: String? = null,
-        onProgress: (Int) -> Unit = {}
-    ): Result<String> = withContext(Dispatchers.IO) {
+        onProgress: (Int) -> Unit = {},
+        clientOperationId: String? = null,
+        shouldCancel: () -> Boolean = { false }
+    ): Result<String> = uploadFileInternal(
+        source = UploadSource.Bytes(jpegImageBytes),
+        fileType = fileType,
+        fileName = fileName,
+        mimeType = mimeType,
+        onProgress = onProgress,
+        clientOperationId = clientOperationId,
+        shouldCancel = shouldCancel,
+        uploadTarget = null
+    )
+
+    /** Streams a durable local file instead of loading it into process memory. */
+    suspend fun uploadFile(
+        file: File,
+        fileType: FilesApiOuterClass.UploadFileType,
+        fileName: String? = null,
+        mimeType: String? = null,
+        onProgress: (Int) -> Unit = {},
+        clientOperationId: String? = null,
+        shouldCancel: () -> Boolean = { false },
+        /** Reuses the slot whose status was just checked by the durable outbox. */
+        uploadTarget: UploadUrlResult? = null
+    ): Result<String> {
+        if (!file.isFile) return Result.failure(IllegalArgumentException("Upload source is unavailable"))
+        return uploadFileInternal(
+            source = UploadSource.FileSource(file),
+            fileType = fileType,
+            fileName = fileName,
+            mimeType = mimeType,
+            onProgress = onProgress,
+            clientOperationId = clientOperationId,
+            shouldCancel = shouldCancel,
+            uploadTarget = uploadTarget
+        )
+    }
+
+    /**
+     * Reads a resumable upload slot while allowing the durable queue to cooperatively cancel
+     * a blocked HTTP request instead of waiting for its socket timeout.
+     */
+    suspend fun getUploadStatus(
+        uploadUrl: String,
+        shouldCancel: () -> Boolean = { false }
+    ): Result<UploadStatus?> = coroutineScope {
+        val connectionRef = AtomicReference<java.net.HttpURLConnection?>(null)
+        val request = async(Dispatchers.IO) {
+            getUploadStatusBlocking(uploadUrl, shouldCancel, connectionRef)
+        }
+        val canceller = launch(Dispatchers.IO) {
+            while (isActive && !request.isCompleted) {
+                if (shouldCancel()) {
+                    connectionRef.get()?.disconnect()
+                    request.cancel(CancellationException("Outgoing upload status was cancelled"))
+                    break
+                }
+                delay(100)
+            }
+        }
         try {
-            if (grpcManager.filesClient == null) {
+            request.await()
+        } finally {
+            canceller.cancel()
+            connectionRef.get()?.disconnect()
+        }
+    }
+
+    private fun getUploadStatusBlocking(
+        uploadUrl: String,
+        shouldCancel: () -> Boolean,
+        connectionRef: AtomicReference<java.net.HttpURLConnection?>
+    ): Result<UploadStatus?> {
+        var connection: java.net.HttpURLConnection? = null
+        return try {
+            if (shouldCancel()) throw CancellationException("Outgoing upload status was cancelled")
+            val statusUrl = uploadUrl.trimEnd('/') + "/status"
+            connection = mediaTransport.openConnection(statusUrl)
+            connectionRef.set(connection)
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 60_000
+            val code = connection.responseCode
+            if (shouldCancel()) throw CancellationException("Outgoing upload status was cancelled")
+            if (code == java.net.HttpURLConnection.HTTP_NOT_FOUND) return Result.success(null)
+            if (code !in 200..299) return Result.failure(UploadHttpException(code))
+            val json = org.json.JSONObject(connection.inputStream.bufferedReader().readText())
+            Result.success(
+                UploadStatus(
+                    state = json.optString("state"),
+                    fileId = json.optString("fileId"),
+                    retryAfterSeconds = json.optInt("retryAfterSeconds", 0)
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            connection?.disconnect()
+            connectionRef.compareAndSet(connection, null)
+        }
+    }
+
+    private suspend fun uploadFileInternal(
+        source: UploadSource,
+        fileType: FilesApiOuterClass.UploadFileType,
+        fileName: String?,
+        mimeType: String?,
+        onProgress: (Int) -> Unit,
+        clientOperationId: String?,
+        shouldCancel: () -> Boolean,
+        uploadTarget: UploadUrlResult?
+    ): Result<String> = withContext(Dispatchers.IO) {
+        var connection: java.net.HttpURLConnection? = null
+        try {
+            if (transport.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
             // Дедупликация: считаем SHA-256 от тех самых байт, которые ушли бы на сервер
             // (для картинок это уже сжатый JPEG из ImageCompressor — совпадает с тем,
             // что хеширует backend в UploadFileCommandHandler).
-            val fileHash = jpegImageBytes.sha256Hex()
-            val existingFileId = grpcManager.checkFileHash(fileHash).getOrNull()
+            val fileHash = source.sha256Hex(shouldCancel)
+            val existingFileId = transport.checkFileHash(fileHash).getOrNull()
             if (!existingFileId.isNullOrEmpty()) {
                 Log.d(TAG, "File already exists on server (hash=$fileHash), reusing fileId: $existingFileId")
                 try { onProgress(100) } catch (_: Throwable) {}
@@ -338,23 +476,26 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             // На промахе или сетевой ошибке checkFileHash продолжаем обычный upload —
             // серверная пост-дедупликация всё равно отработает после полной загрузки.
 
-            // Получаем URL для загрузки
-            val uploadUrlRequest = barkfluff.files.FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
-                .setFileType(fileType)
-                .build()
-
-            val uploadUrlResponse = grpcManager.filesClient!!.getUploadUrl(uploadUrlRequest)
-            val fileId = uploadUrlResponse.fileId
-            val uploadUrl = grpcManager.toMediaUrl(uploadUrlResponse.url)
+            // The durable outbox may already have acquired this idempotent slot to inspect
+            // its status. The HTTP body must target the same slot, not request a second one.
+            val target = uploadTarget ?: run {
+                val uploadUrlRequest = barkfluff.files.FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
+                    .setFileType(fileType)
+                    .also { builder ->
+                        clientOperationId?.takeIf { it.isNotBlank() }?.let(builder::setClientOperationId)
+                    }
+                    .build()
+                val response = transport.filesClient!!.getUploadUrl(uploadUrlRequest)
+                UploadUrlResult(mediaTransport.rewrite(response.url), response.fileId)
+            }
+            val fileId = target.fileId
+            val uploadUrl = target.url
 
             Log.d(TAG, "Upload URL received, fileId: $fileId")
 
             // Выполняем HTTP POST multipart/form-data
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
-            val url = java.net.URL(uploadUrl)
-            val connection = url.openConnection() as java.net.HttpURLConnection
-
-            grpcManager.configureHttpConnection(connection)
+            connection = mediaTransport.openConnection(uploadUrl)
 
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
@@ -387,30 +528,12 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             // прыгает в 100% ещё до реальной отправки. С fixed-length onProgress отражает
             // действительную скорость загрузки на сервер.
             connection.setFixedLengthStreamingMode(
-                (header.size + jpegImageBytes.size + footer.size).toLong()
+                header.size.toLong() + source.length + footer.size.toLong()
             )
 
             connection.outputStream.use { out ->
                 out.write(header)
-
-                // Записываем тело чанками, чтобы отслеживать прогресс
-                val total = jpegImageBytes.size
-                if (total > 0) {
-                    val chunk = 64 * 1024
-                    var written = 0
-                    var lastReported = -1
-                    while (written < total) {
-                        val len = minOf(chunk, total - written)
-                        out.write(jpegImageBytes, written, len)
-                        out.flush()
-                        written += len
-                        val pct = (written.toLong() * 100L / total.toLong()).toInt()
-                        if (pct != lastReported) {
-                            try { onProgress(pct) } catch (_: Throwable) {}
-                            lastReported = pct
-                        }
-                    }
-                }
+                source.writeTo(out, onProgress, shouldCancel)
                 out.write(footer)
                 out.flush()
             }
@@ -419,10 +542,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val responseBody = if (responseCode in 200..299) {
                 connection.inputStream.bufferedReader().readText()
             } else {
-                connection.disconnect()
-                return@withContext Result.failure(Exception("Upload failed: HTTP $responseCode"))
+                return@withContext Result.failure(UploadHttpException(responseCode))
             }
-            connection.disconnect()
 
             // Сервер может вернуть другой fileId при дедупликации (тот же контент уже загружен)
             val actualFileId = try {
@@ -434,9 +555,13 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
             Log.d(TAG, "File uploaded successfully, fileId: $actualFileId (original: $fileId)")
             Result.success(actualFileId)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error uploading file", e)
-            Result.failure(Exception("Ошибка загрузки файла: ${e.message}"))
+            Result.failure(e)
+        } finally {
+            connection?.disconnect()
         }
     }
 
@@ -450,7 +575,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         fileNameQuery: String = ""
     ): Result<List<MessagesApiOuterClass.ChatAttachmentInfo>> = withContext(Dispatchers.IO) {
         try {
-            if (grpcManager.messagesClient == null) {
+            if (transport.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -467,7 +592,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 )
                 .build()
 
-            val response = grpcManager.messagesClient!!.listChatAttachments(request)
+            val response = transport.messagesClient!!.listChatAttachments(request)
             Log.d(TAG, "Loaded ${response.attachmentsList.size} attachments for chat $chatId")
             Result.success(response.attachmentsList)
         } catch (e: Exception) {
@@ -488,10 +613,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val downloadUrl = getFileDownloadUrl(fileId).getOrNull()
                 ?: return@withContext null
 
-            val url = java.net.URL(downloadUrl)
-            val connection = url.openConnection() as java.net.HttpURLConnection
-
-            grpcManager.configureHttpConnection(connection)
+            val connection = mediaTransport.openConnection(downloadUrl)
 
             connection.connectTimeout = 30000
             connection.readTimeout = 60000
@@ -521,10 +643,10 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     }
 
     /**
-     * No-op для совместимости. Каналы управляются GrpcManager.
+     * No-op для совместимости. Каналы управляются GrpcClientRegistry.
      */
     fun close() {
-        // Каналы управляются общим GrpcManager — не закрываем здесь
+        // Каналы управляются общим GrpcClientRegistry — не закрываем здесь
     }
 
     data class ChatInfo(
@@ -557,9 +679,95 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         val url: String,
         val fileId: String
     )
+
+    data class UploadStatus(
+        val state: String,
+        val fileId: String,
+        val retryAfterSeconds: Int
+    )
+
+    class UploadHttpException(val statusCode: Int) : Exception("Upload failed: HTTP $statusCode")
 }
 
 private fun ByteArray.sha256Hex(): String {
     val digest = java.security.MessageDigest.getInstance("SHA-256").digest(this)
     return digest.joinToString("") { "%02x".format(it) }
+}
+
+private sealed interface UploadSource {
+    val length: Long
+    suspend fun sha256Hex(shouldCancel: () -> Boolean): String
+    suspend fun writeTo(output: OutputStream, onProgress: (Int) -> Unit, shouldCancel: () -> Boolean)
+
+    data class Bytes(private val bytes: ByteArray) : UploadSource {
+        override val length: Long get() = bytes.size.toLong()
+        override suspend fun sha256Hex(shouldCancel: () -> Boolean): String {
+            ensureUploadActive(shouldCancel)
+            return bytes.sha256Hex()
+        }
+
+        override suspend fun writeTo(output: OutputStream, onProgress: (Int) -> Unit, shouldCancel: () -> Boolean) {
+            var offset = 0
+            var lastReported = -1
+            while (offset < bytes.size) {
+                ensureUploadActive(shouldCancel)
+                val count = minOf(64 * 1024, bytes.size - offset)
+                output.write(bytes, offset, count)
+                output.flush()
+                offset += count
+                lastReported = reportUploadProgress(offset.toLong(), length, lastReported, onProgress)
+            }
+        }
+    }
+
+    data class FileSource(private val file: File) : UploadSource {
+        override val length: Long get() = file.length()
+        override suspend fun sha256Hex(shouldCancel: () -> Boolean): String = file.inputStream().use { input ->
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                ensureUploadActive(shouldCancel)
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+            digest.digest().joinToString("") { "%02x".format(it) }
+        }
+
+        override suspend fun writeTo(output: OutputStream, onProgress: (Int) -> Unit, shouldCancel: () -> Boolean) {
+            file.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                var written = 0L
+                var lastReported = -1
+                while (true) {
+                    ensureUploadActive(shouldCancel)
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    output.write(buffer, 0, read)
+                    output.flush()
+                    written += read
+                    lastReported = reportUploadProgress(written, length, lastReported, onProgress)
+                }
+            }
+        }
+    }
+}
+
+private suspend fun ensureUploadActive(shouldCancel: () -> Boolean) {
+    currentCoroutineContext().ensureActive()
+    if (shouldCancel()) throw CancellationException("Outgoing upload was cancelled")
+}
+
+private fun reportUploadProgress(
+    written: Long,
+    total: Long,
+    lastReported: Int,
+    onProgress: (Int) -> Unit
+): Int {
+    if (total <= 0) return lastReported
+    val percent = (written * 100L / total).toInt()
+    if (percent != lastReported) {
+        onProgress(percent)
+    }
+    return percent
 }

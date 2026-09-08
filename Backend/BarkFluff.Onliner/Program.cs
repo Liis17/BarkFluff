@@ -52,8 +52,12 @@ public class Program
 
         // Redis — общий presence-стор и распределённый single-runner (масштабирование, см. onliner.md).
         builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
-                ?? throw new InvalidOperationException("Redis configuration is missing")));
+        {
+            var redisOptions = ConfigurationOptions.Parse(builder.Configuration["Redis"]
+                ?? throw new InvalidOperationException("Redis configuration is missing"));
+            redisOptions.AbortOnConnectFail = false;
+            return ConnectionMultiplexer.Connect(redisOptions);
+        });
 
         // Регистрируем все Onliner сервисы (Presence, Notifier, Background Services, MediatR)
         builder.Services.AddOnlinerServices(builder.Configuration);

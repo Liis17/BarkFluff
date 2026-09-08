@@ -2,17 +2,19 @@ package com.barkfluff.client.send
 
 import android.net.Uri
 import com.barkfluff.client.editor.EditedVideoSpec
+import com.barkfluff.client.cache.OutgoingAttachmentKind
+import barkfluff.files.FilesApiOuterClass.UploadFileType
 import java.io.File
-import java.util.UUID
 
 /**
  * Описание единицы вложения для отправки в чат.
  */
 sealed class AttachmentSpec {
-    /** Картинка с применёнными правками — байты JPEG лежат в кеше под этим ключом. */
+    /** Картинка с применёнными правками; bytes are staged before this request is accepted. */
     data class EditedImage(
-        val cacheKey: String,
-        val originalUri: Uri
+        val originalUri: Uri,
+        /** Copied into app-private outbox storage before enqueue returns. */
+        val bytes: ByteArray
     ) : AttachmentSpec()
 
     /** Картинка из галереи без правок — будет сжата ImageCompressor'ом. */
@@ -25,17 +27,26 @@ sealed class AttachmentSpec {
     data class Document(val uri: Uri) : AttachmentSpec()
 
     /** Стикер из буфера обмена — байты передаются напрямую (WebP). */
-    data class Sticker(val cacheKey: String) : AttachmentSpec()
+    data class Sticker(val bytes: ByteArray) : AttachmentSpec()
 
     /** Голосовое сообщение — записанный OGG/Opus-файл во внутреннем кеше приложения. */
     data class Voice(val file: File) : AttachmentSpec()
+
+    /** Already staged composer bytes; enqueue must adopt them without copying from a URI again. */
+    data class StagedFile(
+        val file: File,
+        val kind: OutgoingAttachmentKind,
+        val uploadFileType: UploadFileType,
+        val fileName: String?,
+        val mimeType: String?,
+        val preview: Boolean = true,
+    ) : AttachmentSpec()
 }
 
 /**
- * Задача отправки сообщения с вложениями в очередь MediaSendService.
+ * Запрос на durable staging в [OutgoingMessageQueue].
  */
 data class SendJob(
-    val jobId: String = UUID.randomUUID().toString(),
     val chatId: String,
     val chatTitle: String,
     val text: String,
@@ -45,32 +56,8 @@ data class SendJob(
     val sendSeparately: Boolean = false,
     /** Если true — все вложения отправляются как DOCUMENT (без сжатия и без VIDEO/IMAGE-преобразования). */
     val sendAsFile: Boolean = false,
-    /**
-     * Список localId — по одному на сообщение, которое будет создано (для оптимистичного UI чата).
-     * Если sendSeparately=true → один localId на каждое attachment; иначе — один на job.
-     * Пустой список = ChatActivity не подписан на оптимистичный UI (например, fast-forward без открытого чата).
-     */
-    val localIds: List<String> = emptyList()
+    /** File ids that already exist on the server (for example, a sticker pack item). */
+    val existingFileIds: List<String> = emptyList(),
+    /** Generation of the draft represented by this send; cleared only after its ACK. */
+    val draftGeneration: Long? = null
 )
-
-/**
- * Внепроцессный кеш JPEG-байт картинок (отредактированных) и WebP-стикеров —
- * передавать ByteArray через Intent дорого/опасно (TransactionTooLarge).
- * Сервис читает по ключу.
- */
-object SendPayloadCache {
-    private val payloads: MutableMap<String, ByteArray> = mutableMapOf()
-
-    @Synchronized
-    fun put(bytes: ByteArray): String {
-        val key = UUID.randomUUID().toString()
-        payloads[key] = bytes
-        return key
-    }
-
-    @Synchronized
-    fun take(key: String): ByteArray? = payloads.remove(key)
-
-    @Synchronized
-    fun has(key: String): Boolean = payloads.containsKey(key)
-}

@@ -60,24 +60,14 @@
                 android:minHeight="30dp"
                 android:importantForAccessibility="no" />
 
-            <!-- Logo — плоское изображение без рамки/подложки, тень вместо обводки -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/logoCard"
+            <!-- Логотип — векторный artwork без MaterialCardView и PNG-маски -->
+            <ImageView
+                android:id="@+id/logoImage"
                 android:layout_width="120dp"
                 android:layout_height="120dp"
                 android:layout_marginBottom="26dp"
-                app:cardBackgroundColor="@android:color/transparent"
-                app:cardCornerRadius="@dimen/shape_corner_extra_large_increased"
-                app:cardElevation="6dp">
-
-                <ImageView
-                    android:id="@+id/logoImage"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/app_name"
-                    android:src="@mipmap/ic_launcher" />
-
-            </com.google.android.material.card.MaterialCardView>
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/app_icon_vector" />
 
             <!-- Hero-заголовок: M3 Expressive Emphasized typography (увеличенный вес).
                  Guidelines §12: «Display + Headline — отличные кандидаты для Emphasized». -->
@@ -156,17 +146,43 @@
                 app:backgroundTint="?attr/colorPrimary"
                 app:cornerRadius="@dimen/shape_corner_full" />
 
-            <!-- Единственная оставшаяся ссылка: открывает legal-лист в режиме чтения -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/privacyLink"
-                style="@style/Widget.Material3.Button.TextButton"
+            <!-- Юридические документы открываются в режиме чтения -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/button_height_default"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="@string/menu_privacy"
-                android:textAllCaps="false"
-                android:textAppearance="?attr/textAppearanceTitleSmall"
-                android:textColor="?attr/colorPrimary" />
+                android:baselineAligned="false"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/termsLink"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/button_height_default"
+                    android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="0dp"
+                    android:text="@string/legal_tab_terms"
+                    android:textAllCaps="false"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorPrimary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/privacyLink"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/button_height_default"
+                    android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="0dp"
+                    android:text="@string/menu_privacy"
+                    android:textAllCaps="false"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorPrimary" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

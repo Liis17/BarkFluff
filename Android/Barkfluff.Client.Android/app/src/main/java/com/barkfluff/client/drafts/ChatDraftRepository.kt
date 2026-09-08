@@ -5,8 +5,7 @@ import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.CachedChatDraft
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
-import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.domain.gateway.ChatDraftGateway
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,11 +15,10 @@ import kotlinx.coroutines.sync.withLock
 /** Durable, per-node/per-user journal for regular-chat drafts. */
 class ChatDraftRepository(
     context: Context,
-    grpcManager: GrpcManager,
-    private val cache: ChatCacheRepository
+    private val cache: ChatCacheRepository,
+    private val remote: ChatDraftGateway,
 ) {
     private val globalParam = GlobalParam(context)
-    private val remote = ChatRepository(context.applicationContext, grpcManager)
     private val mutex = Mutex()
     private val networkMutex = Mutex()
     private var loadedScope: CacheScope? = null
@@ -37,7 +35,7 @@ class ChatDraftRepository(
             entries[chatId]
         }
 
-        val remoteResult = networkMutex.withLock { remote.getChatDraft(chatId) }
+        val remoteResult = networkMutex.withLock { remote.get(chatId) }
         return mutex.withLock {
             val scope = ensureLoaded() ?: return@withLock null
             val current = entries[chatId]
@@ -85,7 +83,7 @@ class ChatDraftRepository(
             ChatDraftSyncState.SYNCED -> Unit
             ChatDraftSyncState.DIRTY -> {
                 val saved = networkMutex.withLock {
-                    remote.upsertChatDraft(chatId, snapshot.text, snapshot.replyToMessageId)
+                    remote.upsert(chatId, snapshot.text, snapshot.replyToMessageId)
                 }.getOrNull()
                     ?: return
                 mutex.withLock {
@@ -107,7 +105,7 @@ class ChatDraftRepository(
                     }
                     return
                 }
-                val deleted = networkMutex.withLock { remote.deleteChatDraft(chatId, snapshot.revision) }
+                val deleted = networkMutex.withLock { remote.delete(chatId, snapshot.revision) }
                 if (deleted.isSuccess) mutex.withLock {
                     if (entries[chatId]?.generation == snapshot.generation) {
                         entries.remove(chatId)
@@ -139,7 +137,7 @@ class ChatDraftRepository(
         val (scope, sent) = pending
         val synced = if (sent.syncState == ChatDraftSyncState.DIRTY) {
             val saved = networkMutex.withLock {
-                remote.upsertChatDraft(chatId, sent.text, sent.replyToMessageId)
+                remote.upsert(chatId, sent.text, sent.replyToMessageId)
             }.getOrNull() ?: return
             ChatDraftJournal.markSynced(sent, sent.generation, saved.revision)
         } else sent

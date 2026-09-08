@@ -7,6 +7,11 @@
     <x:String x:Key="Settings_OnWindowCloseExit">Quit the application</x:String>
     <x:String x:Key="Settings_OnWindowCloseTray">Minimize to the tray</x:String>
     <x:String x:Key="Settings_OnWindowCloseTrayHint">The application keeps running in the notification area. Use Exit in the icon's menu to quit.</x:String>
+    <x:String x:Key="Settings_WindowSize_Title">Window size and position</x:String>
+    <x:String x:Key="Settings_WindowSize_Remember">Remember window size and position</x:String>
+    <x:String x:Key="Settings_WindowSize_RememberHint">Restore the window size and position on the next launch.</x:String>
+    <x:String x:Key="Settings_WindowSize_Saved">Saved size and position</x:String>
+    <x:String x:Key="Settings_WindowSize_Reset">Reset size and position</x:String>
     <x:String x:Key="Tray_Open">Open BarkFluff</x:String>
     <x:String x:Key="Tray_Exit">Exit</x:String>
     <x:String x:Key="Welcome_Title">Welcome to BarkFluff</x:String>
@@ -175,7 +180,6 @@
     <x:String x:Key="Settings_Nav_Privacy">Privacy</x:String>
     <x:String x:Key="Settings_Nav_Devices">Devices</x:String>
     <x:String x:Key="Settings_Nav_Personalization">Personalization</x:String>
-    <x:String x:Key="Settings_Nav_Widgets">Widgets</x:String>
     <x:String x:Key="Settings_Nav_ChatFolders">Chat folders</x:String>
     <x:String x:Key="Settings_Nav_Notifications">Notifications</x:String>
     <x:String x:Key="Settings_Nav_Language">Language</x:String>
@@ -252,8 +256,6 @@
     <x:String x:Key="Settings_Privacy_VisibilityNone">No one</x:String>
 
     <x:String x:Key="Settings_Devices_Title">Devices</x:String>
-    <x:String x:Key="Settings_Devices_Hint">You can sign in on another device by scanning a QR code in the BarkFluff app</x:String>
-    <x:String x:Key="Settings_Devices_Connect">Connect a device</x:String>
     <x:String x:Key="Settings_Devices_ThisDevice">This device</x:String>
     <x:String x:Key="Settings_Devices_OtherDevices">Other devices</x:String>
     <x:String x:Key="Settings_Devices_Empty">There are no other devices</x:String>
@@ -298,10 +300,6 @@
     <x:String x:Key="Settings_Personalization_ChatBackground">Chat background</x:String>
     <x:String x:Key="Settings_Personalization_AddBackground">Add a background</x:String>
     <x:String x:Key="Settings_Personalization_NoBackground">No background</x:String>
-
-    <x:String x:Key="Settings_Widgets_Title">Widgets</x:String>
-    <x:String x:Key="Settings_Widgets_Empty">No widgets have been created yet.</x:String>
-    <x:String x:Key="Settings_Widgets_AndroidHint">Home screen widgets exist only in the Android app.</x:String>
 
     <x:String x:Key="Settings_ChatFolders_Title">Chat folders</x:String>
     <x:String x:Key="Settings_ChatFolders_Section">Your folders</x:String>

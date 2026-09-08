@@ -1,0 +1,808 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "b0edfbb2dee2b6c06ec8ad63d2a2161d",
+    "entities": [
+      {
+        "tableName": "chat_cache_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `totalCount` INTEGER NOT NULL, `updatedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`scopeId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalCount",
+            "columnName": "totalCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updatedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId"
+          ]
+        }
+      },
+      {
+        "tableName": "cached_chats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `title` TEXT NOT NULL, `picture` TEXT NOT NULL, `pictureFileId` TEXT NOT NULL, `picturePreviewFileId` TEXT NOT NULL, `isGroupChat` INTEGER NOT NULL, `lastMessageId` INTEGER, `lastMessageSenderId` INTEGER, `lastMessageText` TEXT, `lastMessageSentAt` INTEGER, `lastMessageReadBy` TEXT NOT NULL, `memberIds` TEXT NOT NULL, `countUnread` INTEGER NOT NULL, `firstUnreadMessageId` INTEGER NOT NULL, `chatTypeNumber` INTEGER NOT NULL, `lastActivityAt` INTEGER NOT NULL, `privateInviteStateNumber` INTEGER NOT NULL, `privateInviterUserId` INTEGER NOT NULL, `hasDraft` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`scopeId`, `chatId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "picture",
+            "columnName": "picture",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pictureFileId",
+            "columnName": "pictureFileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "picturePreviewFileId",
+            "columnName": "picturePreviewFileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isGroupChat",
+            "columnName": "isGroupChat",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastMessageId",
+            "columnName": "lastMessageId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastMessageSenderId",
+            "columnName": "lastMessageSenderId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastMessageText",
+            "columnName": "lastMessageText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastMessageSentAt",
+            "columnName": "lastMessageSentAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastMessageReadBy",
+            "columnName": "lastMessageReadBy",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberIds",
+            "columnName": "memberIds",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "countUnread",
+            "columnName": "countUnread",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstUnreadMessageId",
+            "columnName": "firstUnreadMessageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatTypeNumber",
+            "columnName": "chatTypeNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastActivityAt",
+            "columnName": "lastActivityAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privateInviteStateNumber",
+            "columnName": "privateInviteStateNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privateInviterUserId",
+            "columnName": "privateInviterUserId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasDraft",
+            "columnName": "hasDraft",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "chatId"
+          ]
+        }
+      },
+      {
+        "tableName": "cached_chat_folders",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `folderId` TEXT NOT NULL, `folderName` TEXT NOT NULL, `folderIcon` TEXT NOT NULL, `chatIds` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`scopeId`, `folderId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "folderId",
+            "columnName": "folderId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "folderName",
+            "columnName": "folderName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "folderIcon",
+            "columnName": "folderIcon",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatIds",
+            "columnName": "chatIds",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "folderId"
+          ]
+        }
+      },
+      {
+        "tableName": "cached_chat_displays",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `title` TEXT NOT NULL, `avatarFileId` TEXT, `otherUserId` INTEGER NOT NULL, PRIMARY KEY(`scopeId`, `chatId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarFileId",
+            "columnName": "avatarFileId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "otherUserId",
+            "columnName": "otherUserId",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "chatId"
+          ]
+        }
+      },
+      {
+        "tableName": "cached_chat_drafts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `text` TEXT NOT NULL, `replyToMessageId` INTEGER NOT NULL, `revision` TEXT NOT NULL, `generation` INTEGER NOT NULL, `syncState` INTEGER NOT NULL, PRIMARY KEY(`scopeId`, `chatId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "replyToMessageId",
+            "columnName": "replyToMessageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "syncState",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "chatId"
+          ]
+        }
+      },
+      {
+        "tableName": "composer_attachments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `attachmentIndex` INTEGER NOT NULL, `path` TEXT NOT NULL, `kind` TEXT NOT NULL, `fileName` TEXT, `mimeType` TEXT, `generation` INTEGER NOT NULL, `createdAtMillis` INTEGER NOT NULL, PRIMARY KEY(`scopeId`, `chatId`, `attachmentIndex`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attachmentIndex",
+            "columnName": "attachmentIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "path",
+            "columnName": "path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "fileName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mimeType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "createdAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "chatId",
+            "attachmentIndex"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_composer_attachments_scopeId_chatId",
+            "unique": false,
+            "columnNames": [
+              "scopeId",
+              "chatId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_composer_attachments_scopeId_chatId` ON `${TABLE_NAME}` (`scopeId`, `chatId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "cached_messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `messageId` INTEGER NOT NULL, `sentAtMillis` INTEGER NOT NULL, `payload` BLOB NOT NULL, PRIMARY KEY(`scopeId`, `chatId`, `messageId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "messageId",
+            "columnName": "messageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentAtMillis",
+            "columnName": "sentAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "chatId",
+            "messageId"
+          ]
+        }
+      },
+      {
+        "tableName": "cached_private_messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `messageId` INTEGER NOT NULL, `sentAtMillis` INTEGER NOT NULL, `payload` BLOB NOT NULL, PRIMARY KEY(`scopeId`, `chatId`, `messageId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "messageId",
+            "columnName": "messageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentAtMillis",
+            "columnName": "sentAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "chatId",
+            "messageId"
+          ]
+        }
+      },
+      {
+        "tableName": "cached_secret_messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `messageId` TEXT NOT NULL, `senderLabel` TEXT NOT NULL, `plaintext` TEXT NOT NULL, `sentAtMillis` INTEGER NOT NULL, PRIMARY KEY(`scopeId`, `chatId`, `messageId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "messageId",
+            "columnName": "messageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderLabel",
+            "columnName": "senderLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plaintext",
+            "columnName": "plaintext",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentAtMillis",
+            "columnName": "sentAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "chatId",
+            "messageId"
+          ]
+        }
+      },
+      {
+        "tableName": "outgoing_messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `operationId` TEXT NOT NULL, `batchId` TEXT, `chatId` TEXT NOT NULL, `chatTitle` TEXT NOT NULL, `text` TEXT NOT NULL, `replyToMessageId` INTEGER NOT NULL, `draftGeneration` INTEGER, `sendAsFile` INTEGER NOT NULL, `existingFileIds` TEXT NOT NULL, `createdAtMillis` INTEGER NOT NULL, `state` TEXT NOT NULL, `progress` INTEGER NOT NULL, `attemptCount` INTEGER NOT NULL, `nextAttemptAtMillis` INTEGER NOT NULL, `lastFailureCategory` TEXT, `lastFailureDetail` TEXT, `leaseOwner` TEXT, `leaseExpiresAtMillis` INTEGER NOT NULL, `serverMessageId` INTEGER NOT NULL, `serverMessagePayload` BLOB, PRIMARY KEY(`scopeId`, `operationId`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "operationId",
+            "columnName": "operationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batchId",
+            "columnName": "batchId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "chatId",
+            "columnName": "chatId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatTitle",
+            "columnName": "chatTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "replyToMessageId",
+            "columnName": "replyToMessageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "draftGeneration",
+            "columnName": "draftGeneration",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sendAsFile",
+            "columnName": "sendAsFile",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "existingFileIds",
+            "columnName": "existingFileIds",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "createdAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "progress",
+            "columnName": "progress",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attemptCount",
+            "columnName": "attemptCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextAttemptAtMillis",
+            "columnName": "nextAttemptAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastFailureCategory",
+            "columnName": "lastFailureCategory",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastFailureDetail",
+            "columnName": "lastFailureDetail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "leaseOwner",
+            "columnName": "leaseOwner",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "leaseExpiresAtMillis",
+            "columnName": "leaseExpiresAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverMessageId",
+            "columnName": "serverMessageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverMessagePayload",
+            "columnName": "serverMessagePayload",
+            "affinity": "BLOB"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "operationId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_outgoing_messages_scopeId_chatId_createdAtMillis",
+            "unique": false,
+            "columnNames": [
+              "scopeId",
+              "chatId",
+              "createdAtMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_outgoing_messages_scopeId_chatId_createdAtMillis` ON `${TABLE_NAME}` (`scopeId`, `chatId`, `createdAtMillis`)"
+          },
+          {
+            "name": "index_outgoing_messages_scopeId_state_nextAttemptAtMillis",
+            "unique": false,
+            "columnNames": [
+              "scopeId",
+              "state",
+              "nextAttemptAtMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_outgoing_messages_scopeId_state_nextAttemptAtMillis` ON `${TABLE_NAME}` (`scopeId`, `state`, `nextAttemptAtMillis`)"
+          }
+        ]
+      },
+      {
+        "tableName": "outgoing_attachments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scopeId` TEXT NOT NULL, `operationId` TEXT NOT NULL, `attachmentIndex` INTEGER NOT NULL, `kind` TEXT NOT NULL, `uploadFileTypeNumber` INTEGER NOT NULL, `sourcePath` TEXT NOT NULL, `preparedPath` TEXT, `previewPath` TEXT, `fileName` TEXT, `mimeType` TEXT, `uploadOperationId` TEXT NOT NULL, `reservedFileId` TEXT, `finalFileId` TEXT, `trimStartMs` INTEGER NOT NULL, `trimEndMs` INTEGER NOT NULL, `compressTo480p` INTEGER NOT NULL, PRIMARY KEY(`scopeId`, `operationId`, `attachmentIndex`))",
+        "fields": [
+          {
+            "fieldPath": "scopeId",
+            "columnName": "scopeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "operationId",
+            "columnName": "operationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attachmentIndex",
+            "columnName": "attachmentIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uploadFileTypeNumber",
+            "columnName": "uploadFileTypeNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourcePath",
+            "columnName": "sourcePath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "preparedPath",
+            "columnName": "preparedPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "previewPath",
+            "columnName": "previewPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "fileName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mimeType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "uploadOperationId",
+            "columnName": "uploadOperationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reservedFileId",
+            "columnName": "reservedFileId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "finalFileId",
+            "columnName": "finalFileId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "trimStartMs",
+            "columnName": "trimStartMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trimEndMs",
+            "columnName": "trimEndMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "compressTo480p",
+            "columnName": "compressTo480p",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scopeId",
+            "operationId",
+            "attachmentIndex"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_outgoing_attachments_scopeId_operationId",
+            "unique": false,
+            "columnNames": [
+              "scopeId",
+              "operationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_outgoing_attachments_scopeId_operationId` ON `${TABLE_NAME}` (`scopeId`, `operationId`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b0edfbb2dee2b6c06ec8ad63d2a2161d')"
+    ]
+  }
+}

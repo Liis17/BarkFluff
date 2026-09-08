@@ -13,12 +13,16 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityShareReceiverBinding
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.model.ChatSummary
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -26,13 +30,17 @@ import kotlinx.coroutines.launch
 /**
  * Принимает системные ACTION_SEND / ACTION_SEND_MULTIPLE и даёт пользователю выбрать
  * чат-получатель. После выбора чата открывает [ShareConfirmBottomSheet], который ставит
- * задачу в [com.barkfluff.client.send.MediaSendService].
+ * задачу в durable [com.barkfluff.client.send.OutgoingMessageQueue].
  */
+@AndroidEntryPoint
 class ShareReceiverActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityShareReceiverBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
+    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     private lateinit var chatAdapter: ChatAdapter
 
     /** Прочитываемый из бот-шита payload — держится только в этой Activity на время share-сессии. */
@@ -52,9 +60,6 @@ class ShareReceiverActivity : AppCompatActivity() {
         // applicationContext — чтобы SharedPreferences/EncryptedSharedPreferences не были
         // привязаны к жизненному циклу этой Activity (исключаем race на холодном старте).
         globalParam = GlobalParam(applicationContext)
-        val app = applicationContext as BarkFluffApplication
-        grpcManager = app.grpcManager
-
         binding.toolbar.setNavigationOnClickListener { finish() }
 
         applyWindowInsets()
@@ -180,7 +185,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         chatAdapter = ChatAdapter(
             onChatClick = { chat -> onChatClicked(chat) },
             getFileUrl = { fileId ->
-                val r = grpcManager.getFileDownloadUrl(fileId)
+                val r = fileMediaGateway.downloadUrl(fileId)
                 if (r.isSuccess) r.getOrNull() else null
             }
         )
@@ -196,14 +201,14 @@ class ShareReceiverActivity : AppCompatActivity() {
         binding.emptyState.visibility = View.GONE
         binding.chatsRecyclerView.visibility = View.GONE
         lifecycleScope.launch {
-            if (!ensureTokenAndClients()) {
+            if (!authGateway.ensureValid()) {
                 binding.loadingIndicator.visibility = View.GONE
                 Toast.makeText(this@ShareReceiverActivity, R.string.share_not_authorized, Toast.LENGTH_LONG).show()
                 finish()
                 return@launch
             }
 
-            val result = grpcManager.getChats()
+            val result = chatDirectoryGateway.chats()
             if (result.isFailure) {
                 Log.e(TAG, "getChats failed", result.exceptionOrNull())
                 binding.loadingIndicator.visibility = View.GONE
@@ -211,7 +216,7 @@ class ShareReceiverActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val chats = result.getOrNull().orEmpty()
+            val chats = result.getOrNull()?.chats.orEmpty()
             if (chats.isEmpty()) {
                 binding.loadingIndicator.visibility = View.GONE
                 binding.emptyState.visibility = View.VISIBLE
@@ -227,34 +232,11 @@ class ShareReceiverActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun ensureTokenAndClients(): Boolean {
-        return try {
-            val tokenOk = grpcManager.ensureTokenValid(applicationContext)
-            if (!tokenOk) {
-                Log.w(TAG, "ensureTokenValid returned false")
-                return false
-            }
-            grpcManager.initAllClients(applicationContext, globalParam)
-            val ok = grpcManager.messagesClient != null && grpcManager.usersClient != null
-            if (!ok) {
-                Log.w(TAG, "initAllClients did not create messages/users clients: " +
-                        "messages=${grpcManager.messagesClient != null}, " +
-                        "users=${grpcManager.usersClient != null}, " +
-                        "socketUsers='${globalParam.socketUsers}', " +
-                        "socketMessages='${globalParam.socketMessages}'")
-            }
-            ok
-        } catch (e: Exception) {
-            Log.e(TAG, "ensureTokenAndClients failed", e)
-            false
-        }
-    }
-
-    private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {
+    private suspend fun resolveDisplayItem(chat: ChatSummary): ChatAdapter.ChatDisplayItem {
         if (!chat.isGroupChat && chat.title.isBlank()) {
             val otherUserId = chat.memberIds.firstOrNull { it != globalParam.userId }
             if (otherUserId != null) {
-                val userResult = grpcManager.getUserData(otherUserId)
+                val userResult = userProfileGateway.user(otherUserId)
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
@@ -275,7 +257,7 @@ class ShareReceiverActivity : AppCompatActivity() {
         )
     }
 
-    private fun onChatClicked(chat: GrpcManager.ChatData) {
+    private fun onChatClicked(chat: ChatSummary) {
         val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
         val title = displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) }
 

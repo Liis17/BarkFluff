@@ -17,6 +17,7 @@ Swift: app-таргет `SWIFT_VERSION = 6.0` (локальные пакеты B
 - `KeychainAccess 4.2.2+` — токены (BFNetworking)
 - `GRDB.swift 7.0.0+` — SQLite ORM для персистентного кеша (BFCore)
 - `Nuke` — загрузка/кеш изображений (подключён на уровне Xcode-проекта)
+- `BFMarkdown` — общий SwiftUI-рендерер Markdown-сообщений поверх `BFCore`
 
 ## Архитектура (MVVM + Coordinator)
 
@@ -26,9 +27,10 @@ Swift: app-таргет `SWIFT_VERSION = 6.0` (локальные пакеты B
 BFProto/       # Proto definitions и gRPC код
 BFNetworking/  # gRPC клиент, соединения, репозитории
 BFCore/        # Бизнес-логика: сервисы, модели, кеш, БД (GRDB)
+BFMarkdown/    # Foundation parser/AST renderer для сообщений (общий с iOS)
 ```
 
-Зависимость: `BFProto ← BFNetworking ← BFCore ← Main App`
+Зависимость: `BFProto ← BFNetworking ← BFCore ← BFMarkdown ← Main App`
 
 ### Структура приложения
 
@@ -270,6 +272,16 @@ UX повторяет веб- и Android-клиентов (Telegram-style).
 Контракт с сервером (см. [[Backend/Messages]]):
 - Клиент шлёт только `OutgoingMessage.forwardedMessageID` — backend сам формирует attachment типа `FORWARDED_MESSAGE` со снимком автора/текста/вложений оригинала.
 - Доменная модель в BFCore — `MessageAttachment.forwarded: ForwardedMessagePayload?`. Отрисовка: `ForwardedMessageView` (вертикальная цветная полоса слева, имя автора, текст, мини-список вложений) + `ReplyPreviewView` (компактная версия для превью над инпутом).
+
+## Markdown-сообщения (V1)
+
+macOS использует общий с iOS контур `BFCore` + `BFMarkdown` и повторяет поведение Android/Web. Исходная Markdown-строка сохраняется без изменений: серверный формат, протоколы, ввод, отправка, редактирование и копирование не меняются.
+
+- `Packages/BFCore/Sources/BFCore/Markdown/` — Foundation-only AST (`MarkdownDocument`, `MarkdownBlock`, inline runs), `MarkdownParser.parse(_:)` и `MarkdownText.strip(_:)` для компактных превью.
+- `Packages/BFMarkdown/Sources/BFMarkdown/MarkdownMessageView.swift` — публичный SwiftUI-компонент `MarkdownMessageView(source:foreground:)`; поддерживает заголовки, списки, цитаты, разделители, fenced code, inline-стили, безопасные `http/https/mailto` ссылки, bare URL, GFM-таблицы и безопасные HTML-изображения через `AsyncImage` с alt fallback.
+- Обычные и системные текстовые сообщения рендерятся через `MarkdownMessageView` в `MessageBubbleView` с сохранением выделения текста.
+- Список чатов, reply preview, уведомления и optimistic forwarded preview используют `MarkdownText.strip`. Текст пересланного сообщения остаётся plain preview, как в Android.
+- URL и HTML-изображения проходят allowlist-проверку; небезопасные схемы не становятся активными ссылками/загрузками.
 
 ## Медиа-действия из контекстного меню (MediaActions)
 
@@ -526,6 +538,8 @@ open Barkfluff.xcodeproj
 
 DMG собирается в `.github/workflows/build-client-macos.yml` через `create-dmg`. Для каналов используются отдельные фоны: `nightly` — ночное небо (`Mac/Barkfluff/Packaging/dmg-background.png`), `dev` — синий blueprint (`Mac/Barkfluff/Packaging/dmg-background-dev.png`), `master` — светлый градиент (`Mac/Barkfluff/Packaging/dmg-background-master.png`).
 
-Автоматические каналы: `dev` → `beta`, `nightly` → `nightly`, `master` → `release`. Для nightly версия берётся из канала `nightly` (с fallback на `beta`) и увеличивается на patch. После успешной загрузки workflow отправляет в Telegram одну кнопку «Скачать последнюю версию» на `https://storage.barkfluff.com/get/barkfluffmacos/{channel}`; при ошибке — кнопку «Открыть GitHub Action». Для всех трёх каналов с фирменным фоном используется окно `680×425`, размер иконок `128`, размер подписей `16`, позиции приложения и Applications — `(205, 220)` и `(515, 220)`; fallback-ветки сохраняют стандартное оформление Finder.
+Автоматические каналы: `dev` → `dev`, `nightly` → `nightly`, `master` → `release`. Для `dev` источником версии служит `nightly`, как у Android и WinUI; `master` читает `release`, а `nightly` берёт свою версию и увеличивает patch. После успешной загрузки workflow отправляет в Telegram одну кнопку «Скачать последнюю версию» на `https://storage.barkfluff.com/get/barkfluffmacos/{channel}`; при ошибке — кнопку «Открыть GitHub Action». Для всех трёх каналов с фирменным фоном используется окно `680×425`, размер иконок `128`, размер подписей `16`, позиции приложения и Applications — `(205, 220)` и `(515, 220)`; fallback-ветки сохраняют стандартное оформление Finder.
+
+Для главной страницы WebServer из этих PNG подготовлены web-оптимизированные производные `channel-nightly.webp`, `channel-dev.webp` и `channel-release.webp` в `Backend/Barkfluff.WebServer/files/`. У nightly/dev удалена центральная зона Finder, чтобы материал не конфликтовал с карточками клиентов.
 
 Все три PNG имеют размер `1800×1100` при `144 dpi` (примерно `900×550` pt), поэтому фон не становится белым при растягивании окна Finder. В `nightly` и `dev` рабочая область `720×440` сохраняет компактную схему установочного окна Firefox: выделенные зоны для приложения и Applications, стрелка установки и светлые подложки под системными подписями Finder. `master` намеренно оставляет только спокойный светлый градиент без декоративных элементов. После создания DMG для `nightly`, `dev` и `master` Finder-настройки повторно сохраняются на RW-образе через POSIX-путь к соответствующему фону, затем служебные `.background` и `.DS_Store` получают macOS-флаг `hidden` через перепаковку DMG.

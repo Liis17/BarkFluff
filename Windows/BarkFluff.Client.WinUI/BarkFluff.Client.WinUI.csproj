@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--  CI временно подставляет сюда Cloudflare Origin CA для встроенного загрузчика обновлений.  -->
+    <!--  При наличии CA-бандла он попадает в пакет и используется встроенным загрузчиком обновлений.  -->
     <Content Include="Resources\Update\storage-ca.pem" Condition="Exists('Resources\Update\storage-ca.pem')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

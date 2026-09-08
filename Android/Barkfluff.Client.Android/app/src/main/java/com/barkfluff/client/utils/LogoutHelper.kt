@@ -4,9 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.barkfluff.client.LoginActivity
-import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
-import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.calls.CallEventsService
+import com.barkfluff.client.send.OutgoingMessageQueue
+import com.barkfluff.client.repository.PrivateChatRepository
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -25,19 +29,44 @@ object LogoutHelper {
 
     private const val TAG = "LogoutHelper"
 
-    /**
-     * Выполняет полный разлогин и переходит на экран входа.
-     * @param context контекст Activity или Fragment
-     * @param grpcManager экземпляр GrpcManager
-     */
-    suspend fun performFullLogout(context: Context, grpcManager: GrpcManager) {
+    /** Gateway-only entry point used by migrated screens and tests. */
+    suspend fun performFullLogout(
+        context: Context,
+        authGateway: AuthGateway,
+        realtimeService: RealtimeService,
+        callEventsService: CallEventsService,
+        outgoingMessageQueue: OutgoingMessageQueue,
+        chatCacheRepository: ChatCacheRepository,
+        privateChatRepository: PrivateChatRepository,
+    ) {
+        performFullLogoutInternal(
+            context = context,
+            serverLogout = { authGateway.logout() },
+            realtimeShutdown = realtimeService::shutdown,
+            callEventsShutdown = callEventsService::shutdown,
+            cancelOutgoing = outgoingMessageQueue::cancelAllForCurrentScope,
+            clearChatCache = chatCacheRepository::clearAll,
+            forgetPrivateChats = privateChatRepository::forgetAll,
+        )
+    }
+
+    private suspend fun performFullLogoutInternal(
+        context: Context,
+        serverLogout: suspend () -> Result<Unit>,
+        realtimeShutdown: () -> Unit,
+        callEventsShutdown: () -> Unit,
+        cancelOutgoing: suspend () -> Unit,
+        clearChatCache: suspend () -> Unit,
+        forgetPrivateChats: () -> Unit,
+    ) {
         // 1. Остановка realtime-стримов — первым делом, чтобы они не писали в кеши
         //    во время очистки и не ушли в бесконечный retry после сброса токенов
-        (context.applicationContext as? BarkFluffApplication)?.let { app ->
-            app.realtimeService.shutdown()
-            app.callEventsService.shutdown()
-            Log.i(TAG, "Realtime-стримы остановлены")
-        }
+        realtimeShutdown()
+        callEventsShutdown()
+        // WorkManager inputs contain no payload; cancel jobs before removing the scoped DB
+        // rows and no-backup media so an old account can never resume after a switch.
+        cancelOutgoing()
+        Log.i(TAG, "Realtime-стримы остановлены")
 
         // 2. Очистка кешей приложения — до очистки настроек, пока контекст ещё валиден
         try {
@@ -65,7 +94,7 @@ object LogoutHelper {
             Log.e(TAG, "Ошибка очистки кеша медиафайлов", e)
         }
         try {
-            (context.applicationContext as? BarkFluffApplication)?.chatCacheRepository?.clearAll()
+            clearChatCache()
             Log.i(TAG, "Кеш чатов очищен")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка очистки кеша чатов", e)
@@ -82,17 +111,9 @@ object LogoutHelper {
             Log.e(TAG, "Ошибка удаления Firebase токена", e)
         }
 
-        // 4. Очистка всех настроек аккаунта (оставляем только адреса сервера)
-        //    device_id удаляется — при следующем входе будет создан новый
-        val globalParam = GlobalParam(context)
-        (context.applicationContext as? BarkFluffApplication)?.privateChatRepository?.forgetAll()
-        globalParam.clearUserData()
-        Log.i(TAG, "Настройки аккаунта очищены (device_id сброшен)")
-
-        // 5. Серверный разлогин — выполняется последним, т.к. требует токен из памяти grpcManager
-        //    (токен уже недоступен из GlobalParam после шага 3, но grpcManager держит его в канале)
+        // 4. Серверный разлогин выполняется до удаления локального токена.
         try {
-            val result = grpcManager.logout()
+            val result = serverLogout()
             if (result.isSuccess) {
                 Log.i(TAG, "Серверный разлогин выполнен успешно")
             } else {
@@ -102,7 +123,14 @@ object LogoutHelper {
             Log.e(TAG, "Исключение при серверном разлогине", e)
         }
 
-        // 6. Переход на экран входа
+        // 5. Очистка всех настроек аккаунта (оставляем только адреса сервера).
+        //    device_id удаляется — при следующем входе будет создан новый.
+        val globalParam = GlobalParam(context)
+        forgetPrivateChats()
+        globalParam.clearUserData()
+        Log.i(TAG, "Настройки аккаунта очищены (device_id сброшен)")
+
+        // 6. Переход на экран входа.
         val intent = Intent(context, LoginActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }

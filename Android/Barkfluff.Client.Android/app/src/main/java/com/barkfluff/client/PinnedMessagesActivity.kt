@@ -11,19 +11,25 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.MessageAdapter
+import com.barkfluff.client.adapter.FileMediaAttachmentLoader
+import com.barkfluff.client.adapter.MessageRowEventSink
 import com.barkfluff.client.adapter.MessageItem
+import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityPinnedMessagesBinding
-import com.barkfluff.client.grpc.GrpcManager
-import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.RealtimeGateway
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
  * Полноэкранный список всех закреплённых сообщений в чате.
  * Возвращает в ChatActivity ID сообщения для скролла при тапе на сообщение.
  */
+@AndroidEntryPoint
 class PinnedMessagesActivity : AppCompatActivity() {
 
     companion object {
@@ -34,8 +40,9 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPinnedMessagesBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: GrpcManager
-    private lateinit var realtimeService: RealtimeService
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var messageGateway: MessageGateway
+    @javax.inject.Inject lateinit var realtimeGateway: RealtimeGateway
     private lateinit var adapter: MessageAdapter
     private var chatId: String = ""
     private var currentUserId: Long = 0L
@@ -50,10 +57,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
             finish(); return
         }
 
-        val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = app.grpcManager
-        realtimeService = app.realtimeService
         currentUserId = globalParam.userId
 
         setupToolbar()
@@ -79,11 +83,12 @@ class PinnedMessagesActivity : AppCompatActivity() {
         adapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = true,
-            getFileUrl = { fileId ->
-                val r = grpcManager.getFileDownloadUrl(fileId)
-                if (r.isSuccess) r.getOrNull() else null
+            attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway),
+            eventSink = object : MessageRowEventSink {
+                override fun onMessageActionRequested(bubble: View, item: MessageItem) {
+                    showUnpinMenu(item)
+                }
             },
-            onMessageActionRequested = { _, item -> showUnpinMenu(item) },
         )
         binding.pinnedRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.pinnedRecyclerView.adapter = adapter
@@ -91,17 +96,17 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
     private fun subscribeToRealtimeEvents() {
         lifecycleScope.launch {
-            realtimeService.messagePinned.collect { event ->
+            realtimeGateway.messagePinned.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) loadPinned()
             }
         }
         lifecycleScope.launch {
-            realtimeService.messageUnpinned.collect { event ->
+            realtimeGateway.messageUnpinned.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) loadPinned()
             }
         }
         lifecycleScope.launch {
-            realtimeService.allMessagesUnpinned.collect { event ->
+            realtimeGateway.allMessagesUnpinned.collect { event ->
                 if (event.chatId.equals(chatId, ignoreCase = true)) {
                     setResult(Activity.RESULT_OK)
                     finish()
@@ -114,13 +119,13 @@ class PinnedMessagesActivity : AppCompatActivity() {
         lifecycleScope.launch {
             binding.loadingIndicator.visibility = View.VISIBLE
             binding.emptyState.visibility = View.GONE
-            val result = grpcManager.listPinnedMessages(chatId)
+            val result = messageGateway.pinnedMessages(chatId)
             binding.loadingIndicator.visibility = View.GONE
             if (result.isFailure) {
                 Toast.makeText(this@PinnedMessagesActivity, R.string.pinned_load_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val (list, _) = result.getOrNull() ?: return@launch
+            val list = result.getOrNull()?.messages ?: return@launch
             if (list.isEmpty()) {
                 binding.emptyState.visibility = View.VISIBLE
                 adapter.submitList(emptyList())
@@ -140,7 +145,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
                     isEdited = msg.isEdited
                 )
             }
-            adapter.submitList(items)
+            adapter.submitList(MessageRowProjector().project(items))
         }
     }
 
@@ -161,7 +166,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
 
     private fun unpin(messageId: Long) {
         lifecycleScope.launch {
-            val result = grpcManager.unpinMessage(chatId, messageId)
+            val result = messageGateway.unpinMessage(chatId, messageId)
             if (result.isFailure) {
                 Toast.makeText(this@PinnedMessagesActivity, R.string.message_unpin_failed, Toast.LENGTH_SHORT).show()
             } else {
@@ -176,7 +181,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
             .setMessage(R.string.pinned_unpin_all_message)
             .setPositiveButton(R.string.message_unpin) { _, _ ->
                 lifecycleScope.launch {
-                    val result = grpcManager.unpinAllMessages(chatId)
+                    val result = messageGateway.unpinAllMessages(chatId)
                     if (result.isSuccess) {
                         Toast.makeText(
                             this@PinnedMessagesActivity,
