@@ -59,6 +59,7 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 - Композиция: две распорки `layout_weight=1` отжимают hero-блок от верха и прижимают CTA к низу.
 - Логотип рендерится напрямую как `@drawable/app_icon_vector` (Android-native VectorDrawable из `app_icon_vector.svg`) без `MaterialCardView`, elevation и PNG-маски.
 - Чипы-фичи — стиль `Widget.Barkfluff.Welcome.FeatureChip`; высота через `chipMinHeight`, а не `layout_height` (фиксированная высота сжимает текст с иконкой).
+- Для окон Medium/Expanded шириной от 600dp `contentPanel` ограничивается 600dp и центрируется; на Compact сохраняется full-width композиция телефона. Заголовок Welcome отмечен как accessibility heading для TalkBack, а информационные feature-чипы остаются читаемыми, но не получают лишний keyboard focus.
 - Под CTA находятся ссылки «Соглашение» и «Конфиденциальность» в одной строке; обе открывают соответствующий таб legal-листа в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
 - «Начать» → модалка согласия (см. ниже) → `SelectServerActivity`.
 
