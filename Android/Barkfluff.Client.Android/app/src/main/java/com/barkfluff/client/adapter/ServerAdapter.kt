@@ -46,7 +46,6 @@ class ServerAdapter(
         private val onServerClick: (ServerDataElement) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
-        private val card: MaterialCardView = itemView.findViewById(R.id.serverCard)
         private val serverIconTile: MaterialCardView = itemView.findViewById(R.id.serverIconTile)
         private val title: TextView = itemView.findViewById(R.id.serverTitle)
         private val description: TextView = itemView.findViewById(R.id.serverDescription)
@@ -66,6 +65,14 @@ class ServerAdapter(
         fun bind(server: ServerDataElement, coroutineScope: CoroutineScope, measurePing: suspend (String) -> Int?) {
             title.text = server.title
             description.text = server.description
+
+            // Чипы информируют о состоянии, но не являются отдельными действиями.
+            listOf(chipOnline, chipPing, chipRegion).forEach { chip ->
+                chip.isClickable = false
+                chip.isFocusable = false
+                chip.isFocusableInTouchMode = false
+                chip.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
 
             // Макет 2c: регион — чип в общей строке, публичное имя — отдельная строка ниже
             if (server.location.isNotBlank()) {
@@ -100,10 +107,7 @@ class ServerAdapter(
             // Сервер уже гарантированно жив (Navigator не вернул бы мёртвый сервер)
             chipOnline.visibility = View.VISIBLE
 
-            // Обработчики клика
-            card.setOnClickListener {
-                onServerClick(server)
-            }
+            // Единственное действие карточки — явная кнопка подключения.
             connectCta.setOnClickListener {
                 onServerClick(server)
             }

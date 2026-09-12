@@ -28,6 +28,7 @@
                 android:id="@+id/titleText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:accessibilityHeading="true"
                 android:text="@string/server_title"
                 android:textAppearance="@style/TextAppearance.Barkfluff.Onboarding.Headline" />
 
@@ -41,8 +42,10 @@
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <TextView
+                android:id="@+id/publicNodesLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:accessibilityHeading="true"
                 android:layout_marginTop="28dp"
                 android:layout_marginBottom="8dp"
                 android:text="@string/server_public_nodes_label"
