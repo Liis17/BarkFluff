@@ -69,6 +69,8 @@
     <string name="server_ping_ms">%1$d мс</string>
     <string name="server_custom_row_title">Своя нода</string>
     <string name="server_custom_row_subtitle">Ввести адрес вручную</string>
+    <string name="server_custom_row_collapsed">Свернуто</string>
+    <string name="server_custom_row_expanded">Развернуто</string>
     <string name="self_hosted_title">Свой сервер</string>
     <string name="self_hosted_description">Разверните собственный сервер BarkFluff</string>
     <string name="btn_learn_more_server">Узнать больше</string>

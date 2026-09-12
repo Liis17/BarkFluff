@@ -72,6 +72,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         binding = ActivitySelectServerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        updateCustomServerAccessibility(expanded = false)
 
         // Инициализация
         globalParam = GlobalParam(this)
@@ -143,10 +144,21 @@ class SelectServerActivity : AppCompatActivity() {
     private fun toggleCustomServerPanel() {
         val expanded = binding.customServerPanel.visibility != View.VISIBLE
         binding.customServerPanel.visibility = if (expanded) View.VISIBLE else View.GONE
+        updateCustomServerAccessibility(expanded)
         binding.customServerChevron.animate()
             .rotation(if (expanded) 180f else 0f)
             .setDuration(180L)
             .start()
+    }
+
+    private fun updateCustomServerAccessibility(expanded: Boolean) {
+        binding.customServerRow.stateDescription = getString(
+            if (expanded) {
+                R.string.server_custom_row_expanded
+            } else {
+                R.string.server_custom_row_collapsed
+            }
+        )
     }
 
     private fun loadServerList() {
