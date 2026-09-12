@@ -65,8 +65,10 @@
     <string name="hint_server_address_example" translatable="false">beacon.servername.com:443</string>
     <string name="node_trust_warning">Подключайтесь только к тем нодам, которым доверяете. Ваши данные хранятся у владельца ноды; разработчик приложения не несёт за них ответственности.</string>
     <string name="btn_connect">Подключиться</string>
+    <string name="server_status_checking">Проверка…</string>
     <string name="server_status_online">Онлайн</string>
-    <string name="server_ping_ms">%1$d мс</string>
+    <string name="server_status_unavailable">Недоступна</string>
+    <string name="server_response_ms">Отклик %1$d мс</string>
     <string name="server_custom_row_title">Своя нода</string>
     <string name="server_custom_row_subtitle">Ввести адрес вручную</string>
     <string name="server_custom_row_collapsed">Свернуто</string>
