@@ -57,6 +57,14 @@ class SelectServerActivity : AppCompatActivity() {
 
     private var isConnecting = false
     private val pingCache = mutableMapOf<String, Int?>()
+    private var currentServerListState = ServerListState.LOADING
+
+    private enum class ServerListState {
+        LOADING,
+        CONTENT,
+        EMPTY,
+        ERROR,
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -110,6 +118,8 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
+        binding.serverListRetryButton.setOnClickListener { loadServerList() }
+
         // «Своя нода» разворачивает поле ручного ввода (макет 2c)
         binding.customServerRow.setOnClickListener { toggleCustomServerPanel() }
 
@@ -140,7 +150,7 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun loadServerList() {
-        showLoading(true)
+        renderServerListState(ServerListState.LOADING)
         pingCache.clear()
 
         lifecycleScope.launch {
@@ -148,9 +158,12 @@ class SelectServerActivity : AppCompatActivity() {
                 // Создаем Navigator клиент
                 val createResult = serverDiscoveryGateway.createNavigator()
                 if (createResult.isFailure) {
-                    showError(
-                        createResult.exceptionOrNull()?.message
-                            ?: getString(R.string.select_server_navigator_connection_failed)
+                    serverAdapter.submitList(emptyList())
+                    renderServerListState(ServerListState.ERROR)
+                    Log.e(
+                        TAG,
+                        "Ошибка подключения к каталогу Navigator",
+                        createResult.exceptionOrNull()
                     )
                     return@launch
                 }
@@ -161,44 +174,26 @@ class SelectServerActivity : AppCompatActivity() {
                 if (result.isSuccess) {
                     val servers = result.getOrNull()
                     if (servers.isNullOrEmpty()) {
-                        // Показываем тестовые данные если список пуст
-                        val testServers = listOf(
-                            ServerDataElement(
-                                ip = "test1.barkfluff.com:64646",
-                                title = "BarkFluff Public Server 1",
-                                description = getString(R.string.select_server_default_description_1),
-                                userCount = "125",
-                                publicName = "barkfluff-public-1",
-                                location = "Москва, RU",
-                                hexColor = "#FF6B35"
-                            ),
-                            ServerDataElement(
-                                ip = "test2.barkfluff.com:64646",
-                                title = "BarkFluff Public Server 2",
-                                description = getString(R.string.select_server_default_description_2),
-                                userCount = "89",
-                                publicName = "barkfluff-public-2",
-                                location = "Санкт-Петербург, RU",
-                                hexColor = "#2196F3"
-                            )
-                        )
-                        serverAdapter.submitList(testServers)
+                        serverAdapter.submitList(emptyList())
+                        renderServerListState(ServerListState.EMPTY)
                     } else {
                         serverAdapter.submitList(servers)
+                        renderServerListState(ServerListState.CONTENT)
                         Log.d(TAG, "Загружено ${servers.size} серверов")
                     }
                 } else {
-                    showError(
-                        result.exceptionOrNull()?.message
-                            ?: getString(R.string.select_server_list_load_failed)
+                    serverAdapter.submitList(emptyList())
+                    renderServerListState(ServerListState.ERROR)
+                    Log.e(
+                        TAG,
+                        "Ошибка загрузки списка серверов",
+                        result.exceptionOrNull()
                     )
-                    Log.e(TAG, "Ошибка загрузки списка серверов", result.exceptionOrNull())
                 }
             } catch (e: Exception) {
-                showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
+                serverAdapter.submitList(emptyList())
+                renderServerListState(ServerListState.ERROR)
                 Log.e(TAG, "Ошибка загрузки списка серверов", e)
-            } finally {
-                showLoading(false)
             }
         }
     }
@@ -369,12 +364,46 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
 
-    private fun showLoading(isLoading: Boolean) {
-        binding.loadingProgressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
-        if (isLoading) {
-            binding.serverListRecyclerView.visibility = View.GONE
+    private fun renderServerListState(state: ServerListState) {
+        currentServerListState = state
+        binding.loadingProgressBar.visibility = if (state == ServerListState.LOADING) {
+            View.VISIBLE
         } else {
-            binding.serverListRecyclerView.visibility = View.VISIBLE
+            View.GONE
+        }
+        binding.serverListRecyclerView.visibility = if (state == ServerListState.CONTENT) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+
+        val showMessage = state == ServerListState.EMPTY || state == ServerListState.ERROR
+        binding.serverListState.visibility = if (showMessage) View.VISIBLE else View.GONE
+        if (showMessage) {
+            binding.serverListStateTitle.setText(
+                if (state == ServerListState.EMPTY) {
+                    R.string.server_list_empty_title
+                } else {
+                    R.string.server_list_error_title
+                }
+            )
+            binding.serverListStateMessage.setText(
+                if (state == ServerListState.EMPTY) {
+                    R.string.server_list_empty_message
+                } else {
+                    R.string.server_list_error_message
+                }
+            )
+        }
+    }
+
+    private fun showLoading(isLoading: Boolean) {
+        if (isLoading) {
+            binding.loadingProgressBar.visibility = View.VISIBLE
+            binding.serverListRecyclerView.visibility = View.GONE
+            binding.serverListState.visibility = View.GONE
+        } else {
+            renderServerListState(currentServerListState)
         }
     }
 

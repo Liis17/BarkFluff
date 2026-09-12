@@ -54,6 +54,12 @@
     <string name="server_title">Wähle eine Node</string>
     <string name="server_subtitle">Zu welchem Rudel verbinden wir uns heute?</string>
     <string name="server_public_nodes_label">Öffentliche Nodes</string>
+    <string name="server_list_loading">Öffentliche Nodes werden geladen</string>
+    <string name="server_list_empty_title">Noch keine öffentlichen Nodes</string>
+    <string name="server_list_empty_message">Du kannst dich manuell mit deiner eigenen Node verbinden oder das Verzeichnis aktualisieren.</string>
+    <string name="server_list_error_title">Nodes konnten nicht geladen werden</string>
+    <string name="server_list_error_message">Prüfe deine Internetverbindung und versuche es erneut. Eine manuelle Verbindung ist weiterhin möglich.</string>
+    <string name="server_list_retry">Erneut versuchen</string>
     <string name="server_custom_row_title">Eigene Node</string>
     <string name="server_custom_row_subtitle">Adresse manuell eingeben</string>
     <string name="server_custom">Mit anderem Server verbinden</string>
@@ -1238,8 +1244,6 @@
     <string name="select_server_list_load_failed">Knotenliste konnte nicht geladen werden</string>
     <string name="select_server_connection_failed">Verbindung zum Knoten nicht möglich</string>
     <string name="select_server_info_failed">Knoteninformationen konnten nicht abgerufen werden</string>
-    <string name="select_server_default_description_1">Öffentlicher Knoten zum Testen</string>
-    <string name="select_server_default_description_2">Zweiter öffentlicher Knoten</string>
     <string name="media_send_title">Medien werden an „%1$s“ gesendet</string>
     <string name="media_send_preparing">%1$s wird vorbereitet…</string>
     <string name="media_send_uploading">%1$s wird hochgeladen: %2$d%%</string>

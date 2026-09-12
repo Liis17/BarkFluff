@@ -65,8 +65,47 @@
                 android:layout_gravity="center"
                 android:layout_marginVertical="24dp"
                 android:indeterminate="true"
+                android:contentDescription="@string/server_list_loading"
                 android:visibility="gone"
                 app:indicatorColor="?attr/colorPrimary" />
+
+            <LinearLayout
+                android:id="@+id/serverListState"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="24dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/serverListStateTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/serverListStateMessage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/serverListRetryButton"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/server_list_retry"
+                    android:textAllCaps="false" />
+
+            </LinearLayout>
 
             <!-- «Своя нода» — раскрывает поле ручного ввода -->
             <com.google.android.material.card.MaterialCardView

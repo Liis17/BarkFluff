@@ -54,6 +54,12 @@
     <string name="server_title">Elige un nodo</string>
     <string name="server_subtitle">¿A qué manada nos conectamos hoy?</string>
     <string name="server_public_nodes_label">Nodos públicos</string>
+    <string name="server_list_loading">Cargando nodos públicos</string>
+    <string name="server_list_empty_title">Aún no hay nodos públicos</string>
+    <string name="server_list_empty_message">Puedes conectarte manualmente a tu propio nodo o actualizar el directorio.</string>
+    <string name="server_list_error_title">No se pudieron cargar los nodos</string>
+    <string name="server_list_error_message">Comprueba tu conexión a Internet e inténtalo de nuevo. La conexión manual sigue disponible abajo.</string>
+    <string name="server_list_retry">Reintentar</string>
     <string name="server_custom_row_title">Nodo propio</string>
     <string name="server_custom_row_subtitle">Introducir la dirección manualmente</string>
     <string name="server_custom">Conectar a otro servidor</string>
@@ -1238,8 +1244,6 @@
     <string name="select_server_list_load_failed">No se pudo cargar la lista de nodos</string>
     <string name="select_server_connection_failed">No se pudo conectar al nodo</string>
     <string name="select_server_info_failed">No se pudo obtener la información del nodo</string>
-    <string name="select_server_default_description_1">Nodo público para pruebas</string>
-    <string name="select_server_default_description_2">Segundo nodo público</string>
     <string name="media_send_title">Enviando archivos multimedia a «%1$s»</string>
     <string name="media_send_preparing">Preparando %1$s…</string>
     <string name="media_send_uploading">Subiendo %1$s: %2$d%%</string>
