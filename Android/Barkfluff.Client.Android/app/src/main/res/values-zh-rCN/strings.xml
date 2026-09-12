@@ -54,6 +54,12 @@
     <string name="server_title">选择节点</string>
     <string name="server_subtitle">今天连接到哪个伙伴群？</string>
     <string name="server_public_nodes_label">公共节点</string>
+    <string name="server_list_loading">正在加载公共节点</string>
+    <string name="server_list_empty_title">暂时没有公共节点</string>
+    <string name="server_list_empty_message">你可以手动连接到自己的节点，或刷新节点目录。</string>
+    <string name="server_list_error_title">无法加载节点</string>
+    <string name="server_list_error_message">请检查网络连接后重试。你仍可在下方手动连接。</string>
+    <string name="server_list_retry">重试</string>
     <string name="server_custom_row_title">自有节点</string>
     <string name="server_custom_row_subtitle">手动输入地址</string>
     <string name="server_custom">连接到其他服务器</string>
@@ -1230,8 +1236,6 @@
     <string name="select_server_list_load_failed">无法加载节点列表</string>
     <string name="select_server_connection_failed">无法连接到节点</string>
     <string name="select_server_info_failed">无法获取节点信息</string>
-    <string name="select_server_default_description_1">用于测试的公共节点</string>
-    <string name="select_server_default_description_2">第二个公共节点</string>
     <string name="media_send_title">正在向“%1$s”发送媒体</string>
     <string name="media_send_preparing">正在准备 %1$s…</string>
     <string name="media_send_uploading">正在上传 %1$s：%2$d%%</string>
