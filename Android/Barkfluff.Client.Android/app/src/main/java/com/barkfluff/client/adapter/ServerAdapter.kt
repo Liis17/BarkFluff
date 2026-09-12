@@ -1,5 +1,6 @@
 package com.barkfluff.client.adapter
 
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
@@ -57,12 +58,20 @@ class ServerAdapter(
 
         private var pingJob: Job? = null
 
+        private enum class ServerStatus {
+            CHECKING,
+            ONLINE,
+            UNAVAILABLE,
+        }
+
         fun cancelPendingPing() {
             pingJob?.cancel()
             pingJob = null
         }
 
         fun bind(server: ServerDataElement, coroutineScope: CoroutineScope, measurePing: suspend (String) -> Int?) {
+            cancelPendingPing()
+            itemView.tag = server.ip
             title.text = server.title
             description.text = server.description
 
@@ -104,29 +113,63 @@ class ServerAdapter(
                 serverIconTile.setCardBackgroundColor(defaultColor)
             }
 
-            // Сервер уже гарантированно жив (Navigator не вернул бы мёртвый сервер)
             chipOnline.visibility = View.VISIBLE
+            chipPing.visibility = View.GONE
+            setStatus(ServerStatus.CHECKING)
 
             // Единственное действие карточки — явная кнопка подключения.
             connectCta.setOnClickListener {
                 onServerClick(server)
             }
 
-            // Пинг: защита от гонки при recycle через itemView.tag sentinel
-            cancelPendingPing()
-            itemView.tag = server.ip
-            chipPing.visibility = View.GONE
+            // Probe: защита от гонки при recycle через itemView.tag sentinel.
             pingJob = coroutineScope.launch {
                 val ms = measurePing(server.ip)
                 if (itemView.tag == server.ip) {
                     if (ms != null) {
-                        chipPing.text = itemView.context.getString(R.string.server_ping_ms, ms)
+                        setStatus(ServerStatus.ONLINE)
+                        chipPing.text = itemView.context.getString(R.string.server_response_ms, ms)
                         chipPing.visibility = View.VISIBLE
                     } else {
+                        setStatus(ServerStatus.UNAVAILABLE)
                         chipPing.visibility = View.GONE
                     }
                 }
             }
+        }
+
+        private fun setStatus(status: ServerStatus) {
+            val (backgroundColor, contentColor) = when (status) {
+                ServerStatus.CHECKING -> MaterialColors.getColor(
+                    itemView,
+                    com.google.android.material.R.attr.colorSurfaceContainerHighest
+                ) to MaterialColors.getColor(
+                    itemView,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant
+                )
+
+                ServerStatus.ONLINE -> itemView.context.getColor(R.color.onboarding_success_background) to
+                    itemView.context.getColor(R.color.onboarding_success_text)
+
+                ServerStatus.UNAVAILABLE -> MaterialColors.getColor(
+                    itemView,
+                    com.google.android.material.R.attr.colorErrorContainer
+                ) to MaterialColors.getColor(
+                    itemView,
+                    com.google.android.material.R.attr.colorOnErrorContainer
+                )
+            }
+
+            chipOnline.text = itemView.context.getString(
+                when (status) {
+                    ServerStatus.CHECKING -> R.string.server_status_checking
+                    ServerStatus.ONLINE -> R.string.server_status_online
+                    ServerStatus.UNAVAILABLE -> R.string.server_status_unavailable
+                }
+            )
+            chipOnline.setChipBackgroundColor(ColorStateList.valueOf(backgroundColor))
+            chipOnline.setTextColor(contentColor)
+            chipOnline.chipIconTint = ColorStateList.valueOf(contentColor)
         }
     }
 

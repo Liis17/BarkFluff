@@ -68,15 +68,6 @@
                         android:textColor="?attr/colorOnSurface"
                         android:textStyle="bold" />
 
-                    <ImageView
-                        android:id="@+id/serverVerifiedIcon"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_marginStart="6dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_check_circle"
-                        app:tint="?attr/colorPrimary" />
-
                 </LinearLayout>
 
                 <TextView
@@ -120,12 +111,10 @@
                 style="@style/Widget.Barkfluff.Server.StatusChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/server_status_online"
-                android:textColor="@color/onboarding_success_text"
-                app:chipBackgroundColor="@color/onboarding_success_background"
+                android:text="@string/server_status_checking"
                 app:chipIcon="@drawable/dot_online_indicator"
                 app:chipIconSize="8dp"
-                app:chipIconTint="@color/profile_presence_online" />
+                app:chipIconTint="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipPing"
