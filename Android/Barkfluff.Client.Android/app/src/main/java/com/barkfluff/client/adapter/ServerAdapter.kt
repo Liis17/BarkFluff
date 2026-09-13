@@ -1,7 +1,6 @@
 package com.barkfluff.client.adapter
 
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -96,21 +95,6 @@ class ServerAdapter(
                 handle.visibility = View.VISIBLE
             } else {
                 handle.visibility = View.GONE
-            }
-
-            // Цвет icon-tile: своё значение ноды, иначе — primary активной темы
-            val defaultColor = MaterialColors.getColor(
-                itemView, androidx.appcompat.R.attr.colorPrimary
-            )
-            try {
-                if (server.hexColor.isNotBlank()) {
-                    val color = Color.parseColor(if (server.hexColor.startsWith("#")) server.hexColor else "#${server.hexColor}")
-                    serverIconTile.setCardBackgroundColor(color)
-                } else {
-                    serverIconTile.setCardBackgroundColor(defaultColor)
-                }
-            } catch (e: Exception) {
-                serverIconTile.setCardBackgroundColor(defaultColor)
             }
 
             chipOnline.visibility = View.VISIBLE

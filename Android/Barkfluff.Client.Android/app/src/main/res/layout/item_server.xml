@@ -29,7 +29,7 @@
                 android:layout_width="@dimen/server_icon_tile_size"
                 android:layout_height="@dimen/server_icon_tile_size"
                 android:layout_marginEnd="16dp"
-                app:cardBackgroundColor="?attr/colorPrimary"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
                 app:cardCornerRadius="@dimen/shape_corner_large_increased"
                 app:cardElevation="0dp">
 
@@ -38,9 +38,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:contentDescription="@null"
-                    android:padding="15dp"
+                    android:padding="12dp"
                     android:src="@drawable/ic_storage"
-                    app:tint="?attr/colorOnPrimary" />
+                    app:tint="?attr/colorOnPrimaryContainer" />
 
             </com.google.android.material.card.MaterialCardView>
 
