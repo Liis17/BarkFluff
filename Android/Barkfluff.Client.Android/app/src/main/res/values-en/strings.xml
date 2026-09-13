@@ -70,6 +70,7 @@
     <string name="server_response_ms">Response %1$d ms</string>
     <string name="server_custom_row_title">Own node</string>
     <string name="server_custom_row_subtitle">Enter address manually</string>
+    <string name="server_custom_address_helper">Use https:// or omit it. The port is required, for example :443.</string>
     <string name="server_custom_row_collapsed">Collapsed</string>
     <string name="server_custom_row_expanded">Expanded</string>
     <string name="self_hosted_title">Your own server</string>

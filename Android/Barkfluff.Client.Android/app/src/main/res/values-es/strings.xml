@@ -62,6 +62,7 @@
     <string name="server_list_retry">Reintentar</string>
     <string name="server_custom_row_title">Nodo propio</string>
     <string name="server_custom_row_subtitle">Introducir la dirección manualmente</string>
+    <string name="server_custom_address_helper">Puedes usar https:// o no incluirlo. El puerto es obligatorio, por ejemplo :443.</string>
     <string name="server_custom_row_collapsed">Contraído</string>
     <string name="server_custom_row_expanded">Expandido</string>
     <string name="server_custom">Conectar a otro servidor</string>
