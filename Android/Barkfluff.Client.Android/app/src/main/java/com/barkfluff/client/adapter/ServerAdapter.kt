@@ -1,6 +1,7 @@
 package com.barkfluff.client.adapter
 
 import android.content.res.ColorStateList
+import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
 import com.barkfluff.client.data.ServerDataElement
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +83,7 @@ class ServerAdapter(
         private val onServerClick: (ServerDataElement) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
+        private val serverIconTile: MaterialCardView = itemView.findViewById(R.id.serverIconTile)
         private val title: TextView = itemView.findViewById(R.id.serverTitle)
         private val description: TextView = itemView.findViewById(R.id.serverDescription)
         private val handle: TextView = itemView.findViewById(R.id.serverHandle)
@@ -163,10 +166,16 @@ class ServerAdapter(
             val scope = boundCoroutineScope ?: return
             val measureResponseMs = probeMeasureResponseMs ?: return
 
+            setStatus(ServerStatus.CHECKING)
+            chipResponse.text = ""
+            chipResponse.visibility = View.GONE
+
             // Пробуем сразу, затем обновляем отклик после каждой завершённой проверки.
-            // Это не допускает наложения запросов даже при медленном Beacon.
+            // Интервал считается от старта проверки и не допускает наложения запросов
+            // даже при медленном Beacon.
             probeJob = scope.launch {
                 while (isActive && itemView.tag == address) {
+                    val probeStartedAt = SystemClock.elapsedRealtime()
                     val ms = measureResponseMs(address)
                     if (!isActive || itemView.tag != address) break
 
@@ -179,7 +188,8 @@ class ServerAdapter(
                         chipResponse.visibility = View.GONE
                     }
 
-                    delay(RESPONSE_REFRESH_INTERVAL_MS)
+                    val elapsed = SystemClock.elapsedRealtime() - probeStartedAt
+                    delay((RESPONSE_REFRESH_INTERVAL_MS - elapsed).coerceAtLeast(0L))
                 }
             }
         }
