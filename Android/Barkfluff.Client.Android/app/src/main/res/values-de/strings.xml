@@ -62,6 +62,7 @@
     <string name="server_list_retry">Erneut versuchen</string>
     <string name="server_custom_row_title">Eigene Node</string>
     <string name="server_custom_row_subtitle">Adresse manuell eingeben</string>
+    <string name="server_custom_address_helper">Mit oder ohne https:// eingeben. Der Port ist erforderlich, z. B. :443.</string>
     <string name="server_custom_row_collapsed">Eingeklappt</string>
     <string name="server_custom_row_expanded">Ausgeklappt</string>
     <string name="server_custom">Mit anderem Server verbinden</string>

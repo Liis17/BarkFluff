@@ -117,8 +117,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:clickable="true"
-                android:focusable="true"
                 android:minHeight="72dp"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
                 app:cardCornerRadius="@dimen/shape_corner_extra_large"
@@ -130,114 +128,128 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:minHeight="72dp"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="20dp"
-                    android:paddingVertical="12dp">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_link"
-                    app:tint="?attr/colorPrimary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_weight="1"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:id="@+id/customServerHeader"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/server_custom_row_title"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="?attr/colorOnSurface" />
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="72dp"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="20dp"
+                        android:paddingVertical="12dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_link"
+                            app:tint="?attr/colorPrimary" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/server_custom_row_title"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/server_custom_row_subtitle"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:id="@+id/customServerChevron"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_arrow_down"
+                            app:tint="?attr/colorPrimary" />
+
+                    </LinearLayout>
+
+                    <!-- Форма остаётся внутри карточки: при раскрытии растёт единая поверхность. -->
+                    <LinearLayout
+                        android:id="@+id/customServerPanel"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/server_custom_row_subtitle"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
+                        android:orientation="vertical"
+                        android:paddingHorizontal="20dp"
+                        android:paddingBottom="20dp"
+                        android:visibility="gone">
 
-                </LinearLayout>
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/serverAddressInputLayout"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:hint="@string/hint_server_address_example"
+                            app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
+                            app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
+                            app:helperText="@string/server_custom_address_helper"
+                            app:hintTextColor="?attr/colorPrimary"
+                            app:startIconDrawable="@drawable/ic_location"
+                            app:startIconTint="?attr/colorPrimary">
 
-                <ImageView
-                    android:id="@+id/customServerChevron"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_arrow_down"
-                    app:tint="?attr/colorPrimary" />
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/serverAddressEditText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textUri"
+                                android:maxLines="1"
+                                android:textColor="?attr/colorOnSurface" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/connectButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/server_card_cta_height"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/btn_connect"
+                            android:textAllCaps="false"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textColor="?attr/colorOnPrimary"
+                            app:backgroundTint="?attr/colorPrimary"
+                            app:cornerRadius="@dimen/shape_corner_large_increased"
+                            app:icon="@drawable/ic_arrow_forward"
+                            app:iconGravity="textEnd"
+                            app:iconPadding="10dp"
+                            app:iconTint="?attr/colorOnPrimary" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/forgetTrustedCertificateButton"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/tls_forget_certificate"
+                            android:textAllCaps="false" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
-
-            <!-- Раскрываемая часть: адрес + подключение -->
-            <LinearLayout
-                android:id="@+id/customServerPanel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/serverAddressInputLayout"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:hint="@string/hint_server_address_example"
-                    app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
-                    app:hintTextColor="?attr/colorPrimary"
-                    app:startIconDrawable="@drawable/ic_location"
-                    app:startIconTint="?attr/colorPrimary">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/serverAddressEditText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textUri"
-                        android:maxLines="1"
-                        android:textColor="?attr/colorOnSurface" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/connectButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/server_card_cta_height"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/btn_connect"
-                    android:textAllCaps="false"
-                    android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorOnPrimary"
-                    app:backgroundTint="?attr/colorPrimary"
-                    app:cornerRadius="@dimen/shape_corner_large_increased"
-                    app:icon="@drawable/ic_arrow_forward"
-                    app:iconGravity="textEnd"
-                    app:iconPadding="10dp"
-                    app:iconTint="?attr/colorOnPrimary" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/forgetTrustedCertificateButton"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/tls_forget_certificate"
-                    android:textAllCaps="false" />
-
-            </LinearLayout>
 
         </LinearLayout>
 

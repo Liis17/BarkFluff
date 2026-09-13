@@ -143,8 +143,8 @@ class SelectServerActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         binding.serverListRetryButton.setOnClickListener { loadServerList() }
 
-        // «Своя нода» разворачивает поле ручного ввода (макет 2c)
-        binding.customServerRow.setOnClickListener { toggleCustomServerPanel() }
+        // Шапка «Своей ноды» разворачивает встроенную форму ручного ввода.
+        binding.customServerHeader.setOnClickListener { toggleCustomServerPanel() }
 
         // Кнопка подключения
         binding.serverAddressEditText.doAfterTextChanged {
@@ -190,7 +190,7 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun updateCustomServerAccessibility(expanded: Boolean) {
-        binding.customServerRow.stateDescription = getString(
+        binding.customServerHeader.stateDescription = getString(
             if (expanded) {
                 R.string.server_custom_row_expanded
             } else {
