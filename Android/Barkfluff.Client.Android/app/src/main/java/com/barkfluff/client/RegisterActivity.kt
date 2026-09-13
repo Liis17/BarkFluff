@@ -363,10 +363,13 @@ class RegisterActivity : AppCompatActivity() {
         val headerBasePaddingTop = binding.headerPanel.paddingTop
         val headerBasePaddingRight = binding.headerPanel.paddingRight
         val contentBasePaddingLeft = binding.contentFrame.paddingLeft
+        val contentBasePaddingBottom = binding.contentFrame.paddingBottom
         val contentBasePaddingRight = binding.contentFrame.paddingRight
         val buttonBasePaddingLeft = binding.buttonPanel.paddingLeft
         val buttonBasePaddingBottom = binding.buttonPanel.paddingBottom
         val buttonBasePaddingRight = binding.buttonPanel.paddingRight
+        val buttonBaseMarginBottom =
+            (binding.buttonPanel.layoutParams as? android.widget.FrameLayout.LayoutParams)?.bottomMargin ?: 0
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.headerPanel) { view, insets ->
             val safeArea = insets.getInsets(
@@ -384,9 +387,11 @@ class RegisterActivity : AppCompatActivity() {
             val safeArea = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             view.updatePadding(
                 left = contentBasePaddingLeft + safeArea.left,
-                right = contentBasePaddingRight + safeArea.right
+                right = contentBasePaddingRight + safeArea.right,
+                bottom = contentBasePaddingBottom + maxOf(safeArea.bottom, ime.bottom)
             )
             insets
         }
@@ -399,8 +404,14 @@ class RegisterActivity : AppCompatActivity() {
             view.updatePadding(
                 left = buttonBasePaddingLeft + safeArea.left,
                 right = buttonBasePaddingRight + safeArea.right,
-                bottom = buttonBasePaddingBottom + maxOf(safeArea.bottom, ime.bottom)
+                bottom = buttonBasePaddingBottom
             )
+
+            val layoutParams = view.layoutParams as? android.widget.FrameLayout.LayoutParams
+            layoutParams?.let {
+                it.bottomMargin = buttonBaseMarginBottom + maxOf(safeArea.bottom, ime.bottom)
+                view.layoutParams = it
+            }
             insets
         }
 
@@ -412,12 +423,18 @@ class RegisterActivity : AppCompatActivity() {
         scrollView.clipToPadding = false
 
         val content = scrollView.getChildAt(0) ?: return
-        val bottomPadding = resources.getDimensionPixelSize(R.dimen.register_keyboard_content_padding)
+        val keyboardPadding = resources.getDimensionPixelSize(R.dimen.register_keyboard_content_padding)
+        val buttonReserve = if (binding.buttonPanel.visibility == View.VISIBLE) {
+            resources.getDimensionPixelSize(R.dimen.register_cta_height) +
+                binding.buttonPanel.paddingTop + binding.buttonPanel.paddingBottom
+        } else {
+            0
+        }
         content.setPaddingRelative(
             content.paddingStart,
             content.paddingTop,
             content.paddingEnd,
-            content.paddingBottom + bottomPadding
+            content.paddingBottom + keyboardPadding + buttonReserve
         )
     }
 
