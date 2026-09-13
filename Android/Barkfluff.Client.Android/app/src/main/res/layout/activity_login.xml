@@ -86,6 +86,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:labelFor="@id/usernameEditText"
                     android:layout_marginStart="6dp"
                     android:layout_marginBottom="8dp"
                     android:text="@string/hint_username_or_email"
@@ -103,7 +104,7 @@
                     app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
                     app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="0dp"
+                    app:boxStrokeWidthFocused="2dp"
                     app:errorEnabled="true"
                     app:hintEnabled="false"
                     app:startIconDrawable="@drawable/ic_person"
@@ -113,9 +114,15 @@
                         android:id="@+id/usernameEditText"
                         android:layout_width="match_parent"
                         android:layout_height="@dimen/login_field_height"
+                        android:autofillHints="username"
+                        android:gravity="center_vertical"
+                        android:imeOptions="actionNext"
+                        android:includeFontPadding="false"
                         android:inputType="textEmailAddress"
                         android:maxLength="50"
                         android:maxLines="1"
+                        android:paddingVertical="0dp"
+                        android:singleLine="true"
                         android:textColor="?attr/colorOnSurface" />
 
                 </com.google.android.material.textfield.TextInputLayout>
@@ -123,6 +130,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:labelFor="@id/passwordEditText"
                     android:layout_marginStart="6dp"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="8dp"
@@ -141,7 +149,7 @@
                     app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
                     app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="0dp"
+                    app:boxStrokeWidthFocused="2dp"
                     app:endIconMode="password_toggle"
                     app:endIconTint="?attr/colorPrimary"
                     app:errorEnabled="true"
@@ -153,8 +161,14 @@
                         android:id="@+id/passwordEditText"
                         android:layout_width="match_parent"
                         android:layout_height="@dimen/login_field_height"
+                        android:autofillHints="password"
+                        android:gravity="center_vertical"
+                        android:imeOptions="actionDone"
+                        android:includeFontPadding="false"
                         android:inputType="textPassword"
                         android:maxLines="1"
+                        android:paddingVertical="0dp"
+                        android:singleLine="true"
                         android:textColor="?attr/colorOnSurface" />
 
                 </com.google.android.material.textfield.TextInputLayout>
@@ -341,6 +355,20 @@
                 android:padding="14dp"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnErrorContainer"
+                android:accessibilityLiveRegion="polite"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/retryIdentityButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start"
+                android:layout_marginTop="2dp"
+                android:text="@string/action_retry"
+                android:textAllCaps="false"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorPrimary"
                 android:visibility="gone" />
 
             <!-- CTA «Войти» — M3 Expressive size L -->

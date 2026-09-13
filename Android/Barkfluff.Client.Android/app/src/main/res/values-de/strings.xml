@@ -44,6 +44,7 @@
     <string name="btn_change_server">Node ändern</string>
     <string name="btn_create_account">Konto erstellen</string>
     <string name="login_first_time_here">Zum ersten Mal hier?</string>
+    <string name="action_retry">Erneut versuchen</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">Zwei-Faktor-Authentifizierung</string>
