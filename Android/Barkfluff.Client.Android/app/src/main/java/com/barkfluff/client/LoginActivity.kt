@@ -390,9 +390,10 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun navigateToSelectServer() {
-        val intent = Intent(this, SelectServerActivity::class.java)
+        val intent = Intent(this, SelectServerActivity::class.java).apply {
+            putExtra(SelectServerActivity.EXTRA_RETURN_TO_LOGIN, true)
+        }
         startActivity(intent)
-        finish()
     }
 
     private fun navigateToRegister() {

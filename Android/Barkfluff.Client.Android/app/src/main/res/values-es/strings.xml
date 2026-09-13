@@ -75,7 +75,7 @@
     <string name="self_hosted_title">Tu propio servidor</string>
     <string name="self_hosted_description">Despliega tu propio servidor BarkFluff</string>
     <string name="btn_learn_more_server">Saber más</string>
-    <string name="server_help_hint">¿No sabes qué elegir? Consulta nuestra guía de configuración de nodos.</string>
+    <string name="server_help_hint">Los nodos públicos se comprueban antes de conectar. Para tu propio nodo, introduce su dirección Beacon.</string>
     <string name="server_item_name_placeholder">Nombre del nodo</string>
     <string name="server_item_description_placeholder">Descripción del nodo</string>
 
@@ -1247,6 +1247,7 @@
     <string name="select_server_navigator_connection_failed">No se pudo conectar al navegador</string>
     <string name="select_server_list_load_failed">No se pudo cargar la lista de nodos</string>
     <string name="select_server_connection_failed">No se pudo conectar al nodo</string>
+    <string name="select_server_connection_timeout">El nodo no respondió a tiempo. Comprueba la dirección e inténtalo de nuevo.</string>
     <string name="select_server_info_failed">No se pudo obtener la información del nodo</string>
     <string name="media_send_title">Enviando archivos multimedia a «%1$s»</string>
     <string name="media_send_preparing">Preparando %1$s…</string>

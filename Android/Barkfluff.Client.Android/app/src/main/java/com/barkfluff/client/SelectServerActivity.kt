@@ -3,9 +3,13 @@ package com.barkfluff.client
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.ServerAdapter
@@ -44,6 +48,10 @@ class SelectServerActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "SelectServerActivity"
         const val EXTRA_TRUST_REVIEW_ADDRESS = "tls_trust_review_address"
+        const val EXTRA_RETURN_TO_LOGIN = "return_to_login"
+        private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
+        private const val SERVER_LIST_TIMEOUT_MS = 10_000L
+        private const val SERVER_CONNECTION_TIMEOUT_MS = 10_000L
     }
 
     private lateinit var binding: ActivitySelectServerBinding
@@ -72,6 +80,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         binding = ActivitySelectServerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyAdaptiveContentWidth()
         updateCustomServerAccessibility(expanded = false)
 
         // Инициализация
@@ -86,6 +95,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupClickListeners()
+        setupBackNavigation()
         loadServerList()
 
         intent.getStringExtra(EXTRA_TRUST_REVIEW_ADDRESS)
@@ -125,9 +135,19 @@ class SelectServerActivity : AppCompatActivity() {
         binding.customServerRow.setOnClickListener { toggleCustomServerPanel() }
 
         // Кнопка подключения
+        binding.serverAddressEditText.doAfterTextChanged {
+            binding.serverAddressInputLayout.error = null
+        }
         binding.connectButton.setOnClickListener {
+            binding.serverAddressInputLayout.error = null
             val address = binding.serverAddressEditText.text.toString().trim()
-            normalizeServerAddress(address)?.let(::connectToServer)
+            val normalized = normalizeServerAddress(address)
+            if (normalized == null) {
+                binding.serverAddressInputLayout.error = getString(R.string.tls_invalid_endpoint)
+                binding.serverAddressEditText.requestFocus()
+            } else {
+                connectToServer(normalized)
+            }
         }
         binding.forgetTrustedCertificateButton.setOnClickListener {
             val address = binding.serverAddressEditText.text.toString().trim()
@@ -161,6 +181,36 @@ class SelectServerActivity : AppCompatActivity() {
         )
     }
 
+    private fun setupBackNavigation() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (binding.customServerPanel.visibility == View.VISIBLE) {
+                    toggleCustomServerPanel()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+    }
+
+    /** На Medium/Expanded ограничиваем потоковый контент шириной 600dp и центрируем его. */
+    private fun applyAdaptiveContentWidth() {
+        if (resources.configuration.screenWidthDp < MEDIUM_WINDOW_MIN_WIDTH_DP) return
+
+        val sideMarginPx = resources.getDimensionPixelSize(R.dimen.server_medium_window_margin)
+        val maxContentWidthPx = resources.getDimensionPixelSize(R.dimen.server_content_max_width)
+        val availableWidthPx = resources.configuration.screenWidthDp.dpToPx()
+        val contentWidthPx = minOf(maxContentWidthPx, availableWidthPx - sideMarginPx * 2)
+        if (contentWidthPx <= 0) return
+
+        val layoutParams = binding.contentPanel.layoutParams as? FrameLayout.LayoutParams
+            ?: return
+        layoutParams.width = contentWidthPx
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL
+        binding.contentPanel.layoutParams = layoutParams
+    }
+
     private fun loadServerList() {
         renderServerListState(ServerListState.LOADING)
         pingCache.clear()
@@ -180,8 +230,16 @@ class SelectServerActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                // Получаем список серверов
-                val result = serverDiscoveryGateway.listServers()
+                // Получаем список серверов. Каталог не должен оставлять экран в вечном loading.
+                val result = withTimeoutOrNull(SERVER_LIST_TIMEOUT_MS) {
+                    serverDiscoveryGateway.listServers()
+                }
+                if (result == null) {
+                    serverAdapter.submitList(emptyList())
+                    renderServerListState(ServerListState.ERROR)
+                    Log.e(TAG, "Таймаут загрузки списка серверов")
+                    return@launch
+                }
 
                 if (result.isSuccess) {
                     val servers = result.getOrNull()
@@ -241,9 +299,19 @@ class SelectServerActivity : AppCompatActivity() {
 
                 // Получаем информацию о сервере. Для self-signed Beacon сперва показываем
                 // fingerprint, а адрес сохраняем только после завершения trust flow.
-                var infoResult = serverDiscoveryGateway.serverInfo()
+                var infoResult = requestServerInfoWithTimeout()
+                if (infoResult == null) {
+                    showError(getString(R.string.select_server_connection_timeout))
+                    resetConnectionState()
+                    return@launch
+                }
                 if (infoResult.isFailure && approveCertificateIfEligible(address)) {
-                    infoResult = serverDiscoveryGateway.serverInfo()
+                    infoResult = requestServerInfoWithTimeout()
+                    if (infoResult == null) {
+                        showError(getString(R.string.select_server_connection_timeout))
+                        resetConnectionState()
+                        return@launch
+                    }
                 }
 
                 if (infoResult.isSuccess) {
@@ -301,9 +369,12 @@ class SelectServerActivity : AppCompatActivity() {
 
     private fun normalizeServerAddress(input: String): String? = runCatching {
         serverDiscoveryGateway.normalizeEndpoint(input)
-    }.onFailure {
-        showError(getString(R.string.tls_invalid_endpoint))
     }.getOrNull()
+
+    private suspend fun requestServerInfoWithTimeout(): Result<ServerInfo>? =
+        withTimeoutOrNull(SERVER_CONNECTION_TIMEOUT_MS) {
+            serverDiscoveryGateway.serverInfo()
+        }
 
     private suspend fun preflightServerCertificates(serverInfo: ServerInfo): Boolean {
         while (true) {
@@ -430,24 +501,19 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun openMainActivity() {
-        val intent = Intent(this, LoginActivity::class.java)
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            if (getBooleanExtra(EXTRA_RETURN_TO_LOGIN, false)) {
+                // Пересоздаём Login с адресами уже выбранной ноды, не оставляя старый экран в стеке.
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+        }
         startActivity(intent)
         finish()
-    }
-
-    override fun onBackPressed() {
-        // Блокируем возврат на предыдущий экран
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.logout_title)
-            .setMessage(R.string.logout_message)
-            .setPositiveButton(R.string.logout_action) { _, _ ->
-                super.onBackPressed()
-            }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
     }
 
     override fun onDestroy() {
         super.onDestroy()
     }
+
+    private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 }
