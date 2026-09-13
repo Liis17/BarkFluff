@@ -29,6 +29,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:labelFor="@id/firstNameEditText"
             android:layout_marginTop="24dp"
             android:layout_marginStart="6dp"
             android:layout_marginBottom="7dp"
@@ -37,8 +38,8 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="@dimen/register_field_height"
-            android:background="@drawable/bg_register_field_row"
+            android:layout_height="@dimen/register_input_height"
+            android:background="@drawable/bg_register_input_row"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="18dp">
@@ -55,11 +56,18 @@
                 android:id="@+id/firstNameEditText"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:autofillHints="personGivenName"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:background="@null"
+                android:gravity="center_vertical"
+                android:imeOptions="actionNext"
+                android:includeFontPadding="false"
                 android:inputType="textPersonName"
                 android:maxLength="40"
+                android:maxLines="1"
+                android:paddingVertical="0dp"
+                android:singleLine="true"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -86,6 +94,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:labelFor="@id/lastNameEditText"
             android:layout_marginTop="14dp"
             android:layout_marginStart="6dp"
             android:layout_marginBottom="7dp"
@@ -94,8 +103,8 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="@dimen/register_field_height"
-            android:background="@drawable/bg_register_field_row"
+            android:layout_height="@dimen/register_input_height"
+            android:background="@drawable/bg_register_input_row"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="18dp">
@@ -112,11 +121,18 @@
                 android:id="@+id/lastNameEditText"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:autofillHints="personFamilyName"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:background="@null"
+                android:gravity="center_vertical"
+                android:imeOptions="actionDone"
+                android:includeFontPadding="false"
                 android:inputType="textPersonName"
                 android:maxLength="40"
+                android:maxLines="1"
+                android:paddingVertical="0dp"
+                android:singleLine="true"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurface" />
 
