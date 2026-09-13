@@ -42,8 +42,11 @@
     <string name="forgot_password">Забыли пароль?</string>
     <string name="btn_login">Войти</string>
     <string name="btn_change_server">Изменить ноду</string>
+    <string name="action_change">Изменить</string>
     <string name="btn_create_account">Создать аккаунт</string>
     <string name="login_first_time_here">Впервые здесь?</string>
+    <string name="login_node_label">Текущая нода</string>
+    <string name="login_node_not_selected">Нода не выбрана</string>
     <string name="action_retry">Повторить</string>
 
     <!-- 2FA / OTP -->

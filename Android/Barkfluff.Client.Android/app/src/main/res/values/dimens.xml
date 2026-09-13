@@ -126,6 +126,7 @@
     <dimen name="server_icon_tile_size">48dp</dimen>
     <dimen name="server_card_cta_height">52dp</dimen>
     <dimen name="login_decor_circle_size">220dp</dimen>
-    <dimen name="login_field_height">60dp</dimen>
-    <dimen name="login_cta_height">64dp</dimen>
+    <dimen name="login_field_height">56dp</dimen>
+    <dimen name="login_cta_height">56dp</dimen>
+    <dimen name="login_footer_gap">56dp</dimen>
 </resources>
