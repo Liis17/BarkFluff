@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
  */
 class ServerAdapter(
     private val coroutineScope: CoroutineScope,
-    private val measurePing: suspend (String) -> Int?,
+    private val measureResponseMs: suspend (String) -> Int?,
     private val onServerClick: (ServerDataElement) -> Unit
 ) : ListAdapter<ServerDataElement, ServerAdapter.ServerViewHolder>(ServerDiffCallback()) {
 
@@ -34,12 +34,12 @@ class ServerAdapter(
     }
 
     override fun onBindViewHolder(holder: ServerViewHolder, position: Int) {
-        holder.bind(getItem(position), coroutineScope, measurePing)
+        holder.bind(getItem(position), coroutineScope, measureResponseMs)
     }
 
     override fun onViewRecycled(holder: ServerViewHolder) {
         super.onViewRecycled(holder)
-        holder.cancelPendingPing()
+        holder.cancelPendingProbe()
     }
 
     class ServerViewHolder(
@@ -52,11 +52,11 @@ class ServerAdapter(
         private val description: TextView = itemView.findViewById(R.id.serverDescription)
         private val handle: TextView = itemView.findViewById(R.id.serverHandle)
         private val chipOnline: Chip = itemView.findViewById(R.id.chipOnline)
-        private val chipPing: Chip = itemView.findViewById(R.id.chipPing)
+        private val chipResponse: Chip = itemView.findViewById(R.id.chipResponse)
         private val chipRegion: Chip = itemView.findViewById(R.id.chipRegion)
         private val connectCta = itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.serverConnectCta)
 
-        private var pingJob: Job? = null
+        private var probeJob: Job? = null
 
         private enum class ServerStatus {
             CHECKING,
@@ -64,19 +64,19 @@ class ServerAdapter(
             UNAVAILABLE,
         }
 
-        fun cancelPendingPing() {
-            pingJob?.cancel()
-            pingJob = null
+        fun cancelPendingProbe() {
+            probeJob?.cancel()
+            probeJob = null
         }
 
-        fun bind(server: ServerDataElement, coroutineScope: CoroutineScope, measurePing: suspend (String) -> Int?) {
-            cancelPendingPing()
+        fun bind(server: ServerDataElement, coroutineScope: CoroutineScope, measureResponseMs: suspend (String) -> Int?) {
+            cancelPendingProbe()
             itemView.tag = server.ip
             title.text = server.title
             description.text = server.description
 
             // Чипы информируют о состоянии, но не являются отдельными действиями.
-            listOf(chipOnline, chipPing, chipRegion).forEach { chip ->
+            listOf(chipOnline, chipResponse, chipRegion).forEach { chip ->
                 chip.isClickable = false
                 chip.isFocusable = false
                 chip.isFocusableInTouchMode = false
@@ -114,7 +114,7 @@ class ServerAdapter(
             }
 
             chipOnline.visibility = View.VISIBLE
-            chipPing.visibility = View.GONE
+            chipResponse.visibility = View.GONE
             setStatus(ServerStatus.CHECKING)
 
             // Единственное действие карточки — явная кнопка подключения.
@@ -123,54 +123,65 @@ class ServerAdapter(
             }
 
             // Probe: защита от гонки при recycle через itemView.tag sentinel.
-            pingJob = coroutineScope.launch {
-                val ms = measurePing(server.ip)
+            probeJob = coroutineScope.launch {
+                val ms = measureResponseMs(server.ip)
                 if (itemView.tag == server.ip) {
                     if (ms != null) {
                         setStatus(ServerStatus.ONLINE)
-                        chipPing.text = itemView.context.getString(R.string.server_response_ms, ms)
-                        chipPing.visibility = View.VISIBLE
+                        chipResponse.text = itemView.context.getString(R.string.server_response_ms, ms)
+                        chipResponse.visibility = View.VISIBLE
                     } else {
                         setStatus(ServerStatus.UNAVAILABLE)
-                        chipPing.visibility = View.GONE
+                        chipResponse.visibility = View.GONE
                     }
                 }
             }
         }
 
         private fun setStatus(status: ServerStatus) {
-            val (backgroundColor, contentColor) = when (status) {
-                ServerStatus.CHECKING -> MaterialColors.getColor(
-                    itemView,
-                    com.google.android.material.R.attr.colorSurfaceContainerHighest
-                ) to MaterialColors.getColor(
-                    itemView,
-                    com.google.android.material.R.attr.colorOnSurfaceVariant
+            val presentation = when (status) {
+                ServerStatus.CHECKING -> StatusPresentation(
+                    textRes = R.string.server_status_checking,
+                    backgroundColor = MaterialColors.getColor(
+                        itemView,
+                        com.google.android.material.R.attr.colorSurfaceContainerHighest,
+                    ),
+                    contentColor = MaterialColors.getColor(
+                        itemView,
+                        com.google.android.material.R.attr.colorOnSurfaceVariant,
+                    ),
                 )
 
-                ServerStatus.ONLINE -> itemView.context.getColor(R.color.onboarding_success_background) to
-                    itemView.context.getColor(R.color.onboarding_success_text)
+                ServerStatus.ONLINE -> StatusPresentation(
+                    textRes = R.string.server_status_online,
+                    backgroundColor = itemView.context.getColor(R.color.onboarding_success_background),
+                    contentColor = itemView.context.getColor(R.color.onboarding_success_text),
+                )
 
-                ServerStatus.UNAVAILABLE -> MaterialColors.getColor(
-                    itemView,
-                    com.google.android.material.R.attr.colorErrorContainer
-                ) to MaterialColors.getColor(
-                    itemView,
-                    com.google.android.material.R.attr.colorOnErrorContainer
+                ServerStatus.UNAVAILABLE -> StatusPresentation(
+                    textRes = R.string.server_status_unavailable,
+                    backgroundColor = MaterialColors.getColor(
+                        itemView,
+                        com.google.android.material.R.attr.colorErrorContainer,
+                    ),
+                    contentColor = MaterialColors.getColor(
+                        itemView,
+                        com.google.android.material.R.attr.colorOnErrorContainer,
+                    ),
                 )
             }
 
-            chipOnline.text = itemView.context.getString(
-                when (status) {
-                    ServerStatus.CHECKING -> R.string.server_status_checking
-                    ServerStatus.ONLINE -> R.string.server_status_online
-                    ServerStatus.UNAVAILABLE -> R.string.server_status_unavailable
-                }
-            )
-            chipOnline.setChipBackgroundColor(ColorStateList.valueOf(backgroundColor))
-            chipOnline.setTextColor(contentColor)
-            chipOnline.chipIconTint = ColorStateList.valueOf(contentColor)
+            chipOnline.setText(presentation.textRes)
+            chipOnline.setChipBackgroundColor(ColorStateList.valueOf(presentation.backgroundColor))
+            chipOnline.setTextColor(presentation.contentColor)
+            chipOnline.chipIconTint = ColorStateList.valueOf(presentation.contentColor)
         }
+
+        private data class StatusPresentation(
+            val textRes: Int,
+            val backgroundColor: Int,
+            val contentColor: Int,
+        )
     }
 
     private class ServerDiffCallback : DiffUtil.ItemCallback<ServerDataElement>() {

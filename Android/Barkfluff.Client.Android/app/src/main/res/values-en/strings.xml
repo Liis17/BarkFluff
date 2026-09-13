@@ -1243,8 +1243,6 @@
     <string name="storage_cache_cleared">Cache cleared</string>
     <string name="notification_unknown_sender">Unknown sender</string>
     <string name="notification_sender_in_chat">%1$s in %2$s</string>
-    <string name="select_server_navigator_connection_failed">Couldn\'t connect to the navigator</string>
-    <string name="select_server_list_load_failed">Couldn\'t load the node list</string>
     <string name="select_server_connection_failed">Couldn\'t connect to the node</string>
     <string name="select_server_connection_timeout">The node did not respond in time. Check the address and try again.</string>
     <string name="select_server_info_failed">Couldn\'t get node information</string>

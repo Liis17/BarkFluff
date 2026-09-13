@@ -1236,8 +1236,6 @@
     <string name="storage_cache_cleared">缓存已清除</string>
     <string name="notification_unknown_sender">未知发件人</string>
     <string name="notification_sender_in_chat">%1$s 在 %2$s 中</string>
-    <string name="select_server_navigator_connection_failed">无法连接到导航服务</string>
-    <string name="select_server_list_load_failed">无法加载节点列表</string>
     <string name="select_server_connection_failed">无法连接到节点</string>
     <string name="select_server_connection_timeout">节点未及时响应。请检查地址后重试。</string>
     <string name="select_server_info_failed">无法获取节点信息</string>

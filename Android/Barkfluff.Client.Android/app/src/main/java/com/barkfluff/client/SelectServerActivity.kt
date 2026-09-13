@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
+import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.ServerAdapter
@@ -31,8 +32,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URI
 import java.text.DateFormat
 import java.util.Date
@@ -52,6 +54,9 @@ class SelectServerActivity : AppCompatActivity() {
         private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
         private const val SERVER_LIST_TIMEOUT_MS = 10_000L
         private const val SERVER_CONNECTION_TIMEOUT_MS = 10_000L
+        private const val SERVER_PROBE_TIMEOUT_MS = 3_000L
+        private const val CHEVRON_SPRING_STIFFNESS = 1_400f
+        private const val CHEVRON_SPRING_DAMPING = 0.9f
     }
 
     private lateinit var binding: ActivitySelectServerBinding
@@ -64,15 +69,10 @@ class SelectServerActivity : AppCompatActivity() {
     private lateinit var certificatePreflight: TlsServerCertificatePreflight
 
     private var isConnecting = false
-    private val pingCache = mutableMapOf<String, Int?>()
+    private val responseCacheMs = mutableMapOf<String, Int>()
+    private val beaconOperationMutex = Mutex()
+    private var customServerChevronAnimation: SpringAnimation? = null
     private var currentServerListState = ServerListState.LOADING
-
-    private enum class ServerListState {
-        LOADING,
-        CONTENT,
-        EMPTY,
-        ERROR,
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -109,9 +109,10 @@ class SelectServerActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         serverAdapter = ServerAdapter(
             coroutineScope = lifecycleScope,
-            measurePing = { ip ->
-                if (pingCache.containsKey(ip)) pingCache[ip]
-                else measureServerPingMs(ip).also { pingCache[ip] = it }
+            measureResponseMs = { address ->
+                responseCacheMs[address] ?: measureServerResponseMs(address).also { response ->
+                    response?.let { responseCacheMs[address] = it }
+                }
             },
             onServerClick = { server -> onServerSelected(server) }
         )
@@ -122,10 +123,12 @@ class SelectServerActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
-        val start = System.currentTimeMillis()
-        if (serverDiscoveryGateway.probe(address).isFailure) return@withTimeoutOrNull null
-        (System.currentTimeMillis() - start).toInt()
+    private suspend fun measureServerResponseMs(address: String): Int? = beaconOperationMutex.withLock {
+        ServerSelectionPolicy.withTimeout(SERVER_PROBE_TIMEOUT_MS) {
+            val start = System.currentTimeMillis()
+            if (serverDiscoveryGateway.probe(address).isFailure) return@withTimeout null
+            (System.currentTimeMillis() - start).toInt()
+        }
     }
 
     private fun setupClickListeners() {
@@ -165,10 +168,16 @@ class SelectServerActivity : AppCompatActivity() {
         val expanded = binding.customServerPanel.visibility != View.VISIBLE
         binding.customServerPanel.visibility = if (expanded) View.VISIBLE else View.GONE
         updateCustomServerAccessibility(expanded)
-        binding.customServerChevron.animate()
-            .rotation(if (expanded) 180f else 0f)
-            .setDuration(180L)
-            .start()
+        customServerChevronAnimation?.cancel()
+        customServerChevronAnimation = SpringAnimation(
+            binding.customServerChevron,
+            SpringAnimation.ROTATION,
+            if (expanded) 180f else 0f,
+        ).apply {
+            spring.stiffness = CHEVRON_SPRING_STIFFNESS
+            spring.dampingRatio = CHEVRON_SPRING_DAMPING
+            start()
+        }
     }
 
     private fun updateCustomServerAccessibility(expanded: Boolean) {
@@ -213,58 +222,59 @@ class SelectServerActivity : AppCompatActivity() {
 
     private fun loadServerList() {
         renderServerListState(ServerListState.LOADING)
-        pingCache.clear()
+        responseCacheMs.clear()
 
         lifecycleScope.launch {
             try {
                 // Создаем Navigator клиент
                 val createResult = serverDiscoveryGateway.createNavigator()
                 if (createResult.isFailure) {
-                    serverAdapter.submitList(emptyList())
-                    renderServerListState(ServerListState.ERROR)
-                    Log.e(
-                        TAG,
+                    showServerListError(
                         "Ошибка подключения к каталогу Navigator",
-                        createResult.exceptionOrNull()
+                        createResult.exceptionOrNull(),
                     )
                     return@launch
                 }
 
                 // Получаем список серверов. Каталог не должен оставлять экран в вечном loading.
-                val result = withTimeoutOrNull(SERVER_LIST_TIMEOUT_MS) {
+                val result = ServerSelectionPolicy.withTimeout(SERVER_LIST_TIMEOUT_MS) {
                     serverDiscoveryGateway.listServers()
                 }
                 if (result == null) {
-                    serverAdapter.submitList(emptyList())
-                    renderServerListState(ServerListState.ERROR)
-                    Log.e(TAG, "Таймаут загрузки списка серверов")
+                    showServerListError("Таймаут загрузки списка серверов")
                     return@launch
                 }
 
-                if (result.isSuccess) {
-                    val servers = result.getOrNull()
-                    if (servers.isNullOrEmpty()) {
-                        serverAdapter.submitList(emptyList())
-                        renderServerListState(ServerListState.EMPTY)
-                    } else {
-                        serverAdapter.submitList(servers)
-                        renderServerListState(ServerListState.CONTENT)
-                        Log.d(TAG, "Загружено ${servers.size} серверов")
-                    }
+                val state = ServerSelectionPolicy.listState(result)
+                if (state == ServerListState.CONTENT) {
+                    val servers = result.getOrNull().orEmpty()
+                    serverAdapter.submitList(servers)
+                    renderServerListState(state)
+                    Log.d(TAG, "Загружено ${servers.size} серверов")
                 } else {
                     serverAdapter.submitList(emptyList())
-                    renderServerListState(ServerListState.ERROR)
-                    Log.e(
-                        TAG,
-                        "Ошибка загрузки списка серверов",
-                        result.exceptionOrNull()
-                    )
+                    renderServerListState(state)
+                    if (state == ServerListState.ERROR) {
+                        Log.e(
+                            TAG,
+                            "Ошибка загрузки списка серверов",
+                            result.exceptionOrNull(),
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                serverAdapter.submitList(emptyList())
-                renderServerListState(ServerListState.ERROR)
-                Log.e(TAG, "Ошибка загрузки списка серверов", e)
+                showServerListError("Ошибка загрузки списка серверов", e)
             }
+        }
+    }
+
+    private fun showServerListError(message: String, error: Throwable? = null) {
+        serverAdapter.submitList(emptyList())
+        renderServerListState(ServerListState.ERROR)
+        if (error == null) {
+            Log.e(TAG, message)
+        } else {
+            Log.e(TAG, message, error)
         }
     }
 
@@ -280,11 +290,13 @@ class SelectServerActivity : AppCompatActivity() {
             return
         }
 
+        cancelVisibleServerProbes()
         isConnecting = true
         binding.connectButton.isEnabled = false
         showLoading(true)
 
         lifecycleScope.launch {
+            beaconOperationMutex.lock()
             try {
                 // Создаем Beacon клиент
                 val createResult = serverDiscoveryGateway.createBeacon(address)
@@ -357,6 +369,8 @@ class SelectServerActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка подключения к серверу", e)
                 showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
                 resetConnectionState()
+            } finally {
+                beaconOperationMutex.unlock()
             }
         }
     }
@@ -367,12 +381,19 @@ class SelectServerActivity : AppCompatActivity() {
         showLoading(false)
     }
 
-    private fun normalizeServerAddress(input: String): String? = runCatching {
-        serverDiscoveryGateway.normalizeEndpoint(input)
-    }.getOrNull()
+    private fun cancelVisibleServerProbes() {
+        repeat(binding.serverListRecyclerView.childCount) { index ->
+            val child = binding.serverListRecyclerView.getChildAt(index)
+            (binding.serverListRecyclerView.getChildViewHolder(child) as? ServerAdapter.ServerViewHolder)
+                ?.cancelPendingProbe()
+        }
+    }
+
+    private fun normalizeServerAddress(input: String): String? =
+        ServerSelectionPolicy.normalizeEndpoint(input, serverDiscoveryGateway::normalizeEndpoint)
 
     private suspend fun requestServerInfoWithTimeout(): Result<ServerInfo>? =
-        withTimeoutOrNull(SERVER_CONNECTION_TIMEOUT_MS) {
+        ServerSelectionPolicy.withTimeout(SERVER_CONNECTION_TIMEOUT_MS) {
             serverDiscoveryGateway.serverInfo()
         }
 
