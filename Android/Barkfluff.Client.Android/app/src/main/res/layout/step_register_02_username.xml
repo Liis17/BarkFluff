@@ -55,7 +55,7 @@
                 android:id="@+id/usernameEditText"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:autofillHints="username"
+                android:autofillHints="newUsername"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
                 android:background="@null"

@@ -575,11 +575,9 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep4() {
         val b = step4Binding ?: return
-        listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
-            .forEach { setupTextField(it) }
-        otpHelper = OtpCellsHelper(
-            listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
-        ) { confirmAccountAndProceed() }
+        val otpCells = listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
+        otpCells.forEach { setupTextField(it, Gravity.CENTER) }
+        otpHelper = OtpCellsHelper(otpCells) { confirmAccountAndProceed() }
         otpHelper?.setup()
         otpHelper?.focusFirst()
     }
@@ -840,7 +838,7 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep8() {
         val b = step8Binding ?: return
-        setupTextField(b.otpCodeEditText)
+        setupTextField(b.otpCodeEditText, Gravity.CENTER)
 
         // Загружаем 2FA код при открытии шага
         setup2fa()
