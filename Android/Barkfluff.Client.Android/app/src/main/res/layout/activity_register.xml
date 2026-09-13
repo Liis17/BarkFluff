@@ -172,11 +172,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/register_cta_height"
                 android:text="@string/btn_next"
-                app:icon="@drawable/ic_arrow_forward"
-                app:iconGravity="textEnd"
-                app:iconPadding="10dp"
-                app:iconSize="24dp"
-                app:iconTint="?attr/colorOnPrimary" />
+                app:icon="@drawable/ic_arrow_forward" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

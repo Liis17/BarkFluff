@@ -359,19 +359,48 @@ class RegisterActivity : AppCompatActivity() {
     private fun setupWindowInsets() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
+        val headerBasePaddingLeft = binding.headerPanel.paddingLeft
         val headerBasePaddingTop = binding.headerPanel.paddingTop
+        val headerBasePaddingRight = binding.headerPanel.paddingRight
+        val contentBasePaddingLeft = binding.contentFrame.paddingLeft
+        val contentBasePaddingRight = binding.contentFrame.paddingRight
+        val buttonBasePaddingLeft = binding.buttonPanel.paddingLeft
         val buttonBasePaddingBottom = binding.buttonPanel.paddingBottom
+        val buttonBasePaddingRight = binding.buttonPanel.paddingRight
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.headerPanel) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(top = headerBasePaddingTop + systemBars.top)
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.updatePadding(
+                left = headerBasePaddingLeft + safeArea.left,
+                top = headerBasePaddingTop + safeArea.top,
+                right = headerBasePaddingRight + safeArea.right
+            )
+            insets
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.contentFrame) { view, insets ->
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.updatePadding(
+                left = contentBasePaddingLeft + safeArea.left,
+                right = contentBasePaddingRight + safeArea.right
+            )
             insets
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.buttonPanel) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
-            view.updatePadding(bottom = buttonBasePaddingBottom + maxOf(systemBars.bottom, ime.bottom))
+            view.updatePadding(
+                left = buttonBasePaddingLeft + safeArea.left,
+                right = buttonBasePaddingRight + safeArea.right,
+                bottom = buttonBasePaddingBottom + maxOf(safeArea.bottom, ime.bottom)
+            )
             insets
         }
 
@@ -436,18 +465,18 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return false
         if (firstName.isEmpty()) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_required_error)
-            b.firstNameValidationText.setTextColor(getColor(R.color.error))
+            b.firstNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.firstNameValidationText.visibility = View.VISIBLE
             return false
         }
         return if (firstName.length < MIN_NAME_LENGTH) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_min_length, MIN_NAME_LENGTH)
-            b.firstNameValidationText.setTextColor(getColor(R.color.error))
+            b.firstNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else if (firstName.length > MAX_NAME_LENGTH) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
-            b.firstNameValidationText.setTextColor(getColor(R.color.error))
+            b.firstNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else {
@@ -462,7 +491,7 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return false
         return if (lastName.isNotEmpty() && lastName.length > MAX_NAME_LENGTH) {
             b.lastNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
-            b.lastNameValidationText.setTextColor(getColor(R.color.error))
+            b.lastNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.lastNameValidationText.visibility = View.VISIBLE
             false
         } else {
