@@ -75,7 +75,7 @@
     <string name="self_hosted_title">Your own server</string>
     <string name="self_hosted_description">Deploy your own BarkFluff server</string>
     <string name="btn_learn_more_server">Learn more</string>
-    <string name="server_help_hint">Not sure what to pick? Check our node setup guide.</string>
+    <string name="server_help_hint">Public nodes are checked before connecting. For your own node, enter its Beacon address.</string>
     <string name="server_item_name_placeholder">Node name</string>
     <string name="server_item_description_placeholder">Node description</string>
 
@@ -1246,6 +1246,7 @@
     <string name="select_server_navigator_connection_failed">Couldn\'t connect to the navigator</string>
     <string name="select_server_list_load_failed">Couldn\'t load the node list</string>
     <string name="select_server_connection_failed">Couldn\'t connect to the node</string>
+    <string name="select_server_connection_timeout">The node did not respond in time. Check the address and try again.</string>
     <string name="select_server_info_failed">Couldn\'t get node information</string>
     <string name="media_send_title">Sending media to “%1$s”</string>
     <string name="media_send_preparing">Preparing %1$s…</string>

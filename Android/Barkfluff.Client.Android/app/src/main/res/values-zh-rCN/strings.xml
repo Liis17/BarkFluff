@@ -75,7 +75,7 @@
     <string name="self_hosted_title">你自己的服务器</string>
     <string name="self_hosted_description">部署你自己的 BarkFluff 服务器</string>
     <string name="btn_learn_more_server">了解更多</string>
-    <string name="server_help_hint">不知道该选哪个？请查看我们的节点配置指南。</string>
+    <string name="server_help_hint">公共节点会在连接前进行检查。连接自己的节点时，请输入 Beacon 地址。</string>
     <string name="server_item_name_placeholder">节点名称</string>
     <string name="server_item_description_placeholder">节点描述</string>
 
@@ -1239,6 +1239,7 @@
     <string name="select_server_navigator_connection_failed">无法连接到导航服务</string>
     <string name="select_server_list_load_failed">无法加载节点列表</string>
     <string name="select_server_connection_failed">无法连接到节点</string>
+    <string name="select_server_connection_timeout">节点未及时响应。请检查地址后重试。</string>
     <string name="select_server_info_failed">无法获取节点信息</string>
     <string name="media_send_title">正在向“%1$s”发送媒体</string>
     <string name="media_send_preparing">正在准备 %1$s…</string>

@@ -76,7 +76,7 @@
     <string name="self_hosted_title">Свой сервер</string>
     <string name="self_hosted_description">Разверните собственный сервер BarkFluff</string>
     <string name="btn_learn_more_server">Узнать больше</string>
-    <string name="server_help_hint">Не знаете, что выбрать? Ознакомьтесь с руководством по настройке ноды.</string>
+    <string name="server_help_hint">Публичные ноды проверяются перед подключением. Для своей ноды укажите адрес Beacon.</string>
     <string name="server_item_name_placeholder">Название ноды</string>
     <string name="server_item_description_placeholder">Описание ноды</string>
     <string name="server_item_handle" translatable="false">\@%1$s</string>
@@ -1287,6 +1287,7 @@
     <string name="select_server_navigator_connection_failed">Не удалось создать соединение с навигатором</string>
     <string name="select_server_list_load_failed">Не удалось загрузить список нод</string>
     <string name="select_server_connection_failed">Не удалось подключиться к ноде</string>
+    <string name="select_server_connection_timeout">Нода не ответила вовремя. Проверьте адрес и попробуйте ещё раз.</string>
     <string name="select_server_info_failed">Не удалось получить информацию о ноде</string>
     <string name="media_send_title">Отправка медиа в «%1$s»</string>
     <string name="media_send_preparing">Подготовка %1$s…</string>
