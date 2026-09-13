@@ -7,6 +7,7 @@ import android.os.CountDownTimer
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
@@ -92,6 +93,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         }
 
         setupClickListeners()
+        setupInputFields()
         setupOtpBoxes()
         setupPasswordWatchers()
         updateProgressUi(1)
@@ -178,6 +180,17 @@ class ResetPasswordActivity : AppCompatActivity() {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
+    }
+
+    private fun setupInputFields() {
+        listOf(
+            binding.emailEditText,
+            binding.newPasswordEditText,
+            binding.confirmPasswordEditText
+        ).forEach { field ->
+            field.gravity = Gravity.CENTER_VERTICAL
+            field.setPaddingRelative(field.paddingStart, 0, field.paddingEnd, 0)
+        }
     }
 
     private fun setupOtpBoxes() {
@@ -495,10 +508,16 @@ class ResetPasswordActivity : AppCompatActivity() {
         binding.stepNumberText.text = String.format("%02d", step)
         binding.headerIcon.setImageResource(
             when (step) {
-                1 -> R.drawable.ic_lock_reset
+                1 -> R.drawable.ic_lock
                 2 -> R.drawable.ic_mark_email_read
                 else -> R.drawable.ic_password_dots
             }
+        )
+        binding.headerIcon.imageTintList = ColorStateList.valueOf(
+            MaterialColors.getColor(
+                binding.headerIconCard,
+                com.google.android.material.R.attr.colorOnPrimary
+            )
         )
 
         val activeColor = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
