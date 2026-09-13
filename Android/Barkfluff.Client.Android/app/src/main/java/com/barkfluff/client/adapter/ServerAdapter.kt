@@ -10,12 +10,15 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
 import com.barkfluff.client.data.ServerDataElement
-import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
+private const val RESPONSE_REFRESH_INTERVAL_MS = 2_000L
 
 /**
  * Адаптер для списка серверов
@@ -26,6 +29,9 @@ class ServerAdapter(
     private val onServerClick: (ServerDataElement) -> Unit
 ) : ListAdapter<ServerDataElement, ServerAdapter.ServerViewHolder>(ServerDiffCallback()) {
 
+    private val attachedHolders = linkedSetOf<ServerViewHolder>()
+    private var probingEnabled = true
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ServerViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_server, parent, false)
@@ -34,11 +40,40 @@ class ServerAdapter(
 
     override fun onBindViewHolder(holder: ServerViewHolder, position: Int) {
         holder.bind(getItem(position), coroutineScope, measureResponseMs)
+        if (probingEnabled && holder.itemView.isAttachedToWindow) {
+            holder.startProbe()
+        }
+    }
+
+    override fun onViewAttachedToWindow(holder: ServerViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        attachedHolders += holder
+        if (probingEnabled) {
+            holder.startProbe()
+        }
+    }
+
+    override fun onViewDetachedFromWindow(holder: ServerViewHolder) {
+        holder.cancelPendingProbe()
+        attachedHolders -= holder
+        super.onViewDetachedFromWindow(holder)
     }
 
     override fun onViewRecycled(holder: ServerViewHolder) {
         super.onViewRecycled(holder)
-        holder.cancelPendingProbe()
+        attachedHolders -= holder
+        holder.clearProbeBinding()
+    }
+
+    fun setProbingEnabled(enabled: Boolean) {
+        probingEnabled = enabled
+        attachedHolders.toList().forEach { holder ->
+            if (enabled) {
+                holder.startProbe()
+            } else {
+                holder.cancelPendingProbe()
+            }
+        }
     }
 
     class ServerViewHolder(
@@ -46,7 +81,6 @@ class ServerAdapter(
         private val onServerClick: (ServerDataElement) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
-        private val serverIconTile: MaterialCardView = itemView.findViewById(R.id.serverIconTile)
         private val title: TextView = itemView.findViewById(R.id.serverTitle)
         private val description: TextView = itemView.findViewById(R.id.serverDescription)
         private val handle: TextView = itemView.findViewById(R.id.serverHandle)
@@ -56,6 +90,9 @@ class ServerAdapter(
         private val connectCta = itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.serverConnectCta)
 
         private var probeJob: Job? = null
+        private var boundAddress: String? = null
+        private var boundCoroutineScope: CoroutineScope? = null
+        private var probeMeasureResponseMs: (suspend (String) -> Int?)? = null
 
         private enum class ServerStatus {
             CHECKING,
@@ -68,9 +105,20 @@ class ServerAdapter(
             probeJob = null
         }
 
+        fun clearProbeBinding() {
+            cancelPendingProbe()
+            boundAddress = null
+            boundCoroutineScope = null
+            probeMeasureResponseMs = null
+            itemView.tag = null
+        }
+
         fun bind(server: ServerDataElement, coroutineScope: CoroutineScope, measureResponseMs: suspend (String) -> Int?) {
             cancelPendingProbe()
             itemView.tag = server.ip
+            boundAddress = server.ip
+            boundCoroutineScope = coroutineScope
+            probeMeasureResponseMs = measureResponseMs
             title.text = server.title
             description.text = server.description
 
@@ -106,10 +154,22 @@ class ServerAdapter(
                 onServerClick(server)
             }
 
-            // Probe: защита от гонки при recycle через itemView.tag sentinel.
-            probeJob = coroutineScope.launch {
-                val ms = measureResponseMs(server.ip)
-                if (itemView.tag == server.ip) {
+        }
+
+        fun startProbe() {
+            if (probeJob?.isActive == true) return
+
+            val address = boundAddress ?: return
+            val scope = boundCoroutineScope ?: return
+            val measureResponseMs = probeMeasureResponseMs ?: return
+
+            // Пробуем сразу, затем обновляем отклик после каждой завершённой проверки.
+            // Это не допускает наложения запросов даже при медленном Beacon.
+            probeJob = scope.launch {
+                while (isActive && itemView.tag == address) {
+                    val ms = measureResponseMs(address)
+                    if (!isActive || itemView.tag != address) break
+
                     if (ms != null) {
                         setStatus(ServerStatus.ONLINE)
                         chipResponse.text = itemView.context.getString(R.string.server_response_ms, ms)
@@ -118,6 +178,8 @@ class ServerAdapter(
                         setStatus(ServerStatus.UNAVAILABLE)
                         chipResponse.visibility = View.GONE
                     }
+
+                    delay(RESPONSE_REFRESH_INTERVAL_MS)
                 }
             }
         }
