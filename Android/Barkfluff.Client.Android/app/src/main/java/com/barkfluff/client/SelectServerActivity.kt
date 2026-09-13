@@ -69,7 +69,6 @@ class SelectServerActivity : AppCompatActivity() {
     private lateinit var certificatePreflight: TlsServerCertificatePreflight
 
     private var isConnecting = false
-    private val responseCacheMs = mutableMapOf<String, Int>()
     private val beaconOperationMutex = Mutex()
     private var customServerChevronAnimation: SpringAnimation? = null
     private var currentServerListState = ServerListState.LOADING
@@ -106,14 +105,24 @@ class SelectServerActivity : AppCompatActivity() {
             }
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (::serverAdapter.isInitialized && !isConnecting) {
+            serverAdapter.setProbingEnabled(true)
+        }
+    }
+
+    override fun onStop() {
+        if (::serverAdapter.isInitialized) {
+            serverAdapter.setProbingEnabled(false)
+        }
+        super.onStop()
+    }
+
     private fun setupRecyclerView() {
         serverAdapter = ServerAdapter(
             coroutineScope = lifecycleScope,
-            measureResponseMs = { address ->
-                responseCacheMs[address] ?: measureServerResponseMs(address).also { response ->
-                    response?.let { responseCacheMs[address] = it }
-                }
-            },
+            measureResponseMs = ::measureServerResponseMs,
             onServerClick = { server -> onServerSelected(server) }
         )
 
@@ -222,7 +231,6 @@ class SelectServerActivity : AppCompatActivity() {
 
     private fun loadServerList() {
         renderServerListState(ServerListState.LOADING)
-        responseCacheMs.clear()
 
         lifecycleScope.launch {
             try {
@@ -371,6 +379,9 @@ class SelectServerActivity : AppCompatActivity() {
                 resetConnectionState()
             } finally {
                 beaconOperationMutex.unlock()
+                if (!isFinishing && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                    serverAdapter.setProbingEnabled(true)
+                }
             }
         }
     }
@@ -382,11 +393,7 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun cancelVisibleServerProbes() {
-        repeat(binding.serverListRecyclerView.childCount) { index ->
-            val child = binding.serverListRecyclerView.getChildAt(index)
-            (binding.serverListRecyclerView.getChildViewHolder(child) as? ServerAdapter.ServerViewHolder)
-                ?.cancelPendingProbe()
-        }
+        serverAdapter.setProbingEnabled(false)
     }
 
     private fun normalizeServerAddress(input: String): String? =
