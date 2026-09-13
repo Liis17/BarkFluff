@@ -44,6 +44,7 @@
     <string name="btn_change_server">更改节点</string>
     <string name="btn_create_account">创建账户</string>
     <string name="login_first_time_here">第一次来？</string>
+    <string name="action_retry">重试</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">双重验证</string>

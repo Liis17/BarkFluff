@@ -7,8 +7,11 @@ import android.text.InputFilter
 import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
+import android.view.Gravity
 import android.view.View
 import android.widget.EditText
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -98,20 +101,21 @@ class LoginActivity : AppCompatActivity() {
 
         initIdentityClient()
         setupClickListeners()
+        setupLoginFields()
         setupOtpBoxes()
     }
 
     private fun initIdentityClient() {
         val identityAddress = globalParam.socketIdentity
         if (identityAddress.isBlank()) {
-            showError(getString(R.string.login_identity_address_missing))
+            showIdentityError(getString(R.string.login_identity_address_missing))
             return
         }
 
         // Для авторизации не используем interceptor, так как токена еще нет
         val result = authGateway.createIdentity(identityAddress)
         if (result.isFailure) {
-            showError(getString(R.string.login_identity_connection_failed))
+            showIdentityError(getString(R.string.login_identity_connection_failed))
             Log.e(TAG, "Failed to create identity client", result.exceptionOrNull())
         }
     }
@@ -130,6 +134,11 @@ class LoginActivity : AppCompatActivity() {
             navigateToSelectServer()
         }
 
+        binding.retryIdentityButton.setOnClickListener {
+            hideError()
+            initIdentityClient()
+        }
+
         binding.registerButton.setOnClickListener {
             navigateToRegister()
         }
@@ -138,6 +147,57 @@ class LoginActivity : AppCompatActivity() {
             val intent = Intent(this, ResetPasswordActivity::class.java)
             startActivity(intent)
         }
+    }
+
+    private fun setupLoginFields() {
+        binding.usernameEditText.apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPaddingRelative(paddingStart, 0, paddingEnd, 0)
+        }
+        binding.passwordEditText.apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPaddingRelative(paddingStart, 0, paddingEnd, 0)
+        }
+
+        binding.usernameEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                binding.usernameInputLayout.error = null
+                hideError()
+            }
+        })
+
+        binding.passwordEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                binding.passwordInputLayout.error = null
+                hideError()
+            }
+        })
+
+        binding.usernameEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT || isEnterKey(event)) {
+                binding.passwordEditText.requestFocus()
+                true
+            } else {
+                false
+            }
+        }
+
+        binding.passwordEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_DONE || isEnterKey(event)) {
+                performLogin()
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun isEnterKey(event: KeyEvent?): Boolean {
+        return event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN
     }
 
     private fun setupOtpBoxes() {
@@ -202,11 +262,15 @@ class LoginActivity : AppCompatActivity() {
     private fun performLogin() {
         hideError()
 
+        if (isLoading) return
+
         val loginInput = binding.usernameEditText.text.toString().trim()
         val password = binding.passwordEditText.text.toString()
 
-        // Validate
-        if (!validateLogin(loginInput) || !validatePassword(password)) {
+        val loginValid = validateLogin(loginInput)
+        val passwordValid = validatePassword(password)
+        if (!loginValid || !passwordValid) {
+            focusFirstInvalidField(loginValid, passwordValid)
             return
         }
 
@@ -217,6 +281,7 @@ class LoginActivity : AppCompatActivity() {
         val email = if (isEmail) loginInput else null
         val username = if (isEmail) null else loginInput
 
+        hideKeyboard()
         setLoadingState(true)
 
         lifecycleScope.launch {
@@ -233,6 +298,8 @@ class LoginActivity : AppCompatActivity() {
     private fun performOtpLogin() {
         hideError()
 
+        if (isLoading) return
+
         val otpCode = getOtpCode()
         if (otpCode.length != 6) {
             showError(getString(R.string.login_otp_invalid_length))
@@ -243,6 +310,7 @@ class LoginActivity : AppCompatActivity() {
         val email = if (isEmail) savedLogin else null
         val username = if (isEmail) null else savedLogin
 
+        hideKeyboard()
         setLoadingState(true)
 
         lifecycleScope.launch {
@@ -257,8 +325,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun handleAuthResult(result: AuthenticationResult) {
-        setLoadingState(false)
-
         when (result) {
             is AuthenticationResult.Success -> {
                 lifecycleScope.launch {
@@ -312,9 +378,11 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
             AuthenticationResult.OtpRequired -> {
+                setLoadingState(false)
                 showOtpMode()
             }
             is AuthenticationResult.Error -> {
+                setLoadingState(false)
                 showError(result.message)
             }
         }
@@ -368,6 +436,7 @@ class LoginActivity : AppCompatActivity() {
     private fun setLoadingState(loading: Boolean) {
         isLoading = loading
         binding.loginButton.isEnabled = !loading
+        binding.retryIdentityButton.isEnabled = !loading
         binding.loginButton.text = if (loading) "" else getString(
             if (isOtpMode) R.string.btn_confirm else R.string.btn_login
         )
@@ -375,12 +444,39 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
-        binding.errorText.text = message
         binding.errorText.visibility = View.VISIBLE
+        binding.errorText.text = message
+        binding.retryIdentityButton.visibility = View.GONE
+    }
+
+    private fun showIdentityError(message: String) {
+        showError(message)
+        binding.retryIdentityButton.visibility = View.VISIBLE
     }
 
     private fun hideError() {
         binding.errorText.visibility = View.GONE
+        binding.retryIdentityButton.visibility = View.GONE
+    }
+
+    private fun focusFirstInvalidField(loginValid: Boolean, passwordValid: Boolean) {
+        val target = when {
+            !loginValid -> binding.usernameEditText
+            !passwordValid -> binding.passwordEditText
+            else -> return
+        }
+        target.requestFocus()
+        target.post {
+            val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.showSoftInput(target, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun hideKeyboard() {
+        currentFocus?.windowToken?.let { token ->
+            val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.hideSoftInputFromWindow(token, 0)
+        }
     }
 
     private fun navigateToChats() {

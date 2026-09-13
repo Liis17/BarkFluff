@@ -44,6 +44,7 @@
     <string name="btn_change_server">Изменить ноду</string>
     <string name="btn_create_account">Создать аккаунт</string>
     <string name="login_first_time_here">Впервые здесь?</string>
+    <string name="action_retry">Повторить</string>
 
     <!-- 2FA / OTP -->
     <string name="otp_title">Двухфакторная аутентификация</string>
