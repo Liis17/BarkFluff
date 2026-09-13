@@ -6,9 +6,10 @@ import android.text.Editable
 import android.text.InputFilter
 import android.text.TextWatcher
 import android.util.Log
-import android.view.KeyEvent
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.EditText
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -45,6 +46,7 @@ class LoginActivity : AppCompatActivity() {
         private val USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9._]{3,}$")
         private val EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
         private const val MIN_PASSWORD_LENGTH = 6
+        private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
 
         /** Отступы hero-блока; складываются с системными инсетами. */
         private const val LOGIN_TOP_PADDING_DP = 20
@@ -76,7 +78,9 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        applyAdaptiveContentWidth()
         globalParam = GlobalParam(this)
+        renderNodeSummary()
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
@@ -103,6 +107,45 @@ class LoginActivity : AppCompatActivity() {
         setupClickListeners()
         setupLoginFields()
         setupOtpBoxes()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::globalParam.isInitialized) {
+            renderNodeSummary()
+        }
+    }
+
+    /** На широких окнах ограничиваем форму 600dp и сохраняем читаемую длину строки. */
+    private fun applyAdaptiveContentWidth() {
+        if (resources.configuration.screenWidthDp < MEDIUM_WINDOW_MIN_WIDTH_DP) return
+
+        val sideMarginPx = resources.getDimensionPixelSize(R.dimen.server_medium_window_margin)
+        val maxContentWidthPx = resources.getDimensionPixelSize(R.dimen.server_content_max_width)
+        val availableWidthPx = resources.configuration.screenWidthDp.dpToPx()
+        val contentWidthPx = minOf(maxContentWidthPx, availableWidthPx - sideMarginPx * 2)
+        if (contentWidthPx <= 0) return
+
+        val layoutParams = binding.contentPanel.layoutParams as? FrameLayout.LayoutParams
+            ?: return
+        layoutParams.width = contentWidthPx
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL
+        binding.contentPanel.layoutParams = layoutParams
+    }
+
+    private fun renderNodeSummary() {
+        val nodeName = globalParam.serverName.trim()
+        val nodeAddress = globalParam.socketBeacon.ifBlank { globalParam.socketIdentity }.trim()
+
+        binding.nodeSummaryText.text = nodeName.ifBlank {
+            nodeAddress.ifBlank { getString(R.string.login_node_not_selected) }
+        }
+        if (nodeName.isNotBlank() && nodeAddress.isNotBlank()) {
+            binding.nodeSummaryAddress.text = nodeAddress
+            binding.nodeSummaryAddress.visibility = View.VISIBLE
+        } else {
+            binding.nodeSummaryAddress.visibility = View.GONE
+        }
     }
 
     private fun initIdentityClient() {

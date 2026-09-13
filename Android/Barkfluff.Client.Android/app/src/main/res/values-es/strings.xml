@@ -42,8 +42,11 @@
     <string name="forgot_password">¿Olvidaste tu contraseña?</string>
     <string name="btn_login">Iniciar sesión</string>
     <string name="btn_change_server">Cambiar de nodo</string>
+    <string name="action_change">Cambiar</string>
     <string name="btn_create_account">Crear cuenta</string>
     <string name="login_first_time_here">¿Primera vez aquí?</string>
+    <string name="login_node_label">Nodo actual</string>
+    <string name="login_node_not_selected">No hay nodo seleccionado</string>
     <string name="action_retry">Reintentar</string>
 
     <!-- 2FA / OTP -->

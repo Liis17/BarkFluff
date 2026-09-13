@@ -37,25 +37,24 @@
             android:layout_height="wrap_content"
             android:gravity="start"
             android:orientation="vertical"
-            android:paddingHorizontal="28dp">
+            android:paddingHorizontal="24dp">
 
-            <!-- Logo 72dp по макету 3c -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/logoCard"
+            <!-- Динамический logo-tile: цвет контейнера и glyph следуют Material You. -->
+            <FrameLayout
                 android:layout_width="72dp"
                 android:layout_height="72dp"
-                app:cardBackgroundColor="@android:color/transparent"
-                app:cardCornerRadius="@dimen/shape_corner_extra_large"
-                app:cardElevation="6dp">
+                android:background="@drawable/bg_login_logo"
+                android:clipToOutline="true">
 
                 <ImageView
                     android:id="@+id/logoImage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:contentDescription="@string/app_name"
-                    android:src="@mipmap/ic_launcher" />
+                    android:src="@drawable/ic_launcher_foreground"
+                    app:tint="?attr/colorPrimary" />
 
-            </com.google.android.material.card.MaterialCardView>
+            </FrameLayout>
 
             <!-- Hero-заголовок, left-aligned -->
             <TextView
@@ -63,6 +62,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="22dp"
+                android:accessibilityHeading="true"
                 android:text="@string/login_welcome"
                 android:textAppearance="@style/TextAppearance.Barkfluff.Onboarding.Hero" />
 
@@ -72,15 +72,103 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:text="@string/login_subtitle"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <!-- Контекст выбранной ноды остаётся рядом с формой и не теряется после перехода. -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/nodeSummaryCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="@dimen/shape_corner_medium"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <FrameLayout
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_circle_primary_container"
+                        android:importantForAccessibility="no">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:contentDescription="@null"
+                            android:padding="10dp"
+                            android:src="@drawable/ic_storage"
+                            app:tint="?attr/colorOnPrimaryContainer" />
+
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/login_node_label"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+
+                        <TextView
+                            android:id="@+id/nodeSummaryText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/nodeSummaryAddress"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/changeServerLink"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:minWidth="0dp"
+                        android:text="@string/action_change"
+                        android:textAllCaps="false"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorPrimary" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Поля входа -->
             <LinearLayout
                 android:id="@+id/loginFieldsGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="26dp"
+                android:layout_marginTop="24dp"
                 android:orientation="vertical">
 
                 <TextView
@@ -99,10 +187,10 @@
                     android:layout_height="wrap_content"
                     android:textColorHint="?attr/colorOnSurfaceVariant"
                     app:boxBackgroundColor="?attr/colorSurfaceContainerHighest"
-                    app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
+                    app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large"
+                    app:boxCornerRadiusBottomStart="@dimen/shape_corner_large"
+                    app:boxCornerRadiusTopEnd="@dimen/shape_corner_large"
+                    app:boxCornerRadiusTopStart="@dimen/shape_corner_large"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="2dp"
                     app:errorEnabled="true"
@@ -144,10 +232,10 @@
                     android:layout_height="wrap_content"
                     android:textColorHint="?attr/colorOnSurfaceVariant"
                     app:boxBackgroundColor="?attr/colorSurfaceContainerHighest"
-                    app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusBottomStart="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusTopEnd="@dimen/shape_corner_large_increased"
-                    app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
+                    app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large"
+                    app:boxCornerRadiusBottomStart="@dimen/shape_corner_large"
+                    app:boxCornerRadiusTopEnd="@dimen/shape_corner_large"
+                    app:boxCornerRadiusTopStart="@dimen/shape_corner_large"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="2dp"
                     app:endIconMode="password_toggle"
@@ -371,7 +459,7 @@
                 android:textColor="?attr/colorPrimary"
                 android:visibility="gone" />
 
-            <!-- CTA «Войти» — M3 Expressive size L -->
+            <!-- CTA «Войти» — M3 Expressive size M -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -405,13 +493,12 @@
 
             </FrameLayout>
 
-            <!-- Распорка: нижний блок прижимается к низу экрана -->
+            <!-- Фиксированный ритм отделяет CTA от вторичного действия без пустого экрана. -->
             <View
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
+                android:layout_height="@dimen/login_footer_gap"
                 android:importantForAccessibility="no"
-                android:minHeight="24dp" />
+                />
 
             <!-- «Впервые здесь? Создать аккаунт» -->
             <LinearLayout
@@ -441,17 +528,6 @@
                     android:textStyle="bold" />
 
             </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/changeServerLink"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:text="@string/btn_change_server"
-                android:textAllCaps="false"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
 
         </LinearLayout>
 
