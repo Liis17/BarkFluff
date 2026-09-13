@@ -11,8 +11,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -346,6 +348,8 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return
         b.firstNameEditText.setText(firstName)
         b.lastNameEditText.setText(lastName)
+        setupTextField(b.firstNameEditText)
+        setupTextField(b.lastNameEditText)
         b.firstNameCounterText.text = getString(R.string.register_bio_counter, firstName.length, MAX_NAME_LENGTH)
         b.lastNameCounterText.text = getString(R.string.register_bio_counter, lastName.length, MAX_NAME_LENGTH)
 
@@ -398,6 +402,7 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep2() {
         val b = step2Binding ?: return
+        setupTextField(b.usernameEditText)
         b.usernameEditText.setText(username)
 
         b.usernameEditText.doAfterTextChanged {
@@ -463,6 +468,7 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep3() {
         val b = step3Binding ?: return
+        setupTextField(b.emailEditText)
         b.emailEditText.setText(email)
 
         b.emailEditText.doAfterTextChanged {
@@ -569,6 +575,8 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep4() {
         val b = step4Binding ?: return
+        listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
+            .forEach { setupTextField(it) }
         otpHelper = OtpCellsHelper(
             listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
         ) { confirmAccountAndProceed() }
@@ -649,6 +657,8 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep5() {
         val b = step5Binding ?: return
+        setupTextField(b.passwordEditText)
+        setupTextField(b.confirmPasswordEditText)
 
         b.passwordEditText.doAfterTextChanged {
             password = it?.toString() ?: ""
@@ -810,6 +820,7 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep7() {
         val b = step7Binding ?: return
+        setupTextField(b.bioEditText, Gravity.TOP)
 
         b.previewFullName.text = getString(R.string.register_full_name_format, firstName, lastName).trim()
         b.previewUsername.text = getString(R.string.register_username_format, username)
@@ -829,6 +840,7 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep8() {
         val b = step8Binding ?: return
+        setupTextField(b.otpCodeEditText)
 
         // Загружаем 2FA код при открытии шага
         setup2fa()
@@ -1005,6 +1017,11 @@ class RegisterActivity : AppCompatActivity() {
         val typedValue = android.util.TypedValue()
         theme.resolveAttribute(attr, typedValue, true)
         return typedValue.data
+    }
+
+    private fun setupTextField(field: EditText, gravity: Int = Gravity.CENTER_VERTICAL) {
+        field.gravity = gravity
+        field.setPaddingRelative(field.paddingStart, 0, field.paddingEnd, 0)
     }
 
     private fun copyToClipboard(text: String) {

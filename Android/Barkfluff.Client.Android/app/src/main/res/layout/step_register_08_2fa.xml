@@ -35,7 +35,7 @@
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
                 android:src="@drawable/ic_security"
-                app:tint="?attr/colorPrimaryContainer" />
+                app:tint="?attr/colorOnPrimary" />
 
             <TextView
                 android:layout_width="0dp"
@@ -101,27 +101,45 @@
         </LinearLayout>
 
         <!-- TOTP -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:labelFor="@id/otpCodeEditText"
+            android:layout_marginTop="18dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginBottom="7dp"
+            android:text="@string/hint_otp_six_digits"
+            android:textAppearance="@style/TextAppearance.Barkfluff.Register.FieldLabel" />
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/otpCodeInputLayout"
             style="@style/Widget.Material3.TextInputLayout.FilledBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:hint="@string/hint_otp_six_digits"
             app:boxBackgroundColor="?attr/colorSurfaceContainerHighest"
-            app:boxCornerRadiusBottomEnd="@dimen/register_field_radius"
-            app:boxCornerRadiusBottomStart="@dimen/register_field_radius"
-            app:boxCornerRadiusTopEnd="@dimen/register_field_radius"
-            app:boxCornerRadiusTopStart="@dimen/register_field_radius"
+            app:boxCollapsedPaddingTop="0dp"
+            app:boxCornerRadiusBottomEnd="@dimen/shape_corner_large"
+            app:boxCornerRadiusBottomStart="@dimen/shape_corner_large"
+            app:boxCornerRadiusTopEnd="@dimen/shape_corner_large"
+            app:boxCornerRadiusTopStart="@dimen/shape_corner_large"
             app:boxStrokeWidth="0dp"
-            app:boxStrokeWidthFocused="0dp">
+            app:boxStrokeWidthFocused="0dp"
+            app:hintEnabled="false">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/otpCodeEditText"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="@dimen/login_field_height"
+                android:autofillHints="smsOtp"
+                android:gravity="center_vertical"
+                android:imeOptions="actionDone"
+                android:includeFontPadding="false"
                 android:inputType="number"
-                android:maxLength="6" />
+                android:maxLength="6"
+                android:maxLines="1"
+                android:paddingVertical="0dp"
+                android:singleLine="true"
+                android:textColor="?attr/colorOnSurface" />
 
         </com.google.android.material.textfield.TextInputLayout>
 

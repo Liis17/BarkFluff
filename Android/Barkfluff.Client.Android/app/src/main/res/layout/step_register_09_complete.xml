@@ -21,7 +21,7 @@
             android:layout_gravity="center"
             android:contentDescription="@string/register_step9_headline"
             android:src="@drawable/ic_favorite"
-            app:tint="?attr/colorPrimaryContainer" />
+        app:tint="?attr/colorOnPrimary" />
 
     </com.google.android.material.card.MaterialCardView>
 
