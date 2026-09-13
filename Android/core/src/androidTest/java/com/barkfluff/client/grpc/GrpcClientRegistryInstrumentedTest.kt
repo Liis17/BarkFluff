@@ -25,6 +25,10 @@ class GrpcClientRegistryInstrumentedTest {
     fun `registration replaces cached anonymous identity channel and sends device metadata`() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val createdChannels = mutableListOf<RecordingManagedChannel>()
+        var registrationChannel: RecordingManagedChannel? = null
+        val globalParam = GlobalParam(context)
+        val endpoint = "https://identity.example:443"
+        val previousIdentityEndpoint = globalParam.socketIdentity
         val registry = GrpcClientRegistry(
             context = context,
             tlsTransport = TlsTransportFactory(context),
@@ -34,9 +38,11 @@ class GrpcClientRegistryInstrumentedTest {
         )
 
         try {
-            val endpoint = "https://identity.example:443"
+            globalParam.socketIdentity = endpoint
             assertTrue(registry.createIdentityClient(endpoint).isSuccess)
             val anonymousChannel = createdChannels.single()
+            assertTrue(registry.identityClient != null)
+            assertEquals(1, createdChannels.size)
 
             assertTrue(
                 registry.createIdentityClient(
@@ -45,10 +51,12 @@ class GrpcClientRegistryInstrumentedTest {
                     includeDeviceInfo = true,
                 ).isSuccess,
             )
-            val registrationChannel = createdChannels.last()
+            val newRegistrationChannel = createdChannels.last()
+            registrationChannel = newRegistrationChannel
 
-            assertNotSame(anonymousChannel, registrationChannel)
+            assertNotSame(anonymousChannel, newRegistrationChannel)
             assertTrue(anonymousChannel.shutdownRequested)
+            assertTrue(anonymousChannel.shutdownNowRequested)
 
             val call = registry.identityChannel!!.newCall(unitMethod, CallOptions.DEFAULT)
             call.start(object : ClientCall.Listener<Unit>() {}, Metadata())
@@ -57,16 +65,22 @@ class GrpcClientRegistryInstrumentedTest {
             val expectedDeviceName = Base64.getEncoder().encodeToString(
                 GlobalParam.getDeviceName().toByteArray(Charsets.UTF_8),
             )
-            assertEquals(expectedDeviceName, registrationChannel.startedHeaders?.get(deviceNameKey))
+            assertEquals(expectedDeviceName, newRegistrationChannel.startedHeaders?.get(deviceNameKey))
         } finally {
+            globalParam.socketIdentity = previousIdentityEndpoint
             registry.shutdown()
         }
+
+        assertTrue(registrationChannel?.shutdownRequested == true)
+        assertTrue(registrationChannel?.shutdownNowRequested == true)
     }
 
     private class RecordingManagedChannel : ManagedChannel() {
         var startedHeaders: Metadata? = null
             private set
         var shutdownRequested = false
+            private set
+        var shutdownNowRequested = false
             private set
 
         override fun <RequestT, ResponseT> newCall(
@@ -95,14 +109,15 @@ class GrpcClientRegistryInstrumentedTest {
 
         override fun isShutdown(): Boolean = shutdownRequested
 
-        override fun isTerminated(): Boolean = shutdownRequested
+        override fun isTerminated(): Boolean = shutdownNowRequested
 
         override fun shutdownNow(): ManagedChannel {
             shutdownRequested = true
+            shutdownNowRequested = true
             return this
         }
 
-        override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = true
+        override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = shutdownNowRequested
     }
 
     private object UnitMarshaller : MethodDescriptor.Marshaller<Unit> {
