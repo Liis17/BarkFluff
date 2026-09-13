@@ -111,10 +111,16 @@ internal fun canReuseGrpcClient(
  * workers and FCM callbacks safe after a killed process. This class deliberately has no RPC
  * methods: domain gateways are the only layer allowed to call a stub.
  */
-class GrpcClientRegistry(
+class GrpcClientRegistry internal constructor(
     context: Context,
-    private val tlsTransport: TlsTransportFactory = TlsTransportFactory(context.applicationContext),
+    private val tlsTransport: TlsTransportFactory,
+    private val channelFactory: (String) -> ManagedChannel,
 ) {
+
+    constructor(
+        context: Context,
+        tlsTransport: TlsTransportFactory = TlsTransportFactory(context.applicationContext),
+    ) : this(context, tlsTransport, tlsTransport::createGrpcChannel)
 
     enum class ClientId {
         NAVIGATOR,
@@ -443,10 +449,11 @@ class GrpcClientRegistry(
         if (canReuseGrpcClient(current?.configuration, configuration, force)) return current
 
         return try {
-            val managed = tlsTransport.createGrpcChannel(normalized)
+            val managed = channelFactory(normalized)
             val interceptors = buildList {
-                if (includeAuth) add(AuthInterceptor(context))
-                if (includeDeviceInfo) add(DeviceInfoInterceptor(context))
+                val interceptorContext = context.applicationContext
+                if (includeAuth) add(AuthInterceptor(interceptorContext))
+                if (includeDeviceInfo) add(DeviceInfoInterceptor(interceptorContext))
             }
             val intercepted = if (interceptors.isEmpty()) managed else {
                 ClientInterceptors.intercept(managed, *interceptors.toTypedArray())

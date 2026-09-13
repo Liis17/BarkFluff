@@ -1,9 +1,9 @@
 package com.barkfluff.client.grpc
 
 import android.content.Context
+import android.util.Base64
 import com.barkfluff.client.data.GlobalParam
 import io.grpc.*
-import java.util.Base64
 
 /**
  * Interceptor для добавления заголовков устройства к gRPC запросам
@@ -38,7 +38,7 @@ class DeviceInfoInterceptor(
     }
 
     private fun toBase64(value: String): String {
-        return Base64.getEncoder().encodeToString(value.toByteArray(Charsets.UTF_8))
+        return Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
     }
 
     private fun key(name: String): Metadata.Key<String> {
