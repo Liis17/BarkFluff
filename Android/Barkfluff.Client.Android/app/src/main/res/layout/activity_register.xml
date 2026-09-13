@@ -157,22 +157,24 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1" />
+    </LinearLayout>
 
-        <!-- Bottom button panel -->
-        <LinearLayout
-            android:id="@+id/buttonPanel"
+    <!-- Transparent overlay keeps the CTA above the IME without hiding content. -->
+    <LinearLayout
+        android:id="@+id/buttonPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@android:color/transparent"
+        android:orientation="horizontal"
+        android:padding="20dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/nextButton"
+            style="@style/Widget.Barkfluff.Register.CtaButton"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="20dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/nextButton"
-                style="@style/Widget.Barkfluff.Register.CtaButton"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/register_cta_height"
-                android:text="@string/btn_next"
-                app:icon="@drawable/ic_arrow_forward" />
-        </LinearLayout>
+            android:layout_height="@dimen/register_cta_height"
+            android:text="@string/btn_next"
+            app:icon="@drawable/ic_arrow_forward" />
     </LinearLayout>
 </FrameLayout>
