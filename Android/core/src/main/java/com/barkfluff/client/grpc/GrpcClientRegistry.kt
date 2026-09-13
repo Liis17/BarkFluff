@@ -91,6 +91,18 @@ internal class ClientSlotRegistry<K, C>(
     }
 }
 
+internal data class GrpcClientConfiguration(
+    val address: String,
+    val includeAuth: Boolean,
+    val includeDeviceInfo: Boolean,
+)
+
+internal fun canReuseGrpcClient(
+    current: GrpcClientConfiguration?,
+    requested: GrpcClientConfiguration,
+    force: Boolean,
+): Boolean = !force && current == requested
+
 /**
  * Owns the lifecycle of all typed gRPC stubs.
  *
@@ -118,11 +130,14 @@ class GrpcClientRegistry(
     }
 
     private data class Entry(
-        val address: String,
+        val configuration: GrpcClientConfiguration,
         val managedChannel: ManagedChannel,
         val channel: Channel,
         val stub: Any,
-    )
+    ) {
+        val address: String
+            get() = configuration.address
+    }
 
     private val appContext = context.applicationContext
     private val lock = Any()
@@ -372,9 +387,14 @@ class GrpcClientRegistry(
                 return entries[id]?.stub as? T
             }
             val address = endpointFor(id, GlobalParam(appContext))
+            val normalized = runCatching { tlsTransport.normalizeGrpcAddress(address) }.getOrNull()
             entries[id]?.let { current ->
-                val normalized = runCatching { tlsTransport.normalizeGrpcAddress(address) }.getOrNull()
-                if (normalized == current.address) return current.stub as? T
+                val requested = normalized?.let {
+                    GrpcClientConfiguration(it, includeAuth = true, includeDeviceInfo = true)
+                }
+                if (requested != null && canReuseGrpcClient(current.configuration, requested, force = false)) {
+                    return current.stub as? T
+                }
                 if (address.isBlank()) {
                     entries.remove(id)
                     close(current.managedChannel)
@@ -419,7 +439,8 @@ class GrpcClientRegistry(
         val normalized = runCatching { tlsTransport.normalizeGrpcAddress(address) }
             .getOrElse { return null }
         val current = entries[id]
-        if (!force && current?.address == normalized) return current
+        val configuration = GrpcClientConfiguration(normalized, includeAuth, includeDeviceInfo)
+        if (canReuseGrpcClient(current?.configuration, configuration, force)) return current
 
         return try {
             val managed = tlsTransport.createGrpcChannel(normalized)
@@ -430,7 +451,7 @@ class GrpcClientRegistry(
             val intercepted = if (interceptors.isEmpty()) managed else {
                 ClientInterceptors.intercept(managed, *interceptors.toTypedArray())
             }
-            val created = Entry(normalized, managed, intercepted, builder(intercepted))
+            val created = Entry(configuration, managed, intercepted, builder(intercepted))
             entries[id] = created
             current?.let { close(it.managedChannel) }
             created
