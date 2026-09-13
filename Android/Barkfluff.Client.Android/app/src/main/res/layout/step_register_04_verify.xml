@@ -26,10 +26,19 @@
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:labelFor="@id/otpCell1"
+            android:layout_marginTop="24dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginBottom="7dp"
+            android:text="@string/hint_verify_code_required"
+            android:textAppearance="@style/TextAppearance.Barkfluff.Register.FieldLabel" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="26dp"
             android:orientation="horizontal">
 
             <EditText
@@ -38,7 +47,7 @@
                 android:layout_height="@dimen/register_cta_height"
                 android:layout_marginEnd="7dp"
                 android:layout_weight="1"
-                android:autofillHints="smsOtp"
+                android:autofillHints="smsOTPCode"
                 android:background="@drawable/bg_otp_cell"
                 android:gravity="center"
                 android:imeOptions="actionNext"
