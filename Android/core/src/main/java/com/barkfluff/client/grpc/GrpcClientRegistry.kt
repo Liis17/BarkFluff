@@ -393,14 +393,9 @@ class GrpcClientRegistry internal constructor(
                 return entries[id]?.stub as? T
             }
             val address = endpointFor(id, GlobalParam(appContext))
-            val normalized = runCatching { tlsTransport.normalizeGrpcAddress(address) }.getOrNull()
             entries[id]?.let { current ->
-                val requested = normalized?.let {
-                    GrpcClientConfiguration(it, includeAuth = true, includeDeviceInfo = true)
-                }
-                if (requested != null && canReuseGrpcClient(current.configuration, requested, force = false)) {
-                    return current.stub as? T
-                }
+                val normalized = runCatching { tlsTransport.normalizeGrpcAddress(address) }.getOrNull()
+                if (normalized == current.address) return current.stub as? T
                 if (address.isBlank()) {
                     entries.remove(id)
                     close(current.managedChannel)
