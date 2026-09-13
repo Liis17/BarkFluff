@@ -113,6 +113,8 @@
     <dimen name="register_input_height">56dp</dimen>
     <dimen name="register_segment_height">7dp</dimen>
     <dimen name="register_segment_gap">5dp</dimen>
+    <dimen name="register_keyboard_scroll_margin">24dp</dimen>
+    <dimen name="register_keyboard_content_padding">24dp</dimen>
 
     <!-- Onboarding redesign (Welcome/SelectServer/Login) -->
     <dimen name="welcome_decor_circle_large">260dp</dimen>
