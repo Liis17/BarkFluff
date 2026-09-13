@@ -7,19 +7,28 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.core.widget.NestedScrollView
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
@@ -148,6 +157,7 @@ class RegisterActivity : AppCompatActivity() {
 
         binding = ActivityRegisterBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupWindowInsets()
 
         globalParam = GlobalParam(this)
 
@@ -342,14 +352,52 @@ class RegisterActivity : AppCompatActivity() {
                 setupStep9()
             }
         }
+
+        prepareStepScroll()
+    }
+
+    private fun setupWindowInsets() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val headerBasePaddingTop = binding.headerPanel.paddingTop
+        val buttonBasePaddingBottom = binding.buttonPanel.paddingBottom
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.headerPanel) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(top = headerBasePaddingTop + systemBars.top)
+            insets
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.buttonPanel) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            view.updatePadding(bottom = buttonBasePaddingBottom + maxOf(systemBars.bottom, ime.bottom))
+            insets
+        }
+
+        ViewCompat.requestApplyInsets(binding.root)
+    }
+
+    private fun prepareStepScroll() {
+        val scrollView = binding.contentFrame.getChildAt(0) as? NestedScrollView ?: return
+        scrollView.clipToPadding = false
+
+        val content = scrollView.getChildAt(0) ?: return
+        val bottomPadding = resources.getDimensionPixelSize(R.dimen.register_keyboard_content_padding)
+        content.setPaddingRelative(
+            content.paddingStart,
+            content.paddingTop,
+            content.paddingEnd,
+            content.paddingBottom + bottomPadding
+        )
     }
 
     private fun setupStep1() {
         val b = step1Binding ?: return
         b.firstNameEditText.setText(firstName)
         b.lastNameEditText.setText(lastName)
-        setupTextField(b.firstNameEditText)
-        setupTextField(b.lastNameEditText)
+        setupTextField(b.firstNameEditText, focusContainer = b.firstNameEditText.parent as? View)
+        setupTextField(b.lastNameEditText, focusContainer = b.lastNameEditText.parent as? View)
         b.firstNameCounterText.text = getString(R.string.register_bio_counter, firstName.length, MAX_NAME_LENGTH)
         b.lastNameCounterText.text = getString(R.string.register_bio_counter, lastName.length, MAX_NAME_LENGTH)
 
@@ -364,25 +412,47 @@ class RegisterActivity : AppCompatActivity() {
             b.lastNameCounterText.text = getString(R.string.register_bio_counter, it?.length ?: 0, MAX_NAME_LENGTH)
             validateLastName()
         }
+
+        b.firstNameEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT || isEnterKey(event)) {
+                b.lastNameEditText.requestFocus()
+                true
+            } else {
+                false
+            }
+        }
+
+        b.lastNameEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_DONE || isEnterKey(event)) {
+                binding.nextButton.performClick()
+                true
+            } else {
+                false
+            }
+        }
     }
 
     private fun validateFirstName(): Boolean {
         val b = step1Binding ?: return false
         if (firstName.isEmpty()) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_required_error)
+            b.firstNameValidationText.setTextColor(getColor(R.color.error))
             b.firstNameValidationText.visibility = View.VISIBLE
             return false
         }
         return if (firstName.length < MIN_NAME_LENGTH) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_min_length, MIN_NAME_LENGTH)
+            b.firstNameValidationText.setTextColor(getColor(R.color.error))
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else if (firstName.length > MAX_NAME_LENGTH) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
+            b.firstNameValidationText.setTextColor(getColor(R.color.error))
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else {
             b.firstNameValidationText.text = getString(R.string.register_first_name_valid)
+            b.firstNameValidationText.setTextColor(getColor(R.color.success))
             b.firstNameValidationText.visibility = View.VISIBLE
             true
         }
@@ -392,10 +462,13 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return false
         return if (lastName.isNotEmpty() && lastName.length > MAX_NAME_LENGTH) {
             b.lastNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
+            b.lastNameValidationText.setTextColor(getColor(R.color.error))
             b.lastNameValidationText.visibility = View.VISIBLE
             false
         } else {
-            b.lastNameValidationText.visibility = View.GONE
+            b.lastNameValidationText.text = getString(R.string.register_last_name_hint)
+            b.lastNameValidationText.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
+            b.lastNameValidationText.visibility = View.VISIBLE
             true
         }
     }
@@ -1017,9 +1090,43 @@ class RegisterActivity : AppCompatActivity() {
         return typedValue.data
     }
 
-    private fun setupTextField(field: EditText, gravity: Int = Gravity.CENTER_VERTICAL) {
+    private fun setupTextField(
+        field: EditText,
+        gravity: Int = Gravity.CENTER_VERTICAL,
+        focusContainer: View? = null
+    ) {
         field.gravity = gravity
         field.setPaddingRelative(field.paddingStart, 0, field.paddingEnd, 0)
+        field.setOnFocusChangeListener { _, hasFocus ->
+            focusContainer?.setBackgroundResource(
+                if (hasFocus) R.drawable.bg_register_input_row_focused
+                else R.drawable.bg_register_input_row
+            )
+            if (hasFocus) {
+                field.post { ensureFieldVisible(field) }
+            }
+        }
+    }
+
+    private fun ensureFieldVisible(field: View) {
+        val margin = resources.getDimensionPixelSize(R.dimen.register_keyboard_scroll_margin)
+        field.requestRectangleOnScreen(
+            Rect(0, -margin, field.width, field.height + margin),
+            true
+        )
+    }
+
+    private fun focusAndShowKeyboard(field: EditText) {
+        field.requestFocus()
+        field.post {
+            ensureFieldVisible(field)
+            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.showSoftInput(field, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun isEnterKey(event: KeyEvent?): Boolean {
+        return event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN
     }
 
     private fun copyToClipboard(text: String) {
@@ -1087,9 +1194,22 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
+    private fun validateStep1(): Boolean {
+        val b = step1Binding ?: return false
+        val firstNameValid = validateFirstName()
+        val lastNameValid = validateLastName()
+
+        when {
+            !firstNameValid -> focusAndShowKeyboard(b.firstNameEditText)
+            !lastNameValid -> focusAndShowKeyboard(b.lastNameEditText)
+        }
+
+        return firstNameValid && lastNameValid
+    }
+
     private fun validateCurrentStep(): Boolean {
         return when (currentStep) {
-            1 -> validateFirstName() && validateLastName()
+            1 -> validateStep1()
             2 -> {
                 if (username.isEmpty()) return false
                 val validPattern = Regex("^[a-z0-9_-]+$")
