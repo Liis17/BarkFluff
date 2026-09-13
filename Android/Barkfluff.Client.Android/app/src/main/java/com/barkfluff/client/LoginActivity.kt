@@ -71,6 +71,7 @@ class LoginActivity : AppCompatActivity() {
 
     private var isOtpMode = false
     private var isLoading = false
+    private var identityErrorVisible = false
 
     // Saved login/password for OTP retry
     private var savedLogin = ""
@@ -121,9 +122,7 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::globalParam.isInitialized) {
-            renderNodeSummary()
-        }
+        renderNodeSummary()
     }
 
     /** На широких окнах ограничиваем форму 600dp и сохраняем читаемую длину строки. */
@@ -217,7 +216,7 @@ class LoginActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
                 binding.usernameInputLayout.error = null
-                hideError()
+                clearErrorIfNotIdentity()
             }
         })
 
@@ -226,7 +225,7 @@ class LoginActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
                 binding.passwordInputLayout.error = null
-                hideError()
+                clearErrorIfNotIdentity()
             }
         })
 
@@ -273,6 +272,7 @@ class LoginActivity : AppCompatActivity() {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
                 override fun afterTextChanged(s: Editable?) {
+                    clearErrorIfNotIdentity()
                     if (s != null && s.length == 1 && i < otpBoxes.size - 1) {
                         otpBoxes[i + 1].requestFocus()
                     }
@@ -313,7 +313,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun performLogin() {
-        hideError()
+        clearErrorIfNotIdentity()
 
         if (isLoading) return
 
@@ -349,7 +349,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun performOtpLogin() {
-        hideError()
+        clearErrorIfNotIdentity()
 
         if (isLoading) return
 
@@ -436,7 +436,11 @@ class LoginActivity : AppCompatActivity() {
             }
             is AuthenticationResult.Error -> {
                 setLoadingState(false)
-                showError(result.message)
+                if (result.canRetryIdentity) {
+                    showIdentityError(result.message)
+                } else {
+                    showError(result.message)
+                }
             }
         }
     }
@@ -552,6 +556,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
+        identityErrorVisible = false
         binding.errorText.visibility = View.VISIBLE
         binding.errorText.text = message
         binding.retryIdentityButton.visibility = View.GONE
@@ -559,12 +564,20 @@ class LoginActivity : AppCompatActivity() {
 
     private fun showIdentityError(message: String) {
         showError(message)
+        identityErrorVisible = true
         binding.retryIdentityButton.visibility = View.VISIBLE
     }
 
     private fun hideError() {
+        identityErrorVisible = false
         binding.errorText.visibility = View.GONE
         binding.retryIdentityButton.visibility = View.GONE
+    }
+
+    private fun clearErrorIfNotIdentity() {
+        if (!identityErrorVisible) {
+            hideError()
+        }
     }
 
     private fun focusFirstInvalidField(loginValid: Boolean, passwordValid: Boolean) {

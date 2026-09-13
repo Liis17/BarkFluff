@@ -15,7 +15,10 @@ data class AuthSession(
 sealed interface AuthenticationResult {
     data class Success(val session: AuthSession) : AuthenticationResult
     data object OtpRequired : AuthenticationResult
-    data class Error(val message: String) : AuthenticationResult
+    data class Error(
+        val message: String,
+        val canRetryIdentity: Boolean = false,
+    ) : AuthenticationResult
 }
 
 data class ServerInfo(
@@ -212,5 +215,5 @@ internal fun GrpcApiTransport.AuthResult.toDomain() = when (this) {
         AuthSession(accessToken, accessTokenExpiration, refreshToken, refreshTokenExpiration)
     )
     GrpcApiTransport.AuthResult.OtpRequired -> AuthenticationResult.OtpRequired
-    is GrpcApiTransport.AuthResult.Error -> AuthenticationResult.Error(message)
+    is GrpcApiTransport.AuthResult.Error -> AuthenticationResult.Error(message, canRetryIdentity)
 }
