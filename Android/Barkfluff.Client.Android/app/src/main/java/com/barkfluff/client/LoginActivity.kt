@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -14,6 +15,8 @@ import android.widget.EditText
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
+import androidx.dynamicanimation.animation.DynamicAnimation
+import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -47,6 +50,10 @@ class LoginActivity : AppCompatActivity() {
         private val EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
         private const val MIN_PASSWORD_LENGTH = 6
         private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
+        private const val LOGIN_MODE_FADE_DURATION_MS = 160L
+        private const val LOGIN_MODE_OFFSET_DP = 12
+        private const val LOGIN_MODE_SPRING_STIFFNESS = 700f
+        private const val LOGIN_MODE_SPRING_DAMPING = 0.9f
 
         /** Отступы hero-блока; складываются с системными инсетами. */
         private const val LOGIN_TOP_PADDING_DP = 20
@@ -70,6 +77,9 @@ class LoginActivity : AppCompatActivity() {
     private var savedPassword = ""
 
     private lateinit var otpBoxes: List<EditText>
+
+    private val loginModeOffsetPx: Float
+        get() = LOGIN_MODE_OFFSET_DP.dpToPx().toFloat()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -433,15 +443,70 @@ class LoginActivity : AppCompatActivity() {
 
     private fun showOtpMode() {
         isOtpMode = true
-        binding.loginFieldsGroup.visibility = View.GONE
-        binding.otpGroup.visibility = View.VISIBLE
         binding.titleText.setText(R.string.login_2fa_title)
         binding.subtitleText.setText(R.string.login_2fa_message)
         binding.loginButton.setText(R.string.btn_confirm)
 
-        // Clear and focus first box
+        // Clear the code before the transition so autofill/paste starts from a clean state.
         otpBoxes.forEach { it.text?.clear() }
-        otpBoxes[0].requestFocus()
+        switchLoginMode(showOtp = true) {
+            otpBoxes[0].requestFocus()
+            otpBoxes[0].post {
+                val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                inputMethodManager.showSoftInput(otpBoxes[0], InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+    }
+
+    /**
+     * Переключает форму и OTP через короткий fade-through с лёгким spring по вертикали.
+     * ValueAnimator отключается системной настройкой Animator duration scale = 0,
+     * поэтому в reduced-motion режиме состояние меняется без декоративного движения.
+     */
+    private fun switchLoginMode(showOtp: Boolean, onShown: (() -> Unit)? = null) {
+        val incoming = if (showOtp) binding.otpGroup else binding.loginFieldsGroup
+        val outgoing = if (showOtp) binding.loginFieldsGroup else binding.otpGroup
+
+        incoming.animate().cancel()
+        outgoing.animate().cancel()
+        incoming.translationY = 0f
+        outgoing.translationY = 0f
+        incoming.alpha = 1f
+        outgoing.alpha = 1f
+
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            outgoing.visibility = View.GONE
+            incoming.visibility = View.VISIBLE
+            onShown?.invoke()
+            return
+        }
+
+        outgoing.animate()
+            .alpha(0f)
+            .setDuration(LOGIN_MODE_FADE_DURATION_MS / 2)
+            .withEndAction {
+                outgoing.visibility = View.GONE
+                outgoing.alpha = 1f
+
+                incoming.visibility = View.VISIBLE
+                incoming.alpha = 0f
+                incoming.translationY = loginModeOffsetPx
+                incoming.animate()
+                    .alpha(1f)
+                    .setDuration(LOGIN_MODE_FADE_DURATION_MS)
+                    .withEndAction {
+                        incoming.alpha = 1f
+                        incoming.translationY = 0f
+                        onShown?.invoke()
+                    }
+                    .start()
+
+                SpringAnimation(incoming, DynamicAnimation.TRANSLATION_Y, 0f).apply {
+                    spring.stiffness = LOGIN_MODE_SPRING_STIFFNESS
+                    spring.dampingRatio = LOGIN_MODE_SPRING_DAMPING
+                }.start()
+            }
+            .start()
     }
 
     private fun validateLogin(login: String): Boolean {
@@ -545,12 +610,12 @@ class LoginActivity : AppCompatActivity() {
         if (isOtpMode) {
             // Return to login fields from OTP mode
             isOtpMode = false
-            binding.loginFieldsGroup.visibility = View.VISIBLE
-            binding.otpGroup.visibility = View.GONE
             binding.titleText.setText(R.string.login_welcome_title)
             binding.subtitleText.setText(R.string.login_account_prompt)
             binding.loginButton.setText(R.string.btn_login)
             hideError()
+            hideKeyboard()
+            switchLoginMode(showOtp = false)
         } else {
             super.onBackPressed()
         }
