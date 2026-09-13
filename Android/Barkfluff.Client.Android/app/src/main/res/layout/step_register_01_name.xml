@@ -88,8 +88,8 @@
             android:layout_marginTop="6dp"
             android:layout_marginStart="6dp"
             android:accessibilityLiveRegion="polite"
-            android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textColor="@color/error"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorError"
             android:visibility="gone" />
 
         <!-- Last name -->
@@ -156,25 +156,24 @@
             android:layout_marginStart="6dp"
             android:accessibilityLiveRegion="polite"
             android:text="@string/register_last_name_hint"
-            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:visibility="visible" />
 
         <!-- Rule chips -->
-        <LinearLayout
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:orientation="horizontal">
+            android:layout_marginTop="18dp">
 
             <LinearLayout
+                android:id="@+id/ruleMinLength"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
                 android:background="@drawable/bg_register_rule_chip"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="13dp"
+                android:paddingHorizontal="12dp"
                 android:paddingVertical="8dp">
 
                 <ImageView
@@ -188,7 +187,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     android:text="@string/register_rule_min3"
                     android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorOnPrimaryContainer" />
@@ -196,13 +195,13 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/ruleMaxLength"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
                 android:background="@drawable/bg_register_rule_chip"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="13dp"
+                android:paddingHorizontal="12dp"
                 android:paddingVertical="8dp">
 
                 <ImageView
@@ -216,7 +215,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     android:text="@string/register_rule_max40"
                     android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorOnPrimaryContainer" />
@@ -224,12 +223,13 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/ruleAnySymbols"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_register_rule_chip"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="13dp"
+                android:paddingHorizontal="12dp"
                 android:paddingVertical="8dp">
 
                 <ImageView
@@ -243,14 +243,27 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     android:text="@string/register_rule_any_symbols"
                     android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorOnPrimaryContainer" />
 
             </LinearLayout>
 
-        </LinearLayout>
+            <androidx.constraintlayout.helper.widget.Flow
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:constraint_referenced_ids="ruleMinLength,ruleMaxLength,ruleAnySymbols"
+                app:flow_horizontalGap="8dp"
+                app:flow_horizontalStyle="packed"
+                app:flow_verticalGap="8dp"
+                app:flow_wrapMode="chain"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </LinearLayout>
 
