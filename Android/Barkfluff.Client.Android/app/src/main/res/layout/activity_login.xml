@@ -37,7 +37,7 @@
             android:layout_height="wrap_content"
             android:gravity="start"
             android:orientation="vertical"
-            android:paddingHorizontal="24dp">
+            android:paddingHorizontal="16dp">
 
             <!-- Динамический logo-tile: цвет контейнера и glyph следуют Material You. -->
             <FrameLayout
@@ -153,6 +153,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="4dp"
+                        android:minHeight="48dp"
                         android:minWidth="0dp"
                         android:text="@string/action_change"
                         android:textAllCaps="false"
@@ -452,7 +453,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
+                android:minHeight="48dp"
                 android:text="@string/action_retry"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceLabelLarge"

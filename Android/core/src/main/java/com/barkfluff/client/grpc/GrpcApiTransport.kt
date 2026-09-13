@@ -207,7 +207,10 @@ class GrpcApiTransport(context: Context) {
     ): AuthResult = withContext(Dispatchers.IO) {
         try {
             if (identityClient == null) {
-                return@withContext AuthResult.Error("Identity клиент не создан")
+                return@withContext AuthResult.Error(
+                    message = "Identity клиент не создан",
+                    canRetryIdentity = true,
+                )
             }
 
             val requestBuilder = IdentityApiOuterClass.AuthRequest.newBuilder()
@@ -265,7 +268,10 @@ class GrpcApiTransport(context: Context) {
             handleAuthRuntimeError(e)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка авторизации", e)
-            AuthResult.Error("Ошибка подключения: ${e.message}")
+            AuthResult.Error(
+                message = "Ошибка подключения: ${e.message}",
+                canRetryIdentity = true,
+            )
         }
     }
 
@@ -277,7 +283,10 @@ class GrpcApiTransport(context: Context) {
             ERROR_OTP_CODE_NEEDED -> AuthResult.OtpRequired
             ERROR_NOT_VALID_OTP_CODE -> AuthResult.Error("Неверный код 2FA")
             ERROR_INVALID_LOGIN_OR_PASSWORD -> AuthResult.Error("Неверный логин или пароль")
-            else -> AuthResult.Error(e.status.description ?: "Ошибка авторизации")
+            else -> AuthResult.Error(
+                message = e.status.description ?: "Ошибка авторизации",
+                canRetryIdentity = isRetryableIdentityStatus(e.status),
+            )
         }
     }
 
@@ -289,9 +298,15 @@ class GrpcApiTransport(context: Context) {
             ERROR_OTP_CODE_NEEDED -> AuthResult.OtpRequired
             ERROR_NOT_VALID_OTP_CODE -> AuthResult.Error("Неверный код 2FA")
             ERROR_INVALID_LOGIN_OR_PASSWORD -> AuthResult.Error("Неверный логин или пароль")
-            else -> AuthResult.Error(e.status.description ?: "Ошибка авторизации")
+            else -> AuthResult.Error(
+                message = e.status.description ?: "Ошибка авторизации",
+                canRetryIdentity = isRetryableIdentityStatus(e.status),
+            )
         }
     }
+
+    private fun isRetryableIdentityStatus(status: Status): Boolean =
+        status.code == Status.Code.UNAVAILABLE || status.code == Status.Code.DEADLINE_EXCEEDED
 
     /**
      * Обновляет access токен используя refresh токен
@@ -1912,7 +1927,10 @@ class GrpcApiTransport(context: Context) {
         ) : AuthResult()
 
         data object OtpRequired : AuthResult()
-        data class Error(val message: String) : AuthResult()
+        data class Error(
+            val message: String,
+            val canRetryIdentity: Boolean = false,
+        ) : AuthResult()
     }
 
     data class SessionData(
