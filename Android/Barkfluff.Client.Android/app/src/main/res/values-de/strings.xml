@@ -1244,8 +1244,6 @@
     <string name="storage_cache_cleared">Cache geleert</string>
     <string name="notification_unknown_sender">Unbekannter Absender</string>
     <string name="notification_sender_in_chat">%1$s in %2$s</string>
-    <string name="select_server_navigator_connection_failed">Verbindung zum Navigator nicht möglich</string>
-    <string name="select_server_list_load_failed">Knotenliste konnte nicht geladen werden</string>
     <string name="select_server_connection_failed">Verbindung zum Knoten nicht möglich</string>
     <string name="select_server_connection_timeout">Der Knoten hat nicht rechtzeitig geantwortet. Prüfe die Adresse und versuche es erneut.</string>
     <string name="select_server_info_failed">Knoteninformationen konnten nicht abgerufen werden</string>

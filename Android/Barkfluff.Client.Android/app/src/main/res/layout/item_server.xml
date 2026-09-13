@@ -97,7 +97,7 @@
 
         </LinearLayout>
 
-        <!-- Чипы одной строкой: Онлайн / пинг / регион (макет 2c) -->
+        <!-- Чипы одной строкой: Онлайн / отклик / регион (макет 2c) -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/serverChipsGroup"
             android:layout_width="match_parent"
@@ -117,7 +117,7 @@
                 app:chipIconTint="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.chip.Chip
-                android:id="@+id/chipPing"
+                android:id="@+id/chipResponse"
                 style="@style/Widget.Barkfluff.Server.StatusChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
