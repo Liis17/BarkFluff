@@ -159,7 +159,7 @@
             android:layout_weight="1" />
     </LinearLayout>
 
-    <!-- Transparent overlay keeps the CTA above the IME without hiding content. -->
+    <!-- Overlay keeps the CTA above the IME; it is hidden while the CTA is disabled. -->
     <LinearLayout
         android:id="@+id/buttonPanel"
         android:layout_width="match_parent"
@@ -167,7 +167,8 @@
         android:layout_gravity="bottom"
         android:background="@android:color/transparent"
         android:orientation="horizontal"
-        android:padding="20dp">
+        android:padding="20dp"
+        android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/nextButton"

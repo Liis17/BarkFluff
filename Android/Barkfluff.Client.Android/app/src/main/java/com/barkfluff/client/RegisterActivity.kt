@@ -126,6 +126,8 @@ class RegisterActivity : AppCompatActivity() {
     private var step7Binding: StepRegister07BioBinding? = null
     private var step8Binding: StepRegister082faBinding? = null
     private var step9Binding: StepRegister09CompleteBinding? = null
+    private var preparedStepContent: View? = null
+    private var preparedStepContentBottomPadding = 0
 
     // Photo picker
     private val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -245,7 +247,7 @@ class RegisterActivity : AppCompatActivity() {
         val b = step3Binding ?: return
         b.emailValidationText.text = getString(R.string.register_checking)
         b.emailValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -256,7 +258,7 @@ class RegisterActivity : AppCompatActivity() {
                     if (exists) {
                         b.emailValidationText.text = getString(R.string.register_email_taken)
                         b.emailValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = true
+                        setNextButtonEnabled(true)
                     } else {
                         b.emailValidationText.text = getString(R.string.register_email_available)
                         b.emailValidationText.visibility = View.VISIBLE
@@ -266,18 +268,19 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     Log.e(TAG, "Check email failed: ${existsResult.exceptionOrNull()?.message}")
                     b.emailValidationText.text = getString(R.string.register_check_error)
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check email error: ${e.message}", e)
                 b.emailValidationText.text = getString(R.string.register_check_error)
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
 
     private fun loadStep(step: Int) {
         binding.contentFrame.removeAllViews()
+        preparedStepContent = null
 
         // Обновляем крупную нумерацию и сегментный прогресс-бар
         binding.numberBigText.text = step.toString().padStart(2, '0')
@@ -292,26 +295,19 @@ class RegisterActivity : AppCompatActivity() {
         if (step == TOTAL_STEPS) {
             // На финальном шаге скрываем весь нижний бар — у шага 9 своя кнопка
             binding.headerPanel.visibility = View.GONE
-            binding.buttonPanel.visibility = View.GONE
+            setNextButtonEnabled(false)
         } else {
             binding.headerPanel.visibility = View.VISIBLE
-            binding.buttonPanel.visibility = View.VISIBLE
+            setNextButtonEnabled(
+                when (step) {
+                    3, 8 -> false
+                    6 -> avatarBytes != null
+                    else -> true
+                }
+            )
         }
 
-        binding.nextButton.isEnabled = true
         binding.nextButton.setText(R.string.btn_next)
-
-        // Специфичные настройки кнопки для шагов
-        when (step) {
-            6 -> {
-                // Далее доступен только если аватар выбран
-                binding.nextButton.isEnabled = avatarBytes != null
-            }
-            8 -> {
-                // Далее доступен только после ввода 6-значного кода
-                binding.nextButton.isEnabled = false
-            }
-        }
 
         val inflater = LayoutInflater.from(this)
         when (step) {
@@ -423,6 +419,10 @@ class RegisterActivity : AppCompatActivity() {
         scrollView.clipToPadding = false
 
         val content = scrollView.getChildAt(0) ?: return
+        if (preparedStepContent !== content) {
+            preparedStepContent = content
+            preparedStepContentBottomPadding = content.paddingBottom
+        }
         val keyboardPadding = resources.getDimensionPixelSize(R.dimen.register_keyboard_content_padding)
         val buttonReserve = if (binding.buttonPanel.visibility == View.VISIBLE) {
             resources.getDimensionPixelSize(R.dimen.register_cta_height) +
@@ -434,8 +434,19 @@ class RegisterActivity : AppCompatActivity() {
             content.paddingStart,
             content.paddingTop,
             content.paddingEnd,
-            content.paddingBottom + keyboardPadding + buttonReserve
+            preparedStepContentBottomPadding + keyboardPadding + buttonReserve
         )
+    }
+
+    private fun setNextButtonEnabled(enabled: Boolean) {
+        binding.nextButton.isEnabled = enabled
+
+        val visibility = if (enabled) View.VISIBLE else View.GONE
+        if (binding.buttonPanel.visibility != visibility) {
+            binding.buttonPanel.visibility = visibility
+            prepareStepScroll()
+            ViewCompat.requestApplyInsets(binding.root)
+        }
     }
 
     private fun setupStep1() {
@@ -550,7 +561,7 @@ class RegisterActivity : AppCompatActivity() {
         b.usernameValidationText.text = getString(R.string.register_checking)
         b.usernameValidationText.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         b.usernameValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -562,7 +573,7 @@ class RegisterActivity : AppCompatActivity() {
                         b.usernameValidationText.text = getString(R.string.register_username_status_taken)
                         b.usernameValidationText.setTextColor(getColor(R.color.error))
                         b.usernameValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = true
+                        setNextButtonEnabled(true)
                     } else {
                         b.usernameValidationText.text = getString(R.string.register_username_status_free)
                         b.usernameValidationText.setTextColor(getColor(R.color.success))
@@ -575,12 +586,12 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     Log.e(TAG, "Check username failed: ${existsResult.exceptionOrNull()?.message}")
                     b.usernameValidationText.text = getString(R.string.register_check_error)
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check username error: ${e.message}", e)
                 b.usernameValidationText.text = getString(R.string.register_check_error)
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
@@ -597,14 +608,14 @@ class RegisterActivity : AppCompatActivity() {
                 if (!emailPattern.matcher(email).matches()) {
                     b.emailValidationText.text = getString(R.string.register_email_invalid)
                     b.emailValidationText.visibility = View.VISIBLE
-                    binding.nextButton.isEnabled = false
+                    setNextButtonEnabled(false)
                 } else {
                     // Email валиден, проверяем на сервере
                     checkEmailExists()
                 }
             } else {
                 b.emailValidationText.visibility = View.GONE
-                binding.nextButton.isEnabled = false
+                setNextButtonEnabled(false)
             }
         }
     }
@@ -623,7 +634,7 @@ class RegisterActivity : AppCompatActivity() {
             
             b.emailValidationText.text = getString(R.string.register_checking)
             b.emailValidationText.visibility = View.VISIBLE
-            binding.nextButton.isEnabled = false
+            setNextButtonEnabled(false)
             
             try {
                 val existsResult = userDirectoryGateway.checkEmail(email)
@@ -633,23 +644,23 @@ class RegisterActivity : AppCompatActivity() {
                     if (exists) {
                         b.emailValidationText.text = getString(R.string.register_email_taken)
                         b.emailValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = false
+                        setNextButtonEnabled(false)
                     } else {
                         b.emailValidationText.text = getString(R.string.register_email_available)
                         b.emailValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = true
+                        setNextButtonEnabled(true)
                     }
                 } else {
                     Log.e(TAG, "Check email failed: ${existsResult.exceptionOrNull()?.message}")
                     b.emailValidationText.text = getString(R.string.register_check_error)
                     b.emailValidationText.visibility = View.VISIBLE
-                    binding.nextButton.isEnabled = false
+                    setNextButtonEnabled(false)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check email error: ${e.message}", e)
                 b.emailValidationText.text = getString(R.string.register_check_error)
                 b.emailValidationText.visibility = View.VISIBLE
-                binding.nextButton.isEnabled = false
+                setNextButtonEnabled(false)
             }
         }
     }
@@ -660,7 +671,7 @@ class RegisterActivity : AppCompatActivity() {
         val b = step3Binding ?: return
         b.emailValidationText.text = getString(R.string.register_account_creating)
         b.emailValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -682,12 +693,12 @@ class RegisterActivity : AppCompatActivity() {
                         R.string.register_error_detail,
                         createResult.exceptionOrNull()?.message.orEmpty()
                     )
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Create account error: ${e.message}", e)
                 b.emailValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
@@ -719,7 +730,7 @@ class RegisterActivity : AppCompatActivity() {
 
         b.verificationCodeValidationText.text = getString(R.string.register_checking)
         b.verificationCodeValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -752,7 +763,7 @@ class RegisterActivity : AppCompatActivity() {
                     } else {
                         Log.e(TAG, "Failed to create access token: ${tokenResult.exceptionOrNull()?.message}")
                         b.verificationCodeValidationText.text = getString(R.string.register_token_error)
-                        binding.nextButton.isEnabled = true
+                        setNextButtonEnabled(true)
                     }
                 } else {
                     Log.e(TAG, "Confirm account failed: ${confirmResult.exceptionOrNull()?.message}")
@@ -760,13 +771,13 @@ class RegisterActivity : AppCompatActivity() {
                         R.string.register_error_detail,
                         confirmResult.exceptionOrNull()?.message.orEmpty()
                     )
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                     otpHelper?.clear()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Confirm account error: ${e.message}", e)
                 b.verificationCodeValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
                 otpHelper?.clear()
             }
         }
@@ -795,9 +806,9 @@ class RegisterActivity : AppCompatActivity() {
         
         // Проверяем: пароль не пустой, минимальная длина, пароли совпадают
         if (password.length >= MIN_PASSWORD_LENGTH && password == confirmPassword && confirmPassword.isNotEmpty()) {
-            binding.nextButton.isEnabled = true
+            setNextButtonEnabled(true)
         } else {
-            binding.nextButton.isEnabled = false
+            setNextButtonEnabled(false)
         }
     }
 
@@ -926,7 +937,7 @@ class RegisterActivity : AppCompatActivity() {
             step6Binding?.avatarPlaceholder?.visibility = View.GONE
 
             // Включаем кнопку "Далее" теперь, когда аватар выбран
-            binding.nextButton.isEnabled = true
+            setNextButtonEnabled(true)
 
             Toast.makeText(this, R.string.register_photo_selected, Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
@@ -981,7 +992,7 @@ class RegisterActivity : AppCompatActivity() {
 
         // Включаем кнопку "Далее" только после ввода 6-значного кода
         b.otpCodeEditText.doAfterTextChanged {
-            binding.nextButton.isEnabled = (it?.length == 6)
+            setNextButtonEnabled(it?.length == 6)
         }
     }
 
@@ -1008,7 +1019,7 @@ class RegisterActivity : AppCompatActivity() {
     private fun setPasswordOnServerAndProceed() {
         if (!validateCurrentStep()) return
 
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -1025,12 +1036,12 @@ class RegisterActivity : AppCompatActivity() {
                         getString(R.string.register_error_detail, result.exceptionOrNull()?.message.orEmpty()),
                         Toast.LENGTH_SHORT
                     ).show()
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Set password error: ${e.message}", e)
                 Toast.makeText(this@RegisterActivity, getString(R.string.register_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
@@ -1038,7 +1049,7 @@ class RegisterActivity : AppCompatActivity() {
     private fun uploadAvatarAndProceed() {
         val bytes = avatarBytes ?: return
 
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -1062,12 +1073,12 @@ class RegisterActivity : AppCompatActivity() {
                         getString(R.string.register_avatar_upload_error, uploadResult.exceptionOrNull()?.message.orEmpty()),
                         Toast.LENGTH_SHORT
                     ).show()
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Upload avatar error: ${e.message}", e)
                 Toast.makeText(this@RegisterActivity, getString(R.string.register_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
@@ -1081,7 +1092,7 @@ class RegisterActivity : AppCompatActivity() {
             return
         }
 
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -1105,7 +1116,7 @@ class RegisterActivity : AppCompatActivity() {
         val code = step8Binding?.otpCodeEditText?.text?.toString() ?: return
         if (code.length != 6) return
 
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -1119,13 +1130,13 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     step8Binding?.otpErrorText?.text = getString(R.string.register_invalid_code)
                     step8Binding?.otpErrorText?.visibility = View.VISIBLE
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Verify 2FA error: ${e.message}", e)
                 step8Binding?.otpErrorText?.text = getString(R.string.register_error_detail, e.message.orEmpty())
                 step8Binding?.otpErrorText?.visibility = View.VISIBLE
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
