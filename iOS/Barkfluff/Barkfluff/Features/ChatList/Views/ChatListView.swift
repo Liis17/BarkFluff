@@ -139,13 +139,19 @@ struct ChatListView: View {
                     }
                 } else {
                     ForEach(viewModel.chats) { chat in
-                        ChatRowView(
-                            chat: chat,
-                            currentUserID: container.currentUserID,
-                            onlineStatusService: container.onlineStatusService
-                        )
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+                        Button {
+                            coordinator.openChat(chat)
+                            viewModel.markChatAsReadLocally(chatID: chat.id)
+                        } label: {
+                            ChatRowView(
+                                chat: chat,
+                                currentUserID: container.currentUserID,
+                                onlineStatusService: container.onlineStatusService
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.bfPressable)
                         .tag(chat as Chat?)
                     }
                 }
