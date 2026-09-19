@@ -53,7 +53,8 @@ struct CreateGroupChatView: View {
     private func content(vm: GroupChatViewModel) -> some View {
         @Bindable var vm = vm
 
-        Form {
+        ReadableContentContainer(maxWidth: ReadableContentWidth.form) {
+            Form {
             Section("group_chat.create.name_section") {
                 TextField("group_chat.create.name_placeholder", text: $vm.title)
                     .textInputAutocapitalization(.sentences)
@@ -126,11 +127,12 @@ struct CreateGroupChatView: View {
                 }
             }
 
-            if let error = vm.errorMessage {
-                Section {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.footnote)
+                if let error = vm.errorMessage {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
                 }
             }
         }

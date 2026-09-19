@@ -16,10 +16,21 @@ struct MainTabView: View {
 
         TabView(selection: $coordinator.activeTab) {
             // Вкладка чатов
-            NavigationStack(path: $coordinator.chatNavigationPath) {
+            NavigationSplitView {
                 ChatListView()
-                    .navigationDestination(for: Chat.self) { chat in
-                        ConversationView(chat: chat)
+                    .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 420)
+            } detail: {
+                NavigationStack(path: $coordinator.chatNavigationPath) {
+                    Group {
+                        if let chat = coordinator.selectedChat {
+                            ConversationView(chat: chat)
+                        } else {
+                            ContentUnavailableView(
+                                "chat_list.empty.title",
+                                systemImage: "message",
+                                description: Text("chat_list.empty.description")
+                            )
+                        }
                     }
                     .navigationDestination(for: ConversationDestination.self) { destination in
                         switch destination {
@@ -27,7 +38,9 @@ struct MainTabView: View {
                             UserProfilePanelView(chat: chat)
                         }
                     }
+                }
             }
+            .navigationSplitViewStyle(.balanced)
             .tabItem {
                 Label("navigation.tab.chats", systemImage: "message")
             }

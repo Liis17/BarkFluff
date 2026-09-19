@@ -15,11 +15,13 @@ struct ForwardChatPickerView: View {
 
     var body: some View {
         NavigationStack {
-            ContentUnavailableView(
-                "conversation.forward.title",
-                systemImage: "arrowshape.turn.up.right.fill",
-                description: Text("conversation.forward.placeholder_description")
-            )
+            ReadableContentContainer(maxWidth: ReadableContentWidth.form) {
+                ContentUnavailableView(
+                    "conversation.forward.title",
+                    systemImage: "arrowshape.turn.up.right.fill",
+                    description: Text("conversation.forward.placeholder_description")
+                )
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("common.cancel") { dismiss() }

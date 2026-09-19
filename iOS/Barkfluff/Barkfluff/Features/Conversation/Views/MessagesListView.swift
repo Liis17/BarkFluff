@@ -32,94 +32,97 @@ struct MessagesListView: View {
     var onSaveDocuments: (([MessageAttachment]) -> Void)?
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: Theme.Spacing.xxs) {
-                    // Отступ сверху
-                    Color.clear
-                        .frame(height: 20)
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: Theme.Spacing.xxs) {
+                        // Отступ сверху
+                        Color.clear
+                            .frame(height: 20)
 
-                    // Индикатор загрузки старых сообщений
-                    if isLoadingMore {
-                        ProgressView()
-                            .padding(.top, Theme.Spacing.md)
-                    }
+                        // Индикатор загрузки старых сообщений
+                        if isLoadingMore {
+                            ProgressView()
+                                .padding(.top, Theme.Spacing.md)
+                        }
 
-                    // Сообщения
-                    ForEach(items) { item in
-                        switch item {
-                        case .dateSeparator(let date):
-                            MessageDateSeparatorView(date: date)
+                        // Сообщения
+                        ForEach(items) { item in
+                            switch item {
+                            case .dateSeparator(let date):
+                                MessageDateSeparatorView(date: date)
 
-                        case .message(let message, let groupInfo):
-                            MessageBubbleView(
-                                message: message,
-                                currentUserID: currentUserID,
-                                groupInfo: groupInfo,
-                                showSenderName: isGroupChat,
-                                onRetry: onRetry,
-                                onDeleteFailed: onDeleteFailed,
-                                onAttachmentTap: onAttachmentTap,
-                                onReply: onReply,
-                                onForward: onForward,
-                                onEdit: onEdit,
-                                onDelete: onDelete,
-                                onCopyText: onCopyText,
-                                onSaveImages: onSaveImages,
-                                onCopyImage: onCopyImage,
-                                onSaveDocuments: onSaveDocuments
-                            )
-                            .transition(messageTransition)
-                            .onAppear {
-                                // Пагинация при достижении первого сообщения
-                                guard scrollPosition.isInitialLoadComplete else { return }
-                                if let firstMessage = items.first(where: {
-                                    if case .message = $0 { return true }
-                                    return false
-                                }), case .message(let firstMsg, _) = firstMessage,
-                                   firstMsg.id == message.id {
-                                    onLoadMore()
+                            case .message(let message, let groupInfo):
+                                MessageBubbleView(
+                                    message: message,
+                                    currentUserID: currentUserID,
+                                    groupInfo: groupInfo,
+                                    showSenderName: isGroupChat,
+                                    availableWidth: geometry.size.width,
+                                    onRetry: onRetry,
+                                    onDeleteFailed: onDeleteFailed,
+                                    onAttachmentTap: onAttachmentTap,
+                                    onReply: onReply,
+                                    onForward: onForward,
+                                    onEdit: onEdit,
+                                    onDelete: onDelete,
+                                    onCopyText: onCopyText,
+                                    onSaveImages: onSaveImages,
+                                    onCopyImage: onCopyImage,
+                                    onSaveDocuments: onSaveDocuments
+                                )
+                                .transition(messageTransition)
+                                .onAppear {
+                                    // Пагинация при достижении первого сообщения
+                                    guard scrollPosition.isInitialLoadComplete else { return }
+                                    if let firstMessage = items.first(where: {
+                                        if case .message = $0 { return true }
+                                        return false
+                                    }), case .message(let firstMsg, _) = firstMessage,
+                                       firstMsg.id == message.id {
+                                        onLoadMore()
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Якорь для scrollToBottom (без визуального отступа —
-                    // высоту инпута уже резервирует safeAreaInset)
-                    Color.clear
-                        .frame(height: 0)
-                        .id("bottom")
+                        // Якорь для scrollToBottom (без визуального отступа —
+                        // высоту инпута уже резервирует safeAreaInset)
+                        Color.clear
+                            .frame(height: 0)
+                            .id("bottom")
+                    }
+                    .padding(.horizontal, Theme.Spacing.sm)
                 }
-                .padding(.horizontal, Theme.Spacing.sm)
-            }
-            .onChange(of: scrollPosition.scrollToID) { _, newID in
-                if let id = newID {
-                    if reduceMotion {
-                        proxy.scrollTo(id, anchor: .bottom)
-                    } else {
-                        withAnimation(.smooth) {
+                .onChange(of: scrollPosition.scrollToID) { _, newID in
+                    if let id = newID {
+                        if reduceMotion {
                             proxy.scrollTo(id, anchor: .bottom)
+                        } else {
+                            withAnimation(.smooth) {
+                                proxy.scrollTo(id, anchor: .bottom)
+                            }
                         }
                     }
                 }
-            }
-            .onChange(of: items.count) { oldCount, newCount in
-                // Автоскролл при новых сообщениях, если были внизу
-                if scrollPosition.isAtBottom, newCount > oldCount {
-                    scrollToBottom(proxy: proxy, animate: !reduceMotion)
+                .onChange(of: items.count) { oldCount, newCount in
+                    // Автоскролл при новых сообщениях, если были внизу
+                    if scrollPosition.isAtBottom, newCount > oldCount {
+                        scrollToBottom(proxy: proxy, animate: !reduceMotion)
+                    }
                 }
-            }
-            .defaultScrollAnchor(.bottom)
-            .task {
-                // Скролл к первому непрочитанному или вниз
-                if let unreadID = firstUnreadMessageID {
-                    proxy.scrollTo("msg-\(unreadID)", anchor: .center)
-                } else {
-                    scrollToBottom(proxy: proxy, animate: false)
+                .defaultScrollAnchor(.bottom)
+                .task {
+                    // Скролл к первому непрочитанному или вниз
+                    if let unreadID = firstUnreadMessageID {
+                        proxy.scrollTo("msg-\(unreadID)", anchor: .center)
+                    } else {
+                        scrollToBottom(proxy: proxy, animate: false)
+                    }
+                    // Даем время ScrollView стабилизироваться
+                    try? await Task.sleep(for: .milliseconds(300))
+                    scrollPosition.isInitialLoadComplete = true
                 }
-                // Даем время ScrollView стабилизироваться
-                try? await Task.sleep(for: .milliseconds(300))
-                scrollPosition.isInitialLoadComplete = true
             }
         }
     }
