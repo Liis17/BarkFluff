@@ -1,7 +1,7 @@
 # BarkFluff iOS — Карта проекта
 
 Расположение: `iOS/Barkfluff/`
-Платформа: iOS 26, Swift (app-таргет `SWIFT_VERSION = 5.0`; локальные пакеты — `swift-tools-version: 6.2`), SwiftUI + gRPC-Swift 2.0
+Платформа: iOS 26 minimum / SDK iOS 27, Swift (app-таргет `SWIFT_VERSION = 5.0`; локальные пакеты — `swift-tools-version: 6.2`), SwiftUI + gRPC-Swift 2.0
 
 > iOS-клиент является адаптацией macOS-клиента. Архитектура и пакеты общие.
 > Описание архитектуры и конвенций: [[Клиенты/iOS]]
@@ -52,9 +52,9 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Navigation/AppCoordinator.swift` | `@Observable` координатор: состояния `loading → serverSelection → authentication → main`, табы chats/profile, NavigationPath (chat + profile, профильный включает категории настроек), `presentedSheet`, `logout/forceLogout` через container.reset() |
+| `Navigation/AppCoordinator.swift` | `@Observable` координатор: состояния `loading → serverSelection → authentication → main`, табы chats/profile, `selectedChat` как единый источник selection, detail-only `chatNavigationPath`, профильный `NavigationPath`, `presentedSheet`, `logout/forceLogout` через container.reset() |
 | `Navigation/RootView.swift` | Корневой SwiftUI-вид + `.preferredColorScheme(appearanceSettings.colorScheme)` |
-| `Navigation/MainTabView.swift` | `TabView` (2 таба: Чаты / Профиль). У Profile-стека `navigationDestination(for: SettingsCategory.self)` → `SettingsCategoryView`. Sheet через `presentedSheet` для createGroupChat/userSearch/forwardMessage |
+| `Navigation/MainTabView.swift` | `TabView` (2 таба) + adaptive `NavigationSplitView` для чатов: sidebar `ChatListView`, detail `ConversationView`/detail `NavigationStack`; у Profile-стека `navigationDestination(for: SettingsCategory.self)` → `SettingsCategoryView`. Sheet через `presentedSheet` |
 | `Navigation/SettingsCategory.swift` | Enum категорий настроек (порт из macOS) |
 
 ---
@@ -65,6 +65,7 @@
 |------|-----------|
 | `DesignSystem/Theme.swift` | Цвета, отступы, радиусы |
 | `DesignSystem/Typography.swift` | Стили текста (порт) |
+| `DesignSystem/Components/ReadableContentContainer.swift` | Центрирует readable-контент в широком окне (`560 pt` для auth, `720 pt` для форм и профилей) |
 | `DesignSystem/Components/AvatarView.swift` | Аватар |
 | `DesignSystem/Components/BadgeView.swift` + `BadgesRowView` | Баджи пользователя |
 | `DesignSystem/Components/CachedImageView.swift` | Nuke + MediaCacheManager |
@@ -92,7 +93,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `ChatList/ViewModels/ChatListViewModel.swift` | Список чатов: stale-while-revalidate через `LocalChatRepository`, `isRefreshing`, подписки на edited/deleted streams |
-| `ChatList/Views/ChatListView.swift` | Список чатов с push к ConversationView; toolbar Menu: «Новый чат» (UserSearch) / «Новая группа»; pull-to-refresh; `RefreshingIndicatorView` |
+| `ChatList/Views/ChatListView.swift` | `List(selection:)` для adaptive split/push-навигации; toolbar Menu: «Новый чат» (UserSearch) / «Новая группа»; pull-to-refresh; `RefreshingIndicatorView` |
 
 ---
 
@@ -110,9 +111,9 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Conversation/Views/ConversationView.swift` | Корневой экран: ChatBackgroundView (фон), MessagesListView, EditPreview/ReplyPreview над инпутом, .confirmationDialog для удаления, `.fullScreenCover` для медиа |
-| `Conversation/Views/MessageBubbleView.swift` | `BFMarkdown.MarkdownMessageView` для обычных/системных Markdown-сообщений; `.contextMenu` (Изменить/Ответить/Переслать/Копировать/Сохранить/Удалить); чтение `bubbleCornerRadius` из PersonalizationSettings; рендер `ForwardedMessageView` и `StickerMessageView` |
-| `Conversation/Views/MessagesListView.swift` | Прокидывает все callback-и в MessageBubbleView |
+| `Conversation/Views/ConversationView.swift` | Корневой экран: ChatBackgroundView (фон), MessagesListView, EditPreview/ReplyPreview над адаптивным инпутом, измерение высоты input для кнопки scroll-to-bottom, `.confirmationDialog` для удаления, `.fullScreenCover` для медиа |
+| `Conversation/Views/MessageBubbleView.swift` | `BFMarkdown.MarkdownMessageView` для обычных/системных Markdown-сообщений; responsive width до 560 pt, `.contextMenu`, `ForwardedMessageView`, `StickerMessageView` и media-grid от локальной ширины |
+| `Conversation/Views/MessagesListView.swift` | Измеряет доступную detail-ширину и прокидывает её в MessageBubbleView вместе со всеми callback-и |
 | `Conversation/Views/EditPreviewView.swift` | Превью редактируемого сообщения над инпутом |
 | `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над инпутом с `MarkdownText.strip`, `makeSnippet()` |
 | `Conversation/Views/ForwardedMessageView.swift` | Карточка пересланного сообщения внутри пузыря с plain preview текста |
