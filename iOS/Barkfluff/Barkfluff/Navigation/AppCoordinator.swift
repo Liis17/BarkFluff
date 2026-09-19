@@ -60,10 +60,13 @@ final class AppCoordinator {
     /// Текущий экран авторизации
     var authScreen: AuthScreen = .login
 
-    /// Выбранный чат для навигации
+    /// Выбранный чат.
+    ///
+    /// В compact-режиме `NavigationSplitView` представляет его как push-переход,
+    /// а в regular-режиме показывает одновременно с sidebar.
     var selectedChat: Chat?
 
-    /// Путь навигации в чатах
+    /// Вторичные маршруты внутри выбранного чата (например, профиль пользователя).
     var chatNavigationPath = NavigationPath()
 
     /// Путь навигации в профиле (включая категории настроек)
@@ -190,15 +193,14 @@ final class AppCoordinator {
     /// Открыть чат
     func openChat(_ chat: Chat) {
         selectedChat = chat
-        chatNavigationPath.append(chat)
+        // Профиль и другие detail-маршруты относятся к предыдущему чату.
+        chatNavigationPath = NavigationPath()
     }
 
     /// Закрыть текущий чат
     func closeChat() {
         selectedChat = nil
-        if !chatNavigationPath.isEmpty {
-            chatNavigationPath.removeLast()
-        }
+        chatNavigationPath = NavigationPath()
     }
 
     /// Открыть профиль собеседника (push в стек чата)

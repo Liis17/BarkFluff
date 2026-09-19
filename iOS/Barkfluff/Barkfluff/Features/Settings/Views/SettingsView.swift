@@ -32,6 +32,13 @@ struct SettingsCategoryView: View {
     @Environment(DependencyContainer.self) private var container
 
     var body: some View {
+        content
+            .frame(maxWidth: ReadableContentWidth.form)
+            .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch category {
         case .editProfile:
             ProfileEditView(

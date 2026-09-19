@@ -16,30 +16,32 @@ struct RegisterView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                if let viewModel {
-                    // Заголовок
-                    headerSection(viewModel)
-                        .padding(.top, 20)
+            ReadableContentContainer(maxWidth: ReadableContentWidth.authentication) {
+                VStack(spacing: 20) {
+                    if let viewModel {
+                        // Заголовок
+                        headerSection(viewModel)
+                            .padding(.top, 20)
 
-                    // Контент шага
-                    stepContent(viewModel)
+                        // Контент шага
+                        stepContent(viewModel)
 
-                    // Ошибка
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.subheadline)
-                            .foregroundStyle(.red)
-                            .padding(.horizontal, 20)
+                        // Ошибка
+                        if let error = viewModel.errorMessage {
+                            Text(error)
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                                .padding(.horizontal, 20)
+                        }
+
+                        // Кнопки навигации
+                        footerSection(viewModel)
+                            .padding(.top, 8)
+                            .padding(.bottom, 40)
+                    } else {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-
-                    // Кнопки навигации
-                    footerSection(viewModel)
-                        .padding(.top, 8)
-                        .padding(.bottom, 40)
-                } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }

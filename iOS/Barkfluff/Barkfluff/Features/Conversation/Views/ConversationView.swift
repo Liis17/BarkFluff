@@ -20,11 +20,13 @@ struct ConversationView: View {
 
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(DependencyContainer.self) private var container
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var viewModel: ConversationViewModel?
     @State private var messageText = ""
     @State private var scrollPosition = ScrollPositionManager()
     @State private var selectedAttachments: [SelectedAttachment] = []
+    @State private var inputAreaHeight: CGFloat = 0
 
     @Environment(\.locale) private var locale
 
@@ -61,13 +63,17 @@ struct ConversationView: View {
             if scrollPosition.showScrollToBottom {
                 VStack {
                     Spacer()
-                    ScrollToBottomButton(
-                        unreadCount: scrollPosition.unreadCount
-                    ) {
-                        scrollPosition.scrollToBottom()
+                    HStack {
+                        Spacer()
+                        ScrollToBottomButton(
+                            unreadCount: scrollPosition.unreadCount
+                        ) {
+                            scrollPosition.scrollToBottom()
+                        }
                     }
-                    .padding(.bottom, 80)
                 }
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.bottom, inputAreaHeight + Theme.Spacing.md)
             }
 
             // Ошибка (если есть)
@@ -84,7 +90,7 @@ struct ConversationView: View {
                             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md))
                         Spacer()
                     }
-                    .padding(.bottom, 100)
+                    .padding(.bottom, inputAreaHeight + Theme.Spacing.lg)
                 }
             }
         }
@@ -128,7 +134,7 @@ struct ConversationView: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .tabBar) // Скрываем таб-бар в диалоге
+        .toolbar(horizontalSizeClass == .regular ? .visible : .hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom) {
             if let viewModel {
                 VStack(spacing: 8) {
@@ -168,7 +174,19 @@ struct ConversationView: View {
                         onStickerTap: { showStickerPicker = true }
                     )
                 }
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(
+                                key: ConversationInputHeightPreferenceKey.self,
+                                value: geometry.size.height
+                            )
+                    }
+                )
             }
+        }
+        .onPreferenceChange(ConversationInputHeightPreferenceKey.self) { height in
+            inputAreaHeight = height
         }
         .confirmationDialog(
             "conversation.delete.title",
@@ -583,6 +601,14 @@ private class URLCacheShared {
         shared.lock.lock()
         defer { shared.lock.unlock() }
         shared.cache[fileID] = url
+    }
+}
+
+private struct ConversationInputHeightPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

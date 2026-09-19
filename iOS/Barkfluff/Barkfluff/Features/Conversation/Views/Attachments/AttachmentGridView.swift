@@ -15,6 +15,7 @@ import BFCore
 struct AttachmentGridView: View {
     let attachments: [MessageAttachment]
     let isOwn: Bool
+    let availableWidth: CGFloat
     let onTap: (MessageAttachment) -> Void
 
     @Environment(DependencyContainer.self) private var container
@@ -22,7 +23,7 @@ struct AttachmentGridView: View {
     var body: some View {
         let layout = AttachmentLayoutCalculator.calculateLayout(
             for: attachments,
-            containerWidth: 260
+            containerWidth: availableWidth
         )
 
         ZStack {
@@ -275,6 +276,7 @@ struct CachedImageURLView: View {
                 )
             ],
             isOwn: false,
+            availableWidth: 260,
             onTap: { _ in }
         )
         .border(.gray)
@@ -286,6 +288,7 @@ struct CachedImageURLView: View {
                 MessageAttachment(id: 2, type: .image, fileID: "2", fileName: "2.jpg", fileSize: 1_000_000)
             ],
             isOwn: false,
+            availableWidth: 260,
             onTap: { _ in }
         )
         .border(.gray)
@@ -298,6 +301,7 @@ struct CachedImageURLView: View {
                 MessageAttachment(id: 3, type: .image, fileID: "3", fileName: "3.jpg", fileSize: 1_000_000)
             ],
             isOwn: false,
+            availableWidth: 260,
             onTap: { _ in }
         )
         .border(.gray)
@@ -312,6 +316,7 @@ struct CachedImageURLView: View {
                 MessageAttachment(id: 5, type: .image, fileID: "5", fileName: "5.jpg", fileSize: 1_000_000)
             ],
             isOwn: false,
+            availableWidth: 260,
             onTap: { _ in }
         )
         .border(.gray)

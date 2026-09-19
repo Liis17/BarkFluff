@@ -50,6 +50,8 @@ struct ProfileView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .frame(maxWidth: ReadableContentWidth.form)
+        .frame(maxWidth: .infinity)
         .navigationTitle("profile.title")
         .navigationDestination(for: ProfileDestination.self) { destination in
             switch destination {

@@ -19,7 +19,19 @@ struct ChatListView: View {
     var body: some View {
         Group {
             if let viewModel {
-                chatListContent(viewModel: viewModel)
+                chatListContent(
+                    viewModel: viewModel,
+                    selection: Binding(
+                        get: { coordinator.selectedChat },
+                        set: { chat in
+                            if let chat {
+                                coordinator.openChat(chat)
+                            } else {
+                                coordinator.closeChat()
+                            }
+                        }
+                    )
+                )
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -76,13 +88,21 @@ struct ChatListView: View {
         .onChange(of: excludeFolderChatsFromAll) { _, newValue in
             viewModel?.excludeFolderChatsFromAll = newValue
         }
+        .onChange(of: coordinator.selectedChat) { _, chat in
+            if let chat {
+                viewModel?.markChatAsReadLocally(chatID: chat.id)
+            }
+        }
         .onDisappear {
             viewModel?.stopListeningForUpdates()
         }
     }
 
     @ViewBuilder
-    private func chatListContent(viewModel: ChatListViewModel) -> some View {
+    private func chatListContent(
+        viewModel: ChatListViewModel,
+        selection: Binding<Chat?>
+    ) -> some View {
         VStack(spacing: 0) {
             // Папки сверху — всегда видны, ничем не перекрываются.
             ChatFolderTabsBar(
@@ -94,7 +114,7 @@ struct ChatListView: View {
                 onSelect: { viewModel.selectFolder($0) }
             )
 
-            List {
+            List(selection: selection) {
                 if !viewModel.searchResults.isEmpty {
                     Section("chat_list.search.section.users") {
                         ForEach(viewModel.searchResults) { user in
@@ -119,19 +139,14 @@ struct ChatListView: View {
                     }
                 } else {
                     ForEach(viewModel.chats) { chat in
-                        Button {
-                            coordinator.openChat(chat)
-                            viewModel.markChatAsReadLocally(chatID: chat.id)
-                        } label: {
-                            ChatRowView(
-                                chat: chat,
-                                currentUserID: container.currentUserID,
-                                onlineStatusService: container.onlineStatusService
-                            )
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.bfPressable)
+                        ChatRowView(
+                            chat: chat,
+                            currentUserID: container.currentUserID,
+                            onlineStatusService: container.onlineStatusService
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .tag(chat as Chat?)
                     }
                 }
             }

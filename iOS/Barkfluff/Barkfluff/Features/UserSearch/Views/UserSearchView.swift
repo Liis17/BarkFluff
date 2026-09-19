@@ -39,47 +39,49 @@ struct UserSearchView: View {
         if let vm = viewModel {
             @Bindable var vm = vm
 
-            List {
-                if vm.searchQuery.isEmpty {
-                    ContentUnavailableView(
-                        "user_search.idle.title",
-                        systemImage: "person.magnifyingglass",
-                        description: Text("user_search.idle.description")
-                    )
-                } else if vm.isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                } else if vm.searchResults.isEmpty, vm.searchQuery.count >= 3 {
-                    ContentUnavailableView(
-                        "user_search.empty.title",
-                        systemImage: "person.slash",
-                        description: Text("user_search.empty.description")
-                    )
-                } else {
-                    ForEach(vm.searchResults) { user in
-                        Button {
-                            Task { await openConversation(with: user) }
-                        } label: {
-                            UserSearchResultRow(user: user)
+            ReadableContentContainer(maxWidth: ReadableContentWidth.form) {
+                List {
+                    if vm.searchQuery.isEmpty {
+                        ContentUnavailableView(
+                            "user_search.idle.title",
+                            systemImage: "person.magnifyingglass",
+                            description: Text("user_search.idle.description")
+                        )
+                    } else if vm.isLoading {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
                         }
-                        .buttonStyle(.plain)
+                    } else if vm.searchResults.isEmpty, vm.searchQuery.count >= 3 {
+                        ContentUnavailableView(
+                            "user_search.empty.title",
+                            systemImage: "person.slash",
+                            description: Text("user_search.empty.description")
+                        )
+                    } else {
+                        ForEach(vm.searchResults) { user in
+                            Button {
+                                Task { await openConversation(with: user) }
+                            } label: {
+                                UserSearchResultRow(user: user)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                }
 
-                if let error = vm.errorMessage {
-                    Section {
-                        Text(error)
-                            .foregroundStyle(.red)
-                            .font(.footnote)
+                    if let error = vm.errorMessage {
+                        Section {
+                            Text(error)
+                                .foregroundStyle(.red)
+                                .font(.footnote)
+                        }
                     }
                 }
-            }
-            .searchable(text: $vm.searchQuery, prompt: Text("user_search.prompt"))
-            .onChange(of: vm.searchQuery) { _, _ in
-                vm.search()
+                .searchable(text: $vm.searchQuery, prompt: Text("user_search.prompt"))
+                .onChange(of: vm.searchQuery) { _, _ in
+                    vm.search()
+                }
             }
         } else {
             ProgressView()
