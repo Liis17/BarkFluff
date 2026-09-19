@@ -14,53 +14,55 @@ struct ProfileView: View {
     @Environment(DependencyContainer.self) private var container
 
     var body: some View {
-        List {
-            Section {
-                NavigationLink(value: ProfileDestination.edit) {
-                    ProfileCardView()
+        ReadableContentContainer(maxWidth: ReadableContentWidth.form) {
+            List {
+                Section {
+                    NavigationLink(value: ProfileDestination.edit) {
+                        ProfileCardView()
+                    }
+                }
+
+                Section("profile.section.account_security") {
+                    categoryLink(.security)
+                    categoryLink(.privacy)
+                }
+
+                Section("profile.section.personalization") {
+                    categoryLink(.personalization)
+                }
+
+                Section("profile.section.chats") {
+                    categoryLink(.chatFolders)
+                }
+
+                Section("profile.section.app") {
+                    categoryLink(.cloud)
+                    categoryLink(.cache)
+                    categoryLink(.activeSessions)
+                    categoryLink(.notifications)
+                }
+
+                Section("profile.section.other") {
+                    categoryLink(.general)
+                    categoryLink(.language)
+                    categoryLink(.aboutApp)
+                    categoryLink(.aboutServer)
+                    categoryLink(.testing)
                 }
             }
-
-            Section("profile.section.account_security") {
-                categoryLink(.security)
-                categoryLink(.privacy)
-            }
-
-            Section("profile.section.personalization") {
-                categoryLink(.personalization)
-            }
-
-            Section("profile.section.chats") {
-                categoryLink(.chatFolders)
-            }
-
-            Section("profile.section.app") {
-                categoryLink(.cloud)
-                categoryLink(.cache)
-                categoryLink(.activeSessions)
-                categoryLink(.notifications)
-            }
-
-            Section("profile.section.other") {
-                categoryLink(.general)
-                categoryLink(.language)
-                categoryLink(.aboutApp)
-                categoryLink(.aboutServer)
-                categoryLink(.testing)
-            }
+            .listStyle(.insetGrouped)
         }
-        .listStyle(.insetGrouped)
-        .frame(maxWidth: ReadableContentWidth.form)
-        .frame(maxWidth: .infinity)
         .navigationTitle("profile.title")
         .navigationDestination(for: ProfileDestination.self) { destination in
             switch destination {
             case .edit:
-                ProfileEditView(
-                    userService: container.userService,
-                    fileService: container.fileService,
-                    container: container
-                )
+                ReadableContentContainer(maxWidth: ReadableContentWidth.form) {
+                    ProfileEditView(
+                        userService: container.userService,
+                        fileService: container.fileService,
+                        container: container
+                    )
+                }
             }
         }
     }
