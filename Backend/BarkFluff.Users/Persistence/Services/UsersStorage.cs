@@ -25,8 +25,9 @@ public class UsersStorage
         return user;
     }
 
-    public async Task<User?> GetUserByEmail(string email)
+    public async Task<User?> GetUserByEmail(string? email)
     {
+        if (string.IsNullOrWhiteSpace(email)) return null;
         var userContact = await _usersContext.UserContacts.Include(u => u.User)
             .FirstOrDefaultAsync(x => string.Equals(x.Email.ToLower(), email.ToLower()));
 
@@ -227,7 +228,7 @@ public class UsersStorage
 
     public async Task<User> CreateUser(string username, string firstName, string lastName, string email)
     {
-        var contactUser = new UserContact { Email = email };
+        var contactUser = string.IsNullOrWhiteSpace(email) ? null : new UserContact { Email = email.Trim() };
 
         var user = new User
         {

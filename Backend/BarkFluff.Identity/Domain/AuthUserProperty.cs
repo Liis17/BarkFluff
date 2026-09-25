@@ -18,4 +18,14 @@ public class AuthUserProperty
     public OtpType SelectedOtpType { get; set; }
 
     public string? LastEmailAuthCode { get; set; }
+
+    public DateTime? LastEmailAuthCodeExpiresAt { get; set; }
+    public BarkFluff.Proto.Identity.AuthLoginMode LoginMode { get; set; }
+    public OtpType PreferredFactor { get; set; }
+    public long? TelegramId { get; set; }
+    public string? TelegramUsername { get; set; }
+    public bool TelegramEnabled { get; set; }
+    public bool TelegramOtpEnabled { get; set; }
+    public bool FastAuthTelegramEnabled { get; set; }
+    public int PolicyVersion { get; set; }
 }

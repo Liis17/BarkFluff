@@ -7,4 +7,5 @@ public enum OtpType
     Authenticator = 1,
 
     Email = 2,
+    Telegram = 3,
 }

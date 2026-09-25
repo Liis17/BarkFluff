@@ -7,7 +7,6 @@ using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
-using BarkFluff.Shared.Exceptions.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 
@@ -59,20 +58,8 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
 
         logger.LogDebug("Создание черновика пользователя {Username}", request.Username);
 
-        AddDraftUserResponse responseUser = null;
-
-        try
-        {
-            responseUser = await usersClient.AddDraftUserAsync(createAccountRequest);
-            metrics.Increment("accounts_drafted");
-            logger.LogDebug("Черновик пользователя создан. UserId: {UserId}", responseUser.UserId);
-        }
-        catch (UserIsDraftException)
-        {
-            metrics.Increment("accounts_draft_overridden");
-            logger.LogDebug("Пользователь уже существует как черновик, переопределение данных");
-            responseUser = await usersClient.OverrideDraftUserAsync(createAccountRequest);
-        }
+        var responseUser = await usersClient.AddDraftUserAsync(createAccountRequest);
+        metrics.Increment("accounts_drafted");
 
         var code = CodeGenerator.GenerateDigitalCode(6);
 
