@@ -199,6 +199,7 @@
     <string name="reset_password_title">忘记密码？</string>
     <string name="reset_password_subtitle">输入邮箱或用户名，我们将发送验证码用于重置密码</string>
     <string name="reset_enter_email_or_login">邮箱或用户名</string>
+    <string name="reset_identifier_hint">name@example.com</string>
     <string name="reset_send_code">发送验证码</string>
     <string name="reset_enter_verify_code">输入验证码</string>
     <string name="reset_we_sent_code">6 位验证码已发送至 &lt;b&gt;%1$s&lt;/b&gt;</string>

@@ -191,6 +191,12 @@ class ResetPasswordActivity : AppCompatActivity() {
             field.gravity = Gravity.CENTER_VERTICAL
             field.setPaddingRelative(field.paddingStart, 0, field.paddingEnd, 0)
         }
+
+        binding.emailEditText.doAfterTextChanged { input ->
+            binding.sendCodeButton.isEnabled = !isLoading && !input.isNullOrBlank()
+        }
+        binding.sendCodeButton.isEnabled =
+            !isLoading && !binding.emailEditText.text.isNullOrBlank()
     }
 
     private fun setupOtpBoxes() {
@@ -531,7 +537,8 @@ class ResetPasswordActivity : AppCompatActivity() {
     private fun setLoading(loading: Boolean) {
         isLoading = loading
         binding.loadingProgress.visibility = if (loading) View.VISIBLE else View.GONE
-        binding.sendCodeButton.isEnabled = !loading
+        binding.sendCodeButton.isEnabled =
+            !loading && !binding.emailEditText.text.isNullOrBlank()
         binding.confirmCodeButton.isEnabled = !loading
         binding.resendCodeButton.isEnabled = !loading && currentStep == 2 && !resendCooldownActive
         binding.savePasswordButton.isEnabled = !loading
