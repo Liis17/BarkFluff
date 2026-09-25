@@ -193,6 +193,44 @@ public class AuthenticationFlowTests
         Assert.NotNull((await h.Complete(login, replacement.Codes[0], true)).Session);
     }
 
+    [Fact]
+    public async Task FastAuth_RequiresTelegram_AndRepeatedApprovalReturnsSameSession()
+    {
+        using var h = new Harness(); await h.Register();
+        var input = new CreateSessionForUserServerRequest { UserId = 42, DeviceId = Guid.NewGuid().ToString(),
+            AttemptId = Guid.NewGuid().ToString(), ExpiresAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(h.Clock.GetUtcNow().UtcDateTime.AddMinutes(5)),
+            DeviceName = "New browser", OperationSystem = "Test", AppName = "Web" };
+        var pending = await h.Service.CreateFastAuthSession(input, default);
+        Assert.Equal(AuthChallengeState.Waiting, pending.ConfirmationState);
+        Assert.Null(pending.AccessToken);
+        var count = h.Bot.Messages.Count;
+        Assert.Equal(AuthChallengeState.Waiting, (await h.Service.CreateFastAuthSession(input, default)).ConfirmationState);
+        Assert.Equal(count, h.Bot.Messages.Count);
+        await h.Approve();
+        var completed = await h.Service.CreateFastAuthSession(input, default);
+        var repeat = await h.Service.CreateFastAuthSession(input, default);
+        Assert.Equal(AuthChallengeState.Completed, completed.ConfirmationState);
+        Assert.Equal(completed.RefreshToken.Value, repeat.RefreshToken.Value);
+        Assert.Equal(2, h.RegisteredDevices);
+        input.AttemptId = "";
+        await Assert.ThrowsAsync<RpcException>(() => h.Service.CreateFastAuthSession(input, default));
+    }
+
+    [Fact]
+    public async Task FastAuth_ExpiredApprovalCannotCreateSession()
+    {
+        using var h = new Harness(); await h.Register();
+        var input = new CreateSessionForUserServerRequest { UserId = 42, DeviceId = Guid.NewGuid().ToString(),
+            AttemptId = Guid.NewGuid().ToString(), ExpiresAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(h.Clock.GetUtcNow().UtcDateTime.AddSeconds(20)),
+            DeviceName = "New browser", OperationSystem = "Test", AppName = "Web" };
+        await h.Service.CreateFastAuthSession(input, default);
+        h.Clock.Advance(TimeSpan.FromSeconds(21)); await h.Approve();
+        var result = await h.Service.CreateFastAuthSession(input, default);
+        Assert.Equal(AuthChallengeState.Expired, result.ConfirmationState);
+        Assert.Null(result.AccessToken);
+        Assert.Equal(1, h.RegisteredDevices);
+    }
+
     private sealed class Harness : IDisposable
     {
         public IdentityContext Db { get; } = TestHelper.CreateContext();

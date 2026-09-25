@@ -43,9 +43,12 @@ public sealed class SettingsReadinessContributor : IBarkFluffReadinessContributo
             && bool.TryParse(enabledValue, out var enabled)
             && enabled;
 
+        var emailEnabled = SettingsSetupCoordinator.IsEmailEnabled(values);
+        var telegramEnabled = SettingsSetupCoordinator.IsTelegramEnabled(values);
+        if (!emailEnabled && !telegramEnabled) missing.Add("AuthenticationChannel");
         foreach (var entry in SettingsCatalog.All.Where(entry => entry.RequiresManualValue))
         {
-            if (entry.Setup is null || !SettingsSetupMetadata.IsApplicable(entry.Setup.Requirement, federationEnabled))
+            if (entry.Setup is null || !SettingsSetupMetadata.IsApplicable(entry.Setup.Requirement, federationEnabled, emailEnabled, telegramEnabled))
                 continue;
 
             var value = values.GetValueOrDefault((entry.ServiceId, entry.StorageKey), string.Empty);

@@ -22,7 +22,9 @@ public enum SetupRequirement
 {
     None,
     Always,
-    FederationEnabled
+    FederationEnabled,
+    EmailEnabled,
+    TelegramEnabled
 }
 
 public sealed record SetupFieldMetadata(
@@ -46,7 +48,8 @@ public static class SettingsSetupMetadata
     public static IReadOnlyList<SetupGroupMetadata> Groups { get; } =
     [
         new("server", 10, "Сведения о сервере", "Эти данные увидят пользователи при выборе вашей ноды."),
-        new("email", 20, "Почтовая доставка", "SMTP нужен для системных писем и уведомлений."),
+        new("email", 20, "Почтовая доставка", "SMTP для подтверждений и уведомлений. Можно отключить, если используется Telegram."),
+        new("telegram", 25, "Telegram", "Отдельный бот для подтверждения регистрации и входа на этой ноде."),
         new("media", 30, "Публичный адрес медиа", "Адрес, по которому клиенты будут получать медиафайлы."),
         new("storage", 40, "Объектное хранилище", "Учётные данные S3/MinIO для бакетов файлов."),
         new("calls", 50, "Звонки", "Ключи LiveKit для выдачи токенов и проверки webhook."),
@@ -72,11 +75,20 @@ public static class SettingsSetupMetadata
 
     public static SetupFieldMetadata Email(string key) => key switch
     {
-        "Host" => new("email", 10, "SMTP-сервер", "Имя хоста или IP-адрес SMTP-сервера без схемы и пути.", SetupInputType.Host, SetupRequirement.Always, "smtp-host", "smtp.example.com"),
-        "Port" => new("email", 20, "SMTP-порт", "Порт SMTP-сервера. Обычно 587 для STARTTLS или 465 для TLS.", SetupInputType.Integer, SetupRequirement.Always, "port", "587"),
-        "SenderEmail" => new("email", 30, "Адрес отправителя", "Адрес, от имени которого будут уходить системные письма.", SetupInputType.Email, SetupRequirement.Always, "email", "noreply@example.com"),
-        "SenderPassword" => new("email", 40, "Пароль отправителя", "Пароль SMTP-аккаунта. Значение не показывается после сохранения.", SetupInputType.Secret, SetupRequirement.Always, "secret"),
+        "Enabled" => new("email", 0, "Включить почту", "При выключенной почте SMTP не требуется.", SetupInputType.Boolean, SetupRequirement.None, "boolean"),
+        "Host" => new("email", 10, "SMTP-сервер", "Имя хоста или IP-адрес SMTP-сервера без схемы и пути.", SetupInputType.Host, SetupRequirement.EmailEnabled, "smtp-host", "smtp.example.com"),
+        "Port" => new("email", 20, "SMTP-порт", "Порт SMTP-сервера. Обычно 587 для STARTTLS или 465 для TLS.", SetupInputType.Integer, SetupRequirement.EmailEnabled, "port", "587"),
+        "SenderEmail" => new("email", 30, "Адрес отправителя", "Адрес, от имени которого будут уходить системные письма.", SetupInputType.Email, SetupRequirement.EmailEnabled, "email", "noreply@example.com"),
+        "SenderPassword" => new("email", 40, "Пароль отправителя", "Пароль SMTP-аккаунта. Значение не показывается после сохранения.", SetupInputType.Secret, SetupRequirement.EmailEnabled, "secret"),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown email setup field.")
+    };
+
+    public static SetupFieldMetadata Telegram(string key) => key switch
+    {
+        "Enabled" => new("telegram", 0, "Включить Telegram", "Подтверждения через бота этой ноды.", SetupInputType.Boolean, SetupRequirement.None, "boolean"),
+        "BotToken" => new("telegram", 10, "Токен бота", "Секрет из BotFather. Не используйте одного бота на разных нодах.", SetupInputType.Secret, SetupRequirement.TelegramEnabled, "secret"),
+        "NodeName" => new("telegram", 20, "Название ноды в сообщениях", "Помогает распознать сервер, на котором выполняется действие.", SetupInputType.Text, SetupRequirement.TelegramEnabled, "server-name"),
+        _ => throw new ArgumentOutOfRangeException(nameof(key))
     };
 
     public static SetupFieldMetadata Media() => new(
@@ -122,9 +134,11 @@ public static class SettingsSetupMetadata
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown federation setup field.")
     };
 
-    public static bool IsApplicable(SetupRequirement requirement, bool federationEnabled) =>
+    public static bool IsApplicable(SetupRequirement requirement, bool federationEnabled, bool emailEnabled = true, bool telegramEnabled = false) =>
         requirement is SetupRequirement.None or SetupRequirement.Always
-        || requirement is SetupRequirement.FederationEnabled && federationEnabled;
+        || requirement is SetupRequirement.FederationEnabled && federationEnabled
+        || requirement is SetupRequirement.EmailEnabled && emailEnabled
+        || requirement is SetupRequirement.TelegramEnabled && telegramEnabled;
 
     public static string GetFieldId(SettingsCatalogEntry entry) =>
         $"{(int)entry.ServiceId}:{entry.StorageKey}";

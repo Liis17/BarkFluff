@@ -27,6 +27,10 @@ public sealed partial class AuthenticationService(
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
     private bool EmailAvailable => configuration.GetValue("Email:Enabled", true);
+    public void RequireEmailDelivery()
+    {
+        if (!EmailAvailable) throw Unavailable("Email is disabled; use Telegram registration in the web app");
+    }
     private static RpcException Invalid(string text) => new(new Status(StatusCode.InvalidArgument, text));
     private static RpcException Unavailable(string text) => new(new Status(StatusCode.FailedPrecondition, text));
     private static RpcException Denied() => new(new Status(StatusCode.PermissionDenied, "Invalid or expired confirmation"));

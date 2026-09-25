@@ -29,7 +29,7 @@ public class AcceptFastAuthCommandHandler(
             throw new FastAuthSessionExpiredException();
         }
 
-        if (session.Status != FastAuthStatus.Scanned)
+        if (session.Status is not (FastAuthStatus.Scanned or FastAuthStatus.TelegramPending or FastAuthStatus.Accepted))
         {
             throw new FastAuthInvalidStateException();
         }
@@ -41,53 +41,15 @@ public class AcceptFastAuthCommandHandler(
             throw new FastAuthInvalidConfirmationCodeException();
         }
 
-        var newDeviceId = Guid.NewGuid().ToString();
-
-        var sessionResponse = await identityClient.CreateSessionForUserServerAsync(new CreateSessionForUserServerRequest
-        {
-            UserId = userContext.UserId,
-            DeviceId = newDeviceId,
-            DeviceName = session.DeviceName,
-            OperationSystem = session.OperationSystem,
-            AppName = $"{session.AppName} v.{session.AppVersion}",
-            IpAddress = session.IpAddress
-        }, cancellationToken: cancellationToken);
-
-        var acceptedResult = new FastAuthSessionResult(
-            FastAuthStatus.Accepted,
-            sessionResponse.AccessToken.Value,
-            sessionResponse.AccessToken.ExpirationDate.ToDateTime(),
-            sessionResponse.RefreshToken.Value,
-            sessionResponse.RefreshToken.ExpirationDate.ToDateTime());
-
-        var transition = await sessions.TryAcceptAsync(request.FastAuthId, request.ConfirmationCode,
-            userContext.UserId, acceptedResult, cancellationToken);
-
+        if (session.Status == FastAuthStatus.Accepted) return new AcceptFastAuthResponse();
+        var transition = await sessions.TryWaitForTelegramAsync(session.Id, request.ConfirmationCode,
+            userContext.UserId, cancellationToken);
         if (transition != FastAuthTransition.Ok)
-        {
-            // Проиграли гонку (параллельный Accept/Reject/истечение) — откатываем выпущенную сессию.
-            await identityClient.RemoveActiveSessionServerAsync(
-                new Proto.Identity.RemoveActiveSessionServerRequest
-                {
-                    UserId = userContext.UserId,
-                    DeviceId = newDeviceId
-                }, cancellationToken: cancellationToken);
-
-            throw transition switch
-            {
-                FastAuthTransition.NotFound => new FastAuthSessionNotFoundException(),
-                FastAuthTransition.Expired => new FastAuthSessionExpiredException(),
-                _ => new FastAuthInvalidStateException()
-            };
-        }
-
-        await eventBus.PublishAsync(session.Id, acceptedResult.ToProto(), cancellationToken);
-
-        metrics.Increment("sessions_accepted");
-
-        logger.LogInformation(
-            "FastAuth session {Id} accepted by user {UserId}, new device {DeviceId} provisioned",
-            session.Id[..8], userContext.UserId, newDeviceId);
+            throw new FastAuthInvalidStateException();
+        var pending = (await sessions.GetAsync(session.Id, cancellationToken))!;
+        await eventBus.PublishAsync(session.Id, new FastAuthResult { Status = FastAuthStatus.TelegramPending }, cancellationToken);
+        await new FastAuthCompletion(sessions, eventBus, identityClient, metrics).Advance(pending, cancellationToken);
+        logger.LogInformation("FastAuth QR approval recorded for {Id} by {UserId}", session.Id[..8], userContext.UserId);
 
         return new AcceptFastAuthResponse();
     }

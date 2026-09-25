@@ -1,5 +1,7 @@
 # BarkFluff.Notification
 
+`Email:Enabled` (по умолчанию true) из [[Backend/Settings]] управляет отправкой. При false уведомления погашаются без SMTP и учитываются как `emails_skipped`; пустой адрес у зарегистрированных через Telegram аккаунтов также пропускается. Пустой SMTP port при отключённой почте не мешает запуску. См. [[Backend/Identity]], [[Backend/Setup]].
+
 Фоновый потребитель RabbitMQ, отправляющий email-уведомления. Порт: **7004**.
 **Нет gRPC API** — только обработка очереди.
 

@@ -22,7 +22,7 @@ public sealed class SettingsSetupCoordinatorTests
 
         Assert.False(snapshot.Complete);
         Assert.False(snapshot.Locked);
-        Assert.Equal(37, SettingsCatalog.All.Count(entry => entry.Setup is not null));
+        Assert.Equal(41, SettingsCatalog.All.Count(entry => entry.Setup is not null));
         Assert.Equal(30, snapshot.Groups.SelectMany(group => group.Fields).Count(field => field.Required));
         Assert.False(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Applicable);
         Assert.All(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Fields, field => Assert.False(field.Required));
@@ -127,6 +127,38 @@ public sealed class SettingsSetupCoordinatorTests
         Assert.True(federation.Applicable);
         Assert.All(federation.Fields, field => Assert.True(field.Configured));
         Assert.Equal("xn--bcher-kva.example", federation.Fields.Single(field => field.Key == "ServerName").Value);
+    }
+
+    [Fact]
+    public async Task Telegram_only_setup_skips_smtp_and_requires_bot_secret()
+    {
+        await using var context = CreateContext();
+        await new SettingsSeeder(context, SeedOptions()).SeedAsync();
+        var coordinator = new SettingsSetupCoordinator(context);
+        var disabled = await coordinator.SaveGroupAsync("email", new Dictionary<string, string?>
+        {
+            [Field(ServiceId.Unknown, "Email:Enabled")] = "false",
+            [Field(ServiceId.Notifications, "Email:Port")] = ""
+        }, "setup", "test");
+        Assert.True(disabled.Groups.Single(g => g.Metadata.Id == "email").Complete);
+        Assert.False(disabled.Groups.Single(g => g.Metadata.Id == "telegram").Complete);
+        var enabled = await coordinator.SaveGroupAsync("telegram", new Dictionary<string, string?>
+        {
+            [Field(ServiceId.Identity, "TelegramAuth:Enabled")] = "true",
+            [Field(ServiceId.Identity, "TelegramAuth:NodeName")] = "Test node"
+        }, "setup", "test");
+        Assert.False(enabled.Groups.Single(g => g.Metadata.Id == "telegram").Complete);
+        var configured = await coordinator.SaveGroupAsync("telegram", new Dictionary<string, string?>
+        { [Field(ServiceId.Identity, "TelegramAuth:BotToken")] = "secret-bot-token" }, "setup", "test");
+        Assert.True(configured.Groups.Single(g => g.Metadata.Id == "telegram").Complete);
+        Assert.Equal("", FieldValue(configured, ServiceId.Identity, "TelegramAuth:BotToken"));
+        var readiness = await new SettingsReadinessContributor(context).CheckAsync();
+        Assert.DoesNotContain("Email:", readiness.Error ?? "");
+        Assert.DoesNotContain("TelegramAuth:", readiness.Error ?? "");
+        var restored = await coordinator.SaveGroupAsync("email", new Dictionary<string, string?>
+        { [Field(ServiceId.Unknown, "Email:Enabled")] = "true" }, "setup", "test");
+        Assert.False(restored.Groups.Single(g => g.Metadata.Id == "email").Complete);
+        await Assert.ThrowsAsync<SetupIncompleteException>(() => coordinator.CompleteAsync("setup", "test"));
     }
 
     private static string Field(ServiceId serviceId, string storageKey) =>

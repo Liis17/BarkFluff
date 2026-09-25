@@ -194,7 +194,7 @@ public class AcceptFastAuthCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AlreadyAcceptedSession_ThrowsFastAuthInvalidStateException()
+    public async Task Handle_AlreadyAcceptedSession_IsIdempotent()
     {
         var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
@@ -207,7 +207,7 @@ public class AcceptFastAuthCommandHandlerTests
             new AcceptFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<FastAuthInvalidStateException>();
+        await act.Should().NotThrowAsync();
     }
 
     [Fact]

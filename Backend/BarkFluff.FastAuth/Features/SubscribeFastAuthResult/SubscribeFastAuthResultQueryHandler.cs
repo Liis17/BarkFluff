@@ -12,7 +12,8 @@ public class SubscribeFastAuthResultQueryHandler(
     IFastAuthSessionStore sessions,
     IFastAuthEventBus eventBus,
     MetricsCollector metrics,
-    ILogger<SubscribeFastAuthResultQueryHandler> logger)
+    ILogger<SubscribeFastAuthResultQueryHandler> logger,
+    FastAuthCompletion? completion = null)
 {
     public async Task Handle(SubscribeFastAuthResultQuery request)
     {
@@ -104,6 +105,9 @@ public class SubscribeFastAuthResultQueryHandler(
             return;
         }
 
+        if (latest.Status == FastAuthStatus.TelegramPending)
+            await WriteAsync(request, new FastAuthResult { Status = latest.Status });
+
         // Локальный дедлайн до ExpiresAt вместо sweeper'а: TTL Redis чистит данные,
         // а клиенту стрим закрываем сами.
         using var deadlineCts = new CancellationTokenSource(remaining);
@@ -126,14 +130,29 @@ public class SubscribeFastAuthResultQueryHandler(
         }
     }
 
-    private static async Task StreamChannelAsync(
+    private async Task StreamChannelAsync(
         SubscribeFastAuthResultQuery request,
         ChannelReader<FastAuthResult> reader,
         CancellationToken linkedToken)
     {
-        await foreach (var evt in reader.ReadAllAsync(linkedToken))
+        while (!linkedToken.IsCancellationRequested)
         {
-            await request.ResponseStream.WriteAsync(evt, request.CancellationToken);
+            while (reader.TryRead(out var evt))
+            {
+                await request.ResponseStream.WriteAsync(evt, request.CancellationToken);
+                if (evt.Status is FastAuthStatus.Accepted or FastAuthStatus.Rejected or FastAuthStatus.Expired) return;
+            }
+            var latest = await sessions.GetAsync(request.FastAuthId, linkedToken);
+            if (latest == null) { await WriteAsync(request, new FastAuthResult { Status = FastAuthStatus.Expired }); return; }
+            if (latest.IsFinal) { await WriteAsync(request, latest.Result?.ToProto() ?? new FastAuthResult { Status = latest.Status }); return; }
+            if (latest.Status == FastAuthStatus.TelegramPending && completion != null)
+                await completion.Advance(latest, linkedToken);
+            using var wake = CancellationTokenSource.CreateLinkedTokenSource(linkedToken);
+            var available = reader.WaitToReadAsync(wake.Token).AsTask();
+            var tick = Task.Delay(TimeSpan.FromSeconds(2), wake.Token);
+            await Task.WhenAny(available, tick);
+            await wake.CancelAsync();
+            linkedToken.ThrowIfCancellationRequested();
         }
     }
 
