@@ -31,4 +31,5 @@ import '../wwwroot/js/app/stickerpack.js';
 import '../wwwroot/js/app/pinned.js';
 import '../wwwroot/js/app/push.js';
 import '../wwwroot/js/app/cmdpalette.js';
+import '../wwwroot/js/app/sticker-picker.js';
 import '../wwwroot/js/app/main.js';

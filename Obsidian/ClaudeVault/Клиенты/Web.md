@@ -120,14 +120,14 @@ origin, сопоставить ключ нечем — вход потребуе
 - `js/app/imageeditor.js` (`BF.imageEditor`) — редактор изображения перед отправкой (crop/rotate/flip/кисть/пикселизация/ластик). Инициализируется в `main.js` (`BF.imageEditor.init()`), открывается из `attach.js` (`BF.imageEditor.open(...)`).
 
 ### Стикеры
-Пикер у композера (`main.js`, секция STICKER PICKER): табы паков с обложками + **«Недавние»** (иконка `history`, появляются только при непустом списке; дефолтная вкладка при открытии — как на iOS) и **поиск по emoji** (`#stickerSearch`, фильтр `contains` по стикерам текущей вкладки).
+Пикер у композера (`js/app/sticker-picker.js`, `BF.stickerPicker`; `main.js` передаёт в `init` текущий чат и колбэк `onSent`, который добавляет стикер в ленту и поднимает чат в списке): табы паков с обложками + **«Недавние»** (иконка `history`, появляются только при непустом списке; дефолтная вкладка при открытии — как на iOS) и **поиск по emoji** (`#stickerSearch`, фильтр `contains` по стикерам текущей вкладки).
 
 - «Недавние» — localStorage `bf_recent_stickers_{userId}` (через `BF.node.key`, т.е. per-user + per-node), лимит 32, самые свежие сверху; id резолвятся против кеша паков (стикер, удалённый из пака, исчезает — паттерн `RecentStickersStore` macOS/iOS).
 - Отправка: `sendSticker` → `SendMessage(file_ids=[stickerFileId])`, тип вложения `Sticker` определяет бэкенд по `UploadFileType.MessageAttachmentSticker` ([[Backend/Messages]]).
 - Ссылки стикеров идут через `BF.files` с resilient-refresh (`bindResilientMedia`).
 - i18n: `sticker.recent` / `sticker.searchPlaceholder` / `sticker.empty` (+ существующие `sticker.noPacks` / `sticker.packEmpty`).
 - **Размер стикеров** — слайдер 96–240px (шаг 1, дефолт 160) в настройках персонализации, рядом с «Закруглением пузырей». Хранение `bf_pers_sticker_size` (общий ключ без суффикса ноды, как остальные `bf_pers_*`), применение через CSS-переменную `--sticker-size` в `personalization.js::applyAll` → `.msg-attachments img.attach-sticker`. Паритет с [[Клиенты/Android]] (`chatStickerSizeDp`).
-- **Модалка стикерпака по клику на стикер** (`js/app/stickerpack.js`, `BF.stickerPack`): клик на `.attach-sticker` в ленте → `FilesApi.GetStickerPackByFile(file_id)` → оверлей `#stickerPackOverlay` (`.profile-overlay`-паттерн, focus-trap через `BF.utils.openOverlay`) с обложкой, названием, описанием и сеткой стикеров; клик по стикеру в модалке отправляет его в текущий чат (колбэк `onStickerSend` из `main.js`). Пак не найден → статус `sticker.packNotFound`. Ссылки — через `BF.files` + `bindResilientMedia`.
+- **Модалка стикерпака по клику на стикер** (`js/app/stickerpack.js`, `BF.stickerPack`): клик на `.attach-sticker` в ленте → `FilesApi.GetStickerPackByFile(file_id)` → оверлей `#stickerPackOverlay` (`.profile-overlay`-паттерн, focus-trap через `BF.utils.openOverlay`) с обложкой, названием, описанием и сеткой стикеров; клик по стикеру в модалке отправляет его в текущий чат (колбэк `onStickerSend` = `BF.stickerPicker.send`). Пак не найден → статус `sticker.packNotFound`. Ссылки — через `BF.files` + `bindResilientMedia`.
 
 ### Markdown в облачках
 
@@ -236,7 +236,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - **`applyPlaceholder(el)`** — заменяет элемент на векторную заглушку (inline-SVG data-URI, нейтральный серый) + класс `.bf-load-failed`: img → SVG в `src`, video → SVG в `poster` + сброс `src`, audio → сброс `src`, a → удаление `href`.
 - **Состояние** в data-атрибутах: `data-bf-file-id`, `data-bf-prefer-preview`, `data-bf-refreshed`, `data-bf-refreshing`, `data-bf-failed`. Защита от гонок: пока рефреш в полёте (`data-bf-refreshing`), повторные ошибки не показывают плейсхолдер; при сбросе элемента (закрытие лайтбокса) `data-bf-file-id` снимается — случайные ошибки игнорируются.
 
-Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель, превью фонов и галерея медиа профиля в `main.js` (`renderStickerPackTabs`/`openChatBackgroundSelector`/`loadStickerPackContent`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` в `media-viewer.js` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`), постер профиля (`openProfile`) и основной фон чата (`personalization.js` → `#messagesBgLayer`). CSS `.bf-load-failed` — в `wwwroot/css/messenger.css`.
+Точки применения: рендер вложений в `messages.js` (`renderImageGrid`/`renderVideos`/`renderAudios`/`renderDocs`), стикерпанель (`sticker-picker.js`: `renderStickerPackTabs`/`renderStickerGrid`), превью фонов и галерея медиа профиля в `main.js` (`openChatBackgroundSelector`/`loadProfileMedia`), лайтбокс `showMediaOverlay(type, url, fileId)` в `media-viewer.js` (обработчики `error` навешены один раз на `#overlayImage`/`#overlayVideo`), постер профиля (`openProfile`) и основной фон чата (`personalization.js` → `#messagesBgLayer`). CSS `.bf-load-failed` — в `wwwroot/css/messenger.css`.
 
 > Аватары (`chat.picture`/`user.profilePicture`) приходят с сервера готовой ссылкой (не через `urlCache`) и этим механизмом не покрываются — их рефреш требует перезапроса чата/юзера.
 
