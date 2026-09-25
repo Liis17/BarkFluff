@@ -59,10 +59,7 @@
     }
 
     // Reply / Forward / Context menu state
-    var contextMenuTarget = null;
     var forwardSelection = new Set();
-    var cmenuShownAt = 0;
-    var mqlMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)');
 
     // --- DOM refs ---
     var $ = function (sel) { return document.querySelector(sel); };
@@ -84,7 +81,6 @@
     var scrollToBottomBtn = $('#scrollToBottomBtn');
 
     // Reply / Forward / Context menu DOM refs
-    var msgContextMenu = $('#msgContextMenu');
     var deleteMsgConfirmOverlay = $('#deleteMsgConfirmOverlay');
     var deleteMsgCancel = $('#deleteMsgCancel');
     var deleteMsgOk = $('#deleteMsgOk');
@@ -2120,10 +2116,6 @@
 
     // ========== REPLY / FORWARD / CONTEXT MENU ==========
 
-    function showSoonToast() {
-        showToast(BF.i18n.t('common.comingSoon'), false);
-    }
-
     function requestDelete(messageId) {
         if (!deleteMsgConfirmOverlay || !messageId) return;
         BF.utils.openOverlay(deleteMsgConfirmOverlay);
@@ -2180,119 +2172,6 @@
         if (anyChatTouched) loadChats(true);
 
         if (BF.pinned && BF.pinned.applyMessageDeleted) BF.pinned.applyMessageDeleted(msgIdNum);
-    }
-
-    function openContextMenu(x, y, msgEl) {
-        if (!msgContextMenu || !msgEl) return;
-        if (currentChatType === 1) return; // edit/delete/reply/pin для приватных сообщений не поддерживаются
-
-        if (msgEl.classList.contains('msg-system')) return;
-        var msgId = Number(msgEl.dataset.msgId);
-        if (!msgId) return;
-        var isOutgoing = msgEl.classList.contains('outgoing');
-        contextMenuTarget = { messageId: msgId, isOutgoing: isOutgoing };
-
-        var msgObj = messages.find(function (m) { return Number(m.id) === Number(msgId); });
-        var isSystem = msgObj && (msgObj.type === 2 || msgObj.type === 'SYSTEM');
-        var canModify = isOutgoing && !isSystem;
-        var editBtn = msgContextMenu.querySelector('button[data-act="edit"]');
-        var deleteBtn = msgContextMenu.querySelector('button[data-act="delete"]');
-        if (editBtn) editBtn.style.display = canModify ? '' : 'none';
-        if (deleteBtn) deleteBtn.style.display = canModify ? '' : 'none';
-
-        // Pin/Unpin: для системных сообщений скрываем; для остальных — динамический текст.
-        var pinBtn = msgContextMenu.querySelector('button[data-act="pin"]');
-        if (pinBtn) {
-            if (isSystem) {
-                pinBtn.style.display = 'none';
-            } else {
-                pinBtn.style.display = '';
-                var alreadyPinned = BF.pinned && BF.pinned.isPinned && BF.pinned.isPinned(msgId);
-                var pinLabel = pinBtn.querySelector('.cm-label');
-                if (pinLabel) pinLabel.textContent = BF.i18n.t(alreadyPinned ? 'menu.unpin' : 'menu.pin');
-                pinBtn.dataset.state = alreadyPinned ? 'pinned' : 'unpinned';
-            }
-        }
-
-        // Копировать текст — если у сообщения есть текст.
-        var copyTextBtn = msgContextMenu.querySelector('button[data-act="copy-text"]');
-        var msgText = msgObj && msgObj.content && msgObj.content.text;
-        if (copyTextBtn) copyTextBtn.style.display = (msgText && !isSystem) ? '' : 'none';
-
-        // Копировать изображение — только если ровно одно изображение и оно единственное медиа.
-        var copyImageBtn = msgContextMenu.querySelector('button[data-act="copy-image"]');
-        var singleImageFileId = null;
-        if (msgObj && msgObj.content && msgObj.content.attachments && !isSystem) {
-            var imgAtts = msgObj.content.attachments.filter(function (a) { return a.type !== 'FORWARDED_MESSAGE'; });
-            if (imgAtts.length === 1 && (imgAtts[0].type === 'IMAGE' || imgAtts[0].type === 'GIF')) {
-                singleImageFileId = imgAtts[0].fileId;
-            }
-        }
-        contextMenuTarget.image = singleImageFileId ? msgEl.querySelector('.attach-image-grid img') : null;
-        if (copyImageBtn) copyImageBtn.style.display = contextMenuTarget.image ? '' : 'none';
-
-        msgContextMenu.classList.add('visible');
-
-        var vw = window.innerWidth;
-        var vh = window.innerHeight;
-        var rect = msgContextMenu.getBoundingClientRect();
-        var w = rect.width, h = rect.height;
-        var left = Math.max(8, Math.min(x, vw - w - 8));
-        var top = (y + h > vh) ? Math.max(8, y - h) : y;
-        msgContextMenu.style.left = left + 'px';
-        msgContextMenu.style.top = top + 'px';
-        cmenuShownAt = Date.now();
-    }
-
-    function closeContextMenu() {
-        if (!msgContextMenu) return;
-        msgContextMenu.classList.remove('visible');
-        contextMenuTarget = null;
-    }
-
-    function canvasToPngBlob(drawable, width, height) {
-        return new Promise(function (resolve, reject) {
-            try {
-                var canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                canvas.getContext('2d').drawImage(drawable, 0, 0);
-                canvas.toBlob(function (blob) {
-                    if (blob) resolve(blob);
-                    else reject(new Error('no_png'));
-                }, 'image/png');
-            } catch (err) {
-                reject(err);
-            }
-        });
-    }
-
-    // Копируем уже загруженное превью из облачка, а не полную версию файла.
-    function copyImageToClipboard(image) {
-        if (!navigator.clipboard || typeof ClipboardItem === 'undefined' || !image) return;
-        var imageUrl = image.currentSrc || image.src;
-        var previewPng = image.complete && image.naturalWidth && image.naturalHeight
-            ? canvasToPngBlob(image, image.naturalWidth, image.naturalHeight)
-            : Promise.reject(new Error('preview_not_loaded'));
-
-        previewPng.catch(function () {
-            if (!imageUrl) throw new Error('no_preview_url');
-            return fetch(imageUrl).then(function (response) {
-                if (!response.ok) throw new Error('preview_unavailable');
-                return response.blob();
-            }).then(function (blob) {
-                return createImageBitmap(blob).then(function (bitmap) {
-                    return canvasToPngBlob(bitmap, bitmap.width, bitmap.height).then(function (png) {
-                        bitmap.close();
-                        return png;
-                    });
-                });
-            });
-        }).then(function (png) {
-            return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-        }).catch(function () {
-            showToast(BF.i18n.t('error.copy'), true);
-        });
     }
 
     function chatAvatarMarkup(chat) {
@@ -2419,189 +2298,22 @@
         });
     }
 
-    // --- Context menu actions ---
-    if (msgContextMenu) {
-        msgContextMenu.addEventListener('click', function (e) {
-            var btn = e.target.closest('button[data-act]');
-            if (!btn || !contextMenuTarget) return;
-            var act = btn.dataset.act;
-            var msgId = contextMenuTarget.messageId;
-            var isOutgoing = contextMenuTarget.isOutgoing;
-            var image = contextMenuTarget.image;
-            var msg = messages.find(function (m) { return Number(m.id) === Number(msgId); });
-            closeContextMenu();
-            if (act === 'reply') {
-                if (msg) setPendingReply(msg);
-            } else if (act === 'forward') {
-                openForwardModal(resolveForwardSourceIds(msg, msgId));
-            } else if (act === 'copy-text') {
-                var t = msg && msg.content && msg.content.text;
-                if (t) navigator.clipboard.writeText(t).catch(function () {
-                    showToast(BF.i18n.t('error.copy'), true);
-                });
-            } else if (act === 'copy-image') {
-                copyImageToClipboard(image);
-            } else if (act === 'edit') {
-                if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
-                    setPendingEdit(msg);
-                }
-            } else if (act === 'delete') {
-                if (msg && isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
-                    requestDelete(msg.id);
-                }
-            } else if (act === 'pin') {
-                if (!BF.pinned) return;
-                var state = btn.dataset.state;
-                if (state === 'pinned') {
-                    BF.pinned.unpin(msgId);
-                } else {
-                    BF.pinned.pin(msgId);
-                }
-            } else {
-                showSoonToast();
-            }
-        });
-    }
+    // ========== MESSAGE CONTEXT MENU ==========
 
-    // --- Global close handlers for context menu ---
-    document.addEventListener('click', function (e) {
-        if (!msgContextMenu || !msgContextMenu.classList.contains('visible')) return;
-        if (msgContextMenu.contains(e.target)) return;
-        if (Date.now() - cmenuShownAt < 300) return;
-        closeContextMenu();
-    }, true);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            if (msgContextMenu && msgContextMenu.classList.contains('visible')) closeContextMenu();
-            if (forwardOverlay && forwardOverlay.classList.contains('visible')) closeForwardModal();
-        }
+    BF.messageMenu.init({
+        getCurrentChatType: function () { return currentChatType; },
+        getMessages: function () { return messages; },
+        setReply: setPendingReply,
+        setEdit: setPendingEdit,
+        forward: function (msg, msgId) { openForwardModal(resolveForwardSourceIds(msg, msgId)); },
+        requestDelete: requestDelete,
+        showToast: showToast
     });
-    window.addEventListener('resize', closeContextMenu);
-    if (messagesArea) messagesArea.addEventListener('scroll', closeContextMenu);
+    var closeContextMenu = BF.messageMenu.close;
 
-    // --- contextmenu (desktop right-click + system long-press) ---
-    if (messagesInner) {
-        messagesInner.addEventListener('contextmenu', function (e) {
-            var grp = e.target.closest('.msg-group');
-            if (!grp || !grp.dataset.msgId) return;
-            e.preventDefault();
-            openContextMenu(e.clientX, e.clientY, grp);
-        });
-    }
-
-    // --- Touch handlers: long-press + swipe-left to reply ---
-    (function () {
-        if (!messagesInner) return;
-
-        var pressTimer = null;
-        var startX = 0, startY = 0;
-        var lastX = 0, lastY = 0;
-        var pressTarget = null;
-        var swiping = false;
-        var swipeLockedForReply = false;
-        var axisLocked = false;
-        var INTERACTIVE_SEL = 'img, video, a, button, .audio-play-btn, .attach-doc';
-
-        function cancelPressTimer() {
-            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-        }
-
-        function resetSwipe(grp) {
-            if (!grp) return;
-            grp.classList.remove('swiping');
-            grp.style.transform = '';
-        }
-
-        messagesInner.addEventListener('touchstart', function (e) {
-            if (e.touches.length !== 1) return;
-            var grp = e.target.closest('.msg-group');
-            if (!grp || !grp.dataset.msgId) return;
-            // Skip swipe init if interactive child
-            var skipSwipe = !!e.target.closest(INTERACTIVE_SEL);
-
-            pressTarget = grp;
-            startX = lastX = e.touches[0].clientX;
-            startY = lastY = e.touches[0].clientY;
-            swiping = false;
-            swipeLockedForReply = false;
-            axisLocked = false;
-
-            cancelPressTimer();
-            pressTimer = setTimeout(function () {
-                pressTimer = null;
-                if (!pressTarget) return;
-                if (swiping) return;
-                try { if (navigator.vibrate) navigator.vibrate(20); } catch (e2) { }
-                var rect = pressTarget.getBoundingClientRect();
-                var cx = Math.min(Math.max(startX, rect.left), rect.right);
-                var cy = Math.min(Math.max(startY, rect.top), rect.bottom);
-                openContextMenu(cx, cy, pressTarget);
-            }, 500);
-
-            grp._skipSwipe = skipSwipe;
-        }, { passive: true });
-
-        messagesInner.addEventListener('touchmove', function (e) {
-            if (!pressTarget) return;
-            if (e.touches.length !== 1) return;
-            lastX = e.touches[0].clientX;
-            lastY = e.touches[0].clientY;
-            var dx = lastX - startX;
-            var dy = lastY - startY;
-
-            if (!axisLocked) {
-                if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                    axisLocked = true;
-                    if (Math.abs(dy) > Math.abs(dx)) {
-                        // vertical scroll — abort everything
-                        cancelPressTimer();
-                        pressTarget = null;
-                        return;
-                    } else {
-                        cancelPressTimer();
-                    }
-                } else {
-                    return;
-                }
-            }
-
-            // Only horizontal swipe, only on mobile, only left, only if not on interactive
-            if (!mqlMobile.matches) return;
-            if (pressTarget._skipSwipe) return;
-            if (dx >= 0) {
-                resetSwipe(pressTarget);
-                return;
-            }
-
-            if (e.cancelable) e.preventDefault();
-            swiping = true;
-            pressTarget.classList.add('swiping');
-            var translate = Math.max(dx, -90);
-            pressTarget.style.transform = 'translateX(' + translate + 'px)';
-            if (dx <= -60) swipeLockedForReply = true; else swipeLockedForReply = false;
-        }, { passive: false });
-
-        messagesInner.addEventListener('touchend', function () {
-            cancelPressTimer();
-            var t = pressTarget;
-            pressTarget = null;
-            if (!t) return;
-            if (swiping) {
-                if (swipeLockedForReply) {
-                    var msgId = Number(t.dataset.msgId);
-                    var msg = messages.find(function (m) { return m.id === msgId; });
-                    if (msg) setPendingReply(msg);
-                }
-                resetSwipe(t);
-            }
-        });
-
-        messagesInner.addEventListener('touchcancel', function () {
-            cancelPressTimer();
-            if (pressTarget) resetSwipe(pressTarget);
-            pressTarget = null;
-        });
-    })();
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && forwardOverlay && forwardOverlay.classList.contains('visible')) closeForwardModal();
+    });
 
     // ========== PROACTIVE TOKEN REFRESH ==========
 
