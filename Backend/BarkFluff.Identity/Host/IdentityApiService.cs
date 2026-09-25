@@ -78,6 +78,7 @@ public partial class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.I
     public override async Task<CreateAccountResponse> CreateAccount(CreateAccountRequest request, ServerCallContext context)
     {
         _metrics.Increment("account_creation_attempts");
+        _authentication?.RequireEmailDelivery();
 
         var command = new CreateAccountCommand
         {
@@ -171,6 +172,7 @@ public partial class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.I
         ServerCallContext context)
     {
         _metrics.Increment("password_reset_requests");
+        if (request.OtpType == OtpTypeId.Email) _authentication?.RequireEmailDelivery();
 
         var command = new ResetPasswordCommand()
         {

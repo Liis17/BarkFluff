@@ -1,5 +1,9 @@
 # BarkFluff.Settings
 
+## Необязательная почта и бот Telegram
+
+Каталог содержит глобальный `Email:Enabled=true` (сохраняет поведение существующих нод) и Identity `TelegramAuth:Enabled=false`, `TelegramAuth:BotToken`, `TelegramAuth:NodeName`. BotToken чувствительный и маскируется. При включении Telegram токен и имя ноды обязательны; выключенная почта снимает требования к четырём SMTP-полям. `SaveSetupGroup`, snapshot, `CompleteSetup` и readiness используют одинаковые условия, включая переключатель в сохраняемой группе. Для регистрации должен быть включён хотя бы один канал. Новые ключи добавляются insert-only seeder без изменения имеющихся значений; после изменений runtime нужны перезапуски потребителей. См. [[Backend/Setup]], [[Backend/Identity]], [[Backend/Notification]].
+
 Сервис настроек, который является единственным источником runtime-конфигурации. Для
 совместимости сохраняет wire-имена `configuration_api.proto`/`ConfigurationApi`, но
 рабочее хранилище — только `Settings`. Внутренний listener — `settings:7003`; setup

@@ -23,11 +23,13 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
 {
     private readonly IMediator _mediator;
     private readonly MetricsCollector _metrics;
+    private readonly Services.AuthenticationService? _authentication;
 
-    public IdentityServerApiService(IMediator mediator, MetricsCollector metrics)
+    public IdentityServerApiService(IMediator mediator, MetricsCollector metrics, Services.AuthenticationService? authentication = null)
     {
         _mediator = mediator;
         _metrics = metrics;
+        _authentication = authentication;
     }
 
     public override Task<ListOtpVerificationResponse> ListOtpVerificationServer(
@@ -84,6 +86,7 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
         CreateSessionForUserServerRequest request, ServerCallContext context)
     {
         _metrics.Increment("server_session_creation_attempts");
+        if (_authentication != null) return _authentication.CreateFastAuthSession(request, context.CancellationToken);
         var command = new CreateSessionForUserServerCommand
         {
             UserId = request.UserId,

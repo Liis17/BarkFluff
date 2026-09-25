@@ -25,7 +25,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
     RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage,
     LocationClient locationClient, MetricsCollector metrics, ILogger<AuthCommandHandler> logger,
-    IIdentityAbuseGuard abuseGuard) : IRequestHandler<AuthCommand, AuthResponse>
+    IIdentityAbuseGuard abuseGuard, IConfiguration? configuration = null) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
     private const int ExpDaysRefreshToken = 9999;
@@ -165,7 +165,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             var failedLoginNotification = new EmailNotification
             {
                 OwnerId = user.User.Id,
-                Address = userContactInfo.Contact.Email,
+                Address = userContactInfo.Contact?.Email ?? "",
                 CreatedAt = DateTime.UtcNow,
                 Payload = new Dictionary<string, string>
                 {
@@ -195,6 +195,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             (mode == AuthLoginMode.PasswordSecondFactor && factor == OtpTypeId.Telegram))
             throw new RpcException(new Status(StatusCode.FailedPrecondition, "Use the web Telegram sign-in flow"));
         var needsFactor = mode == AuthLoginMode.PasswordSecondFactor;
+        if (needsFactor && factor == OtpTypeId.Email && configuration?.GetValue("Email:Enabled", true) == false)
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "Email is disabled; choose another enabled factor in the web app"));
         if (needsFactor && !AuthenticationPolicy.FactorEnabled(optOptions, factor))
             throw new RpcException(new Status(StatusCode.FailedPrecondition, "No configured second factor is available"));
 
@@ -227,7 +229,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 var emailNotification = new EmailNotification
                 {
                     OwnerId = userContactInfo.User.Id,
-                    Address = userContactInfo.Contact.Email,
+                    Address = userContactInfo.Contact?.Email ?? "",
                     CreatedAt = DateTime.UtcNow,
                     Payload = new Dictionary<string, string>
                     {

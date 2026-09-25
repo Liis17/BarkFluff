@@ -22,6 +22,9 @@ public interface IFastAuthSessionStore
     Task<FastAuthTransition> TryAcceptAsync(string id, string confirmationCode, long userId,
         FastAuthSessionResult result, CancellationToken ct = default);
 
+    Task<FastAuthTransition> TryWaitForTelegramAsync(string id, string confirmationCode, long userId,
+        CancellationToken ct = default);
+
     Task<FastAuthTransition> TryRejectAsync(string id, string confirmationCode, long userId,
         CancellationToken ct = default);
 

@@ -27,7 +27,7 @@ public class RejectFastAuthCommandHandler(
             throw new FastAuthSessionExpiredException();
         }
 
-        if (session.Status != FastAuthStatus.Scanned)
+        if (session.Status is not (FastAuthStatus.Scanned or FastAuthStatus.TelegramPending))
         {
             throw new FastAuthInvalidStateException();
         }

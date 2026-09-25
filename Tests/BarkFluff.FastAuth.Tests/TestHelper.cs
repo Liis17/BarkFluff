@@ -100,6 +100,7 @@ public class TestHelper
 
         var response = new CreateSessionForUserServerResponse
         {
+            ConfirmationState = AuthChallengeState.Completed,
             AccessToken = new Token { Value = accessToken, ExpirationDate = accessExpiry },
             RefreshToken = new Token { Value = refreshToken, ExpirationDate = refreshExpiry }
         };
