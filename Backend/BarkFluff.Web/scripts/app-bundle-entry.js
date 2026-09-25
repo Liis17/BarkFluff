@@ -33,4 +33,5 @@ import '../wwwroot/js/app/push.js';
 import '../wwwroot/js/app/cmdpalette.js';
 import '../wwwroot/js/app/sticker-picker.js';
 import '../wwwroot/js/app/chat-list.js';
+import '../wwwroot/js/app/composer.js';
 import '../wwwroot/js/app/main.js';

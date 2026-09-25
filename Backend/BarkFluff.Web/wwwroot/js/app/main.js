@@ -52,9 +52,6 @@
     var onlineSubscribedUserIds = new Set();
     var onlineStatuses = new Map();
     var typingUsers = new Map();      // userId -> timeout handle
-    var typingSendActive = false;
-    var typingLastInputAt = 0;
-    var typingSendTimer = null;
     var pendingUploads = new Map(); // local message id -> optimistic upload state
     var pendingFileSelectionEntry = null;
     var GENERIC_MESSAGE_TYPE = 1;
@@ -70,8 +67,6 @@
     }
 
     // Reply / Forward / Context menu state
-    var pendingReply = null;
-    var pendingEdit = null; // { messageId, originalText }
     var contextMenuTarget = null;
     var forwardSelection = new Set();
     var cmenuShownAt = 0;
@@ -90,7 +85,6 @@
     var messagesInner = $('#messagesInner');
     var loadingMessages = $('#loadingMessages');
     var inputBar = $('#inputBar');
-    var messageInput = $('#messageInput');
     var sendBtn = $('#sendBtn');
     var attachBtn = $('#attachBtn');
     var fileInput = $('#fileInput');
@@ -101,13 +95,6 @@
 
     // Reply / Forward / Context menu DOM refs
     var msgContextMenu = $('#msgContextMenu');
-    var replyPreviewBar = $('#replyPreviewBar');
-    var rpbAuthor = $('#rpbAuthor');
-    var rpbText = $('#rpbText');
-    var rpbCloseBtn = $('#rpbClose');
-    var editPreviewBar = $('#editPreviewBar');
-    var epbText = $('#epbText');
-    var epbCloseBtn = $('#epbClose');
     var deleteMsgConfirmOverlay = $('#deleteMsgConfirmOverlay');
     var deleteMsgCancel = $('#deleteMsgCancel');
     var deleteMsgOk = $('#deleteMsgOk');
@@ -187,14 +174,6 @@
     var refreshChatListQuiet = BF.chatList.refreshQuiet;
 
     // ========== TYPING INDICATOR ==========
-
-    function stopTypingSend(sendCancel) {
-        if (typingSendTimer) { clearInterval(typingSendTimer); typingSendTimer = null; }
-        if (sendCancel && typingSendActive) {
-            BF.api.setTypingStatus(currentChatId, false).catch(function () {});
-        }
-        typingSendActive = false;
-    }
 
     function clearTypingReceiveState() {
         typingUsers.forEach(function (timeoutHandle) { clearTimeout(timeoutHandle); });
@@ -320,36 +299,6 @@
                 restoreChatDraft(chatId);
             }
         }).catch(function () { loadingMessages.classList.remove('visible'); });
-    }
-
-    function restoreChatDraft(chatId) {
-        if (!BF.drafts || chatId !== currentChatId) return;
-        BF.drafts.load(chatId).then(function (draft) {
-            if (!draft || chatId !== currentChatId) return;
-            messageInput.value = draft.text || '';
-            messageInput.style.height = 'auto';
-            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-            if (draft.replyToMessageId) {
-                var reply = messages.find(function (m) { return Number(m.id) === Number(draft.replyToMessageId); });
-                if (reply) {
-                    setPendingReply(reply, false);
-                } else {
-                    BF.api.listMessages(chatId, draft.replyToMessageId, 1, 1).then(function (data) {
-                        if (chatId !== currentChatId || !data || !data.messages) return;
-                        var loadedReply = data.messages.find(function (m) { return Number(m.id) === Number(draft.replyToMessageId); });
-                        if (loadedReply) setPendingReply(loadedReply, false);
-                        else BF.drafts.set(chatId, draft.text || '', 0);
-                    }).catch(function () {});
-                }
-            }
-            renderChatList();
-        });
-    }
-
-    function saveCurrentDraft() {
-        if (!currentChatId || currentChatType !== 0 || pendingEdit || !BF.drafts) return;
-        BF.drafts.set(currentChatId, messageInput.value, pendingReply ? pendingReply.messageId : 0);
-        renderChatList();
     }
 
     // Скроллит к первому непрочитанному (если есть) либо в самый низ чата.
@@ -1004,7 +953,7 @@
             createdAt: localMessage.sentAt,
             text: text || '',
             caption: caption || '',
-            replyToMessageId: pendingReply ? pendingReply.messageId : 0,
+            replyToMessageId: BF.composer.getReplyToId(),
             draftSnapshot: draftSnapshot,
             localMessage: localMessage,
             fileIds: [],
@@ -1023,12 +972,6 @@
             messages.push(entry.localMessage);
             appendMessageToView(entry.localMessage).then(scrollToBottom);
         }
-    }
-
-    function clearComposerForPending() {
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        clearPendingReply();
     }
 
     function dispatchPendingSend(entry) {
@@ -1119,37 +1062,6 @@
         return entry.uploads.length ? uploadPendingFiles(entry, retry) : dispatchPendingSend(entry);
     }
 
-    function restorePendingComposer(entry) {
-        if (String(entry.chatId) !== String(currentChatId)) return;
-        messageInput.value = entry.caption || entry.text || '';
-        messageInput.style.height = 'auto';
-        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-        if (entry.replyToMessageId) {
-            var reply = messages.find(function (message) {
-                return Number(message.id) === Number(entry.replyToMessageId);
-            });
-            if (reply) {
-                setPendingReply(reply, false);
-            } else {
-                pendingReply = {
-                    messageId: entry.replyToMessageId,
-                    authorName: '',
-                    previewText: ''
-                };
-                renderReplyPreview();
-                BF.api.listMessages(entry.chatId, entry.replyToMessageId, 1, 1).then(function (data) {
-                    if (!pendingReply || Number(pendingReply.messageId) !== Number(entry.replyToMessageId)) return;
-                    var loaded = data && data.messages && data.messages.find(function (message) {
-                        return Number(message.id) === Number(entry.replyToMessageId);
-                    });
-                    if (loaded) setPendingReply(loaded, false);
-                }).catch(function () {});
-            }
-        }
-        saveCurrentDraft();
-        messageInput.focus();
-    }
-
     function cancelPendingSend(localId) {
         var entry = pendingUploads.get(localId);
         if (!entry || entry.settled || entry.localMessage.pendingState !== 'uploading') return;
@@ -1216,7 +1128,7 @@
     }
 
     function sendMessage() {
-        var text = messageInput.value.trim();
+        var text = BF.composer.getText().trim();
         if (!currentChatId) return;
         stopTypingSend(true);
 
@@ -1225,8 +1137,9 @@
             return;
         }
 
-        if (pendingEdit) {
-            var editId = pendingEdit.messageId;
+        var edit = BF.composer.getEdit();
+        if (edit) {
+            var editId = edit.messageId;
             var origMsg = messages.find(function (m) { return m.id === editId; });
             var keepFileIds = [];
             if (origMsg && origMsg.content && origMsg.content.attachments) {
@@ -1259,13 +1172,13 @@
     }
 
     function sendMessageWithFiles(files, asDocuments, caption) {
-        if (pendingEdit) {
+        if (BF.composer.getEdit()) {
             // Во время редактирования attach-flow заблокирован, чтобы не отправить новое сообщение
             // вместо правки исходного. Завершите или отмените редактирование.
             return;
         }
         stopTypingSend(true);
-        var text = (caption != null ? caption : messageInput.value).trim();
+        var text = (caption != null ? caption : BF.composer.getText()).trim();
         var entry = createPendingSend(files, asDocuments, '', text);
         if (!persistPendingEntry(entry)) {
             releasePendingPreviews(entry);
@@ -1277,44 +1190,29 @@
         runPendingSend(entry, false);
     }
 
-    function openAttachModal(files) {
-        if (!currentChatId || currentChatType === 1) return; // в приватных чатах вложения не поддерживаются
-        var prefill = messageInput.value;
-        BF.attach.open(files, function (outFiles, asDocuments, caption) {
-            // Если пользователь ввёл подпись в модалке — забираем её из неё, а исходный
-            // ввод в чате очищаем, чтобы текст не отправился ещё раз отдельным сообщением.
-            sendMessageWithFiles(outFiles, asDocuments, caption);
-        }, prefill);
-    }
-
     sendBtn.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-    });
-    messageInput.addEventListener('input', function () {
-        messageInput.style.height = 'auto';
-        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-        saveCurrentDraft();
 
-        if (!currentChatId || currentChatType !== 0) return;
-        var value = messageInput.value;
-        if (value.trim() === '') {
-            stopTypingSend(true);
-            return;
-        }
-        typingLastInputAt = Date.now();
-        if (!typingSendActive) {
-            typingSendActive = true;
-            BF.api.setTypingStatus(currentChatId, true).catch(function () {});
-            typingSendTimer = setInterval(function () {
-                if (Date.now() - typingLastInputAt >= 5000) {
-                    stopTypingSend(false);
-                } else {
-                    BF.api.setTypingStatus(currentChatId, true).catch(function () {});
-                }
-            }, 4000);
-        }
+    // ========== COMPOSER ==========
+
+    BF.composer.init({
+        getCurrentChatId: function () { return currentChatId; },
+        getCurrentChatType: function () { return currentChatType; },
+        getMessages: function () { return messages; },
+        getMyUserId: function () { return myUserId; },
+        getUser: getUser,
+        renderChatList: renderChatList,
+        onSubmit: sendMessage,
+        onSendFiles: sendMessageWithFiles
     });
+    var stopTypingSend = BF.composer.stopTyping;
+    var setPendingReply = BF.composer.setReply;
+    var clearPendingReply = BF.composer.clearReply;
+    var setPendingEdit = BF.composer.setEdit;
+    var clearPendingEdit = BF.composer.clearEdit;
+    var restoreChatDraft = BF.composer.restoreDraft;
+    var restorePendingComposer = BF.composer.restoreFromPending;
+    var clearComposerForPending = BF.composer.clearForSend;
+    var openAttachModal = BF.composer.openAttach;
 
     // ========== FILE UPLOAD ==========
 
@@ -1361,61 +1259,6 @@
         }
         openAttachModal(files);
     });
-
-    messageInput.addEventListener('paste', function (e) {
-        if (!currentChatId) return;
-        var items = e.clipboardData && e.clipboardData.items;
-        if (!items) return;
-        var files = [];
-        for (var i = 0; i < items.length; i++) {
-            if (items[i].kind === 'file') {
-                var f = items[i].getAsFile();
-                if (f) files.push(f);
-            }
-        }
-        if (files.length === 0) return;
-        e.preventDefault();
-        openAttachModal(files);
-    });
-
-    // Глобально блокируем дефолтное открытие файла в браузере при промахе мимо chat-area
-    ['dragover', 'drop'].forEach(function (ev) {
-        window.addEventListener(ev, function (e) { e.preventDefault(); });
-    });
-
-    var chatArea = document.querySelector('.chat-area');
-    if (chatArea) {
-        var dropOverlay = document.createElement('div');
-        dropOverlay.className = 'drop-overlay';
-        dropOverlay.textContent = BF.i18n.t('attach.dropHint');
-        dropOverlay.setAttribute('aria-hidden', 'true');
-        chatArea.appendChild(dropOverlay);
-
-        var dragCounter = 0;
-        function isFileDrag(e) {
-            return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
-        }
-        chatArea.addEventListener('dragenter', function (e) {
-            if (!currentChatId || currentChatType === 1 || !isFileDrag(e)) return;
-            dragCounter++;
-            chatArea.classList.add('drag-over');
-        });
-        chatArea.addEventListener('dragover', function (e) {
-            if (!currentChatId || !isFileDrag(e)) return;
-            e.dataTransfer.dropEffect = 'copy';
-        });
-        chatArea.addEventListener('dragleave', function () {
-            dragCounter--;
-            if (dragCounter <= 0) { dragCounter = 0; chatArea.classList.remove('drag-over'); }
-        });
-        chatArea.addEventListener('drop', function (e) {
-            if (!currentChatId) return;
-            dragCounter = 0;
-            chatArea.classList.remove('drag-over');
-            var files = Array.from(e.dataTransfer.files || []);
-            if (files.length > 0) openAttachModal(files);
-        });
-    }
 
     // ========== MARK AS READ ==========
 
@@ -2682,80 +2525,6 @@
         showToast(BF.i18n.t('common.comingSoon'), false);
     }
 
-    function buildReplyPreviewText(msg) {
-        if (msg.content && msg.content.text) return msg.content.text;
-        var atts = (msg.content && msg.content.attachments) || [];
-        for (var i = 0; i < atts.length; i++) {
-            var t = atts[i].type;
-            if (t === 8 || t === '8' || t === 'FORWARDED_MESSAGE') continue;
-            return u.attachmentEmoji(t === 7 || t === '7' ? 'STICKER' : t);
-        }
-        return '';
-    }
-
-    function setPendingReply(msg, persist) {
-        if (!msg) return;
-        pendingReply = {
-            messageId: msg.id,
-            authorName: '',
-            previewText: buildReplyPreviewText(msg)
-        };
-        if (msg.senderId === myUserId) {
-            pendingReply.authorName = BF.i18n.t('call.you');
-            renderReplyPreview();
-        } else {
-            getUser(msg.senderId).then(function (sender) {
-                if (!pendingReply || pendingReply.messageId !== msg.id) return;
-                if (sender) {
-                    pendingReply.authorName = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username || '';
-                }
-                renderReplyPreview();
-            });
-            renderReplyPreview();
-        }
-        if (messageInput) {
-            try { messageInput.focus(); } catch (e) { }
-        }
-        if (persist !== false) saveCurrentDraft();
-    }
-
-    function renderReplyPreview() {
-        if (!replyPreviewBar) return;
-        if (!pendingReply) {
-            replyPreviewBar.classList.remove('visible');
-            return;
-        }
-        rpbAuthor.textContent = pendingReply.authorName || '';
-        rpbText.textContent = pendingReply.previewText || '';
-        replyPreviewBar.classList.add('visible');
-    }
-
-    function clearPendingReply(persist) {
-        pendingReply = null;
-        if (replyPreviewBar) replyPreviewBar.classList.remove('visible');
-        if (persist !== false) saveCurrentDraft();
-    }
-
-    function setPendingEdit(msg) {
-        if (!msg) return;
-        clearPendingReply();
-        var origText = (msg.content && msg.content.text) || '';
-        pendingEdit = { messageId: msg.id, originalText: origText };
-        messageInput.value = origText;
-        messageInput.style.height = 'auto';
-        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-        if (epbText) epbText.textContent = origText || BF.i18n.t('composer.edit.attachmentsOnly');
-        if (editPreviewBar) editPreviewBar.classList.add('visible');
-        try { messageInput.focus(); } catch (e) {}
-    }
-
-    function clearPendingEdit() {
-        pendingEdit = null;
-        if (editPreviewBar) editPreviewBar.classList.remove('visible');
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-    }
-
     function requestDelete(messageId) {
         if (!deleteMsgConfirmOverlay || !messageId) return;
         BF.utils.openOverlay(deleteMsgConfirmOverlay);
@@ -3072,12 +2841,6 @@
             return renderMessages().then(function () { settleHighlight(id); });
         }).finally(function () { isJumpingToMessage = false; });
     }
-
-    // --- Reply preview close handler ---
-    if (rpbCloseBtn) rpbCloseBtn.addEventListener('click', clearPendingReply);
-
-    // --- Edit preview close handler ---
-    if (epbCloseBtn) epbCloseBtn.addEventListener('click', clearPendingEdit);
 
     // --- Delete confirm cancel ---
     if (deleteMsgCancel) {
