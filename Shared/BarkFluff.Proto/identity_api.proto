@@ -52,6 +52,23 @@ service IdentityApi {
 
   // Разлогиниться с текущего устройства
   rpc Logout(LogoutRequest) returns(LogoutResponse);
+
+  rpc GetAuthCapabilities(GetAuthCapabilitiesRequest) returns(GetAuthCapabilitiesResponse);
+  rpc BeginRegistration(BeginRegistrationRequest) returns(AuthChallengeResponse);
+  rpc BeginSignIn(BeginSignInRequest) returns(AuthChallengeResponse);
+  rpc GetAuthChallenge(AuthChallengeReference) returns(AuthChallengeResponse);
+  rpc CompleteAuthChallenge(CompleteAuthChallengeRequest) returns(CompleteAuthChallengeResponse);
+  rpc CancelAuthChallenge(AuthChallengeReference) returns(AuthChallengeResponse);
+  rpc ResendAuthChallenge(AuthChallengeReference) returns(AuthChallengeResponse);
+  rpc GetSecuritySettings(GetSecuritySettingsRequest) returns(SecuritySettingsResponse);
+  rpc BeginReauthentication(BeginReauthenticationRequest) returns(AuthChallengeResponse);
+  rpc UpdateSecuritySettings(UpdateSecuritySettingsRequest) returns(SecuritySettingsResponse);
+  rpc BeginTelegramBinding(SecurityProofRequest) returns(AuthChallengeResponse);
+  rpc UnlinkTelegram(UpdateSecuritySettingsRequest) returns(SecuritySettingsResponse);
+  rpc BeginEmailBinding(BeginEmailBindingRequest) returns(AuthChallengeResponse);
+  rpc GenerateRecoveryCodes(SecurityProofRequest) returns(RecoveryCodesResponse);
+  rpc BeginPasswordRecovery(BeginPasswordRecoveryRequest) returns(AuthChallengeResponse);
+  rpc SetRecoveredPassword(SetRecoveredPasswordRequest) returns(SetPasswordResponse);
 }
 
 // Серверное API для админ-панели
@@ -90,11 +107,14 @@ message CreateSessionForUserServerRequest {
   string operation_system = 4;
   string app_name = 5;             // "AppName v.X.Y.Z" (склеено вызывающим)
   string ip_address = 6;
+  string attempt_id = 7;
+  google.protobuf.Timestamp expires_at = 8;
 }
 
 message CreateSessionForUserServerResponse {
   Token access_token = 1;
   Token refresh_token = 2;
+  AuthChallengeState confirmation_state = 3;
 }
 
 message ListOtpVerificationServerRequest {
@@ -190,6 +210,7 @@ enum OtpTypeId {
   Unknown = 0; // Неизвестный
   Authenticator = 1; // Гугл аунтификатор, etc
   Email = 2; // Почта
+  Telegram = 3;
 }
 
 message DisableOtpVerificationRequest {
@@ -197,6 +218,7 @@ message DisableOtpVerificationRequest {
   OtpTypeId otp_type = 1; // Тип 2ФА авторизации
   
   string otp_code = 2; // Код для отключения (при отключении email не передавать)
+  AuthChallengeReference security_proof = 3;
 }
 
 message DisableOtpVerificationResponse {
@@ -205,6 +227,7 @@ message DisableOtpVerificationResponse {
 
 message ConfirmOtpVerificationRequest {
   string otp_code = 1; // ОТП код
+  AuthChallengeReference security_proof = 2;
 }
 
 message ConfirmOtpVerificationResponse {
@@ -213,6 +236,7 @@ message ConfirmOtpVerificationResponse {
 
 message EnableOtpVerificationRequest {
     OtpTypeId otp_type = 1; // Тип 2ФА авторизации
+    AuthChallengeReference security_proof = 2;
 }
 
 message EnableOtpVerificationResponse {
@@ -312,3 +336,105 @@ message SetPasswordResponse { }
 message LogoutRequest { }
 
 message LogoutResponse { }
+
+enum AuthLoginMode {
+  LOGIN_MODE_UNSPECIFIED = 0;
+  PASSWORD = 1;
+  TELEGRAM_LOGIN = 2;
+  PASSWORD_SECOND_FACTOR = 3;
+}
+
+enum AuthChallengeState {
+  CHALLENGE_UNSPECIFIED = 0;
+  WAITING = 1;
+  APPROVED = 2;
+  REJECTED = 3;
+  EXPIRED = 4;
+  COMPLETED = 5;
+  CANCELLED = 6;
+}
+
+message GetAuthCapabilitiesRequest { }
+message GetAuthCapabilitiesResponse {
+  bool email_available = 1;
+  bool telegram_available = 2;
+  string telegram_bot_username = 3;
+}
+message AuthChallengeReference {
+  string id = 1;
+  string secret = 2;
+}
+message AuthChallengeResponse {
+  AuthChallengeReference challenge = 1;
+  AuthChallengeState state = 2;
+  OtpTypeId factor = 3;
+  string telegram_url = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  repeated OtpTypeId available_factors = 6;
+  bool needs_code = 7;
+}
+message BeginRegistrationRequest {
+  string username = 1;
+  string password = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string email = 5;
+  OtpTypeId confirmation_method = 6;
+  AuthLoginMode login_mode = 7;
+}
+message BeginSignInRequest {
+  string login = 1;
+  string password = 2;
+  AuthLoginMode login_mode = 3;
+  OtpTypeId factor = 4;
+  bool use_recovery_code = 5;
+}
+message CompleteAuthChallengeRequest {
+  AuthChallengeReference challenge = 1;
+  string code = 2;
+  bool use_recovery_code = 3;
+}
+message CompleteAuthChallengeResponse {
+  AuthChallengeState state = 1;
+  AuthResponse session = 2;
+  AuthChallengeReference security_proof = 3;
+  repeated string recovery_codes = 4;
+}
+message GetSecuritySettingsRequest { }
+message SecuritySettingsResponse {
+  AuthLoginMode login_mode = 1;
+  OtpTypeId preferred_factor = 2;
+  bool authenticator_enabled = 3;
+  bool email_enabled = 4;
+  bool telegram_linked = 5;
+  bool telegram_enabled = 6;
+  bool telegram_otp_enabled = 7;
+  bool fast_auth_telegram_enabled = 8;
+  string telegram_username = 9;
+  string verified_email = 10;
+  int32 remaining_recovery_codes = 11;
+}
+message BeginReauthenticationRequest {
+  string password = 1;
+  OtpTypeId factor = 2;
+  bool use_recovery_code = 3;
+}
+message SecurityProofRequest { AuthChallengeReference security_proof = 1; }
+message UpdateSecuritySettingsRequest {
+  AuthChallengeReference security_proof = 1;
+  AuthLoginMode login_mode = 2;
+  OtpTypeId preferred_factor = 3;
+  bool telegram_enabled = 4;
+  bool telegram_otp_enabled = 5;
+  bool fast_auth_telegram_enabled = 6;
+}
+message BeginEmailBindingRequest {
+  AuthChallengeReference security_proof = 1;
+  string email = 2;
+}
+message RecoveryCodesResponse { repeated string codes = 1; }
+message BeginPasswordRecoveryRequest { string login = 1; }
+message SetRecoveredPasswordRequest {
+  AuthChallengeReference security_proof = 1;
+  string password = 2;
+}

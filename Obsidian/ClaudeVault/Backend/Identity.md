@@ -239,3 +239,13 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - [[Backend/Users]] — поиск/регистрация пользователей
 - [[Backend/Notification]] — email-уведомления
 - [[Архитектура]] — XAuth, TokenType, JWT-flow
+
+## Telegram-аутентификация (2026-09)
+
+Режим аккаунта (`Password`, `TelegramLogin`, `PasswordSecondFactor`) хранится в `AuthUserProperty` вместе с предпочтительным фактором и необязательной привязкой к числовому Telegram ID. Миграция `TelegramAuthentication` сохраняет эффективный старый режим и не включает Telegram автоматически; добавляет уникальность настроек по UserId и привязки Telegram ID.
+
+`AuthenticationChallenges` хранит назначение, секрет инициатора (хеш), отдельный Telegram nonce, устройство, срок, политику и результат одноразовой попытки; `RecoveryCodes` — только хеши резервных кодов; `TelegramPollingStates` — offset обработчика. Контракты расширены без изменения существующих номеров; Telegram имеет `OtpTypeId=3`.
+
+Legacy `Auth` проверяет пароль до второго фактора и запрещает Telegram-режим через старый RPC. Email OTP имеет TTL 5 минут и погашается после успешной проверки. Повторная регистрация больше не вызывает `OverrideDraftUser`: продолжение выполняется по исходному запросу подтверждения. См. [[Backend/Users]].
+
+Для генерации EF-миграции Identity явно использует `Microsoft.EntityFrameworkCore.Design` 10.0.8: транзитивная версия 8.0.0 несовместима с runtime 10.0.8.

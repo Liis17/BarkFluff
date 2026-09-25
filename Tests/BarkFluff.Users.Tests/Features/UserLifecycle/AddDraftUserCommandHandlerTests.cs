@@ -13,6 +13,35 @@ public class AddDraftUserCommandHandlerTests : IAsyncDisposable
     private readonly TestHelper _h = new();
 
     [Fact]
+    public async Task Handle_WithoutEmail_CreatesDraftWithoutContact()
+    {
+        var handler = new AddDraftUserCommandHandler(
+            _h.UsersStorage, _h.CreateReservedService(""), _h.Metrics, TestHelper.CreateLogger<AddDraftUserCommandHandler>());
+        var result = await handler.Handle(new AddDraftUserCommand
+        {
+            Username = "telegramuser", FirstName = "New", LastName = "User", Email = ""
+        }, CancellationToken.None);
+        var user = await _h.UsersStorage.GetById(result.UserId);
+        user!.Contact.Should().BeNull();
+        (await _h.UsersStorage.GetUserByEmail("")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task OverrideDraft_DoesNotMutateExistingAccount()
+    {
+        var user = await _h.SeedUser(username: "existing", email: "old@test.com", isDraft: false);
+        var handler = new OverrideDraftUserCommandHandler(_h.UsersStorage, TestHelper.CreateLogger<OverrideDraftUserCommandHandler>());
+        var act = () => handler.Handle(new OverrideDraftUserCommand
+        {
+            Username = "existing", Email = "attacker@test.com", FirstName = "Changed", LastName = ""
+        }, CancellationToken.None);
+        await act.Should().ThrowAsync<Grpc.Core.RpcException>();
+        var unchanged = await _h.UsersStorage.GetUserByUsername("existing");
+        unchanged!.IsDraft.Should().BeFalse();
+        unchanged.Contact!.Email.Should().Be("old@test.com");
+    }
+
+    [Fact]
     public async Task Handle_ValidData_CreatesDraftUser()
     {
         var handler = new AddDraftUserCommandHandler(

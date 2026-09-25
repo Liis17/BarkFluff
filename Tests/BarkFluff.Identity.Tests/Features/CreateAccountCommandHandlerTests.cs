@@ -142,7 +142,7 @@ public class CreateAccountCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_DraftUserExists_OverridesAndSucceeds()
+    public async Task Handle_DraftUserExists_DoesNotOverwriteAnotherRegistration()
     {
         _usersClient
             .Setup(c => c.AddDraftUserAsync(It.IsAny<AddDraftUserRequest>(), null, null, CancellationToken.None))
@@ -157,9 +157,7 @@ public class CreateAccountCommandHandlerTests
         var handler = CreateHandler();
         var cmd = new CreateAccountCommand { Username = "user", Email = "test@test.com", FirstName = "First", LastName = "Last" };
 
-        var result = await handler.Handle(cmd, CancellationToken.None);
-
-        Assert.NotNull(result.CodeId);
-        _usersClient.Verify(c => c.OverrideDraftUserAsync(It.IsAny<AddDraftUserRequest>(), null, null, CancellationToken.None), Times.Once);
+        await Assert.ThrowsAsync<UserIsDraftException>(() => handler.Handle(cmd, CancellationToken.None));
+        _usersClient.Verify(c => c.OverrideDraftUserAsync(It.IsAny<AddDraftUserRequest>(), null, null, CancellationToken.None), Times.Never);
     }
 }

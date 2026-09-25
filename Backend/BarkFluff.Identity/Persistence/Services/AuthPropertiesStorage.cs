@@ -68,6 +68,7 @@ public class AuthPropertiesStorage
         }
 
         props.OtpEnabled = true;
+        props.LoginMode = BarkFluff.Proto.Identity.AuthLoginMode.PasswordSecondFactor;
 
         await _context.SaveChangesAsync();
     }
@@ -82,6 +83,7 @@ public class AuthPropertiesStorage
         }
 
         props.EmailOtpEnabled = true;
+        props.LoginMode = BarkFluff.Proto.Identity.AuthLoginMode.PasswordSecondFactor;
 
         await _context.SaveChangesAsync();
     }
@@ -128,7 +130,8 @@ public class AuthPropertiesStorage
             props = new AuthUserProperty()
             {
                 UserId = userId,
-                LastEmailAuthCode = code
+                LastEmailAuthCode = code,
+                LastEmailAuthCodeExpiresAt = DateTime.UtcNow.AddMinutes(5)
             };
 
             await _context.AuthUserProperties.AddAsync(props);
@@ -138,6 +141,7 @@ public class AuthPropertiesStorage
         }
 
         props.LastEmailAuthCode = code;
+        props.LastEmailAuthCodeExpiresAt = DateTime.UtcNow.AddMinutes(5);
 
         await _context.SaveChangesAsync();
     }

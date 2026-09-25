@@ -17,6 +17,9 @@ public class IdentityContext : DbContext
     public DbSet<ResetPassword> ResetPasswords { get; set; }
 
     public DbSet<UserPassword> UserPasswords { get; set; }
+    public DbSet<AuthenticationChallenge> AuthenticationChallenges { get; set; }
+    public DbSet<RecoveryCode> RecoveryCodes { get; set; }
+    public DbSet<TelegramPollingState> TelegramPollingStates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,5 +28,12 @@ public class IdentityContext : DbContext
         modelBuilder.Entity<RefreshToken>()
             .HasIndex(x => x.Value)
             .IsUnique();
+
+        modelBuilder.Entity<AuthUserProperty>().HasIndex(x => x.UserId).IsUnique();
+        modelBuilder.Entity<AuthUserProperty>().HasIndex(x => x.TelegramId).IsUnique();
+        modelBuilder.Entity<AuthenticationChallenge>().HasIndex(x => x.TelegramTokenHash).IsUnique();
+        modelBuilder.Entity<AuthenticationChallenge>().HasIndex(x => x.AttemptId).IsUnique();
+        modelBuilder.Entity<AuthenticationChallenge>().HasIndex(x => x.ExpiresAt);
+        modelBuilder.Entity<RecoveryCode>().HasIndex(x => new { x.UserId, x.Hash }).IsUnique();
     }
 }
