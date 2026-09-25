@@ -210,6 +210,7 @@
     <string name="reset_password_title">Забыли пароль?</string>
     <string name="reset_password_subtitle">Введите email или логин — пришлём код для сброса</string>
     <string name="reset_enter_email_or_login">Email или имя пользователя</string>
+    <string name="reset_identifier_hint">name@example.com</string>
     <string name="reset_send_code">Отправить код</string>
     <string name="reset_enter_verify_code">Введите код</string>
     <string name="reset_we_sent_code">6-значный код отправлен на &lt;b&gt;%1$s&lt;/b&gt;</string>

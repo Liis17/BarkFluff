@@ -199,6 +199,7 @@
     <string name="reset_password_title">Passwort vergessen?</string>
     <string name="reset_password_subtitle">Gib deine E-Mail oder deinen Benutzernamen ein — wir senden dir einen Code zum Zurücksetzen</string>
     <string name="reset_enter_email_or_login">E-Mail oder Benutzername</string>
+    <string name="reset_identifier_hint">name@example.com</string>
     <string name="reset_send_code">Code senden</string>
     <string name="reset_enter_verify_code">Code eingeben</string>
     <string name="reset_we_sent_code">6-stelliger Code gesendet an &lt;b&gt;%1$s&lt;/b&gt;</string>

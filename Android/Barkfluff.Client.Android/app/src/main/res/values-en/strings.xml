@@ -198,6 +198,7 @@
     <string name="reset_password_title">Forgot password?</string>
     <string name="reset_password_subtitle">Enter your email or username — we\'ll send a code to reset it</string>
     <string name="reset_enter_email_or_login">Email or username</string>
+    <string name="reset_identifier_hint">name@example.com</string>
     <string name="reset_send_code">Send code</string>
     <string name="reset_enter_verify_code">Enter code</string>
     <string name="reset_we_sent_code">6-digit code sent to &lt;b&gt;%1$s&lt;/b&gt;</string>
