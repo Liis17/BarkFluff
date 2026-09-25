@@ -20,6 +20,9 @@
     var chatListRequest = null;
     var chatCmTargetId = null;
     var chatCmShownAt = 0;
+    var chatCmReturnChatId = null; // открыто с клавиатуры: фокус вернётся на строку чата
+    var chatCmReturnEl = null; // открыто мышью: фокус вернётся на прежний элемент
+    var suppressContextMenuUntil = 0; // браузер шлёт contextmenu вслед за клавишей ContextMenu/Shift+F10
 
     // Оконная виртуализация: в DOM только строки видимой области ± OVERSCAN (высота строки фиксирована).
     var OVERSCAN = 8;
@@ -402,6 +405,18 @@
         if (index === undefined) return;
         var n = visibleChats.length;
         var page = Math.max(1, Math.floor((chatListEl.clientHeight - NAV) / ROW) - 1);
+        if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+            e.preventDefault();
+            var rect = item.getBoundingClientRect();
+            suppressContextMenuUntil = Date.now() + 500;
+            openChatContextMenu(
+                rect.left + 16,
+                Math.min(Math.max(rect.bottom, 8), window.innerHeight - 8),
+                item.dataset.chatId,
+                true
+            );
+            return;
+        }
         var target;
         switch (e.key) {
             case 'ArrowDown':
@@ -514,6 +529,34 @@
         return '<span class="cm-icon">' + BF.icons.html('chat-folders') + '</span>';
     }
 
+    function menuItem(act, folderId, label) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cm-item';
+        btn.setAttribute('role', 'menuitem');
+        btn.tabIndex = -1;
+        btn.dataset.act = act;
+        if (folderId) btn.dataset.folderId = folderId;
+        btn.innerHTML = contextMenuIcon() + '<span class="cm-label">' + u.escapeHtml(label) + '</span>';
+        return btn;
+    }
+
+    // Секция меню: role="group" с подписью; сам заголовок скрыт от скринридера, чтобы не читался дважды.
+    function appendFolderSection(titleKey, act, folders) {
+        var group = document.createElement('div');
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', BF.i18n.t(titleKey));
+        var hdr = document.createElement('div');
+        hdr.className = 'cm-section-title';
+        hdr.setAttribute('aria-hidden', 'true');
+        hdr.textContent = BF.i18n.t(titleKey);
+        group.appendChild(hdr);
+        folders.forEach(function (f) {
+            group.appendChild(menuItem(act, f.folderId, f.folderName || BF.i18n.t('folder.default')));
+        });
+        chatContextMenu.appendChild(group);
+    }
+
     function buildChatContextMenu(chatId) {
         if (!chatContextMenu) return;
         chatContextMenu.innerHTML = '';
@@ -522,63 +565,22 @@
             var without = BF.folders.getFoldersWithoutChat(chatId);
             var inFolders = BF.folders.getFoldersForChat(chatId);
 
-            if (without.length > 0) {
-                var hdr1 = document.createElement('div');
-                hdr1.className = 'cm-section-title';
-                hdr1.textContent = BF.i18n.t('folder.addToFolder');
-                chatContextMenu.appendChild(hdr1);
-                without.forEach(function (f) {
-                    var btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'cm-item';
-                    btn.dataset.act = 'add-folder';
-                    btn.dataset.folderId = f.folderId;
-                    btn.innerHTML =
-                        contextMenuIcon() +
-                        '<span class="cm-label">' +
-                        u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) +
-                        '</span>';
-                    chatContextMenu.appendChild(btn);
-                });
-            }
-
-            if (inFolders.length > 0) {
-                var hdr2 = document.createElement('div');
-                hdr2.className = 'cm-section-title';
-                hdr2.textContent = BF.i18n.t('folder.removeFromFolder');
-                chatContextMenu.appendChild(hdr2);
-                inFolders.forEach(function (f) {
-                    var btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'cm-item';
-                    btn.dataset.act = 'remove-folder';
-                    btn.dataset.folderId = f.folderId;
-                    btn.innerHTML =
-                        contextMenuIcon() +
-                        '<span class="cm-label">' +
-                        u.escapeHtml(f.folderName || BF.i18n.t('folder.default')) +
-                        '</span>';
-                    chatContextMenu.appendChild(btn);
-                });
-            }
+            if (without.length > 0) appendFolderSection('folder.addToFolder', 'add-folder', without);
+            if (inFolders.length > 0) appendFolderSection('folder.removeFromFolder', 'remove-folder', inFolders);
 
             if (without.length > 0 || inFolders.length > 0) {
                 var sep = document.createElement('div');
                 sep.className = 'cm-separator';
+                sep.setAttribute('role', 'separator');
                 chatContextMenu.appendChild(sep);
             }
         }
 
-        var createBtn = document.createElement('button');
-        createBtn.type = 'button';
-        createBtn.className = 'cm-item';
-        createBtn.dataset.act = 'create-folder';
-        createBtn.innerHTML =
-            contextMenuIcon() + '<span class="cm-label">' + u.escapeHtml(BF.i18n.t('folder.create')) + '</span>';
-        chatContextMenu.appendChild(createBtn);
+        chatContextMenu.appendChild(menuItem('create-folder', null, BF.i18n.t('folder.create')));
     }
 
-    function openChatContextMenu(x, y, chatId) {
+    // keyboard — открыто клавишей ContextMenu/Shift+F10: фокус сразу на первый пункт.
+    function openChatContextMenu(x, y, chatId, keyboard) {
         if (!chatContextMenu) return;
         chatCmTargetId = chatId;
         buildChatContextMenu(chatId);
@@ -594,12 +596,27 @@
         chatContextMenu.style.left = left + 'px';
         chatContextMenu.style.top = top + 'px';
         chatCmShownAt = Date.now();
+
+        chatCmReturnChatId = keyboard ? String(chatId) : null;
+        chatCmReturnEl = keyboard ? null : document.activeElement;
+        if (keyboard) u.focusMenuItem(chatContextMenu, 0);
     }
 
     function closeChatContextMenu() {
         if (!chatContextMenu) return;
+        // Проверяем до скрытия: после display:none фокус уже на body.
+        var hadFocus = chatContextMenu.contains(document.activeElement);
         chatContextMenu.classList.remove('visible');
         chatCmTargetId = null;
+        var returnChatId = chatCmReturnChatId;
+        var returnEl = chatCmReturnEl;
+        chatCmReturnChatId = null;
+        chatCmReturnEl = null;
+        if (!hadFocus) return;
+        // Строку могли переиспользовать или убрать из окна — возвращаемся по id чата.
+        if (returnChatId !== null && indexById.has(returnChatId)) focusRow(indexById.get(returnChatId));
+        else if (returnEl && document.contains(returnEl) && typeof returnEl.focus === 'function')
+            returnEl.focus({ preventScroll: true });
     }
 
     function init(options) {
@@ -648,11 +665,18 @@
                 var item = e.target.closest('.chat-item');
                 if (!item || !item.dataset.chatId) return;
                 e.preventDefault();
+                if (Date.now() < suppressContextMenuUntil) return;
                 openChatContextMenu(e.clientX, e.clientY, item.dataset.chatId);
             });
         }
 
         if (chatContextMenu) {
+            chatContextMenu.addEventListener('keydown', function (e) {
+                u.handleMenuKeydown(e, chatContextMenu, closeChatContextMenu);
+            });
+            chatContextMenu.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+            });
             chatContextMenu.addEventListener('click', function (e) {
                 var btn = e.target.closest('button[data-act]');
                 if (!btn) return;
@@ -682,8 +706,15 @@
             true
         );
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && chatContextMenu && chatContextMenu.classList.contains('visible')) {
-                closeChatContextMenu();
+            if (!chatContextMenu || !chatContextMenu.classList.contains('visible')) return;
+            if (e.key === 'Escape') closeChatContextMenu();
+            // Меню открыто мышью — стрелки переводят фокус в него.
+            else if (
+                (e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
+                !chatContextMenu.contains(document.activeElement)
+            ) {
+                e.preventDefault();
+                u.focusMenuItem(chatContextMenu, e.key === 'ArrowDown' ? 0 : -1);
             }
         });
         window.addEventListener('resize', closeChatContextMenu);

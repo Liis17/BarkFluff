@@ -4560,6 +4560,10 @@
         .msg-context-menu button:hover {
             background: var(--primary-alpha);
         }
+        .msg-context-menu button:focus-visible {
+            background: var(--primary-alpha);
+            outline-offset: -2px;
+        }
         .msg-context-menu button.cm-danger {
             color: var(--error);
         }

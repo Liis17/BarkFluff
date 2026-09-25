@@ -4,6 +4,8 @@
   "a11y.chat.unread.many": "{count} mensajes sin leer",
   "a11y.chat.unread.one": "{count} mensaje sin leer",
   "a11y.chat.unread.other": "{count} mensajes sin leer",
+  "a11y.messageMenu": "Acciones del mensaje",
+  "a11y.chatMenu": "Acciones del chat",
   "about.browser": "Navegador",
   "about.os": "SO",
   "about.server": "Servidor",
