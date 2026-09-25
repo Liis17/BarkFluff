@@ -4,6 +4,8 @@
   "a11y.chat.unread.many": "{count} 条未读消息",
   "a11y.chat.unread.one": "{count} 条未读消息",
   "a11y.chat.unread.other": "{count} 条未读消息",
+  "a11y.messageMenu": "消息操作",
+  "a11y.chatMenu": "聊天操作",
   "about.browser": "浏览器",
   "about.os": "系统",
   "about.server": "服务器",

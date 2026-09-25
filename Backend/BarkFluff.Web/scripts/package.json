@@ -15,6 +15,7 @@
     "test:pending-sends": "node test-pending-sends.js",
     "test:sticker-picker": "node test-sticker-picker.js",
     "test:chat-list": "node test-chat-list.js",
+    "test:context-menu": "node test-context-menu.js",
     "format": "prettier --write ../wwwroot/js/app/**/*.js *.js",
     "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js ../wwwroot/js/app/sticker-picker.js ../wwwroot/js/app/chat-list.js ../wwwroot/js/app/composer.js ../wwwroot/js/app/feed.js ../wwwroot/js/app/message-menu.js app-bundle-entry.js build-app.js",
     "lint": "cd .. && scripts/node_modules/.bin/eslint --config scripts/eslint.config.cjs wwwroot/js/app/**/*.js scripts/build-app.js scripts/build-shell-version.js scripts/app-bundle-entry.js"

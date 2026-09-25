@@ -4,6 +4,8 @@
   "a11y.chat.unread.many": "{count} непрочитанных сообщений",
   "a11y.chat.unread.one": "{count} непрочитанное сообщение",
   "a11y.chat.unread.other": "{count} непрочитанного сообщения",
+  "a11y.messageMenu": "Действия с сообщением",
+  "a11y.chatMenu": "Действия с чатом",
   "about.browser": "Браузер",
   "about.os": "ОС",
   "about.server": "Сервер",

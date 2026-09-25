@@ -156,7 +156,7 @@ Origin — `BF.node.origin()`; без выбранной ноды модуль �
 `authCall(fn)` — обёртка с auto-refresh токена.
 
 ### `utils.js` → `BF.utils`
-Утилиты: форматирование дат/времени, `escapeHtml`, `parseJwt`, форматирование размера файла, прочие хелперы.
+Утилиты: форматирование дат/времени, `escapeHtml`, `parseJwt`, форматирование размера файла, прочие хелперы; модальные оверлеи (`openOverlay`/`closeOverlay` — focus-trap, `inert`) и клавиатура немодальных меню (`focusMenuItem`/`handleMenuKeydown`, см. [[Клиенты/Web#Контекстные меню (клавиатура и a11y)]]).
 
 ### `api.js` → `BF.api`
 Высокоуровневые обёртки над gRPC-клиентами:
@@ -253,7 +253,7 @@ Server-streaming подписки:
 Лента открытого чата (`#messagesInner` в `#messagesArea`): полный рендер `render()`, инкрементальная подгрузка старых (`prependMessages`) и новых (`loadNewerMessages`) страниц по 30 на скролле, скользящее окно `MAX_MESSAGES = 200` (`trimMessages`), `jumpToLiveTail`, группировка сообщений и разделители дат/непрочитанных, кнопка «вниз» с бейджем, `scrollToMessage` (прыжок ±30 с подсветкой), `loadMessagesPage` для обычных и приватных (расшифровка через `deps.decryptPrivateBatch`) чатов. Подробности — [[Клиенты/Web#Скользящее окно ленты]]. Deps: `getCurrentChatId/Type/Info`, `getMyUserId`, `getMessages`/`setMessages`, `getUser`, `showMediaOverlay`, `mergePendingUploads`, `onPendingCancel`/`onPendingRetry`, `decryptPrivateBatch`, `showToast`.
 
 ### `message-menu.js` → `BF.messageMenu`
-Контекстное меню сообщения `#msgContextMenu` (правый клик, долгое нажатие 500 мс на touch) и свайп влево для ответа на мобильном. Меню показывает только применимые пункты (редактировать/удалить — свои несистемные, копировать изображение — единственная картинка), закрывается кликом снаружи, Escape, скроллом ленты и resize; в приватных чатах не открывается. Действия выполняются через deps: `setReply`/`setEdit` (композер), `forward(msg, id)` (модалка пересылки в `main.js`), `requestDelete`, `showToast`; закреп — через `BF.pinned`. API: `init`, `close` (в `main.js` — алиас `closeContextMenu`).
+Контекстное меню сообщения `#msgContextMenu` (правый клик, долгое нажатие 500 мс на touch, Shift+F10 / клавиша ContextMenu на сфокусированном сообщении; `role="menu"` с навигацией стрелками) и свайп влево для ответа на мобильном. Меню показывает только применимые пункты (редактировать/удалить — свои несистемные, копировать изображение — единственная картинка), закрывается кликом снаружи, Escape, скроллом ленты и resize; в приватных чатах не открывается. Действия выполняются через deps: `setReply`/`setEdit` (композер), `forward(msg, id)` (модалка пересылки в `main.js`), `requestDelete`, `showToast`; закреп — через `BF.pinned`. API: `init`, `close` (в `main.js` — алиас `closeContextMenu`).
 
 ### `main.js`
 Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки. Держит общее состояние (`chats`, `messages`, `currentChatId/Type/Info`, `myUserId`) и передаёт его выделенным модулям через `init(deps)` — геттеры/сеттеры и колбэки (паттерн `private-chat-ui.js`); после `init` заводит алиасы (`var x = BF.module.fn`), чтобы места вызова не менялись. Порядок в `scripts/app-bundle-entry.js`: выделенные модули импортируются перед `main.js`.

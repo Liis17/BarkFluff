@@ -651,6 +651,39 @@
         }
     }
 
+    // ===== Context menu keyboard helpers (a11y) =====
+    // Немодальные меню role="menu": стрелки с циклом, Home/End; Escape и Tab закрывают меню.
+    // Скрытые (display:none) и disabled пункты пропускаются.
+    function menuItems(menu) {
+        return Array.prototype.filter.call(menu.querySelectorAll('[role="menuitem"]'), function (el) {
+            return !el.disabled && isFocusVisibleEl(el);
+        });
+    }
+
+    function focusMenuItem(menu, index) {
+        var items = menuItems(menu);
+        if (items.length === 0) return;
+        var i = ((index % items.length) + items.length) % items.length;
+        items[i].focus();
+    }
+
+    // onDismiss('escape' | 'tab') закрывает меню; возвращает true, если клавиша обработана.
+    function handleMenuKeydown(e, menu, onDismiss) {
+        var current = menuItems(menu).indexOf(document.activeElement);
+        switch (e.key) {
+            case 'ArrowDown': focusMenuItem(menu, current + 1); break;
+            case 'ArrowUp': focusMenuItem(menu, current < 0 ? -1 : current - 1); break;
+            case 'Home': focusMenuItem(menu, 0); break;
+            case 'End': focusMenuItem(menu, -1); break;
+            case 'Escape': onDismiss('escape'); break;
+            case 'Tab': onDismiss('tab'); break;
+            default: return false;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        return true;
+    }
+
     window.BF.utils = {
         formatTime: formatTime,
         formatChatListTime: formatChatListTime,
@@ -669,6 +702,8 @@
         isStatusOnline: isStatusOnline,
         formatLastSeen: formatLastSeen,
         openOverlay: openOverlay,
-        closeOverlay: closeOverlay
+        closeOverlay: closeOverlay,
+        focusMenuItem: focusMenuItem,
+        handleMenuKeydown: handleMenuKeydown
     };
 })();

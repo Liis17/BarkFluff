@@ -1,5 +1,6 @@
 /**
- * Context menu of a message in the feed (right click, long press) and the swipe-left-to-reply gesture.
+ * Context menu of a message in the feed (right click, long press, Shift+F10 / ContextMenu key on a focused
+ * message) and the swipe-left-to-reply gesture. The menu is a non-modal role="menu" with arrow-key navigation.
  * Reply/edit/forward/delete are performed by main.js and the composer through deps.
  * Requires: BF.i18n, BF.pinned
  * Exposes: BF.messageMenu
@@ -16,6 +17,8 @@
     var contextMenuTarget = null;
     var cmenuShownAt = 0;
     var mqlMobile;
+    var returnFocusEl = null; // куда вернуть фокус, если меню закрывается с фокусом внутри
+    var suppressContextMenuUntil = 0; // браузер шлёт contextmenu вслед за клавишей ContextMenu/Shift+F10
 
     function $(selector) {
         return document.querySelector(selector);
@@ -27,7 +30,8 @@
         });
     }
 
-    function open(x, y, msgEl) {
+    // options.keyboard — открыто с клавиатуры: фокус сразу на первый пункт.
+    function open(x, y, msgEl, options) {
         if (!msgContextMenu || !msgEl) return;
         if (deps.getCurrentChatType() === 1) return; // edit/delete/reply/pin для приватных сообщений не поддерживаются
 
@@ -90,12 +94,35 @@
         msgContextMenu.style.left = left + 'px';
         msgContextMenu.style.top = top + 'px';
         cmenuShownAt = Date.now();
+
+        var keyboard = !!(options && options.keyboard);
+        returnFocusEl = keyboard ? msgEl : document.activeElement;
+        if (keyboard) BF.utils.focusMenuItem(msgContextMenu, 0);
     }
 
     function close() {
         if (!msgContextMenu) return;
+        // Проверяем до скрытия: после display:none фокус уже на body.
+        var hadFocus = msgContextMenu.contains(document.activeElement);
         msgContextMenu.classList.remove('visible');
         contextMenuTarget = null;
+        var target = returnFocusEl;
+        returnFocusEl = null;
+        if (hadFocus && target && document.contains(target) && typeof target.focus === 'function') {
+            target.focus({ preventScroll: true });
+        }
+    }
+
+    function isContextMenuKey(e) {
+        return (e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu';
+    }
+
+    // Открытие с клавиатуры у сфокусированного сообщения (виден хотя бы его верх).
+    function openFromKeyboard(msgEl) {
+        var rect = msgEl.getBoundingClientRect();
+        var y = Math.min(Math.max(rect.top + 16, 8), window.innerHeight - 8);
+        suppressContextMenuUntil = Date.now() + 500;
+        open(rect.left + 16, y, msgEl, { keyboard: true });
     }
 
     function canvasToPngBlob(drawable, width, height) {
@@ -330,7 +357,15 @@
         messagesInner = $('#messagesInner');
         mqlMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)');
 
-        if (msgContextMenu) msgContextMenu.addEventListener('click', onMenuClick);
+        if (msgContextMenu) {
+            msgContextMenu.addEventListener('click', onMenuClick);
+            msgContextMenu.addEventListener('keydown', function (e) {
+                BF.utils.handleMenuKeydown(e, msgContextMenu, close);
+            });
+            msgContextMenu.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+            });
+        }
 
         // --- Global close handlers for context menu ---
         document.addEventListener(
@@ -344,7 +379,16 @@
             true
         );
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && msgContextMenu && msgContextMenu.classList.contains('visible')) close();
+            if (!msgContextMenu || !msgContextMenu.classList.contains('visible')) return;
+            if (e.key === 'Escape') close();
+            // Меню открыто мышью — стрелки переводят фокус в него.
+            else if (
+                (e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
+                !msgContextMenu.contains(document.activeElement)
+            ) {
+                e.preventDefault();
+                BF.utils.focusMenuItem(msgContextMenu, e.key === 'ArrowDown' ? 0 : -1);
+            }
         });
         window.addEventListener('resize', close);
         if (messagesArea) messagesArea.addEventListener('scroll', close);
@@ -355,7 +399,15 @@
                 var grp = e.target.closest('.msg-group');
                 if (!grp || !grp.dataset.msgId) return;
                 e.preventDefault();
+                if (Date.now() < suppressContextMenuUntil) return;
                 open(e.clientX, e.clientY, grp);
+            });
+            messagesInner.addEventListener('keydown', function (e) {
+                var grp = e.target;
+                if (!grp.classList || !grp.classList.contains('msg-group') || !grp.dataset.msgId) return;
+                if (!isContextMenuKey(e)) return;
+                e.preventDefault();
+                openFromKeyboard(grp);
             });
         }
 

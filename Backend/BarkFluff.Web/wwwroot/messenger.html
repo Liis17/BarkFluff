@@ -542,18 +542,18 @@
     </div>
 
     <!-- Message context menu -->
-    <div class="msg-context-menu" id="msgContextMenu">
-        <button data-act="reply"><span class="cm-icon"><span class="bf-icon" data-bf-icon="reply" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.reply">Ответить</span></button>
-        <button data-act="forward"><span class="cm-icon"><span class="bf-icon" data-bf-icon="forward" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.forward">Переслать</span></button>
-        <button data-act="copy-text"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyText">Копировать текст</span></button>
-        <button data-act="copy-image"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-image" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyImage">Копировать изображение</span></button>
-        <button data-act="pin"><span class="cm-icon"><span class="bf-icon" data-bf-icon="pin" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.pin">Закрепить</span></button>
-        <button data-act="edit"><span class="cm-icon"><span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.edit">Изменить</span></button>
-        <button data-act="delete" class="cm-danger"><span class="cm-icon"><span class="bf-icon" data-bf-icon="delete" aria-hidden="true"></span></span><span class="cm-label" data-i18n="common.delete">Удалить</span></button>
+    <div class="msg-context-menu" id="msgContextMenu" role="menu" data-i18n-aria-label="a11y.messageMenu" aria-label="Действия с сообщением">
+        <button type="button" role="menuitem" tabindex="-1" data-act="reply"><span class="cm-icon"><span class="bf-icon" data-bf-icon="reply" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.reply">Ответить</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="forward"><span class="cm-icon"><span class="bf-icon" data-bf-icon="forward" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.forward">Переслать</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="copy-text"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyText">Копировать текст</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="copy-image"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-image" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyImage">Копировать изображение</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="pin"><span class="cm-icon"><span class="bf-icon" data-bf-icon="pin" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.pin">Закрепить</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="edit"><span class="cm-icon"><span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.edit">Изменить</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="delete" class="cm-danger"><span class="cm-icon"><span class="bf-icon" data-bf-icon="delete" aria-hidden="true"></span></span><span class="cm-label" data-i18n="common.delete">Удалить</span></button>
     </div>
 
     <!-- Chat context menu (PCM на чате в сайдбаре) -->
-    <div class="msg-context-menu chat-context-menu" id="chatContextMenu"></div>
+    <div class="msg-context-menu chat-context-menu" id="chatContextMenu" role="menu" data-i18n-aria-label="a11y.chatMenu" aria-label="Действия с чатом"></div>
 
     <!-- Folder edit/create modal -->
     <div class="overlay folder-edit-overlay" id="folderEditOverlay">
