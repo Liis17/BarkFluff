@@ -1,4 +1,9 @@
 {
+  "a11y.chatList": "Chatliste",
+  "a11y.chat.unread.few": "{count} ungelesene Nachrichten",
+  "a11y.chat.unread.many": "{count} ungelesene Nachrichten",
+  "a11y.chat.unread.one": "{count} ungelesene Nachricht",
+  "a11y.chat.unread.other": "{count} ungelesene Nachrichten",
   "about.browser": "Browser",
   "about.os": "Betriebssystem",
   "about.server": "Server",

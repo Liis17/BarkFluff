@@ -1,4 +1,9 @@
 {
+  "a11y.chatList": "Lista de chats",
+  "a11y.chat.unread.few": "{count} mensajes sin leer",
+  "a11y.chat.unread.many": "{count} mensajes sin leer",
+  "a11y.chat.unread.one": "{count} mensaje sin leer",
+  "a11y.chat.unread.other": "{count} mensajes sin leer",
   "about.browser": "Navegador",
   "about.os": "SO",
   "about.server": "Servidor",
