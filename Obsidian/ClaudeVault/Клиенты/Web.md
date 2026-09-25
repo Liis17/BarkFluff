@@ -149,7 +149,7 @@ origin, сопоставить ключ нечем — вход потребуе
 - **Набор:** `**жирный**`, `*` / `_курсив_`, `~~зачёркнутый~~`, `` `код` ``, ` ```блоки``` `, `[текст](url)`, списки (`- ` / `* ` / `1. `), цитаты (`> `), заголовки (`#`..`######`), автоссылки на голый `http(s)://…`. HTML allowlist для README-фрагментов: `p`/`h1…h6` с `align=left|center|right`, `strong`, `sub`, `a[href]`, `img[src,alt,width,height]`.
 - **Безопасность (XSS):** текст экранируется ПЕРВЫМ (`escapeHtml`), затем добавляются только свои теги (сырых `<>&` не остаётся); HTML-теги пересобираются по allowlist без пользовательских атрибутов; `href` принимает только `http`/`https`/`mailto`, `src` — только HTTP(S). Относительные/fragment URL не имеют безопасной базы внутри сообщения: ссылка становится обычным текстом, а картинка показывает `alt`; `javascript:`/`data:` не становятся активными URL; у `<a>` — `target=_blank rel="noopener noreferrer"`. Разбор сегментный: защищённые куски (код/ссылки) не проходят emphasis.
 - CSS `.md` (`strong/em/del/sub/code/pre/ul/ol/blockquote/h1..h6/img`) — в `wwwroot/css/messenger.css` рядом с `.msg-text`; для `.md`-контента `white-space: normal` (разметку держат блоки + `<br>`), внутри `<pre>` — `pre-wrap`.
-- Композер/редактирование не меняются — в `messageInput` попадает сырой markdown (`setPendingEdit`).
+- Композер/редактирование не меняются — в `messageInput` попадает сырой markdown (`BF.composer.setEdit` в `js/app/composer.js`).
 - Приватные E2E-чаты получают markdown автоматически (расшифрованные сообщения рендерятся тем же `buildMessageElement`).
 
 ### Звонки (см. [[Backend/Calls]])
