@@ -240,8 +240,11 @@ Server-streaming подписки:
 ### `sound.js` → `BF.sound`
 Звуки уведомлений.
 
+### `sticker-picker.js` → `BF.stickerPicker`
+Стикер-пикер у композера (`#stickerPicker`): вкладки паков, «Недавние», поиск по emoji, отправка. `init(deps)` / `send(sticker)`. Deps из `main.js`: `getMyUserId`, `getCurrentChatId`, `getCurrentChatType`, `onSent(chatId, msg)` (лента + подъём чата в списке), `showToast`. Тест — `scripts/test-sticker-picker.js`. Подробности — [[Клиенты/Web#Стикеры]].
+
 ### `main.js`
-Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки.
+Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки. Держит общее состояние (`chats`, `messages`, `currentChatId/Type/Info`, `myUserId`) и передаёт его выделенным модулям через `init(deps)` — геттеры/сеттеры и колбэки (паттерн `private-chat-ui.js`); после `init` заводит алиасы (`var x = BF.module.fn`), чтобы места вызова не менялись. Порядок в `scripts/app-bundle-entry.js`: выделенные модули импортируются перед `main.js`.
 
 ---
 

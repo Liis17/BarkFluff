@@ -77,6 +77,11 @@ class FakeElement {
 class FakeDocument extends FakeElement {
     constructor() {
         super('#document');
+        this.byId = {};
+    }
+
+    querySelector(selector) {
+        return this.byId[selector.replace(/^#/, '')] || null;
     }
 
     createElement(tagName) {
@@ -115,30 +120,36 @@ function createHarness() {
             bindResilientMedia: function () {}
         },
         icons: { element: function () { return new FakeElement('span'); } },
-        i18n: { t: function (key) { return key; } }
+        i18n: { t: function (key) { return key; } },
+        utils: { escapeHtml: function (value) { return String(value); } }
     };
     var localStorage = { getItem: function () { return null; }, setItem: function () {} };
-    var u = { escapeHtml: function (value) { return String(value); } };
-    var source = fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/main.js'), 'utf8');
-    var start = source.indexOf('    // ========== STICKER PICKER ==========');
-    var end = source.indexOf('    // ========== REPLY / FORWARD / CONTEXT MENU ==========');
-    assert.notEqual(start, -1, 'sticker picker section should exist');
-    assert.notEqual(end, -1, 'sticker picker section end should exist');
-    var stickerSection = source.slice(start, end);
-    var factory = vm.runInNewContext(
-        '(function (BF, document, localStorage, stickerBtn, stickerPicker, stickerSearch, stickerPacksBar, stickerGrid, myUserId, u) {' +
-            stickerSection +
-            ' return { loadStickerPacks: loadStickerPacks }; })',
-        { Set: Set, Map: Map, Promise: Promise, document: document }
-    );
+    document.byId = {
+        stickerBtn: stickerBtn,
+        stickerPicker: stickerPicker,
+        stickerSearch: stickerSearch,
+        stickerPacksBar: stickerPacksBar,
+        stickerGrid: stickerGrid
+    };
+
+    var context = vm.createContext({ BF: BF, document: document, localStorage: localStorage, Promise: Promise });
+    context.window = context;
+    var source = fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/sticker-picker.js'), 'utf8');
+    vm.runInContext(source, context);
+    BF.stickerPicker.init({
+        getMyUserId: function () { return 1; },
+        getCurrentChatId: function () { return null; },
+        getCurrentChatType: function () { return 0; },
+        onSent: function () {},
+        showToast: function () {}
+    });
 
     return {
         picker: stickerPicker,
         packsBar: stickerPacksBar,
         grid: stickerGrid,
-        loadStickerPacks: function () {
-            return factory(BF, document, localStorage, stickerBtn, stickerPicker, stickerSearch, stickerPacksBar, stickerGrid, 1, u)
-                .loadStickerPacks();
+        open: function () {
+            stickerBtn.click();
         }
     };
 }
@@ -149,8 +160,7 @@ async function settle() {
 
 async function main() {
     var harness = createHarness();
-    harness.picker.classList.add('visible');
-    await harness.loadStickerPacks();
+    harness.open();
     await settle();
 
     assert.equal(harness.grid.children.length, 2, 'first pack should render only its own stickers');
