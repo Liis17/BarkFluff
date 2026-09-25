@@ -46,7 +46,7 @@ Shared-библиотека инфраструктуры. Подключаетс
 |------|-----------|
 | `RequestContext.cs` | Иммутабельный POCO-контейнер метаданных входящего запроса: `OperationSystem`, `IpAddress`, `DeviceName`, `AppName`, `AppVersion`, `DeviceId`. Все свойства `init`-only. Создаётся interceptor'ом, читается бизнес-кодом. |
 | `IRequestContextAccessor.cs` | Scoped-accessor: `Current` возвращает текущий `RequestContext` (бросает `InvalidOperationException`, если ещё не инициализирован), `Set(...)` вызывается из interceptor'а один раз за scope. Бизнес-код инжектит `RequestContext` напрямую через scoped-фабрику в DI. |
-| `RequestContextInterceptor.cs` | gRPC Unary interceptor. Создаёт новый `RequestContext` по metadata-заголовкам (Base64 с fallback на обычный текст для некорректных значений) и регистрирует через `IRequestContextAccessor.Set()`. IP-адрес резолвится по приоритету: 1) `x-ip-address` из gRPC metadata, 2) `X-Forwarded-For` HTTP-заголовок (первый IP), 3) `X-Real-IP` (nginx), 4) `RemoteIpAddress` TCP-соединения. |
+| `RequestContextInterceptor.cs` | gRPC Unary interceptor. Создаёт новый `RequestContext` по metadata-заголовкам (Base64) и регистрирует через `IRequestContextAccessor.Set()`. IP-адрес резолвится по приоритету: 1) `x-ip-address` из gRPC metadata, 2) `X-Forwarded-For` HTTP-заголовок (первый IP), 3) `X-Real-IP` (nginx), 4) `RemoteIpAddress` TCP-соединения. |
 
 ---
 

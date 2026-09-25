@@ -164,8 +164,8 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        // Для авторизации не используем interceptor, так как токена еще нет
-        val result = authGateway.createIdentity(identityAddress)
+        // Identity остается анонимным до входа, но reset-password требует метаданные устройства.
+        val result = authGateway.createIdentity(identityAddress, includeDeviceInfo = true)
         if (result.isFailure) {
             showIdentityError(getString(R.string.login_identity_connection_failed))
             Log.e(TAG, "Failed to create identity client", result.exceptionOrNull())

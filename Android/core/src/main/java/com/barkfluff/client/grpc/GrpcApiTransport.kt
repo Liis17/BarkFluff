@@ -1,7 +1,6 @@
 package com.barkfluff.client.grpc
 
 import android.content.Context
-import android.util.Base64
 import android.util.Log
 import barkfluff.beacon.BeaconApiGrpcKt
 import barkfluff.beacon.BeaconApiOuterClass
@@ -228,33 +227,7 @@ class GrpcApiTransport(context: Context) {
 
             val request = requestBuilder.build()
 
-            // Add device metadata headers via interceptor
-            val globalParam = GlobalParam(context)
-            val headerInterceptor = object : ClientInterceptor {
-                override fun <ReqT, RespT> interceptCall(
-                    method: MethodDescriptor<ReqT, RespT>,
-                    callOptions: CallOptions,
-                    next: Channel
-                ): ClientCall<ReqT, RespT> {
-                    return object : ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
-                        next.newCall(method, callOptions)
-                    ) {
-                        override fun start(responseListener: Listener<RespT>, headers: Metadata) {
-                            headers.put(key("x-device-id"), toBase64(globalParam.deviceId))
-                            headers.put(key("x-device-name"), toBase64(GlobalParam.getDeviceName()))
-                            headers.put(key("x-os-name"), toBase64(GlobalParam.getOsVersion()))
-                            headers.put(key("x-app-name"), toBase64(GlobalParam.getAppName()))
-                            headers.put(key("x-app-version"), toBase64(GlobalParam.getAppVersion(context)))
-                            headers.put(key("x-ip-address"), toBase64(globalParam.ipAddress))
-                            super.start(responseListener, headers)
-                        }
-                    }
-                }
-            }
-
-            val interceptedChannel = ClientInterceptors.intercept(identityChannel!!, headerInterceptor)
-            val stub = IdentityApiGrpcKt.IdentityApiCoroutineStub(interceptedChannel)
-            val response = stub.auth(request)
+            val response = identityClient!!.auth(request)
 
             AuthResult.Success(
                 accessToken = response.accessToken.value,
@@ -702,14 +675,6 @@ class GrpcApiTransport(context: Context) {
     /** Applies the same host-scoped TLS policy to presigned HTTP(S) connections. */
     fun configureHttpConnection(connection: HttpURLConnection) {
         mediaTransport.configure(connection)
-    }
-
-    private fun toBase64(value: String): String {
-        return Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-    }
-
-    private fun key(name: String): Metadata.Key<String> {
-        return Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER)
     }
 
     /**

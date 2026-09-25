@@ -214,7 +214,7 @@ class GrpcClientRegistry internal constructor(
         address,
         context ?: appContext,
         includeAuth = context != null,
-        includeDeviceInfo = includeDeviceInfo && context != null,
+        includeDeviceInfo = includeDeviceInfo,
     )
 
     fun createUsersClient(
