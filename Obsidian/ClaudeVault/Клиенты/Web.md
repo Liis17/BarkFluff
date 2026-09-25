@@ -201,7 +201,7 @@ origin, сопоставить ключ нечем — вход потребуе
 
 ### Скользящее окно ленты
 
-`main.js` держит в памяти и в DOM не больше `MAX_MESSAGES = 200` сообщений открытого чата.
+`js/app/feed.js` (`BF.feed`) держит в DOM не больше `MAX_MESSAGES = 200` сообщений открытого чата. Сам буфер `messages` принадлежит `main.js` (модуль читает/заменяет его через `getMessages`/`setMessages`), а флаги окна (`noMoreOlder`, `hasNewerGap`, `isLoadingOlder/Newer`, `isJumpingToTail/ToMessage`, `resyncSeparatorId`) и счётчик бейджа кнопки «вниз» живут в модуле; `main.js` трогает их только через API (`reset()` при смене чата, `clearNewerGap`, `setNoMoreOlder`, `isLoadingOlder`, `get/setResyncSeparatorId`, `incrementNewBelow`). Функции ленты в `main.js` доступны алиасами (`renderMessages`, `appendMessageToView`, `scrollToBottom`, `scrollToMessage`, `findMessageGroup`, `buildMessageViewElement`).
 
 - Подгрузка старых (скролл вверх, страница 30) вставляется **инкрементально** — `prependMessages()` строит только новые узлы и кладёт их перед лентой, чинит разделитель даты на стыке и пересобирает бывшее первое сообщение, если изменилась группировка. Полный `renderMessages()` (с `innerHTML = ''`) остаётся только для смены чата, resync и jump-to-message.
 - `trimMessages('tail'|'head')` отрезает противоположный край. Обрезка хвоста поднимает `hasNewerGap` (окно не доходит до конца чата), обрезка головы сбрасывает `noMoreOlder`, иначе отрезанную историю нельзя было бы догрузить обратно.
