@@ -53,6 +53,8 @@ namespace BarkFluff.Users.Host;
 [Authorize(Policy = nameof(TokenType.Service))]
 public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 {
+    public override Task<SetVerifiedEmailResponse> SetVerifiedEmail(SetVerifiedEmailRequest request, ServerCallContext context) =>
+        _mediator.Send(new Features.SetVerifiedEmail.SetVerifiedEmailCommand(request.UserId, request.Email), context.CancellationToken);
     private readonly IMediator _mediator;
     private readonly MetricsCollector _metrics;
 
@@ -94,7 +96,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         _metrics.Increment("drafts_create_requests");
         try
         {
-            var command = new AddDraftUserCommand() { Username = request.Username?.Trim(), Email = request.Email?.Trim(), FirstName = request.FirstName?.Trim(), LastName = request.LastName?.Trim() };
+            var command = new AddDraftUserCommand() { Username = request.Username?.Trim(), Email = request.Email?.Trim(), FirstName = request.FirstName?.Trim(), LastName = request.LastName?.Trim(), RegistrationId = request.RegistrationId };
             var response = await _mediator.Send(command);
             _metrics.Increment("drafts_created");
             _metrics.Set("last_draft_created_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());

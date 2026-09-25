@@ -101,6 +101,11 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
                 throw new ResetIdHasIsApprovedException();
             }
 
+            var policy = await _authPropertiesStorage.GetUserAuthProperties(resetPasswordInfo.UserId);
+            if (AuthenticationPolicy.Mode(policy) != AuthLoginMode.Password)
+                throw new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.FailedPrecondition,
+                    "Use web password recovery; the configured second factor is still required"));
+
             if (resetPasswordInfo.ExpiresAt < DateTime.UtcNow)
             {
                 _metrics.Increment("password_reset_confirmation_failed");

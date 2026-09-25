@@ -140,6 +140,7 @@ service UsersApi {
 }
 
 service UsersServerApi {
+  rpc SetVerifiedEmail(SetVerifiedEmailRequest) returns(SetVerifiedEmailResponse);
   
   // Найти по логину
   rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
@@ -435,7 +436,11 @@ message AddDraftUserRequest {
   string last_name = 2; // фамилия
   string username = 3; // имя пользователя
   string email = 4; // почта
+  string registration_id = 5; // Idempotency key supplied only by Identity.
 }
+
+message SetVerifiedEmailRequest { int64 user_id = 1; string email = 2; }
+message SetVerifiedEmailResponse { }
 
 message AddDraftUserResponse {
   int64 user_id = 1; // идентификатор пользователя

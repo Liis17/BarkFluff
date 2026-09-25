@@ -125,7 +125,15 @@ namespace BarkFluff.Identity.Persistence.Migrations
                     b.Property<int>("FailedAttempts")
                         .HasColumnType("integer");
 
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -144,6 +152,10 @@ namespace BarkFluff.Identity.Persistence.Migrations
 
                     b.Property<bool>("ProofConsumed")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("ProofScope")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("Purpose")
                         .HasColumnType("integer");

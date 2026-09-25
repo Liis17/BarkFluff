@@ -111,6 +111,12 @@ public sealed class RedisIdentityAbuseGuard : IIdentityAbuseGuard
             await EnsureSubjectRequestAllowedAsync(operation, subject, cancellationToken);
     }
 
+    public async Task EnsureChallengeReadAllowedAsync(Guid challengeId, string? trustedIpAddress, CancellationToken ct = default)
+    {
+        var count = await IncrementAsync($"{KeyPrefix}:challenge-read:{challengeId:N}:{Hash(trustedIpAddress)}", TimeSpan.FromMinutes(1), ct);
+        if (count > 60) ThrowRateLimit(IdentityAbuseOperation.Auth, trustedIpAddress);
+    }
+
     public async Task EnsureSubjectRequestAllowedAsync(
         IdentityAbuseOperation operation,
         string subject,

@@ -48,6 +48,15 @@ public class Program
 
         builder.Services.AddSettings<JwtSettings>(builder.Configuration, "JwtSettings");
         builder.Services.AddSettings<IdentitySecurityOptions>(builder.Configuration, "IdentitySecurity");
+        builder.Services.AddSettings<TelegramAuthOptions>(builder.Configuration, "TelegramAuth");
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<AuthenticationSecrets>();
+        builder.Services.AddScoped<AuthenticationStore>();
+        builder.Services.AddScoped<AuthenticationService>();
+        // Do not use HttpClientFactory's URL logging: Telegram URLs contain the bot secret.
+        builder.Services.AddSingleton<ITelegramAuthBot>(sp => new TelegramAuthBot(
+            new HttpClient { Timeout = TimeSpan.FromSeconds(35) }, sp.GetRequiredService<TelegramAuthOptions>()));
+        builder.Services.AddHostedService<TelegramAuthWorker>();
 
         var redisConnectionString = builder.Configuration["Redis"]
             ?? throw new InvalidOperationException("Redis configuration is required for Identity protection");

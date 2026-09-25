@@ -41,7 +41,7 @@ public class FindByLoginQueryHandler : IRequestHandler<FindByLoginQuery, FindByL
             user = await _usersStorage.GetUserByEmail(email);
         }
 
-        if (user is null)
+        if (user is null || user.IsDraft)
         {
             _logger.LogWarning(
                 "Пользователь не найден. Username: {Username}, Email: {Email}",
