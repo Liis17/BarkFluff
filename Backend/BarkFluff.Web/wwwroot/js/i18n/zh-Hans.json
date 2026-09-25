@@ -1,4 +1,9 @@
 {
+  "a11y.chatList": "聊天列表",
+  "a11y.chat.unread.few": "{count} 条未读消息",
+  "a11y.chat.unread.many": "{count} 条未读消息",
+  "a11y.chat.unread.one": "{count} 条未读消息",
+  "a11y.chat.unread.other": "{count} 条未读消息",
   "about.browser": "浏览器",
   "about.os": "系统",
   "about.server": "服务器",
