@@ -243,6 +243,9 @@ Server-streaming подписки:
 ### `sticker-picker.js` → `BF.stickerPicker`
 Стикер-пикер у композера (`#stickerPicker`): вкладки паков, «Недавние», поиск по emoji, отправка. `init(deps)` / `send(sticker)`. Deps из `main.js`: `getMyUserId`, `getCurrentChatId`, `getCurrentChatType`, `onSent(chatId, msg)` (лента + подъём чата в списке), `showToast`. Тест — `scripts/test-sticker-picker.js`. Подробности — [[Клиенты/Web#Стикеры]].
 
+### `chat-list.js` → `BF.chatList`
+Список чатов в сайдбаре (`#chatList`): постраничная загрузка `load(reset)` (по 50, догрузка при скролле к низу), `render()`, тихий catch-up `refreshQuiet()` → `Promise<boolean>` (сравнение сигнатур первой страницы, DOM не трогается без изменений), подгрузка профилей собеседников пачками по 5, контекстное меню чата `#chatContextMenu` (добавить/убрать из папки, создать папку). Массив `chats` принадлежит `main.js` и передаётся через `getChats`/`setChats`; остальные deps: `getCurrentChatId`, `getMyUserId`, `getCachedUser`, `getUser`, `isUserOnline`, `collectOnlineUserIds`, `updateTitleBadge`, `openChat`, `botBadgeMarkup`. В `main.js` — алиасы `loadChats`/`renderChatList`/`refreshChatListQuiet`.
+
 ### `main.js`
 Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки. Держит общее состояние (`chats`, `messages`, `currentChatId/Type/Info`, `myUserId`) и передаёт его выделенным модулям через `init(deps)` — геттеры/сеттеры и колбэки (паттерн `private-chat-ui.js`); после `init` заводит алиасы (`var x = BF.module.fn`), чтобы места вызова не менялись. Порядок в `scripts/app-bundle-entry.js`: выделенные модули импортируются перед `main.js`.
 
