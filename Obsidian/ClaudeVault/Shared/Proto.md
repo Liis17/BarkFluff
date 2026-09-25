@@ -1,5 +1,11 @@
 # BarkFluff.Proto
 
+## Telegram и политика входа
+
+`identity_api.proto` добавляет `OtpTypeId.Telegram=3`, `AuthLoginMode`, `AuthChallengeState`, операции подтверждений и защищённых настроек. Существующие номера сохранены. `AuthChallengeReference` содержит ID и секрет инициатора; его нельзя заменять данными ссылки/кнопки бота. `CompleteAuthChallenge` выдаёт сессию только для входа/регистрации, а для повторной проверки/восстановления — ограниченный proof. Коды восстановления возвращаются только в ответе выпуска, включая настройку защищённого режима. См. [[Backend/Identity]].
+
+`users_api.proto`: `AddDraftUserRequest.registration_id=5` для идемпотентного создания и `UsersServerApi.SetVerifiedEmail` для подтверждённой почты, см. [[Backend/Users]].
+
 Единый проект со всеми `.proto`-контрактами платформы. Только proto-файлы + `.csproj`, без рукописного C#.
 
 Расположение: `Shared/BarkFluff.Proto/`

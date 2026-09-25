@@ -13,4 +13,5 @@ public class AddDraftUserCommand : IRequest<AddDraftUserResponse>
     public string Username { get; set; }
 
     public string Email { get; set; }
+    public string RegistrationId { get; set; } = "";
 }

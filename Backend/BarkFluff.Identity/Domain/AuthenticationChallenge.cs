@@ -26,6 +26,8 @@ public class AuthenticationChallenge
     public string AppName { get; set; } = "";
     public string IpAddress { get; set; } = "";
     public string Username { get; set; } = "";
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
     public string? Email { get; set; }
     public string? PasswordHash { get; set; }
     public AuthLoginMode LoginMode { get; set; }
@@ -34,6 +36,7 @@ public class AuthenticationChallenge
     public string? AttemptId { get; set; }
     public long? SessionId { get; set; }
     public bool ProofConsumed { get; set; }
+    public string ProofScope { get; set; } = "";
 }
 
 public class RecoveryCode

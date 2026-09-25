@@ -226,14 +226,14 @@ public class UsersStorage
         public long TotalCount { get; set; }
     }
 
-    public async Task<User> CreateUser(string username, string firstName, string lastName, string email)
+    public async Task<User> CreateUser(string username, string firstName, string lastName, string email, Guid? registrationId = null)
     {
         var contactUser = string.IsNullOrWhiteSpace(email) ? null : new UserContact { Email = email.Trim() };
 
         var user = new User
         {
             Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            Uuid = Guid.NewGuid(),
+            Uuid = registrationId ?? Guid.NewGuid(),
             Username = username,
             FirstName = firstName,
             LastName = lastName,

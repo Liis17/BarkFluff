@@ -249,3 +249,15 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 Legacy `Auth` проверяет пароль до второго фактора и запрещает Telegram-режим через старый RPC. Email OTP имеет TTL 5 минут и погашается после успешной проверки. Повторная регистрация больше не вызывает `OverrideDraftUser`: продолжение выполняется по исходному запросу подтверждения. См. [[Backend/Users]].
 
 Для генерации EF-миграции Identity явно использует `Microsoft.EntityFrameworkCore.Design` 10.0.8: транзитивная версия 8.0.0 несовместима с runtime 10.0.8.
+
+### Подтверждения и защищённые настройки
+
+`AuthenticationService` реализует Begin/Status/Complete/Cancel/Resend для регистрации, входа, повторной аутентификации, привязок и восстановления. Telegram работает без SMTP. Запрос живёт 5 минут, повторная отправка доступна через минуту и заменяет код без продления срока; 5 неверных ответов закрывают попытку. Чтение статуса имеет отдельный Redis-лимит (60/минуту). Пароль проверяется до отправки второго фактора. Код браузера и nonce бота независимы; `/start` только начинает привязку, требуется отдельная кнопка от того же числового Telegram ID.
+
+`AuthenticationStore` сериализует операции аккаунта PostgreSQL advisory lock внутри транзакции. Завершённая попытка хранит ID refresh-сессии: повторы возвращают её, а не создают новую. Изменение политики отменяет ожидающие запросы. Настройки и резервные коды требуют одноразового `security_proof` действующего режима; настройка Email/TOTP связывает этот proof с конкретным enrollment. Резервные коды выдаются набором из 10, показываются только при выпуске, хранятся как HMAC и погашаются атомарно; перевыпуск удаляет старый набор.
+
+`TelegramAuthWorker` использует Bot API [getUpdates](https://core.telegram.org/bots/api#getupdates), Redis lease на bot ID с продлением и PostgreSQL offset. Offset сохраняется после обработки обновления; повторный callback безопасен. Ошибка Redis или Telegram не разрешает вход. Токен бота не логируется и не передаётся клиенту. Конфигурация: `TelegramAuth:Enabled`, `TelegramAuth:BotToken`, `TelegramAuth:NodeName`; доступность почты — `Email:Enabled` (по умолчанию true).
+
+`BeginPasswordRecovery` подтверждает существующую почту, `SetRecoveredPassword` использует ограниченный одноразовый proof и меняет только пароль. Сессия выдаётся последующим обычным входом с обязательным фактором. Legacy reset для защищённых режимов требует веб. Новая почта добавляется только через `BeginEmailBinding` и подтверждение в [[Backend/Users]]. Контракты: [[Shared/Proto]].
+
+Проверки этапа: `AuthenticationFlowTests` и `ConfirmResetPasswordCommandHandlerTests` — 27 тестов; сборка Users. InMemory-тесты не заменяют проверку блокировок и миграций на реальном PostgreSQL.
