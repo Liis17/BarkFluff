@@ -158,6 +158,16 @@ public class RequestContextInterceptor : Interceptor
         if (string.IsNullOrEmpty(base64))
             return null;
 
-        return Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+        try
+        {
+            return Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+        }
+        catch (FormatException)
+        {
+            _logger.LogWarning(
+                "Значение metadata {MetadataKey} не является Base64; использую его как обычный текст",
+                key);
+            return base64;
+        }
     }
 }
