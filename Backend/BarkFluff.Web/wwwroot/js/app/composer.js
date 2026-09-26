@@ -245,6 +245,18 @@
         messageInput.style.height = 'auto';
     }
 
+    // Сообщение удалено (нами или собеседником): редактировать его или отвечать на него уже нельзя.
+    // Редактирование завершается, набранный текст остаётся в поле как обычный ввод; ответ снимается.
+    function onMessageDeleted(messageId) {
+        var id = Number(messageId);
+        if (pendingEdit && Number(pendingEdit.messageId) === id) {
+            pendingEdit = null;
+            if (editPreviewBar) editPreviewBar.classList.remove('visible');
+            saveCurrentDraft();
+        }
+        if (pendingReply && Number(pendingReply.messageId) === id) clearReply();
+    }
+
     // ========== ATTACHMENTS (paste, drag-and-drop) ==========
 
     function openAttach(files) {
@@ -359,6 +371,7 @@
         restoreDraft: restoreDraft,
         restoreFromPending: restoreFromPending,
         clearForSend: clearForSend,
+        onMessageDeleted: onMessageDeleted,
         openAttach: openAttach
     };
 })();
