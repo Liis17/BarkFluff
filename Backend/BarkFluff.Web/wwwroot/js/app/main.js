@@ -117,19 +117,15 @@
             BF.icons.html('bots') + '</span>';
     }
 
-    function setChatCallButtonsVisible(visible) {
-        ['btnCallAudio', 'btnCallVideo'].forEach(function (id) {
-            var button = document.getElementById(id);
-            if (button) button.hidden = !visible;
-        });
-    }
-
-    function setProfileCallButtonsVisible(visible) {
-        ['profileCallAudioBtn', 'profileCallVideoBtn'].forEach(function (id) {
-            var button = document.getElementById(id);
-            if (button) button.hidden = !visible;
-        });
-    }
+    // Кнопки звонков в шапке чата и в профиле.
+    BF.chatCalls.init({
+        getCurrentChatId: function () { return currentChatId; },
+        getCurrentChatInfo: function () { return currentChatInfo; },
+        getPeerIsBot: function () { return currentChatPeerIsBot; },
+        getMyUserId: function () { return myUserId; }
+    });
+    var setChatCallButtonsVisible = BF.chatCalls.setChatButtonsVisible;
+    var setProfileCallButtonsVisible = BF.chatCalls.setProfileButtonsVisible;
 
     // ========== TAB TITLE, FAVICON, NOTIFICATIONS ==========
 
@@ -1491,38 +1487,10 @@
     chatHeaderAvatar.addEventListener('click', onChatHeaderClick);
     chatHeaderName.addEventListener('click', onChatHeaderClick);
 
-    // --- Call buttons (шапка чата) ---
-    var isInitiatingCall = false;
-    function startCall(media) {
-        if (isInitiatingCall || !currentChatId || !currentChatInfo) return;
-        if (!currentChatInfo.isGroupChat && currentChatPeerIsBot) return;
-        var target;
-        if (currentChatInfo.isGroupChat) {
-            target = { chatId: currentChatId };
-        } else {
-            var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
-            if (!peerId) return;
-            target = { userId: peerId };
-        }
-        isInitiatingCall = true;
-        BF.callsUI.ensureMediaPermissions(media)
-            .then(function () { return BF.calls.initiate(target, media); })
-            .catch(function (e) {
-                if (!e || e.code !== 'media-permission-dismissed') console.error('call start failed:', e);
-            })
-            .finally(function () { isInitiatingCall = false; });
-    }
-    var _btnCallAudio = $('#btnCallAudio');
-    var _btnCallVideo = $('#btnCallVideo');
-    if (_btnCallAudio) _btnCallAudio.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
-    if (_btnCallVideo) _btnCallVideo.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
-
     profileClose.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
     profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) BF.utils.closeOverlay(profileOverlay); });
 
     var _profileMsgBtn = $('#profileMsgBtn');
-    var _profileCallAudioBtn = $('#profileCallAudioBtn');
-    var _profileCallVideoBtn = $('#profileCallVideoBtn');
     if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
 
     function openChatBackgroundSelector(chatId, title) {
@@ -1580,8 +1548,6 @@
     if (_profileBackgroundBtn) _profileBackgroundBtn.addEventListener('click', function () {
         openChatBackgroundSelector(currentChatId, currentChatInfo && currentChatInfo.title);
     });
-    if (_profileCallAudioBtn) _profileCallAudioBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.AUDIO); });
-    if (_profileCallVideoBtn) _profileCallVideoBtn.addEventListener('click', function () { startCall(BF.calls.MediaType.VIDEO); });
 
     function copyText(text) {
         if (!text || !navigator.clipboard) return;
