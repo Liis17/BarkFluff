@@ -19,8 +19,10 @@
     "test:feed": "node test-feed.js",
     "test:mark-read": "node test-mark-read.js",
     "test:composer": "node test-composer.js",
+    "test:attention": "node test-attention.js",
+    "test:deep-link": "node test-deep-link.js",
     "format": "prettier --write ../wwwroot/js/app/**/*.js *.js",
-    "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js ../wwwroot/js/app/sticker-picker.js ../wwwroot/js/app/chat-list.js ../wwwroot/js/app/composer.js ../wwwroot/js/app/feed.js ../wwwroot/js/app/message-menu.js ../wwwroot/js/app/mark-read.js app-bundle-entry.js build-app.js",
+    "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js ../wwwroot/js/app/sticker-picker.js ../wwwroot/js/app/chat-list.js ../wwwroot/js/app/composer.js ../wwwroot/js/app/feed.js ../wwwroot/js/app/message-menu.js ../wwwroot/js/app/mark-read.js ../wwwroot/js/app/attention.js ../wwwroot/js/app/deep-link.js app-bundle-entry.js build-app.js",
     "lint": "cd .. && scripts/node_modules/.bin/eslint --config scripts/eslint.config.cjs wwwroot/js/app/**/*.js scripts/build-app.js scripts/build-shell-version.js scripts/app-bundle-entry.js"
   },
   "dependencies": {
