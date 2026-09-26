@@ -2008,8 +2008,20 @@ class GrpcApiTransport(context: Context) {
      */
     suspend fun setPasswordAfterReset(newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            val globalParam = GlobalParam(appContext)
+            if (globalParam.accessToken.isNullOrBlank()) {
+                return@withContext Result.failure(IllegalStateException("Токен доступа после подтверждения кода отсутствует"))
+            }
+
+            val clientResult = createIdentityClient(
+                identityAddress = globalParam.socketIdentity,
+                context = appContext,
+                includeDeviceInfo = true,
+            )
+            if (clientResult.isFailure) {
+                return@withContext Result.failure(
+                    clientResult.exceptionOrNull() ?: IllegalStateException("Identity клиент не создан")
+                )
             }
 
             // После сброса пароля хеш очищен, поэтому old_password не требуется
@@ -2017,7 +2029,9 @@ class GrpcApiTransport(context: Context) {
                 .setPassword(newPassword)
                 .build()
 
-            identityClient!!.setPassword(request)
+            val authenticatedClient = clientRegistry.identityClient
+                ?: return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            authenticatedClient.setPassword(request)
             Log.d(TAG, "setPasswordAfterReset: Пароль успешно установлен")
             Result.success(Unit)
         } catch (e: Exception) {

@@ -205,6 +205,8 @@
     <string name="reset_we_sent_code">6-stelliger Code gesendet an &lt;b&gt;%1$s&lt;/b&gt;</string>
     <string name="reset_confirm_code">Code bestätigen</string>
     <string name="reset_resend_code">Code erneut senden</string>
+    <string name="reset_resend_wait">Code erneut senden in %1$s</string>
+    <string name="reset_check_spam_hint">Wenn der Code nicht ankommt, prüfe den Spam-Ordner.</string>
     <string name="reset_create_new_password">Neues Passwort</string>
     <string name="hint_new_password">Neues Passwort</string>
     <string name="hint_confirm_password">Passwort bestätigen</string>
@@ -212,8 +214,6 @@
     <string name="reset_password_success">Passwort geändert!</string>
     <string name="reset_password_success_subtitle">Du kannst dich jetzt mit dem neuen Passwort anmelden</string>
     <string name="reset_back_to_login">Zurück zur Anmeldung</string>
-    <string name="reset_pill_inbox">Posteingang</string>
-    <string name="reset_pill_spam">Spam</string>
     <string name="reset_strength_empty">Beginne mit der Eingabe deines Passworts</string>
     <string name="reset_strength_weak">Schwach</string>
     <string name="reset_strength_medium">Mittel</string>
