@@ -46,6 +46,42 @@ public class AuthenticationFlowTests
     }
 
     [Fact]
+    public async Task TelegramApproval_UsesEmojisAndEditsOriginalMessageAfterApproval()
+    {
+        using var h = new Harness();
+        var pending = await h.Service.BeginRegistration(h.Registration(), default);
+        await h.StartBot(pending);
+
+        var message = h.Bot.Messages.Last(x => x.Token != null);
+        Assert.Contains("🔐", message.Text);
+        Assert.Contains("👤 Аккаунт:", message.Text);
+
+        await h.Approve(999);
+        Assert.Empty(h.Bot.Edits);
+
+        await h.Approve();
+
+        var edit = Assert.Single(h.Bot.Edits);
+        Assert.Equal(123, edit.Chat);
+        Assert.Equal(456, edit.MessageId);
+        Assert.EndsWith("\n\n✅ Запрос подтверждён.", edit.Text);
+    }
+
+    [Fact]
+    public async Task TelegramRejection_EditsOriginalMessageWithRejectedStatus()
+    {
+        using var h = new Harness();
+        var pending = await h.Service.BeginRegistration(h.Registration(), default);
+        await h.StartBot(pending);
+
+        await h.Reject();
+
+        var edit = Assert.Single(h.Bot.Edits);
+        Assert.EndsWith("\n\n❌ Запрос отклонён.", edit.Text);
+        Assert.Equal(AuthChallengeState.Rejected, (await h.Service.Status(pending.Challenge, default)).State);
+    }
+
+    [Fact]
     public async Task WrongPassword_DoesNotSendTelegramCode()
     {
         using var h = new Harness();
@@ -458,8 +494,14 @@ public class AuthenticationFlowTests
         }
         public Task StartBot(AuthChallengeResponse pending) => Service.ProcessTelegramUpdate(JsonSerializer.SerializeToElement(new
         { message = new { text = "/start " + pending.TelegramUrl.Split("start=")[1], from = new { id = 123L, username = "owner", is_bot = false }, chat = new { id = 123L, type = "private" } } }), default);
-        public Task Approve(long actor = 123) => Service.ProcessTelegramUpdate(JsonSerializer.SerializeToElement(new
-        { callback_query = new { id = "callback", data = "yes:" + Bot.Messages.Last(x => x.Token != null).Token, from = new { id = actor, is_bot = false }, message = new { chat = new { id = actor, type = "private" } } } }), default);
+        public Task Approve(long actor = 123) => Respond(true, actor);
+        public Task Reject(long actor = 123) => Respond(false, actor);
+        private Task Respond(bool approve, long actor)
+        {
+            var message = Bot.Messages.Last(x => x.Token != null);
+            return Service.ProcessTelegramUpdate(JsonSerializer.SerializeToElement(new
+            { callback_query = new { id = "callback", data = (approve ? "yes:" : "no:") + message.Token, from = new { id = actor, is_bot = false }, message = new { message_id = 456L, text = message.Text, chat = new { id = actor, type = "private" } } } }), default);
+        }
         public Task<CompleteAuthChallengeResponse> Complete(AuthChallengeResponse c, string code = "", bool recovery = false) =>
             Service.Complete(new CompleteAuthChallengeRequest { Challenge = c.Challenge, Code = code, UseRecoveryCode = recovery }, default);
         public void Dispose() { if (Db.Database.IsNpgsql()) Db.Database.EnsureDeleted(); Db.Dispose(); }
@@ -475,6 +517,7 @@ public class AuthenticationFlowTests
     private sealed class FakeBot : ITelegramAuthBot
     {
         public List<(long Chat, string Text, string? Token)> Messages { get; } = [];
+        public List<(long Chat, long MessageId, string Text)> Edits { get; } = [];
         public bool FailDelivery { get; set; }
         public bool FailAnswer { get; set; }
         public string LastCode => Regex.Match(Messages.Last().Text, @"Код: (\d{6})").Groups[1].Value;
@@ -487,5 +530,10 @@ public class AuthenticationFlowTests
         }
         public Task Answer(string callbackId, string text, CancellationToken ct) => FailAnswer
             ? Task.FromException(new RpcException(new Status(StatusCode.Unavailable, "Callback is too old"))) : Task.CompletedTask;
+        public Task EditMessage(long chatId, long messageId, string text, CancellationToken ct)
+        {
+            Edits.Add((chatId, messageId, text));
+            return Task.CompletedTask;
+        }
     }
 }

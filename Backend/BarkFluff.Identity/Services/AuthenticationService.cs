@@ -160,13 +160,13 @@ public sealed partial class AuthenticationService(
         }
     }
 
-    private string OperationText(AuthenticationChallenge c) => $"BarkFluff · {telegram.NodeName}\n" +
-        $"Аккаунт: {c.Username}\nДействие: {c.Purpose switch {
+    private string OperationText(AuthenticationChallenge c) => $"🔐 BarkFluff · {telegram.NodeName}\n" +
+        $"👤 Аккаунт: {c.Username}\n🧭 Действие: {c.Purpose switch {
             AuthenticationPurpose.Registration => "Регистрация", AuthenticationPurpose.TelegramBinding => "Привязка Telegram",
             AuthenticationPurpose.Reauthentication => "Изменение настроек безопасности", AuthenticationPurpose.FastAuth => "Вход по QR-коду",
             AuthenticationPurpose.PasswordRecovery => "Восстановление пароля", _ => "Вход в аккаунт" }}\n" +
-        $"Устройство: {c.DeviceName} · {c.OperationSystem}\nПриложение: {c.AppName}\nIP: {c.IpAddress}\nВремя: {Now:u}\n" +
-        "Подтверждайте только действие, которое вы начали сами.";
+        $"💻 Устройство: {c.DeviceName} · {c.OperationSystem}\n📱 Приложение: {c.AppName}\n🌐 IP: {c.IpAddress}\n🕒 Время: {Now:u}\n\n" +
+        "⚠️ Подтверждайте только действие, которое вы начали сами.";
 
     private async Task<string> Deliver(AuthenticationChallenge c, CancellationToken ct)
     {

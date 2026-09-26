@@ -64,7 +64,23 @@ public sealed partial class AuthenticationService
             return true;
         }, ct);
         if (isCallback)
+        {
             await AnswerCallback(callback, accepted ? (approve ? "Подтверждено" : "Отклонено") : "Запрос недействителен", ct);
+            if (accepted) await EditApprovalMessage(message, approve, ct);
+        }
+    }
+
+    private async Task EditApprovalMessage(JsonElement message, bool approved, CancellationToken ct)
+    {
+        if (!message.TryGetProperty("message_id", out var messageId) || !messageId.TryGetInt64(out var id) ||
+            !message.TryGetProperty("chat", out var chat) || !chat.TryGetProperty("id", out var chatId) ||
+            !chatId.TryGetInt64(out var targetChat) ||
+            !message.TryGetProperty("text", out var originalText) || originalText.GetString() is not { } text)
+            return;
+
+        var status = approved ? "✅ Запрос подтверждён." : "❌ Запрос отклонён.";
+        try { await bot.EditMessage(targetChat, id, $"{text}\n\n{status}", ct); }
+        catch (RpcException) { /* The decision is durable; Telegram edit failure must not replay the callback. */ }
     }
 
     private async Task AnswerCallback(JsonElement callback, string text, CancellationToken ct)

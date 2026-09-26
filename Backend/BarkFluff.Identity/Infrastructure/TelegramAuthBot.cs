@@ -13,6 +13,7 @@ public interface ITelegramAuthBot
     Task<JsonElement[]> GetUpdates(long offset, CancellationToken ct);
     Task Send(long chatId, string text, string? approvalToken, CancellationToken ct);
     Task Answer(string callbackId, string text, CancellationToken ct);
+    Task EditMessage(long chatId, long messageId, string text, CancellationToken ct);
 }
 
 public sealed class TelegramAuthBot(HttpClient http, TelegramAuthOptions options) : ITelegramAuthBot
@@ -55,10 +56,19 @@ public sealed class TelegramAuthBot(HttpClient http, TelegramAuthOptions options
             await Call("sendMessage", new { chat_id = chatId, text }, ct);
         else
             await Call("sendMessage", new { chat_id = chatId, text, reply_markup = new { inline_keyboard = new[] {
-                new[] { new { text = "Подтвердить", callback_data = "yes:" + approvalToken }, new { text = "Отклонить", callback_data = "no:" + approvalToken } }
+                new[] { new { text = "✅ Подтвердить", callback_data = "yes:" + approvalToken }, new { text = "❌ Отклонить", callback_data = "no:" + approvalToken } }
             } } }, ct);
     }
 
     public async Task Answer(string callbackId, string text, CancellationToken ct) =>
         _ = await Call("answerCallbackQuery", new { callback_query_id = callbackId, text }, ct);
+
+    public async Task EditMessage(long chatId, long messageId, string text, CancellationToken ct) =>
+        _ = await Call("editMessageText", new
+        {
+            chat_id = chatId,
+            message_id = messageId,
+            text,
+            reply_markup = new { inline_keyboard = Array.Empty<object[]>() }
+        }, ct);
 }
