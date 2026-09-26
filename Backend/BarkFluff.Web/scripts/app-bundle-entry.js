@@ -36,4 +36,5 @@ import '../wwwroot/js/app/chat-list.js';
 import '../wwwroot/js/app/composer.js';
 import '../wwwroot/js/app/feed.js';
 import '../wwwroot/js/app/message-menu.js';
+import '../wwwroot/js/app/mark-read.js';
 import '../wwwroot/js/app/main.js';
