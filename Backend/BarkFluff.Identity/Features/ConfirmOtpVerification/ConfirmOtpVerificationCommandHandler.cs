@@ -205,6 +205,7 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
                     {"ip", _requestContext.IpAddress ?? string.Empty},
                     {"devicename", _requestContext.DeviceName ?? string.Empty},
                     {"os", _requestContext.OperationSystem ?? string.Empty},
+                    {"appname", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
                     {"location", locationInfo},
                     {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
                 },
