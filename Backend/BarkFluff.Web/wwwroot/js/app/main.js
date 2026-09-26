@@ -322,7 +322,7 @@
         if (idx >= 0) messages.splice(idx, 1);
 
         var el = findMessageGroup(entry.localId);
-        if (el) el.remove();
+        if (el) BF.feed.removeElement(el);
     }
 
     function messageFileIds(msg) {
@@ -378,7 +378,7 @@
 
         buildMessageViewElement(msg).then(function (newEl) {
             newEl.dataset.date = u.formatDate(msg.sentAt);
-            if (oldEl.isConnected) oldEl.replaceWith(newEl);
+            if (oldEl.isConnected) BF.feed.replaceElement(oldEl, newEl);
             releasePendingPreviews(entry);
         }).catch(function () {
             renderMessages().then(function () { releasePendingPreviews(entry); });
@@ -414,7 +414,7 @@
             replacePendingElement(entry, msg);
         } else {
             var oldEl = findMessageGroup(entry.localId);
-            if (oldEl) oldEl.remove();
+            if (oldEl) BF.feed.removeElement(oldEl);
             releasePendingPreviews(entry);
             if (serverIdx < 0) appendMessageToView(msg).then(function () {
                 if (wasAtBottom) scrollToBottom();
@@ -460,7 +460,7 @@
         if (!oldEl) return;
         buildMessageViewElement(entry.localMessage).then(function (newEl) {
             newEl.dataset.date = oldEl.dataset.date;
-            if (oldEl.isConnected) oldEl.replaceWith(newEl);
+            if (oldEl.isConnected) BF.feed.replaceElement(oldEl, newEl);
         });
     }
 
@@ -1388,6 +1388,7 @@
 
         if (chatId === currentChatId && !reconciledPending) {
             var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+            if (msg.senderId !== myUserId) BF.feed.announceIncoming(msg);
             messages.push(msg);
             appendMessageToView(msg).then(function () {
                 if (isAtBottom) {
@@ -2149,7 +2150,7 @@
         if (!oldEl) return;
         buildMessageViewElement(updatedMsg).then(function (newEl) {
             newEl.dataset.date = oldEl.dataset.date;
-            oldEl.replaceWith(newEl);
+            BF.feed.replaceElement(oldEl, newEl);
         });
     }
 
@@ -2439,7 +2440,8 @@
         scrollToBottom: scrollToBottom,
         appendMessageToView: appendMessageToView,
         loadChats: loadChats,
-        showNewMessageNotification: showNewMessageNotification
+        showNewMessageNotification: showNewMessageNotification,
+        announceIncoming: BF.feed.announceIncoming
     });
     var openPrivateChat = BF.privateChatUI.open;
     var reloadCurrentPrivateChat = BF.privateChatUI.reload;

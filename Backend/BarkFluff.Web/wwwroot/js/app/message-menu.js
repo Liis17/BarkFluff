@@ -405,7 +405,8 @@
             messagesInner.addEventListener('keydown', function (e) {
                 var grp = e.target;
                 if (!grp.classList || !grp.classList.contains('msg-group') || !grp.dataset.msgId) return;
-                if (!isContextMenuKey(e)) return;
+                // Enter тоже открывает меню: на macOS нет клавиши ContextMenu.
+                if (!isContextMenuKey(e) && e.key !== 'Enter') return;
                 e.preventDefault();
                 openFromKeyboard(grp);
             });
