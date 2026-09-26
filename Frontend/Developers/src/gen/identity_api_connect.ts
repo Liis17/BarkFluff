@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AuthRequest, AuthResponse, ConfirmAccountRequest, ConfirmAccountResponse, ConfirmOtpVerificationRequest, ConfirmOtpVerificationResponse, ConfirmResetPasswordRequest, ConfirmResetPasswordResponse, CreateAccountRequest, CreateAccountResponse, CreateBotTokenServerRequest, CreateBotTokenServerResponse, CreateSessionForUserServerRequest, CreateSessionForUserServerResponse, CreateTokenRequest, CreateTokenResponse, DisableOtpVerificationRequest, DisableOtpVerificationResponse, DisableOtpVerificationServerRequest, EnableOtpVerificationRequest, EnableOtpVerificationResponse, FastAuthRequest, ForceSetPasswordServerRequest, ForceSetPasswordServerResponse, GetActiveSessionsRequest, GetActiveSessionsResponse, GetActiveSessionsServerRequest, GetBotTokenServerRequest, GetBotTokenServerResponse, ListOtpVerificationRequest, ListOtpVerificationResponse, ListOtpVerificationServerRequest, LogoutRequest, LogoutResponse, RemoveActiveSessionRequest, RemoveActiveSessionResponse, RemoveActiveSessionServerRequest, ResetPasswordRequest, ResetPasswordResponse, SetPasswordRequest, SetPasswordResponse } from "./identity_api_pb.js";
+import { AuthChallengeReference, AuthChallengeResponse, AuthRequest, AuthResponse, BeginEmailBindingRequest, BeginPasswordRecoveryRequest, BeginReauthenticationRequest, BeginRegistrationRequest, BeginSignInRequest, CompleteAuthChallengeRequest, CompleteAuthChallengeResponse, ConfirmAccountRequest, ConfirmAccountResponse, ConfirmOtpVerificationRequest, ConfirmOtpVerificationResponse, ConfirmResetPasswordRequest, ConfirmResetPasswordResponse, CreateAccountRequest, CreateAccountResponse, CreateBotTokenServerRequest, CreateBotTokenServerResponse, CreateSessionForUserServerRequest, CreateSessionForUserServerResponse, CreateTokenRequest, CreateTokenResponse, DisableOtpVerificationRequest, DisableOtpVerificationResponse, DisableOtpVerificationServerRequest, EnableOtpVerificationRequest, EnableOtpVerificationResponse, FastAuthRequest, ForceSetPasswordServerRequest, ForceSetPasswordServerResponse, GetActiveSessionsRequest, GetActiveSessionsResponse, GetActiveSessionsServerRequest, GetAuthCapabilitiesRequest, GetAuthCapabilitiesResponse, GetBotTokenServerRequest, GetBotTokenServerResponse, GetSecuritySettingsRequest, ListOtpVerificationRequest, ListOtpVerificationResponse, ListOtpVerificationServerRequest, LogoutRequest, LogoutResponse, RecoveryCodesResponse, RemoveActiveSessionRequest, RemoveActiveSessionResponse, RemoveActiveSessionServerRequest, ResetPasswordRequest, ResetPasswordResponse, SecurityProofRequest, SecuritySettingsResponse, SetPasswordRequest, SetPasswordResponse, SetRecoveredPasswordRequest, UpdateSecuritySettingsRequest } from "./identity_api_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -175,6 +175,150 @@ export const IdentityApi = {
       name: "Logout",
       I: LogoutRequest,
       O: LogoutResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.GetAuthCapabilities
+     */
+    getAuthCapabilities: {
+      name: "GetAuthCapabilities",
+      I: GetAuthCapabilitiesRequest,
+      O: GetAuthCapabilitiesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.BeginRegistration
+     */
+    beginRegistration: {
+      name: "BeginRegistration",
+      I: BeginRegistrationRequest,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.BeginSignIn
+     */
+    beginSignIn: {
+      name: "BeginSignIn",
+      I: BeginSignInRequest,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.GetAuthChallenge
+     */
+    getAuthChallenge: {
+      name: "GetAuthChallenge",
+      I: AuthChallengeReference,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.CompleteAuthChallenge
+     */
+    completeAuthChallenge: {
+      name: "CompleteAuthChallenge",
+      I: CompleteAuthChallengeRequest,
+      O: CompleteAuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.CancelAuthChallenge
+     */
+    cancelAuthChallenge: {
+      name: "CancelAuthChallenge",
+      I: AuthChallengeReference,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.ResendAuthChallenge
+     */
+    resendAuthChallenge: {
+      name: "ResendAuthChallenge",
+      I: AuthChallengeReference,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.GetSecuritySettings
+     */
+    getSecuritySettings: {
+      name: "GetSecuritySettings",
+      I: GetSecuritySettingsRequest,
+      O: SecuritySettingsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.BeginReauthentication
+     */
+    beginReauthentication: {
+      name: "BeginReauthentication",
+      I: BeginReauthenticationRequest,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.UpdateSecuritySettings
+     */
+    updateSecuritySettings: {
+      name: "UpdateSecuritySettings",
+      I: UpdateSecuritySettingsRequest,
+      O: SecuritySettingsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.BeginTelegramBinding
+     */
+    beginTelegramBinding: {
+      name: "BeginTelegramBinding",
+      I: SecurityProofRequest,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.UnlinkTelegram
+     */
+    unlinkTelegram: {
+      name: "UnlinkTelegram",
+      I: UpdateSecuritySettingsRequest,
+      O: SecuritySettingsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.BeginEmailBinding
+     */
+    beginEmailBinding: {
+      name: "BeginEmailBinding",
+      I: BeginEmailBindingRequest,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.GenerateRecoveryCodes
+     */
+    generateRecoveryCodes: {
+      name: "GenerateRecoveryCodes",
+      I: SecurityProofRequest,
+      O: RecoveryCodesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.BeginPasswordRecovery
+     */
+    beginPasswordRecovery: {
+      name: "BeginPasswordRecovery",
+      I: BeginPasswordRecoveryRequest,
+      O: AuthChallengeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.SetRecoveredPassword
+     */
+    setRecoveredPassword: {
+      name: "SetRecoveredPassword",
+      I: SetRecoveredPasswordRequest,
+      O: SetPasswordResponse,
       kind: MethodKind.Unary,
     },
   }
