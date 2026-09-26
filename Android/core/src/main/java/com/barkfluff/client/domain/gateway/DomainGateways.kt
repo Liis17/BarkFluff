@@ -8,6 +8,16 @@ import barkfluff.shared.Shared
 import barkfluff.updates.UpdatesApiOuterClass
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.domain.model.AuthenticationResult
+import com.barkfluff.client.domain.model.AuthenticationCapabilities
+import com.barkfluff.client.domain.model.AuthenticationChallenge
+import com.barkfluff.client.domain.model.AuthenticationChallengeReference
+import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.domain.model.RegistrationRequest
+import com.barkfluff.client.domain.model.SecuritySettings
+import com.barkfluff.client.domain.model.SecuritySettingsUpdate
+import com.barkfluff.client.domain.model.SignInRequest
+import com.barkfluff.client.domain.model.OtpEnrollment
 import com.barkfluff.client.domain.model.AuthResult
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatInfo
@@ -67,6 +77,62 @@ interface AuthGateway {
     suspend fun refresh(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<com.barkfluff.client.grpc.TokenRefreshResult>
     suspend fun logout(): Result<Unit>
     fun createIdentity(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit>
+}
+
+/**
+ * Current Identity authentication contract. Challenge references and security proofs are opaque
+ * and must be held by the caller in memory only.
+ */
+interface AuthenticationChallengeGateway {
+    suspend fun capabilities(): Result<AuthenticationCapabilities>
+    suspend fun beginRegistration(request: RegistrationRequest): Result<AuthenticationChallenge>
+    suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge>
+    suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+    suspend fun completeChallenge(
+        reference: AuthenticationChallengeReference,
+        code: String = "",
+        useRecoveryCode: Boolean = false,
+    ): Result<AuthenticationCompletion>
+    suspend fun cancelChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+    suspend fun resendChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+
+    suspend fun securitySettings(): Result<SecuritySettings>
+    suspend fun beginReauthentication(
+        password: String,
+        factor: AuthenticationFactor,
+        useRecoveryCode: Boolean,
+    ): Result<AuthenticationChallenge>
+    suspend fun updateSecuritySettings(
+        securityProof: AuthenticationChallengeReference,
+        update: SecuritySettingsUpdate,
+    ): Result<SecuritySettings>
+    suspend fun beginTelegramBinding(securityProof: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+    suspend fun unlinkTelegram(
+        securityProof: AuthenticationChallengeReference,
+        update: SecuritySettingsUpdate,
+    ): Result<SecuritySettings>
+    suspend fun beginEmailBinding(
+        securityProof: AuthenticationChallengeReference,
+        email: String,
+    ): Result<AuthenticationChallenge>
+    suspend fun generateRecoveryCodes(securityProof: AuthenticationChallengeReference): Result<List<String>>
+    suspend fun beginPasswordRecovery(login: String): Result<AuthenticationChallenge>
+    suspend fun setRecoveredPassword(
+        securityProof: AuthenticationChallengeReference,
+        password: String,
+    ): Result<Unit>
+    suspend fun enableOtpVerification(
+        factor: AuthenticationFactor,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<OtpEnrollment>
+    suspend fun confirmOtpVerification(
+        code: String,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<List<String>>
+    suspend fun disableOtpVerification(
+        factor: AuthenticationFactor,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<Unit>
 }
 
 interface AccountSecurityGateway {
