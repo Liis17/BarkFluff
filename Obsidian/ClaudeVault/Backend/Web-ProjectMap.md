@@ -270,6 +270,9 @@ Server-streaming подписки:
 ### `chat-media.js` → `BF.chatMedia`
 Вкладки медиа открытого чата (медиа / файлы / аудио / голосовые), общие для панели профиля и панели группы: `createPanels(container)` строит четыре панели и поле поиска по файлам (дебаунс 300 мс), `setTabActive(selector, panels, type)` переключает вкладку, `render(type, panels)` грузит `ListChatAttachments` (фото+видео+GIF сливаются и сортируются по дате, GIF в панели остаётся неподвижным). Ответ устаревшего запроса, запроса прошлого чата или пришедший после смены открытого чата отбрасывается. Deps: `getCurrentChatId`, `showMediaOverlay`. Тест — `scripts/test-chat-media.js`.
 
+### `chat-calls.js` → `BF.chatCalls`
+Кнопки звонков в шапке чата (`#btnCallAudio`/`#btnCallVideo`) и в панели профиля (`#profileCallAudioBtn`/`#profileCallVideoBtn`): `start(media)` — звонок группе по `chatId` либо собеседнику по `userId` (боту и без собеседника не звонит, повторный запуск, пока идёт предыдущий, игнорируется; отказ в доступе к микрофону/камере молчит, прочие ошибки логируются) через `BF.callsUI.ensureMediaPermissions` → `BF.calls.initiate`; `setChatButtonsVisible`/`setProfileButtonsVisible` скрывают кнопки (у бота). Deps: `getCurrentChatId`, `getCurrentChatInfo`, `getPeerIsBot`, `getMyUserId`. Тест — `scripts/test-chat-calls.js`.
+
 ### `main.js`
 Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки. Держит общее состояние (`chats`, `messages`, `currentChatId/Type/Info`, `myUserId`) и передаёт его выделенным модулям через `init(deps)` — геттеры/сеттеры и колбэки (паттерн `private-chat-ui.js`); после `init` заводит алиасы (`var x = BF.module.fn`), чтобы места вызова не менялись. Порядок в `scripts/app-bundle-entry.js`: выделенные модули импортируются перед `main.js`.
 
