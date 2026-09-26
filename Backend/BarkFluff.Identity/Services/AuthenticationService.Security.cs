@@ -144,9 +144,8 @@ public sealed partial class AuthenticationService
             if (!enabled || unlink)
             {
                 var channels = await LoginNotificationAvailability(userId, settings, ct);
-                if (!channels.EmailAvailable &&
-                    (settings.NotificationChannel == LoginNotificationChannel.Telegram || channels.TelegramAvailable))
-                    throw Invalid("Add and verify an email before disabling or unlinking Telegram, which receives your login alerts");
+                if (!channels.EmailAvailable)
+                    throw Invalid("Add and verify an email before disabling or unlinking Telegram; at least one login alert channel must remain available");
                 if (settings.NotificationChannel == LoginNotificationChannel.Telegram && channels.EmailAvailable)
                     settings.NotificationChannel = LoginNotificationChannel.Email;
             }
