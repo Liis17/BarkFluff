@@ -205,6 +205,8 @@
     <string name="reset_we_sent_code">6 位验证码已发送至 &lt;b&gt;%1$s&lt;/b&gt;</string>
     <string name="reset_confirm_code">确认验证码</string>
     <string name="reset_resend_code">重新发送验证码</string>
+    <string name="reset_resend_wait">%1$s 后重新发送验证码</string>
+    <string name="reset_check_spam_hint">如果没有收到验证码，请检查垃圾邮件文件夹。</string>
     <string name="reset_create_new_password">新密码</string>
     <string name="hint_new_password">新密码</string>
     <string name="hint_confirm_password">确认密码</string>
@@ -212,8 +214,6 @@
     <string name="reset_password_success">密码已修改！</string>
     <string name="reset_password_success_subtitle">你现在可以使用新密码登录了</string>
     <string name="reset_back_to_login">返回登录</string>
-    <string name="reset_pill_inbox">收件箱</string>
-    <string name="reset_pill_spam">垃圾邮件</string>
     <string name="reset_strength_empty">开始输入密码</string>
     <string name="reset_strength_weak">弱</string>
     <string name="reset_strength_medium">中等</string>

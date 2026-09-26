@@ -368,15 +368,22 @@ class ResetPasswordActivity : AppCompatActivity() {
         resendTimer?.cancel()
         resendCooldownActive = true
         binding.resendCodeButton.isEnabled = false
+        val initialTimeLeft = String.format(
+            "%d:%02d",
+            RESEND_COOLDOWN_MS / 60_000,
+            (RESEND_COOLDOWN_MS / 1000) % 60,
+        )
+        binding.resendCodeButton.text = getString(R.string.reset_resend_wait, initialTimeLeft)
         resendTimer = object : CountDownTimer(RESEND_COOLDOWN_MS, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val totalSeconds = (millisUntilFinished / 1000).toInt()
-                binding.resendTimerText.text = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
+                val timeLeft = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
+                binding.resendCodeButton.text = getString(R.string.reset_resend_wait, timeLeft)
             }
 
             override fun onFinish() {
                 resendCooldownActive = false
-                binding.resendTimerText.text = "0:00"
+                binding.resendCodeButton.text = getString(R.string.reset_resend_code)
                 binding.resendCodeButton.isEnabled = !isLoading && currentStep == 2
             }
         }.start()

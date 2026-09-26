@@ -216,6 +216,8 @@
     <string name="reset_we_sent_code">6-значный код отправлен на &lt;b&gt;%1$s&lt;/b&gt;</string>
     <string name="reset_confirm_code">Подтвердить код</string>
     <string name="reset_resend_code">Отправить код повторно</string>
+    <string name="reset_resend_wait">Отправить повторно через %1$s</string>
+    <string name="reset_check_spam_hint">Если код не пришёл, проверьте папку «Спам».</string>
     <string name="reset_create_new_password">Новый пароль</string>
     <string name="hint_new_password">Новый пароль</string>
     <string name="hint_confirm_password">Подтвердите пароль</string>
@@ -223,8 +225,6 @@
     <string name="reset_password_success">Пароль изменён!</string>
     <string name="reset_password_success_subtitle">Теперь вы можете войти с новым паролем</string>
     <string name="reset_back_to_login">Вернуться к входу</string>
-    <string name="reset_pill_inbox">Входящие</string>
-    <string name="reset_pill_spam">Спам</string>
     <string name="reset_strength_empty">Начните вводить пароль</string>
     <string name="reset_strength_weak">Слабый</string>
     <string name="reset_strength_medium">Средний</string>
