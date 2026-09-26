@@ -90,20 +90,6 @@
 
     // Settings and confirm overlays are managed by BF.settings module
 
-    // Profile elements
-    var profileOverlay = $('#profileOverlay');
-    var profileClose = $('#profileClose');
-    var profilePoster = $('#profilePoster');
-    var profileAvatar = $('#profileAvatar');
-    var profileName = $('#profileName');
-    var profileUsername = $('#profileUsername');
-    var profileStatus = $('#profileStatus');
-    var profileBio = $('#profileBio');
-    var profileBadges = $('#profileBadges');
-    var profileRegDate = $('#profileRegDate');
-    var profileMediaContent = $('#profileMediaContent');
-    var currentProfileUserId = null;
-
     var groupMediaContent = $('#groupMediaContent');
 
     BF.mediaViewer.init({
@@ -1377,79 +1363,21 @@
 
     // ========== PROFILE OVERLAY ==========
 
-    function openProfile(userId) {
-        if (!userId) return;
-        currentProfileUserId = userId;
-        if (profilePoster) BF.files.loadResilientBackground(profilePoster, null, false);
-
-        BF.api.getUser(userId).then(function (d) {
-            if (currentProfileUserId !== userId) return;
-            if (!d || !d.user) return;
-            var user = d.user;
-
-            if (profilePoster) {
-                BF.files.loadResilientBackground(profilePoster, user.profilePosterFileId, false);
-            }
-
-            var initial = (user.firstName || user.username || '?')[0].toUpperCase();
-            if (user.profilePicture) {
-                var avImg = document.createElement('img');
-                avImg.src = user.profilePicture;
-                avImg.alt = '';
-                profileAvatar.replaceChildren(avImg);
-            } else {
-                profileAvatar.textContent = initial;
-            }
-            profileName.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
-            if (user.isBot) profileName.insertAdjacentHTML('beforeend', botBadgeMarkup());
-            profileUsername.textContent = user.username ? '@' + user.username : '';
-            profileBio.textContent = user.bio || '';
-            profileBio.style.display = user.bio ? 'block' : 'none';
-
-            var online = isUserOnline(userId);
-            var entry = onlineStatuses.get(userId);
-            profileStatus.textContent = online ? BF.i18n.t('status.online') : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
-            profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
-            profileStatus.hidden = !!user.isBot;
-            setProfileCallButtonsVisible(!user.isBot);
-
-            var _profileUserId = $('#profileUserId');
-            var _profileChatId = $('#profileChatId');
-            if (_profileUserId) _profileUserId.textContent = user.id;
-            if (_profileChatId) _profileChatId.textContent = currentChatId || '\u2014';
-
-            if (user.registrationDate) {
-                profileRegDate.textContent = new Date(user.registrationDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-            } else { profileRegDate.textContent = '\u2014'; }
-
-            profileBadges.innerHTML = '';
-            if (user.badges && user.badges.length > 0) {
-                user.badges.forEach(function (b) {
-                    var el = document.createElement('div');
-                    el.className = 'profile-badge';
-                    if (b.imageUrl) {
-                        var bImg = document.createElement('img');
-                        bImg.src = b.imageUrl;
-                        bImg.alt = '';
-                        el.appendChild(bImg);
-                    }
-                    el.appendChild(document.createTextNode(b.name || ''));
-                    profileBadges.appendChild(el);
-                });
-            }
-
-            loadProfileMedia('media');
-            BF.utils.openOverlay(profileOverlay);
-        });
-    }
-
     BF.chatMedia.init({
         getCurrentChatId: function () { return currentChatId; },
         showMediaOverlay: showMediaOverlay
     });
     BF.chatBackground.init();
+    BF.profile.init({
+        getCurrentChatId: function () { return currentChatId; },
+        getCurrentChatInfo: function () { return currentChatInfo; },
+        isUserOnline: isUserOnline,
+        getOnlineEntry: function (userId) { return onlineStatuses.get(userId); },
+        botBadgeMarkup: botBadgeMarkup,
+        setCallButtonsVisible: setProfileCallButtonsVisible,
+        showToast: showToast
+    });
 
-    var profileMediaPanels = BF.chatMedia.createPanels(profileMediaContent);
     var groupMediaPanels = BF.chatMedia.createPanels(groupMediaContent);
 
     BF.groupInfo.init({
@@ -1470,50 +1398,14 @@
     });
     var openGroupInfo = BF.groupInfo.open;
 
-    function loadProfileMedia(type) {
-        BF.chatMedia.setTabActive('#profileOverlay .profile-media-tab', profileMediaPanels, type);
-        BF.chatMedia.render(type, profileMediaPanels);
-    }
-
-    document.querySelectorAll('#profileOverlay .profile-media-tab').forEach(function (tab) {
-        tab.addEventListener('click', function () { loadProfileMedia(tab.dataset.type); });
-    });
-
     function onChatHeaderClick() {
         if (!currentChatInfo) return;
         if (currentChatInfo.isGroupChat) { openGroupInfo(); return; }
         var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
-        if (peerId) openProfile(peerId);
+        if (peerId) BF.profile.open(peerId);
     }
     chatHeaderAvatar.addEventListener('click', onChatHeaderClick);
     chatHeaderName.addEventListener('click', onChatHeaderClick);
-
-    profileClose.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
-    profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) BF.utils.closeOverlay(profileOverlay); });
-
-    var _profileMsgBtn = $('#profileMsgBtn');
-    if (_profileMsgBtn) _profileMsgBtn.addEventListener('click', function () { BF.utils.closeOverlay(profileOverlay); });
-
-    var _profileBackgroundBtn = $('#profileBackgroundButton');
-    if (_profileBackgroundBtn) _profileBackgroundBtn.addEventListener('click', function () {
-        BF.chatBackground.open(currentChatId, currentChatInfo && currentChatInfo.title);
-    });
-
-    function copyText(text) {
-        if (!text || !navigator.clipboard) return;
-        navigator.clipboard.writeText(String(text)).then(function () {
-            BF.sound.play('success');
-            groupToast(BF.i18n.t('common.copied'));
-        }).catch(function () {
-            showToast(BF.i18n.t('error.copy'), true);
-        });
-    }
-    document.querySelectorAll('.profile-info-copy').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var target = document.getElementById(btn.dataset.copy);
-            if (target) copyText(target.textContent);
-        });
-    });
 
     // ========== GROUP INFO PANEL ==========
 
