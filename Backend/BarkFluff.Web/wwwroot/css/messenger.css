@@ -155,6 +155,27 @@
             outline-offset: 2px;
         }
 
+        /* Текст только для скринридеров (live-регион ленты) */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Сообщение в ленте (role="article"): контур вокруг облачка, а не всей строки ленты */
+        .msg-group:focus-visible { outline: none; }
+        .msg-group:focus-visible .msg-bubble,
+        .msg-group.msg-system:focus-visible .msg-system-pill {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
         /* Поля ввода: мягкое кольцо, единообразно с существующим дизайном */
         input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):focus-visible,
         textarea:focus-visible,

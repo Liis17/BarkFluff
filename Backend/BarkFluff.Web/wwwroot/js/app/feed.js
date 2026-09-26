@@ -1,6 +1,8 @@
 /**
  * Message feed of the open chat: rendering, sliding window (MAX_MESSAGES in the DOM), loading older/newer
  * pages on scroll, the scroll-to-bottom button and jumping to a message.
+ * A11y: ARIA feed (role="article" per message, roving tabindex, arrow/Page/Home/End keys, aria-busy) and a
+ * polite live region announcing new incoming messages of the open chat.
  * The message buffer itself (`messages`) stays in main.js and is reached through deps.getMessages/setMessages.
  * Requires: BF.api, BF.files, BF.i18n, BF.messages, BF.utils
  * Exposes: BF.feed
@@ -17,6 +19,7 @@
     var loadingMessages;
     var scrollToBottomBtn;
     var scrollBadge;
+    var liveRegion;
 
     var MAX_MESSAGES = 200; // скользящее окно ленты: сколько сообщений держим в DOM
     var isLoadingOlder = false;
@@ -27,6 +30,10 @@
     var isJumpingToMessage = false;
     var resyncSeparatorId = null; // id первого сообщения после resync-пропуска (разделитель «Новые сообщения»)
     var newMessagesBelowCount = 0;
+    var roverId = null; // сообщение с tabindex=0 (roving tabindex)
+    var busyCount = 0;
+    var announceQueue = [];
+    var announceTimer = null;
 
     function $(selector) {
         return document.querySelector(selector);
@@ -39,6 +46,7 @@
         isLoadingNewer = false;
         isJumpingToTail = false;
         resyncSeparatorId = null;
+        roverId = null;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
         newMessagesBelowCount = 0;
         updateScrollBadge();
@@ -142,18 +150,31 @@
     }
 
     function buildElement(msg, index) {
-        return BF.messages.buildMessageElement(
-            msg,
-            deps.getMyUserId(),
-            deps.getUser,
-            deps.showMediaOverlay,
-            buildMessageOptions(msg, index)
-        );
+        return BF.messages
+            .buildMessageElement(
+                msg,
+                deps.getMyUserId(),
+                deps.getUser,
+                deps.showMediaOverlay,
+                buildMessageOptions(msg, index)
+            )
+            .then(function (el) {
+                return decorate(el, msg);
+            });
     }
 
     function render() {
+        // Фокус в ленте переживает полную перерисовку: то же сообщение, иначе сосед, иначе последнее.
+        var focused = focusedArticle();
+        var restoreIds = focused
+            ? [focused, articleSibling(focused, true), articleSibling(focused, false)]
+                  .filter(Boolean)
+                  .map(function (el) {
+                      return el.dataset.msgId;
+                  })
+            : null;
         messagesInner.innerHTML = '';
-        return prefetchAttachmentUrls(deps.getMessages()).then(function () {
+        var rendered = prefetchAttachmentUrls(deps.getMessages()).then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
             var currentChatType = deps.getCurrentChatType();
@@ -184,6 +205,18 @@
             });
             return chain;
         });
+        return trackBusy(
+            rendered.then(function () {
+                if (restoreIds && canRestoreFocus()) {
+                    for (var i = 0; i < restoreIds.length; i++) {
+                        var el = findMessageGroup(restoreIds[i]);
+                        if (el) return focusArticle(el, false);
+                    }
+                    return focusArticle(lastArticle(), false);
+                }
+                syncRover();
+            })
+        );
     }
 
     // Дорисовывает подгруженные старые сообщения перед лентой, не перестраивая её целиком.
@@ -224,6 +257,7 @@
                 )
                     firstOldEl.remove();
                 messagesInner.insertBefore(frag, messagesInner.firstChild);
+                syncRover();
 
                 // Группировка бывшего первого сообщения могла измениться: перед ним появился сосед.
                 if (!oldFirstMsg || !canGroupMessages(newMsgs[newMsgs.length - 1], oldFirstMsg)) return;
@@ -231,7 +265,7 @@
                     var el = findMessageGroup(oldFirstMsg.id);
                     if (!el || !el.isConnected) return;
                     replacement.dataset.date = el.dataset.date;
-                    el.replaceWith(replacement);
+                    replaceElement(el, replacement);
                 });
             });
     }
@@ -250,10 +284,15 @@
                 return String(msg.id);
             })
         );
+        var focused = focusedArticle();
+        var lostFocus = !!focused && droppedIds.has(String(focused.dataset.msgId));
         Array.prototype.slice.call(messagesInner.querySelectorAll('.msg-group')).forEach(function (node) {
             if (droppedIds.has(String(node.dataset.msgId))) node.remove();
         });
         removeOrphanSeparators();
+        // Сообщение с фокусом ушло из окна — фокус на ближайшее оставшееся.
+        if (lostFocus) focusArticle(side === 'head' ? firstArticle() : lastArticle(), false);
+        else syncRover();
 
         // Обрезав голову, снимаем флаг «старее ничего нет»: отрезанное снова можно догрузить.
         if (side === 'head') noMoreOlder = false;
@@ -283,10 +322,10 @@
     // Возврат к живому хвосту, когда скользящее окно обрезало последние сообщения.
     function jumpToLiveTail() {
         var chatId = deps.getCurrentChatId();
-        if (isJumpingToTail || isJumpingToMessage || !chatId) return;
+        if (isJumpingToTail || isJumpingToMessage || !chatId) return Promise.resolve();
         isJumpingToTail = true;
 
-        loadMessagesPage(chatId, 0, 30, 0)
+        return loadMessagesPage(chatId, 0, 30, 0)
             .then(function (data) {
                 if (chatId !== deps.getCurrentChatId() || !data || !data.messages) return;
                 deps.setMessages(data.messages);
@@ -405,7 +444,7 @@
                       var previousEl = findMessageGroup(previous.id);
                       if (!previousEl || !previousEl.isConnected) return;
                       replacement.dataset.date = previousEl.dataset.date;
-                      previousEl.replaceWith(replacement);
+                      replaceElement(previousEl, replacement);
                   })
                 : Promise.resolve();
 
@@ -423,6 +462,7 @@
                 if (separatorKey) messagesInner.appendChild(makeUnreadSeparator(separatorKey));
                 el.dataset.date = msgDate;
                 messagesInner.appendChild(el);
+                syncRover();
             });
         });
     }
@@ -433,20 +473,231 @@
         });
     }
 
+    // ========== A11Y: ARIA feed, roving tabindex, live region ==========
+
+    function senderName(user) {
+        return user ? ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || user.username || '' : '';
+    }
+
+    // role="article" и подпись «автор, время»; содержимое читается через aria-describedby на пузырь.
+    // Ставится только здесь, а не в messages.js: buildMessageElement рисует и список закреплённых.
+    function decorate(el, msg) {
+        el.setAttribute('role', 'article');
+        if (el.classList.contains('msg-system')) {
+            el.setAttribute('aria-label', (msg.content && msg.content.text) || '');
+            return el;
+        }
+        var time = u.formatTime(msg.sentAt);
+        var bubble = el.querySelector('.msg-bubble');
+        if (bubble) {
+            bubble.id = 'feed-msg-' + msg.id;
+            el.setAttribute('aria-describedby', bubble.id);
+        }
+        if (msg.senderId === deps.getMyUserId()) {
+            el.setAttribute('aria-label', BF.i18n.t('call.you') + ', ' + time);
+        } else {
+            el.setAttribute('aria-label', time);
+            Promise.resolve(deps.getUser(msg.senderId))
+                .then(function (user) {
+                    var name = senderName(user);
+                    if (name) el.setAttribute('aria-label', name + ', ' + time);
+                })
+                .catch(function () {});
+        }
+        return el;
+    }
+
+    function articleSibling(el, forward) {
+        var node = forward ? el.nextElementSibling : el.previousElementSibling;
+        for (; node; node = forward ? node.nextElementSibling : node.previousElementSibling) {
+            if (node.classList.contains('msg-group')) return node;
+        }
+        return null;
+    }
+
+    function firstArticle() {
+        return messagesInner.querySelector('.msg-group');
+    }
+
+    function lastArticle() {
+        var list = messagesInner.querySelectorAll('.msg-group');
+        return list[list.length - 1] || null;
+    }
+
+    function focusedArticle() {
+        var active = document.activeElement;
+        if (!active || !messagesInner.contains(active) || !active.closest) return null;
+        return active.closest('.msg-group');
+    }
+
+    // Пока лента перерисовывалась, пользователь мог уйти в другое место — тогда фокус не трогаем.
+    function canRestoreFocus() {
+        var active = document.activeElement;
+        return !active || active === document.body || messagesInner.contains(active);
+    }
+
+    // Roving tabindex: tabindex=0 только у одного сообщения, у остальных атрибута нет —
+    // иначе клик мышью по любому сообщению уводил бы в него фокус.
+    function syncRover() {
+        var list = messagesInner.querySelectorAll('.msg-group');
+        var rover = null;
+        for (var i = 0; i < list.length; i++) {
+            if (String(list[i].dataset.msgId) === roverId) rover = list[i];
+        }
+        if (!rover && list.length > 0) rover = list[list.length - 1];
+        roverId = rover ? String(rover.dataset.msgId) : null;
+        for (var j = 0; j < list.length; j++) {
+            if (list[j] === rover) list[j].tabIndex = 0;
+            else list[j].removeAttribute('tabindex');
+        }
+    }
+
+    function focusArticle(el, scroll) {
+        if (!el) return;
+        roverId = String(el.dataset.msgId);
+        syncRover();
+        el.focus({ preventScroll: true });
+        if (scroll !== false) el.scrollIntoView({ block: 'nearest' });
+    }
+
+    // Замена узла сообщения (pending → серверное, правка, перегруппировка) с сохранением ровера и фокуса.
+    function replaceElement(oldEl, newEl) {
+        var hadFocus = oldEl.contains(document.activeElement);
+        if (String(oldEl.dataset.msgId) === roverId) roverId = String(newEl.dataset.msgId);
+        oldEl.replaceWith(newEl);
+        if (hadFocus) focusArticle(newEl, false);
+        else syncRover();
+    }
+
+    function removeElement(el) {
+        var neighbor = el.contains(document.activeElement)
+            ? articleSibling(el, true) || articleSibling(el, false)
+            : null;
+        el.remove();
+        if (neighbor) focusArticle(neighbor, false);
+        else syncRover();
+    }
+
+    function trackBusy(promise) {
+        busyCount++;
+        messagesInner.setAttribute('aria-busy', 'true');
+        return promise.finally(function () {
+            busyCount = Math.max(0, busyCount - 1);
+            if (busyCount === 0) messagesInner.removeAttribute('aria-busy');
+        });
+    }
+
+    // Сообщение примерно на экран выше/ниже текущего.
+    function pageTarget(el, down) {
+        var limit = messagesArea.clientHeight * 0.8;
+        var target = el;
+        for (var node = articleSibling(el, down); node; node = articleSibling(node, down)) {
+            target = node;
+            if (Math.abs(node.offsetTop - el.offsetTop) >= limit) break;
+        }
+        return target;
+    }
+
+    // Клавиатура на сообщении (паттерн ARIA feed): стрелки — соседнее сообщение (у края догружается
+    // страница), PageUp/PageDown — примерно на экран, Home/End — края окна (End — к живому хвосту).
+    function onFeedKeydown(e) {
+        var el = e.target;
+        if (!el.classList || !el.classList.contains('msg-group') || e.altKey || e.ctrlKey || e.metaKey) return;
+        var target;
+        switch (e.key) {
+            case 'ArrowDown':
+                target = articleSibling(el, true);
+                if (target) focusArticle(target);
+                else
+                    loadNewerMessages().then(function () {
+                        focusArticle(articleSibling(el, true));
+                    });
+                break;
+            case 'ArrowUp':
+                target = articleSibling(el, false);
+                if (target) focusArticle(target);
+                else
+                    loadOlderMessages().then(function () {
+                        focusArticle(articleSibling(el, false));
+                    });
+                break;
+            case 'PageDown':
+            case 'PageUp':
+                focusArticle(pageTarget(el, e.key === 'PageDown'));
+                break;
+            case 'Home':
+                focusArticle(firstArticle());
+                break;
+            case 'End':
+                (hasNewerGap ? jumpToLiveTail() : Promise.resolve()).then(function () {
+                    focusArticle(lastArticle());
+                });
+                break;
+            default:
+                return;
+        }
+        e.preventDefault();
+    }
+
+    function describeIncoming(msg) {
+        var content = msg.content || {};
+        var atts = content.attachments || [];
+        var text = content.text
+            ? u.truncate(u.markdownToPlainText(content.text), 200)
+            : atts.length > 0
+              ? u.attachmentEmoji(atts[0].type)
+              : '';
+        return Promise.resolve(deps.getUser(msg.senderId))
+            .catch(function () {
+                return null;
+            })
+            .then(function (user) {
+                return BF.i18n.t('a11y.newMessage', {
+                    name: senderName(user) || BF.i18n.t('common.user'),
+                    text: text
+                });
+            });
+    }
+
+    // Новые входящие сообщения открытого чата — в скрытый live-регион. История, resync и пагинация
+    // сюда не попадают; пачка за секунду объявляется одной фразой.
+    function announceIncoming(msg) {
+        if (!liveRegion || !msg) return;
+        announceQueue.push(msg);
+        if (announceTimer) return;
+        announceTimer = setTimeout(function () {
+            announceTimer = null;
+            var batch = announceQueue.splice(0);
+            var textPromise =
+                batch.length === 1
+                    ? describeIncoming(batch[0])
+                    : Promise.resolve(BF.i18n.tp('a11y.newMessages', batch.length));
+            textPromise.then(function (text) {
+                // Очистка и повторная запись — иначе одинаковый текст подряд не озвучивается.
+                liveRegion.textContent = '';
+                setTimeout(function () {
+                    liveRegion.textContent = text;
+                }, 50);
+            });
+        }, 1000);
+    }
+
     // ========== PAGING ==========
 
     // Страница ленты: обычный чат или приватный (там батч приходит зашифрованным).
     function loadMessagesPage(chatId, fromMessageId, offsetBefore, offsetAfter) {
         if (deps.getCurrentChatType() !== 1)
-            return BF.api.listMessages(chatId, fromMessageId, offsetBefore, offsetAfter);
-        return BF.api.listPrivateMessages(chatId, fromMessageId, offsetBefore, offsetAfter).then(function (d) {
-            return deps.decryptPrivateBatch(chatId, d && d.messages).then(function (mapped) {
-                mapped.sort(function (a, b) {
-                    return a.id - b.id;
+            return trackBusy(BF.api.listMessages(chatId, fromMessageId, offsetBefore, offsetAfter));
+        return trackBusy(
+            BF.api.listPrivateMessages(chatId, fromMessageId, offsetBefore, offsetAfter).then(function (d) {
+                return deps.decryptPrivateBatch(chatId, d && d.messages).then(function (mapped) {
+                    mapped.sort(function (a, b) {
+                        return a.id - b.id;
+                    });
+                    return { messages: mapped };
                 });
-                return { messages: mapped };
-            });
-        });
+            })
+        );
     }
 
     // Подгрузка новых сообщений, когда скользящее окно обрезало хвост ленты.
@@ -461,11 +712,11 @@
             !pagedChatId ||
             messages.length === 0
         )
-            return;
+            return Promise.resolve();
         isLoadingNewer = true;
         var newestId = messages[messages.length - 1].id || 0;
 
-        loadMessagesPage(pagedChatId, newestId, 0, 30)
+        return loadMessagesPage(pagedChatId, newestId, 0, 30)
             .then(function (data) {
                 if (pagedChatId !== deps.getCurrentChatId()) return;
                 var fetched = (data && data.messages) || [];
@@ -506,13 +757,14 @@
     function loadOlderMessages() {
         var pagedChatId = deps.getCurrentChatId();
         var messages = deps.getMessages();
-        if (isLoadingOlder || isJumpingToMessage || noMoreOlder || !pagedChatId || messages.length === 0) return;
+        if (isLoadingOlder || isJumpingToMessage || noMoreOlder || !pagedChatId || messages.length === 0)
+            return Promise.resolve();
         isLoadingOlder = true;
         loadingMessages.classList.add('visible');
         var oldestId = messages[0].id || 0;
         var prevHeight = messagesArea.scrollHeight;
 
-        loadMessagesPage(pagedChatId, oldestId, 30, 0)
+        return loadMessagesPage(pagedChatId, oldestId, 30, 0)
             .then(function (data) {
                 if (pagedChatId !== deps.getCurrentChatId()) return;
                 if (data && data.messages && data.messages.length > 0) {
@@ -549,12 +801,14 @@
     function scrollToMessage(id) {
         if (!id) return;
         var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
+        var hadFocus = !!focusedArticle();
         if (el) {
             el.scrollIntoView({ block: 'center', behavior: 'smooth' });
             el.classList.add('highlight');
             setTimeout(function () {
                 el.classList.remove('highlight');
             }, 1500);
+            if (hadFocus) focusArticle(el.closest('.msg-group'), false);
             return;
         }
         var chatId = deps.getCurrentChatId();
@@ -592,6 +846,7 @@
 
                 return render().then(function () {
                     settleHighlight(id);
+                    if (hadFocus) focusArticle(findMessageGroup(id), false);
                 });
             })
             .finally(function () {
@@ -630,8 +885,10 @@
         loadingMessages = $('#loadingMessages');
         scrollToBottomBtn = $('#scrollToBottomBtn');
         scrollBadge = scrollToBottomBtn ? scrollToBottomBtn.querySelector('.scroll-badge') : null;
+        liveRegion = $('#feedLiveRegion');
 
         messagesArea.addEventListener('scroll', onScroll);
+        messagesInner.addEventListener('keydown', onFeedKeydown);
 
         if (scrollToBottomBtn) {
             scrollToBottomBtn.addEventListener('click', function () {
@@ -653,6 +910,9 @@
         scrollToMessage: scrollToMessage,
         findGroup: findMessageGroup,
         buildElement: buildMessageViewElement,
+        replaceElement: replaceElement,
+        removeElement: removeElement,
+        announceIncoming: announceIncoming,
         clearNewerGap: function (resetLoading) {
             hasNewerGap = false;
             if (resetLoading) isLoadingNewer = false;

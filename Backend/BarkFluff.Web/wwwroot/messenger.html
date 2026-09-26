@@ -131,9 +131,10 @@
             <div class="loading-messages" id="loadingMessages" data-i18n="common.loading">Загрузка...</div>
             <div class="messages-area-wrap">
                 <div class="messages-area" id="messagesArea">
-                    <div class="messages-inner" id="messagesInner"></div>
+                    <div class="messages-inner" id="messagesInner" role="feed" data-i18n-aria-label="a11y.messages" aria-label="Сообщения"></div>
                 </div>
             </div>
+            <div class="sr-only" id="feedLiveRegion" aria-live="polite" aria-atomic="true"></div>
             <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" data-i18n-title="chat.scrollToLatest" title="К последнему сообщению"><span class="scroll-badge"></span>&#8595;</button>
 
             <div class="input-bar" id="inputBar">
