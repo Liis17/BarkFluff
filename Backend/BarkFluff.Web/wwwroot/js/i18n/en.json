@@ -573,6 +573,8 @@
   "security.confirmation": "Confirmation",
   "security.openBot": "Open Telegram bot",
   "security.waiting": "Approve this action using the button in the Telegram bot.",
+  "security.telegramLoginWaiting": "Approve sign-in using the button in the Telegram bot. If no request arrives, cancel and check that the account is set to “Username and Telegram approval” under Security settings. A Telegram code is a separate sign-in method.",
+  "security.resendApproval": "Resend approval request",
   "security.enterCode": "Enter the one-time code.",
   "security.rejected": "Request rejected. Start a new attempt.",
   "security.expired": "Request expired. Start a new attempt.",

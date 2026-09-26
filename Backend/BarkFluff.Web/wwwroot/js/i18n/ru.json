@@ -573,6 +573,8 @@
   "security.confirmation": "Подтверждение",
   "security.openBot": "Открыть бота Telegram",
   "security.waiting": "Подтвердите действие кнопкой в боте Telegram.",
+  "security.telegramLoginWaiting": "Подтвердите вход кнопкой в боте Telegram. Если запрос не пришёл, отмените попытку и проверьте в настройках безопасности, что для аккаунта выбран режим «Логин и подтверждение Telegram». Код Telegram — отдельный способ входа.",
+  "security.resendApproval": "Отправить запрос повторно",
   "security.enterCode": "Введите одноразовый код.",
   "security.rejected": "Запрос отклонён. Начните новую попытку.",
   "security.expired": "Срок запроса истёк. Начните новую попытку.",

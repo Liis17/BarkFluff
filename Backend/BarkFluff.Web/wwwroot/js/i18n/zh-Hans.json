@@ -573,6 +573,8 @@
   "security.confirmation": "确认",
   "security.openBot": "打开 Telegram 机器人",
   "security.waiting": "请在 Telegram 机器人中点击按钮确认此操作。",
+  "security.telegramLoginWaiting": "请点击 Telegram 机器人中的按钮确认登录。如果没有收到请求，请取消并在安全设置中检查账号是否选择了“用户名和 Telegram 确认”。Telegram 验证码是另一种登录方式。",
+  "security.resendApproval": "重新发送确认请求",
   "security.enterCode": "请输入一次性验证码。",
   "security.rejected": "请求已被拒绝，请重新尝试。",
   "security.expired": "请求已过期，请重新尝试。",
