@@ -248,6 +248,115 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
+    private suspend fun <T> identityCall(
+        operation: String,
+        call: suspend (IdentityApiGrpcKt.IdentityApiCoroutineStub) -> T,
+    ): Result<T> = withContext(Dispatchers.IO) {
+        val client = identityClient
+            ?: return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+        try {
+            Result.success(call(client))
+        } catch (error: Exception) {
+            Log.e(TAG, "Identity $operation failed", error)
+            Result.failure(error)
+        }
+    }
+
+    suspend fun getAuthCapabilities(): Result<IdentityApiOuterClass.GetAuthCapabilitiesResponse> =
+        identityCall("GetAuthCapabilities") { client ->
+            client.getAuthCapabilities(IdentityApiOuterClass.GetAuthCapabilitiesRequest.getDefaultInstance())
+        }
+
+    suspend fun beginRegistration(
+        request: IdentityApiOuterClass.BeginRegistrationRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginRegistration") { client -> client.beginRegistration(request) }
+
+    suspend fun beginSignIn(
+        request: IdentityApiOuterClass.BeginSignInRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginSignIn") { client -> client.beginSignIn(request) }
+
+    suspend fun getAuthChallenge(
+        reference: IdentityApiOuterClass.AuthChallengeReference,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("GetAuthChallenge") { client -> client.getAuthChallenge(reference) }
+
+    suspend fun completeAuthChallenge(
+        request: IdentityApiOuterClass.CompleteAuthChallengeRequest,
+    ): Result<IdentityApiOuterClass.CompleteAuthChallengeResponse> =
+        identityCall("CompleteAuthChallenge") { client -> client.completeAuthChallenge(request) }
+
+    suspend fun cancelAuthChallenge(
+        reference: IdentityApiOuterClass.AuthChallengeReference,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("CancelAuthChallenge") { client -> client.cancelAuthChallenge(reference) }
+
+    suspend fun resendAuthChallenge(
+        reference: IdentityApiOuterClass.AuthChallengeReference,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("ResendAuthChallenge") { client -> client.resendAuthChallenge(reference) }
+
+    suspend fun getSecuritySettings(): Result<IdentityApiOuterClass.SecuritySettingsResponse> =
+        identityCall("GetSecuritySettings") { client ->
+            client.getSecuritySettings(IdentityApiOuterClass.GetSecuritySettingsRequest.getDefaultInstance())
+        }
+
+    suspend fun beginReauthentication(
+        request: IdentityApiOuterClass.BeginReauthenticationRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginReauthentication") { client -> client.beginReauthentication(request) }
+
+    suspend fun updateSecuritySettings(
+        request: IdentityApiOuterClass.UpdateSecuritySettingsRequest,
+    ): Result<IdentityApiOuterClass.SecuritySettingsResponse> =
+        identityCall("UpdateSecuritySettings") { client -> client.updateSecuritySettings(request) }
+
+    suspend fun beginTelegramBinding(
+        request: IdentityApiOuterClass.SecurityProofRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginTelegramBinding") { client -> client.beginTelegramBinding(request) }
+
+    suspend fun unlinkTelegram(
+        request: IdentityApiOuterClass.UpdateSecuritySettingsRequest,
+    ): Result<IdentityApiOuterClass.SecuritySettingsResponse> =
+        identityCall("UnlinkTelegram") { client -> client.unlinkTelegram(request) }
+
+    suspend fun beginEmailBinding(
+        request: IdentityApiOuterClass.BeginEmailBindingRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginEmailBinding") { client -> client.beginEmailBinding(request) }
+
+    suspend fun generateRecoveryCodes(
+        request: IdentityApiOuterClass.SecurityProofRequest,
+    ): Result<IdentityApiOuterClass.RecoveryCodesResponse> =
+        identityCall("GenerateRecoveryCodes") { client -> client.generateRecoveryCodes(request) }
+
+    suspend fun beginPasswordRecovery(
+        request: IdentityApiOuterClass.BeginPasswordRecoveryRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginPasswordRecovery") { client -> client.beginPasswordRecovery(request) }
+
+    suspend fun setRecoveredPassword(
+        request: IdentityApiOuterClass.SetRecoveredPasswordRequest,
+    ): Result<IdentityApiOuterClass.SetPasswordResponse> =
+        identityCall("SetRecoveredPassword") { client -> client.setRecoveredPassword(request) }
+
+    suspend fun enableOtpVerification(
+        request: IdentityApiOuterClass.EnableOtpVerificationRequest,
+    ): Result<IdentityApiOuterClass.EnableOtpVerificationResponse> =
+        identityCall("EnableOtpVerification") { client -> client.enableOtpVerification(request) }
+
+    suspend fun confirmOtpVerification(
+        request: IdentityApiOuterClass.ConfirmOtpVerificationRequest,
+    ): Result<IdentityApiOuterClass.ConfirmOtpVerificationResponse> =
+        identityCall("ConfirmOtpVerification") { client -> client.confirmOtpVerification(request) }
+
+    suspend fun disableOtpVerificationWithProof(
+        request: IdentityApiOuterClass.DisableOtpVerificationRequest,
+    ): Result<IdentityApiOuterClass.DisableOtpVerificationResponse> =
+        identityCall("DisableOtpVerification") { client -> client.disableOtpVerification(request) }
+
     private fun handleAuthError(e: StatusException): AuthResult {
         val errorCode = e.trailers?.get(ERROR_CODE_KEY)?.uppercase()
         Log.d(TAG, "Auth error: status=${e.status}, errorCode=$errorCode")
