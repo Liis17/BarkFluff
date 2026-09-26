@@ -144,15 +144,9 @@ DeepLinkActivity (перехват bf:// ссылок)
 
 **Тип:** AppCompatActivity
 
-Авторизация. Поддерживает логин по username ИЛИ email (поле `oneof` в proto). Поддерживает 2FA (OTP) — при ответе `OtpRequired` переключается на режим ввода 6-значного кода (6 отдельных EditText, автопереход и автоотправка). После успешного входа сохраняет токены в `GlobalParam`, загружает данные юзера → `MainActivity`.
+Авторизация через `AuthenticationChallengeGateway`: capabilities ограничивают Password / Telegram Login / Password + second factor; `AuthenticationChallengeDialog` открывает Telegram URL, принимает code/recovery code, ждёт `GetAuthChallenge` в foreground и обрабатывает terminal error. После `COMPLETED` сохраняет session в `GlobalParam`, загружает профиль → `MainActivity`.
 
-Error codes (из gRPC trailer `x-error-code`):
-
-- `OtpCodeNeedException` → показывает OTP-форму
-- `NotValidOtpCodeException` → ошибка "неверный код"
-- `InvalidLoginOrPasswordException` → ошибка "неверный логин/пароль"
-
-**Связи:** `GlobalParam`, `AuthGateway`, `AccountSecurityGateway`, `AuthenticationResult`, `MainActivity`, `RegisterActivity`, `ResetPasswordActivity`
+**Связи:** `GlobalParam`, `AuthenticationChallengeGateway`, `AuthenticationChallengeViewModel`, `AuthGateway` (создание клиента/refresh/logout), `MainActivity`, `RegisterActivity`, `ResetPasswordActivity`
 
 ---
 
@@ -160,19 +154,19 @@ Error codes (из gRPC trailer `x-error-code`):
 
 **Тип:** AppCompatActivity
 
-Регистрация в 9 шагов (ViewFlipper / ручное переключение layouts):
+Регистрация сохраняет профильные шаги, но Identity account creation выполняет challenge API:
 
 1. `step_register_01_name.xml` — имя и фамилия
 2. `step_register_02_username.xml` — логин (проверка занятости через gRPC)
-3. `step_register_03_email.xml` — email (создание аккаунта, отправка кода)
-4. `step_register_04_verify.xml` — OTP-подтверждение email
-5. `step_register_05_password.xml` — пароль
+3. `step_register_03_email.xml` — capability-gated email либо Telegram и выбор Telegram Login/Password + factor
+4. legacy OTP layout (не достижим из нового маршрута)
+5. пароль только для email/Password + factor; Telegram Login запускает challenge без пароля
 6. `step_register_06_avatar.xml` — аватар (выбор + кроп через uCrop)
 7. `step_register_07_bio.xml` — описание профиля
-8. `step_register_08_2fa.xml` — настройка 2FA
+8. legacy registration 2FA layout (не достижим; factor настраивается в Security)
 9. `step_register_09_complete.xml` — завершение
 
-**Связи:** `GlobalParam`, `AccountSecurityGateway`, `UserDirectoryGateway`, `DeviceInfoInterceptor`, `LoginActivity`
+**Связи:** `GlobalParam`, `AuthenticationChallengeGateway`, `AuthenticationChallengeViewModel`, `UserDirectoryGateway`, `DeviceInfoInterceptor`, `LoginActivity`
 
 ---
 
@@ -180,9 +174,9 @@ Error codes (из gRPC trailer `x-error-code`):
 
 **Тип:** AppCompatActivity
 
-Сброс пароля через email (запрос кода, подтверждение, новый пароль).
+Сброс пароля через `BeginPasswordRecovery → challenge → SetRecoveredPassword`; proof остаётся в памяти Activity.
 
-**Связи:** `AccountSecurityGateway`, `LoginActivity`
+**Связи:** `AuthenticationChallengeGateway`, `AuthenticationChallengeViewModel`, `LoginActivity`
 
 ---
 
@@ -367,9 +361,9 @@ Compose UI SearchActivity: edge-to-edge header с 48dp back и 56dp `DockedSearc
 
 **Тип:** AppCompatActivity
 
-Смена пароля, управление 2FA.
+Security policy и factor bindings через `GetSecuritySettings` и одноразовый security proof. Telegram FastAuth скрыт и сохраняется без изменений.
 
-**Связи:** `UserProfileGateway`
+**Связи:** `AuthenticationChallengeGateway`, `AuthenticationChallengeViewModel`, `AuthenticationSecurityPolicy`
 
 ---
 
@@ -483,7 +477,7 @@ Files HTTP проверяется запросом `GET /web/download/{случ�
 - `GrpcClientRegistry`: Navigator/Beacon создаются explicit; остальные clients lazy; endpoint нормализуется; `recreateAllClients()` идемпотентен; `shutdown()` запрещает resurrection.
 - `TokenCoordinator`: process-wide mutex, пятиминутный freshness buffer и запись rotated refresh-token.
 - `MediaHttpTransport`: TLS policy и переписывание media-origin для HTTP файлов.
-- `domain/gateway/DomainGateways.kt`: discovery/auth/account/users/settings/directory/chat/message/media/call/FastAuth/E2E/prekey ports.
+- `domain/gateway/DomainGateways.kt`: discovery/auth/challenge-auth/account/users/settings/directory/chat/message/media/call/FastAuth/E2E/prekey ports.
 - `domain/gateway/GrpcGatewayAdapters.kt`: production mapping protobuf → domain DTO/Result.
 
 ### Исторический фасад (до миграции): `grpc/GrpcManager.kt`

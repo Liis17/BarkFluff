@@ -90,26 +90,30 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 - Нижний CTA — 56dp; между CTA и «Впервые здесь? Создать аккаунт» используется фиксированный ритм 56dp, чтобы форма не оставляла огромную пустую область. На широких окнах поток ограничен 600dp и центрируется.
 - Внизу «Впервые здесь? Создать аккаунт»; смена ноды выполняется из карточки выбранной ноды.
 - Блок ошибки (`errorText`) сам несёт фон `bg_login_error`. Раньше он лежал внутри `errorCard` с `visibility=gone`, которую никто не показывал, — ошибки входа не отображались вообще. Не оборачивать его снова в скрытый контейнер.
-- Переход Login ↔ OTP использует короткий fade-through и вертикальный `SpringAnimation` (`stiffness=700`, `damping=0.9`, offset 12dp); при системном отключении аниматоров состояние переключается без декоративного движения. После перехода в OTP первый box получает фокус и открывает цифровую клавиатуру.
+- Identity-вход использует challenge API: пользователь выбирает Password, Telegram Login или Password + second factor согласно `GetAuthCapabilities`. Telegram открывается системным `ACTION_VIEW`; токены пишутся в `GlobalParam` только из completed challenge. Recovery code доступен для второго фактора.
+- `AuthenticationChallengeViewModel` хранит reference только в памяти Activity при configuration change. `AuthenticationChallengeDialog` опрашивает Identity раз в 2 секунды лишь в `RESUMED`, refresh'ит challenge при возврате и отменяет его при явном закрытии. Reference и security proof не попадают в Bundle или логи.
 
 ### Восстановление пароля (Password Reset)
 
-- `ResetPasswordActivity` ведёт через три шага и экран успеха: идентификация → код из письма → новый пароль → подтверждение. Поля идентификации и нового пароля используют общую с Login геометрию FilledBox: высота 56dp, скругление 16dp, вертикально центрированный текст без дополнительной линии фокуса, `labelFor`, autofill hints и последовательность IME `Done` / `Next` / `Done`.
-- На шаге кода одна полноширинная подсказка с иконкой предлагает проверить папку «Спам»; остаток 60-секундной паузы повторной отправки показывается в подписи кнопки.
-- Кнопки подтверждения кода и сохранения нового пароля показываются без иконки галочки.
+- `ResetPasswordActivity` запускает `BeginPasswordRecovery`; общий challenge-диалог ведёт Telegram/email-подтверждение, resend и recovery code. После completed challenge его in-memory security proof используется ровно один раз для `SetRecoveredPassword`.
+- Если у учётной записи нет настроенного email и сервер не предлагает иной recovery-фактор, ошибка Identity остаётся на первом шаге, без legacy reset endpoint.
 - `LoginActivity` создаёт анонимный Identity-клиент с `DeviceInfoInterceptor`: запросы сброса и подтверждения пароля требуют `x-device-name`, `x-os-name`, `x-app-name` и `x-app-version`, закодированные в Base64, даже до авторизации.
-- После подтверждения кода Android сохраняет выданные токены и пересоздаёт Identity-клиент с `AuthInterceptor` перед защищённым `SetPassword`.
 - Поле идентификации показывает пример `name@example.com`; CTA «Отправить код» отображается без иконки и включается только при непустом вводе, оставаясь отключённой во время запроса.
 - Верхняя плитка шага использует `colorPrimary`, а глиф — `colorOnPrimary`, чтобы иконка оставалась контрастной в динамической Material-палитре.
 
 ### Регистрация (RegisterActivity)
 
-- `RegisterActivity` сохраняет девятишаговый сценарий. Однострочные текстовые поля шагов 1–3 и 5 используют общую с Login геометрию: высота 56dp, скругление 16dp, вертикальное выравнивание текста без font padding/лишних внутренних отступов, `labelFor`, autofill hints и IME `Next` / `Done`.
-- Поля кода подтверждения и 2FA используют центрированный текст без лишней линии фокуса; шаг подтверждения поддерживает вставку полного шестизначного кода через `OtpCellsHelper` и получает SMS OTP autofill hint.
+- `RegisterActivity` оставляет профильные шаги (имя, username, avatar, bio, completion), но account creation проходит через `BeginRegistration`. Email доступен только если разрешён capability и всегда использует Password; Telegram предлагает Telegram Login либо Password + second factor (default). Telegram-only регистрация не запрашивает пароль. Recovery codes показываются перед переходом к профилю.
+- Исторические layouts OTP/registration 2FA не являются достижимыми в новом маршруте и не должны получать новые вызовы legacy API.
 - Иконки на акцентных контейнерах используют `colorOnPrimary`, а старый `ic_lock_reset` в поясняющем блоке email заменён на стандартный `ic_lock`.
 - Для edge-to-edge регистрация вручную применяет system-bar/display-cutout/IME-инсеты к header и контенту, а CTA-панель позиционируется overlay-слоем над клавиатурой только в активном состоянии; неактивная кнопка скрывает всю панель, чтобы не перекрывать контент. Шаги на `NestedScrollView` получают актуальный нижний запас под кнопку, а фокусируемое поле автоматически доводится до видимой области.
 - На первом шаге правила имени показаны как tonal-плашки с нейтральными иконками; подсказка необязательной фамилии остаётся видимой. Ошибка имени скрыта до взаимодействия, окрашивается семантическим error/success-цветом, а на «Далее» невалидное поле получает фокус и клавиатуру.
 - `GrpcClientRegistry` учитывает конфигурацию interceptor’ов при переиспользовании слота: если Identity-клиент был создан Login/SelectServer без device metadata, регистрация заменяет его каналом с `DeviceInfoInterceptor` и `x-device-name`; interceptor’ы получают `applicationContext`, чтобы singleton не удерживал Activity.
+
+### Security settings
+
+- `SecuritySettingsActivity` читает `GetSecuritySettings`, а каждая мутация предваряется challenge-based reauthentication и одноразовым security proof. Экран связывает/отвязывает Telegram, подтверждает email binding, выбирает login policy, включает Authenticator/Email/Telegram 2FA и регенерирует recovery codes.
+- Telegram FastAuth — desktop-only: Android не показывает switch и всегда возвращает серверное `fastAuthTelegramEnabled` без изменений в `UpdateSecuritySettings`/`UnlinkTelegram`.
 
 ### Терминология
 
