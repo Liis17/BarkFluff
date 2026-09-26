@@ -264,6 +264,9 @@ Server-streaming подписки:
 ### `deep-link.js` → `BF.deepLink`
 Открытие чата извне: cookie `bf_open_chat` со страницы пользователя (`openFromCookie`: SearchUsers → точное совпадение username → GetPersonChatId, cookie одноразовая), параметр `?chat=` (`openFromUrl` снимает `chat`/`call` из адреса), push из service worker (`openFromPush`: чат вне загруженного списка — один раз перезагружается список, затем ссылка остаётся ожидающей и добирается `openPending`). Deps: `getChats`, `loadChats`, `openChat`. Тест — `scripts/test-deep-link.js`.
 
+### `search.js` → `BF.search`
+Поиск в сайдбаре (`#searchInput`/`#searchResults`): мгновенный регистронезависимый фильтр по загруженным чатам и пользовательский поиск `SearchUsers` с дебаунсом 300 мс (ответ на устаревший запрос отбрасывается). Клик по чату открывает его, по пользователю — `GetPersonChatId` и открытие; оба сбрасывают поиск. Deps: `getChats`, `openChat`. Тест — `scripts/test-search.js`.
+
 ### `main.js`
 Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки. Держит общее состояние (`chats`, `messages`, `currentChatId/Type/Info`, `myUserId`) и передаёт его выделенным модулям через `init(deps)` — геттеры/сеттеры и колбэки (паттерн `private-chat-ui.js`); после `init` заводит алиасы (`var x = BF.module.fn`), чтобы места вызова не менялись. Порядок в `scripts/app-bundle-entry.js`: выделенные модули импортируются перед `main.js`.
 
