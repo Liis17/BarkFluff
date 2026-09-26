@@ -30,12 +30,100 @@ export enum OtpTypeId {
    * @generated from enum value: Email = 2;
    */
   Email = 2,
+
+  /**
+   * @generated from enum value: Telegram = 3;
+   */
+  Telegram = 3,
 }
 // Retrieve enum metadata with: proto3.getEnumType(OtpTypeId)
 proto3.util.setEnumType(OtpTypeId, "barkfluff.identity.OtpTypeId", [
   { no: 0, name: "Unknown" },
   { no: 1, name: "Authenticator" },
   { no: 2, name: "Email" },
+  { no: 3, name: "Telegram" },
+]);
+
+/**
+ * @generated from enum barkfluff.identity.AuthLoginMode
+ */
+export enum AuthLoginMode {
+  /**
+   * @generated from enum value: LOGIN_MODE_UNSPECIFIED = 0;
+   */
+  LOGIN_MODE_UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PASSWORD = 1;
+   */
+  PASSWORD = 1,
+
+  /**
+   * @generated from enum value: TELEGRAM_LOGIN = 2;
+   */
+  TELEGRAM_LOGIN = 2,
+
+  /**
+   * @generated from enum value: PASSWORD_SECOND_FACTOR = 3;
+   */
+  PASSWORD_SECOND_FACTOR = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(AuthLoginMode)
+proto3.util.setEnumType(AuthLoginMode, "barkfluff.identity.AuthLoginMode", [
+  { no: 0, name: "LOGIN_MODE_UNSPECIFIED" },
+  { no: 1, name: "PASSWORD" },
+  { no: 2, name: "TELEGRAM_LOGIN" },
+  { no: 3, name: "PASSWORD_SECOND_FACTOR" },
+]);
+
+/**
+ * @generated from enum barkfluff.identity.AuthChallengeState
+ */
+export enum AuthChallengeState {
+  /**
+   * @generated from enum value: CHALLENGE_UNSPECIFIED = 0;
+   */
+  CHALLENGE_UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: WAITING = 1;
+   */
+  WAITING = 1,
+
+  /**
+   * @generated from enum value: APPROVED = 2;
+   */
+  APPROVED = 2,
+
+  /**
+   * @generated from enum value: REJECTED = 3;
+   */
+  REJECTED = 3,
+
+  /**
+   * @generated from enum value: EXPIRED = 4;
+   */
+  EXPIRED = 4,
+
+  /**
+   * @generated from enum value: COMPLETED = 5;
+   */
+  COMPLETED = 5,
+
+  /**
+   * @generated from enum value: CANCELLED = 6;
+   */
+  CANCELLED = 6,
+}
+// Retrieve enum metadata with: proto3.getEnumType(AuthChallengeState)
+proto3.util.setEnumType(AuthChallengeState, "barkfluff.identity.AuthChallengeState", [
+  { no: 0, name: "CHALLENGE_UNSPECIFIED" },
+  { no: 1, name: "WAITING" },
+  { no: 2, name: "APPROVED" },
+  { no: 3, name: "REJECTED" },
+  { no: 4, name: "EXPIRED" },
+  { no: 5, name: "COMPLETED" },
+  { no: 6, name: "CANCELLED" },
 ]);
 
 /**
@@ -76,6 +164,16 @@ export class CreateSessionForUserServerRequest extends Message<CreateSessionForU
    */
   ipAddress = "";
 
+  /**
+   * @generated from field: string attempt_id = 7;
+   */
+  attemptId = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 8;
+   */
+  expiresAt?: Timestamp;
+
   constructor(data?: PartialMessage<CreateSessionForUserServerRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -90,6 +188,8 @@ export class CreateSessionForUserServerRequest extends Message<CreateSessionForU
     { no: 4, name: "operation_system", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "app_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "ip_address", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "attempt_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "expires_at", kind: "message", T: Timestamp },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSessionForUserServerRequest {
@@ -123,6 +223,11 @@ export class CreateSessionForUserServerResponse extends Message<CreateSessionFor
    */
   refreshToken?: Token;
 
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeState confirmation_state = 3;
+   */
+  confirmationState = AuthChallengeState.CHALLENGE_UNSPECIFIED;
+
   constructor(data?: PartialMessage<CreateSessionForUserServerResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -133,6 +238,7 @@ export class CreateSessionForUserServerResponse extends Message<CreateSessionFor
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "access_token", kind: "message", T: Token },
     { no: 2, name: "refresh_token", kind: "message", T: Token },
+    { no: 3, name: "confirmation_state", kind: "enum", T: proto3.getEnumType(AuthChallengeState) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSessionForUserServerResponse {
@@ -952,6 +1058,11 @@ export class DisableOtpVerificationRequest extends Message<DisableOtpVerificatio
    */
   otpCode = "";
 
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 3;
+   */
+  securityProof?: AuthChallengeReference;
+
   constructor(data?: PartialMessage<DisableOtpVerificationRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -962,6 +1073,7 @@ export class DisableOtpVerificationRequest extends Message<DisableOtpVerificatio
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "otp_type", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
     { no: 2, name: "otp_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "security_proof", kind: "message", T: AuthChallengeReference },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DisableOtpVerificationRequest {
@@ -1023,6 +1135,11 @@ export class ConfirmOtpVerificationRequest extends Message<ConfirmOtpVerificatio
    */
   otpCode = "";
 
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 2;
+   */
+  securityProof?: AuthChallengeReference;
+
   constructor(data?: PartialMessage<ConfirmOtpVerificationRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1032,6 +1149,7 @@ export class ConfirmOtpVerificationRequest extends Message<ConfirmOtpVerificatio
   static readonly typeName = "barkfluff.identity.ConfirmOtpVerificationRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "otp_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "security_proof", kind: "message", T: AuthChallengeReference },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ConfirmOtpVerificationRequest {
@@ -1055,6 +1173,11 @@ export class ConfirmOtpVerificationRequest extends Message<ConfirmOtpVerificatio
  * @generated from message barkfluff.identity.ConfirmOtpVerificationResponse
  */
 export class ConfirmOtpVerificationResponse extends Message<ConfirmOtpVerificationResponse> {
+  /**
+   * @generated from field: repeated string recovery_codes = 1;
+   */
+  recoveryCodes: string[] = [];
+
   constructor(data?: PartialMessage<ConfirmOtpVerificationResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1063,6 +1186,7 @@ export class ConfirmOtpVerificationResponse extends Message<ConfirmOtpVerificati
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "barkfluff.identity.ConfirmOtpVerificationResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "recovery_codes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ConfirmOtpVerificationResponse {
@@ -1093,6 +1217,11 @@ export class EnableOtpVerificationRequest extends Message<EnableOtpVerificationR
    */
   otpType = OtpTypeId.Unknown;
 
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 2;
+   */
+  securityProof?: AuthChallengeReference;
+
   constructor(data?: PartialMessage<EnableOtpVerificationRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1102,6 +1231,7 @@ export class EnableOtpVerificationRequest extends Message<EnableOtpVerificationR
   static readonly typeName = "barkfluff.identity.EnableOtpVerificationRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "otp_type", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
+    { no: 2, name: "security_proof", kind: "message", T: AuthChallengeReference },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EnableOtpVerificationRequest {
@@ -2056,6 +2186,899 @@ export class LogoutResponse extends Message<LogoutResponse> {
 
   static equals(a: LogoutResponse | PlainMessage<LogoutResponse> | undefined, b: LogoutResponse | PlainMessage<LogoutResponse> | undefined): boolean {
     return proto3.util.equals(LogoutResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.GetAuthCapabilitiesRequest
+ */
+export class GetAuthCapabilitiesRequest extends Message<GetAuthCapabilitiesRequest> {
+  constructor(data?: PartialMessage<GetAuthCapabilitiesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.GetAuthCapabilitiesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAuthCapabilitiesRequest {
+    return new GetAuthCapabilitiesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAuthCapabilitiesRequest {
+    return new GetAuthCapabilitiesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAuthCapabilitiesRequest {
+    return new GetAuthCapabilitiesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAuthCapabilitiesRequest | PlainMessage<GetAuthCapabilitiesRequest> | undefined, b: GetAuthCapabilitiesRequest | PlainMessage<GetAuthCapabilitiesRequest> | undefined): boolean {
+    return proto3.util.equals(GetAuthCapabilitiesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.GetAuthCapabilitiesResponse
+ */
+export class GetAuthCapabilitiesResponse extends Message<GetAuthCapabilitiesResponse> {
+  /**
+   * @generated from field: bool email_available = 1;
+   */
+  emailAvailable = false;
+
+  /**
+   * @generated from field: bool telegram_available = 2;
+   */
+  telegramAvailable = false;
+
+  /**
+   * @generated from field: string telegram_bot_username = 3;
+   */
+  telegramBotUsername = "";
+
+  constructor(data?: PartialMessage<GetAuthCapabilitiesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.GetAuthCapabilitiesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "email_available", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "telegram_available", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "telegram_bot_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAuthCapabilitiesResponse {
+    return new GetAuthCapabilitiesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAuthCapabilitiesResponse {
+    return new GetAuthCapabilitiesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAuthCapabilitiesResponse {
+    return new GetAuthCapabilitiesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAuthCapabilitiesResponse | PlainMessage<GetAuthCapabilitiesResponse> | undefined, b: GetAuthCapabilitiesResponse | PlainMessage<GetAuthCapabilitiesResponse> | undefined): boolean {
+    return proto3.util.equals(GetAuthCapabilitiesResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.AuthChallengeReference
+ */
+export class AuthChallengeReference extends Message<AuthChallengeReference> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string secret = 2;
+   */
+  secret = "";
+
+  constructor(data?: PartialMessage<AuthChallengeReference>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.AuthChallengeReference";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "secret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AuthChallengeReference {
+    return new AuthChallengeReference().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AuthChallengeReference {
+    return new AuthChallengeReference().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AuthChallengeReference {
+    return new AuthChallengeReference().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AuthChallengeReference | PlainMessage<AuthChallengeReference> | undefined, b: AuthChallengeReference | PlainMessage<AuthChallengeReference> | undefined): boolean {
+    return proto3.util.equals(AuthChallengeReference, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.AuthChallengeResponse
+ */
+export class AuthChallengeResponse extends Message<AuthChallengeResponse> {
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference challenge = 1;
+   */
+  challenge?: AuthChallengeReference;
+
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeState state = 2;
+   */
+  state = AuthChallengeState.CHALLENGE_UNSPECIFIED;
+
+  /**
+   * @generated from field: barkfluff.identity.OtpTypeId factor = 3;
+   */
+  factor = OtpTypeId.Unknown;
+
+  /**
+   * @generated from field: string telegram_url = 4;
+   */
+  telegramUrl = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 5;
+   */
+  expiresAt?: Timestamp;
+
+  /**
+   * @generated from field: repeated barkfluff.identity.OtpTypeId available_factors = 6;
+   */
+  availableFactors: OtpTypeId[] = [];
+
+  /**
+   * @generated from field: bool needs_code = 7;
+   */
+  needsCode = false;
+
+  /**
+   * @generated from field: string error_code = 8;
+   */
+  errorCode = "";
+
+  constructor(data?: PartialMessage<AuthChallengeResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.AuthChallengeResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "challenge", kind: "message", T: AuthChallengeReference },
+    { no: 2, name: "state", kind: "enum", T: proto3.getEnumType(AuthChallengeState) },
+    { no: 3, name: "factor", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
+    { no: 4, name: "telegram_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "expires_at", kind: "message", T: Timestamp },
+    { no: 6, name: "available_factors", kind: "enum", T: proto3.getEnumType(OtpTypeId), repeated: true },
+    { no: 7, name: "needs_code", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 8, name: "error_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AuthChallengeResponse {
+    return new AuthChallengeResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AuthChallengeResponse {
+    return new AuthChallengeResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AuthChallengeResponse {
+    return new AuthChallengeResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AuthChallengeResponse | PlainMessage<AuthChallengeResponse> | undefined, b: AuthChallengeResponse | PlainMessage<AuthChallengeResponse> | undefined): boolean {
+    return proto3.util.equals(AuthChallengeResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.BeginRegistrationRequest
+ */
+export class BeginRegistrationRequest extends Message<BeginRegistrationRequest> {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string password = 2;
+   */
+  password = "";
+
+  /**
+   * @generated from field: string first_name = 3;
+   */
+  firstName = "";
+
+  /**
+   * @generated from field: string last_name = 4;
+   */
+  lastName = "";
+
+  /**
+   * @generated from field: string email = 5;
+   */
+  email = "";
+
+  /**
+   * @generated from field: barkfluff.identity.OtpTypeId confirmation_method = 6;
+   */
+  confirmationMethod = OtpTypeId.Unknown;
+
+  /**
+   * @generated from field: barkfluff.identity.AuthLoginMode login_mode = 7;
+   */
+  loginMode = AuthLoginMode.LOGIN_MODE_UNSPECIFIED;
+
+  constructor(data?: PartialMessage<BeginRegistrationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.BeginRegistrationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "first_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "last_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "confirmation_method", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
+    { no: 7, name: "login_mode", kind: "enum", T: proto3.getEnumType(AuthLoginMode) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BeginRegistrationRequest {
+    return new BeginRegistrationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BeginRegistrationRequest {
+    return new BeginRegistrationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BeginRegistrationRequest {
+    return new BeginRegistrationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BeginRegistrationRequest | PlainMessage<BeginRegistrationRequest> | undefined, b: BeginRegistrationRequest | PlainMessage<BeginRegistrationRequest> | undefined): boolean {
+    return proto3.util.equals(BeginRegistrationRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.BeginSignInRequest
+ */
+export class BeginSignInRequest extends Message<BeginSignInRequest> {
+  /**
+   * @generated from field: string login = 1;
+   */
+  login = "";
+
+  /**
+   * @generated from field: string password = 2;
+   */
+  password = "";
+
+  /**
+   * @generated from field: barkfluff.identity.AuthLoginMode login_mode = 3;
+   */
+  loginMode = AuthLoginMode.LOGIN_MODE_UNSPECIFIED;
+
+  /**
+   * @generated from field: barkfluff.identity.OtpTypeId factor = 4;
+   */
+  factor = OtpTypeId.Unknown;
+
+  /**
+   * @generated from field: bool use_recovery_code = 5;
+   */
+  useRecoveryCode = false;
+
+  constructor(data?: PartialMessage<BeginSignInRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.BeginSignInRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "login", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "login_mode", kind: "enum", T: proto3.getEnumType(AuthLoginMode) },
+    { no: 4, name: "factor", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
+    { no: 5, name: "use_recovery_code", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BeginSignInRequest {
+    return new BeginSignInRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BeginSignInRequest {
+    return new BeginSignInRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BeginSignInRequest {
+    return new BeginSignInRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BeginSignInRequest | PlainMessage<BeginSignInRequest> | undefined, b: BeginSignInRequest | PlainMessage<BeginSignInRequest> | undefined): boolean {
+    return proto3.util.equals(BeginSignInRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.CompleteAuthChallengeRequest
+ */
+export class CompleteAuthChallengeRequest extends Message<CompleteAuthChallengeRequest> {
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference challenge = 1;
+   */
+  challenge?: AuthChallengeReference;
+
+  /**
+   * @generated from field: string code = 2;
+   */
+  code = "";
+
+  /**
+   * @generated from field: bool use_recovery_code = 3;
+   */
+  useRecoveryCode = false;
+
+  constructor(data?: PartialMessage<CompleteAuthChallengeRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.CompleteAuthChallengeRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "challenge", kind: "message", T: AuthChallengeReference },
+    { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "use_recovery_code", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CompleteAuthChallengeRequest {
+    return new CompleteAuthChallengeRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CompleteAuthChallengeRequest {
+    return new CompleteAuthChallengeRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CompleteAuthChallengeRequest {
+    return new CompleteAuthChallengeRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CompleteAuthChallengeRequest | PlainMessage<CompleteAuthChallengeRequest> | undefined, b: CompleteAuthChallengeRequest | PlainMessage<CompleteAuthChallengeRequest> | undefined): boolean {
+    return proto3.util.equals(CompleteAuthChallengeRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.CompleteAuthChallengeResponse
+ */
+export class CompleteAuthChallengeResponse extends Message<CompleteAuthChallengeResponse> {
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeState state = 1;
+   */
+  state = AuthChallengeState.CHALLENGE_UNSPECIFIED;
+
+  /**
+   * @generated from field: barkfluff.identity.AuthResponse session = 2;
+   */
+  session?: AuthResponse;
+
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 3;
+   */
+  securityProof?: AuthChallengeReference;
+
+  /**
+   * @generated from field: repeated string recovery_codes = 4;
+   */
+  recoveryCodes: string[] = [];
+
+  /**
+   * @generated from field: string error_code = 5;
+   */
+  errorCode = "";
+
+  constructor(data?: PartialMessage<CompleteAuthChallengeResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.CompleteAuthChallengeResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "state", kind: "enum", T: proto3.getEnumType(AuthChallengeState) },
+    { no: 2, name: "session", kind: "message", T: AuthResponse },
+    { no: 3, name: "security_proof", kind: "message", T: AuthChallengeReference },
+    { no: 4, name: "recovery_codes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 5, name: "error_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CompleteAuthChallengeResponse {
+    return new CompleteAuthChallengeResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CompleteAuthChallengeResponse {
+    return new CompleteAuthChallengeResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CompleteAuthChallengeResponse {
+    return new CompleteAuthChallengeResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CompleteAuthChallengeResponse | PlainMessage<CompleteAuthChallengeResponse> | undefined, b: CompleteAuthChallengeResponse | PlainMessage<CompleteAuthChallengeResponse> | undefined): boolean {
+    return proto3.util.equals(CompleteAuthChallengeResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.GetSecuritySettingsRequest
+ */
+export class GetSecuritySettingsRequest extends Message<GetSecuritySettingsRequest> {
+  constructor(data?: PartialMessage<GetSecuritySettingsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.GetSecuritySettingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSecuritySettingsRequest {
+    return new GetSecuritySettingsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSecuritySettingsRequest {
+    return new GetSecuritySettingsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSecuritySettingsRequest {
+    return new GetSecuritySettingsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetSecuritySettingsRequest | PlainMessage<GetSecuritySettingsRequest> | undefined, b: GetSecuritySettingsRequest | PlainMessage<GetSecuritySettingsRequest> | undefined): boolean {
+    return proto3.util.equals(GetSecuritySettingsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.SecuritySettingsResponse
+ */
+export class SecuritySettingsResponse extends Message<SecuritySettingsResponse> {
+  /**
+   * @generated from field: barkfluff.identity.AuthLoginMode login_mode = 1;
+   */
+  loginMode = AuthLoginMode.LOGIN_MODE_UNSPECIFIED;
+
+  /**
+   * @generated from field: barkfluff.identity.OtpTypeId preferred_factor = 2;
+   */
+  preferredFactor = OtpTypeId.Unknown;
+
+  /**
+   * @generated from field: bool authenticator_enabled = 3;
+   */
+  authenticatorEnabled = false;
+
+  /**
+   * @generated from field: bool email_enabled = 4;
+   */
+  emailEnabled = false;
+
+  /**
+   * @generated from field: bool telegram_linked = 5;
+   */
+  telegramLinked = false;
+
+  /**
+   * @generated from field: bool telegram_enabled = 6;
+   */
+  telegramEnabled = false;
+
+  /**
+   * @generated from field: bool telegram_otp_enabled = 7;
+   */
+  telegramOtpEnabled = false;
+
+  /**
+   * @generated from field: bool fast_auth_telegram_enabled = 8;
+   */
+  fastAuthTelegramEnabled = false;
+
+  /**
+   * @generated from field: string telegram_username = 9;
+   */
+  telegramUsername = "";
+
+  /**
+   * @generated from field: string verified_email = 10;
+   */
+  verifiedEmail = "";
+
+  /**
+   * @generated from field: int32 remaining_recovery_codes = 11;
+   */
+  remainingRecoveryCodes = 0;
+
+  /**
+   * @generated from field: repeated string recovery_codes = 12;
+   */
+  recoveryCodes: string[] = [];
+
+  constructor(data?: PartialMessage<SecuritySettingsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.SecuritySettingsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "login_mode", kind: "enum", T: proto3.getEnumType(AuthLoginMode) },
+    { no: 2, name: "preferred_factor", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
+    { no: 3, name: "authenticator_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "email_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 5, name: "telegram_linked", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "telegram_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 7, name: "telegram_otp_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 8, name: "fast_auth_telegram_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 9, name: "telegram_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "verified_email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "remaining_recovery_codes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 12, name: "recovery_codes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SecuritySettingsResponse {
+    return new SecuritySettingsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SecuritySettingsResponse {
+    return new SecuritySettingsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SecuritySettingsResponse {
+    return new SecuritySettingsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SecuritySettingsResponse | PlainMessage<SecuritySettingsResponse> | undefined, b: SecuritySettingsResponse | PlainMessage<SecuritySettingsResponse> | undefined): boolean {
+    return proto3.util.equals(SecuritySettingsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.BeginReauthenticationRequest
+ */
+export class BeginReauthenticationRequest extends Message<BeginReauthenticationRequest> {
+  /**
+   * @generated from field: string password = 1;
+   */
+  password = "";
+
+  /**
+   * @generated from field: barkfluff.identity.OtpTypeId factor = 2;
+   */
+  factor = OtpTypeId.Unknown;
+
+  /**
+   * @generated from field: bool use_recovery_code = 3;
+   */
+  useRecoveryCode = false;
+
+  constructor(data?: PartialMessage<BeginReauthenticationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.BeginReauthenticationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "factor", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
+    { no: 3, name: "use_recovery_code", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BeginReauthenticationRequest {
+    return new BeginReauthenticationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BeginReauthenticationRequest {
+    return new BeginReauthenticationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BeginReauthenticationRequest {
+    return new BeginReauthenticationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BeginReauthenticationRequest | PlainMessage<BeginReauthenticationRequest> | undefined, b: BeginReauthenticationRequest | PlainMessage<BeginReauthenticationRequest> | undefined): boolean {
+    return proto3.util.equals(BeginReauthenticationRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.SecurityProofRequest
+ */
+export class SecurityProofRequest extends Message<SecurityProofRequest> {
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 1;
+   */
+  securityProof?: AuthChallengeReference;
+
+  constructor(data?: PartialMessage<SecurityProofRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.SecurityProofRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "security_proof", kind: "message", T: AuthChallengeReference },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SecurityProofRequest {
+    return new SecurityProofRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SecurityProofRequest {
+    return new SecurityProofRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SecurityProofRequest {
+    return new SecurityProofRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SecurityProofRequest | PlainMessage<SecurityProofRequest> | undefined, b: SecurityProofRequest | PlainMessage<SecurityProofRequest> | undefined): boolean {
+    return proto3.util.equals(SecurityProofRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.UpdateSecuritySettingsRequest
+ */
+export class UpdateSecuritySettingsRequest extends Message<UpdateSecuritySettingsRequest> {
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 1;
+   */
+  securityProof?: AuthChallengeReference;
+
+  /**
+   * @generated from field: barkfluff.identity.AuthLoginMode login_mode = 2;
+   */
+  loginMode = AuthLoginMode.LOGIN_MODE_UNSPECIFIED;
+
+  /**
+   * @generated from field: barkfluff.identity.OtpTypeId preferred_factor = 3;
+   */
+  preferredFactor = OtpTypeId.Unknown;
+
+  /**
+   * @generated from field: bool telegram_enabled = 4;
+   */
+  telegramEnabled = false;
+
+  /**
+   * @generated from field: bool telegram_otp_enabled = 5;
+   */
+  telegramOtpEnabled = false;
+
+  /**
+   * @generated from field: bool fast_auth_telegram_enabled = 6;
+   */
+  fastAuthTelegramEnabled = false;
+
+  constructor(data?: PartialMessage<UpdateSecuritySettingsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.UpdateSecuritySettingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "security_proof", kind: "message", T: AuthChallengeReference },
+    { no: 2, name: "login_mode", kind: "enum", T: proto3.getEnumType(AuthLoginMode) },
+    { no: 3, name: "preferred_factor", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
+    { no: 4, name: "telegram_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 5, name: "telegram_otp_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "fast_auth_telegram_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateSecuritySettingsRequest {
+    return new UpdateSecuritySettingsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateSecuritySettingsRequest {
+    return new UpdateSecuritySettingsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateSecuritySettingsRequest {
+    return new UpdateSecuritySettingsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateSecuritySettingsRequest | PlainMessage<UpdateSecuritySettingsRequest> | undefined, b: UpdateSecuritySettingsRequest | PlainMessage<UpdateSecuritySettingsRequest> | undefined): boolean {
+    return proto3.util.equals(UpdateSecuritySettingsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.BeginEmailBindingRequest
+ */
+export class BeginEmailBindingRequest extends Message<BeginEmailBindingRequest> {
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 1;
+   */
+  securityProof?: AuthChallengeReference;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email = "";
+
+  constructor(data?: PartialMessage<BeginEmailBindingRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.BeginEmailBindingRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "security_proof", kind: "message", T: AuthChallengeReference },
+    { no: 2, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BeginEmailBindingRequest {
+    return new BeginEmailBindingRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BeginEmailBindingRequest {
+    return new BeginEmailBindingRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BeginEmailBindingRequest {
+    return new BeginEmailBindingRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BeginEmailBindingRequest | PlainMessage<BeginEmailBindingRequest> | undefined, b: BeginEmailBindingRequest | PlainMessage<BeginEmailBindingRequest> | undefined): boolean {
+    return proto3.util.equals(BeginEmailBindingRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.RecoveryCodesResponse
+ */
+export class RecoveryCodesResponse extends Message<RecoveryCodesResponse> {
+  /**
+   * @generated from field: repeated string codes = 1;
+   */
+  codes: string[] = [];
+
+  constructor(data?: PartialMessage<RecoveryCodesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.RecoveryCodesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "codes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RecoveryCodesResponse {
+    return new RecoveryCodesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RecoveryCodesResponse {
+    return new RecoveryCodesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RecoveryCodesResponse {
+    return new RecoveryCodesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RecoveryCodesResponse | PlainMessage<RecoveryCodesResponse> | undefined, b: RecoveryCodesResponse | PlainMessage<RecoveryCodesResponse> | undefined): boolean {
+    return proto3.util.equals(RecoveryCodesResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.BeginPasswordRecoveryRequest
+ */
+export class BeginPasswordRecoveryRequest extends Message<BeginPasswordRecoveryRequest> {
+  /**
+   * @generated from field: string login = 1;
+   */
+  login = "";
+
+  constructor(data?: PartialMessage<BeginPasswordRecoveryRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.BeginPasswordRecoveryRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "login", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BeginPasswordRecoveryRequest {
+    return new BeginPasswordRecoveryRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BeginPasswordRecoveryRequest {
+    return new BeginPasswordRecoveryRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BeginPasswordRecoveryRequest {
+    return new BeginPasswordRecoveryRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BeginPasswordRecoveryRequest | PlainMessage<BeginPasswordRecoveryRequest> | undefined, b: BeginPasswordRecoveryRequest | PlainMessage<BeginPasswordRecoveryRequest> | undefined): boolean {
+    return proto3.util.equals(BeginPasswordRecoveryRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.SetRecoveredPasswordRequest
+ */
+export class SetRecoveredPasswordRequest extends Message<SetRecoveredPasswordRequest> {
+  /**
+   * @generated from field: barkfluff.identity.AuthChallengeReference security_proof = 1;
+   */
+  securityProof?: AuthChallengeReference;
+
+  /**
+   * @generated from field: string password = 2;
+   */
+  password = "";
+
+  constructor(data?: PartialMessage<SetRecoveredPasswordRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.SetRecoveredPasswordRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "security_proof", kind: "message", T: AuthChallengeReference },
+    { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetRecoveredPasswordRequest {
+    return new SetRecoveredPasswordRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetRecoveredPasswordRequest {
+    return new SetRecoveredPasswordRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetRecoveredPasswordRequest {
+    return new SetRecoveredPasswordRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetRecoveredPasswordRequest | PlainMessage<SetRecoveredPasswordRequest> | undefined, b: SetRecoveredPasswordRequest | PlainMessage<SetRecoveredPasswordRequest> | undefined): boolean {
+    return proto3.util.equals(SetRecoveredPasswordRequest, a, b);
   }
 }
 
