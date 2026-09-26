@@ -39,8 +39,6 @@
     var currentChatType = 0; // ChatType: 0=REGULAR, 1=PRIVATE
     var currentChatPeerIsBot = false;
     var messages = [];
-    var markReadTimer = null;
-    var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
     var onlineStatuses = new Map();
     var typingUsers = new Map();      // userId -> timeout handle
@@ -274,7 +272,7 @@
                 mergePendingUploadsIntoMessages(chatId);
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
                 renderMessages().then(function () { settleScroll(unreadId); });
-                scheduleMarkRead();
+                BF.markRead.schedule();
                 restoreChatDraft(chatId);
             }
         }).catch(function () { loadingMessages.classList.remove('visible'); });
@@ -888,23 +886,13 @@
 
     // ========== MARK AS READ ==========
 
-    function scheduleMarkRead() {
-        if (markReadTimer) clearTimeout(markReadTimer);
-        markReadTimer = setTimeout(flushMarkRead, 1000);
-        if (!currentChatId) return;
-        messages.forEach(function (msg) {
-            if (msg.senderId !== myUserId && !(msg.readBy || []).includes(myUserId)) markReadPending.add(msg.id);
-        });
-    }
-
-    function flushMarkRead() {
-        if (markReadPending.size === 0) return;
-        var ids = Array.from(markReadPending);
-        markReadPending.clear();
-        BF.api.markAsRead(ids).catch(function () {
-            showToast(BF.i18n.t('error.markRead'), true);
-        });
-    }
+    BF.markRead.init({
+        getCurrentChatId: function () { return currentChatId; },
+        getCurrentChatType: function () { return currentChatType; },
+        getMessages: function () { return messages; },
+        getMyUserId: function () { return myUserId; },
+        showToast: showToast
+    });
 
     // ========== TITLE UNREAD BADGE ==========
 
@@ -1235,14 +1223,10 @@
                 if (wasAtBottom) {
                     scrollToBottom();
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
-                    var anyIncoming = false;
-                    diff.news.forEach(function (m) {
-                        if (m.senderId !== myUserId) { markReadPending.add(m.id); anyIncoming = true; }
-                    });
-                    if (anyIncoming) {
-                        if (markReadTimer) clearTimeout(markReadTimer);
-                        markReadTimer = setTimeout(flushMarkRead, 500);
-                    }
+                    var incomingIds = diff.news
+                        .filter(function (m) { return m.senderId !== myUserId; })
+                        .map(function (m) { return m.id; });
+                    if (incomingIds.length > 0) BF.markRead.markSoon(incomingIds);
                 } else {
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
                 }
@@ -1257,43 +1241,6 @@
             return false;
         });
     }
-
-    // ========== SCROLL-BASED MARK AS READ ==========
-
-    function markVisibleMessagesAsRead() {
-        if (!currentChatId || currentChatType === 1) return;
-        var changed = false;
-        var areaRect = messagesArea.getBoundingClientRect();
-
-        messagesArea.querySelectorAll('.msg-bubble').forEach(function (el) {
-            var msgId = Number(el.dataset.msgId);
-            if (!msgId) return;
-            var msg = messages.find(function (m) { return m.id === msgId; });
-            if (!msg || msg.senderId === myUserId) return;
-            if ((msg.readBy || []).includes(myUserId)) return;
-
-            var rect = el.getBoundingClientRect();
-            // Consider the message visible if any part overlaps the messages area
-            if (rect.bottom > areaRect.top && rect.top < areaRect.bottom) {
-                markReadPending.add(msgId);
-                changed = true;
-            }
-        });
-
-        if (changed) {
-            if (markReadTimer) clearTimeout(markReadTimer);
-            markReadTimer = setTimeout(flushMarkRead, 500);
-        }
-    }
-
-    var _markReadScrollTimer = null;
-    messagesArea.addEventListener('scroll', function () {
-        if (_markReadScrollTimer) return;
-        _markReadScrollTimer = setTimeout(function () {
-            _markReadScrollTimer = null;
-            markVisibleMessagesAsRead();
-        }, 300);
-    });
 
     // ========== TAB VISIBILITY — REFRESH ON RETURN ==========
 
@@ -1399,11 +1346,7 @@
                     BF.feed.incrementNewBelow();
                 }
                 // Auto-mark as read if message is visible (user is at bottom)
-                if (isAtBottom && msg.senderId !== myUserId) {
-                    markReadPending.add(msg.id);
-                    if (markReadTimer) clearTimeout(markReadTimer);
-                    markReadTimer = setTimeout(flushMarkRead, 500);
-                }
+                if (isAtBottom && msg.senderId !== myUserId) BF.markRead.markSoon(msg.id);
             });
         }
     }
