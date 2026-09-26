@@ -4,17 +4,26 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
-import android.util.Log
+import android.view.Gravity
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
-import barkfluff.identity.IdentityApiOuterClass
+import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivitySecuritySettingsBinding
-import com.barkfluff.client.domain.gateway.AccountSecurityGateway
-import com.barkfluff.client.domain.gateway.UserProfileGateway
-import com.barkfluff.client.domain.model.OtpSetupResult
+import com.barkfluff.client.domain.auth.AuthenticationSecurityPolicy
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
+import com.barkfluff.client.domain.model.AuthenticationChallengeReference
+import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.domain.model.AuthenticationLoginMode
+import com.barkfluff.client.domain.model.OtpEnrollment
+import com.barkfluff.client.domain.model.SecuritySettings
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -25,461 +34,359 @@ import kotlinx.coroutines.launch
 class SecuritySettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySecuritySettingsBinding
-    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
-    @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
-    private var isUpdatingSwitch = false
+    private val authenticationChallengeViewModel: AuthenticationChallengeViewModel by viewModels()
+    @javax.inject.Inject lateinit var authenticationChallengeGateway: AuthenticationChallengeGateway
 
-    companion object {
-        private const val TAG = "SecuritySettings"
-    }
+    private var isUpdatingSwitch = false
+    private var securitySettings: SecuritySettings? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySecuritySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        setupToolbar()
+        binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
         setupClickListeners()
     }
 
     override fun onResume() {
         super.onResume()
-        loadOtpStatus()
-    }
-
-    private fun setupToolbar() {
-        binding.toolbar.setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
+        loadSecuritySettings()
     }
 
     private fun setupClickListeners() {
+        // Password recovery has its own challenge-based screen.
         binding.itemChangePassword.setOnClickListener {
-            showChangePasswordDialog()
+            startActivity(Intent(this, ResetPasswordActivity::class.java))
         }
-
-        binding.switchTwoFactorApp.setOnCheckedChangeListener { _, isChecked ->
-            if (isUpdatingSwitch) return@setOnCheckedChangeListener
-            if (isChecked) {
-                enableAuthenticator2FA()
-            } else {
-                disableAuthenticator2FA()
-            }
+        binding.switchTwoFactorApp.setOnCheckedChangeListener { _, checked ->
+            if (!isUpdatingSwitch) changeOtpFactor(AuthenticationFactor.AUTHENTICATOR, checked)
         }
-
-        binding.switchTwoFactorEmail.setOnCheckedChangeListener { _, isChecked ->
-            if (isUpdatingSwitch) return@setOnCheckedChangeListener
-            if (isChecked) {
-                enableEmail2FA()
-            } else {
-                disableEmail2FA()
-            }
+        binding.switchTwoFactorEmail.setOnCheckedChangeListener { _, checked ->
+            if (!isUpdatingSwitch) changeOtpFactor(AuthenticationFactor.EMAIL, checked)
         }
+        binding.switchTwoFactorTelegram.setOnCheckedChangeListener { _, checked ->
+            if (!isUpdatingSwitch) updateTelegramFactor(checked)
+        }
+        binding.telegramBindingButton.setOnClickListener { changeTelegramBinding() }
+        binding.emailBindingButton.setOnClickListener { showBindEmailDialog() }
+        binding.loginPolicyButton.setOnClickListener { showLoginPolicyPicker() }
+        binding.recoveryCodesButton.setOnClickListener { regenerateRecoveryCodes() }
     }
 
-    private fun loadOtpStatus() {
+    private fun loadSecuritySettings() {
         lifecycleScope.launch {
-            val result = userProfileGateway.otpStatus()
-            if (result.isSuccess) {
-                val status = result.getOrNull()!!
-                isUpdatingSwitch = true
-                binding.switchTwoFactorApp.isChecked = status.authenticatorEnabled
-                binding.switchTwoFactorEmail.isChecked = status.emailEnabled
-                isUpdatingSwitch = false
+            authenticationChallengeGateway.securitySettings()
+                .onSuccess(::renderSecuritySettings)
+                .onFailure(::showFailure)
+        }
+    }
+
+    private fun renderSecuritySettings(settings: SecuritySettings) {
+        securitySettings = settings
+        isUpdatingSwitch = true
+        binding.switchTwoFactorApp.isChecked = settings.authenticatorEnabled
+        binding.switchTwoFactorEmail.isChecked = settings.emailEnabled
+        binding.switchTwoFactorTelegram.isChecked = settings.telegramOtpEnabled
+        isUpdatingSwitch = false
+
+        binding.itemTwoFactorTelegram.visibility = if (settings.telegramLinked) View.VISIBLE else View.GONE
+        binding.telegramBindingButton.setText(
+            if (settings.telegramLinked) R.string.security_unlink_telegram else R.string.security_link_telegram,
+        )
+        binding.emailBindingButton.text = if (settings.verifiedEmail.isBlank()) {
+            getString(R.string.security_bind_email)
+        } else {
+            getString(R.string.security_bound_email, settings.verifiedEmail)
+        }
+        binding.loginPolicyButton.text = getString(
+            R.string.security_login_policy_value,
+            getString(loginModeLabel(settings.loginMode)),
+        )
+        binding.recoveryCodesButton.text = getString(
+            R.string.security_recovery_codes_count,
+            settings.remainingRecoveryCodes,
+        )
+    }
+
+    private fun changeOtpFactor(factor: AuthenticationFactor, enabled: Boolean) {
+        withSecurityProof { proof, _ ->
+            if (enabled) {
+                authenticationChallengeGateway.enableOtpVerification(factor, proof)
+                    .onSuccess { enrollment ->
+                        if (factor == AuthenticationFactor.AUTHENTICATOR) {
+                            showAuthenticatorEnrollment(enrollment, proof)
+                        } else {
+                            showEmailEnrollment(proof)
+                        }
+                    }
+                    .onFailure {
+                        restoreSwitch(factor, false)
+                        showFailure(it)
+                    }
             } else {
-                Log.e(TAG, "Ошибка получения статуса 2FA", result.exceptionOrNull())
+                authenticationChallengeGateway.disableOtpVerification(factor, proof)
+                    .onSuccess { loadSecuritySettings() }
+                    .onFailure {
+                        restoreSwitch(factor, true)
+                        showFailure(it)
+                    }
             }
         }
     }
 
-    /**
-     * Модалка смены пароля через код на email (recommended flow)
-     * 3 шага: запрос кода → подтверждение кода → новый пароль
-     */
-    private fun showChangePasswordDialog() {
-        var resetId: String? = null
-        var currentStep = 1
-        
+    private fun updateTelegramFactor(enabled: Boolean) {
+        withSecurityProof { proof, settings ->
+            authenticationChallengeGateway.updateSecuritySettings(
+                proof,
+                AuthenticationSecurityPolicy.update(settings, telegramOtpEnabled = enabled),
+            ).onSuccess(::renderSecuritySettings)
+                .onFailure {
+                    restoreSwitch(AuthenticationFactor.TELEGRAM, !enabled)
+                    showFailure(it)
+                }
+        }
+    }
+
+    private fun showAuthenticatorEnrollment(enrollment: OtpEnrollment, proof: AuthenticationChallengeReference) {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val hPad = (24 * resources.displayMetrics.density).toInt()
-            setPadding(hPad, 0, hPad, 0)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(24), dp(16), dp(24), 0)
         }
-        
-        val stepIndicator = android.widget.TextView(this).apply {
-            text = getString(R.string.security_password_step, 1, getString(R.string.security_password_step_request))
-            textSize = 14f
-            gravity = android.view.Gravity.CENTER
-            setTextColor(getColor(android.R.color.holo_blue_dark))
-        }
-        container.addView(stepIndicator)
-        
-        // Шаг 1: Кнопка отправки кода
-        val sendCodeButton = com.google.android.material.button.MaterialButton(this).apply {
-            text = getString(R.string.security_send_code)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = (16 * resources.displayMetrics.density).toInt()
+        runCatching {
+            val bytes = Base64.decode(enrollment.qrBase64, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { bitmap ->
+                container.addView(ImageView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(dp(200), dp(200))
+                    setImageBitmap(bitmap)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                })
             }
         }
-        container.addView(sendCodeButton)
-        
-        // Шаг 2: Поле ввода OTP
-        val otpContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = android.view.View.GONE
-        }
-        
-        val otpLayout = TextInputLayout(this).apply {
-            hint = getString(R.string.security_code_from_email)
-        }
-        val otpEdit = TextInputEditText(otpLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        }
-        otpLayout.addView(otpEdit)
-        otpContainer.addView(otpLayout)
-        
-        val confirmCodeButton = com.google.android.material.button.MaterialButton(this).apply {
-            text = getString(R.string.security_confirm_code)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = (8 * resources.displayMetrics.density).toInt()
-            }
-        }
-        otpContainer.addView(confirmCodeButton)
-        container.addView(otpContainer)
-        
-        // Шаг 3: Поля нового пароля
-        val passwordContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = android.view.View.GONE
-        }
-        
-        val newPasswordLayout = TextInputLayout(this).apply {
-            hint = getString(R.string.security_new_password)
-        }
-        val newPasswordEdit = TextInputEditText(newPasswordLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        newPasswordLayout.addView(newPasswordEdit)
-        passwordContainer.addView(newPasswordLayout)
-        
-        val confirmPasswordLayout = TextInputLayout(this).apply {
-            hint = getString(R.string.security_confirm_password)
-        }
-        val confirmPasswordEdit = TextInputEditText(confirmPasswordLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        confirmPasswordLayout.addView(confirmPasswordEdit)
-        passwordContainer.addView(confirmPasswordLayout)
-        
-        val savePasswordButton = com.google.android.material.button.MaterialButton(this).apply {
-            text = getString(R.string.security_save_password)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = (8 * resources.displayMetrics.density).toInt()
-            }
-        }
-        passwordContainer.addView(savePasswordButton)
-        container.addView(passwordContainer)
-        
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.security_change_password)
-            .setView(container)
-            .setNegativeButton(R.string.btn_cancel, null)
-            .create()
-        
-        // Шаг 1: Отправка кода
-        sendCodeButton.setOnClickListener {
-            lifecycleScope.launch {
-                val result = accountSecurityGateway.resetPassword(null, null)
-                if (result.isSuccess) {
-                    resetId = result.getOrNull()
-                    currentStep = 2
-                    stepIndicator.text = getString(R.string.security_password_step, 2, getString(R.string.security_password_step_confirm))
-                    stepIndicator.setTextColor(getColor(android.R.color.holo_green_dark))
-                    sendCodeButton.visibility = android.view.View.GONE
-                    otpContainer.visibility = android.view.View.VISIBLE
-                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_code_sent, Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        
-        // Шаг 2: Подтверждение кода
-        confirmCodeButton.setOnClickListener {
-            val code = otpEdit.text?.toString() ?: ""
-            if (code.length != 6) {
-                Toast.makeText(this, R.string.security_code_length, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            
-            lifecycleScope.launch {
-                val result = accountSecurityGateway.confirmResetPassword(resetId!!, code)
-                if (result.isSuccess) {
-                    currentStep = 3
-                    stepIndicator.text = getString(R.string.security_password_step, 3, getString(R.string.security_password_step_new_password))
-                    stepIndicator.setTextColor(getColor(android.R.color.holo_green_dark))
-                    otpContainer.visibility = android.view.View.GONE
-                    passwordContainer.visibility = android.view.View.VISIBLE
-                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_code_confirmed, Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_invalid_code, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        
-        // Шаг 3: Сохранение нового пароля
-        savePasswordButton.setOnClickListener {
-            val newPassword = newPasswordEdit.text?.toString() ?: ""
-            val confirmPassword = confirmPasswordEdit.text?.toString() ?: ""
-            
-            if (newPassword.length < 6) {
-                Toast.makeText(this, R.string.security_password_min_length, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            if (newPassword != confirmPassword) {
-                Toast.makeText(this, R.string.security_password_mismatch, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            
-            lifecycleScope.launch {
-                val result = accountSecurityGateway.setPasswordAfterReset(newPassword)
-                if (result.isSuccess) {
-                    Toast.makeText(this@SecuritySettingsActivity, R.string.security_password_changed, Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
-                } else {
-                    Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        
-        dialog.show()
-    }
-
-    private fun enableAuthenticator2FA() {
-        lifecycleScope.launch {
-            val result = userProfileGateway.otpSetup()
-            if (result.isSuccess) {
-                val setup = result.getOrNull()!!
-                showOtpSetupDialog(setup)
-            } else {
-                Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                isUpdatingSwitch = true
-                binding.switchTwoFactorApp.isChecked = false
-                isUpdatingSwitch = false
-            }
-        }
-    }
-
-    private fun showOtpSetupDialog(setup: OtpSetupResult) {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER_HORIZONTAL
-            val hPad = (24 * resources.displayMetrics.density).toInt()
-            setPadding(hPad, (16 * resources.displayMetrics.density).toInt(), hPad, 0)
-        }
-
-        // QR код
-        try {
-            val qrBytes = Base64.decode(setup.qrBase64, Base64.DEFAULT)
-            val qrBitmap = BitmapFactory.decodeByteArray(qrBytes, 0, qrBytes.size)
-            val qrImageView = ImageView(this).apply {
-                val size = (200 * resources.displayMetrics.density).toInt()
-                layoutParams = LinearLayout.LayoutParams(size, size)
-                setImageBitmap(qrBitmap)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-            }
-            container.addView(qrImageView)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка декодирования QR", e)
-        }
-
-        // Код для ручного ввода
-        val codeText = android.widget.TextView(this).apply {
-            text = getString(R.string.security_manual_code, setup.justCode)
-            textSize = 14f
-            gravity = android.view.Gravity.CENTER
-            val topMargin = (8 * resources.displayMetrics.density).toInt()
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, topMargin, 0, topMargin) }
-        }
-        container.addView(codeText)
-
-        // Поле ввода OTP
-        val otpLayout = TextInputLayout(this).apply {
-            hint = getString(R.string.security_enter_app_code)
-        }
-        val otpEdit = TextInputEditText(otpLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        }
-        otpLayout.addView(otpEdit)
-        container.addView(otpLayout)
-
+        container.addView(TextView(this).apply {
+            text = getString(R.string.security_manual_code, enrollment.manualCode)
+            gravity = Gravity.CENTER
+        })
+        val codeInput = confirmationCodeInput()
+        container.addView(codeInput.first)
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.security_2fa_setup_title)
             .setView(container)
             .setPositiveButton(R.string.btn_confirm) { _, _ ->
-                val code = otpEdit.text?.toString() ?: ""
-                if (code.isEmpty()) {
-                    Toast.makeText(this, R.string.security_enter_code, Toast.LENGTH_SHORT).show()
-                    isUpdatingSwitch = true
-                    binding.switchTwoFactorApp.isChecked = false
-                    isUpdatingSwitch = false
-                    return@setPositiveButton
-                }
-                lifecycleScope.launch {
-                    val result = userProfileGateway.confirmOtpSetup(code)
-                    if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_enabled, Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_invalid_code, Toast.LENGTH_SHORT).show()
-                        isUpdatingSwitch = true
-                        binding.switchTwoFactorApp.isChecked = false
-                        isUpdatingSwitch = false
-                    }
-                }
+                confirmOtpEnrollment(codeInput.second, proof, AuthenticationFactor.AUTHENTICATOR)
             }
             .setNegativeButton(R.string.btn_cancel) { _, _ ->
-                isUpdatingSwitch = true
-                binding.switchTwoFactorApp.isChecked = false
-                isUpdatingSwitch = false
+                restoreSwitch(AuthenticationFactor.AUTHENTICATOR, false)
             }
-            .setCancelable(false)
             .show()
     }
 
-    private fun enableEmail2FA() {
-        lifecycleScope.launch {
-            val result = userProfileGateway.enableOtpEmail()
-            if (result.isSuccess) {
-                showEmailOtpConfirmDialog()
-            } else {
-                Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                isUpdatingSwitch = true
-                binding.switchTwoFactorEmail.isChecked = false
-                isUpdatingSwitch = false
-            }
-        }
-    }
-
-    private fun showEmailOtpConfirmDialog() {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val hPad = (24 * resources.displayMetrics.density).toInt()
-            setPadding(hPad, 0, hPad, 0)
-        }
-
-        val otpLayout = TextInputLayout(this).apply {
-            hint = getString(R.string.security_code_from_email)
-        }
-        val otpEdit = TextInputEditText(otpLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        }
-        otpLayout.addView(otpEdit)
-        container.addView(otpLayout)
-
+    private fun showEmailEnrollment(proof: AuthenticationChallengeReference) {
+        val codeInput = confirmationCodeInput()
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.security_2fa_email_title)
             .setMessage(R.string.security_2fa_email_message)
-            .setView(container)
+            .setView(codeInput.first)
             .setPositiveButton(R.string.btn_confirm) { _, _ ->
-                val code = otpEdit.text?.toString() ?: ""
-                lifecycleScope.launch {
-                    val result = userProfileGateway.confirmOtpSetup(code)
-                    if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_enabled, Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_invalid_code, Toast.LENGTH_SHORT).show()
-                        isUpdatingSwitch = true
-                        binding.switchTwoFactorEmail.isChecked = false
-                        isUpdatingSwitch = false
-                    }
-                }
+                confirmOtpEnrollment(codeInput.second, proof, AuthenticationFactor.EMAIL)
             }
             .setNegativeButton(R.string.btn_cancel) { _, _ ->
-                isUpdatingSwitch = true
-                binding.switchTwoFactorEmail.isChecked = false
-                isUpdatingSwitch = false
+                restoreSwitch(AuthenticationFactor.EMAIL, false)
             }
-            .setCancelable(false)
             .show()
     }
 
-    private fun disableAuthenticator2FA() {
-        val container = LinearLayout(this).apply {
+    private fun confirmationCodeInput(): Pair<TextInputLayout, TextInputEditText> {
+        val layout = TextInputLayout(this).apply { hint = getString(R.string.auth_confirmation_code) }
+        return layout to TextInputEditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            layout.addView(this)
+        }
+    }
+
+    private fun confirmOtpEnrollment(
+        input: TextInputEditText,
+        proof: AuthenticationChallengeReference,
+        factor: AuthenticationFactor,
+    ) {
+        lifecycleScope.launch {
+            authenticationChallengeGateway.confirmOtpVerification(input.text?.toString().orEmpty(), proof)
+                .onSuccess { codes ->
+                    loadSecuritySettings()
+                    if (codes.isNotEmpty()) showRecoveryCodes(codes)
+                }
+                .onFailure {
+                    restoreSwitch(factor, false)
+                    showFailure(it)
+                }
+        }
+    }
+
+    private fun changeTelegramBinding() {
+        withSecurityProof { proof, latest ->
+            if (latest.telegramLinked) {
+                authenticationChallengeGateway.unlinkTelegram(
+                    proof,
+                    AuthenticationSecurityPolicy.update(
+                        latest,
+                        telegramEnabled = false,
+                        telegramOtpEnabled = false,
+                    ),
+                ).onSuccess(::renderSecuritySettings).onFailure(::showFailure)
+            } else {
+                AuthenticationChallengeDialog(
+                    this@SecuritySettingsActivity,
+                    authenticationChallengeGateway,
+                    authenticationChallengeViewModel.controller,
+                ).run(
+                    title = getString(R.string.security_link_telegram),
+                ) { authenticationChallengeGateway.beginTelegramBinding(proof) }
+                    .onSuccess { loadSecuritySettings() }
+                    .onFailure { if (it !is java.util.concurrent.CancellationException) showFailure(it) }
+            }
+        }
+    }
+
+    private fun showBindEmailDialog() {
+        val input = TextInputEditText(this).apply { inputType = android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS }
+        val layout = TextInputLayout(this).apply {
+            hint = getString(R.string.hint_email_required)
+            addView(input)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.security_bind_email)
+            .setView(layout)
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                val email = input.text?.toString()?.trim().orEmpty()
+                if (email.isBlank()) return@setPositiveButton
+                withSecurityProof { proof, _ ->
+                    AuthenticationChallengeDialog(
+                        this@SecuritySettingsActivity,
+                        authenticationChallengeGateway,
+                        authenticationChallengeViewModel.controller,
+                    ).run(
+                        title = getString(R.string.security_bind_email),
+                    ) { authenticationChallengeGateway.beginEmailBinding(proof, email) }
+                        .onSuccess { loadSecuritySettings() }
+                        .onFailure { if (it !is java.util.concurrent.CancellationException) showFailure(it) }
+                }
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun showLoginPolicyPicker() {
+        val settings = securitySettings ?: return
+        val modes = buildList {
+            add(AuthenticationLoginMode.PASSWORD)
+            if (settings.telegramLinked) add(AuthenticationLoginMode.TELEGRAM_LOGIN)
+            add(AuthenticationLoginMode.PASSWORD_SECOND_FACTOR)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.security_login_policy)
+            .setSingleChoiceItems(
+                modes.map { getString(loginModeLabel(it)) }.toTypedArray(),
+                modes.indexOf(settings.loginMode),
+            ) { dialog, position ->
+                dialog.dismiss()
+                withSecurityProof { proof, latest ->
+                    val mode = modes[position]
+                    val factor = if (mode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
+                        AuthenticationFactor.TELEGRAM
+                    } else {
+                        latest.preferredFactor
+                    }
+                    authenticationChallengeGateway.updateSecuritySettings(
+                        proof,
+                        AuthenticationSecurityPolicy.update(latest, loginMode = mode, preferredFactor = factor),
+                    ).onSuccess(::renderSecuritySettings).onFailure(::showFailure)
+                }
+            }
+            .show()
+    }
+
+    private fun regenerateRecoveryCodes() {
+        withSecurityProof { proof, _ ->
+            authenticationChallengeGateway.generateRecoveryCodes(proof)
+                .onSuccess(::showRecoveryCodes)
+                .onFailure(::showFailure)
+        }
+    }
+
+    /** Requests a one-time proof without retaining its opaque value outside this callback. */
+    private fun withSecurityProof(action: suspend (AuthenticationChallengeReference, SecuritySettings) -> Unit) {
+        val settings = securitySettings ?: return
+        val password = TextInputEditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val layout = TextInputLayout(this).apply {
+            hint = getString(R.string.security_reauthenticate_password)
+            addView(password)
+        }
+        val recovery = MaterialCheckBox(this).apply { text = getString(R.string.login_use_recovery_code) }
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val hPad = (24 * resources.displayMetrics.density).toInt()
-            setPadding(hPad, 0, hPad, 0)
+            setPadding(dp(24), 0, dp(24), 0)
+            addView(layout)
+            addView(recovery)
         }
-
-        val otpLayout = TextInputLayout(this).apply {
-            hint = getString(R.string.security_code_from_app)
-        }
-        val otpEdit = TextInputEditText(otpLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        }
-        otpLayout.addView(otpEdit)
-        container.addView(otpLayout)
-
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.security_disable_2fa_title)
-            .setMessage(R.string.security_disable_2fa_message)
-            .setView(container)
-            .setPositiveButton(R.string.security_disable) { _, _ ->
-                val code = otpEdit.text?.toString() ?: ""
+            .setTitle(R.string.security_reauthenticate)
+            .setMessage(R.string.security_reauthenticate_message)
+            .setView(content)
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
                 lifecycleScope.launch {
-                    val result = userProfileGateway.disableOtp(IdentityApiOuterClass.OtpTypeId.Authenticator, code)
-                    if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_disabled, Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                        isUpdatingSwitch = true
-                        binding.switchTwoFactorApp.isChecked = true
-                        isUpdatingSwitch = false
-                    }
+                    AuthenticationChallengeDialog(
+                        this@SecuritySettingsActivity,
+                        authenticationChallengeGateway,
+                        authenticationChallengeViewModel.controller,
+                    ).run(
+                        title = getString(R.string.security_reauthenticate),
+                        useRecoveryCode = recovery.isChecked,
+                    ) {
+                        authenticationChallengeGateway.beginReauthentication(
+                            password.text?.toString().orEmpty(),
+                            settings.preferredFactor,
+                            recovery.isChecked,
+                        )
+                    }.onSuccess { completion ->
+                        completion.securityProof?.let { action(it, settings) }
+                            ?: showFailure(IllegalStateException(getString(R.string.auth_error)))
+                    }.onFailure { if (it !is java.util.concurrent.CancellationException) showFailure(it) }
                 }
             }
-            .setNegativeButton(R.string.btn_cancel) { _, _ ->
-                isUpdatingSwitch = true
-                binding.switchTwoFactorApp.isChecked = true
-                isUpdatingSwitch = false
-            }
-            .setCancelable(false)
+            .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
-    private fun disableEmail2FA() {
+    private fun restoreSwitch(factor: AuthenticationFactor, value: Boolean) {
+        isUpdatingSwitch = true
+        when (factor) {
+            AuthenticationFactor.AUTHENTICATOR -> binding.switchTwoFactorApp.isChecked = value
+            AuthenticationFactor.EMAIL -> binding.switchTwoFactorEmail.isChecked = value
+            AuthenticationFactor.TELEGRAM -> binding.switchTwoFactorTelegram.isChecked = value
+            AuthenticationFactor.NONE -> Unit
+        }
+        isUpdatingSwitch = false
+    }
+
+    private fun showRecoveryCodes(codes: List<String>) {
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.security_disable_2fa_email_title)
-            .setMessage(R.string.security_disable_2fa_email_message)
-            .setPositiveButton(R.string.security_disable) { _, _ ->
-                lifecycleScope.launch {
-                    val result = userProfileGateway.disableOtp(IdentityApiOuterClass.OtpTypeId.Email, "")
-                    if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, R.string.security_2fa_email_disabled, Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@SecuritySettingsActivity, getString(R.string.settings_error_detail, result.exceptionOrNull()?.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                        isUpdatingSwitch = true
-                        binding.switchTwoFactorEmail.isChecked = true
-                        isUpdatingSwitch = false
-                    }
-                }
-            }
-            .setNegativeButton(R.string.btn_cancel) { _, _ ->
-                isUpdatingSwitch = true
-                binding.switchTwoFactorEmail.isChecked = true
-                isUpdatingSwitch = false
-            }
+            .setTitle(R.string.security_recovery_codes_title)
+            .setMessage(codes.joinToString("\n"))
+            .setPositiveButton(android.R.string.ok, null)
             .show()
     }
+
+    private fun loginModeLabel(mode: AuthenticationLoginMode): Int = when (mode) {
+        AuthenticationLoginMode.PASSWORD -> R.string.login_mode_password
+        AuthenticationLoginMode.TELEGRAM_LOGIN -> R.string.login_mode_telegram
+        AuthenticationLoginMode.PASSWORD_SECOND_FACTOR -> R.string.login_mode_password_factor
+    }
+
+    private fun showFailure(error: Throwable) {
+        Toast.makeText(this, error.message ?: getString(R.string.auth_error), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }

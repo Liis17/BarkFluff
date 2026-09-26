@@ -23,6 +23,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -32,6 +33,8 @@ import androidx.core.widget.NestedScrollView
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivityRegisterBinding
 import com.barkfluff.client.databinding.StepRegister01NameBinding
 import com.barkfluff.client.databinding.StepRegister02UsernameBinding
@@ -42,10 +45,13 @@ import com.barkfluff.client.databinding.StepRegister06AvatarBinding
 import com.barkfluff.client.databinding.StepRegister07BioBinding
 import com.barkfluff.client.databinding.StepRegister082faBinding
 import com.barkfluff.client.databinding.StepRegister09CompleteBinding
-import com.barkfluff.client.domain.gateway.AccountSecurityGateway
-import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.auth.AuthenticationUiPolicy
+import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.domain.model.AuthenticationLoginMode
+import com.barkfluff.client.domain.model.RegistrationRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.utils.OtpCellsHelper
 import com.google.android.material.color.DynamicColors
@@ -93,12 +99,14 @@ class RegisterActivity : AppCompatActivity() {
         private const val KEY_CODE_ID = "code_id"
         private const val KEY_2FA_ENABLED = "2fa_enabled"
         private const val KEY_AVATAR_BYTES = "avatar_bytes"
+        private const val KEY_CONFIRMATION_METHOD = "confirmation_method"
+        private const val KEY_LOGIN_MODE = "login_mode"
     }
 
     private lateinit var binding: ActivityRegisterBinding
     private lateinit var globalParam: GlobalParam
-    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
-    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    private val authenticationChallengeViewModel: AuthenticationChallengeViewModel by viewModels()
+    @javax.inject.Inject lateinit var authenticationChallengeGateway: AuthenticationChallengeGateway
     @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
@@ -114,6 +122,8 @@ class RegisterActivity : AppCompatActivity() {
     private var avatarBytes: ByteArray? = null
     private var codeId: String? = null  // CodeId от CreateAccount
     private var is2faEnabled = false
+    private var confirmationMethod = AuthenticationFactor.EMAIL
+    private var registrationLoginMode = AuthenticationLoginMode.PASSWORD
     private var otpHelper: OtpCellsHelper? = null
 
     // Bindings for each step
@@ -180,6 +190,12 @@ class RegisterActivity : AppCompatActivity() {
             bio = it.getString(KEY_BIO, "")
             codeId = it.getString(KEY_CODE_ID)
             is2faEnabled = it.getBoolean(KEY_2FA_ENABLED, false)
+            confirmationMethod = it.getString(KEY_CONFIRMATION_METHOD)?.let { value ->
+                runCatching { AuthenticationFactor.valueOf(value) }.getOrDefault(AuthenticationFactor.EMAIL)
+            } ?: AuthenticationFactor.EMAIL
+            registrationLoginMode = it.getString(KEY_LOGIN_MODE)?.let { value ->
+                runCatching { AuthenticationLoginMode.valueOf(value) }.getOrDefault(AuthenticationLoginMode.PASSWORD)
+            } ?: AuthenticationLoginMode.PASSWORD
             avatarBytes = it.getByteArray(KEY_AVATAR_BYTES)
             Log.d(TAG, "Состояние восстановлено: шаг $currentStep")
         }
@@ -196,10 +212,12 @@ class RegisterActivity : AppCompatActivity() {
         outState.putString(KEY_LAST_NAME, lastName)
         outState.putString(KEY_USERNAME, username)
         outState.putString(KEY_EMAIL, email)
-        outState.putString(KEY_PASSWORD, password)
+        // Password, challenge references and security proofs are intentionally never persisted.
         outState.putString(KEY_BIO, bio)
         outState.putString(KEY_CODE_ID, codeId)
         outState.putBoolean(KEY_2FA_ENABLED, is2faEnabled)
+        outState.putString(KEY_CONFIRMATION_METHOD, confirmationMethod.name)
+        outState.putString(KEY_LOGIN_MODE, registrationLoginMode.name)
         outState.putByteArray(KEY_AVATAR_BYTES, avatarBytes)
         Log.d(TAG, "Состояние сохранено: шаг $currentStep")
     }
@@ -223,11 +241,9 @@ class RegisterActivity : AppCompatActivity() {
             when (currentStep) {
                 2 -> checkUsernameOnServerAndProceed()
                 3 -> checkEmailOnServerAndProceed()
-                4 -> confirmAccountAndProceed()
-                5 -> setPasswordOnServerAndProceed()
+                5 -> beginRegistrationAndProceed()
                 6 -> uploadAvatarAndProceed()
                 7 -> saveBioOnServerAndProceed()
-                8 -> verify2faAndProceed()
                 else -> {
                     if (validateCurrentStep()) {
                         if (currentStep < TOTAL_STEPS) {
@@ -243,6 +259,12 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun checkEmailOnServerAndProceed() {
         if (!validateCurrentStep()) return
+
+        if (confirmationMethod == AuthenticationFactor.TELEGRAM) {
+            currentStep = 5
+            loadStep(currentStep)
+            return
+        }
 
         val b = step3Binding ?: return
         b.emailValidationText.text = getString(R.string.register_checking)
@@ -600,9 +622,55 @@ class RegisterActivity : AppCompatActivity() {
         val b = step3Binding ?: return
         setupTextField(b.emailEditText)
         b.emailEditText.setText(email)
+        b.emailInputContainer.visibility = if (confirmationMethod == AuthenticationFactor.TELEGRAM) View.GONE else View.VISIBLE
+
+        b.telegramRegistrationButton.setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.register_telegram_title)
+                .setSingleChoiceItems(
+                    arrayOf(
+                        getString(R.string.register_login_mode_telegram),
+                        getString(R.string.register_login_mode_password_factor),
+                    ),
+                    if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) 0 else 1,
+                ) { dialog, selected ->
+                    confirmationMethod = AuthenticationFactor.TELEGRAM
+                    registrationLoginMode = if (selected == 0) {
+                        AuthenticationLoginMode.TELEGRAM_LOGIN
+                    } else {
+                        AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+                    }
+                    email = ""
+                    b.emailInputContainer.visibility = View.GONE
+                    b.emailValidationText.text = getString(R.string.register_telegram_selected)
+                    b.emailValidationText.visibility = View.VISIBLE
+                    setNextButtonEnabled(true)
+                    dialog.dismiss()
+                }
+                .show()
+        }
+        b.emailRegistrationButton.setOnClickListener {
+            confirmationMethod = AuthenticationFactor.EMAIL
+            registrationLoginMode = AuthenticationLoginMode.PASSWORD
+            b.emailInputContainer.visibility = View.VISIBLE
+            setNextButtonEnabled(email.isNotBlank())
+        }
+        lifecycleScope.launch {
+            authenticationChallengeGateway.capabilities().onSuccess { capabilities ->
+                val methods = AuthenticationUiPolicy.registrationConfirmationMethods(capabilities)
+                b.telegramRegistrationButton.visibility = if (AuthenticationFactor.TELEGRAM in methods) View.VISIBLE else View.GONE
+                b.emailRegistrationButton.visibility = if (
+                    confirmationMethod == AuthenticationFactor.TELEGRAM && AuthenticationFactor.EMAIL in methods
+                ) View.VISIBLE else View.GONE
+                if (AuthenticationFactor.EMAIL !in methods && AuthenticationFactor.TELEGRAM in methods && confirmationMethod == AuthenticationFactor.EMAIL) {
+                    b.telegramRegistrationButton.performClick()
+                }
+            }
+        }
 
         b.emailEditText.doAfterTextChanged {
             email = it?.toString()?.trim()?.lowercase() ?: ""
+            if (confirmationMethod == AuthenticationFactor.TELEGRAM) return@doAfterTextChanged
             if (email.isNotEmpty()) {
                 val emailPattern = android.util.Patterns.EMAIL_ADDRESS
                 if (!emailPattern.matcher(email).matches()) {
@@ -673,34 +741,11 @@ class RegisterActivity : AppCompatActivity() {
         b.emailValidationText.visibility = View.VISIBLE
         setNextButtonEnabled(false)
 
-        lifecycleScope.launch {
-            try {
-                // Создаем аккаунт - сервер отправит код на почту
-                val createResult = accountSecurityGateway.register(firstName, lastName, email, username)
-                if (createResult.isSuccess) {
-                    codeId = createResult.getOrNull()
-                    Log.d(TAG, "Аккаунт создан, CodeId: $codeId")
-                    
-                    b.emailValidationText.text = getString(R.string.register_code_sent, email)
-                    b.emailValidationText.visibility = View.VISIBLE
-                    delay(1000)
-                    saveCurrentStepData()
-                    currentStep++
-                    loadStep(currentStep)
-                } else {
-                    Log.e(TAG, "Create account failed: ${createResult.exceptionOrNull()?.message}")
-                    b.emailValidationText.text = getString(
-                        R.string.register_error_detail,
-                        createResult.exceptionOrNull()?.message.orEmpty()
-                    )
-                    setNextButtonEnabled(true)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Create account error: ${e.message}", e)
-                b.emailValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                setNextButtonEnabled(true)
-            }
-        }
+        b.emailValidationText.text = getString(R.string.register_email_available)
+        b.emailValidationText.visibility = View.VISIBLE
+        saveCurrentStepData()
+        currentStep = 5
+        loadStep(currentStep)
     }
 
     private fun setupStep4() {
@@ -713,78 +758,19 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun confirmAccountAndProceed() {
-        val b = step4Binding ?: return
-        val code = otpHelper?.getCode() ?: ""
-
-        if (code.length != 6) {
-            b.verificationCodeValidationText.text = getString(R.string.register_code_incomplete)
-            b.verificationCodeValidationText.visibility = View.VISIBLE
-            return
-        }
-
-        if (codeId == null) {
-            b.verificationCodeValidationText.text = getString(R.string.register_account_not_created)
-            b.verificationCodeValidationText.visibility = View.VISIBLE
-            return
-        }
-
-        b.verificationCodeValidationText.text = getString(R.string.register_checking)
-        b.verificationCodeValidationText.visibility = View.VISIBLE
-        setNextButtonEnabled(false)
-
-        lifecycleScope.launch {
-            try {
-                // Подтверждаем аккаунт - получаем refresh токен
-                val confirmResult = accountSecurityGateway.confirmAccount(codeId!!, code)
-                if (confirmResult.isSuccess) {
-                    val confirmData = confirmResult.getOrNull()!!
-                    Log.d(TAG, "Аккаунт подтвержден, получен refresh токен")
-                    
-                    // Сохраняем refresh токен
-                    globalParam.refreshToken = confirmData.refreshToken
-                    globalParam.refreshTokenExpiration = confirmData.refreshTokenExpiration
-                    
-                    // Создаем access токен
-                    val tokenResult = authGateway.refresh(confirmData.refreshToken, confirmData.refreshTokenExpiration)
-                    if (tokenResult.isSuccess) {
-                        val tokenData = tokenResult.getOrNull()!!
-                        globalParam.accessToken = tokenData.accessToken
-                        globalParam.accessTokenExpiration = tokenData.accessTokenExpiration
-                        Log.d(TAG, "Access токен получен")
-                        
-                        // Пересоздаем gRPC клиенты с новыми токенами
-                        recreateGrpcClients()
-                        
-                        b.verificationCodeValidationText.text = getString(R.string.register_account_confirmed)
-                        delay(500)
-                        saveCurrentStepData()
-                        currentStep++
-                        loadStep(currentStep)
-                    } else {
-                        Log.e(TAG, "Failed to create access token: ${tokenResult.exceptionOrNull()?.message}")
-                        b.verificationCodeValidationText.text = getString(R.string.register_token_error)
-                        setNextButtonEnabled(true)
-                    }
-                } else {
-                    Log.e(TAG, "Confirm account failed: ${confirmResult.exceptionOrNull()?.message}")
-                    b.verificationCodeValidationText.text = getString(
-                        R.string.register_error_detail,
-                        confirmResult.exceptionOrNull()?.message.orEmpty()
-                    )
-                    setNextButtonEnabled(true)
-                    otpHelper?.clear()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Confirm account error: ${e.message}", e)
-                b.verificationCodeValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                setNextButtonEnabled(true)
-                otpHelper?.clear()
-            }
-        }
+        // Legacy screen can only be restored from an old Bundle; continue with challenge setup.
+        currentStep = 5
+        loadStep(currentStep)
     }
 
     private fun setupStep5() {
         val b = step5Binding ?: return
+        if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
+            // Telegram-only registration has no password step.
+            b.root.visibility = View.GONE
+            beginRegistrationAndProceed()
+            return
+        }
         setupTextField(b.passwordEditText)
         setupTextField(b.confirmPasswordEditText)
 
@@ -997,53 +983,64 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun setup2fa() {
-        lifecycleScope.launch {
-            try {
-                val result = userProfileGateway.otpSetup()
-                if (result.isSuccess) {
-                    val otpResult = result.getOrNull()
-                    if (otpResult != null) {
-                        step8Binding?.twoFaSecretCode?.text = otpResult.justCode
-                    }
-                } else {
-                    Log.e(TAG, "Get OTP setup failed: ${result.exceptionOrNull()?.message}")
-                    Toast.makeText(this@RegisterActivity, R.string.register_2fa_setup_error, Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Get OTP setup error: ${e.message}", e)
-                Toast.makeText(this@RegisterActivity, R.string.register_2fa_setup_error, Toast.LENGTH_SHORT).show()
-            }
-        }
+        // Factor setup moved to Security settings and uses a reauthentication proof.
     }
 
-    private fun setPasswordOnServerAndProceed() {
+    private fun beginRegistrationAndProceed() {
         if (!validateCurrentStep()) return
 
         setNextButtonEnabled(false)
 
         lifecycleScope.launch {
-            try {
-                val result = userProfileGateway.password(password)
-                if (result.isSuccess) {
-                    Log.d(TAG, "Пароль установлен")
-                    saveCurrentStepData()
-                    currentStep++
-                    loadStep(currentStep)
-                } else {
-                    Log.e(TAG, "Set password failed: ${result.exceptionOrNull()?.message}")
-                    Toast.makeText(
-                        this@RegisterActivity,
-                        getString(R.string.register_error_detail, result.exceptionOrNull()?.message.orEmpty()),
-                        Toast.LENGTH_SHORT
-                    ).show()
+            val result = AuthenticationChallengeDialog(
+                this@RegisterActivity,
+                authenticationChallengeGateway,
+                authenticationChallengeViewModel.controller,
+            ).run(
+                title = getString(R.string.register_step4_headline),
+            ) {
+                authenticationChallengeGateway.beginRegistration(
+                    RegistrationRequest(
+                        username = username,
+                        password = if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) "" else password,
+                        firstName = firstName,
+                        lastName = lastName,
+                        email = email,
+                        confirmationMethod = confirmationMethod,
+                        loginMode = registrationLoginMode,
+                    ),
+                )
+            }
+            result.onSuccess { completion ->
+                val session = completion.session
+                if (session == null) {
+                    Toast.makeText(this@RegisterActivity, R.string.auth_error, Toast.LENGTH_SHORT).show()
                     setNextButtonEnabled(true)
+                    return@onSuccess
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Set password error: ${e.message}", e)
-                Toast.makeText(this@RegisterActivity, getString(R.string.register_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+                globalParam.accessToken = session.accessToken
+                globalParam.accessTokenExpiration = session.accessTokenExpiration
+                globalParam.refreshToken = session.refreshToken
+                globalParam.refreshTokenExpiration = session.refreshTokenExpiration
+                recreateGrpcClients()
+                if (completion.recoveryCodes.isNotEmpty()) showRecoveryCodes(completion.recoveryCodes)
+                currentStep = 6
+                loadStep(currentStep)
+            }.onFailure { failure ->
+                if (failure !is java.util.concurrent.CancellationException) {
+                    Toast.makeText(this@RegisterActivity, failure.message ?: getString(R.string.auth_error), Toast.LENGTH_SHORT).show()
+                }
                 setNextButtonEnabled(true)
             }
         }
+    }
+
+    private fun showRecoveryCodes(codes: List<String>) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.security_recovery_codes_title)
+            .setMessage(codes.joinToString("\n"))
+            .setPositiveButton(R.string.btn_confirm, null)
+            .show()
     }
 
     private fun uploadAvatarAndProceed() {
@@ -1087,7 +1084,7 @@ class RegisterActivity : AppCompatActivity() {
         saveCurrentStepData()
 
         if (bio.isEmpty()) {
-            currentStep++
+            currentStep = 9
             loadStep(currentStep)
             return
         }
@@ -1102,43 +1099,19 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     Log.e(TAG, "Change bio failed: ${result.exceptionOrNull()?.message}")
                 }
-                currentStep++
+                currentStep = 9
                 loadStep(currentStep)
             } catch (e: Exception) {
                 Log.e(TAG, "Change bio error: ${e.message}", e)
-                currentStep++
+                currentStep = 9
                 loadStep(currentStep)
             }
         }
     }
 
     private fun verify2faAndProceed() {
-        val code = step8Binding?.otpCodeEditText?.text?.toString() ?: return
-        if (code.length != 6) return
-
-        setNextButtonEnabled(false)
-
-        lifecycleScope.launch {
-            try {
-                val result = userProfileGateway.confirmOtpSetup(code)
-                if (result.isSuccess) {
-                    is2faEnabled = true
-                    Toast.makeText(this@RegisterActivity, R.string.register_2fa_configured, Toast.LENGTH_SHORT).show()
-                    saveCurrentStepData()
-                    currentStep++
-                    loadStep(currentStep)
-                } else {
-                    step8Binding?.otpErrorText?.text = getString(R.string.register_invalid_code)
-                    step8Binding?.otpErrorText?.visibility = View.VISIBLE
-                    setNextButtonEnabled(true)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Verify 2FA error: ${e.message}", e)
-                step8Binding?.otpErrorText?.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                step8Binding?.otpErrorText?.visibility = View.VISIBLE
-                setNextButtonEnabled(true)
-            }
-        }
+        currentStep = 9
+        loadStep(currentStep)
     }
 
     private fun resolveThemeColor(attr: Int): Int {
@@ -1273,10 +1246,11 @@ class RegisterActivity : AppCompatActivity() {
                 username.matches(validPattern) && username.length <= MAX_USERNAME_LENGTH
             }
             3 -> {
-                if (email.isEmpty()) return false
-                android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+                confirmationMethod == AuthenticationFactor.TELEGRAM ||
+                    (email.isNotEmpty() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches())
             }
             5 -> {
+                if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) return true
                 // Валидация пароля происходит в setupStep5
                 val confirmPassword = step5Binding?.confirmPasswordEditText?.text?.toString() ?: ""
                 password.length >= MIN_PASSWORD_LENGTH && password == confirmPassword

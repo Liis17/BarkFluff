@@ -18,6 +18,9 @@ class AuthenticationChallengeController(
     private var generation = 0L
     private var activeReference: AuthenticationChallengeReference? = null
 
+    val hasActiveChallenge: Boolean
+        get() = activeReference != null
+
     suspend fun begin(start: suspend AuthenticationChallengeGateway.() -> Result<AuthenticationChallenge>): Result<AuthenticationChallenge> {
         cancelSilently()
         val requestGeneration = ++generation
@@ -25,6 +28,11 @@ class AuthenticationChallengeController(
             if (requestGeneration == generation) activeReference = challenge.reference
         }
     }
+
+    /** Rejoins an in-memory challenge after a configuration change instead of issuing a duplicate one. */
+    suspend fun resumeOrBegin(
+        start: suspend AuthenticationChallengeGateway.() -> Result<AuthenticationChallenge>,
+    ): Result<AuthenticationChallenge> = if (hasActiveChallenge) refresh() else begin(start)
 
     suspend fun refresh(): Result<AuthenticationChallenge> = withActive { reference ->
         gateway.challenge(reference)
