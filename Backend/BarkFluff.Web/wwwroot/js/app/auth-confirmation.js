@@ -175,6 +175,19 @@
         });
         function render(response, generation) {
             if (box.signal.aborted || generation !== operationGeneration) return;
+            var challengeError = response.getErrorCode?.();
+            if (challengeError) {
+                terminal = true;
+                status.textContent = '';
+                box.error.textContent = t(
+                    challengeError === 'login_mode_disabled' ? 'auth.error.loginModeDisabled' : 'auth.error.server'
+                );
+                code.parentElement.hidden = true;
+                confirm.hidden = true;
+                resend.hidden = true;
+                link.hidden = true;
+                return;
+            }
             var state = response.getState();
             terminal = [3, 4, 6].includes(state);
             status.textContent = t(
@@ -263,6 +276,7 @@
                 if (box.signal.aborted || generation !== operationGeneration) return;
                 sentAt = Date.now();
                 render(response, generation);
+                if (response.getErrorCode?.()) return;
                 attempt.poll(
                     function (state) {
                         render(state, generation);

@@ -45,6 +45,7 @@
   "auth.error.badCode": "Неверный код подтверждения",
   "auth.error.badCredentials": "Неверный логин или пароль",
   "auth.error.incompleteCode": "Введите все 6 цифр",
+  "auth.error.loginModeDisabled": "Выбранный способ входа отключён для этого аккаунта. Выберите способ, указанный в настройках безопасности.",
   "auth.error.network": "Не удалось подключиться к серверу",
   "auth.error.noLogin": "Введите логин или email",
   "auth.error.noPassword": "Введите пароль",

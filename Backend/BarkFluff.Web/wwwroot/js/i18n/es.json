@@ -45,6 +45,7 @@
   "auth.error.badCode": "Código de confirmación no válido",
   "auth.error.badCredentials": "Usuario o contraseña incorrectos",
   "auth.error.incompleteCode": "Introduce los 6 dígitos",
+  "auth.error.loginModeDisabled": "Este método de acceso está desactivado para esta cuenta. Elige el método configurado en Seguridad.",
   "auth.error.network": "No se pudo conectar con el servidor",
   "auth.error.noLogin": "Introduce tu usuario o correo",
   "auth.error.noPassword": "Introduce una contraseña",
