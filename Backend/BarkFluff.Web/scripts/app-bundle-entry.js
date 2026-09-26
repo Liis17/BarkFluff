@@ -47,4 +47,5 @@ import '../wwwroot/js/app/chat-calls.js';
 import '../wwwroot/js/app/chat-background.js';
 import '../wwwroot/js/app/profile.js';
 import '../wwwroot/js/app/forward.js';
+import '../wwwroot/js/app/connection.js';
 import '../wwwroot/js/app/main.js';
