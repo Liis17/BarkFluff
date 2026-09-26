@@ -15,9 +15,12 @@ public sealed class TelegramAuthWorker(IServiceScopeFactory scopes, ITelegramAut
         if (!options.Configured) return;
         while (!stoppingToken.IsCancellationRequested)
         {
+            var stage = "getMe";
+            long? updateId = null;
             try
             {
                 var me = await bot.GetIdentity(stoppingToken);
+                stage = "acquire-redis-lease";
                 var key = (RedisKey)$"identity:telegram-poller:{me.Id}";
                 var owner = Guid.NewGuid().ToString("N");
                 var cache = redis.GetDatabase();
@@ -31,27 +34,36 @@ public sealed class TelegramAuthWorker(IServiceScopeFactory scopes, ITelegramAut
                     {
                         using var scope = scopes.CreateScope();
                         var db = scope.ServiceProvider.GetRequiredService<IdentityContext>();
+                        stage = "read-postgres-offset";
                         var state = await db.TelegramPollingStates.SingleOrDefaultAsync(x => x.Id == me.Id, lease.Token);
                         var offset = state?.Offset ?? 0;
+                        stage = "getUpdates";
                         var updates = await bot.GetUpdates(offset, lease.Token);
                         foreach (var update in updates)
                         {
                             lease.Token.ThrowIfCancellationRequested();
+                            stage = "read-update-id";
+                            updateId = null;
                             var id = update.GetProperty("update_id").GetInt64();
                             if (id < offset) continue;
+                            updateId = id;
                             using var updateScope = scopes.CreateScope();
+                            stage = "process-update";
                             await updateScope.ServiceProvider.GetRequiredService<AuthenticationService>().ProcessTelegramUpdate(update, lease.Token);
                             var updateDb = updateScope.ServiceProvider.GetRequiredService<IdentityContext>();
+                            stage = "persist-postgres-offset";
                             var cursor = await updateDb.TelegramPollingStates.SingleOrDefaultAsync(x => x.Id == me.Id, lease.Token);
                             if (cursor == null) updateDb.TelegramPollingStates.Add(new TelegramPollingState { Id = me.Id, Offset = id + 1 });
                             else cursor.Offset = Math.Max(cursor.Offset, id + 1);
                             await updateDb.SaveChangesAsync(lease.Token);
                             offset = id + 1;
+                            updateId = null;
                         }
                     }
                 }
                 finally
                 {
+                    stage = "release-redis-lease";
                     await lease.CancelAsync();
                     await renewal;
                     await cache.ScriptEvaluateAsync("if redis.call('GET',KEYS[1]) == ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0", [key], [owner]);
@@ -60,8 +72,18 @@ public sealed class TelegramAuthWorker(IServiceScopeFactory scopes, ITelegramAut
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch (Exception ex)
             {
-                // HTTP exceptions can contain bot-token URLs. Only the type is safe to log.
-                logger.LogWarning("Telegram authentication polling unavailable ({ErrorType}); retrying", ex.GetType().Name);
+                // Bot API exception details can contain the token in its request URL.
+                var details = ex.ToString();
+                if (!string.IsNullOrWhiteSpace(options.BotToken))
+                {
+                    details = details.Replace(options.BotToken, "[REDACTED]", StringComparison.Ordinal);
+                    var encodedToken = Uri.EscapeDataString(options.BotToken);
+                    if (encodedToken != options.BotToken)
+                        details = details.Replace(encodedToken, "[REDACTED]", StringComparison.Ordinal);
+                }
+                logger.LogWarning(
+                    "Telegram authentication polling unavailable at {Stage} (update {UpdateId}, {ErrorType}): {ErrorDetails}; retrying",
+                    stage, updateId, ex.GetType().FullName, details);
                 try { await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); }
                 catch (OperationCanceledException) { break; }
             }
