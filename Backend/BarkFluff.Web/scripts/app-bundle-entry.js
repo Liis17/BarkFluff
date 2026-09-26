@@ -40,4 +40,5 @@ import '../wwwroot/js/app/mark-read.js';
 import '../wwwroot/js/app/attention.js';
 import '../wwwroot/js/app/deep-link.js';
 import '../wwwroot/js/app/search.js';
+import '../wwwroot/js/app/chat-media.js';
 import '../wwwroot/js/app/main.js';
