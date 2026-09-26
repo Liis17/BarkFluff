@@ -56,9 +56,6 @@
         });
     }
 
-    // Reply / Forward / Context menu state
-    var forwardSelection = new Set();
-
     // --- DOM refs ---
     var $ = function (sel) { return document.querySelector(sel); };
     var chatHeader = $('#chatHeader');
@@ -76,16 +73,10 @@
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
 
-    // Reply / Forward / Context menu DOM refs
+    // Delete confirmation dialog
     var deleteMsgConfirmOverlay = $('#deleteMsgConfirmOverlay');
     var deleteMsgCancel = $('#deleteMsgCancel');
     var deleteMsgOk = $('#deleteMsgOk');
-    var forwardOverlay = $('#forwardOverlay');
-    var forwardCloseBtn = $('#forwardClose');
-    var forwardChatListEl = $('#forwardChatList');
-    var forwardCommentEl = $('#forwardComment');
-    var forwardSendBtn = $('#forwardSendBtn');
-    var forwardCounterEl = $('#forwardCounter');
     var soonToastEl = $('#soonToast');
 
     // Settings and confirm overlays are managed by BF.settings module
@@ -1526,106 +1517,6 @@
         if (BF.pinned && BF.pinned.applyMessageDeleted) BF.pinned.applyMessageDeleted(msgIdNum);
     }
 
-    function chatAvatarMarkup(chat) {
-        var initial = (chat.title || '?')[0].toUpperCase();
-        if (chat.picture) return '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
-        return initial;
-    }
-
-    function updateForwardCounter() {
-        if (!forwardCounterEl) return;
-        var n = forwardSelection.size;
-        if (n === 0) forwardCounterEl.textContent = BF.i18n.t('forward.noChatsSelected');
-        else forwardCounterEl.textContent = BF.i18n.t('forward.selected', { count: n });
-        if (forwardSendBtn) forwardSendBtn.disabled = n === 0;
-    }
-
-    // Пересылка пересланного отправляет оригиналы, а не снапшот. Оригиналов может быть
-    // несколько, поэтому возвращаем список: иначе пересылка пачки потеряла бы всё, кроме первого.
-    function resolveForwardSourceIds(msg, fallbackId) {
-        if (!msg || !msg.content || !msg.content.attachments) return [fallbackId];
-        var ids = [];
-        var forwards = [];
-        for (var i = 0; i < msg.content.attachments.length; i++) {
-            var a = msg.content.attachments[i];
-            var t = a.type;
-            if ((t === 'FORWARDED_MESSAGE' || t === 8 || t === '8') && a.forwardedMessage) {
-                forwards.push(a.forwardedMessage);
-            }
-        }
-        forwards.sort(function (x, y) { return (x.order || 0) - (y.order || 0); });
-        for (var j = 0; j < forwards.length; j++) {
-            if (forwards[j].originalMessageId) ids.push(forwards[j].originalMessageId);
-        }
-        return ids.length > 0 ? ids : [fallbackId];
-    }
-
-    function openForwardModal(sourceMessageIds) {
-        if (!forwardOverlay || !sourceMessageIds || sourceMessageIds.length === 0) return;
-        forwardSelection = new Set();
-        if (forwardCommentEl) forwardCommentEl.value = '';
-        forwardChatListEl.innerHTML = '';
-
-        chats.forEach(function (chat) {
-            var item = document.createElement('div');
-            item.className = 'forward-chat-item';
-            item.dataset.chatId = chat.id;
-            item.innerHTML =
-                '<div class="fwd-avatar">' + chatAvatarMarkup(chat) + '</div>' +
-                '<div class="fwd-name">' + u.escapeHtml(chat.title || BF.i18n.t('common.chat')) + '</div>' +
-                '<div class="fwd-check">&#10003;</div>';
-            item.addEventListener('click', function () {
-                var id = chat.id;
-                if (forwardSelection.has(id)) {
-                    forwardSelection.delete(id);
-                    item.classList.remove('selected');
-                } else {
-                    forwardSelection.add(id);
-                    item.classList.add('selected');
-                }
-                updateForwardCounter();
-            });
-            forwardChatListEl.appendChild(item);
-        });
-        updateForwardCounter();
-
-        BF.utils.openOverlay(forwardOverlay);
-        forwardSendBtn.onclick = function () { forwardSubmit(sourceMessageIds); };
-    }
-
-    function closeForwardModal() {
-        if (!forwardOverlay) return;
-        BF.utils.closeOverlay(forwardOverlay);
-        forwardSelection = new Set();
-        if (forwardSendBtn) forwardSendBtn.onclick = null;
-    }
-
-    function forwardSubmit(sourceMessageIds) {
-        if (forwardSelection.size === 0 || !sourceMessageIds || sourceMessageIds.length === 0) return;
-        var comment = forwardCommentEl ? forwardCommentEl.value.trim() : '';
-        var ids = Array.from(forwardSelection);
-        forwardSendBtn.disabled = true;
-        var originalLabel = forwardSendBtn.textContent;
-        forwardSendBtn.textContent = BF.i18n.t('forward.sending');
-
-        var chain = ids.reduce(function (p, chatId) {
-            return p.then(function () {
-                return BF.api.sendMessage({
-                    chatId: chatId,
-                    text: comment || null,
-                    forwardedMessageIds: sourceMessageIds
-                }).catch(function () { });
-            });
-        }, Promise.resolve());
-
-        chain.then(function () {
-            forwardSendBtn.disabled = false;
-            forwardSendBtn.textContent = originalLabel;
-            closeForwardModal();
-            showToast(BF.i18n.tp('forward.done', ids.length), false);
-        });
-    }
-
     // --- Delete confirm cancel ---
     if (deleteMsgCancel) {
         deleteMsgCancel.addEventListener('click', function () {
@@ -1642,13 +1533,11 @@
         });
     }
 
-    // --- Forward modal close ---
-    if (forwardCloseBtn) forwardCloseBtn.addEventListener('click', closeForwardModal);
-    if (forwardOverlay) {
-        forwardOverlay.addEventListener('click', function (e) {
-            if (e.target === forwardOverlay) closeForwardModal();
-        });
-    }
+    // --- Forward dialog ---
+    BF.forward.init({
+        getChats: function () { return chats; },
+        showToast: showToast
+    });
 
     // ========== MESSAGE CONTEXT MENU ==========
 
@@ -1657,15 +1546,11 @@
         getMessages: function () { return messages; },
         setReply: setPendingReply,
         setEdit: setPendingEdit,
-        forward: function (msg, msgId) { openForwardModal(resolveForwardSourceIds(msg, msgId)); },
+        forward: BF.forward.open,
         requestDelete: requestDelete,
         showToast: showToast
     });
     var closeContextMenu = BF.messageMenu.close;
-
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && forwardOverlay && forwardOverlay.classList.contains('visible')) closeForwardModal();
-    });
 
     // ========== PROACTIVE TOKEN REFRESH ==========
 
