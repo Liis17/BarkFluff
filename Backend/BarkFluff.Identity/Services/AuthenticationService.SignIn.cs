@@ -80,20 +80,23 @@ public sealed partial class AuthenticationService
                 await VerifyPassword(user?.Id ?? 0, input.Login, input.Password, ct);
             else if (user != null) await guard.EnsureUserAllowedAsync(user.Id, ct);
 
-            var (c, reference) = NewChallenge(AuthenticationPurpose.SignIn, user?.Id ?? 0, user?.Username ?? input.Login, settings);
             // Identical waiting response for an unknown/unavailable Telegram login.
             if (input.LoginMode == AuthLoginMode.TelegramLogin &&
                 (user == null || AuthenticationPolicy.Mode(settings) != AuthLoginMode.TelegramLogin || !AuthenticationPolicy.TelegramAvailable(settings)))
             {
-                c.UserId = 0; c.LoginMode = AuthLoginMode.TelegramLogin; c.Factor = OtpTypeId.Telegram;
-                c.UseRecoveryCode = input.UseRecoveryCode;
-                db.AuthenticationChallenges.Add(c);
-                return await Describe(c, reference, ct);
+                var (decoy, reference) = NewChallenge(AuthenticationPurpose.SignIn, 0, input.Login, null);
+                decoy.LoginMode = AuthLoginMode.TelegramLogin; decoy.Factor = OtpTypeId.Telegram;
+                decoy.UseRecoveryCode = input.UseRecoveryCode;
+                db.AuthenticationChallenges.Add(decoy);
+                return await Describe(decoy, reference, ct);
             }
-            if (input.LoginMode != AuthenticationPolicy.Mode(settings)) throw Unavailable("Choose the sign-in mode configured for this account");
+            if (input.LoginMode != AuthenticationPolicy.Mode(settings))
+                return new AuthChallengeResponse { ErrorCode = "login_mode_disabled" };
+
+            var (c, challengeReference) = NewChallenge(AuthenticationPurpose.SignIn, user?.Id ?? 0, user?.Username ?? input.Login, settings);
             await PrepareSignIn(c, settings, input.Factor, input.UseRecoveryCode, ct);
             db.AuthenticationChallenges.Add(c);
-            return await Describe(c, reference, ct);
+            return await Describe(c, challengeReference, ct);
         }, ct);
     }
 

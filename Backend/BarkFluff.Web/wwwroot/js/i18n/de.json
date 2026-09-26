@@ -45,6 +45,7 @@
   "auth.error.badCode": "Ungültiger Bestätigungscode",
   "auth.error.badCredentials": "Falscher Login oder falsches Passwort",
   "auth.error.incompleteCode": "Gib alle 6 Ziffern ein",
+  "auth.error.loginModeDisabled": "Diese Anmeldemethode ist für dieses Konto deaktiviert. Wähle die Methode aus den Sicherheitseinstellungen.",
   "auth.error.network": "Verbindung zum Server fehlgeschlagen",
   "auth.error.noLogin": "Gib deinen Login oder deine E-Mail ein",
   "auth.error.noPassword": "Passwort eingeben",

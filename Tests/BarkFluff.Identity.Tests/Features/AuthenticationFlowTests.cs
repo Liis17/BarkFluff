@@ -92,6 +92,34 @@ public class AuthenticationFlowTests
     }
 
     [Fact]
+    public async Task CorrectPasswordWithDisabledSignInMode_ReturnsTypedErrorWithoutCreatingChallenge()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var challengeCount = await h.Db.AuthenticationChallenges.CountAsync();
+        var messageCount = h.Bot.Messages.Count;
+        var request = h.SignIn();
+        request.LoginMode = AuthLoginMode.Password;
+
+        var response = await h.Service.BeginSignIn(request, default);
+
+        Assert.Equal("login_mode_disabled", response.ErrorCode);
+        Assert.Equal(challengeCount, await h.Db.AuthenticationChallenges.CountAsync());
+        Assert.Equal(messageCount, h.Bot.Messages.Count);
+    }
+
+    [Fact]
+    public async Task WrongPasswordWithDisabledSignInMode_DoesNotRevealConfiguredMode()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var request = h.SignIn(password: "incorrect");
+        request.LoginMode = AuthLoginMode.Password;
+
+        await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => h.Service.BeginSignIn(request, default));
+    }
+
+    [Fact]
     public async Task PasswordAndTelegramCode_RejectsWrongCodesAndAcceptsDeliveredCode()
     {
         using var h = new Harness(); await h.Register();
@@ -205,7 +233,7 @@ public class AuthenticationFlowTests
         Assert.Equal(AuthChallengeState.Waiting, (await h.Service.Status(pending.Challenge, default)).State);
         await h.Approve();
         Assert.NotNull((await h.Complete(pending)).Session);
-        await Assert.ThrowsAsync<RpcException>(() => h.Service.BeginSignIn(h.SignIn(), default));
+        Assert.Equal("login_mode_disabled", (await h.Service.BeginSignIn(h.SignIn(), default)).ErrorCode);
     }
 
     [Fact]

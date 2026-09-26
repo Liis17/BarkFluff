@@ -45,6 +45,7 @@
   "auth.error.badCode": "验证码无效",
   "auth.error.badCredentials": "登录名或密码错误",
   "auth.error.incompleteCode": "请输入全部 6 位数字",
+  "auth.error.loginModeDisabled": "此账号已停用所选登录方式。请选择安全设置中配置的方式。",
   "auth.error.network": "无法连接到服务器",
   "auth.error.noLogin": "请输入登录名或邮箱",
   "auth.error.noPassword": "请输入密码",

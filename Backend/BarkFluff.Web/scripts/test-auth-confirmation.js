@@ -213,6 +213,31 @@ async function main() {
     telegramCancel.click();
     await assert.rejects(telegramOperation, (reason) => reason.name === 'AbortError');
     console.log('PASS: Telegram button login explains the account mode and labels resend as an approval request');
+
+    let pollsAfterMismatch = 0;
+    const mismatchAttempt = {
+        begin() {
+            return Promise.resolve({ getErrorCode: () => 'login_mode_disabled' });
+        },
+        cancel() {},
+        poll() {
+            pollsAfterMismatch += 1;
+        }
+    };
+    const mismatchUi = loadAuthUi(() => mismatchAttempt);
+    const mismatchOperation = mismatchUi.api.run('beginSignIn', 'BeginSignInRequest', { loginMode: 1 });
+    await new Promise((resolve) => setImmediate(resolve));
+    const mismatchDialog = mismatchUi.body.children[0];
+    const mismatchError = descendants(mismatchDialog).find((element) => element.attributes.role === 'alert');
+    const mismatchStatus = descendants(mismatchDialog).find((element) => element.attributes.role === 'status');
+    assert.equal(mismatchError.textContent, 'auth.error.loginModeDisabled');
+    assert.equal(mismatchStatus.textContent, '');
+    assert.equal(pollsAfterMismatch, 0, 'a rejected sign-in mode has no challenge to poll');
+    descendants(mismatchDialog).find(
+        (element) => element.tagName === 'button' && element.textContent === 'common.cancel'
+    ).click();
+    await assert.rejects(mismatchOperation, (reason) => reason.name === 'AbortError');
+    console.log('PASS: a disabled sign-in mode shows a localized error without polling a missing challenge');
 }
 
 function response(factor, state, needsCode) {
@@ -221,7 +246,8 @@ function response(factor, state, needsCode) {
         getNeedsCode: () => needsCode,
         getFactor: () => factor,
         getAvailableFactorsList: () => [1, 3],
-        getTelegramUrl: () => ''
+        getTelegramUrl: () => '',
+        getErrorCode: () => ''
     };
 }
 

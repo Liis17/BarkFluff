@@ -372,6 +372,7 @@ message AuthChallengeResponse {
   google.protobuf.Timestamp expires_at = 5;
   repeated OtpTypeId available_factors = 6;
   bool needs_code = 7;
+  string error_code = 8;
 }
 message BeginRegistrationRequest {
   string username = 1;

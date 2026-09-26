@@ -45,6 +45,7 @@
   "auth.error.badCode": "Invalid confirmation code",
   "auth.error.badCredentials": "Wrong login or password",
   "auth.error.incompleteCode": "Enter all 6 digits",
+  "auth.error.loginModeDisabled": "This sign-in method is disabled for this account. Choose the method configured in Security settings.",
   "auth.error.network": "Couldn't connect to the server",
   "auth.error.noLogin": "Enter your login or email",
   "auth.error.noPassword": "Enter a password",
