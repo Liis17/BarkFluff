@@ -1,23 +1,18 @@
 package com.barkfluff.client
 
-import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
-import android.text.InputFilter
 import android.text.TextWatcher
 import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.EditText
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.viewModels
-import androidx.dynamicanimation.animation.DynamicAnimation
-import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -59,11 +54,6 @@ class LoginActivity : AppCompatActivity() {
         private val EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
         private const val MIN_PASSWORD_LENGTH = 6
         private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
-        private const val LOGIN_MODE_FADE_DURATION_MS = 160L
-        private const val LOGIN_MODE_OFFSET_DP = 12
-        private const val LOGIN_MODE_SPRING_STIFFNESS = 700f
-        private const val LOGIN_MODE_SPRING_DAMPING = 0.9f
-
         /** Отступы hero-блока; складываются с системными инсетами. */
         private const val LOGIN_TOP_PADDING_DP = 20
         private const val LOGIN_BOTTOM_PADDING_DP = 16
@@ -80,20 +70,10 @@ class LoginActivity : AppCompatActivity() {
     @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
     @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
 
-    private var isOtpMode = false
     private var isLoading = false
     private var identityErrorVisible = false
     private var selectedLoginMode = AuthenticationLoginMode.PASSWORD
     private var authenticationCapabilities: AuthenticationCapabilities? = null
-
-    // Saved login/password for OTP retry
-    private var savedLogin = ""
-    private var savedPassword = ""
-
-    private lateinit var otpBoxes: List<EditText>
-
-    private val loginModeOffsetPx: Float
-        get() = LOGIN_MODE_OFFSET_DP.dpToPx().toFloat()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -117,11 +97,6 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
-        otpBoxes = listOf(
-            binding.otpBox1, binding.otpBox2, binding.otpBox3,
-            binding.otpBox4, binding.otpBox5, binding.otpBox6
-        )
-
         // Загружаем внешний IP-адрес асинхронно
         lifecycleScope.launch {
             GlobalParam.loadIpAddress(globalParam.sharedPreferences)
@@ -130,7 +105,6 @@ class LoginActivity : AppCompatActivity() {
         initIdentityClient()
         setupClickListeners()
         setupLoginFields()
-        setupOtpBoxes()
         loadAuthenticationCapabilities()
     }
 
@@ -264,66 +238,6 @@ class LoginActivity : AppCompatActivity() {
         return event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN
     }
 
-    private fun setupOtpBoxes() {
-        for (i in otpBoxes.indices) {
-            val box = otpBoxes[i]
-
-            if (i == 0) {
-                box.filters = arrayOf(InputFilter { source, start, end, _, _, _ ->
-                    val code = source.subSequence(start, end).toString()
-                    if (code.length == otpBoxes.size && code.all(Char::isDigit)) {
-                        box.post { fillOtpBoxes(code) }
-                        ""
-                    } else {
-                        null
-                    }
-                }) + box.filters
-            }
-
-            box.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                override fun afterTextChanged(s: Editable?) {
-                    clearErrorIfNotIdentity()
-                    if (s != null && s.length == 1 && i < otpBoxes.size - 1) {
-                        otpBoxes[i + 1].requestFocus()
-                    }
-                    // Auto-submit when all 6 digits are filled
-                    if (i == otpBoxes.size - 1 && s != null && s.length == 1) {
-                        val otp = getOtpCode()
-                        if (otp.length == 6) {
-                            performOtpLogin()
-                        }
-                    }
-                }
-            })
-
-            box.setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEYCODE_DEL && event.action == KeyEvent.ACTION_DOWN) {
-                    if (box.text.isNullOrEmpty() && i > 0) {
-                        otpBoxes[i - 1].apply {
-                            requestFocus()
-                            text?.clear()
-                        }
-                        return@setOnKeyListener true
-                    }
-                }
-                false
-            }
-        }
-    }
-
-    private fun fillOtpBoxes(code: String) {
-        otpBoxes.forEachIndexed { index, box ->
-            box.setText(code[index].toString())
-        }
-        otpBoxes.last().requestFocus()
-    }
-
-    private fun getOtpCode(): String {
-        return otpBoxes.joinToString("") { it.text.toString() }
-    }
-
     private fun performLogin() {
         clearErrorIfNotIdentity()
 
@@ -417,11 +331,6 @@ class LoginActivity : AppCompatActivity() {
         AuthenticationLoginMode.PASSWORD_SECOND_FACTOR -> R.string.login_mode_password_factor
     }
 
-    private fun performOtpLogin() {
-        // Legacy inline OTP has no call path. Challenge confirmation is handled in the dialog.
-        showError(getString(R.string.auth_error))
-    }
-
     private fun handleAuthResult(result: AuthenticationResult) {
         when (result) {
             is AuthenticationResult.Success -> {
@@ -477,7 +386,7 @@ class LoginActivity : AppCompatActivity() {
             }
             AuthenticationResult.OtpRequired -> {
                 setLoadingState(false)
-                showOtpMode()
+                showError(getString(R.string.auth_error))
             }
             is AuthenticationResult.Error -> {
                 setLoadingState(false)
@@ -488,74 +397,6 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun showOtpMode() {
-        isOtpMode = true
-        binding.titleText.setText(R.string.login_2fa_title)
-        binding.subtitleText.setText(R.string.login_2fa_message)
-        binding.loginButton.setText(R.string.btn_confirm)
-
-        // Clear the code before the transition so autofill/paste starts from a clean state.
-        otpBoxes.forEach { it.text?.clear() }
-        switchLoginMode(showOtp = true) {
-            otpBoxes[0].requestFocus()
-            otpBoxes[0].post {
-                val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                inputMethodManager.showSoftInput(otpBoxes[0], InputMethodManager.SHOW_IMPLICIT)
-            }
-        }
-    }
-
-    /**
-     * Переключает форму и OTP через короткий fade-through с лёгким spring по вертикали.
-     * ValueAnimator отключается системной настройкой Animator duration scale = 0,
-     * поэтому в reduced-motion режиме состояние меняется без декоративного движения.
-     */
-    private fun switchLoginMode(showOtp: Boolean, onShown: (() -> Unit)? = null) {
-        val incoming = if (showOtp) binding.otpGroup else binding.loginFieldsGroup
-        val outgoing = if (showOtp) binding.loginFieldsGroup else binding.otpGroup
-
-        incoming.animate().cancel()
-        outgoing.animate().cancel()
-        incoming.translationY = 0f
-        outgoing.translationY = 0f
-        incoming.alpha = 1f
-        outgoing.alpha = 1f
-
-        if (!ValueAnimator.areAnimatorsEnabled()) {
-            outgoing.visibility = View.GONE
-            incoming.visibility = View.VISIBLE
-            onShown?.invoke()
-            return
-        }
-
-        outgoing.animate()
-            .alpha(0f)
-            .setDuration(LOGIN_MODE_FADE_DURATION_MS / 2)
-            .withEndAction {
-                outgoing.visibility = View.GONE
-                outgoing.alpha = 1f
-
-                incoming.visibility = View.VISIBLE
-                incoming.alpha = 0f
-                incoming.translationY = loginModeOffsetPx
-                incoming.animate()
-                    .alpha(1f)
-                    .setDuration(LOGIN_MODE_FADE_DURATION_MS)
-                    .withEndAction {
-                        incoming.alpha = 1f
-                        incoming.translationY = 0f
-                        onShown?.invoke()
-                    }
-                    .start()
-
-                SpringAnimation(incoming, DynamicAnimation.TRANSLATION_Y, 0f).apply {
-                    spring.stiffness = LOGIN_MODE_SPRING_STIFFNESS
-                    spring.dampingRatio = LOGIN_MODE_SPRING_DAMPING
-                }.start()
-            }
-            .start()
     }
 
     private fun validateLogin(login: String): Boolean {
@@ -594,9 +435,7 @@ class LoginActivity : AppCompatActivity() {
         isLoading = loading
         binding.loginButton.isEnabled = !loading
         binding.retryIdentityButton.isEnabled = !loading
-        binding.loginButton.text = if (loading) "" else getString(
-            if (isOtpMode) R.string.btn_confirm else R.string.btn_login
-        )
+        binding.loginButton.text = if (loading) "" else getString(R.string.btn_login)
         binding.loginProgressBar.visibility = if (loading) View.VISIBLE else View.GONE
     }
 
@@ -661,22 +500,6 @@ class LoginActivity : AppCompatActivity() {
     private fun navigateToRegister() {
         val intent = Intent(this, RegisterActivity::class.java)
         startActivity(intent)
-    }
-
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        if (isOtpMode) {
-            // Return to login fields from OTP mode
-            isOtpMode = false
-            binding.titleText.setText(R.string.login_welcome_title)
-            binding.subtitleText.setText(R.string.login_account_prompt)
-            binding.loginButton.setText(R.string.btn_login)
-            hideError()
-            hideKeyboard()
-            switchLoginMode(showOtp = false)
-        } else {
-            super.onBackPressed()
-        }
     }
 
 }
