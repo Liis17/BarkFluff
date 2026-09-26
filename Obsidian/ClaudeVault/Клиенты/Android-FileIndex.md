@@ -11,6 +11,7 @@
 
 - `GrpcClientRegistry`, `TokenCoordinator` и `MediaHttpTransport` владеют transport lifecycle, refresh и media TLS policy. `GrpcApiTransport` — только внутренний production adapter; `GrpcManager` удалён.
 - Typed ports находятся в `domain/gateway/DomainGateways.kt`, production wiring — `GrpcGatewayAdapters.kt` + `di/AppModule.kt`. UI/worker получают только нужный gateway или Hilt entry point; E2E send operations закрыты `GrpcPrivateChatGateway`/`GrpcSecretChatGateway`.
+- Challenge-auth: `AuthenticationChallengeGateway` и domain DTO закрывают текущий Identity contract; `AuthenticationChallengeController` + `AuthenticationChallengeViewModel` держат opaque reference только в памяти, `AuthenticationChallengeDialog` реализует foreground polling, Telegram URL, code/resend/cancel UI. `AuthenticationUiPolicy` capability-gates modes, `AuthenticationSecurityPolicy` сохраняет FastAuth при мутациях.
 - Regular chat: `ChatViewModel.state/effects/dispatch`, модули `RegularChatSession`, `ChatComposer`, `ChatPresence`/`ChatPresenceSession`, `SelectionReducer`, `MessageRowProjector`.
 - Durable composer: `ComposerAttachmentStore` + Room schema v4 (`composer_attachments`) под `noBackupFilesDir/composer/<scope>/<chatId>/`; `draftGeneration` координирует handoff с outbox, а `ChatCacheRepository.clearAll()` удаляет journal и файлы при cache clear/logout.
 - `MessageAdapter` stateless; event boundary — `MessageRowEventSink`, media/audio I/O — `AttachmentLoader` и `AudioPlaybackController`. `ChatActivity` — shell, E2E controllers не зависят от `BarkFluffApplication`.
@@ -38,9 +39,9 @@
 | `SplashActivity.kt` | Точка входа; роутер — проверяет токены и направляет на WelcomeActivity, LoginActivity или MainActivity |
 | `WelcomeActivity.kt` | Приветственный экран при первом запуске; запрашивает разрешения; ведёт на SelectServerActivity |
 | `SelectServerActivity.kt` | Выбор/ввод адреса сервера; загружает список серверов через Navigator API; сохраняет endpoint'ы |
-| `LoginActivity.kt` | Авторизация (логин/email, пароль, 2FA OTP); сохраняет токены в EncryptedSharedPreferences |
-| `RegisterActivity.kt` | Регистрация в 9 шагов (имя, username, email, OTP, пароль, аватар, bio, 2FA, завершение) |
-| `ResetPasswordActivity.kt` | Сброс пароля через email (запрос кода → подтверждение → новый пароль) |
+| `LoginActivity.kt` | Challenge-based вход (Password, Telegram Login, Password + factor); сохраняет только completed session |
+| `RegisterActivity.kt` | Challenge-based регистрация: capability-gated email/Telegram, профильные шаги, recovery codes |
+| `ResetPasswordActivity.kt` | `BeginPasswordRecovery → challenge → SetRecoveredPassword`; proof не сохраняется |
 | `MainActivity.kt` | Главный экран; BottomNavigation с 3 табами (Чаты, Звонки, Профиль); обрабатывает deep links и уведомления |
 | `ChatsFragment.kt` | Список чатов; подписывается на RealtimeService; обновляется при новых сообщениях |
 | `CallsFragment.kt` | Вкладка звонков — история (`CallHistoryAdapter`), инициация нового звонка |
@@ -68,7 +69,7 @@
 | `QrScannerActivity.kt` | Сканер QR-кода через CameraX + ML Kit; инициирует FastAuth |
 | `DeepLinkActivity.kt` | Перехватывает `bf://` / `bfdev://` deep links и перенаправляет в приложение |
 | `AccountSettingsActivity.kt` | Редактирование профиля (имя, username, bio, email, аватар через uCrop) |
-| `SecuritySettingsActivity.kt` | Смена пароля, управление двухфакторной аутентификацией |
+| `SecuritySettingsActivity.kt` | Security proof для Telegram/email bindings, login policy, factors и recovery codes; FastAuth Telegram не показывается |
 | `PrivacySettingsActivity.kt` | Настройки приватности (видимость онлайна/аватара/bio: Все / Друзья / Никто) |
 | `NotificationSettingsActivity.kt` | Переключатель уведомлений и настройки каналов Android |
 | `StorageSettingsActivity.kt` | Просмотр и очистка кэша (FileCache, StickerCache, ImageCache) с разбивкой по категориям |

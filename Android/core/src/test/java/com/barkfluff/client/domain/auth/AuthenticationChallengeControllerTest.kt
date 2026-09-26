@@ -53,10 +53,27 @@ class AuthenticationChallengeControllerTest {
         assertTrue(controller.resend().isFailure)
     }
 
+    @Test
+    fun `resume reuses an in-memory challenge instead of beginning another one`() = runBlocking {
+        val gateway = FakeGateway()
+        val controller = AuthenticationChallengeController(gateway)
+
+        controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+        val resumed = controller.resumeOrBegin {
+            error("A retained challenge must not start another request")
+        }
+
+        assertTrue(resumed.isSuccess)
+        assertEquals(1, gateway.beginSignInCalls)
+        assertEquals(1, gateway.challengeCalls)
+    }
+
     private class FakeGateway : AuthenticationChallengeGateway {
         val reference = AuthenticationChallengeReference("challenge", "secret")
         val cancelled = mutableListOf<AuthenticationChallengeReference>()
         var completeCalls = 0
+        var beginSignInCalls = 0
+        var challengeCalls = 0
         var completion = AuthenticationCompletion(
             state = AuthenticationChallengeState.WAITING,
             session = null,
@@ -78,8 +95,14 @@ class AuthenticationChallengeControllerTest {
 
         override suspend fun capabilities() = Result.success(AuthenticationCapabilities(false, false, ""))
         override suspend fun beginRegistration(request: RegistrationRequest) = Result.success(challenge)
-        override suspend fun beginSignIn(request: SignInRequest) = Result.success(challenge)
-        override suspend fun challenge(reference: AuthenticationChallengeReference) = Result.success(challenge)
+        override suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge> {
+            beginSignInCalls++
+            return Result.success(challenge)
+        }
+        override suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> {
+            challengeCalls++
+            return Result.success(challenge)
+        }
         override suspend fun completeChallenge(reference: AuthenticationChallengeReference, code: String, useRecoveryCode: Boolean): Result<AuthenticationCompletion> {
             completeCalls++
             return Result.success(completion)
