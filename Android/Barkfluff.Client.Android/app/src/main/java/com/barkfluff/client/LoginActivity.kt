@@ -27,7 +27,7 @@ import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.auth.AuthenticationUiPolicy
-import com.barkfluff.client.domain.model.AuthenticationResult
+import com.barkfluff.client.domain.model.AuthSession
 import com.barkfluff.client.domain.model.AuthenticationCapabilities
 import com.barkfluff.client.domain.model.AuthenticationLoginMode
 import com.barkfluff.client.domain.model.SignInRequest
@@ -264,6 +264,17 @@ class LoginActivity : AppCompatActivity() {
             ).run(
                 title = getString(R.string.login_2fa_title),
                 useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
+                restartWithFactor = { factor ->
+                    authenticationChallengeGateway.beginSignIn(
+                        SignInRequest(
+                            login = loginInput,
+                            password = password,
+                            loginMode = selectedLoginMode,
+                            factor = factor,
+                            useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
+                        ),
+                    )
+                },
             ) {
                 authenticationChallengeGateway.beginSignIn(
                     SignInRequest(
@@ -276,7 +287,7 @@ class LoginActivity : AppCompatActivity() {
             }
             setLoadingState(false)
             result.onSuccess { completion ->
-                completion.session?.let { handleAuthResult(AuthenticationResult.Success(it)) }
+                completion.session?.let(::handleCompletedSession)
                     ?: showError(getString(R.string.auth_error))
             }.onFailure { failure ->
                 if (failure !is java.util.concurrent.CancellationException) {
@@ -331,15 +342,13 @@ class LoginActivity : AppCompatActivity() {
         AuthenticationLoginMode.PASSWORD_SECOND_FACTOR -> R.string.login_mode_password_factor
     }
 
-    private fun handleAuthResult(result: AuthenticationResult) {
-        when (result) {
-            is AuthenticationResult.Success -> {
-                lifecycleScope.launch {
+    private fun handleCompletedSession(session: AuthSession) {
+        lifecycleScope.launch {
                     // Сохраняем токены
-                    globalParam.accessToken = result.session.accessToken
-                    globalParam.refreshToken = result.session.refreshToken
-                    globalParam.accessTokenExpiration = result.session.accessTokenExpiration
-                    globalParam.refreshTokenExpiration = result.session.refreshTokenExpiration
+                    globalParam.accessToken = session.accessToken
+                    globalParam.refreshToken = session.refreshToken
+                    globalParam.accessTokenExpiration = session.accessTokenExpiration
+                    globalParam.refreshTokenExpiration = session.refreshTokenExpiration
 
                     // Создаем Users клиент для загрузки данных пользователя
                     val usersAddress = globalParam.socketUsers
@@ -382,20 +391,6 @@ class LoginActivity : AppCompatActivity() {
                     // Переходим в чаты. Fresh channels pick up the newly persisted token.
                     clientRegistry.recreateAllClients(globalParam, this@LoginActivity)
                     navigateToChats()
-                }
-            }
-            AuthenticationResult.OtpRequired -> {
-                setLoadingState(false)
-                showError(getString(R.string.auth_error))
-            }
-            is AuthenticationResult.Error -> {
-                setLoadingState(false)
-                if (result.canRetryIdentity) {
-                    showIdentityError(result.message)
-                } else {
-                    showError(result.message)
-                }
-            }
         }
     }
 

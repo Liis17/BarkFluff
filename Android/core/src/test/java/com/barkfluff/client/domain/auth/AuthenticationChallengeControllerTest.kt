@@ -68,6 +68,19 @@ class AuthenticationChallengeControllerTest {
         assertEquals(1, gateway.challengeCalls)
     }
 
+    @Test
+    fun `terminal poll result clears the active challenge even when UI stops polling`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            currentChallenge = challenge.copy(state = AuthenticationChallengeState.EXPIRED)
+        }
+        val controller = AuthenticationChallengeController(gateway, pollIntervalMillis = 0)
+
+        controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+        controller.poll { false }
+
+        assertTrue(controller.resend().isFailure)
+    }
+
     private class FakeGateway : AuthenticationChallengeGateway {
         val reference = AuthenticationChallengeReference("challenge", "secret")
         val cancelled = mutableListOf<AuthenticationChallengeReference>()
@@ -82,7 +95,7 @@ class AuthenticationChallengeControllerTest {
             errorCode = "",
         )
 
-        private val challenge = AuthenticationChallenge(
+        val challenge = AuthenticationChallenge(
             reference = reference,
             state = AuthenticationChallengeState.WAITING,
             factor = AuthenticationFactor.NONE,
@@ -92,16 +105,17 @@ class AuthenticationChallengeControllerTest {
             needsCode = true,
             errorCode = "",
         )
+        var currentChallenge = challenge
 
         override suspend fun capabilities() = Result.success(AuthenticationCapabilities(false, false, ""))
-        override suspend fun beginRegistration(request: RegistrationRequest) = Result.success(challenge)
+        override suspend fun beginRegistration(request: RegistrationRequest) = Result.success(currentChallenge)
         override suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge> {
             beginSignInCalls++
-            return Result.success(challenge)
+            return Result.success(currentChallenge)
         }
         override suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> {
             challengeCalls++
-            return Result.success(challenge)
+            return Result.success(currentChallenge)
         }
         override suspend fun completeChallenge(reference: AuthenticationChallengeReference, code: String, useRecoveryCode: Boolean): Result<AuthenticationCompletion> {
             completeCalls++
@@ -109,15 +123,15 @@ class AuthenticationChallengeControllerTest {
         }
         override suspend fun cancelChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> {
             cancelled += reference
-            return Result.success(challenge)
+            return Result.success(currentChallenge)
         }
-        override suspend fun resendChallenge(reference: AuthenticationChallengeReference) = Result.success(challenge)
+        override suspend fun resendChallenge(reference: AuthenticationChallengeReference) = Result.success(currentChallenge)
         override suspend fun securitySettings(): Result<SecuritySettings> = unsupported()
-        override suspend fun beginReauthentication(password: String, factor: AuthenticationFactor, useRecoveryCode: Boolean) = Result.success(challenge)
+        override suspend fun beginReauthentication(password: String, factor: AuthenticationFactor, useRecoveryCode: Boolean) = Result.success(currentChallenge)
         override suspend fun updateSecuritySettings(securityProof: AuthenticationChallengeReference, update: SecuritySettingsUpdate): Result<SecuritySettings> = unsupported()
-        override suspend fun beginTelegramBinding(securityProof: AuthenticationChallengeReference) = Result.success(challenge)
+        override suspend fun beginTelegramBinding(securityProof: AuthenticationChallengeReference) = Result.success(currentChallenge)
         override suspend fun unlinkTelegram(securityProof: AuthenticationChallengeReference, update: SecuritySettingsUpdate): Result<SecuritySettings> = unsupported()
-        override suspend fun beginEmailBinding(securityProof: AuthenticationChallengeReference, email: String) = Result.success(challenge)
+        override suspend fun beginEmailBinding(securityProof: AuthenticationChallengeReference, email: String) = Result.success(currentChallenge)
         override suspend fun generateRecoveryCodes(securityProof: AuthenticationChallengeReference) = Result.success(emptyList<String>())
         override suspend fun beginPasswordRecovery(login: String) = Result.success(challenge)
         override suspend fun setRecoveredPassword(securityProof: AuthenticationChallengeReference, password: String) = Result.success(Unit)

@@ -7,7 +7,6 @@ import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.shared.Shared
 import barkfluff.updates.UpdatesApiOuterClass
 import barkfluff.users.UsersApiOuterClass
-import com.barkfluff.client.domain.model.AuthenticationResult
 import com.barkfluff.client.domain.model.AuthenticationCapabilities
 import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeReference
@@ -18,7 +17,6 @@ import com.barkfluff.client.domain.model.SecuritySettings
 import com.barkfluff.client.domain.model.SecuritySettingsUpdate
 import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.domain.model.OtpEnrollment
-import com.barkfluff.client.domain.model.AuthResult
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatInfo
 import com.barkfluff.client.domain.model.ChatMember
@@ -29,11 +27,7 @@ import com.barkfluff.client.domain.model.PinnedMessagePage
 import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.domain.model.UserProfile
 import com.barkfluff.client.domain.model.UserPresence
-import com.barkfluff.client.domain.model.ConfirmAccountResult
-import com.barkfluff.client.domain.model.ConfirmResetPasswordResult
 import com.barkfluff.client.domain.model.InvalidOldPasswordException
-import com.barkfluff.client.domain.model.OtpSetupResult
-import com.barkfluff.client.domain.model.OtpStatus
 import com.barkfluff.client.domain.model.PrivateChatCreateResult
 import com.barkfluff.client.domain.model.SecretInviteSent
 import com.barkfluff.client.domain.model.SecretMessageSent
@@ -66,13 +60,6 @@ interface ServerDiscoveryGateway {
 }
 
 interface AuthGateway {
-    suspend fun authenticate(
-        email: String?,
-        username: String?,
-        password: String,
-        otpCode: String?,
-    ): AuthenticationResult
-
     suspend fun ensureValid(forceRefresh: Boolean = false): Boolean
     suspend fun refresh(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<com.barkfluff.client.grpc.TokenRefreshResult>
     suspend fun logout(): Result<Unit>
@@ -135,14 +122,6 @@ interface AuthenticationChallengeGateway {
     ): Result<Unit>
 }
 
-interface AccountSecurityGateway {
-    suspend fun register(firstName: String, lastName: String, email: String, login: String): Result<String>
-    suspend fun resetPassword(email: String?, username: String?): Result<String>
-    suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult>
-    suspend fun confirmResetPassword(resetId: String, code: String): Result<ConfirmResetPasswordResult>
-    suspend fun setPasswordAfterReset(newPassword: String): Result<Unit>
-}
-
 interface UserProfileGateway {
     suspend fun currentUser(): Result<UserProfile>
     suspend fun user(userId: Long): Result<UserProfile>
@@ -159,11 +138,6 @@ interface UserProfileGateway {
     suspend fun renameDevice(deviceId: String, customName: String): Result<Unit>
     suspend fun removeActiveSession(deviceId: String): Result<Unit>
     suspend fun password(password: String): Result<Unit>
-    suspend fun otpSetup(): Result<OtpSetupResult>
-    suspend fun confirmOtpSetup(code: String): Result<Unit>
-    suspend fun otpStatus(): Result<OtpStatus>
-    suspend fun enableOtpEmail(): Result<Unit>
-    suspend fun disableOtp(type: barkfluff.identity.IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit>
     suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit>
     suspend fun storageInfo(): Result<StorageInfo>
 }

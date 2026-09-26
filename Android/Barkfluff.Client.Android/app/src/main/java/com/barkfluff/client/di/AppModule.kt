@@ -15,7 +15,6 @@ import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.grpc.TokenCoordinator
-import com.barkfluff.client.domain.gateway.AccountSecurityGateway
 import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
@@ -24,7 +23,6 @@ import com.barkfluff.client.domain.gateway.ChatFolderGateway
 import com.barkfluff.client.domain.gateway.CallGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.FastAuthGateway
-import com.barkfluff.client.domain.gateway.GrpcAccountSecurityGateway
 import com.barkfluff.client.domain.gateway.GrpcAuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.GrpcAuthGateway
 import com.barkfluff.client.domain.gateway.GrpcChatDirectoryGateway
@@ -109,13 +107,7 @@ object AppModule {
     @Singleton
     fun provideAuthGateway(
         transport: GrpcApiTransport,
-        @ApplicationContext context: Context,
-    ): AuthGateway = GrpcAuthGateway(transport, context)
-
-    @Provides
-    @Singleton
-    fun provideAccountSecurityGateway(transport: GrpcApiTransport): AccountSecurityGateway =
-        GrpcAccountSecurityGateway(transport)
+    ): AuthGateway = GrpcAuthGateway(transport)
 
     @Provides
     @Singleton

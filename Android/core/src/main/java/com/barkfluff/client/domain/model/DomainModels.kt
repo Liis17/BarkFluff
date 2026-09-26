@@ -12,15 +12,6 @@ data class AuthSession(
     val refreshTokenExpiration: Long,
 )
 
-sealed interface AuthenticationResult {
-    data class Success(val session: AuthSession) : AuthenticationResult
-    data object OtpRequired : AuthenticationResult
-    data class Error(
-        val message: String,
-        val canRetryIdentity: Boolean = false,
-    ) : AuthenticationResult
-}
-
 data class ServerInfo(
     val name: String,
     val description: String,
@@ -209,11 +200,3 @@ internal fun MessagesApiOuterClass.Chat.toDomain() = ChatSummary(
     kdfSalt = kdfSalt.toByteArray(),
     passphraseVerifier = passphraseVerifier.toByteArray(),
 )
-
-internal fun GrpcApiTransport.AuthResult.toDomain() = when (this) {
-    is GrpcApiTransport.AuthResult.Success -> AuthenticationResult.Success(
-        AuthSession(accessToken, accessTokenExpiration, refreshToken, refreshTokenExpiration)
-    )
-    GrpcApiTransport.AuthResult.OtpRequired -> AuthenticationResult.OtpRequired
-    is GrpcApiTransport.AuthResult.Error -> AuthenticationResult.Error(message, canRetryIdentity)
-}

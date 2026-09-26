@@ -43,9 +43,6 @@ class GrpcApiTransport(context: Context) {
         const val DEFAULT_NAVIGATOR_URL = "https://navigator.barkfluff.com:443"
 
         // Error codes from x-error-code trailer
-        const val ERROR_OTP_CODE_NEEDED = "C1576884-12D8-4722-A7EE-9F9789AD1265"
-        const val ERROR_NOT_VALID_OTP_CODE = "803B632C-4457-4B05-9435-9C3DD0F41E00"
-        const val ERROR_INVALID_LOGIN_OR_PASSWORD = "21BFB9B5-C377-45D1-9B15-6B7F3432B397"
         const val ERROR_INVALID_OLD_PASSWORD = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
         const val ERROR_USERNAME_INVALID_FORMAT = "E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47"
 
@@ -189,65 +186,6 @@ class GrpcApiTransport(context: Context) {
         )
     }
 
-    /**
-     * Авторизация пользователя
-     * @param email email (nullable, if username is used)
-     * @param username username (nullable, if email is used)
-     * @param password пароль
-     * @param otpCode код 2FA (nullable)
-     * @param context контекст для получения метаданных устройства
-     */
-    suspend fun auth(
-        email: String?,
-        username: String?,
-        password: String,
-        otpCode: String?,
-        context: Context
-    ): AuthResult = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext AuthResult.Error(
-                    message = "Identity клиент не создан",
-                    canRetryIdentity = true,
-                )
-            }
-
-            val requestBuilder = IdentityApiOuterClass.AuthRequest.newBuilder()
-                .setPassword(password)
-
-            if (!email.isNullOrBlank()) {
-                requestBuilder.email = email
-            } else if (!username.isNullOrBlank()) {
-                requestBuilder.username = username
-            }
-
-            if (!otpCode.isNullOrBlank()) {
-                requestBuilder.otpCode = otpCode
-            }
-
-            val request = requestBuilder.build()
-
-            val response = identityClient!!.auth(request)
-
-            AuthResult.Success(
-                accessToken = response.accessToken.value,
-                accessTokenExpiration = response.accessToken.expirationDate.seconds * 1000,
-                refreshToken = response.refreshToken.value,
-                refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
-            )
-        } catch (e: StatusException) {
-            handleAuthError(e)
-        } catch (e: StatusRuntimeException) {
-            handleAuthRuntimeError(e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка авторизации", e)
-            AuthResult.Error(
-                message = "Ошибка подключения: ${e.message}",
-                canRetryIdentity = true,
-            )
-        }
-    }
-
     private suspend fun <T> identityCall(
         operation: String,
         call: suspend (IdentityApiGrpcKt.IdentityApiCoroutineStub) -> T,
@@ -356,39 +294,6 @@ class GrpcApiTransport(context: Context) {
         request: IdentityApiOuterClass.DisableOtpVerificationRequest,
     ): Result<IdentityApiOuterClass.DisableOtpVerificationResponse> =
         identityCall("DisableOtpVerification") { client -> client.disableOtpVerification(request) }
-
-    private fun handleAuthError(e: StatusException): AuthResult {
-        val errorCode = e.trailers?.get(ERROR_CODE_KEY)?.uppercase()
-        Log.d(TAG, "Auth error: status=${e.status}, errorCode=$errorCode")
-
-        return when (errorCode) {
-            ERROR_OTP_CODE_NEEDED -> AuthResult.OtpRequired
-            ERROR_NOT_VALID_OTP_CODE -> AuthResult.Error("Неверный код 2FA")
-            ERROR_INVALID_LOGIN_OR_PASSWORD -> AuthResult.Error("Неверный логин или пароль")
-            else -> AuthResult.Error(
-                message = e.status.description ?: "Ошибка авторизации",
-                canRetryIdentity = isRetryableIdentityStatus(e.status),
-            )
-        }
-    }
-
-    private fun handleAuthRuntimeError(e: StatusRuntimeException): AuthResult {
-        val errorCode = e.trailers?.get(ERROR_CODE_KEY)?.uppercase()
-        Log.d(TAG, "Auth runtime error: status=${e.status}, errorCode=$errorCode")
-
-        return when (errorCode) {
-            ERROR_OTP_CODE_NEEDED -> AuthResult.OtpRequired
-            ERROR_NOT_VALID_OTP_CODE -> AuthResult.Error("Неверный код 2FA")
-            ERROR_INVALID_LOGIN_OR_PASSWORD -> AuthResult.Error("Неверный логин или пароль")
-            else -> AuthResult.Error(
-                message = e.status.description ?: "Ошибка авторизации",
-                canRetryIdentity = isRetryableIdentityStatus(e.status),
-            )
-        }
-    }
-
-    private fun isRetryableIdentityStatus(status: Status): Boolean =
-        status.code == Status.Code.UNAVAILABLE || status.code == Status.Code.DEADLINE_EXCEEDED
 
     /**
      * Обновляет access токен используя refresh токен
@@ -1312,69 +1217,6 @@ class GrpcApiTransport(context: Context) {
     }
 
     /**
-     * Создает аккаунт (первый этап регистрации)
-     * Аналог CreateAccount в WebApiRegistrationManager
-     */
-    suspend fun createAccount(firstName: String, lastName: String, email: String, login: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.CreateAccountRequest.newBuilder()
-                .setFirstName(firstName)
-                .setLastName(lastName)
-                .setUsername(login.lowercase())
-                .setEmail(email.lowercase())
-                .build()
-
-            val response = identityClient!!.createAccount(request)
-            Result.success(response.codeId)
-        } catch (e: StatusRuntimeException) {
-            val errorCode = e.trailers?.get(ERROR_CODE_KEY)
-            if (errorCode == ERROR_USERNAME_INVALID_FORMAT) {
-                Log.w(TAG, "Недопустимый формат имени пользователя")
-                Result.failure(Exception("Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа"))
-            } else {
-                Log.e(TAG, "Ошибка создания аккаунта", e)
-                Result.failure(Exception("Ошибка создания аккаунта: ${e.message}"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания аккаунта", e)
-            Result.failure(Exception("Ошибка создания аккаунта: ${e.message}"))
-        }
-    }
-
-    /**
-     * Подтверждает аккаунт кодом с почты
-     * Аналог ConfirmAccount в WebApiRegistrationManager
-     */
-    suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ConfirmAccountRequest.newBuilder()
-                .setCodeId(codeId)
-                .setCodeValue(verificationCode)
-                .build()
-
-            val response = identityClient!!.confirmAccount(request)
-
-            Result.success(
-                ConfirmAccountResult(
-                    refreshToken = response.refreshToken.value,
-                    refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подтверждения аккаунта", e)
-            Result.failure(Exception("Ошибка подтверждения аккаунта: ${e.message}"))
-        }
-    }
-
-    /**
      * Устанавливает аватар пользователя из file_id
      * Аналог SetProfilePicture в WebApiUserManager
      */
@@ -1526,56 +1368,6 @@ class GrpcApiTransport(context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка установки пароля", e)
             Result.failure(Exception("Ошибка установки пароля: ${e.message}"))
-        }
-    }
-
-    /**
-     * Запрашивает QR-код для настройки 2FA
-     * Аналог OtpReceipt в WebApiAuthManager
-     */
-    suspend fun getOtpSetup(): Result<OtpSetupResult> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.EnableOtpVerificationRequest.newBuilder()
-                .setOtpType(IdentityApiOuterClass.OtpTypeId.Authenticator)
-                .build()
-
-            val response = identityClient!!.enableOtpVerification(request)
-
-            Result.success(
-                OtpSetupResult(
-                    qrBase64 = response.otpQr,
-                    justCode = response.otpCode
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка получения 2FA setup", e)
-            Result.failure(Exception("Ошибка получения 2FA setup: ${e.message}"))
-        }
-    }
-
-    /**
-     * Подтверждает настройку 2FA
-     * Аналог OtpAccept в WebApiAuthManager
-     */
-    suspend fun confirmOtpSetup(code: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ConfirmOtpVerificationRequest.newBuilder()
-                .setOtpCode(code)
-                .build()
-
-            identityClient!!.confirmOtpVerification(request)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подтверждения 2FA", e)
-            Result.failure(Exception("Ошибка подтверждения 2FA: ${e.message}"))
         }
     }
 
@@ -1736,73 +1528,6 @@ class GrpcApiTransport(context: Context) {
     }
 
     /**
-     * Получает статус 2FA
-     */
-    suspend fun listOtpVerification(): Result<OtpStatus> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ListOtpVerificationRequest.newBuilder().build()
-            val response = identityClient!!.listOtpVerification(request)
-
-            Result.success(
-                OtpStatus(
-                    authenticatorEnabled = response.authenticatorEnabled,
-                    emailEnabled = response.emailEnabled
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка получения статуса 2FA", e)
-            Result.failure(Exception("Ошибка получения статуса 2FA: ${e.message}"))
-        }
-    }
-
-    /**
-     * Включает 2FA по email
-     */
-    suspend fun enableOtpEmail(): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.EnableOtpVerificationRequest.newBuilder()
-                .setOtpType(IdentityApiOuterClass.OtpTypeId.Email)
-                .build()
-
-            identityClient!!.enableOtpVerification(request)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка включения 2FA по email", e)
-            Result.failure(Exception("Ошибка включения 2FA по email: ${e.message}"))
-        }
-    }
-
-    /**
-     * Отключает 2FA
-     */
-    suspend fun disableOtpVerification(type: IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.DisableOtpVerificationRequest.newBuilder()
-                .setOtpType(type)
-                .setOtpCode(code)
-                .build()
-
-            identityClient!!.disableOtpVerification(request)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка отключения 2FA", e)
-            Result.failure(Exception("Ошибка отключения 2FA: ${e.message}"))
-        }
-    }
-
-    /**
      * Изменяет пароль с проверкой старого
      */
     suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
@@ -1881,19 +1606,9 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
-    data class ConfirmAccountResult(
-        val refreshToken: String,
-        val refreshTokenExpiration: Long
-    )
-
     data class UploadUrlResult(
         val url: String,
         val fileId: String
-    )
-
-    data class OtpSetupResult(
-        val qrBase64: String,
-        val justCode: String
     )
 
     data class UserData(
@@ -1992,21 +1707,6 @@ class GrpcApiTransport(context: Context) {
         return urlOrGuid
     }
 
-    sealed class AuthResult {
-        data class Success(
-            val accessToken: String,
-            val accessTokenExpiration: Long,
-            val refreshToken: String,
-            val refreshTokenExpiration: Long
-        ) : AuthResult()
-
-        data object OtpRequired : AuthResult()
-        data class Error(
-            val message: String,
-            val canRetryIdentity: Boolean = false,
-        ) : AuthResult()
-    }
-
     data class SessionData(
         val id: Long,
         val createdAt: Long,
@@ -2019,135 +1719,13 @@ class GrpcApiTransport(context: Context) {
         val location: String
     )
 
-    data class OtpStatus(
-        val authenticatorEnabled: Boolean,
-        val emailEnabled: Boolean
-    )
-
     data class StorageInfo(
         val totalUsed: Long,
         val limit: Long,
         val byType: Map<String, Long>
     )
 
-    data class ConfirmResetPasswordResult(
-        val accessToken: String,
-        val accessTokenExpiration: Long,
-        val refreshToken: String,
-        val refreshTokenExpiration: Long
-    )
-
     class InvalidOldPasswordException : Exception("Неверный старый пароль")
-
-    /**
-     * Запрашивает сброс пароля через код на email.
-     * @param email Email пользователя (если username null)
-     * @param username Username пользователя (если email null)
-     * @return resetId для подтверждения сброса
-     */
-    suspend fun resetPassword(email: String? = null, username: String? = null): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            if (email.isNullOrBlank() && username.isNullOrBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("Email или username должны быть указаны"))
-            }
-
-            val requestBuilder = IdentityApiOuterClass.ResetPasswordRequest.newBuilder()
-                .setOtpType(IdentityApiOuterClass.OtpTypeId.Email)
-
-            if (!email.isNullOrBlank()) {
-                requestBuilder.email = email
-            } else if (!username.isNullOrBlank()) {
-                requestBuilder.username = username
-            }
-
-            val request = requestBuilder.build()
-            val response = identityClient!!.resetPassword(request)
-
-            Log.d(TAG, "resetPassword: resetId=${response.resetId}")
-            Result.success(response.resetId)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка запроса сброса пароля", e)
-            Result.failure(Exception("Ошибка запроса сброса пароля: ${e.message}"))
-        }
-    }
-
-    /**
-     * Подтверждает сброс пароля кодом с почты.
-     * После успешного подтверждения хеш пароля очищается и возвращаются новые токены.
-     * @param resetId ID запроса сброса пароля
-     * @param otpCode 6-значный код подтверждения
-     * @return Новые токены (access и refresh)
-     */
-    suspend fun confirmResetPassword(resetId: String, otpCode: String): Result<ConfirmResetPasswordResult> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ConfirmResetPasswordRequest.newBuilder()
-                .setResetId(resetId)
-                .setOtpCode(otpCode)
-                .build()
-
-            val response = identityClient!!.confirmResetPassword(request)
-
-            Log.d(TAG, "confirmResetPassword: Токены получены успешно")
-            Result.success(
-                ConfirmResetPasswordResult(
-                    accessToken = response.accessToken.value,
-                    accessTokenExpiration = response.accessToken.expirationDate.seconds * 1000,
-                    refreshToken = response.refreshToken.value,
-                    refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подтверждения сброса пароля", e)
-            Result.failure(Exception("Ошибка подтверждения сброса пароля: ${e.message}"))
-        }
-    }
-
-    /**
-     * Устанавливает новый пароль после сброса (без требования старого пароля).
-     * Используется после успешного подтверждения кода сброса.
-     * @param newPassword Новый пароль
-     */
-    suspend fun setPasswordAfterReset(newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val globalParam = GlobalParam(appContext)
-            if (globalParam.accessToken.isNullOrBlank()) {
-                return@withContext Result.failure(IllegalStateException("Токен доступа после подтверждения кода отсутствует"))
-            }
-
-            val clientResult = createIdentityClient(
-                identityAddress = globalParam.socketIdentity,
-                context = appContext,
-                includeDeviceInfo = true,
-            )
-            if (clientResult.isFailure) {
-                return@withContext Result.failure(
-                    clientResult.exceptionOrNull() ?: IllegalStateException("Identity клиент не создан")
-                )
-            }
-
-            // После сброса пароля хеш очищен, поэтому old_password не требуется
-            val request = IdentityApiOuterClass.SetPasswordRequest.newBuilder()
-                .setPassword(newPassword)
-                .build()
-
-            val authenticatedClient = clientRegistry.identityClient
-                ?: return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            authenticatedClient.setPassword(request)
-            Log.d(TAG, "setPasswordAfterReset: Пароль успешно установлен")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка установки пароля после сброса", e)
-            Result.failure(Exception("Ошибка установки пароля: ${e.message}"))
-        }
-    }
 
     // --- Стикеры ---
 

@@ -48,15 +48,7 @@ class GrpcChatDraftGateway(private val repository: ChatRepository) : ChatDraftGa
 
 class GrpcAuthGateway(
     private val grpc: GrpcApiTransport,
-    private val context: Context,
 ) : AuthGateway {
-    override suspend fun authenticate(
-        email: String?,
-        username: String?,
-        password: String,
-        otpCode: String?,
-    ): AuthenticationResult = grpc.auth(email, username, password, otpCode, context).toDomain()
-
     override suspend fun ensureValid(forceRefresh: Boolean): Boolean =
         grpc.tokenCoordinator().ensureValid(forceRefresh)
 
@@ -70,32 +62,6 @@ class GrpcAuthGateway(
 
     override fun createIdentity(address: String, context: Context?, includeDeviceInfo: Boolean): Result<Unit> =
         grpc.createIdentityClient(address, context, includeDeviceInfo)
-}
-
-class GrpcAccountSecurityGateway(private val grpc: GrpcApiTransport) : AccountSecurityGateway {
-    override suspend fun register(firstName: String, lastName: String, email: String, login: String): Result<String> =
-        grpc.createAccount(firstName, lastName, email, login)
-
-    override suspend fun resetPassword(email: String?, username: String?): Result<String> =
-        grpc.resetPassword(email, username)
-
-    override suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult> =
-        grpc.confirmAccount(codeId, verificationCode).map {
-            ConfirmAccountResult(it.refreshToken, it.refreshTokenExpiration)
-        }
-
-    override suspend fun confirmResetPassword(resetId: String, code: String): Result<ConfirmResetPasswordResult> =
-        grpc.confirmResetPassword(resetId, code).map {
-            ConfirmResetPasswordResult(
-                accessToken = it.accessToken,
-                accessTokenExpiration = it.accessTokenExpiration,
-                refreshToken = it.refreshToken,
-                refreshTokenExpiration = it.refreshTokenExpiration,
-            )
-        }
-
-    override suspend fun setPasswordAfterReset(newPassword: String): Result<Unit> =
-        grpc.setPasswordAfterReset(newPassword)
 }
 
 class GrpcAuthenticationChallengeGateway(
@@ -372,11 +338,6 @@ class GrpcUserProfileGateway(private val grpc: GrpcApiTransport) : UserProfileGa
     override suspend fun renameDevice(deviceId: String, customName: String): Result<Unit> = grpc.renameDevice(deviceId, customName)
     override suspend fun removeActiveSession(deviceId: String): Result<Unit> = grpc.removeActiveSession(deviceId)
     override suspend fun password(password: String): Result<Unit> = grpc.setPassword(password)
-    override suspend fun otpSetup(): Result<OtpSetupResult> = grpc.getOtpSetup().map { OtpSetupResult(it.qrBase64, it.justCode) }
-    override suspend fun confirmOtpSetup(code: String): Result<Unit> = grpc.confirmOtpSetup(code)
-    override suspend fun otpStatus(): Result<OtpStatus> = grpc.listOtpVerification().map { OtpStatus(it.authenticatorEnabled, it.emailEnabled) }
-    override suspend fun enableOtpEmail(): Result<Unit> = grpc.enableOtpEmail()
-    override suspend fun disableOtp(type: barkfluff.identity.IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit> = grpc.disableOtpVerification(type, code)
     override suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = grpc.changePassword(oldPassword, newPassword)
     override suspend fun storageInfo(): Result<StorageInfo> = grpc.getUserStorageInfo().map(::toDomain)
 }

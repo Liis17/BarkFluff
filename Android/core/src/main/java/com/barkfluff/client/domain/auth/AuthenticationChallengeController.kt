@@ -60,11 +60,11 @@ class AuthenticationChallengeController(
         while (activeReference != null && pollGeneration == generation) {
             delay(pollIntervalMillis)
             val state = refresh().getOrNull() ?: continue
-            if (pollGeneration != generation || !onUpdate(state)) return
             if (state.state != AuthenticationChallengeState.WAITING && state.state != AuthenticationChallengeState.APPROVED) {
                 activeReference = null
-                return
             }
+            if (pollGeneration != generation || !onUpdate(state)) return
+            if (state.state != AuthenticationChallengeState.WAITING && state.state != AuthenticationChallengeState.APPROVED) return
         }
     }
 

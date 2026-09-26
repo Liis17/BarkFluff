@@ -1,7 +1,5 @@
 package com.barkfluff.client
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -39,11 +37,9 @@ import com.barkfluff.client.databinding.ActivityRegisterBinding
 import com.barkfluff.client.databinding.StepRegister01NameBinding
 import com.barkfluff.client.databinding.StepRegister02UsernameBinding
 import com.barkfluff.client.databinding.StepRegister03EmailBinding
-import com.barkfluff.client.databinding.StepRegister04VerifyBinding
 import com.barkfluff.client.databinding.StepRegister05PasswordBinding
 import com.barkfluff.client.databinding.StepRegister06AvatarBinding
 import com.barkfluff.client.databinding.StepRegister07BioBinding
-import com.barkfluff.client.databinding.StepRegister082faBinding
 import com.barkfluff.client.databinding.StepRegister09CompleteBinding
 import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
@@ -53,7 +49,6 @@ import com.barkfluff.client.domain.model.AuthenticationFactor
 import com.barkfluff.client.domain.model.AuthenticationLoginMode
 import com.barkfluff.client.domain.model.RegistrationRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
-import com.barkfluff.client.utils.OtpCellsHelper
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
@@ -65,23 +60,21 @@ import java.io.File
 
 /**
  * Активность регистрации
- * Реализует 9 шагов как в десктопном приложении:
+ * Реализует challenge-based регистрацию:
  * 1. Имя и фамилия
  * 2. Логин (проверка на существование)
- * 3. Email (создание аккаунта, отправка кода)
- * 4. Код подтверждения (подтверждение аккаунта)
- * 5. Пароль
- * 6. Аватар (с кропом через uCrop)
- * 7. Био
- * 8. 2FA
- * 9. Завершение
+ * 3. Email или Telegram
+ * 4. Пароль, если нужен выбранному режиму
+ * 5. Аватар (с кропом через uCrop)
+ * 6. Био
+ * 7. Завершение
  */
 @AndroidEntryPoint
 class RegisterActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "RegisterActivity"
-        private const val TOTAL_STEPS = 9
+        private const val TOTAL_STEPS = 7
         private const val MIN_PASSWORD_LENGTH = 8
         private const val MAX_BIO_LENGTH = 200
         private const val MIN_NAME_LENGTH = 3
@@ -96,8 +89,6 @@ class RegisterActivity : AppCompatActivity() {
         private const val KEY_EMAIL = "email"
         private const val KEY_PASSWORD = "password"
         private const val KEY_BIO = "bio"
-        private const val KEY_CODE_ID = "code_id"
-        private const val KEY_2FA_ENABLED = "2fa_enabled"
         private const val KEY_AVATAR_BYTES = "avatar_bytes"
         private const val KEY_CONFIRMATION_METHOD = "confirmation_method"
         private const val KEY_LOGIN_MODE = "login_mode"
@@ -120,21 +111,16 @@ class RegisterActivity : AppCompatActivity() {
     private var password = ""
     private var bio = ""
     private var avatarBytes: ByteArray? = null
-    private var codeId: String? = null  // CodeId от CreateAccount
-    private var is2faEnabled = false
     private var confirmationMethod = AuthenticationFactor.EMAIL
     private var registrationLoginMode = AuthenticationLoginMode.PASSWORD
-    private var otpHelper: OtpCellsHelper? = null
 
     // Bindings for each step
     private var step1Binding: StepRegister01NameBinding? = null
     private var step2Binding: StepRegister02UsernameBinding? = null
     private var step3Binding: StepRegister03EmailBinding? = null
-    private var step4Binding: StepRegister04VerifyBinding? = null
     private var step5Binding: StepRegister05PasswordBinding? = null
     private var step6Binding: StepRegister06AvatarBinding? = null
     private var step7Binding: StepRegister07BioBinding? = null
-    private var step8Binding: StepRegister082faBinding? = null
     private var step9Binding: StepRegister09CompleteBinding? = null
     private var preparedStepContent: View? = null
     private var preparedStepContentBottomPadding = 0
@@ -188,8 +174,6 @@ class RegisterActivity : AppCompatActivity() {
             email = it.getString(KEY_EMAIL, "")
             password = it.getString(KEY_PASSWORD, "")
             bio = it.getString(KEY_BIO, "")
-            codeId = it.getString(KEY_CODE_ID)
-            is2faEnabled = it.getBoolean(KEY_2FA_ENABLED, false)
             confirmationMethod = it.getString(KEY_CONFIRMATION_METHOD)?.let { value ->
                 runCatching { AuthenticationFactor.valueOf(value) }.getOrDefault(AuthenticationFactor.EMAIL)
             } ?: AuthenticationFactor.EMAIL
@@ -214,8 +198,6 @@ class RegisterActivity : AppCompatActivity() {
         outState.putString(KEY_EMAIL, email)
         // Password, challenge references and security proofs are intentionally never persisted.
         outState.putString(KEY_BIO, bio)
-        outState.putString(KEY_CODE_ID, codeId)
-        outState.putBoolean(KEY_2FA_ENABLED, is2faEnabled)
         outState.putString(KEY_CONFIRMATION_METHOD, confirmationMethod.name)
         outState.putString(KEY_LOGIN_MODE, registrationLoginMode.name)
         outState.putByteArray(KEY_AVATAR_BYTES, avatarBytes)
@@ -241,9 +223,9 @@ class RegisterActivity : AppCompatActivity() {
             when (currentStep) {
                 2 -> checkUsernameOnServerAndProceed()
                 3 -> checkEmailOnServerAndProceed()
-                5 -> beginRegistrationAndProceed()
-                6 -> uploadAvatarAndProceed()
-                7 -> saveBioOnServerAndProceed()
+                4 -> beginRegistrationAndProceed()
+                5 -> uploadAvatarAndProceed()
+                6 -> saveBioOnServerAndProceed()
                 else -> {
                     if (validateCurrentStep()) {
                         if (currentStep < TOTAL_STEPS) {
@@ -261,7 +243,7 @@ class RegisterActivity : AppCompatActivity() {
         if (!validateCurrentStep()) return
 
         if (confirmationMethod == AuthenticationFactor.TELEGRAM) {
-            currentStep = 5
+            currentStep = 4
             loadStep(currentStep)
             return
         }
@@ -285,7 +267,7 @@ class RegisterActivity : AppCompatActivity() {
                         b.emailValidationText.text = getString(R.string.register_email_available)
                         b.emailValidationText.visibility = View.VISIBLE
                         delay(500)
-                        createAccountAndProceed()
+                        proceedToPasswordStep()
                     }
                 } else {
                     Log.e(TAG, "Check email failed: ${existsResult.exceptionOrNull()?.message}")
@@ -322,8 +304,8 @@ class RegisterActivity : AppCompatActivity() {
             binding.headerPanel.visibility = View.VISIBLE
             setNextButtonEnabled(
                 when (step) {
-                    3, 8 -> false
-                    6 -> avatarBytes != null
+                    3 -> false
+                    5 -> avatarBytes != null
                     else -> true
                 }
             )
@@ -346,26 +328,18 @@ class RegisterActivity : AppCompatActivity() {
                 setupStep3()
             }
             4 -> {
-                step4Binding = StepRegister04VerifyBinding.inflate(inflater, binding.contentFrame, true)
-                setupStep4()
-            }
-            5 -> {
                 step5Binding = StepRegister05PasswordBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep5()
             }
-            6 -> {
+            5 -> {
                 step6Binding = StepRegister06AvatarBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep6()
             }
-            7 -> {
+            6 -> {
                 step7Binding = StepRegister07BioBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep7()
             }
-            8 -> {
-                step8Binding = StepRegister082faBinding.inflate(inflater, binding.contentFrame, true)
-                setupStep8()
-            }
-            9 -> {
+            7 -> {
                 step9Binding = StepRegister09CompleteBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep9()
             }
@@ -733,7 +707,7 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
-    private fun createAccountAndProceed() {
+    private fun proceedToPasswordStep() {
         if (!validateCurrentStep()) return
 
         val b = step3Binding ?: return
@@ -744,22 +718,7 @@ class RegisterActivity : AppCompatActivity() {
         b.emailValidationText.text = getString(R.string.register_email_available)
         b.emailValidationText.visibility = View.VISIBLE
         saveCurrentStepData()
-        currentStep = 5
-        loadStep(currentStep)
-    }
-
-    private fun setupStep4() {
-        val b = step4Binding ?: return
-        val otpCells = listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
-        otpCells.forEach { setupTextField(it, Gravity.CENTER) }
-        otpHelper = OtpCellsHelper(otpCells) { confirmAccountAndProceed() }
-        otpHelper?.setup()
-        otpHelper?.focusFirst()
-    }
-
-    private fun confirmAccountAndProceed() {
-        // Legacy screen can only be restored from an old Bundle; continue with challenge setup.
-        currentStep = 5
+        currentStep = 4
         loadStep(currentStep)
     }
 
@@ -952,40 +911,6 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupStep8() {
-        val b = step8Binding ?: return
-        setupTextField(b.otpCodeEditText, Gravity.CENTER)
-
-        // Загружаем 2FA код при открытии шага
-        setup2fa()
-
-        b.skip2faButton.setOnClickListener {
-            is2faEnabled = false
-            saveCurrentStepData()
-            currentStep++
-            loadStep(currentStep)
-        }
-
-        b.copyCodeButton.setOnClickListener {
-            val code = b.twoFaSecretCode.text.toString()
-            copyToClipboard(code)
-            Toast.makeText(this, R.string.register_code_copied, Toast.LENGTH_SHORT).show()
-        }
-
-        b.openAuthenticatorButton.setOnClickListener {
-            openGoogleAuthenticator()
-        }
-
-        // Включаем кнопку "Далее" только после ввода 6-значного кода
-        b.otpCodeEditText.doAfterTextChanged {
-            setNextButtonEnabled(it?.length == 6)
-        }
-    }
-
-    private fun setup2fa() {
-        // Factor setup moved to Security settings and uses a reauthentication proof.
-    }
-
     private fun beginRegistrationAndProceed() {
         if (!validateCurrentStep()) return
 
@@ -1024,7 +949,7 @@ class RegisterActivity : AppCompatActivity() {
                 globalParam.refreshTokenExpiration = session.refreshTokenExpiration
                 recreateGrpcClients()
                 if (completion.recoveryCodes.isNotEmpty()) showRecoveryCodes(completion.recoveryCodes)
-                currentStep = 6
+                currentStep = 5
                 loadStep(currentStep)
             }.onFailure { failure ->
                 if (failure !is java.util.concurrent.CancellationException) {
@@ -1084,7 +1009,7 @@ class RegisterActivity : AppCompatActivity() {
         saveCurrentStepData()
 
         if (bio.isEmpty()) {
-            currentStep = 9
+            currentStep = 7
             loadStep(currentStep)
             return
         }
@@ -1099,19 +1024,14 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     Log.e(TAG, "Change bio failed: ${result.exceptionOrNull()?.message}")
                 }
-                currentStep = 9
+                currentStep = 7
                 loadStep(currentStep)
             } catch (e: Exception) {
                 Log.e(TAG, "Change bio error: ${e.message}", e)
-                currentStep = 9
+                currentStep = 7
                 loadStep(currentStep)
             }
         }
-    }
-
-    private fun verify2faAndProceed() {
-        currentStep = 9
-        loadStep(currentStep)
     }
 
     private fun resolveThemeColor(attr: Int): Int {
@@ -1157,28 +1077,6 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun isEnterKey(event: KeyEvent?): Boolean {
         return event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN
-    }
-
-    private fun copyToClipboard(text: String) {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("2FA Code", text)
-        clipboard.setPrimaryClip(clip)
-    }
-
-    private fun openGoogleAuthenticator() {
-        try {
-            val intent = packageManager.getLaunchIntentForPackage("com.google.android.apps.authenticator2")
-            if (intent != null) {
-                startActivity(intent)
-            } else {
-                val playStoreIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("market://details?id=com.google.android.apps.authenticator2")
-                }
-                startActivity(playStoreIntent)
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, R.string.register_authenticator_open_failed, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun setupStep9() {
@@ -1249,7 +1147,7 @@ class RegisterActivity : AppCompatActivity() {
                 confirmationMethod == AuthenticationFactor.TELEGRAM ||
                     (email.isNotEmpty() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches())
             }
-            5 -> {
+            4 -> {
                 if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) return true
                 // Валидация пароля происходит в setupStep5
                 val confirmPassword = step5Binding?.confirmPasswordEditText?.text?.toString() ?: ""
@@ -1271,10 +1169,10 @@ class RegisterActivity : AppCompatActivity() {
             3 -> {
                 email = step3Binding?.emailEditText?.text?.toString()?.trim()?.lowercase() ?: ""
             }
-            5 -> {
+            4 -> {
                 password = step5Binding?.passwordEditText?.text?.toString() ?: ""
             }
-            7 -> {
+            6 -> {
                 bio = step7Binding?.bioEditText?.text?.toString()?.trim() ?: ""
             }
         }
@@ -1303,12 +1201,9 @@ class RegisterActivity : AppCompatActivity() {
         step1Binding = null
         step2Binding = null
         step3Binding = null
-        step4Binding = null
         step5Binding = null
         step6Binding = null
         step7Binding = null
-        step8Binding = null
         step9Binding = null
-        otpHelper = null
     }
 }
