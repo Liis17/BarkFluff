@@ -1,4 +1,4 @@
-.auth-dialog { width:min(440px,calc(100vw - 32px)); box-sizing:border-box; border:1px solid var(--border, #ddd); border-radius:20px; padding:28px; color:var(--text, var(--text-primary, #292421)); background:var(--bg, var(--bg-primary, #fffaf7)); font:inherit; max-height:90dvh; overflow:auto; }
+.auth-dialog { width:min(440px,calc(100vw - 32px)); margin:auto; box-sizing:border-box; border:1px solid var(--border, #ddd); border-radius:20px; padding:28px; color:var(--text, var(--text-primary, #292421)); background:var(--bg, var(--bg-primary, #fffaf7)); font:inherit; max-height:90dvh; overflow:auto; }
 .auth-dialog::backdrop { background:rgba(24,18,16,.48); }
 .auth-dialog h2 { margin:0 0 16px; font-size:24px; }
 .auth-dialog label,.auth-security label { display:block; margin:14px 0 6px; }

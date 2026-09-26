@@ -144,7 +144,9 @@
         code.autocomplete = 'one-time-code';
         code.maxLength = 64;
         code.parentElement.hidden = true;
-        var confirm = button(box.actions, t('common.confirm'), finish);
+        var confirm = button(box.actions, t('common.confirm'), function () {
+            finish();
+        });
         confirm.hidden = true;
         var resend = button(box.actions, t('register.resendCode'), async function () {
             var generation = operationGeneration;

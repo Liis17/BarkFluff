@@ -141,6 +141,43 @@ async function main() {
     await assert.rejects(operation, (reason) => reason.name === 'AbortError');
     assert.equal(cancelCount, 1);
     console.log('PASS: stale factor-switch responses cannot alter the active authentication dialog');
+
+    let completedCode = null;
+    const emailAttempt = {
+        begin() {
+            return Promise.resolve(response(2, 1, true));
+        },
+        cancel() {},
+        poll() {},
+        async complete(code) {
+            completedCode = code;
+            return {
+                getErrorCode: () => '',
+                getState: () => 5,
+                getRecoveryCodesList: () => []
+            };
+        }
+    };
+    const emailUi = loadAuthUi(() => emailAttempt);
+    const emailOperation = emailUi.api.run(
+        'beginEmailBinding',
+        'BeginEmailBindingRequest',
+        { email: 'person@example.test' }
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const emailDialog = emailUi.body.children[0];
+    const emailCode = descendants(emailDialog).find((element) => element.tagName === 'input');
+    const emailConfirm = descendants(emailDialog).find(
+        (element) => element.tagName === 'button' && element.textContent === 'common.confirm'
+    );
+    emailCode.value = '123456';
+    assert.equal(emailConfirm.hidden, false);
+    assert.equal(emailConfirm.disabled, false);
+    emailConfirm.click();
+    assert.equal(completedCode, '123456', 'email confirmation click must submit the entered code');
+    await emailOperation;
+    console.log('PASS: clicking Confirm submits the email verification code');
 }
 
 function response(factor, state, needsCode) {
