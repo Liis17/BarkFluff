@@ -36,6 +36,7 @@
             android:textAppearance="@style/TextAppearance.Barkfluff.Register.FieldLabel" />
 
         <LinearLayout
+            android:id="@+id/emailInputContainer"
             android:layout_width="match_parent"
             android:layout_height="@dimen/register_input_height"
             android:background="@drawable/bg_register_input_row"
@@ -79,6 +80,26 @@
             android:layout_marginStart="6dp"
             android:textAppearance="?attr/textAppearanceLabelSmall"
             android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/telegramRegistrationButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/register_telegram_action"
+            android:textAllCaps="false"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/emailRegistrationButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start"
+            android:layout_marginTop="4dp"
+            android:text="@string/register_email_action"
+            android:textAllCaps="false" />
 
         <!-- Обоснование запроса почты -->
         <LinearLayout

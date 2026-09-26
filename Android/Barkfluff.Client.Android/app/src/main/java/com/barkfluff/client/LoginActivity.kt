@@ -15,6 +15,7 @@ import android.widget.EditText
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
 import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.core.view.ViewCompat
@@ -23,14 +24,22 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivityLoginBinding
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.auth.AuthenticationUiPolicy
 import com.barkfluff.client.domain.model.AuthenticationResult
+import com.barkfluff.client.domain.model.AuthenticationCapabilities
+import com.barkfluff.client.domain.model.AuthenticationLoginMode
+import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -64,7 +73,9 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var globalParam: GlobalParam
+    private val authenticationChallengeViewModel: AuthenticationChallengeViewModel by viewModels()
     @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var authenticationChallengeGateway: AuthenticationChallengeGateway
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
     @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
@@ -72,6 +83,8 @@ class LoginActivity : AppCompatActivity() {
     private var isOtpMode = false
     private var isLoading = false
     private var identityErrorVisible = false
+    private var selectedLoginMode = AuthenticationLoginMode.PASSWORD
+    private var authenticationCapabilities: AuthenticationCapabilities? = null
 
     // Saved login/password for OTP retry
     private var savedLogin = ""
@@ -118,6 +131,7 @@ class LoginActivity : AppCompatActivity() {
         setupClickListeners()
         setupLoginFields()
         setupOtpBoxes()
+        loadAuthenticationCapabilities()
     }
 
     override fun onResume() {
@@ -175,12 +189,10 @@ class LoginActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         binding.loginButton.applySpringPress()
         binding.loginButton.setOnClickListener {
-            if (isOtpMode) {
-                performOtpLogin()
-            } else {
-                performLogin()
-            }
+            performLogin()
         }
+
+        binding.loginModeButton.setOnClickListener { showLoginModePicker() }
 
         binding.changeServerLink.setOnClickListener {
             navigateToSelectServer()
@@ -321,60 +333,93 @@ class LoginActivity : AppCompatActivity() {
         val password = binding.passwordEditText.text.toString()
 
         val loginValid = validateLogin(loginInput)
-        val passwordValid = validatePassword(password)
+        val passwordValid = selectedLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN || validatePassword(password)
         if (!loginValid || !passwordValid) {
             focusFirstInvalidField(loginValid, passwordValid)
             return
         }
 
-        savedLogin = loginInput
-        savedPassword = password
-
-        val isEmail = loginInput.contains("@")
-        val email = if (isEmail) loginInput else null
-        val username = if (isEmail) null else loginInput
-
         hideKeyboard()
         setLoadingState(true)
 
         lifecycleScope.launch {
-            val result = authGateway.authenticate(
-                email = email,
-                username = username,
-                password = password,
-                otpCode = null,
-            )
-            handleAuthResult(result)
+            val result = AuthenticationChallengeDialog(
+                this@LoginActivity,
+                authenticationChallengeGateway,
+                authenticationChallengeViewModel.controller,
+            ).run(
+                title = getString(R.string.login_2fa_title),
+                useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
+            ) {
+                authenticationChallengeGateway.beginSignIn(
+                    SignInRequest(
+                        login = loginInput,
+                        password = password,
+                        loginMode = selectedLoginMode,
+                        useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
+                    ),
+                )
+            }
+            setLoadingState(false)
+            result.onSuccess { completion ->
+                completion.session?.let { handleAuthResult(AuthenticationResult.Success(it)) }
+                    ?: showError(getString(R.string.auth_error))
+            }.onFailure { failure ->
+                if (failure !is java.util.concurrent.CancellationException) {
+                    showError(failure.message ?: getString(R.string.auth_error))
+                }
+            }
         }
     }
 
-    private fun performOtpLogin() {
-        clearErrorIfNotIdentity()
-
-        if (isLoading) return
-
-        val otpCode = getOtpCode()
-        if (otpCode.length != 6) {
-            showError(getString(R.string.login_otp_invalid_length))
-            return
-        }
-
-        val isEmail = savedLogin.contains("@")
-        val email = if (isEmail) savedLogin else null
-        val username = if (isEmail) null else savedLogin
-
-        hideKeyboard()
-        setLoadingState(true)
-
+    private fun loadAuthenticationCapabilities() {
         lifecycleScope.launch {
-            val result = authGateway.authenticate(
-                email = email,
-                username = username,
-                password = savedPassword,
-                otpCode = otpCode,
-            )
-            handleAuthResult(result)
+            authenticationChallengeGateway.capabilities().onSuccess { capabilities ->
+                authenticationCapabilities = capabilities
+                if (!capabilities.telegramAvailable && selectedLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
+                    selectedLoginMode = AuthenticationLoginMode.PASSWORD
+                }
+                renderLoginMode()
+            }
         }
+    }
+
+    private fun showLoginModePicker() {
+        val capabilities = authenticationCapabilities ?: return
+        val modes = AuthenticationUiPolicy.signInModes(capabilities)
+        val labels = modes.map { getString(loginModeLabel(it)) }.toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.login_mode_title)
+            .setSingleChoiceItems(labels, modes.indexOf(selectedLoginMode)) { dialog, which ->
+                selectedLoginMode = modes[which]
+                binding.recoveryCodeCheckBox.isChecked = false
+                renderLoginMode()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun renderLoginMode() {
+        val passwordRequired = selectedLoginMode != AuthenticationLoginMode.TELEGRAM_LOGIN
+        binding.loginModeButton.setText(loginModeLabel(selectedLoginMode))
+        binding.passwordLabel.visibility = if (passwordRequired) View.VISIBLE else View.GONE
+        binding.passwordInputLayout.visibility = if (passwordRequired) View.VISIBLE else View.GONE
+        binding.recoveryCodeCheckBox.visibility = if (
+            selectedLoginMode == AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+        ) View.VISIBLE else View.GONE
+        binding.forgotPasswordLink.visibility = if (passwordRequired) View.VISIBLE else View.GONE
+        if (!passwordRequired) binding.passwordInputLayout.error = null
+    }
+
+    private fun loginModeLabel(mode: AuthenticationLoginMode): Int = when (mode) {
+        AuthenticationLoginMode.PASSWORD -> R.string.login_mode_password
+        AuthenticationLoginMode.TELEGRAM_LOGIN -> R.string.login_mode_telegram
+        AuthenticationLoginMode.PASSWORD_SECOND_FACTOR -> R.string.login_mode_password_factor
+    }
+
+    private fun performOtpLogin() {
+        // Legacy inline OTP has no call path. Challenge confirmation is handled in the dialog.
+        showError(getString(R.string.auth_error))
     }
 
     private fun handleAuthResult(result: AuthenticationResult) {

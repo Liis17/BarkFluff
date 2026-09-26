@@ -216,7 +216,17 @@
 
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/loginModeButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/login_mode_password"
+                    android:textAllCaps="false" />
+
                 <TextView
+                    android:id="@+id/passwordLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:labelFor="@id/passwordEditText"
@@ -261,6 +271,14 @@
                         android:textColor="?attr/colorOnSurface" />
 
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/recoveryCodeCheckBox"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/login_use_recovery_code"
+                    android:visibility="gone" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/forgotPasswordLink"

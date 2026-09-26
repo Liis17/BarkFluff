@@ -13,15 +13,18 @@ import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
 import androidx.core.text.HtmlCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
-import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivityResetPasswordBinding
-import com.barkfluff.client.domain.gateway.AccountSecurityGateway
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
+import com.barkfluff.client.domain.model.AuthenticationChallengeReference
 import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -34,9 +37,11 @@ import kotlinx.coroutines.launch
 class ResetPasswordActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityResetPasswordBinding
-    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
+    private val authenticationChallengeViewModel: AuthenticationChallengeViewModel by viewModels()
+    @javax.inject.Inject lateinit var authenticationChallengeGateway: AuthenticationChallengeGateway
 
-    private var resetId: String? = null
+    /** Kept only until the new password is sent; never saved in instance state. */
+    private var recoveryProof: AuthenticationChallengeReference? = null
     private var currentStep = 1
     private var isLoading = false
     private var resendCooldownActive = false
@@ -114,11 +119,7 @@ class ResetPasswordActivity : AppCompatActivity() {
             }
 
             lastLoginInput = input
-            val isEmail = input.contains("@")
-            val email = if (isEmail) input else null
-            val username = if (isEmail) null else input
-
-            sendCodeRequest(email, username)
+            beginPasswordRecovery(input)
         }
 
         binding.backToLoginLink.setOnClickListener { navigateToLogin() }
@@ -131,7 +132,7 @@ class ResetPasswordActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            confirmCodeRequest(otpCode)
+            showError(getString(R.string.auth_error))
         }
 
         // Шаг 2: Повторная отправка кода
@@ -141,11 +142,7 @@ class ResetPasswordActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val isEmail = lastLoginInput.contains("@")
-            val email = if (isEmail) lastLoginInput else null
-            val username = if (isEmail) null else lastLoginInput
-
-            resendCodeRequest(email, username)
+            beginPasswordRecovery(lastLoginInput)
         }
 
         // Шаг 3: Сохранение нового пароля
@@ -216,7 +213,7 @@ class ResetPasswordActivity : AppCompatActivity() {
                     if (i == otpBoxes.size - 1 && s != null && s.length == 1) {
                         val otp = getOtpCode()
                         if (otp.length == 6) {
-                            confirmCodeRequest(otp)
+                            showError(getString(R.string.auth_error))
                         }
                     }
                 }
@@ -389,87 +386,49 @@ class ResetPasswordActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun sendCodeRequest(email: String?, username: String?) {
+    private fun beginPasswordRecovery(login: String) {
         hideError()
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = accountSecurityGateway.resetPassword(email, username)
-            setLoading(false)
-
-            if (result.isSuccess) {
-                resetId = result.getOrNull()
-                if (resetId != null) {
-                    goToStep(2)
-                    Toast.makeText(this@ResetPasswordActivity, getString(R.string.reset_toast_code_sent), Toast.LENGTH_LONG).show()
-                } else {
-                    showError(getString(R.string.reset_error_no_reset_id))
-                }
-            } else {
-                showError(getString(R.string.reset_error_generic, result.exceptionOrNull()?.message))
+            val result = AuthenticationChallengeDialog(
+                this@ResetPasswordActivity,
+                authenticationChallengeGateway,
+                authenticationChallengeViewModel.controller,
+            ).run(title = getString(R.string.reset_password_title)) {
+                authenticationChallengeGateway.beginPasswordRecovery(login)
             }
-        }
-    }
-
-    private fun confirmCodeRequest(otpCode: String) {
-        hideError()
-        setLoading(true)
-
-        lifecycleScope.launch {
-            val result = accountSecurityGateway.confirmResetPassword(resetId!!, otpCode)
             setLoading(false)
 
-            if (result.isSuccess) {
-                val tokenResult = result.getOrNull()
-                if (tokenResult != null) {
-                    // Сохраняем новые токены
-                    val globalParam = GlobalParam(this@ResetPasswordActivity)
-                    globalParam.accessToken = tokenResult.accessToken
-                    globalParam.accessTokenExpiration = tokenResult.accessTokenExpiration
-                    globalParam.refreshToken = tokenResult.refreshToken
-                    globalParam.refreshTokenExpiration = tokenResult.refreshTokenExpiration
-
+            result.onSuccess { completion ->
+                recoveryProof = completion.securityProof
+                if (recoveryProof == null) {
+                    showError(getString(R.string.auth_error))
+                } else {
                     goToStep(3)
-                    Toast.makeText(this@ResetPasswordActivity, getString(R.string.reset_toast_code_confirmed), Toast.LENGTH_SHORT).show()
-                } else {
-                    showError(getString(R.string.reset_error_confirm_failed))
                 }
-            } else {
-                showError(getString(R.string.reset_error_invalid_otp))
-                // Очищаем OTP боксы
-                otpBoxes.forEach { it.text?.clear() }
-                otpBoxes[0].requestFocus()
-            }
-        }
-    }
-
-    private fun resendCodeRequest(email: String?, username: String?) {
-        hideError()
-        setLoading(true)
-
-        lifecycleScope.launch {
-            val result = accountSecurityGateway.resetPassword(email, username)
-            setLoading(false)
-
-            if (result.isSuccess) {
-                resetId = result.getOrNull()
-                startResendCooldown()
-                Toast.makeText(this@ResetPasswordActivity, getString(R.string.reset_toast_code_resent), Toast.LENGTH_SHORT).show()
-            } else {
-                showError(getString(R.string.reset_error_generic, result.exceptionOrNull()?.message))
+            }.onFailure { failure ->
+                if (failure !is java.util.concurrent.CancellationException) {
+                    showError(failure.message ?: getString(R.string.auth_error))
+                }
             }
         }
     }
 
     private fun saveNewPassword(newPassword: String) {
+        val proof = recoveryProof ?: run {
+            showError(getString(R.string.auth_challenge_expired))
+            return
+        }
         hideError()
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = accountSecurityGateway.setPasswordAfterReset(newPassword)
+            val result = authenticationChallengeGateway.setRecoveredPassword(proof, newPassword)
             setLoading(false)
 
             if (result.isSuccess) {
+                recoveryProof = null
                 goToStep(4) // Экран успеха
             } else {
                 showError(getString(R.string.reset_error_generic, result.exceptionOrNull()?.message))
