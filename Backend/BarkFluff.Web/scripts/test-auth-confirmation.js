@@ -178,6 +178,41 @@ async function main() {
     assert.equal(completedCode, '123456', 'email confirmation click must submit the entered code');
     await emailOperation;
     console.log('PASS: clicking Confirm submits the email verification code');
+
+    const telegramAttempt = {
+        begin() {
+            return Promise.resolve(response(3, 1, false));
+        },
+        cancel() {},
+        poll() {},
+        async complete() {
+            throw new Error('Telegram approval should not complete from the browser');
+        }
+    };
+    const telegramUi = loadAuthUi(() => telegramAttempt);
+    const telegramOperation = telegramUi.api.run(
+        'beginSignIn',
+        'BeginSignInRequest',
+        { loginMode: 2 },
+        { telegramLogin: true }
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const telegramDialog = telegramUi.body.children[0];
+    const telegramStatus = descendants(telegramDialog).find(
+        (element) => element.attributes.role === 'status'
+    );
+    const resendApproval = descendants(telegramDialog).find(
+        (element) => element.tagName === 'button' && element.textContent === 'security.resendApproval'
+    );
+    assert.equal(telegramStatus.textContent, 'security.telegramLoginWaiting');
+    assert.equal(resendApproval.hidden, false);
+    const telegramCancel = descendants(telegramDialog).find(
+        (element) => element.tagName === 'button' && element.textContent === 'common.cancel'
+    );
+    telegramCancel.click();
+    await assert.rejects(telegramOperation, (reason) => reason.name === 'AbortError');
+    console.log('PASS: Telegram button login explains the account mode and labels resend as an approval request');
 }
 
 function response(factor, state, needsCode) {

@@ -573,6 +573,8 @@
   "security.confirmation": "Bestätigung",
   "security.openBot": "Telegram-Bot öffnen",
   "security.waiting": "Bestätige die Aktion mit der Schaltfläche im Telegram-Bot.",
+  "security.telegramLoginWaiting": "Bestätige die Anmeldung mit der Schaltfläche im Telegram-Bot. Wenn keine Anfrage ankommt, brich ab und prüfe in den Sicherheitseinstellungen, ob „Benutzername und Telegram-Bestätigung“ für das Konto ausgewählt ist. Ein Telegram-Code ist eine andere Anmeldemethode.",
+  "security.resendApproval": "Bestätigungsanfrage erneut senden",
   "security.enterCode": "Gib den Einmalcode ein.",
   "security.rejected": "Anfrage abgelehnt. Starte einen neuen Versuch.",
   "security.expired": "Anfrage abgelaufen. Starte einen neuen Versuch.",

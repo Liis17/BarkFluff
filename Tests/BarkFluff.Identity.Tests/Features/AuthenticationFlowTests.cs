@@ -195,12 +195,47 @@ public class AuthenticationFlowTests
     public async Task PasswordlessTelegram_RequiresApprovalFromBoundAccount()
     {
         using var h = new Harness(); await h.Register(AuthLoginMode.TelegramLogin);
+        var beforeSignIn = h.Bot.Messages.Count;
         var pending = await h.Service.BeginSignIn(new BeginSignInRequest { Login = "newuser", LoginMode = AuthLoginMode.TelegramLogin }, default);
+        var approval = Assert.Single(h.Bot.Messages.Skip(beforeSignIn));
+        Assert.Equal(123, approval.Chat);
+        Assert.NotNull(approval.Token);
+        Assert.False(pending.NeedsCode);
         await h.Approve(999);
         Assert.Equal(AuthChallengeState.Waiting, (await h.Service.Status(pending.Challenge, default)).State);
         await h.Approve();
         Assert.NotNull((await h.Complete(pending)).Session);
         await Assert.ThrowsAsync<RpcException>(() => h.Service.BeginSignIn(h.SignIn(), default));
+    }
+
+    [Fact]
+    public async Task TelegramButtonLogin_WithDifferentAccountModeReturnsGenericPendingChallengeWithoutNotification()
+    {
+        using var h = new Harness(); await h.Register();
+        var beforeSignIn = h.Bot.Messages.Count;
+
+        var pending = await h.Service.BeginSignIn(new BeginSignInRequest
+        { Login = "newuser", LoginMode = AuthLoginMode.TelegramLogin }, default);
+
+        Assert.Equal(AuthChallengeState.Waiting, pending.State);
+        Assert.False(pending.NeedsCode);
+        var resent = await h.Service.Resend(pending.Challenge, default);
+        Assert.Equal(AuthChallengeState.Waiting, resent.State);
+        Assert.Equal(beforeSignIn, h.Bot.Messages.Count);
+    }
+
+    [Fact]
+    public async Task TelegramSecondFactor_SendsCodeAfterTitleAndBeforeRequestDetails()
+    {
+        using var h = new Harness(); await h.Register();
+
+        await h.Service.BeginSignIn(h.SignIn(), default);
+
+        var message = h.Bot.Messages.Last(x => x.Token == null);
+        Assert.StartsWith("<b>🔐 Код подтверждения ·", message.Text);
+        Assert.Matches(@"^<b>[^<]*</b>\n\n<code>\d{6}</code>\n\n👤 Аккаунт: newuser", message.Text);
+        Assert.Contains("🧭 Действие: Вход в аккаунт", message.Text);
+        Assert.Contains("⏳ Действует 5 минут.", message.Text);
     }
 
     [Fact]
@@ -520,13 +555,19 @@ public class AuthenticationFlowTests
         public List<(long Chat, long MessageId, string Text)> Edits { get; } = [];
         public bool FailDelivery { get; set; }
         public bool FailAnswer { get; set; }
-        public string LastCode => Regex.Match(Messages.Last().Text, @"Код: (\d{6})").Groups[1].Value;
+        public string LastCode => Regex.Match(Messages.Last().Text, @"<code>(\d{6})</code>").Groups[1].Value;
         public Task<TelegramBotIdentity> GetIdentity(CancellationToken ct) => Task.FromResult(new TelegramBotIdentity(1, "test_bot"));
         public Task<JsonElement[]> GetUpdates(long offset, CancellationToken ct) => Task.FromResult(Array.Empty<JsonElement>());
         public Task Send(long chatId, string text, string? approvalToken, CancellationToken ct)
         {
             if (FailDelivery) throw new RpcException(new Status(StatusCode.Unavailable, "Telegram unavailable"));
             Messages.Add((chatId, text, approvalToken)); return Task.CompletedTask;
+        }
+        public Task SendCode(long chatId, string title, string code, string details, CancellationToken ct)
+        {
+            if (FailDelivery) throw new RpcException(new Status(StatusCode.Unavailable, "Telegram unavailable"));
+            Messages.Add((chatId, $"<b>{title}</b>\n\n<code>{code}</code>\n\n{details}", null));
+            return Task.CompletedTask;
         }
         public Task Answer(string callbackId, string text, CancellationToken ct) => FailAnswer
             ? Task.FromException(new RpcException(new Status(StatusCode.Unavailable, "Callback is too old"))) : Task.CompletedTask;

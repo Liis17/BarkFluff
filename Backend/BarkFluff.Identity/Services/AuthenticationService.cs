@@ -160,13 +160,15 @@ public sealed partial class AuthenticationService(
         }
     }
 
-    private string OperationText(AuthenticationChallenge c) => $"🔐 BarkFluff · {telegram.NodeName}\n" +
+    private string OperationDetailsText(AuthenticationChallenge c) =>
         $"👤 Аккаунт: {c.Username}\n🧭 Действие: {c.Purpose switch {
             AuthenticationPurpose.Registration => "Регистрация", AuthenticationPurpose.TelegramBinding => "Привязка Telegram",
             AuthenticationPurpose.Reauthentication => "Изменение настроек безопасности", AuthenticationPurpose.FastAuth => "Вход по QR-коду",
             AuthenticationPurpose.PasswordRecovery => "Восстановление пароля", _ => "Вход в аккаунт" }}\n" +
-        $"💻 Устройство: {c.DeviceName} · {c.OperationSystem}\n📱 Приложение: {c.AppName}\n🌐 IP: {c.IpAddress}\n🕒 Время: {Now:u}\n\n" +
-        "⚠️ Подтверждайте только действие, которое вы начали сами.";
+        $"💻 Устройство: {c.DeviceName} · {c.OperationSystem}\n📱 Приложение: {c.AppName}\n🌐 IP: {c.IpAddress}\n🕒 Время: {Now:u}";
+
+    private string OperationText(AuthenticationChallenge c) => $"🔐 BarkFluff · {telegram.NodeName}\n" +
+        OperationDetailsText(c) + "\n\n⚠️ Подтверждайте только действие, которое вы начали сами.";
 
     private async Task<string> Deliver(AuthenticationChallenge c, CancellationToken ct)
     {
@@ -198,7 +200,9 @@ public sealed partial class AuthenticationService(
         while (c.CodeHash != null && secrets.Matches(c.CodeHash, $"{c.Id}:{code}"));
         c.CodeHash = secrets.Hash($"{c.Id}:{code}");
         if (c.Factor == OtpTypeId.Telegram)
-            await bot.Send(c.TelegramId!.Value, OperationText(c) + $"\n\nКод: {code}\nДействует 5 минут.", null, ct);
+            await bot.SendCode(c.TelegramId!.Value,
+                $"🔐 Код подтверждения · BarkFluff · {telegram.NodeName}", code,
+                OperationDetailsText(c) + "\n⏳ Действует 5 минут.\n\n⚠️ Подтверждайте только действие, которое вы начали сами.", ct);
         else if (c.Factor == OtpTypeId.Email)
         {
             if (!EmailAvailable || string.IsNullOrWhiteSpace(c.Email)) throw Unavailable("Email is unavailable");
@@ -237,6 +241,8 @@ public sealed partial class AuthenticationService(
         return await WithChallenge(reference, async c =>
         {
             if (c.State != AuthChallengeState.Waiting) throw Denied();
+            if (c.Purpose == AuthenticationPurpose.SignIn && c.UserId == 0 && c.LoginMode == AuthLoginMode.TelegramLogin)
+                return await Describe(c, reference, ct);
             var url = await Deliver(c, ct);
             var response = await Describe(c, reference, ct);
             response.TelegramUrl = url;

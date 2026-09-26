@@ -10,6 +10,23 @@ namespace BarkFluff.Identity.Tests.Infrastructure;
 public sealed class TelegramAuthBotTests
 {
     [Fact]
+    public async Task SendCode_UsesCopyableHtmlCodeAfterTitleAndBeforeRequestDetails()
+    {
+        var handler = new RecordingHandler();
+        using var http = new HttpClient(handler);
+        var bot = new TelegramAuthBot(http, new TelegramAuthOptions { Enabled = true, BotToken = "test-token" });
+
+        await bot.SendCode(123, "🔐 BarkFluff · <Node>", "012345", "👤 Аккаунт: user & admin\n🧭 Действие: Вход", default);
+
+        Assert.Equal("https://api.telegram.org/bottest-token/sendMessage", handler.RequestUri!.ToString());
+        using var body = JsonDocument.Parse(handler.Body!);
+        Assert.Equal("HTML", body.RootElement.GetProperty("parse_mode").GetString());
+        Assert.Equal(
+            "<b>🔐 BarkFluff · &lt;Node&gt;</b>\n\n<code>012345</code>\n\n👤 Аккаунт: user &amp; admin\n🧭 Действие: Вход",
+            body.RootElement.GetProperty("text").GetString());
+    }
+
+    [Fact]
     public async Task EditMessage_ReplacesTextAndRemovesInlineKeyboard()
     {
         var handler = new RecordingHandler();

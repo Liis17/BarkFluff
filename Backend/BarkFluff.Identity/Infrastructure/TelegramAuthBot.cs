@@ -12,6 +12,7 @@ public interface ITelegramAuthBot
     Task<TelegramBotIdentity> GetIdentity(CancellationToken ct);
     Task<JsonElement[]> GetUpdates(long offset, CancellationToken ct);
     Task Send(long chatId, string text, string? approvalToken, CancellationToken ct);
+    Task SendCode(long chatId, string title, string code, string details, CancellationToken ct);
     Task Answer(string callbackId, string text, CancellationToken ct);
     Task EditMessage(long chatId, long messageId, string text, CancellationToken ct);
 }
@@ -59,6 +60,14 @@ public sealed class TelegramAuthBot(HttpClient http, TelegramAuthOptions options
                 new[] { new { text = "✅ Подтвердить", callback_data = "yes:" + approvalToken }, new { text = "❌ Отклонить", callback_data = "no:" + approvalToken } }
             } } }, ct);
     }
+
+    public async Task SendCode(long chatId, string title, string code, string details, CancellationToken ct)
+    {
+        var text = $"<b>{EscapeHtml(title)}</b>\n\n<code>{EscapeHtml(code)}</code>\n\n{EscapeHtml(details)}";
+        await Call("sendMessage", new { chat_id = chatId, text, parse_mode = "HTML" }, ct);
+    }
+
+    private static string EscapeHtml(string value) => value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
 
     public async Task Answer(string callbackId, string text, CancellationToken ct) =>
         _ = await Call("answerCallbackQuery", new { callback_query_id = callbackId, text }, ct);

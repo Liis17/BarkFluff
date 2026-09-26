@@ -161,6 +161,7 @@
                     box.error.textContent = errorText(error);
             }
         });
+        if (options.telegramLogin) resend.textContent = t('security.resendApproval');
         resend.hidden = true;
         var sentAt = Date.now(),
             busy = false,
@@ -185,7 +186,9 @@
                       }[state]
                     : response.getNeedsCode()
                       ? 'security.enterCode'
-                      : 'security.waiting'
+                      : options.telegramLogin
+                        ? 'security.telegramLoginWaiting'
+                        : 'security.waiting'
             );
             code.parentElement.hidden = !response.getNeedsCode() || terminal;
             confirm.hidden = code.parentElement.hidden;

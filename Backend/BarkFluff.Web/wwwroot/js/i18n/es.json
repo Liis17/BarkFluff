@@ -573,6 +573,8 @@
   "security.confirmation": "Confirmación",
   "security.openBot": "Abrir bot de Telegram",
   "security.waiting": "Aprueba esta acción con el botón del bot de Telegram.",
+  "security.telegramLoginWaiting": "Aprueba el inicio de sesión con el botón del bot de Telegram. Si no llega ninguna solicitud, cancela e indica en los ajustes de seguridad que la cuenta use «Usuario y aprobación de Telegram». El código de Telegram es otro método de acceso.",
+  "security.resendApproval": "Reenviar solicitud de aprobación",
   "security.enterCode": "Introduce el código de un solo uso.",
   "security.rejected": "Solicitud rechazada. Inicia otro intento.",
   "security.expired": "Solicitud caducada. Inicia otro intento.",

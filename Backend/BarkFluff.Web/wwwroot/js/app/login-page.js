@@ -173,7 +173,7 @@
             var result = await BF.authUI.run('beginSignIn', 'BeginSignInRequest', {
                 login: login, password: password, loginMode: mode, factor: Number(factorInput.value),
                 useRecoveryCode: mode !== 1 && recoveryInput.checked
-            }, { switchFactor: mode === 3 });
+            }, { switchFactor: mode === 3, telegramLogin: mode === 2 });
             if (BF.node.origin() !== origin || !result.getSession()) return;
             passwordInput.value = '';
             BF.tokens.setTempMode(tempLoginCheck.checked);
