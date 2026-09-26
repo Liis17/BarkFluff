@@ -3,6 +3,7 @@ using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Notifications;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,8 @@ public sealed partial class AuthenticationService
         catch (UserNotFoundException) { return null; }
     }
 
-    private async Task VerifyPassword(long userId, string login, string password, CancellationToken ct)
+    private async Task VerifyPassword(long userId, string login, string password, CancellationToken ct,
+        bool notifyFailure = false, string? username = null)
     {
         await guard.EnsureLoginAllowedAsync(login, request.TrustedIpAddress, ct);
         if (userId != 0) await guard.EnsureUserAllowedAsync(userId, ct);
@@ -36,6 +38,11 @@ public sealed partial class AuthenticationService
         {
             var failure = await guard.RegisterLoginFailureAsync(login, request.TrustedIpAddress, userId == 0 ? null : userId, ct);
             await guard.DelayAfterFailureAsync(failure.Attempts, ct);
+            if (notifyFailure && userId != 0 && !failure.Locked)
+                await loginNotifications.SendAsync(userId, NotificationType.FailedLogin, username ?? login,
+                    request.TrustedIpAddress ?? request.IpAddress ?? string.Empty, request.DeviceName ?? "Unknown",
+                    request.OperationSystem ?? string.Empty, $"{request.AppName} v.{request.AppVersion}",
+                    "неизвестно", Now, ct);
             throw new InvalidLoginOrPasswordException();
         }
     }
@@ -77,7 +84,8 @@ public sealed partial class AuthenticationService
         {
             var settings = user == null ? null : await Settings(user.Id, ct);
             if (input.LoginMode != AuthLoginMode.TelegramLogin)
-                await VerifyPassword(user?.Id ?? 0, input.Login, input.Password, ct);
+                await VerifyPassword(user?.Id ?? 0, input.Login, input.Password, ct,
+                    notifyFailure: true, username: user?.Username ?? input.Login);
             else if (user != null) await guard.EnsureUserAllowedAsync(user.Id, ct);
 
             // Identical waiting response for an unknown/unavailable Telegram login.
@@ -156,6 +164,7 @@ public sealed partial class AuthenticationService
                 {
                     settings.TelegramId = c.TelegramId; settings.TelegramUsername = c.TelegramUsername;
                     settings.TelegramEnabled = true; settings.TelegramOtpEnabled = true; settings.FastAuthTelegramEnabled = true;
+                    settings.NotificationChannel = LoginNotificationChannel.Telegram;
                 }
                 await passwords.UpdateUserPasswordHash(c.UserId, c.PasswordHash!);
                 await users.ConfirmUserAsync(new ConfirmUserRequest { UserId = c.UserId }, cancellationToken: ct);
@@ -233,6 +242,7 @@ public sealed partial class AuthenticationService
 
     private async Task<AuthResponse> Session(AuthenticationChallenge c, CancellationToken ct)
     {
+        var createNewSession = !c.SessionId.HasValue;
         RefreshToken? token;
         if (c.SessionId.HasValue)
             token = await db.RefreshTokens.SingleOrDefaultAsync(x => x.Id == c.SessionId && x.ExpiresAt > Now, ct) ?? throw Denied();
@@ -249,6 +259,9 @@ public sealed partial class AuthenticationService
             c.SessionId = token.Id;
             await users.RegisterDeviceAsync(new RegisterDeviceRequest { UserId = c.UserId, DeviceId = c.DeviceId,
                 OriginalName = c.DeviceName, OperationSystem = c.OperationSystem, AppName = c.AppName, Location = "" }, cancellationToken: ct);
+            if (createNewSession && c.Purpose == AuthenticationPurpose.SignIn)
+                await loginNotifications.SendAsync(c.UserId, NotificationType.SuccessfulLogin, c.Username,
+                    c.IpAddress, c.DeviceName, c.OperationSystem, c.AppName, "неизвестно", Now, ct);
         }
         if (c.ExpiresAt <= Now) throw Denied();
         return new AuthResponse { AccessToken = jwt.GenerateUserToken(c.UserId, c.DeviceId),

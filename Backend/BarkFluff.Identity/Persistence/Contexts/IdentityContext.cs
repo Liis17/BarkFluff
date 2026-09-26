@@ -31,6 +31,8 @@ public class IdentityContext : DbContext
 
         modelBuilder.Entity<AuthUserProperty>().HasIndex(x => x.UserId).IsUnique();
         modelBuilder.Entity<AuthUserProperty>().HasIndex(x => x.TelegramId).IsUnique();
+        modelBuilder.Entity<AuthUserProperty>().Property(x => x.NotificationChannel)
+            .HasDefaultValue(BarkFluff.Proto.Identity.LoginNotificationChannel.Email);
         modelBuilder.Entity<AuthenticationChallenge>().HasIndex(x => x.TelegramTokenHash).IsUnique();
         modelBuilder.Entity<AuthenticationChallenge>().HasIndex(x => x.AttemptId).IsUnique();
         modelBuilder.Entity<AuthenticationChallenge>().HasIndex(x => x.ExpiresAt);

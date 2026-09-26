@@ -629,6 +629,29 @@
         return mutationCall(identity().setPassword.bind(identity()), req);
     }
 
+    function getLoginNotificationSettings() {
+        var req = new (identPb().GetLoginNotificationSettingsRequest)();
+        return readCall(identity().getLoginNotificationSettings.bind(identity()), req).then(function (resp) {
+            return {
+                channel: resp.getChannel(),
+                emailAvailable: resp.getEmailAvailable(),
+                telegramAvailable: resp.getTelegramAvailable()
+            };
+        });
+    }
+
+    function setLoginNotificationChannel(channel) {
+        var req = new (identPb().SetLoginNotificationChannelRequest)();
+        req.setChannel(channel);
+        return mutationCall(identity().setLoginNotificationChannel.bind(identity()), req).then(function (resp) {
+            return {
+                channel: resp.getChannel(),
+                emailAvailable: resp.getEmailAvailable(),
+                telegramAvailable: resp.getTelegramAvailable()
+            };
+        });
+    }
+
     // --- User devices / notifications (UsersApi) ---
 
     function renameDevice(deviceId, customName) {
@@ -1030,6 +1053,8 @@
         confirmOtpVerification: confirmOtpVerification,
         disableOtpVerification: disableOtpVerification,
         setPassword: setPassword,
+        getLoginNotificationSettings: getLoginNotificationSettings,
+        setLoginNotificationChannel: setLoginNotificationChannel,
         // User devices / notifications / privacy / personalization
         renameDevice: renameDevice,
         setNotificationsEnabled: setNotificationsEnabled,

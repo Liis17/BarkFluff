@@ -21,6 +21,9 @@ using MediatR;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
+using BarkFluff.Identity.Settings;
 
 using Moq;
 
@@ -46,6 +49,7 @@ public class AuthCommandHandlerTests
     private readonly AuthPropertiesStorage _authPropsStorage;
     private readonly RefreshTokensStorage _refreshTokensStorage;
     private readonly PasswordsStorage _passwordsStorage;
+    private readonly LoginNotificationService _loginNotifications;
 
     public AuthCommandHandlerTests()
     {
@@ -70,6 +74,12 @@ public class AuthCommandHandlerTests
         _authPropsStorage = new AuthPropertiesStorage(_context);
         _refreshTokensStorage = new RefreshTokensStorage(_context);
         _passwordsStorage = new PasswordsStorage(_context);
+        var telegramBot = new Mock<ITelegramAuthBot>();
+        telegramBot.Setup(bot => bot.Send(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _loginNotifications = new LoginNotificationService(_authPropsStorage, _usersClient.Object,
+            _notificationSender, telegramBot.Object, new TelegramAuthOptions(), new ConfigurationBuilder().Build(),
+            NullLogger<LoginNotificationService>.Instance);
     }
 
     private static RequestContext BuildRequestContext(
@@ -97,7 +107,8 @@ public class AuthCommandHandlerTests
         return new AuthCommandHandler(
             _usersClient.Object, _mediator.Object, _authPropsStorage,
             _notificationSender, _refreshTokensStorage, ctx ?? _requestContext,
-            _passwordsStorage, _locationClient, _metrics, _logger.Object, abuseGuard ?? TestHelper.CreateAbuseGuard(),
+            _passwordsStorage, _locationClient, _metrics, _logger.Object, _loginNotifications,
+            abuseGuard ?? TestHelper.CreateAbuseGuard(),
             authenticationStore: new AuthenticationStore(_context));
     }
 

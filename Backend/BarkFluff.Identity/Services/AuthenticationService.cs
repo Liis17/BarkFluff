@@ -21,7 +21,8 @@ namespace BarkFluff.Identity.Services;
 public sealed partial class AuthenticationService(
     IdentityContext db, AuthenticationStore store, AuthenticationSecrets secrets,
     UsersServerApi.UsersServerApiClient users, JwtService jwt, PasswordsStorage passwords,
-    NotificationQueueSender notifications, ITelegramAuthBot bot, TelegramAuthOptions telegram,
+    NotificationQueueSender notifications, LoginNotificationService loginNotifications,
+    ITelegramAuthBot bot, TelegramAuthOptions telegram,
     IConfiguration configuration, RequestContext request, UserContext currentUser,
     IIdentityAbuseGuard guard, TimeProvider clock)
 {

@@ -141,6 +141,15 @@ public sealed partial class AuthenticationService
             var settings = await EnsureSettings(userId, ct);
             var hasTelegram = !unlink && settings.TelegramId.HasValue;
             var enabled = hasTelegram && input.TelegramEnabled;
+            if (!enabled || unlink)
+            {
+                var channels = await LoginNotificationAvailability(userId, settings, ct);
+                if (!channels.EmailAvailable &&
+                    (settings.NotificationChannel == LoginNotificationChannel.Telegram || channels.TelegramAvailable))
+                    throw Invalid("Add and verify an email before disabling or unlinking Telegram, which receives your login alerts");
+                if (settings.NotificationChannel == LoginNotificationChannel.Telegram && channels.EmailAvailable)
+                    settings.NotificationChannel = LoginNotificationChannel.Email;
+            }
             if (input.TelegramEnabled && (!hasTelegram || !telegram.Configured)) throw Unavailable("Link Telegram first");
             if (input.LoginMode == AuthLoginMode.TelegramLogin && !enabled) throw Invalid("Choose a mode that does not require Telegram");
             if (input.LoginMode is not (AuthLoginMode.Password or AuthLoginMode.TelegramLogin or AuthLoginMode.PasswordSecondFactor))

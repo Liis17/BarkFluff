@@ -2,7 +2,7 @@
 
 `Email:Enabled` (по умолчанию true) из [[Backend/Settings]] управляет отправкой. При false уведомления погашаются без SMTP и учитываются как `emails_skipped`; пустой адрес у зарегистрированных через Telegram аккаунтов также пропускается. Пустой SMTP port при отключённой почте не мешает запуску. См. [[Backend/Identity]], [[Backend/Setup]].
 
-Фоновый потребитель RabbitMQ, отправляющий email-уведомления. Порт: **7004**.
+Фоновый потребитель RabbitMQ, отправляющий email-уведомления. Уведомления о входах (`SuccessfulLogin`, `FailedLogin`) идут через этот сервис, когда аккаунт выбрал Email. При выборе Telegram Identity отправляет эти два типа напрямую в Telegram-бот ноды через `LoginNotificationService`; очередь и этот сервис не задействуются. Порт: **7004**.
 **Нет gRPC API** — только обработка очереди.
 
 Расположение: `Backend/BarkFluff.Notification/`
