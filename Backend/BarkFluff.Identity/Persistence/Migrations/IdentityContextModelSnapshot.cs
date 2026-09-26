@@ -45,6 +45,11 @@ namespace BarkFluff.Identity.Persistence.Migrations
                     b.Property<int>("LoginMode")
                         .HasColumnType("integer");
 
+                    b.Property<int>("NotificationChannel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<bool>("OtpEnabled")
                         .HasColumnType("boolean");
 

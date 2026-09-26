@@ -16,6 +16,9 @@ using MediatR;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
+using BarkFluff.Identity.Settings;
 
 using Moq;
 
@@ -33,6 +36,7 @@ public class CreateSessionForUserServerCommandHandlerTests
     private readonly Mock<IMediator> _mediator;
     private readonly Mock<IPublishEndpoint> _publishEndpoint;
     private readonly NotificationQueueSender _notificationSender;
+    private readonly LoginNotificationService _loginNotifications;
     private readonly IdentityContext _context;
     private readonly RefreshTokensStorage _refreshTokensStorage;
     private readonly LocationClient _locationClient;
@@ -46,6 +50,12 @@ public class CreateSessionForUserServerCommandHandlerTests
         _publishEndpoint = new Mock<IPublishEndpoint>();
         _notificationSender = new NotificationQueueSender(_publishEndpoint.Object);
         _context = TestHelper.CreateContext();
+        var telegramBot = new Mock<ITelegramAuthBot>();
+        telegramBot.Setup(bot => bot.Send(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _loginNotifications = new LoginNotificationService(new AuthPropertiesStorage(_context), _usersClient.Object,
+            _notificationSender, telegramBot.Object, new TelegramAuthOptions(), new ConfigurationBuilder().Build(),
+            NullLogger<LoginNotificationService>.Instance);
         _refreshTokensStorage = new RefreshTokensStorage(_context);
         _locationClient = TestHelper.CreateLocationClient();
         _metrics = new MetricsCollector();
@@ -79,7 +89,7 @@ public class CreateSessionForUserServerCommandHandlerTests
     private CreateSessionForUserServerCommandHandler CreateHandler()
     {
         return new CreateSessionForUserServerCommandHandler(
-            _usersClient.Object, _mediator.Object, _notificationSender,
+            _usersClient.Object, _mediator.Object, _loginNotifications,
             _refreshTokensStorage, _locationClient, _metrics, _logger.Object);
     }
 

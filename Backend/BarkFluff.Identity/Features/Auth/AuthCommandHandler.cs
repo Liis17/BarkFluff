@@ -25,6 +25,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
     RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage,
     LocationClient locationClient, MetricsCollector metrics, ILogger<AuthCommandHandler> logger,
+    LoginNotificationService loginNotifications,
     IIdentityAbuseGuard abuseGuard, IConfiguration? configuration = null,
     AuthenticationStore? authenticationStore = null) : IRequestHandler<AuthCommand, AuthResponse>
 {
@@ -160,32 +161,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 if (failure.Locked)
                     throw new IdentityLockoutException();
 
-                // Отправка уведомления о неудачной попытке входа
-                var userContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
-
                 var locationInfo = await locationClient.GetLocationString(ipAddress);
-
-                var failedLoginNotification = new EmailNotification
-                {
-                    OwnerId = user.User.Id,
-                    Address = userContactInfo.Contact?.Email ?? "",
-                    CreatedAt = DateTime.UtcNow,
-                    Payload = new Dictionary<string, string>
-                    {
-                        {"username", user.User.Username},
-                        {"ip", ipAddress ?? string.Empty},
-                        {"devicename", requestContext.DeviceName},
-                        {"os", requestContext.OperationSystem},
-                        {"location", locationInfo},
-                        {"appname", appName},
-                        {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
-                    },
-                    ServiceId = ServiceId.Identity,
-                    Title = "Неуспешная попытка входа в аккаунт",
-                    Type = NotificationType.FailedLogin
-                };
-
-                await notificationQueueSender.SendNotification(failedLoginNotification);
+                await loginNotifications.SendAsync(user.User.Id, NotificationType.FailedLogin,
+                    user.User.Username, ipAddress ?? string.Empty, requestContext.DeviceName ?? "Unknown",
+                    requestContext.OperationSystem ?? string.Empty, appName, locationInfo ?? "неизвестно",
+                    DateTime.UtcNow, cancellationToken);
 
                 throw new InvalidLoginOrPasswordException();
             }
@@ -373,30 +353,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     deviceId, user.User.Id);
             }
 
-            // Отправка уведомления об успешном входе
-            var successUserContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
-
-            var successfulLoginNotification = new EmailNotification
-            {
-                OwnerId = user.User.Id,
-                Address = successUserContactInfo.Contact.Email,
-                CreatedAt = DateTime.UtcNow,
-                Payload = new Dictionary<string, string>
-                {
-                    {"username", user.User.Username},
-                    {"ip", ipAddress ?? string.Empty},
-                    {"devicename", requestContext.DeviceName},
-                    {"os", requestContext.OperationSystem},
-                    {"location", successLocationInfo},
-                    {"appname", appName},
-                    {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
-                },
-                ServiceId = ServiceId.Identity,
-                Title = "Успешный вход в аккаунт",
-                Type = NotificationType.SuccessfulLogin
-            };
-
-            await notificationQueueSender.SendNotification(successfulLoginNotification);
+            await loginNotifications.SendAsync(user.User.Id, NotificationType.SuccessfulLogin,
+                user.User.Username, ipAddress ?? string.Empty, requestContext.DeviceName ?? "Unknown",
+                requestContext.OperationSystem ?? string.Empty, appName, successLocationInfo ?? "неизвестно",
+                DateTime.UtcNow, cancellationToken);
 
             metrics.Increment("auth_login_success");
             metrics.Increment("sessions_created");

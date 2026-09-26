@@ -20,6 +20,10 @@ public partial class IdentityApiService
     [Authorize(Policy = nameof(TokenType.User))]
     public override Task<SecuritySettingsResponse> GetSecuritySettings(GetSecuritySettingsRequest request, ServerCallContext context) => _authentication!.GetSecuritySettings(context.CancellationToken);
     [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<LoginNotificationSettingsResponse> GetLoginNotificationSettings(GetLoginNotificationSettingsRequest request, ServerCallContext context) => _authentication!.GetLoginNotificationSettings(context.CancellationToken);
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<LoginNotificationSettingsResponse> SetLoginNotificationChannel(SetLoginNotificationChannelRequest request, ServerCallContext context) => _authentication!.SetLoginNotificationChannel(request, context.CancellationToken);
+    [Authorize(Policy = nameof(TokenType.User))]
     public override Task<AuthChallengeResponse> BeginReauthentication(BeginReauthenticationRequest request, ServerCallContext context) => _authentication!.BeginReauthentication(request, context.CancellationToken);
     [Authorize(Policy = nameof(TokenType.User))]
     public override Task<SecuritySettingsResponse> UpdateSecuritySettings(UpdateSecuritySettingsRequest request, ServerCallContext context) => _authentication!.UpdateSecuritySettings(request, false, context.CancellationToken);

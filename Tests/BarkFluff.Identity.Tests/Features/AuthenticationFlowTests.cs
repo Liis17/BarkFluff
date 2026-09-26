@@ -15,6 +15,7 @@ using BarkFluff.Shared.Queue.Notifications;
 using Grpc.Core;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
@@ -82,13 +83,91 @@ public class AuthenticationFlowTests
     }
 
     [Fact]
-    public async Task WrongPassword_DoesNotSendTelegramCode()
+    public async Task WrongPassword_DoesNotSendTelegramSecondFactorCode()
     {
         using var h = new Harness();
         await h.Register();
         var before = h.Bot.Messages.Count;
         await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => h.Service.BeginSignIn(h.SignIn(password: "incorrect"), default));
-        Assert.Equal(before, h.Bot.Messages.Count);
+        var newMessages = h.Bot.Messages.Skip(before).ToArray();
+        Assert.Contains(newMessages, x => x.Text.Contains("Неудачная попытка входа"));
+        Assert.DoesNotContain(newMessages, x => x.Text.Contains("Действует 5 минут"));
+    }
+
+    [Fact]
+    public async Task WrongPassword_SendsLoginAttemptAlertToSelectedTelegramChannel()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var before = h.Bot.Messages.Count;
+
+        await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => h.Service.BeginSignIn(h.SignIn(password: "incorrect"), default));
+
+        var alert = Assert.Single(h.Bot.Messages.Skip(before), x => x.Text.Contains("Неудачная попытка входа"));
+        Assert.Equal(123, alert.Chat);
+        Assert.Null(alert.Token);
+    }
+
+    [Fact]
+    public async Task SignIn_SendsOneSelectedTelegramAlertEvenWhenChallengeIsCompletedAgain()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var pending = await h.Service.BeginSignIn(h.SignIn(), default);
+
+        await h.Complete(pending, h.Bot.LastCode);
+        var alertCount = h.Bot.Messages.Count(x => x.Text.Contains("Событие: Вход в аккаунт"));
+        await h.Complete(pending, h.Bot.LastCode);
+
+        Assert.Equal(1, alertCount);
+        Assert.Equal(alertCount, h.Bot.Messages.Count(x => x.Text.Contains("Событие: Вход в аккаунт")));
+    }
+
+    [Fact]
+    public async Task LoginNotificationChannel_AlwaysUsesOneAvailableMethodAndCannotBeDisabled()
+    {
+        using var h = new Harness(emailEnabled: true);
+        await h.Register();
+
+        var current = await h.Service.GetLoginNotificationSettings(default);
+        Assert.True(current.EmailAvailable);
+        Assert.True(current.TelegramAvailable);
+        Assert.Equal(LoginNotificationChannel.Telegram, current.Channel);
+
+        var changed = await h.Service.SetLoginNotificationChannel(new SetLoginNotificationChannelRequest
+        { Channel = LoginNotificationChannel.Email }, default);
+        Assert.Equal(LoginNotificationChannel.Email, changed.Channel);
+
+        await Assert.ThrowsAsync<RpcException>(() => h.Service.SetLoginNotificationChannel(
+            new SetLoginNotificationChannelRequest { Channel = (LoginNotificationChannel)0 }, default));
+    }
+
+    [Fact]
+    public async Task SelectedEmailChannel_SendsLoginAttemptToEmailOnly()
+    {
+        using var h = new Harness(emailEnabled: true);
+        await h.Register();
+        await h.Service.SetLoginNotificationChannel(new SetLoginNotificationChannelRequest
+        { Channel = LoginNotificationChannel.Email }, default);
+        var telegramMessages = h.Bot.Messages.Count;
+
+        await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => h.Service.BeginSignIn(h.SignIn(password: "incorrect"), default));
+
+        Assert.Contains(h.Emails, x => x.Type == NotificationType.FailedLogin);
+        Assert.DoesNotContain(h.Bot.Messages.Skip(telegramMessages), x => x.Text.Contains("Неудачная попытка входа"));
+    }
+
+    [Fact]
+    public async Task LoginNotificationChannel_FallsBackToTelegramWhenEmailIsUnavailable()
+    {
+        using var h = new Harness();
+        await h.Register();
+
+        var settings = await h.Service.GetLoginNotificationSettings(default);
+
+        Assert.False(settings.EmailAvailable);
+        Assert.True(settings.TelegramAvailable);
+        Assert.Equal(LoginNotificationChannel.Telegram, settings.Channel);
     }
 
     [Fact]
@@ -313,7 +392,7 @@ public class AuthenticationFlowTests
     [Fact]
     public async Task DisablingTelegram_CancelsPendingLogin_AndRetainsPasswordMode()
     {
-        using var h = new Harness(); await h.Register();
+        using var h = new Harness(emailEnabled: true); await h.Register();
         var waiting = await h.Service.BeginSignIn(h.SignIn(), default);
         var reauth = await h.Service.BeginReauthentication(new BeginReauthenticationRequest { Password = "password123", Factor = OtpTypeId.Telegram }, default);
         var proof = (await h.Complete(reauth, h.Bot.LastCode)).SecurityProof;
@@ -321,9 +400,28 @@ public class AuthenticationFlowTests
         { SecurityProof = proof, LoginMode = AuthLoginMode.Password }, false, default);
         Assert.False(settings.TelegramEnabled);
         Assert.True(settings.TelegramLinked);
+        Assert.Equal(LoginNotificationChannel.Email, (await h.Service.GetLoginNotificationSettings(default)).Channel);
         Assert.Equal(AuthChallengeState.Cancelled, (await h.Service.Status(waiting.Challenge, default)).State);
         var signIn = h.SignIn(); signIn.LoginMode = AuthLoginMode.Password;
         Assert.NotNull((await h.Complete(await h.Service.BeginSignIn(signIn, default))).Session);
+    }
+
+    [Fact]
+    public async Task DisablingOnlyLoginNotificationChannel_IsRejected()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var reauth = await h.Service.BeginReauthentication(new BeginReauthenticationRequest
+        { Password = "password123", Factor = OtpTypeId.Telegram }, default);
+        var proof = (await h.Complete(reauth, h.Bot.LastCode)).SecurityProof;
+
+        await Assert.ThrowsAsync<RpcException>(() => h.Service.UpdateSecuritySettings(new UpdateSecuritySettingsRequest
+        { SecurityProof = proof, LoginMode = AuthLoginMode.Password }, false, default));
+
+        var current = await h.Service.GetLoginNotificationSettings(default);
+        Assert.True(current.TelegramAvailable);
+        Assert.False(current.EmailAvailable);
+        Assert.Equal(LoginNotificationChannel.Telegram, current.Channel);
     }
 
     [Fact]
@@ -537,12 +635,18 @@ public class AuthenticationFlowTests
                 .Callback<EmailNotification, CancellationToken>((message, _) => Emails.Add(message)).Returns(Task.CompletedTask);
             var deviceId = Guid.NewGuid().ToString();
             var request = new RequestContext { DeviceId = deviceId, DeviceName = "Browser", AppName = "Web", AppVersion = "1", OperationSystem = "Test", TrustedIpAddress = "127.0.0.1" };
-            CreateService = context => new AuthenticationService(context, new AuthenticationStore(context),
-                new AuthenticationSecrets(new JwtSettings { SecretKey = "test-auth-secret" }), _users.Object, TestHelper.CreateJwtService(),
-                new PasswordsStorage(context), new NotificationQueueSender(publish.Object), Bot,
-                new TelegramAuthOptions { Enabled = true, BotToken = "test-only-token" },
-                new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Email:Enabled"] = emailEnabled.ToString() }).Build(),
-                request, TestHelper.CreateUserContext(42, deviceId), TestHelper.CreateAbuseGuard(), Clock);
+            var notificationQueue = new NotificationQueueSender(publish.Object);
+            var telegramOptions = new TelegramAuthOptions { Enabled = true, BotToken = "test-only-token" };
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Email:Enabled"] = emailEnabled.ToString() }).Build();
+            CreateService = context =>
+            {
+                var loginNotifications = new LoginNotificationService(new AuthPropertiesStorage(context), _users.Object,
+                    notificationQueue, Bot, telegramOptions, configuration, NullLogger<LoginNotificationService>.Instance);
+                return new AuthenticationService(context, new AuthenticationStore(context),
+                    new AuthenticationSecrets(new JwtSettings { SecretKey = "test-auth-secret" }), _users.Object, TestHelper.CreateJwtService(),
+                    new PasswordsStorage(context), notificationQueue, loginNotifications, Bot, telegramOptions, configuration,
+                    request, TestHelper.CreateUserContext(42, deviceId), TestHelper.CreateAbuseGuard(), Clock);
+            };
             Service = CreateService(Db);
         }
 

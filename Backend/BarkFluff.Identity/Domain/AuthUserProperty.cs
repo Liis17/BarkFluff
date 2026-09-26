@@ -27,5 +27,7 @@ public class AuthUserProperty
     public bool TelegramEnabled { get; set; }
     public bool TelegramOtpEnabled { get; set; }
     public bool FastAuthTelegramEnabled { get; set; }
+    public BarkFluff.Proto.Identity.LoginNotificationChannel NotificationChannel { get; set; } =
+        BarkFluff.Proto.Identity.LoginNotificationChannel.Email;
     public int PolicyVersion { get; set; }
 }

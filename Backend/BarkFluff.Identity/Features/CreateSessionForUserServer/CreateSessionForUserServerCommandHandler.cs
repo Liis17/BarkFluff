@@ -19,7 +19,7 @@ namespace BarkFluff.Identity.Features.CreateSessionForUserServer;
 public class CreateSessionForUserServerCommandHandler(
     UsersServerApi.UsersServerApiClient usersClient,
     IMediator mediator,
-    NotificationQueueSender notificationQueueSender,
+    LoginNotificationService loginNotifications,
     RefreshTokensStorage refreshTokensStorage,
     LocationClient locationClient,
     MetricsCollector metrics,
@@ -102,29 +102,9 @@ public class CreateSessionForUserServerCommandHandler(
 
         try
         {
-            var userContacts = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = request.UserId });
-
-            var notification = new EmailNotification
-            {
-                OwnerId = request.UserId,
-                Address = userContacts.Contact.Email,
-                CreatedAt = DateTime.UtcNow,
-                Payload = new Dictionary<string, string>
-                {
-                    {"username", userContacts.User.Username},
-                    {"ip", request.IpAddress},
-                    {"devicename", request.DeviceName},
-                    {"os", request.OperationSystem},
-                    {"location", locationInfo},
-                    {"appname", request.AppName},
-                    {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
-                },
-                ServiceId = ServiceId.Identity,
-                Title = "Успешный вход в аккаунт",
-                Type = NotificationType.SuccessfulLogin
-            };
-
-            await notificationQueueSender.SendNotification(notification);
+            await loginNotifications.SendAsync(request.UserId, NotificationType.SuccessfulLogin,
+                user.User.Username, request.IpAddress, request.DeviceName, request.OperationSystem,
+                request.AppName, locationInfo, DateTime.UtcNow, cancellationToken);
         }
         catch (Exception ex)
         {

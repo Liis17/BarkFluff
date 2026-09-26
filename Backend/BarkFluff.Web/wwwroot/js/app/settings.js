@@ -28,6 +28,8 @@
     // UploadFileType enum values used here
     var FT_MESSAGE_ATTACHMENT_IMAGE = 2;
     var FT_USER_PROFILE_POSTER = 10;
+    var LOGIN_NOTIFICATION_EMAIL = 1;
+    var LOGIN_NOTIFICATION_TELEGRAM = 2;
 
     // Web app version (shown in About)
     var WEB_VERSION = '1.0';
@@ -361,6 +363,65 @@
             });
         if (!pushSupported || pushStatus === 'denied') pushToggle.setDisabled(true);
         secNotifications.appendChild(pushToggle.row);
+        var loginAlerts = document.createElement('div');
+        loginAlerts.className = 'sd-notification-channel';
+        var loginAlertsInfo = document.createElement('div');
+        loginAlertsInfo.className = 'sd-toggle-info';
+        var loginAlertsTitle = document.createElement('div');
+        loginAlertsTitle.className = 'sd-toggle-title';
+        loginAlertsTitle.textContent = BF.i18n.t('settings.loginAlerts.title');
+        var loginAlertsDescription = document.createElement('div');
+        loginAlertsDescription.className = 'sd-toggle-desc';
+        loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.loading');
+        loginAlertsInfo.appendChild(loginAlertsTitle);
+        loginAlertsInfo.appendChild(loginAlertsDescription);
+        var loginAlertsChannel = document.createElement('select');
+        loginAlertsChannel.className = 'sd-input sd-notification-channel-select';
+        loginAlertsChannel.setAttribute('aria-label', BF.i18n.t('settings.loginAlerts.title'));
+        loginAlerts.appendChild(loginAlertsInfo);
+        loginAlerts.appendChild(loginAlertsChannel);
+        secNotifications.appendChild(loginAlerts);
+        BF.api.getLoginNotificationSettings().then(function (data) {
+            if (!loginAlerts.isConnected) return;
+            var options = [];
+            if (data.emailAvailable) options.push({ value: LOGIN_NOTIFICATION_EMAIL, label: BF.i18n.t('settings.loginAlerts.email') });
+            if (data.telegramAvailable) options.push({ value: LOGIN_NOTIFICATION_TELEGRAM, label: BF.i18n.t('settings.loginAlerts.telegram') });
+            loginAlertsChannel.replaceChildren();
+            options.forEach(function (option) {
+                var element = document.createElement('option');
+                element.value = String(option.value);
+                element.textContent = option.label;
+                loginAlertsChannel.appendChild(element);
+            });
+            if (!options.length) {
+                loginAlertsChannel.disabled = true;
+                loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.unavailable');
+                return;
+            }
+            loginAlertsChannel.value = String(data.channel);
+            loginAlertsChannel.disabled = options.length < 2;
+            loginAlertsDescription.textContent = options.length > 1
+                ? BF.i18n.t('settings.loginAlerts.description')
+                : BF.i18n.t('settings.loginAlerts.required');
+            loginAlertsChannel.addEventListener('change', function () {
+                var previous = data.channel;
+                loginAlertsChannel.disabled = true;
+                BF.api.setLoginNotificationChannel(Number(loginAlertsChannel.value)).then(function (updated) {
+                    data = updated;
+                    loginAlertsChannel.value = String(data.channel);
+                }).catch(function () {
+                    loginAlertsChannel.value = String(previous);
+                    loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.saveError');
+                }).finally(function () {
+                    if (!loginAlerts.isConnected) return;
+                    loginAlertsChannel.disabled = options.length < 2;
+                });
+            });
+        }).catch(function () {
+            if (!loginAlerts.isConnected) return;
+            loginAlertsChannel.disabled = true;
+            loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.loadError');
+        });
         body.appendChild(secNotifications);
 
         if (BF.push && BF.push.canInstall && BF.push.canInstall()) {

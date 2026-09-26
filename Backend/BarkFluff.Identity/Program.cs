@@ -53,6 +53,7 @@ public class Program
         builder.Services.AddSingleton<AuthenticationSecrets>();
         builder.Services.AddScoped<AuthenticationStore>();
         builder.Services.AddScoped<AuthenticationService>();
+        builder.Services.AddScoped<LoginNotificationService>();
         // Do not use HttpClientFactory's URL logging: Telegram URLs contain the bot secret.
         builder.Services.AddSingleton<ITelegramAuthBot>(sp => new TelegramAuthBot(
             new HttpClient { Timeout = TimeSpan.FromSeconds(35) }, sp.GetRequiredService<TelegramAuthOptions>()));

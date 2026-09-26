@@ -55,7 +55,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - TTL: 9999 дней
 
 **`AuthUserProperty`** — настройки 2FA пользователя:
-- `OtpEnabled` (TOTP), `EmailOtpEnabled`, `OtpSecret` (Base32), `LastEmailAuthCode`, `SelectedOtpType` (выбранный по умолчанию метод 2FA)
+- `OtpEnabled` (TOTP), `EmailOtpEnabled`, `OtpSecret` (Base32), `LastEmailAuthCode`, `SelectedOtpType` (выбранный по умолчанию метод 2FA), `NotificationChannel` (обязательный Email или Telegram для уведомлений о входах)
 
 **`ConfirmationCode`** — код подтверждения регистрации (TTL 6 часов)
 
@@ -79,6 +79,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `ConfirmOtpVerification` | `ConfirmOtpVerificationRequest → ConfirmOtpVerificationResponse` | `TokenType.User` | Подтвердить и активировать 2FA |
 | `DisableOtpVerification` | `DisableOtpVerificationRequest → DisableOtpVerificationResponse` | `TokenType.User` | Отключить 2FA |
 | `ListOtpVerification` | `ListOtpVerificationRequest → ListOtpVerificationResponse` | `TokenType.User` | Список методов 2FA пользователя |
+| `GetLoginNotificationSettings` | `GetLoginNotificationSettingsRequest → LoginNotificationSettingsResponse` | `TokenType.User` | Получить обязательный канал оповещений о входе и доступность Email/Telegram |
+| `SetLoginNotificationChannel` | `SetLoginNotificationChannelRequest → LoginNotificationSettingsResponse` | `TokenType.User` | Выбрать один доступный канал оповещений; отключение запрещено |
 | `ResetPassword` | `ResetPasswordRequest → ResetPasswordResponse` | нет | Запрос сброса пароля → `ResetId` |
 | `ConfirmResetPassword` | `ConfirmResetPasswordRequest → ConfirmResetPasswordResponse` | нет | Подтверждение сброса → токены |
 | `SetPassword` | `SetPasswordRequest → SetPasswordResponse` | `TokenType.User` | Установить/изменить пароль |
@@ -124,7 +126,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 5. Удаление старого `RefreshToken` для данного DeviceId
 6. Создание нового `RefreshToken` (TTL 9999 дней) + JWT access token; отсутствующий или некорректный `x-device-id` заменяется новым UUID
 7. Регистрация/обновление устройства в Users-сервисе (`RegisterDevice`)
-8. Email-уведомления через RabbitMQ: успех (`SuccessfulLogin`) или неудача (`FailedLogin`)
+8. Уведомление об успешном входе (`SuccessfulLogin`) или неверном пароле (`FailedLogin`) отправляется в обязательный канал аккаунта: Email через RabbitMQ или напрямую в Telegram-бот ноды. Канал выбирается в настройках уведомлений; детали — ниже.
 
 Для геолокации, login-уведомлений и данных зарегистрированной сессии `Auth` использует trusted IP от reverse proxy (`X-Real-IP` / `X-Forwarded-For`), с fallback на старую клиентскую metadata для совместимости. Для Developers Portal отображаемое имя приложения — ровно `BarkFluff Developers Portal`; `x-app-version` остаётся обязательным техническим metadata-полем, но в этих данных не показывается.
 
@@ -256,6 +258,12 @@ Legacy `Auth` проверяет пароль до второго фактора
 `CreateFastAuthSession` защищает серверный выпуск сессии: хранит QR attempt ID отдельно от UUID устройства, которое создало QR, исходные метаданные, дедлайн и Telegram approval. Identity выпускает токен на UUID веб-устройства, а попытку связывает по QR ID; повторы возвращают ту же refresh-сессию. При включённом Telegram FastAuth старые запросы без ID попытки требуют веб; изменение политики отменяет ожидающие QR-подтверждения. См. [[Backend/FastAuth]].
 
 `AuthenticationService` реализует Begin/Status/Complete/Cancel/Resend для регистрации, входа, повторной аутентификации, привязок и восстановления. Telegram работает без SMTP. Запрос живёт 5 минут, повторная отправка доступна через минуту и заменяет код без продления срока; 5 неверных ответов закрывают попытку. Чтение статуса имеет отдельный Redis-лимит (60/минуту). Пароль проверяется до отправки второго фактора. Предпочтительный фактор выбирается только среди настроенных способов, доступных на текущей ноде (SMTP и Telegram-провайдер могут быть отключены). Код браузера и nonce бота независимы; `/start` только начинает привязку, требуется отдельная кнопка от того же числового Telegram ID. Сообщения об операциях помечают поля эмодзи; после принятого подтверждения или отказа бот добавляет итог в исходное сообщение и снимает inline-кнопки через Telegram Bot API. Telegram OTP оформляется как заголовок, пустая строка, копируемый HTML `<code>` и детали запроса; динамический текст экранируется перед отправкой. Запрос кнопочного входа для неизвестного аккаунта или при несовпадении его политики остаётся нейтральным ожиданием без отправки сообщения, чтобы не раскрывать существование аккаунта; его повторная отправка также не пробует доставку. При неверном парольном режиме после успешной проверки пароля возвращается `AuthChallengeResponse.error_code=login_mode_disabled` без создания challenge; до проверки пароля режим не раскрывается. Для безпарольного Telegram-входа сохраняется нейтральный ответ. См. [[Shared/Proto]], [[Клиенты/Web]] и [[Backend/FastAuth]].
+
+### Уведомления о входе
+
+`AuthUserProperty.NotificationChannel` хранит один обязательный канал: Email или Telegram. Identity выдаёт доступность только для подтверждённого адреса при включённом SMTP и привязанного/включённого Telegram при настроенном боте. Пользователь выбирает канал в разделе уведомлений веб-настроек; выключить уведомления нельзя. Когда доступен лишь один канал, он выбирается автоматически и переключатель блокируется. Миграция оставляет существующим аккаунтам Email; регистрация без почты выбирает Telegram. При отключении или отвязке Telegram Identity сначала требует доступный Email и переключает на него, если Telegram был каналом уведомлений.
+
+Успешные входы обычной веб-аутентификации, legacy Auth и FastAuth, а также попытки с неверным паролем отправляются через `LoginNotificationService`. Email использует очередь `NotificationQueueSender`; Telegram получает личное сообщение через бот текущей ноды. Ошибка доставки записывается в лог и не отменяет вход. Для неизвестного логина уведомление не отправляется, чтобы не раскрывать наличие аккаунта. Настройки доступны через `GetLoginNotificationSettings` и `SetLoginNotificationChannel`; контракты описаны в [[Shared/Proto]], веб-интерфейс — в [[Клиенты/Web]], почтовый маршрут — в [[Backend/Notification]].
 
 `AuthenticationStore` сериализует операции аккаунта PostgreSQL advisory lock внутри транзакции. Завершённая попытка хранит ID refresh-сессии: повторы возвращают её, а не создают новую. Изменение политики отменяет ожидающие запросы. Настройки и резервные коды требуют одноразового `security_proof` действующего режима; настройка Email/TOTP связывает этот proof с конкретным enrollment. Резервные коды выдаются набором из 10, показываются только при выпуске, хранятся как HMAC и погашаются атомарно; перевыпуск удаляет старый набор.
 
