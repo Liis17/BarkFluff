@@ -39,9 +39,6 @@
     var currentChatType = 0; // ChatType: 0=REGULAR, 1=PRIVATE
     var currentChatPeerIsBot = false;
     var messages = [];
-    var onlineSubscribedUserIds = new Set();
-    var onlineStatuses = new Map();
-    var typingUsers = new Map();      // userId -> timeout handle
     var pendingUploads = new Map(); // local message id -> optimistic upload state
     var pendingFileSelectionEntry = null;
     var GENERIC_MESSAGE_TYPE = 1;
@@ -125,8 +122,8 @@
         getMyUserId: function () { return myUserId; },
         getCachedUser: function (userId) { return userCache.get(userId); },
         getUser: getUser,
-        isUserOnline: isUserOnline,
-        collectOnlineUserIds: collectOnlineUserIds,
+        isUserOnline: BF.presence.isOnline,
+        collectOnlineUserIds: BF.presence.collectUserIds,
         updateTitleBadge: updateTitleBadge,
         openChat: openChat,
         botBadgeMarkup: botBadgeMarkup
@@ -135,12 +132,17 @@
     var renderChatList = BF.chatList.render;
     var refreshChatListQuiet = BF.chatList.refreshQuiet;
 
-    // ========== TYPING INDICATOR ==========
+    // ========== PRESENCE (online statuses, typing indicator) ==========
 
-    function clearTypingReceiveState() {
-        typingUsers.forEach(function (timeoutHandle) { clearTimeout(timeoutHandle); });
-        typingUsers.clear();
-    }
+    BF.presence.init({
+        getChats: function () { return chats; },
+        getCurrentChatId: function () { return currentChatId; },
+        getCurrentChatInfo: function () { return currentChatInfo; },
+        getPeerIsBot: function () { return currentChatPeerIsBot; },
+        getMyUserId: function () { return myUserId; },
+        getCachedUser: function (userId) { return userCache.get(userId); },
+        getUser: getUser
+    });
 
     // ========== OPEN CHAT ==========
 
@@ -155,7 +157,7 @@
         if (chatId === currentChatId) return;
         if (currentChatId && currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
         stopTypingSend(true);
-        clearTypingReceiveState();
+        BF.presence.resetTyping();
 
         var chatMeta = chats.find(function (c) { return c.id === chatId; });
         if (chatMeta && chatMeta.chatType === 1) { openPrivateChat(chatMeta); return; }
@@ -219,12 +221,12 @@
                             return;
                         }
 
-                        subscribeOnlineForUsers([peerId]);
+                        BF.presence.subscribeFor([peerId]);
                         // Fetch current online status via unary RPC to show immediately
                         BF.api.getOnlineStatus([peerId]).then(function (data) {
                             if (data && data.statuses && data.statuses.length > 0) {
                                 var s = data.statuses[0];
-                                handleOnlineStatus(s.userId, s.status, s.lastSeen);
+                                BF.presence.handleStatus(s.userId, s.status, s.lastSeen);
                             }
                         }).catch(function () {});
                     }).catch(function () {
@@ -903,10 +905,6 @@
         handleMessageRead(data.chatId, data.messageId, data.readBy);
     });
 
-    BF.realtime.on('online_status', function (data) {
-        handleOnlineStatus(data.userId, data.status, data.lastSeen);
-    });
-
     BF.realtime.on('message_edited', function (data) {
         applyMessageEdit(data.chatId, data.message);
     });
@@ -925,25 +923,6 @@
 
     BF.realtime.on('all_messages_unpinned', function (data) {
         if (BF.pinned && BF.pinned.applyAllUnpinnedEvent) BF.pinned.applyAllUnpinnedEvent(data);
-    });
-
-    BF.realtime.on('typing', function (data) {
-        if (!currentChatId || String(data.chatId).toLowerCase() !== String(currentChatId).toLowerCase()) return;
-        if (data.userId === myUserId) return;
-        var old = typingUsers.get(data.userId);
-        if (old) clearTimeout(old);
-        if (data.action === 2) {
-            typingUsers.delete(data.userId);
-        } else {
-            typingUsers.set(data.userId, setTimeout(function () {
-                typingUsers.delete(data.userId);
-                renderTypingIndicator();
-            }, 6000));
-            if (currentChatInfo && currentChatInfo.isGroupChat) {
-                getUser(data.userId).then(renderTypingIndicator);
-            }
-        }
-        renderTypingIndicator();
     });
 
     function handleNewMessage(chatId, msg) {
@@ -1024,97 +1003,6 @@
         }
     }
 
-    function isUserOnline(userId) {
-        var entry = onlineStatuses.get(userId);
-        return entry ? BF.utils.isStatusOnline(entry.status) : false;
-    }
-
-    function handleOnlineStatus(userId, status, lastSeen) {
-        onlineStatuses.set(userId, { status: status, lastSeen: lastSeen });
-        var online = BF.utils.isStatusOnline(status);
-        document.querySelectorAll('.online-dot[data-online-user="' + userId + '"]').forEach(function (dot) {
-            dot.classList.toggle('visible', online);
-        });
-        if (currentChatInfo && !currentChatInfo.isGroupChat && !currentChatPeerIsBot) {
-            var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
-            if (peerId === userId) updateChatHeaderOnline(userId);
-        }
-    }
-
-    function updateChatHeaderOnline(userId) {
-        if (typingUsers.size > 0) return;
-        var entry = onlineStatuses.get(userId);
-        var online = entry ? BF.utils.isStatusOnline(entry.status) : false;
-        if (online) {
-            chatHeaderStatus.textContent = BF.i18n.t('status.online');
-        } else {
-            chatHeaderStatus.textContent = BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
-        }
-        chatHeaderStatus.classList.toggle('online', online);
-    }
-
-    function renderTypingIndicator() {
-        if (!currentChatId || !currentChatInfo) return;
-
-        if (typingUsers.size === 0) {
-            if (currentChatInfo.isGroupChat) {
-                chatHeaderStatus.textContent = BF.i18n.tp('group.memberCount', currentChatInfo.membersId ? currentChatInfo.membersId.length : 0);
-                chatHeaderStatus.classList.remove('online');
-            } else {
-                var peerId = (currentChatInfo.membersId || []).find(function (id) { return id !== myUserId; });
-                if (peerId) updateChatHeaderOnline(peerId);
-            }
-            return;
-        }
-
-        if (currentChatInfo.isGroupChat) {
-            var names = Array.from(typingUsers.keys()).slice(0, 3).map(function (id) {
-                var user = userCache.get(id);
-                if (!user) return BF.i18n.t('common.someone');
-                return (user.firstName || '').split(' ')[0] || user.username || BF.i18n.t('common.someone');
-            });
-            chatHeaderStatus.textContent = BF.i18n.t(
-                typingUsers.size > 1 ? 'status.typing.many' : 'status.typing.named',
-                { names: names.join(', ') });
-        } else {
-            chatHeaderStatus.textContent = BF.i18n.t('status.typing');
-        }
-    }
-
-    function collectOnlineUserIds() {
-        var ids = new Set();
-        chats.forEach(function (chat) {
-            if (!chat.isGroupChat && chat.members) {
-                chat.members.forEach(function (m) {
-                    var user = userCache.get(m.userId);
-                    if (m.userId !== myUserId && !(user && user.isBot)) ids.add(m.userId);
-                });
-            }
-        });
-        var changed = ids.size !== onlineSubscribedUserIds.size;
-        if (!changed) {
-            ids.forEach(function (id) {
-                if (!onlineSubscribedUserIds.has(id)) changed = true;
-            });
-        }
-        if (changed) {
-            onlineSubscribedUserIds = ids;
-            BF.realtime.changeOnlineSubscription(Array.from(onlineSubscribedUserIds));
-        }
-    }
-
-    function subscribeOnlineForUsers(userIds) {
-        var changed = false;
-        userIds.forEach(function (id) {
-            var user = userCache.get(id);
-            if (!(user && user.isBot) && !onlineSubscribedUserIds.has(id)) {
-                onlineSubscribedUserIds.add(id);
-                changed = true;
-            }
-        });
-        if (changed) BF.realtime.changeOnlineSubscription(Array.from(onlineSubscribedUserIds));
-    }
-
     // ========== SEARCH ==========
 
     BF.search.init({
@@ -1132,8 +1020,8 @@
     BF.profile.init({
         getCurrentChatId: function () { return currentChatId; },
         getCurrentChatInfo: function () { return currentChatInfo; },
-        isUserOnline: isUserOnline,
-        getOnlineEntry: function (userId) { return onlineStatuses.get(userId); },
+        isUserOnline: BF.presence.isOnline,
+        getOnlineEntry: BF.presence.getEntry,
         botBadgeMarkup: botBadgeMarkup,
         setCallButtonsVisible: setProfileCallButtonsVisible,
         showToast: showToast
