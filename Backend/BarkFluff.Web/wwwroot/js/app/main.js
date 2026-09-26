@@ -2101,6 +2101,7 @@
         if (messageId == null) return;
         var msgIdNum = Number(messageId);
         console.log('[main] applyMessageDelete', { chatId: chatId, messageId: messageId, currentChatId: currentChatId });
+        BF.composer.onMessageDeleted(msgIdNum);
 
         // messageId глобально уникален: ищем и удаляем во всех текущих структурах,
         // не привязываясь к chatId-сравнению (на случай расхождения форматов id).
