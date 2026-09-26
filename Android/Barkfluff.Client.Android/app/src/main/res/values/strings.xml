@@ -204,7 +204,7 @@
     <string name="register_password_strength_strong">Надёжный</string>
     <string name="register_password_optional_chars">＋ !@#</string>
     <string name="register_step9_status_chip">Все %1$d шагов пройдены</string>
-    <string name="register_step_indicator_total">/ 09</string>
+    <string name="register_step_indicator_total">/ 07</string>
 
     <!-- Reset password -->
     <string name="reset_password_title">Забыли пароль?</string>
@@ -1355,4 +1355,10 @@
     <string name="security_reauthenticate">Подтвердите действие</string>
     <string name="security_reauthenticate_message">Подтвердите действие настроенным способом входа.</string>
     <string name="security_reauthenticate_password">Пароль (если используется)</string>
+    <string name="auth_switch_factor">Выбрать другой фактор</string>
+    <string name="auth_choose_factor">Выберите фактор</string>
+    <string name="auth_factor_authenticator">Приложение-аутентификатор</string>
+    <string name="auth_factor_email">Email</string>
+    <string name="auth_factor_telegram">Telegram</string>
+    <string name="auth_factor_none">Без второго фактора</string>
 </resources>

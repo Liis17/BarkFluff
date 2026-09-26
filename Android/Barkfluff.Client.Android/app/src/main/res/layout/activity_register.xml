@@ -134,19 +134,6 @@
                     android:layout_weight="1"
                     android:background="?attr/colorSurfaceContainerHighest" />
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="@dimen/register_segment_height"
-                    android:layout_marginEnd="@dimen/register_segment_gap"
-                    android:layout_weight="1"
-                    android:background="?attr/colorSurfaceContainerHighest" />
-
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="@dimen/register_segment_height"
-                    android:layout_weight="1"
-                    android:background="?attr/colorSurfaceContainerHighest" />
-
             </LinearLayout>
 
         </LinearLayout>

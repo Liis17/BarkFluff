@@ -41,7 +41,7 @@
 | `SelectServerActivity.kt` | Выбор/ввод адреса сервера; загружает список серверов через Navigator API; сохраняет endpoint'ы |
 | `LoginActivity.kt` | Challenge-based вход (Password, Telegram Login, Password + factor); сохраняет только completed session |
 | `RegisterActivity.kt` | Challenge-based регистрация: capability-gated email/Telegram, профильные шаги, recovery codes |
-| `ResetPasswordActivity.kt` | `BeginPasswordRecovery → challenge → SetRecoveredPassword`; proof не сохраняется |
+| `ResetPasswordActivity.kt` | `BeginPasswordRecovery → challenge → SetRecoveredPassword`; proof только в Activity-retained ViewModel, без Bundle/хранилища |
 | `MainActivity.kt` | Главный экран; BottomNavigation с 3 табами (Чаты, Звонки, Профиль); обрабатывает deep links и уведомления |
 | `ChatsFragment.kt` | Список чатов; подписывается на RealtimeService; обновляется при новых сообщениях |
 | `CallsFragment.kt` | Вкладка звонков — история (`CallHistoryAdapter`), инициация нового звонка |
@@ -299,7 +299,6 @@ App Widget с закреплёнными чатами.
 | `utils/SpringPress.kt` | app | Пружинистый эффект нажатия для UI-элементов (scale-анимация) |
 | `utils/AudioWaveformExtractor.kt` | app | Извлекает форму волны (waveform) из аудиофайла для голосовых сообщений |
 | `utils/OnlineTimeFormatter.kt` | app | Форматирование времени последней активности пользователя («был(а) в сети …») |
-| `utils/OtpCellsHelper.kt` | app | Хелпер для UI-ячеек ввода OTP-кода |
 
 ---
 

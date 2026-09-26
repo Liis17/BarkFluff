@@ -343,6 +343,13 @@ class SecuritySettingsActivity : AppCompatActivity() {
                     ).run(
                         title = getString(R.string.security_reauthenticate),
                         useRecoveryCode = recovery.isChecked,
+                        restartWithFactor = { factor ->
+                            authenticationChallengeGateway.beginReauthentication(
+                                password.text?.toString().orEmpty(),
+                                factor,
+                                recovery.isChecked,
+                            )
+                        },
                     ) {
                         authenticationChallengeGateway.beginReauthentication(
                             password.text?.toString().orEmpty(),

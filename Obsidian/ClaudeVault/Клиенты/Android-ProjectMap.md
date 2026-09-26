@@ -159,12 +159,10 @@ DeepLinkActivity (перехват bf:// ссылок)
 1. `step_register_01_name.xml` — имя и фамилия
 2. `step_register_02_username.xml` — логин (проверка занятости через gRPC)
 3. `step_register_03_email.xml` — capability-gated email либо Telegram и выбор Telegram Login/Password + factor
-4. legacy OTP layout (не достижим из нового маршрута)
-5. пароль только для email/Password + factor; Telegram Login запускает challenge без пароля
-6. `step_register_06_avatar.xml` — аватар (выбор + кроп через uCrop)
-7. `step_register_07_bio.xml` — описание профиля
-8. legacy registration 2FA layout (не достижим; factor настраивается в Security)
-9. `step_register_09_complete.xml` — завершение
+4. пароль только для email/Password + factor; Telegram Login запускает challenge без пароля
+5. `step_register_06_avatar.xml` — аватар (выбор + кроп через uCrop)
+6. `step_register_07_bio.xml` — описание профиля
+7. `step_register_09_complete.xml` — завершение
 
 **Связи:** `GlobalParam`, `AuthenticationChallengeGateway`, `AuthenticationChallengeViewModel`, `UserDirectoryGateway`, `DeviceInfoInterceptor`, `LoginActivity`
 
@@ -174,7 +172,7 @@ DeepLinkActivity (перехват bf:// ссылок)
 
 **Тип:** AppCompatActivity
 
-Сброс пароля через `BeginPasswordRecovery → challenge → SetRecoveredPassword`; proof остаётся в памяти Activity.
+Сброс пароля через `BeginPasswordRecovery → challenge → SetRecoveredPassword`; proof живёт только в Activity-retained `AuthenticationChallengeViewModel`, не в Bundle или хранилище.
 
 **Связи:** `AuthenticationChallengeGateway`, `AuthenticationChallengeViewModel`, `LoginActivity`
 
@@ -526,9 +524,6 @@ SSL: использует trust-all X509TrustManager (для серверов с
 Error codes из `x-error-code` gRPC trailer:
 
 ```
-ERROR_OTP_CODE_NEEDED      = "C1576884-12D8-4722-A7EE-9F9789AD1265"
-ERROR_NOT_VALID_OTP_CODE   = "803B632C-4457-4B05-9435-9C3DD0F41E00"
-ERROR_INVALID_LOGIN_OR_PASS = "21BFB9B5-C377-45D1-9B15-6B7F3432B397"
 ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 ```
 

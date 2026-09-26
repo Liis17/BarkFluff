@@ -15,6 +15,7 @@ import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AuthenticationFactor
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -33,6 +34,7 @@ class AuthenticationChallengeDialog(
     suspend fun run(
         title: String,
         useRecoveryCode: Boolean = false,
+        restartWithFactor: (suspend (AuthenticationFactor) -> Result<AuthenticationChallenge>)? = null,
         begin: suspend () -> Result<AuthenticationChallenge>,
     ): Result<AuthenticationCompletion> = suspendCancellableCoroutine { continuation ->
         val padding = (24 * activity.resources.displayMetrics.density).toInt()
@@ -65,14 +67,19 @@ class AuthenticationChallengeDialog(
             text = activity.getString(R.string.auth_resend)
             visibility = View.GONE
         }
+        val switchFactor = MaterialButton(activity).apply {
+            text = activity.getString(R.string.auth_switch_factor)
+            visibility = View.GONE
+        }
         content.addView(status)
         content.addView(error)
         content.addView(codeLayout)
         content.addView(telegram)
         content.addView(resend)
+        content.addView(switchFactor)
 
         var completed = false
-        var dialog = MaterialAlertDialogBuilder(activity)
+        val dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(title)
             .setView(content)
             .setNegativeButton(R.string.btn_cancel, null)
@@ -96,10 +103,7 @@ class AuthenticationChallengeDialog(
                         error.visibility = View.VISIBLE
                     }
                     completion.state == AuthenticationChallengeState.COMPLETED -> finish(Result.success(completion))
-                    else -> {
-                        error.text = activity.getString(R.string.auth_challenge_expired)
-                        error.visibility = View.VISIBLE
-                    }
+                    else -> finish(Result.failure(IllegalStateException(activity.getString(R.string.auth_challenge_expired))))
                 }
             }
         }
@@ -115,12 +119,12 @@ class AuthenticationChallengeDialog(
         lateinit var render: suspend (AuthenticationChallenge) -> Boolean
         render = { challenge ->
             if (challenge.errorCode.isNotBlank()) {
-                error.text = if (challenge.errorCode == "login_mode_disabled") {
+                val message = if (challenge.errorCode == "login_mode_disabled") {
                     activity.getString(R.string.auth_login_mode_disabled)
                 } else {
                     activity.getString(R.string.auth_error)
                 }
-                error.visibility = View.VISIBLE
+                finish(Result.failure(IllegalStateException(message)))
                 false
             } else {
                 status.text = when (challenge.state) {
@@ -139,14 +143,47 @@ class AuthenticationChallengeDialog(
                     challenge.factor != com.barkfluff.client.domain.model.AuthenticationFactor.AUTHENTICATOR &&
                     challenge.state == AuthenticationChallengeState.WAITING
                 ) View.VISIBLE else View.GONE
+                val factors = challenge.availableFactors.filter {
+                    it != AuthenticationFactor.NONE && it != challenge.factor
+                }
+                switchFactor.visibility = if (restartWithFactor != null && factors.isNotEmpty()) View.VISIBLE else View.GONE
+                switchFactor.setOnClickListener {
+                    MaterialAlertDialogBuilder(activity)
+                        .setTitle(R.string.auth_choose_factor)
+                        .setItems(factors.map { activity.getString(it.labelRes()) }.toTypedArray()) { picker, index ->
+                            picker.dismiss()
+                            activity.lifecycleScope.launch {
+                                controller.cancel()
+                                controller.begin { restartWithFactor?.invoke(factors[index])
+                                    ?: Result.failure(IllegalStateException("Factor switching is unavailable")) }
+                                    .onSuccess { restarted ->
+                                        render(restarted)
+                                        controller.poll { update -> render(update) }
+                                    }
+                                    .onFailure { failure ->
+                                        finish(Result.failure(failure))
+                                    }
+                            }
+                        }
+                        .show()
+                }
                 when (challenge.state) {
                     AuthenticationChallengeState.APPROVED -> {
                         showCompletion()
                         false
                     }
-                    AuthenticationChallengeState.REJECTED,
-                    AuthenticationChallengeState.EXPIRED,
-                    AuthenticationChallengeState.CANCELLED -> false
+                    AuthenticationChallengeState.REJECTED -> {
+                        finish(Result.failure(IllegalStateException(activity.getString(R.string.auth_challenge_rejected))))
+                        false
+                    }
+                    AuthenticationChallengeState.EXPIRED -> {
+                        finish(Result.failure(IllegalStateException(activity.getString(R.string.auth_challenge_expired))))
+                        false
+                    }
+                    AuthenticationChallengeState.CANCELLED -> {
+                        finish(Result.failure(java.util.concurrent.CancellationException(activity.getString(R.string.auth_challenge_cancelled))))
+                        false
+                    }
                     else -> true
                 }
             }
@@ -155,6 +192,10 @@ class AuthenticationChallengeDialog(
         dialog.setOnShowListener {
             dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 activity.lifecycleScope.launch { showCompletion() }
+            }
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
+                activity.lifecycleScope.launch { controller.cancel() }
+                finish(Result.failure(java.util.concurrent.CancellationException("Authentication challenge cancelled")))
             }
             resend.isEnabled = false
             activity.lifecycleScope.launch {
@@ -199,4 +240,11 @@ class AuthenticationChallengeDialog(
         }
         dialog.show()
     }
+}
+
+private fun AuthenticationFactor.labelRes(): Int = when (this) {
+    AuthenticationFactor.AUTHENTICATOR -> R.string.auth_factor_authenticator
+    AuthenticationFactor.EMAIL -> R.string.auth_factor_email
+    AuthenticationFactor.TELEGRAM -> R.string.auth_factor_telegram
+    AuthenticationFactor.NONE -> R.string.auth_factor_none
 }

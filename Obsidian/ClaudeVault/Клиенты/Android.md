@@ -95,7 +95,7 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 
 ### Восстановление пароля (Password Reset)
 
-- `ResetPasswordActivity` запускает `BeginPasswordRecovery`; общий challenge-диалог ведёт Telegram/email-подтверждение, resend и recovery code. После completed challenge его in-memory security proof используется ровно один раз для `SetRecoveredPassword`.
+- `ResetPasswordActivity` запускает `BeginPasswordRecovery`; общий challenge-диалог ведёт Telegram/email-подтверждение, resend и recovery code. После completed challenge его in-memory security proof хранится только в `AuthenticationChallengeViewModel` до единственного `SetRecoveredPassword`, поэтому переживает поворот экрана без Bundle или persistent storage.
 - Если у учётной записи нет настроенного email и сервер не предлагает иной recovery-фактор, ошибка Identity остаётся на первом шаге, без legacy reset endpoint.
 - `LoginActivity` создаёт анонимный Identity-клиент с `DeviceInfoInterceptor`: запросы сброса и подтверждения пароля требуют `x-device-name`, `x-os-name`, `x-app-name` и `x-app-version`, закодированные в Base64, даже до авторизации.
 - Поле идентификации показывает пример `name@example.com`; CTA «Отправить код» отображается без иконки и включается только при непустом вводе, оставаясь отключённой во время запроса.
@@ -104,7 +104,7 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 ### Регистрация (RegisterActivity)
 
 - `RegisterActivity` оставляет профильные шаги (имя, username, avatar, bio, completion), но account creation проходит через `BeginRegistration`. Email доступен только если разрешён capability и всегда использует Password; Telegram предлагает Telegram Login либо Password + second factor (default). Telegram-only регистрация не запрашивает пароль. Recovery codes показываются перед переходом к профилю.
-- Исторические layouts OTP/registration 2FA не являются достижимыми в новом маршруте и не должны получать новые вызовы legacy API.
+- Старые registration OTP и optional Authenticator layouts удалены; factors настраиваются только в Security через reauthentication proof.
 - Иконки на акцентных контейнерах используют `colorOnPrimary`, а старый `ic_lock_reset` в поясняющем блоке email заменён на стандартный `ic_lock`.
 - Для edge-to-edge регистрация вручную применяет system-bar/display-cutout/IME-инсеты к header и контенту, а CTA-панель позиционируется overlay-слоем над клавиатурой только в активном состоянии; неактивная кнопка скрывает всю панель, чтобы не перекрывать контент. Шаги на `NestedScrollView` получают актуальный нижний запас под кнопку, а фокусируемое поле автоматически доводится до видимой области.
 - На первом шаге правила имени показаны как tonal-плашки с нейтральными иконками; подсказка необязательной фамилии остаётся видимой. Ошибка имени скрыта до взаимодействия, окрашивается семантическим error/success-цветом, а на «Далее» невалидное поле получает фокус и клавиатуру.

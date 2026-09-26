@@ -192,7 +192,7 @@
     <string name="register_password_strength_strong">强</string>
     <string name="register_password_optional_chars">＋ !@#</string>
     <string name="register_step9_status_chip">已完成全部%1$d个步骤</string>
-    <string name="register_step_indicator_total">/ 09</string>
+    <string name="register_step_indicator_total">/ 07</string>
 
 
     <!-- Reset password -->
@@ -1303,4 +1303,10 @@
     <string name="security_reauthenticate">确认操作</string>
     <string name="security_reauthenticate_message">请使用已配置的登录方式确认操作。</string>
     <string name="security_reauthenticate_password">密码（如适用）</string>
+    <string name="auth_switch_factor">选择其他验证因素</string>
+    <string name="auth_choose_factor">选择验证因素</string>
+    <string name="auth_factor_authenticator">验证器应用</string>
+    <string name="auth_factor_email">电子邮箱</string>
+    <string name="auth_factor_telegram">Telegram</string>
+    <string name="auth_factor_none">无第二验证因素</string>
 </resources>

@@ -192,7 +192,7 @@
     <string name="register_password_strength_strong">Strong</string>
     <string name="register_password_optional_chars">＋ !@#</string>
     <string name="register_step9_status_chip">All %1$d steps completed</string>
-    <string name="register_step_indicator_total">/ 09</string>
+    <string name="register_step_indicator_total">/ 07</string>
 
     <!-- Reset password -->
     <string name="reset_password_title">Forgot password?</string>
@@ -1310,4 +1310,10 @@
     <string name="security_reauthenticate">Confirm action</string>
     <string name="security_reauthenticate_message">Confirm with your configured sign-in method.</string>
     <string name="security_reauthenticate_password">Password (if used)</string>
+    <string name="auth_switch_factor">Choose another factor</string>
+    <string name="auth_choose_factor">Choose a factor</string>
+    <string name="auth_factor_authenticator">Authenticator app</string>
+    <string name="auth_factor_email">Email</string>
+    <string name="auth_factor_telegram">Telegram</string>
+    <string name="auth_factor_none">No second factor</string>
 </resources>
