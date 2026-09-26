@@ -133,10 +133,17 @@
         });
     }
 
-    function chatTabTitle(user) {
-        var name = ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || BF.i18n.t('common.user');
-        return BF.i18n.t('tab.chatWith', { name: name });
-    }
+    // ========== TAB TITLE, FAVICON, NOTIFICATIONS ==========
+
+    BF.attention.init({
+        getChats: function () { return chats; },
+        getCurrentChatId: function () { return currentChatId; }
+    });
+    var chatTabTitle = BF.attention.chatTabTitle;
+    var updateTitleBadge = BF.attention.updateTitleBadge;
+    var resetChatTabContext = BF.attention.resetChatTabContext;
+    var setChatTabContext = BF.attention.setChatTabContext;
+    var showNewMessageNotification = BF.attention.showNewMessageNotification;
 
     // ========== CHAT LIST ==========
 
@@ -893,112 +900,6 @@
         getMyUserId: function () { return myUserId; },
         showToast: showToast
     });
-
-    // ========== TITLE UNREAD BADGE ==========
-
-    // null → название приложения из словаря (пересчитывается, т.к. зависит от языка)
-    var baseTitle = null;
-
-    function defaultBaseTitle() {
-        return BF.i18n.t('app.title');
-    }
-
-    var faviconEl = document.getElementById('favicon');
-    var defaultFaviconHref = faviconEl ? faviconEl.getAttribute('href') : '/favicon.ico';
-    var faviconRequestId = 0;
-
-    function applyFavicon(href) {
-        if (!faviconEl) return;
-        faviconEl.setAttribute('href', href || defaultFaviconHref);
-        if (href) faviconEl.removeAttribute('type');
-        else faviconEl.setAttribute('type', 'image/x-icon');
-    }
-
-    function setFavicon(href) {
-        var requestId = ++faviconRequestId;
-        if (!href) {
-            applyFavicon(null);
-            return;
-        }
-
-        var image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.onload = function () {
-            if (requestId !== faviconRequestId) return;
-            try {
-                var sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
-                var canvas = document.createElement('canvas');
-                canvas.width = 64;
-                canvas.height = 64;
-                var context = canvas.getContext('2d');
-                if (!sourceSize || !context) throw new Error('invalid_avatar');
-                context.beginPath();
-                context.arc(32, 32, 32, 0, Math.PI * 2);
-                context.clip();
-                context.drawImage(
-                    image,
-                    (image.naturalWidth - sourceSize) / 2,
-                    (image.naturalHeight - sourceSize) / 2,
-                    sourceSize,
-                    sourceSize,
-                    0,
-                    0,
-                    64,
-                    64
-                );
-                applyFavicon(canvas.toDataURL('image/png'));
-            } catch (e) {
-                applyFavicon(href);
-            }
-        };
-        image.onerror = function () {
-            if (requestId === faviconRequestId) applyFavicon(href);
-        };
-        image.src = href;
-    }
-
-    function resetChatTabContext() {
-        baseTitle = null;
-        setFavicon(null);
-        updateTitleBadge();
-    }
-
-    function setChatTabContext(title, faviconHref) {
-        baseTitle = title || null;
-        setFavicon(faviconHref || null);
-        updateTitleBadge();
-    }
-
-    function updateTitleBadge() {
-        var total = 0;
-        chats.forEach(function (c) { total += (c.countUnread || 0); });
-        var base = baseTitle || defaultBaseTitle();
-        document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + base : base;
-    }
-
-    // ========== BROWSER NOTIFICATIONS ==========
-
-    function showNewMessageNotification(chatTitle, msg) {
-        if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        if (document.visibilityState !== 'visible') return;
-        if (document.visibilityState === 'visible' && msg.chatId === currentChatId) return;
-
-        var body = '';
-        if (msg.content && msg.content.text) body = u.truncate(msg.content.text, 80);
-        else if (msg.content && msg.content.attachments && msg.content.attachments.length > 0) {
-            body = u.attachmentEmoji(msg.content.attachments[0].type);
-        }
-
-        try {
-            var n = new Notification(chatTitle || BF.i18n.t('notification.newMessage'), {
-                body: body,
-                tag: 'bf-msg-' + (msg.id || Date.now()),
-                renotify: true
-            });
-            n.onclick = function () { window.focus(); n.close(); };
-            setTimeout(function () { n.close(); }, 5000);
-        } catch (e) { /* ignore mobile/permission errors */ }
-    }
 
     // ========== CONNECTION STATUS ==========
 
@@ -2270,86 +2171,13 @@
         }
     }, 60000);
 
-    // ========== DEEP-LINK ИЗ COOKIE (с публичной страницы пользователя) ==========
+    // ========== DEEP-LINK (cookie, ?chat=, push) ==========
 
-    function bfGetCookie(name) {
-        var m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)');
-        return m ? decodeURIComponent(m[1]) : null;
-    }
-
-    function bfDeleteOpenChatCookie() {
-        var base = 'bf_open_chat=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = base;
-        if (/(^|\.)barkfluff\.com$/i.test(location.hostname)) {
-            document.cookie = base + '; domain=.barkfluff.com';
-        }
-    }
-
-    // Если на странице пользователя (barkfluff.com/<username>) нажали «Написать в браузере»,
-    // там в cookie bf_open_chat записан username. Находим пользователя -> chatId -> открываем чат.
-    // Логика повторяет Android DeepLinkActivity: SearchUsers -> точное совпадение -> GetPersonChatId.
-    function maybeOpenChatFromCookie() {
-        var uname = bfGetCookie('bf_open_chat');
-        if (!uname) return;
-        bfDeleteOpenChatCookie();          // одноразово: сразу удаляем
-        uname = uname.trim();
-        if (!uname) return;
-
-        BF.api.searchUsers(uname, 0, 20).then(function (data) {
-            var list = (data && data.users) || [];
-            var target = null;
-            for (var i = 0; i < list.length; i++) {
-                if ((list[i].username || '').toLowerCase() === uname.toLowerCase()) {
-                    target = list[i];
-                    break;
-                }
-            }
-            if (!target) return;           // точного совпадения нет — как в Android, ничего не открываем
-            return BF.api.getPersonChatId(target.id).then(function (d) {
-                if (d && d.chatId) openChat(d.chatId);
-            });
-        }).catch(function (err) {
-            console.error('maybeOpenChatFromCookie failed:', err);
-        });
-    }
-
-    var pendingPushChatId = null;
-    var refreshedPushChatId = null;
-
-    function openChatFromPush(chatId) {
-        if (!chatId) return;
-        if (!chats.some(function (chat) { return String(chat.id) === String(chatId); })) {
-            pendingPushChatId = chatId;
-            // A push may point to a chat outside the initial page of the list.
-            // Refresh it once before leaving the link pending.
-            if (refreshedPushChatId !== String(chatId)) {
-                refreshedPushChatId = String(chatId);
-                loadChats(true).then(function () {
-                    if (pendingPushChatId) openChatFromPush(pendingPushChatId);
-                }).catch(function (err) {
-                    console.error('Could not load push target chat:', err);
-                });
-            }
-            return;
-        }
-        pendingPushChatId = null;
-        refreshedPushChatId = null;
-        openChat(chatId);
-    }
-
-    function maybeOpenChatFromPushUrl() {
-        var url = new URL(window.location.href);
-        var chatId = url.searchParams.get('chat');
-        if (!chatId) return;
-        url.searchParams.delete('chat');
-        url.searchParams.delete('call');
-        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
-        openChatFromPush(chatId);
-    }
-
-    function maybeOpenPendingPushChat() {
-        if (pendingPushChatId) openChatFromPush(pendingPushChatId);
-    }
+    BF.deepLink.init({
+        getChats: function () { return chats; },
+        loadChats: loadChats,
+        openChat: openChat
+    });
 
     // ========== INIT ==========
 
@@ -2414,7 +2242,7 @@
             });
         }
         return loadChats(true);
-    }).then(updateTitleBadge).then(maybeOpenChatFromCookie).then(maybeOpenChatFromPushUrl).then(maybeOpenPendingPushChat);
+    }).then(updateTitleBadge).then(BF.deepLink.openFromCookie).then(BF.deepLink.openFromUrl).then(BF.deepLink.openPending);
 
     // Смена языка в настройках — перерисовать динамические части интерфейса.
     BF.i18n.onChange(function () {
@@ -2434,7 +2262,7 @@
     if (navigator.serviceWorker) {
         navigator.serviceWorker.addEventListener('message', function (event) {
             var data = event.data || {};
-            if (data.type === 'bf-push-open') openChatFromPush(data.chatId);
+            if (data.type === 'bf-push-open') BF.deepLink.openFromPush(data.chatId);
         });
     }
 

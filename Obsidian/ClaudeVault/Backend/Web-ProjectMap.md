@@ -258,6 +258,12 @@ Server-streaming подписки:
 ### `mark-read.js` → `BF.markRead`
 Отметка сообщений открытого чата прочитанными пачкой через `BF.api.markAsRead`: `schedule()` — при открытии чата через 1 с помечает все непрочитанные чужие сообщения загруженного окна; `markSoon(ids)` — сообщения, уже находящиеся на экране (живое сообщение у нижнего края, догрузка после resync), таймер 500 мс; на скролле ленты (троттлинг 300 мс) помечаются сообщения, попавшие в видимую область. Приватные чаты пропускаются. `data-msg-id` ищется на `.msg-group` (не на `.msg-bubble`: там его нет) — из-за прежнего селектора отметка по скроллу не срабатывала. Тест — `scripts/test-mark-read.js`. Deps: `getCurrentChatId/Type`, `getMessages`, `getMyUserId`, `showToast`.
 
+### `attention.js` → `BF.attention`
+Внимание пользователя вне содержимого страницы: заголовок вкладки с суммой непрочитанных `updateTitleBadge()` (`(N) …`, `99+`), контекст вкладки личного чата `setChatTabContext(title, favicon)` / `resetChatTabContext()` (заголовок «Чат • Имя Фамилия» через `chatTabTitle(user)`, favicon — круглая обрезка аватарки на canvas с откатом на исходную ссылку), браузерные уведомления `showNewMessageNotification(chatTitle, msg)` (только при видимой странице, разрешении и другом открытом чате). Deps: `getChats`, `getCurrentChatId`. В `main.js` инициализируется до списка чатов (его deps используют `updateTitleBadge`). Тест — `scripts/test-attention.js`.
+
+### `deep-link.js` → `BF.deepLink`
+Открытие чата извне: cookie `bf_open_chat` со страницы пользователя (`openFromCookie`: SearchUsers → точное совпадение username → GetPersonChatId, cookie одноразовая), параметр `?chat=` (`openFromUrl` снимает `chat`/`call` из адреса), push из service worker (`openFromPush`: чат вне загруженного списка — один раз перезагружается список, затем ссылка остаётся ожидающей и добирается `openPending`). Deps: `getChats`, `loadChats`, `openChat`. Тест — `scripts/test-deep-link.js`.
+
 ### `main.js`
 Bootstrap мессенджера: инициализирует все BF-модули (включая `BF.imageEditor.init()`), загружает список чатов, запускает real-time подписки. Держит общее состояние (`chats`, `messages`, `currentChatId/Type/Info`, `myUserId`) и передаёт его выделенным модулям через `init(deps)` — геттеры/сеттеры и колбэки (паттерн `private-chat-ui.js`); после `init` заводит алиасы (`var x = BF.module.fn`), чтобы места вызова не менялись. Порядок в `scripts/app-bundle-entry.js`: выделенные модули импортируются перед `main.js`.
 
