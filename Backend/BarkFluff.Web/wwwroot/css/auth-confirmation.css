@@ -1,0 +1,16 @@
+.auth-dialog { width:min(440px,calc(100vw - 32px)); box-sizing:border-box; border:1px solid var(--border, #ddd); border-radius:20px; padding:28px; color:var(--text, var(--text-primary, #292421)); background:var(--bg, var(--bg-primary, #fffaf7)); font:inherit; max-height:90dvh; overflow:auto; }
+.auth-dialog::backdrop { background:rgba(24,18,16,.48); }
+.auth-dialog h2 { margin:0 0 16px; font-size:24px; }
+.auth-dialog label,.auth-security label { display:block; margin:14px 0 6px; }
+.auth-dialog input:not([type=checkbox]),.auth-dialog select,.auth-security select,.auth-security input[type=email] { box-sizing:border-box; width:100%; padding:12px; border:1px solid var(--border, #ddd); border-radius:10px; background:var(--input-bg, var(--bg-primary, white)); color:inherit; font:inherit; }
+.auth-dialog button,.auth-security button { padding:10px 16px; margin:10px 8px 0 0; border:1px solid var(--border, #ddd); border-radius:10px; background:var(--input-bg, var(--bg-secondary, #f3e8e0)); color:inherit; cursor:pointer; font:inherit; }
+.auth-dialog button:disabled,.auth-security button:disabled { opacity:.5; cursor:default; }
+.auth-dialog a { display:block; margin:16px 0; color:var(--link, var(--accent, #8c351c)); }
+.auth-dialog pre { overflow-wrap:anywhere; white-space:pre-wrap; font-size:13px; user-select:all; }
+.auth-dialog [role=alert],.auth-security [role=alert] { color:var(--error, #b42318); }
+.auth-dialog .auth-hint,.auth-security .auth-hint { font-size:14px; line-height:1.5; opacity:.8; }
+.auth-security { padding:20px; }
+.auth-security .auth-factor { border-top:1px solid var(--border, #ddd); margin-top:18px; padding-top:8px; }
+.auth-dialog [hidden],.auth-security [hidden] { display:none !important; }
+
+#loginForm .form-group[hidden], #loginForm .checkbox-group[hidden] { display:none !important; }

@@ -8,6 +8,7 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/css/icons.css?v=shared-icons-1">
+    <link rel="stylesheet" href="/css/auth-confirmation.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1488,6 +1489,27 @@
             <div id="loginSection" class="section" role="region" data-i18n-aria-label="auth.section.login" aria-label="Вход">
                 <form id="loginForm" novalidate>
                     <div class="form-group">
+                        <label class="form-label" for="loginMode" data-i18n="security.mode">Способ входа</label>
+                        <select class="form-input" id="loginMode">
+                            <option value="1" data-i18n="security.mode.password">Логин и пароль</option>
+                            <option value="2" data-i18n="security.mode.telegram">Логин и подтверждение Telegram</option>
+                            <option value="3" data-i18n="security.mode.factor">Пароль и второй фактор</option>
+                        </select>
+                    </div>
+                    <div class="form-group" hidden>
+                        <label class="form-label" for="loginFactor" data-i18n="security.factor">Второй фактор</label>
+                        <select class="form-input" id="loginFactor">
+                            <option value="0" data-i18n="security.preferred">Предпочтительный способ</option>
+                            <option value="3">Telegram</option>
+                            <option value="2">Email</option>
+                            <option value="1" data-i18n="security.factor.app">Приложение кодов</option>
+                        </select>
+                    </div>
+                    <div class="checkbox-group" hidden>
+                        <input type="checkbox" id="loginRecovery">
+                        <label for="loginRecovery" data-i18n="security.useRecoveryCode">Использовать резервный код</label>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label" for="loginInput" data-i18n="auth.loginField">Почта или имя пользователя</label>
                         <div class="input-wrap">
                             <input type="text" class="form-input" id="loginInput"
@@ -1530,6 +1552,7 @@
                     </button>
                 </form>
 
+                <button type="button" class="btn-secondary" id="recoverPassword" data-i18n="security.resetPassword">Восстановить пароль</button>
                 <div class="divider"></div>
                 <div class="card-footer">
                     <p data-i18n="auth.noAccount">Нет аккаунта?</p>
@@ -1538,29 +1561,6 @@
                         <span class="btn-arrow">→</span>
                     </button>
                 </div>
-            </div>
-
-            <!-- OTP SECTION -->
-            <div id="otpSection" class="section hidden" role="region" data-i18n-aria-label="auth.otp.section" aria-label="Подтверждение OTP">
-                <button class="otp-back" id="otpBack" data-i18n-aria-label="common.back" aria-label="Назад">← <span data-i18n="common.back">Назад</span></button>
-                <h2 class="otp-title" data-i18n="twofa.confirmationCode">Код подтверждения</h2>
-                <p class="otp-subtitle" data-i18n-html="auth.otp.subtitle">Введите 6-значный код из<br>приложения-аутентификатора или письма</p>
-
-                <div class="otp-inputs" id="otpInputs" role="group" data-i18n-aria-label="auth.otp.fields" aria-label="Поля кода">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.1" aria-label="Цифра 1">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.2" aria-label="Цифра 2">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.3" aria-label="Цифра 3">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.4" aria-label="Цифра 4">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.5" aria-label="Цифра 5">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.6" aria-label="Цифра 6">
-                </div>
-                <div class="form-error" id="otpError" style="text-align:center;margin-bottom:14px" role="alert"></div>
-
-                <button type="button" class="btn-primary" id="otpSubmitBtn">
-                    <span class="btn-label" data-i18n="common.confirm">Подтвердить</span>
-                    <span class="btn-arrow">→</span>
-                    <div class="btn-spinner"></div>
-                </button>
             </div>
 
             <!-- WELCOME SECTION -->
@@ -1656,34 +1656,26 @@
 
                 <!-- Step 3: Email -->
                 <div class="reg-step" data-step="3" hidden>
-                    <p class="reg-step-desc" data-i18n="register.step.email">Укажите электронную почту</p>
+                    <div class="form-group">
+                        <label class="form-label" for="regChannel" data-i18n="security.confirmation">Подтверждение</label>
+                        <select class="form-input" id="regChannel"><option value="2">Email</option><option value="3">Telegram</option></select>
+                    </div>
                     <div class="form-group">
                         <label class="form-label" for="regEmail">Email</label>
-                        <div class="input-wrap">
-                            <input type="email" class="form-input" id="regEmail" maxlength="100" placeholder="user@example.com" autocapitalize="off" autocomplete="off" spellcheck="false">
-                            <span class="reg-field-status" id="regEmailStatus"></span>
-                        </div>
+                        <div class="input-wrap"><input type="email" class="form-input" id="regEmail" maxlength="254" autocomplete="email"><span class="reg-field-status" id="regEmailStatus"></span></div>
                         <div class="form-error" id="regEmailErr" role="alert"></div>
-                        <div class="reg-hint" data-i18n="register.email.hint">На неё придёт код подтверждения.</div>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label" for="regLoginMode" data-i18n="security.mode">Способ входа</label>
+                        <select class="form-input" id="regLoginMode">
+                            <option value="1" data-i18n="security.mode.password">Логин и пароль</option>
+                            <option value="2" data-i18n="security.mode.telegram">Логин и подтверждение Telegram</option>
+                            <option value="3" data-i18n="security.mode.factor">Пароль и второй фактор</option>
+                        </select>
+                    </div>
+                    <p class="reg-step-desc" data-i18n="security.registrationHint">Для Telegram почта не нужна. По умолчанию — пароль и код Telegram.</p>
                 </div>
 
-                <!-- Step 4: OTP -->
-                <div class="reg-step" data-step="4" hidden>
-                    <p class="reg-step-desc" id="regOtpDesc" data-i18n="register.step.emailCode">Введите код из письма</p>
-                    <div class="otp-inputs reg-otp" id="regOtp4" role="group" data-i18n-aria-label="twofa.confirmationCode" aria-label="Код подтверждения">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.1" aria-label="Цифра 1">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.2" aria-label="Цифра 2">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.3" aria-label="Цифра 3">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.4" aria-label="Цифра 4">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.5" aria-label="Цифра 5">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.6" aria-label="Цифра 6">
-                    </div>
-                    <div class="form-error reg-otp-err" id="regOtpErr" role="alert"></div>
-                    <button type="button" class="reg-link-btn" id="regOtpResend" data-i18n="register.resendCode">Отправить код повторно</button>
-                </div>
-
-                <!-- Step 5: Password -->
                 <div class="reg-step" data-step="5" hidden>
                     <p class="reg-step-desc" data-i18n="register.step.password">Придумайте пароль</p>
                     <div class="form-group">
@@ -1747,27 +1739,9 @@
                             <div class="btn-spinner"></div>
                         </button>
                     </div>
-                    <div id="reg2faSetup" hidden>
-                        <img class="reg-2fa-qr" id="reg2faQr" data-i18n-alt="register.twofa.qrAlt" alt="QR-код для 2FA" aria-hidden="true" hidden>
-                        <p class="reg-2fa-text" data-i18n="register.twofa.scanOrKey">Отсканируйте QR или введите ключ вручную:</p>
-                        <div class="reg-2fa-secret-wrap">
-                            <code class="reg-2fa-secret" id="reg2faSecret"></code>
-                            <button type="button" class="reg-link-btn" id="reg2faCopy" data-i18n="common.copy">Копировать</button>
-                        </div>
-                        <p class="reg-step-desc" data-i18n="register.step.appCode">Введите код из приложения</p>
-                        <div class="otp-inputs reg-otp" id="regOtp8" role="group" data-i18n-aria-label="register.twofa.code" aria-label="Код 2FA">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.1" aria-label="Цифра 1">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.2" aria-label="Цифра 2">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.3" aria-label="Цифра 3">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.4" aria-label="Цифра 4">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.5" aria-label="Цифра 5">
-                            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" data-i18n-aria-label="auth.otp.digit.6" aria-label="Цифра 6">
-                        </div>
-                        <div class="form-error reg-otp-err" id="reg2faErr" role="alert"></div>
-                    </div>
+                    <div class="form-error" id="reg2faErr" role="alert"></div>
                 </div>
 
-                <!-- Step 9: Complete -->
                 <div class="reg-step reg-step-complete" data-step="9" hidden>
                     <div class="welcome-icon" aria-hidden="true">✓</div>
                     <h2 class="welcome-title" data-i18n="register.accountCreated">Аккаунт создан!</h2>
@@ -1802,6 +1776,8 @@
     <script src="/js/app/metadata.js"  onerror="void 0"></script>
     <script src="/js/app/network.js"   onerror="void 0"></script>
     <script src="/js/app/utils.js"     onerror="void 0"></script>
+    <script src="/js/app/auth-challenge.js"></script>
+    <script src="/js/app/auth-confirmation.js"></script>
     <script src="/js/app/auth.js"      onerror="void 0"></script>
     <script src="/js/app/legal.js"     onerror="void 0"></script>
     <script src="/js/app/nodepicker.js" onerror="void 0"></script>

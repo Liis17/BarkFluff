@@ -158,6 +158,7 @@
     function set(value, data) {
         var next = normalize(value);
         if (!next) return null;
+        if (current !== next && BF.authUI) BF.authUI.cancelAll();
         current = next;
         localStorage.setItem(ORIGIN_KEY, next);
         if (data) setMeta(data);
@@ -167,6 +168,7 @@
 
     function clear() {
         if (pinned) return;
+        if (BF.authUI) BF.authUI.cancelAll();
         current = null;
         localStorage.removeItem(ORIGIN_KEY);
     }

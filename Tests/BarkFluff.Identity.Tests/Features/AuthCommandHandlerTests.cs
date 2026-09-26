@@ -97,7 +97,8 @@ public class AuthCommandHandlerTests
         return new AuthCommandHandler(
             _usersClient.Object, _mediator.Object, _authPropsStorage,
             _notificationSender, _refreshTokensStorage, ctx ?? _requestContext,
-            _passwordsStorage, _locationClient, _metrics, _logger.Object, abuseGuard ?? TestHelper.CreateAbuseGuard());
+            _passwordsStorage, _locationClient, _metrics, _logger.Object, abuseGuard ?? TestHelper.CreateAbuseGuard(),
+            authenticationStore: new AuthenticationStore(_context));
     }
 
     [Fact]

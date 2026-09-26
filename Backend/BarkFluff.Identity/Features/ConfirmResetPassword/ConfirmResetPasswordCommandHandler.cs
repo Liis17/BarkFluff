@@ -31,6 +31,7 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
         private readonly RequestContext requestContext;
         private readonly MetricsCollector _metrics;
         private readonly ILogger<ConfirmResetPasswordCommandHandler> _logger;
+        private readonly AuthenticationStore? _authenticationStore;
 
         private const int ExpDaysRefreshToken = 9999;
 
@@ -38,7 +39,7 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
         public ConfirmResetPasswordCommandHandler(ResetPasswordsStorage resetPasswordsStorage, AuthPropertiesStorage authPropertiesStorage,
             PasswordsStorage passwordsStorage, RefreshTokensStorage refreshTokensStorage, IMediator mediator, RequestContext requestContext,
             MetricsCollector metrics, ILogger<ConfirmResetPasswordCommandHandler> logger,
-            IIdentityAbuseGuard abuseGuard)
+            IIdentityAbuseGuard abuseGuard, AuthenticationStore? authenticationStore = null)
         {
             _resetPasswordsStorage = resetPasswordsStorage;
             _authPropertiesStorage = authPropertiesStorage;
@@ -49,6 +50,7 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             _metrics = metrics;
             _logger = logger;
             _abuseGuard = abuseGuard;
+            _authenticationStore = authenticationStore;
         }
 
         private readonly IIdentityAbuseGuard _abuseGuard;
@@ -79,9 +81,9 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
                 request.ResetId,
                 cancellationToken);
 
-            var resetPasswordInfo = await _resetPasswordsStorage.GetResetPassword(request.ResetId);
+            var initialResetInfo = await _resetPasswordsStorage.GetResetPassword(request.ResetId);
 
-            if (resetPasswordInfo is null)
+            if (initialResetInfo is null)
             {
                 _metrics.Increment("password_reset_confirmation_failed");
                 _metrics.Increment("password_reset_confirmation_failed_not_found");
@@ -89,154 +91,167 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
                 throw new ResetIdNotFoundException();
             }
 
-            if (resetPasswordInfo.IsApproved)
+            async Task<ConfirmResetPasswordResponse> ConfirmUnderPolicyLock()
             {
-                _metrics.Increment("password_reset_confirmation_failed");
-                _metrics.Increment("password_reset_confirmation_failed_already_used");
-                _logger.LogWarning(
-                    "Reset ID {ResetId} уже был использован для пользователя {UserId}",
-                    request.ResetId,
-                    resetPasswordInfo.UserId
-                );
-                throw new ResetIdHasIsApprovedException();
-            }
+                var resetPasswordInfo = await _resetPasswordsStorage.GetResetPassword(request.ResetId);
+                if (resetPasswordInfo is null || resetPasswordInfo.UserId != initialResetInfo.UserId)
+                    throw new ResetIdNotFoundException();
 
-            var policy = await _authPropertiesStorage.GetUserAuthProperties(resetPasswordInfo.UserId);
-            if (AuthenticationPolicy.Mode(policy) != AuthLoginMode.Password)
-                throw new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.FailedPrecondition,
-                    "Use web password recovery; the configured second factor is still required"));
+                if (resetPasswordInfo.IsApproved)
+                {
+                    _metrics.Increment("password_reset_confirmation_failed");
+                    _metrics.Increment("password_reset_confirmation_failed_already_used");
+                    _logger.LogWarning(
+                        "Reset ID {ResetId} уже был использован для пользователя {UserId}",
+                        request.ResetId,
+                        resetPasswordInfo.UserId
+                    );
+                    throw new ResetIdHasIsApprovedException();
+                }
 
-            if (resetPasswordInfo.ExpiresAt < DateTime.UtcNow)
-            {
-                _metrics.Increment("password_reset_confirmation_failed");
-                _metrics.Increment("password_reset_confirmation_failed_expired");
-                _logger.LogWarning(
-                    "Reset ID {ResetId} истёк для пользователя {UserId}. ExpiresAt: {ExpiresAt}",
-                    request.ResetId,
+                var policy = await _authPropertiesStorage.GetUserAuthProperties(resetPasswordInfo.UserId);
+                if (AuthenticationPolicy.Mode(policy) != AuthLoginMode.Password)
+                    throw new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.FailedPrecondition,
+                        "Use web password recovery; the configured second factor is still required"));
+
+                if (resetPasswordInfo.ExpiresAt < DateTime.UtcNow)
+                {
+                    _metrics.Increment("password_reset_confirmation_failed");
+                    _metrics.Increment("password_reset_confirmation_failed_expired");
+                    _logger.LogWarning(
+                        "Reset ID {ResetId} истёк для пользователя {UserId}. ExpiresAt: {ExpiresAt}",
+                        request.ResetId,
+                        resetPasswordInfo.UserId,
+                        resetPasswordInfo.ExpiresAt
+                    );
+                    throw new ResetIdExpiredException();
+                }
+
+                _logger.LogDebug(
+                    "Проверка OTP кода для пользователя {UserId}, тип OTP: {OtpType}",
                     resetPasswordInfo.UserId,
-                    resetPasswordInfo.ExpiresAt
+                    resetPasswordInfo.OtpType
                 );
-                throw new ResetIdExpiredException();
-            }
 
-            _logger.LogDebug(
-                "Проверка OTP кода для пользователя {UserId}, тип OTP: {OtpType}",
-                resetPasswordInfo.UserId,
-                resetPasswordInfo.OtpType
-            );
+                if (string.IsNullOrWhiteSpace(request.OtpCode))
+                    throw new OtpCodeNeedException();
 
-            if (string.IsNullOrWhiteSpace(request.OtpCode))
-                throw new OtpCodeNeedException();
-
-            if (resetPasswordInfo.OtpType == OtpType.Authenticator)
-            {
-                var otpSecret = await _authPropertiesStorage.GetOtpSecretKey(resetPasswordInfo.UserId);
-
-                var totp = new Totp(Base32Encoding.ToBytes(otpSecret));
-
-                var isValid = totp.VerifyTotp(request.OtpCode, out long timeStepMatched, VerificationWindow.RfcSpecifiedNetworkDelay);
-
-                if (!isValid)
+                if (resetPasswordInfo.OtpType == OtpType.Authenticator)
                 {
-                    var failure = await _abuseGuard.RegisterCodeFailureAsync(
-                        IdentityCodeKind.PasswordReset,
-                        request.ResetId,
-                        resetPasswordInfo.ExpiresAt,
-                        cancellationToken);
-                    await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+                    var otpSecret = await _authPropertiesStorage.GetOtpSecretKey(resetPasswordInfo.UserId);
 
-                    _metrics.Increment("password_reset_confirmation_failed");
-                    _metrics.Increment("otp_authenticator_failed");
-                    _logger.LogWarning(
-                        "Неверный Authenticator OTP код для пользователя {UserId}",
-                        resetPasswordInfo.UserId
-                    );
+                    var totp = new Totp(Base32Encoding.ToBytes(otpSecret));
 
-                    if (failure.Locked)
+                    var isValid = totp.VerifyTotp(request.OtpCode, out long timeStepMatched, VerificationWindow.RfcSpecifiedNetworkDelay);
+
+                    if (!isValid)
                     {
-                        await _resetPasswordsStorage.InvalidateResetPassword(request.ResetId);
-                        throw new IdentityLockoutException();
+                        var failure = await _abuseGuard.RegisterCodeFailureAsync(
+                            IdentityCodeKind.PasswordReset,
+                            request.ResetId,
+                            resetPasswordInfo.ExpiresAt,
+                            cancellationToken);
+                        await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
+                        _metrics.Increment("password_reset_confirmation_failed");
+                        _metrics.Increment("otp_authenticator_failed");
+                        _logger.LogWarning(
+                            "Неверный Authenticator OTP код для пользователя {UserId}",
+                            resetPasswordInfo.UserId
+                        );
+
+                        if (failure.Locked)
+                        {
+                            await _resetPasswordsStorage.InvalidateResetPassword(request.ResetId);
+                            throw new IdentityLockoutException();
+                        }
+
+                        throw new NotValidOtpCodeException();
                     }
 
-                    throw new NotValidOtpCodeException();
+                    _metrics.Increment("otp_authenticator_verified");
+                    _logger.LogDebug("Authenticator OTP код успешно проверен для пользователя {UserId}", resetPasswordInfo.UserId);
                 }
-
-                _metrics.Increment("otp_authenticator_verified");
-                _logger.LogDebug("Authenticator OTP код успешно проверен для пользователя {UserId}", resetPasswordInfo.UserId);
-            }
-            else
-            {
-                if (!string.Equals(resetPasswordInfo.OtpCode, request.OtpCode, StringComparison.Ordinal))
+                else
                 {
-                    var failure = await _abuseGuard.RegisterCodeFailureAsync(
-                        IdentityCodeKind.PasswordReset,
-                        request.ResetId,
-                        resetPasswordInfo.ExpiresAt,
-                        cancellationToken);
-                    await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
-
-                    _metrics.Increment("password_reset_confirmation_failed");
-                    _metrics.Increment("otp_email_failed");
-                    _logger.LogWarning(
-                        "Неверный Email OTP код для пользователя {UserId}",
-                        resetPasswordInfo.UserId
-                    );
-
-                    if (failure.Locked)
+                    if (!string.Equals(resetPasswordInfo.OtpCode, request.OtpCode, StringComparison.Ordinal))
                     {
-                        await _resetPasswordsStorage.InvalidateResetPassword(request.ResetId);
-                        throw new IdentityLockoutException();
+                        var failure = await _abuseGuard.RegisterCodeFailureAsync(
+                            IdentityCodeKind.PasswordReset,
+                            request.ResetId,
+                            resetPasswordInfo.ExpiresAt,
+                            cancellationToken);
+                        await _abuseGuard.DelayAfterFailureAsync(failure.Attempts, cancellationToken);
+
+                        _metrics.Increment("password_reset_confirmation_failed");
+                        _metrics.Increment("otp_email_failed");
+                        _logger.LogWarning(
+                            "Неверный Email OTP код для пользователя {UserId}",
+                            resetPasswordInfo.UserId
+                        );
+
+                        if (failure.Locked)
+                        {
+                            await _resetPasswordsStorage.InvalidateResetPassword(request.ResetId);
+                            throw new IdentityLockoutException();
+                        }
+
+                        throw new NotValidOtpCodeException();
                     }
 
-                    throw new NotValidOtpCodeException();
+                    _metrics.Increment("otp_email_verified");
+                    _logger.LogDebug("Email OTP код успешно проверен для пользователя {UserId}", resetPasswordInfo.UserId);
                 }
 
-                _metrics.Increment("otp_email_verified");
-                _logger.LogDebug("Email OTP код успешно проверен для пользователя {UserId}", resetPasswordInfo.UserId);
+                await _abuseGuard.ClearCodeFailuresAsync(
+                    IdentityCodeKind.PasswordReset,
+                    request.ResetId,
+                    cancellationToken);
+
+                _logger.LogDebug("Генерация refresh token для пользователя {UserId}", resetPasswordInfo.UserId);
+
+                var deviceId = Guid.TryParse(requestContext.DeviceId, out var parsedDeviceId)
+                    ? parsedDeviceId.ToString()
+                    : Guid.NewGuid().ToString();
+
+                var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
+                await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, resetPasswordInfo.UserId, deviceId, ExpDaysRefreshToken);
+
+                var accessTokenResponse = await _mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
+
+                // Отметить запрос сброса как использованный
+                _logger.LogDebug("Отметка запроса сброса {ResetId} как использованного", request.ResetId);
+                await _resetPasswordsStorage.SetApproved(request.ResetId);
+
+                // Очистить хеш пароля для возможности установки нового без старого
+                _logger.LogDebug("Очистка хеша пароля для пользователя {UserId}", resetPasswordInfo.UserId);
+                await _passwordsStorage.ClearUserPasswordHash(resetPasswordInfo.UserId);
+
+                _metrics.Increment("password_resets_confirmed");
+                _metrics.Increment("sessions_created");
+
+                _logger.LogInformation(
+                    "Сброс пароля успешно подтвержден для пользователя {UserId}, устройство: {DeviceName}",
+                    resetPasswordInfo.UserId,
+                    requestContext.DeviceName
+                );
+
+                return new ConfirmResetPasswordResponse()
+                {
+                    AccessToken = accessTokenResponse.AccessToken,
+                    RefreshToken = new Token
+                    {
+                        ExpirationDate = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(ExpDaysRefreshToken)),
+                        Value = refreshTokenString
+                    }
+                };
             }
 
-            await _abuseGuard.ClearCodeFailuresAsync(
-                IdentityCodeKind.PasswordReset,
-                request.ResetId,
-                cancellationToken);
+            if (_authenticationStore is null)
+                return await ConfirmUnderPolicyLock();
 
-            _logger.LogDebug("Генерация refresh token для пользователя {UserId}", resetPasswordInfo.UserId);
-
-            var deviceId = Guid.TryParse(requestContext.DeviceId, out var parsedDeviceId)
-                ? parsedDeviceId.ToString()
-                : Guid.NewGuid().ToString();
-
-            var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
-            await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, resetPasswordInfo.UserId, deviceId, ExpDaysRefreshToken);
-
-            var accessTokenResponse = await _mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
-
-            // Отметить запрос сброса как использованный
-            _logger.LogDebug("Отметка запроса сброса {ResetId} как использованного", request.ResetId);
-            await _resetPasswordsStorage.SetApproved(request.ResetId);
-
-            // Очистить хеш пароля для возможности установки нового без старого
-            _logger.LogDebug("Очистка хеша пароля для пользователя {UserId}", resetPasswordInfo.UserId);
-            await _passwordsStorage.ClearUserPasswordHash(resetPasswordInfo.UserId);
-
-            _metrics.Increment("password_resets_confirmed");
-            _metrics.Increment("sessions_created");
-
-            _logger.LogInformation(
-                "Сброс пароля успешно подтвержден для пользователя {UserId}, устройство: {DeviceName}",
-                resetPasswordInfo.UserId,
-                requestContext.DeviceName
-            );
-
-            return new ConfirmResetPasswordResponse()
-            {
-                AccessToken = accessTokenResponse.AccessToken,
-                RefreshToken = new Token
-                {
-                    ExpirationDate = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(ExpDaysRefreshToken)),
-                    Value = refreshTokenString
-                }
-            };
+            return await _authenticationStore.ForUserPreserving(initialResetInfo.UserId, ConfirmUnderPolicyLock,
+                cancellationToken, typeof(OtpCodeNeedException), typeof(IdentityLockoutException));
         }
     }
 }

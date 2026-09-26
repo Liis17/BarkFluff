@@ -32,12 +32,15 @@ public sealed class InMemoryFastAuthSessionStore : IFastAuthSessionStore
     }
 
     public Task<FastAuthSessionState> CreateAsync(string deviceName, string operationSystem,
-        string appName, string appVersion, string ipAddress, CancellationToken ct = default)
+        string appName, string appVersion, string ipAddress, string? clientDeviceId = null,
+        CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
+        var id = Guid.NewGuid().ToString();
         var session = new FastAuthSessionState
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = id,
+            ClientDeviceId = Guid.TryParse(clientDeviceId, out var parsedDeviceId) ? parsedDeviceId.ToString() : id,
             CreatedAt = now,
             ExpiresAt = now + FastAuthSessionTiming.SessionTtl,
             DeviceName = deviceName,

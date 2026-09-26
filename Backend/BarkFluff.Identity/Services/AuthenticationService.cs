@@ -47,6 +47,19 @@ public sealed partial class AuthenticationService(
         return settings;
     }
 
+    private IEnumerable<OtpTypeId> AvailableFactors(AuthUserProperty? settings) =>
+        new[] { OtpTypeId.Authenticator, OtpTypeId.Email, OtpTypeId.Telegram }
+            .Where(f => AuthenticationPolicy.FactorEnabled(settings, f) &&
+                (f != OtpTypeId.Email || EmailAvailable) &&
+                (f != OtpTypeId.Telegram || telegram.Configured));
+
+    private OtpTypeId PreferredAvailableFactor(AuthUserProperty? settings)
+    {
+        var preferred = (OtpTypeId)(settings?.PreferredFactor ?? BarkFluff.Identity.Domain.OtpType.Unknown);
+        var available = AvailableFactors(settings).ToArray();
+        return available.Contains(preferred) ? preferred : available.FirstOrDefault();
+    }
+
     private string DeviceId()
     {
         if (!Guid.TryParse(request.DeviceId, out var id) || string.IsNullOrWhiteSpace(request.DeviceName) ||
@@ -107,9 +120,7 @@ public sealed partial class AuthenticationService(
             NeedsCode = challenge.UseRecoveryCode || challenge.Factor == OtpTypeId.Authenticator || challenge.CodeHash != null
         };
         var settings = challenge.UserId == 0 ? null : await Settings(challenge.UserId, ct);
-        response.AvailableFactors.AddRange(new[] { OtpTypeId.Authenticator, OtpTypeId.Email, OtpTypeId.Telegram }
-            .Where(f => AuthenticationPolicy.FactorEnabled(settings, f) && (f != OtpTypeId.Email || EmailAvailable) &&
-                (f != OtpTypeId.Telegram || telegram.Configured)));
+        response.AvailableFactors.AddRange(AvailableFactors(settings));
         return response;
     }
 

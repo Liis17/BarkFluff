@@ -23,7 +23,8 @@ public class TestHelper
         string? os = "Windows",
         string? appName = "BarkFluff",
         string? appVersion = "1.0",
-        string? ipAddress = "127.0.0.1")
+        string? ipAddress = "127.0.0.1",
+        string? deviceId = null)
     {
         return new RequestContext
         {
@@ -31,6 +32,7 @@ public class TestHelper
             OperationSystem = os,
             AppName = appName,
             AppVersion = appVersion,
+            DeviceId = deviceId,
             IpAddress = ipAddress
         };
     }
@@ -58,9 +60,11 @@ public class TestHelper
     public FastAuthSessionState CreateSession(DateTime? expiresAt = null)
     {
         var now = DateTime.UtcNow;
+        var id = Guid.NewGuid().ToString();
         var session = new FastAuthSessionState
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = id,
+            ClientDeviceId = id,
             CreatedAt = now,
             ExpiresAt = expiresAt ?? now + TimeSpan.FromMinutes(5),
             DeviceName = "TestDevice",

@@ -106,9 +106,15 @@ public sealed partial class AuthenticationService
             return;
         }
         c.Factor = c.LoginMode == AuthLoginMode.TelegramLogin ? OtpTypeId.Telegram :
-            requestedFactor == OtpTypeId.Unknown ? AuthenticationPolicy.PreferredFactor(settings) : requestedFactor;
-        if (!recovery && c.LoginMode == AuthLoginMode.PasswordSecondFactor && !AuthenticationPolicy.FactorEnabled(settings, c.Factor))
-            throw Unavailable("This second factor is not enabled");
+            requestedFactor == OtpTypeId.Unknown ? PreferredAvailableFactor(settings) : requestedFactor;
+        if (c.LoginMode == AuthLoginMode.PasswordSecondFactor && !recovery)
+        {
+            var available = AvailableFactors(settings).ToArray();
+            if (requestedFactor == OtpTypeId.Unknown && !available.Contains(c.Factor))
+                c.Factor = available.FirstOrDefault();
+            if (!available.Contains(c.Factor)) throw Unavailable("No enabled second factor is available on this node");
+        }
+        if (recovery) return;
         c.TelegramId = settings?.TelegramId;
         if (c.Factor == OtpTypeId.Email && !recovery)
             c.Email = (await users.GetUserContactsAsync(new GetUserContactsRequest { UserId = c.UserId }, cancellationToken: ct)).Contact?.Email;

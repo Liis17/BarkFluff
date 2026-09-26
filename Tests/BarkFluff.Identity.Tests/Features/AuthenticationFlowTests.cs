@@ -15,6 +15,7 @@ using BarkFluff.Shared.Queue.Notifications;
 using Grpc.Core;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
@@ -67,6 +68,69 @@ public class AuthenticationFlowTests
     }
 
     [Fact]
+    public async Task PreferredEmailUnavailableOnNode_FallsBackToEnabledTelegramFactor()
+    {
+        using var h = new Harness(); await h.Register();
+        var settings = await h.Db.AuthUserProperties.SingleAsync(x => x.UserId == 42);
+        settings.EmailOtpEnabled = true;
+        settings.PreferredFactor = BarkFluff.Identity.Domain.OtpType.Email;
+        await h.Db.SaveChangesAsync();
+
+        Assert.Equal(OtpTypeId.Telegram, (await h.Service.GetSecuritySettings(default)).PreferredFactor);
+        var input = h.SignIn(); input.Factor = OtpTypeId.Unknown;
+        var pending = await h.Service.BeginSignIn(input, default);
+        Assert.Equal(OtpTypeId.Telegram, pending.Factor);
+        Assert.True(pending.NeedsCode);
+    }
+
+    [Fact]
+    public async Task DisablingAuthenticator_PrefersTelegramWhenEmailIsDisabledOnNode()
+    {
+        using var h = new Harness(); await h.Register();
+        var settings = await h.Db.AuthUserProperties.SingleAsync(x => x.UserId == 42);
+        settings.OtpEnabled = true;
+        settings.EmailOtpEnabled = true;
+        settings.PreferredFactor = BarkFluff.Identity.Domain.OtpType.Email;
+        await h.Db.SaveChangesAsync();
+
+        var reauthentication = await h.Service.BeginReauthentication(new BeginReauthenticationRequest
+        { Password = "password123", Factor = OtpTypeId.Telegram }, default);
+        var proof = (await h.Complete(reauthentication, h.Bot.LastCode)).SecurityProof;
+        await h.Service.DisableFactor(new DisableOtpVerificationRequest
+        { OtpType = OtpTypeId.Authenticator, SecurityProof = proof }, default);
+
+        Assert.Equal(BarkFluff.Identity.Domain.OtpType.Telegram,
+            (await h.Db.AuthUserProperties.SingleAsync(x => x.UserId == 42)).PreferredFactor);
+        var signIn = h.SignIn(); signIn.Factor = OtpTypeId.Unknown;
+        Assert.Equal(OtpTypeId.Telegram, (await h.Service.BeginSignIn(signIn, default)).Factor);
+    }
+
+    [Fact]
+    public async Task RecoveryCodeSignIn_DoesNotSendAnotherFactorCode()
+    {
+        using var h = new Harness(); var registered = await h.Register();
+        var messageCount = h.Bot.Messages.Count;
+        var request = h.SignIn(); request.UseRecoveryCode = true;
+        var pending = await h.Service.BeginSignIn(request, default);
+        Assert.Equal(messageCount, h.Bot.Messages.Count);
+        Assert.True(pending.NeedsCode);
+        Assert.NotNull((await h.Complete(pending, registered.RecoveryCodes[0], recovery: true)).Session);
+    }
+
+    [Fact]
+    public async Task RemovingAuthenticatorCannotLeaveOnlyEmailDisabledOnNode()
+    {
+        using var h = new Harness();
+        h.Db.AuthUserProperties.Add(new AuthUserProperty
+        {
+            UserId = 42, LoginMode = AuthLoginMode.PasswordSecondFactor,
+            OtpEnabled = true, EmailOtpEnabled = true
+        });
+        await h.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<RpcException>(() => h.Service.ValidateFactorRemoval(OtpTypeId.Authenticator, default));
+    }
+
+    [Fact]
     public async Task FiveWrongCodes_InvalidateChallenge()
     {
         using var h = new Harness(); await h.Register();
@@ -101,6 +165,50 @@ public class AuthenticationFlowTests
         await h.Approve();
         Assert.NotNull((await h.Complete(pending)).Session);
         await Assert.ThrowsAsync<RpcException>(() => h.Service.BeginSignIn(h.SignIn(), default));
+    }
+
+    [Fact]
+    public async Task PasswordOnlyMode_CompletesWithoutSecondFactor()
+    {
+        using var h = new Harness(); await h.Register(AuthLoginMode.Password);
+        var request = h.SignIn(); request.LoginMode = AuthLoginMode.Password;
+        var pending = await h.Service.BeginSignIn(request, default);
+        Assert.Equal(AuthChallengeState.Approved, pending.State);
+        Assert.NotNull((await h.Complete(pending)).Session);
+    }
+
+    [Fact]
+    public async Task EmailSecondFactor_UsesVerifiedRegistrationAddress()
+    {
+        using var h = new Harness(emailEnabled: true);
+        var registration = h.Registration(); registration.ConfirmationMethod = OtpTypeId.Email; registration.Email = "owner@example.com";
+        var pendingRegistration = await h.Service.BeginRegistration(registration, default);
+        var registrationCode = h.Emails.Last().Payload["confirmation_code"];
+        Assert.NotNull((await h.Complete(pendingRegistration, registrationCode)).Session);
+
+        var input = h.SignIn(); input.Factor = OtpTypeId.Unknown;
+        var pending = await h.Service.BeginSignIn(input, default);
+        Assert.Equal(OtpTypeId.Email, pending.Factor);
+        var emailCode = h.Emails.Last(x => x.Type == NotificationType.ConfirmationAuth).Payload["confirmation_code"];
+        Assert.NotNull((await h.Complete(pending, emailCode)).Session);
+    }
+
+    [Fact]
+    public async Task AuthenticatorSecondFactor_UsesTotpChallenge()
+    {
+        using var h = new Harness(); await h.Register();
+        var settings = await h.Db.AuthUserProperties.SingleAsync(x => x.UserId == 42);
+        settings.OtpEnabled = true;
+        settings.OtpSecret = OtpNet.Base32Encoding.ToString(OtpNet.KeyGeneration.GenerateRandomKey(20));
+        settings.PreferredFactor = BarkFluff.Identity.Domain.OtpType.Authenticator;
+        await h.Db.SaveChangesAsync();
+
+        var input = h.SignIn(); input.Factor = OtpTypeId.Unknown;
+        var pending = await h.Service.BeginSignIn(input, default);
+        Assert.Equal(OtpTypeId.Authenticator, pending.Factor);
+        var code = new OtpNet.Totp(OtpNet.Base32Encoding.ToBytes(settings.OtpSecret))
+            .ComputeTotp(h.Clock.GetUtcNow().UtcDateTime);
+        Assert.NotNull((await h.Complete(pending, code)).Session);
     }
 
     [Fact]
@@ -173,7 +281,7 @@ public class AuthenticationFlowTests
         using var h = new Harness(); var pending = await h.Service.BeginRegistration(h.Registration(), default);
         var forged = pending.Challenge.Clone(); forged.Secret = pending.TelegramUrl.Split("start=")[1];
         await Assert.ThrowsAsync<RpcException>(() => h.Service.Status(forged, default));
-        await h.StartBot(pending); await h.Approve(); await h.Approve();
+        await h.StartBot(pending); h.Bot.FailAnswer = true; await h.Approve(); await h.Approve();
         Assert.NotNull((await h.Complete(pending)).Session);
         Assert.Equal(1, h.RegisteredDevices);
     }
@@ -231,9 +339,63 @@ public class AuthenticationFlowTests
         Assert.Equal(1, h.RegisteredDevices);
     }
 
+    [Fact]
+    public async Task ParallelCompletionAcrossInstances_ReturnsOneRefreshSession()
+    {
+        using var h = new Harness(); await h.Register();
+        var pending = await h.Service.BeginSignIn(h.SignIn(), default);
+        var code = h.Bot.LastCode;
+        var results = await Task.WhenAll(Enumerable.Range(0, 6).Select(async _ =>
+        {
+            await using var context = new IdentityContext(h.Options);
+            return await h.CreateService(context).Complete(new CompleteAuthChallengeRequest { Challenge = pending.Challenge, Code = code }, default);
+        }));
+        Assert.Single(results.Select(x => x.Session.RefreshToken.Value).Distinct());
+        Assert.Equal(2, h.RegisteredDevices);
+    }
+
+    [Fact]
+    public async Task ParallelRecoveryCodeAcrossInstances_IsConsumedOnlyOnce()
+    {
+        using var h = new Harness(); var registered = await h.Register();
+        var request = h.SignIn(); request.UseRecoveryCode = true;
+        var first = await h.Service.BeginSignIn(request, default);
+        var second = await h.Service.BeginSignIn(request, default);
+        var results = await Task.WhenAll(new[] { first, second }.Select(async pending =>
+        {
+            await using var context = new IdentityContext(h.Options);
+            return await h.CreateService(context).Complete(new CompleteAuthChallengeRequest
+            { Challenge = pending.Challenge, Code = registered.RecoveryCodes[0], UseRecoveryCode = true }, default);
+        }));
+        Assert.Single(results, x => x.Session != null);
+    }
+
+    [Fact]
+    public async Task OtpRequiredException_CommitsEmailChallengeState()
+    {
+        using var h = new Harness();
+        var challengeId = Guid.NewGuid();
+        var store = new AuthenticationStore(h.Db);
+        await Assert.ThrowsAsync<OtpCodeNeedException>(() => store.ForUserPreserving<bool>(42, async () =>
+        {
+            h.Db.AuthenticationChallenges.Add(new AuthenticationChallenge
+            {
+                Id = challengeId, Purpose = AuthenticationPurpose.SignIn, UserId = 42,
+                CreatedAt = h.Clock.GetUtcNow().UtcDateTime, ExpiresAt = h.Clock.GetUtcNow().UtcDateTime.AddMinutes(5)
+            });
+            await Task.Yield();
+            throw new OtpCodeNeedException();
+        }, default, typeof(OtpCodeNeedException)));
+
+        h.Db.ChangeTracker.Clear();
+        Assert.True(await h.Db.AuthenticationChallenges.AnyAsync(x => x.Id == challengeId));
+    }
+
     private sealed class Harness : IDisposable
     {
-        public IdentityContext Db { get; } = TestHelper.CreateContext();
+        public DbContextOptions<IdentityContext> Options { get; }
+        public IdentityContext Db { get; }
+        public Func<IdentityContext, AuthenticationService> CreateService { get; private set; } = null!;
         public FakeClock Clock { get; } = new();
         public FakeBot Bot { get; } = new();
         public List<EmailNotification> Emails { get; } = [];
@@ -245,6 +407,16 @@ public class AuthenticationFlowTests
 
         public Harness(bool emailEnabled = false)
         {
+            var connection = Environment.GetEnvironmentVariable("BARKFLUFF_TEST_POSTGRES");
+            var builder = new DbContextOptionsBuilder<IdentityContext>();
+            if (connection != null)
+            {
+                var value = new Npgsql.NpgsqlConnectionStringBuilder(connection) { Database = "bf_auth_" + Guid.NewGuid().ToString("N") };
+                builder.UseNpgsql(value.ConnectionString);
+            }
+            else builder.UseInMemoryDatabase(Guid.NewGuid().ToString());
+            Options = builder.Options; Db = new IdentityContext(Options);
+            if (Db.Database.IsNpgsql()) Db.Database.Migrate();
             var user = new BarkFluff.Proto.Users.User { Id = 42, Username = "newuser" };
             _users.Setup(x => x.CheckExistUsernameAsync(It.IsAny<CheckExistUsernameRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Returns(() => Unary(new CheckExistResponse { Exist = _registered }));
@@ -266,12 +438,13 @@ public class AuthenticationFlowTests
                 .Callback<EmailNotification, CancellationToken>((message, _) => Emails.Add(message)).Returns(Task.CompletedTask);
             var deviceId = Guid.NewGuid().ToString();
             var request = new RequestContext { DeviceId = deviceId, DeviceName = "Browser", AppName = "Web", AppVersion = "1", OperationSystem = "Test", TrustedIpAddress = "127.0.0.1" };
-            Service = new AuthenticationService(Db, new AuthenticationStore(Db),
+            CreateService = context => new AuthenticationService(context, new AuthenticationStore(context),
                 new AuthenticationSecrets(new JwtSettings { SecretKey = "test-auth-secret" }), _users.Object, TestHelper.CreateJwtService(),
-                new PasswordsStorage(Db), new NotificationQueueSender(publish.Object), Bot,
+                new PasswordsStorage(context), new NotificationQueueSender(publish.Object), Bot,
                 new TelegramAuthOptions { Enabled = true, BotToken = "test-only-token" },
                 new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Email:Enabled"] = emailEnabled.ToString() }).Build(),
                 request, TestHelper.CreateUserContext(42, deviceId), TestHelper.CreateAbuseGuard(), Clock);
+            Service = CreateService(Db);
         }
 
         public BeginRegistrationRequest Registration(AuthLoginMode mode = AuthLoginMode.PasswordSecondFactor) => new()
@@ -289,7 +462,7 @@ public class AuthenticationFlowTests
         { callback_query = new { id = "callback", data = "yes:" + Bot.Messages.Last(x => x.Token != null).Token, from = new { id = actor, is_bot = false }, message = new { chat = new { id = actor, type = "private" } } } }), default);
         public Task<CompleteAuthChallengeResponse> Complete(AuthChallengeResponse c, string code = "", bool recovery = false) =>
             Service.Complete(new CompleteAuthChallengeRequest { Challenge = c.Challenge, Code = code, UseRecoveryCode = recovery }, default);
-        public void Dispose() => Db.Dispose();
+        public void Dispose() { if (Db.Database.IsNpgsql()) Db.Database.EnsureDeleted(); Db.Dispose(); }
     }
 
     private static AsyncUnaryCall<T> Unary<T>(T result) => new(Task.FromResult(result), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { });
@@ -303,6 +476,7 @@ public class AuthenticationFlowTests
     {
         public List<(long Chat, string Text, string? Token)> Messages { get; } = [];
         public bool FailDelivery { get; set; }
+        public bool FailAnswer { get; set; }
         public string LastCode => Regex.Match(Messages.Last().Text, @"Код: (\d{6})").Groups[1].Value;
         public Task<TelegramBotIdentity> GetIdentity(CancellationToken ct) => Task.FromResult(new TelegramBotIdentity(1, "test_bot"));
         public Task<JsonElement[]> GetUpdates(long offset, CancellationToken ct) => Task.FromResult(Array.Empty<JsonElement>());
@@ -311,6 +485,7 @@ public class AuthenticationFlowTests
             if (FailDelivery) throw new RpcException(new Status(StatusCode.Unavailable, "Telegram unavailable"));
             Messages.Add((chatId, text, approvalToken)); return Task.CompletedTask;
         }
-        public Task Answer(string callbackId, string text, CancellationToken ct) => Task.CompletedTask;
+        public Task Answer(string callbackId, string text, CancellationToken ct) => FailAnswer
+            ? Task.FromException(new RpcException(new Status(StatusCode.Unavailable, "Callback is too old"))) : Task.CompletedTask;
     }
 }
