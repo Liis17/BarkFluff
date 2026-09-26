@@ -186,6 +186,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `FailedLogin` | Неверный пароль |
 | `SuccessfulLogin` | Успешный вход |
 | `ConfirmationOtpEmail` | Включение Email 2FA |
+| `TwoFactorMethodChanged` | Подтверждение нового метода 2FA или отключение; payload содержит имя и версию текущего приложения |
 | `ResetPassword` | Запрос сброса пароля |
 | `PasswordChanged` | Пароль изменён пользователем |
 | `PasswordChangedByAdmin` | Принудительная смена пароля через `ForceSetPasswordServer` (AdminPanel) |
