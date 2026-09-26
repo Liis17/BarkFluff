@@ -2,6 +2,7 @@ using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Services;
 using BarkFluff.Identity.Settings;
+using BarkFluff.GrpcServer.Tracker;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
@@ -48,6 +49,7 @@ public sealed class TelegramAuthWorker(IServiceScopeFactory scopes, ITelegramAut
                             if (id < offset) continue;
                             updateId = id;
                             using var updateScope = scopes.CreateScope();
+                            InitializeRequestContextForTelegramUpdate(updateScope.ServiceProvider);
                             stage = "process-update";
                             await updateScope.ServiceProvider.GetRequiredService<AuthenticationService>().ProcessTelegramUpdate(update, lease.Token);
                             var updateDb = updateScope.ServiceProvider.GetRequiredService<IdentityContext>();
@@ -63,10 +65,12 @@ public sealed class TelegramAuthWorker(IServiceScopeFactory scopes, ITelegramAut
                 }
                 finally
                 {
+                    var operationStage = stage;
                     stage = "release-redis-lease";
                     await lease.CancelAsync();
                     await renewal;
                     await cache.ScriptEvaluateAsync("if redis.call('GET',KEYS[1]) == ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0", [key], [owner]);
+                    stage = operationStage;
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
@@ -88,6 +92,11 @@ public sealed class TelegramAuthWorker(IServiceScopeFactory scopes, ITelegramAut
                 catch (OperationCanceledException) { break; }
             }
         }
+    }
+
+    internal static void InitializeRequestContextForTelegramUpdate(IServiceProvider services)
+    {
+        services.GetRequiredService<IRequestContextAccessor>().Set(new RequestContext());
     }
 
     private static async Task Renew(IDatabase cache, RedisKey key, string owner, CancellationTokenSource lease)
