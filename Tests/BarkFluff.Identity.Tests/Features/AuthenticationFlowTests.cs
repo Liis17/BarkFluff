@@ -425,6 +425,22 @@ public class AuthenticationFlowTests
     }
 
     [Fact]
+    public async Task DisablingTelegramWhenNoAlertChannelIsAvailable_IsRejected()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var settings = await h.Db.AuthUserProperties.SingleAsync(x => x.UserId == 42);
+        settings.TelegramEnabled = false;
+        settings.NotificationChannel = LoginNotificationChannel.Email;
+        await h.Db.SaveChangesAsync();
+
+        var error = await Assert.ThrowsAsync<RpcException>(() => h.Service.UpdateSecuritySettings(
+            new UpdateSecuritySettingsRequest { LoginMode = AuthLoginMode.Password }, false, default));
+
+        Assert.Equal(StatusCode.InvalidArgument, error.StatusCode);
+    }
+
+    [Fact]
     public async Task EmailRecovery_OnlyChangesPassword_StillRequiresTelegram()
     {
         using var h = new Harness(emailEnabled: true); await h.Register();
