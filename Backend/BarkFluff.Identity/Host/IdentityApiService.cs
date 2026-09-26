@@ -148,17 +148,8 @@ public partial class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.I
     }
 
     [Authorize(Policy = nameof(TokenType.User))]
-    public override async Task<DisableOtpVerificationResponse> DisableOtpVerification(DisableOtpVerificationRequest request, ServerCallContext context)
-    {
-        var command = new DisableOtpVerificationCommand
-        {
-            OtpCode = request.OtpCode,
-            OptType = request.OtpType
-        };
-
-        return await _authentication!.RemoveFactor(request.SecurityProof, request.OtpType,
-            () => _mediator.Send(command), context.CancellationToken);
-    }
+    public override Task<DisableOtpVerificationResponse> DisableOtpVerification(DisableOtpVerificationRequest request, ServerCallContext context) =>
+        _authentication!.DisableFactor(request, context.CancellationToken);
 
     [Authorize(Policy = nameof(TokenType.User))]
     public override Task<ListOtpVerificationResponse> ListOtpVerification(ListOtpVerificationRequest request, ServerCallContext context)

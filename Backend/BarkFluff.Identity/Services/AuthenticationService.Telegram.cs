@@ -3,6 +3,7 @@ using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Identity;
 using Microsoft.EntityFrameworkCore;
+using Grpc.Core;
 
 namespace BarkFluff.Identity.Services;
 
@@ -16,11 +17,12 @@ public sealed partial class AuthenticationService
             ? callbackMessage : update.TryGetProperty("message", out var ordinaryMessage) ? ordinaryMessage : default;
         if (message.ValueKind != JsonValueKind.Object || !message.TryGetProperty("chat", out var chat) ||
             chat.GetProperty("type").GetString() != "private") return;
-        var from = isCallback ? callback.GetProperty("from") : message.GetProperty("from");
+        var source = isCallback ? callback : message;
+        if (!source.TryGetProperty("from", out var from) || !from.TryGetProperty("id", out var actorId)) return;
         if (from.TryGetProperty("is_bot", out var isBot) && isBot.GetBoolean()) return;
-        var actor = from.GetProperty("id").GetInt64();
+        var actor = actorId.GetInt64();
         if (chat.GetProperty("id").GetInt64() != actor) return;
-        var text = isCallback ? callback.GetProperty("data").GetString() ?? "" :
+        var text = isCallback ? (callback.TryGetProperty("data", out var data) ? data.GetString() ?? "" : "") :
             message.TryGetProperty("text", out var textElement) ? textElement.GetString() ?? "" : "";
         var approve = text.StartsWith("yes:", StringComparison.Ordinal);
         var reject = text.StartsWith("no:", StringComparison.Ordinal);
@@ -32,7 +34,7 @@ public sealed partial class AuthenticationService
         var initial = await db.AuthenticationChallenges.AsNoTracking().SingleOrDefaultAsync(x => x.TelegramTokenHash == hash, ct);
         if (initial == null)
         {
-            if (isCallback) await bot.Answer(callback.GetProperty("id").GetString()!, "Запрос уже обработан или истёк", ct);
+            if (isCallback) await AnswerCallback(callback, "Запрос уже обработан или истёк", ct);
             return;
         }
         var key = initial.UserId == 0 ? BitConverter.ToInt64(initial.Id.ToByteArray()) : initial.UserId;
@@ -62,6 +64,14 @@ public sealed partial class AuthenticationService
             return true;
         }, ct);
         if (isCallback)
-            await bot.Answer(callback.GetProperty("id").GetString()!, accepted ? (approve ? "Подтверждено" : "Отклонено") : "Запрос недействителен", ct);
+            await AnswerCallback(callback, accepted ? (approve ? "Подтверждено" : "Отклонено") : "Запрос недействителен", ct);
+    }
+
+    private async Task AnswerCallback(JsonElement callback, string text, CancellationToken ct)
+    {
+        // Telegram expires callback acknowledgements. Approval is already durable;
+        // a failed notification must not prevent the worker from advancing its offset.
+        try { await bot.Answer(callback.GetProperty("id").GetString()!, text, ct); }
+        catch (RpcException) { }
     }
 }

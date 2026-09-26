@@ -37,54 +37,6 @@
     }
 
     /**
-     * Perform login.
-     * @param {Object} opts — { login: string, password: string, otpCode?: string }
-     * @returns {Promise<{ success: boolean, needOtp?: boolean, error?: string, data?: Object }>}
-     */
-    function login(opts) {
-        var proto = window.proto.barkfluff.identity;
-        var req = new proto.AuthRequest();
-
-        // oneof login: email if contains @, otherwise username
-        if (opts.login.indexOf('@') >= 0) req.setEmail(opts.login);
-        else req.setUsername(opts.login);
-
-        req.setPassword(opts.password);
-        if (opts.otpCode) req.setOtpCode(opts.otpCode);
-
-        var meta = BF.metadata.build(); // no token
-
-        return BF.network.unary(
-            identityClient.auth.bind(identityClient),
-            req,
-            meta,
-            BF.network.POLICIES.MUTATION
-        ).then(function (resp) {
-                if (!resp) return { success: false, error: 'server_error' };
-                var at = resp.getAccessToken();
-                var rt = resp.getRefreshToken();
-                if (!at || !rt) return { success: false, error: 'server_error' };
-
-                return {
-                    success: true,
-                    data: {
-                        accessToken: at.getValue(),
-                        accessTokenExpiration: at.getExpirationDate().toDate().getTime(),
-                        refreshToken: rt.getValue(),
-                        refreshTokenExpiration: rt.getExpirationDate().toDate().getTime()
-                    }
-                };
-            }).catch(function (err) {
-                    var errorCode = err.metadata && err.metadata['x-error-code'];
-
-                    if (errorCode === ERROR_CODES.OTP_REQUIRED) return { success: false, needOtp: true };
-                    if (errorCode === ERROR_CODES.INVALID_OTP) return { success: false, error: 'invalid_otp' };
-                    if (errorCode === ERROR_CODES.INVALID_CREDENTIALS) return { success: false, error: 'invalid_credentials' };
-                    return { success: false, error: 'server_error' };
-            });
-    }
-
-    /**
      * Refresh access token using stored refresh token.
      * @returns {Promise<string|null>} — new access token or null
      */
@@ -126,7 +78,6 @@
     }
 
     window.BF.auth = {
-        login: login,
         refreshToken: refreshToken,
         getValidAccessToken: getValidAccessToken,
         ERROR_CODES: ERROR_CODES

@@ -41,6 +41,8 @@
     var backoff = INITIAL_BACKOFF;
 
     var currentFastAuthId = null;
+    var currentExpiresAt = 0;
+    var generation = 0;
     var started = false;
     var generating = false;
 
@@ -96,15 +98,18 @@
     }
 
     function cancelStream() {
-        if (stream) { try { stream.cancel(); } catch (e) {} stream = null; }
+        var previous = stream; stream = null;
+        if (previous) { try { previous.cancel(); } catch (e) {} }
     }
 
-    function scheduleRestart(delay) {
+    function scheduleRestart(delay, reconnect) {
         if (!started) return;
         if (restartTimer) clearTimeout(restartTimer);
         restartTimer = setTimeout(function () {
             restartTimer = null;
-            if (started) startSession();
+            if (!started) return;
+            if (reconnect && currentFastAuthId && Date.now() < currentExpiresAt) subscribeResult(currentFastAuthId);
+            else startSession();
         }, delay);
     }
 
@@ -174,25 +179,31 @@
         cancelStream();
         var client = fastAuthClient();
         if (!client) return;
-        stream = client.subscribeFastAuthResult(req, meta);
+        var origin = BF.node.origin();
+        var subscription = client.subscribeFastAuthResult(req, meta);
+        stream = subscription;
+        function current() { return started && stream === subscription && currentFastAuthId === fastAuthId && BF.node.origin() === origin; }
 
-        stream.on('data', function (evt) {
+        subscription.on('data', function (evt) {
+            if (!current()) return;
             backoff = INITIAL_BACKOFF;
             var status = evt.getStatus();
             handleStatus(status, evt);
         });
 
-        stream.on('error', function () {
+        subscription.on('error', function () {
+            if (!current()) return;
             // Сетевая ошибка / разрыв до финального статуса — переподключаемся с backoff
-            scheduleRestart(backoff);
+            scheduleRestart(backoff, true);
             backoff = Math.min(backoff * 2, MAX_BACKOFF);
         });
 
-        stream.on('end', function () {
+        subscription.on('end', function () {
+            if (!current()) return;
             // Если стрим закрылся без финального статуса — пробуем заново.
             // (Финальные статусы сами вызывают startSession() через handleStatus.)
             if (started && currentFastAuthId === fastAuthId) {
-                scheduleRestart(INITIAL_BACKOFF);
+                scheduleRestart(INITIAL_BACKOFF, true);
             }
         });
     }
@@ -209,6 +220,11 @@
                 setPhase('scanned');
                 if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
                 setStatus(BF.i18n.t('qr.scanned'), 'ok');
+                break;
+
+            case FS.FAST_AUTH_STATUS_TELEGRAM_PENDING:
+                setPhase('telegram');
+                setStatus(BF.i18n.t('security.fastAuthWaiting'));
                 break;
 
             case FS.FAST_AUTH_STATUS_ACCEPTED:
@@ -236,6 +252,7 @@
                 break;
 
             case FS.FAST_AUTH_STATUS_REJECTED:
+                currentFastAuthId = null;
                 setPhase('rejected');
                 clearTimers();
                 cancelStream();
@@ -244,6 +261,7 @@
                 break;
 
             case FS.FAST_AUTH_STATUS_EXPIRED:
+                currentFastAuthId = null;
                 setPhase('expired');
                 clearTimers();
                 cancelStream();
@@ -260,6 +278,7 @@
         if (generating) return;
         if (!started) return;
         generating = true;
+        var version = ++generation, origin = BF.node.origin();
 
         // Сбрасываем предыдущее состояние
         cancelStream();
@@ -270,6 +289,7 @@
         setStatus(BF.i18n.t('qr.loading'));
 
         generateToken().then(function (res) {
+            if (version !== generation || origin !== BF.node.origin()) return;
             generating = false;
             if (!started) return;
             if (!res.ok) {
@@ -280,6 +300,7 @@
             }
             backoff = INITIAL_BACKOFF;
             currentFastAuthId = res.fastAuthId;
+            currentExpiresAt = res.expiresAtMs;
             showQr(res.pngBase64);
             setPhase('pending');
             setStatus(BF.i18n.t('qr.waiting'));
@@ -298,6 +319,7 @@
     }
 
     function cancel() {
+        generation++;
         started = false;
         generating = false;
         currentFastAuthId = null;

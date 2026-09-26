@@ -1,4 +1,5 @@
 using BarkFluff.FastAuth.Features.AcceptFastAuth;
+using BarkFluff.FastAuth.Features.GenerateFastAuthToken;
 using BarkFluff.FastAuth.Features.SubscribeFastAuthResult;
 using BarkFluff.FastAuth.Infrastructure;
 using BarkFluff.Proto.FastAuth;
@@ -49,6 +50,32 @@ public class TelegramFastAuthTests
         await h.Store.TryExpireAsync(session.Id);
         (await h.Store.GetAsync(session.Id))!.Status.Should().Be(FastAuthStatus.Expired);
         (await h.Store.TryWaitForTelegramAsync(session.Id, code, 42)).Should().NotBe(BarkFluff.FastAuth.Domain.FastAuthTransition.Ok);
+    }
+
+    [Fact]
+    public async Task AcceptedQr_UsesBrowserDeviceIdAndQrAttemptIdSeparately()
+    {
+        var h = new TestHelper();
+        var deviceId = Guid.NewGuid().ToString();
+        var generate = new GenerateFastAuthTokenCommandHandler(h.Store, new QrCodeGenerator(),
+            h.CreateRequestContext(deviceId: deviceId), h.Metrics,
+            TestHelper.CreateLogger<GenerateFastAuthTokenCommandHandler>());
+        var generated = await generate.Handle(new GenerateFastAuthTokenCommand { Format = TokenFormat.Text }, default);
+        var session = (await h.Store.GetAsync(generated.FastAuthId))!;
+        var code = Guid.NewGuid().ToString();
+        await h.Store.TryScanAsync(session.Id, 42, code);
+
+        var identity = h.CreateIdentityClientMock();
+        h.SetupIdentityClientSuccess(identity);
+        var accept = new AcceptFastAuthCommandHandler(h.Store, h.EventBus, identity.Object,
+            h.CreateUserContext(42), h.Metrics, TestHelper.CreateLogger<AcceptFastAuthCommandHandler>());
+
+        await accept.Handle(new AcceptFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code }, default);
+
+        identity.Verify(x => x.CreateSessionForUserServerAsync(
+            It.Is<CreateSessionForUserServerRequest>(request =>
+                request.DeviceId == deviceId && request.AttemptId == session.Id),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static AsyncUnaryCall<T> Unary<T>(T response) => new(Task.FromResult(response), Task.FromResult(new Metadata()),

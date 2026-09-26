@@ -12,8 +12,7 @@ public sealed partial class AuthenticationService
     {
         var settings = await Settings(AuthenticatedUser(), ct);
         if (AuthenticationPolicy.Mode(settings) == AuthLoginMode.PasswordSecondFactor &&
-            !new[] { OtpTypeId.Email, OtpTypeId.Authenticator, OtpTypeId.Telegram }
-                .Any(f => f != factor && AuthenticationPolicy.FactorEnabled(settings, f)))
+            !AvailableFactors(settings).Any(f => f != factor))
             throw Invalid("Select a different sign-in mode before removing the last factor");
     }
 
@@ -71,6 +70,17 @@ public sealed partial class AuthenticationService
             return result;
         }, ct);
     }
+    public Task<DisableOtpVerificationResponse> DisableFactor(DisableOtpVerificationRequest input, CancellationToken ct) =>
+        RemoveFactor(input.SecurityProof, input.OtpType, async () =>
+        {
+            var settings = await EnsureSettings(AuthenticatedUser(), ct);
+            if (input.OtpType == OtpTypeId.Authenticator) { settings.OtpEnabled = false; settings.OtpSecret = null; }
+            else if (input.OtpType == OtpTypeId.Email) { settings.EmailOtpEnabled = false; settings.LastEmailAuthCode = null; }
+            else throw Invalid("Use Telegram settings to disable Telegram");
+            settings.PreferredFactor = (OtpType)PreferredAvailableFactor(settings);
+            return new DisableOtpVerificationResponse();
+        }, ct);
+
     public async Task<SecuritySettingsResponse> GetSecuritySettings(CancellationToken ct)
     {
         var userId = AuthenticatedUser();
@@ -78,7 +88,7 @@ public sealed partial class AuthenticationService
         var contacts = await users.GetUserContactsAsync(new GetUserContactsRequest { UserId = userId }, cancellationToken: ct);
         return new SecuritySettingsResponse
         {
-            LoginMode = AuthenticationPolicy.Mode(settings), PreferredFactor = AuthenticationPolicy.PreferredFactor(settings),
+            LoginMode = AuthenticationPolicy.Mode(settings), PreferredFactor = PreferredAvailableFactor(settings),
             AuthenticatorEnabled = settings?.OtpEnabled == true, EmailEnabled = settings?.EmailOtpEnabled == true,
             TelegramLinked = settings?.TelegramId.HasValue == true, TelegramEnabled = settings?.TelegramEnabled == true,
             TelegramOtpEnabled = settings?.TelegramOtpEnabled == true, FastAuthTelegramEnabled = settings?.FastAuthTelegramEnabled == true,

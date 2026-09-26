@@ -70,7 +70,8 @@ public class AcceptFastAuthCommandHandlerTests
             c => c.CreateSessionForUserServerAsync(
                 It.Is<CreateSessionForUserServerRequest>(r =>
                     r.UserId == 42 &&
-                    !string.IsNullOrEmpty(r.DeviceId) &&
+                    r.DeviceId == session.ClientDeviceId &&
+                    r.AttemptId == session.Id &&
                     r.DeviceName == "TestDevice" &&
                     r.OperationSystem == "Windows" &&
                     r.IpAddress == "127.0.0.1"),

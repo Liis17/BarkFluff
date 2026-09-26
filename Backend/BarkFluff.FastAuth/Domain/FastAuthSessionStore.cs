@@ -12,7 +12,8 @@ namespace BarkFluff.FastAuth.Domain;
 public interface IFastAuthSessionStore
 {
     Task<FastAuthSessionState> CreateAsync(string deviceName, string operationSystem,
-        string appName, string appVersion, string ipAddress, CancellationToken ct = default);
+        string appName, string appVersion, string ipAddress, string? clientDeviceId = null,
+        CancellationToken ct = default);
 
     Task<FastAuthSessionState?> GetAsync(string id, CancellationToken ct = default);
 

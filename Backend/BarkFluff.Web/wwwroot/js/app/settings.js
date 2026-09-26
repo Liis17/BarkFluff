@@ -14,8 +14,6 @@
     var viewStack = [];
 
     // OtpTypeId enum values (mirrors proto)
-    var OTP_AUTHENTICATOR = 1;
-    var OTP_EMAIL = 2;
 
     // ProfileFieldVisibility enum values (mirrors proto)
     var VIS_ALL = 0;
@@ -98,6 +96,7 @@
     }
 
     function close() {
+        BF.authUI.cancelAll();
         BF.utils.closeOverlay(overlay);
         viewStack = [];
     }
@@ -117,6 +116,7 @@
     }
 
     function showView(name) {
+        if (securityCleanup) { securityCleanup(); securityCleanup = null; BF.authUI.cancelAll(); }
         backBtn.classList.toggle('visible', viewStack.length > 0);
         body.dataset.view = name;
         switch (name) {
@@ -743,159 +743,12 @@
         });
     }
 
-    // --- Two-Factor Authentication ---
+    // --- Login mode, factors and verified contacts ---
+    var securityCleanup = null;
     function renderTwoFA() {
         titleEl.textContent = BF.i18n.t('settings.twofa');
-        body.innerHTML = '';
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
-
-        BF.api.listOtpVerification().then(function (data) {
-            body.innerHTML = '';
-            renderTwoFARow('Authenticator (TOTP)', data.authenticatorEnabled, OTP_AUTHENTICATOR);
-            renderTwoFARow(BF.i18n.t('twofa.email'), data.emailEnabled, OTP_EMAIL);
-        }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.loadError') + '</div>';
-        });
-    }
-
-    function renderTwoFARow(label, enabled, otpType) {
-        var row = document.createElement('div');
-        row.className = 'twofa-status';
-
-        var typeEl = document.createElement('div');
-        typeEl.className = 'twofa-type';
-        typeEl.textContent = label;
-
-        var badge = document.createElement('span');
-        badge.className = 'twofa-badge ' + (enabled ? 'on' : 'off');
-        badge.textContent = BF.i18n.t(enabled ? 'twofa.enabled' : 'twofa.disabled');
-
-        var toggleBtn = document.createElement('button');
-        toggleBtn.className = 'twofa-toggle ' + (enabled ? 'disable' : 'enable');
-        toggleBtn.textContent = BF.i18n.t(enabled ? 'common.disable' : 'common.enable');
-
-        row.appendChild(typeEl);
-        row.appendChild(badge);
-        row.appendChild(toggleBtn);
-        body.appendChild(row);
-
-        if (enabled) {
-            // Disable flow
-            toggleBtn.addEventListener('click', function () {
-                if (otpType === OTP_AUTHENTICATOR) {
-                    // Need OTP code to disable
-                    renderTwoFADisableAuthenticator();
-                } else {
-                    // Email: disable without code
-                    toggleBtn.disabled = true;
-                    BF.api.disableOtpVerification(otpType, null).then(function () {
-                        renderTwoFA();
-                    }).catch(function () { toggleBtn.disabled = false; });
-                }
-            });
-        } else {
-            // Enable flow
-            toggleBtn.addEventListener('click', function () {
-                if (otpType === OTP_AUTHENTICATOR) {
-                    renderTwoFAEnableAuthenticator();
-                } else {
-                    toggleBtn.disabled = true;
-                    BF.api.enableOtpVerification(otpType).then(function () {
-                        renderTwoFA();
-                    }).catch(function () { toggleBtn.disabled = false; });
-                }
-            });
-        }
-    }
-
-    function renderTwoFAEnableAuthenticator() {
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('twofa.creatingQr') + '</div>';
-        BF.api.enableOtpVerification(OTP_AUTHENTICATOR).then(function (data) {
-            body.innerHTML = '';
-            var form = document.createElement('div');
-            form.className = 'sd-form';
-
-            var instr = document.createElement('div');
-            instr.className = 'sd-hint';
-            instr.textContent = BF.i18n.t('twofa.scanQr');
-            form.appendChild(instr);
-
-            if (data.otpQr) {
-                var img = document.createElement('img');
-                img.src = 'data:image/png;base64,' + data.otpQr;
-                img.style.cssText = 'width:180px;height:180px;display:block;margin:0 auto;border-radius:8px;';
-                form.appendChild(img);
-            }
-            if (data.otpCode) {
-                var codeEl = document.createElement('div');
-                codeEl.style.cssText = 'text-align:center;font-family:monospace;font-size:16px;letter-spacing:2px;padding:8px;background:rgba(0,0,0,0.05);border-radius:8px;';
-                codeEl.textContent = data.otpCode;
-                form.appendChild(codeEl);
-            }
-
-            var otpInput = makeInput('text', BF.i18n.t('twofa.codeFromApp'), '');
-            otpInput.maxLength = 8;
-            var errEl = makeHint('', true);
-            errEl.style.display = 'none';
-            var confirmBtn = makeSaveBtn(BF.i18n.t('common.confirm'));
-
-            form.appendChild(makeField(BF.i18n.t('twofa.confirmationCode'), otpInput));
-            form.appendChild(errEl);
-            form.appendChild(confirmBtn);
-            body.appendChild(form);
-
-            confirmBtn.addEventListener('click', function () {
-                var code = otpInput.value.trim();
-                if (!code) return;
-                confirmBtn.disabled = true;
-                BF.api.confirmOtpVerification(code).then(function () {
-                    renderTwoFA();
-                }).catch(function () {
-                    confirmBtn.disabled = false;
-                    errEl.textContent = BF.i18n.t('twofa.error.wrongCode');
-                    errEl.style.display = '';
-                });
-            });
-        }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.error') + '</div>';
-        });
-    }
-
-    function renderTwoFADisableAuthenticator() {
-        body.innerHTML = '';
-        var form = document.createElement('div');
-        form.className = 'sd-form';
-
-        var instr = document.createElement('div');
-        instr.className = 'sd-hint';
-        instr.textContent = BF.i18n.t('twofa.disableHint');
-        form.appendChild(instr);
-
-        var otpInput = makeInput('text', BF.i18n.t('twofa.codeFromApp'), '');
-        otpInput.maxLength = 8;
-        var errEl = makeHint('', true);
-        errEl.style.display = 'none';
-        var confirmBtn = makeSaveBtn(BF.i18n.t('common.disable'));
-        confirmBtn.className = 'sd-btn';
-        confirmBtn.style.cssText = 'background:rgba(220,38,38,0.1);color:var(--error);';
-
-        form.appendChild(makeField(BF.i18n.t('twofa.confirmationCode'), otpInput));
-        form.appendChild(errEl);
-        form.appendChild(confirmBtn);
-        body.appendChild(form);
-
-        confirmBtn.addEventListener('click', function () {
-            var code = otpInput.value.trim();
-            if (!code) return;
-            confirmBtn.disabled = true;
-            BF.api.disableOtpVerification(OTP_AUTHENTICATOR, code).then(function () {
-                renderTwoFA();
-            }).catch(function () {
-                confirmBtn.disabled = false;
-                errEl.textContent = BF.i18n.t('twofa.error.wrongCode');
-                errEl.style.display = '';
-            });
-        });
+        body.replaceChildren();
+        securityCleanup = BF.authUI.renderSecurity(body);
     }
 
     // --- Sessions ---

@@ -15,7 +15,7 @@ public sealed class FastAuthCompletion(IFastAuthSessionStore sessions, IFastAuth
         if (session.Status != FastAuthStatus.TelegramPending || session.UserId == null) return;
         var response = await identity.CreateSessionForUserServerAsync(new CreateSessionForUserServerRequest
         {
-            UserId = session.UserId.Value, DeviceId = session.Id, AttemptId = session.Id,
+            UserId = session.UserId.Value, DeviceId = session.ClientDeviceId, AttemptId = session.Id,
             ExpiresAt = Timestamp.FromDateTime(session.ExpiresAt), DeviceName = session.DeviceName,
             OperationSystem = session.OperationSystem, AppName = $"{session.AppName} v.{session.AppVersion}",
             IpAddress = session.IpAddress
@@ -43,6 +43,6 @@ public sealed class FastAuthCompletion(IFastAuthSessionStore sessions, IFastAuth
         // Parallel Accept calls share one Identity session. Never revoke the winner's tokens.
         if (latest?.Status == FastAuthStatus.Accepted) return;
         await identity.RemoveActiveSessionServerAsync(new RemoveActiveSessionServerRequest
-        { UserId = session.UserId.Value, DeviceId = session.Id }, cancellationToken: ct);
+        { UserId = session.UserId.Value, DeviceId = session.ClientDeviceId }, cancellationToken: ct);
     }
 }

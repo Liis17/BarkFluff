@@ -8,10 +8,6 @@
 
     var $ = function (sel) { return document.querySelector(sel); };
 
-    var loginSection = $('#loginSection');
-    var otpSection = $('#otpSection');
-    var welcomeSection = $('#welcomeSection');
-
     var loginForm = $('#loginForm');
     var loginInput = $('#loginInput');
     var passwordInput = $('#passwordInput');
@@ -20,11 +16,6 @@
     var signInBtn = $('#signInBtn');
     var tempLoginCheck = $('#tempLoginCheck');
 
-    var otpInputs = document.querySelectorAll('.otp-input');
-    var otpError = $('#otpError');
-    var otpSubmitBtn = $('#otpSubmitBtn');
-    var otpBack = $('#otpBack');
-
     var toRegisterBtn = $('#toRegisterBtn');
     var legalCheck = $('#legalAcceptCheck');
     var legalRow = $('#legalConsentRow');
@@ -32,23 +23,6 @@
     var nodeBar = $('#nodeBar');
     var nodeBarName = $('#nodeBarName');
     var nodeChangeBtn = $('#nodeChangeBtn');
-
-    var pendingLogin = '';
-    var pendingPassword = '';
-
-    function showSection(name) {
-        loginSection.classList.toggle('hidden', name !== 'login');
-        otpSection.classList.toggle('hidden', name !== 'otp');
-        welcomeSection.classList.toggle('hidden', name !== 'welcome');
-
-        // QR-блок имеет смысл только на главной login-секции — на OTP/welcome скрываем
-        // и останавливаем стрим, чтобы не висел зря.
-        if (fastAuthCard) fastAuthCard.style.display = (name === 'login') ? '' : 'none';
-        if (BF.fastAuth) {
-            if (name === 'login') startFastAuth();
-            else BF.fastAuth.cancel();
-        }
-    }
 
     // --- Выбор ноды ---
     // На шелле входа без ноды не существует: пока адрес не выбран, форма и QR скрыты.
@@ -74,6 +48,7 @@
 
     /** Живая сессия на выбранной ноде уводит сразу в мессенджер, иначе показываем вход. */
     function resumeOrShowLogin() {
+        configureAuthAvailability();
         if (!BF.tokens.get()) { startFastAuth(); return; }
 
         document.body.style.visibility = 'hidden';
@@ -97,6 +72,8 @@
 
     nodeChangeBtn.addEventListener('click', function () {
         // Токены остаются под неймспейсом прежней ноды — вернувшись, вход не потребуется.
+        BF.authUI.cancelAll();
+        if (BF.register) BF.register.close();
         if (BF.fastAuth) BF.fastAuth.cancel();
         BF.node.clear();
         openNodePicker();
@@ -134,7 +111,6 @@
     function clearErrors() {
         loginError.classList.remove('visible');
         passwordError.classList.remove('visible');
-        otpError.classList.remove('visible');
         loginInput.classList.remove('error');
         passwordInput.classList.remove('error');
     }
@@ -151,132 +127,68 @@
         btn.disabled = loading;
     }
 
-    // --- Login form ---
-    loginForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        clearErrors();
-
-        if (!legalCheck.checked) {
-            legalRow.classList.add('nudge');
-            BF.sound.play('droplet');
-            return;
-        }
-
-        var login = loginInput.value.trim();
-        var password = passwordInput.value;
-
+    var modeInput = $('#loginMode');
+    var factorInput = $('#loginFactor');
+    var recoveryInput = $('#loginRecovery');
+    var capabilityVersion = 0;
+    function configureAuthAvailability() {
+        var version = ++capabilityVersion;
+        var origin = BF.node.origin();
+        var telegramMode = modeInput.querySelector('option[value="2"]');
+        var emailFactor = factorInput.querySelector('option[value="2"]');
+        var telegramFactor = factorInput.querySelector('option[value="3"]');
+        telegramMode.disabled = true;
+        emailFactor.disabled = true;
+        telegramFactor.disabled = true;
+        BF.confirmations.call('getAuthCapabilities', 'GetAuthCapabilitiesRequest', {}, { read: true, origin: origin })
+            .then(function (capabilities) {
+                if (version !== capabilityVersion || BF.node.origin() !== origin) return;
+                telegramMode.disabled = !capabilities.getTelegramAvailable();
+                emailFactor.disabled = !capabilities.getEmailAvailable();
+                telegramFactor.disabled = !capabilities.getTelegramAvailable();
+                if (modeInput.selectedOptions[0].disabled) modeInput.value = '1';
+                if (factorInput.selectedOptions[0].disabled) factorInput.value = '0';
+                updateMode();
+            }).catch(function () {
+                // A capability timeout must never present Telegram or email as available.
+            });
+    }
+    function updateMode() {
+        passwordInput.closest('.form-group').hidden = modeInput.value === '2';
+        factorInput.closest('.form-group').hidden = modeInput.value !== '3';
+        recoveryInput.closest('.checkbox-group').hidden = modeInput.value === '1';
+    }
+    modeInput.addEventListener('change', updateMode);
+    updateMode();
+    loginForm.addEventListener('submit', async function (event) {
+        event.preventDefault(); clearErrors();
+        if (!legalCheck.checked) { legalRow.classList.add('nudge'); return; }
+        var login = loginInput.value.trim(), password = passwordInput.value;
+        var mode = Number(modeInput.value), origin = BF.node.origin();
         if (!login) { showError(loginError, loginInput, BF.i18n.t('auth.error.noLogin')); return; }
-        if (!password) { showError(passwordError, passwordInput, BF.i18n.t('auth.error.noPassword')); return; }
-
-        pendingLogin = login;
-        pendingPassword = password;
-
+        if (mode !== 2 && !password) { showError(passwordError, passwordInput, BF.i18n.t('auth.error.noPassword')); return; }
         setLoading(signInBtn, true);
-
-        BF.auth.login({ login: login, password: password }).then(function (result) {
-            if (result.needOtp) {
-                showSection('otp');
-                otpInputs[0].focus();
-                return;
-            }
-            if (result.error === 'invalid_credentials') {
-                showError(passwordError, passwordInput, BF.i18n.t('auth.error.badCredentials'));
-                return;
-            }
-            if (result.error === 'invalid_otp') {
-                showError(passwordError, null, BF.i18n.t('auth.error.badCode'));
-                return;
-            }
-            if (result.error) {
-                showError(passwordError, null, BF.i18n.t('auth.error.server'));
-                return;
-            }
-
+        if (BF.fastAuth) BF.fastAuth.cancel();
+        try {
+            var result = await BF.authUI.run('beginSignIn', 'BeginSignInRequest', {
+                login: login, password: password, loginMode: mode, factor: Number(factorInput.value),
+                useRecoveryCode: mode !== 1 && recoveryInput.checked
+            }, { switchFactor: mode === 3 });
+            if (BF.node.origin() !== origin || !result.getSession()) return;
+            passwordInput.value = '';
             BF.tokens.setTempMode(tempLoginCheck.checked);
-            BF.tokens.save(result.data);
-            BF.legal.flushConsent().then(function () {
-                window.location.href = '/messenger';
-            });
-        }).catch(function () {
-            showError(passwordError, null, BF.i18n.t('auth.error.network'));
-        }).then(function () {
-            setLoading(signInBtn, false);
-        });
+            BF.tokens.save(BF.confirmations.session(result.getSession()));
+            await BF.legal.flushConsent();
+            if (BF.node.origin() === origin) window.location.href = '/messenger';
+        } catch (error) {
+            if (error.name !== 'AbortError') showError(passwordError, null, BF.authUI.errorText(error));
+        } finally { setLoading(signInBtn, false); applyGate(); startFastAuth(); }
     });
-
-    // --- OTP inputs ---
-    otpInputs.forEach(function (input, index) {
-        input.addEventListener('input', function (e) {
-            var value = e.target.value.replace(/[^0-9]/g, '');
-            e.target.value = value;
-            if (value) BF.sound.play('tick');
-            if (value && index < otpInputs.length - 1) {
-                otpInputs[index + 1].focus();
-            }
-        });
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                otpInputs[index - 1].focus();
-            }
-        });
-        input.addEventListener('paste', function (e) {
-            e.preventDefault();
-            var paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
-            otpInputs.forEach(function (inp, i) {
-                if (i < paste.length) inp.value = paste[i];
-            });
-            var nextIndex = Math.min(paste.length, otpInputs.length - 1);
-            otpInputs[nextIndex].focus();
-        });
-    });
-
-    otpSubmitBtn.addEventListener('click', function () {
-        clearErrors();
-        var code = Array.from(otpInputs).map(function (i) { return i.value; }).join('');
-
-        if (code.length !== 6) {
-            otpError.textContent = BF.i18n.t('auth.error.incompleteCode');
-            otpError.classList.add('visible');
-            BF.sound.play('droplet');
-            return;
-        }
-
-        setLoading(otpSubmitBtn, true);
-
-        BF.auth.login({ login: pendingLogin, password: pendingPassword, otpCode: code }).then(function (result) {
-            if (result.error === 'invalid_otp') {
-                otpError.textContent = BF.i18n.t('auth.error.badCode');
-                otpError.classList.add('visible');
-                BF.sound.play('droplet');
-                otpInputs.forEach(function (i) { i.value = ''; });
-                otpInputs[0].focus();
-                return;
-            }
-            if (result.error) {
-                otpError.textContent = BF.i18n.t('auth.error.server');
-                otpError.classList.add('visible');
-                BF.sound.play('droplet');
-                return;
-            }
-
-            BF.tokens.setTempMode(tempLoginCheck.checked);
-            BF.tokens.save(result.data);
-            BF.legal.flushConsent().then(function () {
-                window.location.href = '/messenger';
-            });
-        }).catch(function () {
-            otpError.textContent = BF.i18n.t('auth.error.network');
-            otpError.classList.add('visible');
-            BF.sound.play('droplet');
-        }).then(function () {
-            setLoading(otpSubmitBtn, false);
-        });
-    });
-
-    otpBack.addEventListener('click', function () {
-        clearErrors();
-        otpInputs.forEach(function (i) { i.value = ''; });
-        showSection('login');
+    $('#recoverPassword').addEventListener('click', async function () {
+        if (BF.fastAuth) BF.fastAuth.cancel();
+        try { await BF.authUI.recover(loginInput.value.trim()); showError(passwordError, null, BF.i18n.t('security.passwordChanged')); }
+        catch (error) { if (error.name !== 'AbortError') showError(passwordError, null, BF.authUI.errorText(error)); }
+        finally { startFastAuth(); }
     });
 
     // --- Check existing session on load ---

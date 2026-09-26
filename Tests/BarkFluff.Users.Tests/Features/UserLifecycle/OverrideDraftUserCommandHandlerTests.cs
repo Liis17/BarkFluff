@@ -1,10 +1,6 @@
-using BarkFluff.Shared.Exceptions.Identity;
-using BarkFluff.Shared.Exceptions.Users;
-using BarkFluff.Users.Features.AddDraftUser;
-using BarkFluff.Users.Features.ConfirmUser;
 using BarkFluff.Users.Features.OverrideDraftUser;
 using FluentAssertions;
-using Microsoft.Extensions.Configuration;
+using Grpc.Core;
 
 namespace BarkFluff.Users.Tests.Features.UserLifecycle;
 
@@ -13,12 +9,12 @@ public class OverrideDraftUserCommandHandlerTests : IAsyncDisposable
     private readonly TestHelper _h = new();
 
     [Fact]
-    public async Task Handle_ExistingDraftByEmail_OverridesData()
+    public async Task Handle_ExistingDraftByEmail_RefusesAndDoesNotChangeData()
     {
         var user = await _h.SeedUser(username: "olduser", email: "draft@test.com", isDraft: true);
         var handler = new OverrideDraftUserCommandHandler(_h.UsersStorage, TestHelper.CreateLogger<OverrideDraftUserCommandHandler>());
 
-        var result = await handler.Handle(new OverrideDraftUserCommand
+        var act = () => handler.Handle(new OverrideDraftUserCommand
         {
             Username = "newuser",
             FirstName = "New",
@@ -26,21 +22,22 @@ public class OverrideDraftUserCommandHandlerTests : IAsyncDisposable
             Email = "draft@test.com"
         }, CancellationToken.None);
 
-        result.UserId.Should().Be(user.Id);
+        var exception = await act.Should().ThrowAsync<RpcException>();
+        exception.Which.StatusCode.Should().Be(StatusCode.FailedPrecondition);
 
         var updated = await _h.UsersStorage.GetById(user.Id);
-        updated!.Username.Should().Be("newuser");
-        updated.FirstName.Should().Be("New");
+        updated!.Username.Should().Be("olduser");
+        updated.FirstName.Should().Be("Test");
         updated.IsDraft.Should().BeTrue();
     }
 
     [Fact]
-    public async Task Handle_ExistingDraftByUsername_OverridesData()
+    public async Task Handle_ExistingDraftByUsername_RefusesAndDoesNotChangeData()
     {
         var user = await _h.SeedUser(username: "draftuser", email: "old@test.com", isDraft: true);
         var handler = new OverrideDraftUserCommandHandler(_h.UsersStorage, TestHelper.CreateLogger<OverrideDraftUserCommandHandler>());
 
-        var result = await handler.Handle(new OverrideDraftUserCommand
+        var act = () => handler.Handle(new OverrideDraftUserCommand
         {
             Username = "draftuser",
             FirstName = "New",
@@ -48,11 +45,17 @@ public class OverrideDraftUserCommandHandlerTests : IAsyncDisposable
             Email = "new@test.com"
         }, CancellationToken.None);
 
-        result.UserId.Should().Be(user.Id);
+        var exception = await act.Should().ThrowAsync<RpcException>();
+        exception.Which.StatusCode.Should().Be(StatusCode.FailedPrecondition);
+
+        var unchanged = await _h.UsersStorage.GetById(user.Id);
+        unchanged!.Username.Should().Be("draftuser");
+        unchanged.FirstName.Should().Be("Test");
+        unchanged.IsDraft.Should().BeTrue();
     }
 
     [Fact]
-    public async Task Handle_UserNotFound_ThrowsUserNotFoundException()
+    public async Task Handle_UserNotFound_RefusesWithoutCreatingAccount()
     {
         var handler = new OverrideDraftUserCommandHandler(_h.UsersStorage, TestHelper.CreateLogger<OverrideDraftUserCommandHandler>());
 
@@ -64,7 +67,9 @@ public class OverrideDraftUserCommandHandlerTests : IAsyncDisposable
             Email = "nonexistent@test.com"
         }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<UserNotFoundException>();
+        var exception = await act.Should().ThrowAsync<RpcException>();
+        exception.Which.StatusCode.Should().Be(StatusCode.FailedPrecondition);
+        (await _h.UsersStorage.GetUserByUsername("nonexistent")).Should().BeNull();
     }
 
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();

@@ -8,6 +8,8 @@
     "test:chat-background-refresh": "node test-chat-background-refresh.js",
     "test:markdown-preview": "node test-markdown-preview.js",
     "test:network": "node test-network.js",
+    "test:auth-challenge": "node test-auth-challenge.js",
+    "test:auth-confirmation": "node test-auth-confirmation.js",
     "test:refresh-session": "node test-refresh-session.js",
     "test:legal-network": "node test-legal-network.js",
     "test:drafts": "node test-drafts.js",

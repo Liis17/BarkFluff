@@ -151,6 +151,20 @@ public class GenerateFastAuthTokenCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ValidRequest_PreservesBrowserDeviceIdSeparatelyFromQrId()
+    {
+        var deviceId = Guid.NewGuid().ToString();
+        var handler = CreateHandler(_h.CreateRequestContext(deviceId: deviceId));
+        var result = await handler.Handle(
+            new GenerateFastAuthTokenCommand { Format = TokenFormat.Text },
+            CancellationToken.None);
+
+        var session = await _h.Store.GetAsync(result.FastAuthId);
+        session!.ClientDeviceId.Should().Be(deviceId);
+        session.ClientDeviceId.Should().NotBe(session.Id);
+    }
+
+    [Fact]
     public async Task Handle_NullIpAddress_UsesEmptyString()
     {
         var ctx = _h.CreateRequestContext(ipAddress: null);

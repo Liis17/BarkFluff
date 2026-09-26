@@ -71,6 +71,7 @@ public class DevicesStorageConcurrencyTests
 
     private static UsersContext CreateContext(SqliteConnection connection)
     {
+        connection.CreateFunction("gen_random_uuid", () => Guid.NewGuid().ToString());
         var options = new DbContextOptionsBuilder<UsersContext>()
             .UseSqlite(connection)
             .Options;

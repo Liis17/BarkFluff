@@ -136,12 +136,15 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private IDatabase Db => redis.GetDatabase();
 
     public async Task<FastAuthSessionState> CreateAsync(string deviceName, string operationSystem,
-        string appName, string appVersion, string ipAddress, CancellationToken ct = default)
+        string appName, string appVersion, string ipAddress, string? clientDeviceId = null,
+        CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
+        var id = Guid.NewGuid().ToString();
         var session = new FastAuthSessionState
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = id,
+            ClientDeviceId = Guid.TryParse(clientDeviceId, out var parsedDeviceId) ? parsedDeviceId.ToString() : id,
             CreatedAt = now,
             ExpiresAt = now + FastAuthSessionTiming.SessionTtl,
             DeviceName = deviceName,
@@ -249,6 +252,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private static StoredSession ToStored(FastAuthSessionState s) => new()
     {
         Id = s.Id,
+        ClientDeviceId = s.ClientDeviceId,
         CreatedAtMs = ToUnixMs(s.CreatedAt)!.Value,
         ExpiresAtMs = ToUnixMs(s.ExpiresAt)!.Value,
         DeviceName = s.DeviceName,
@@ -273,6 +277,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private static FastAuthSessionState FromStored(StoredSession s) => new()
     {
         Id = s.Id,
+        ClientDeviceId = string.IsNullOrWhiteSpace(s.ClientDeviceId) ? s.Id : s.ClientDeviceId,
         CreatedAt = FromUnixMs(s.CreatedAtMs)!.Value,
         ExpiresAt = FromUnixMs(s.ExpiresAtMs)!.Value,
         DeviceName = s.DeviceName,
@@ -300,6 +305,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private sealed class StoredSession
     {
         public string Id { get; set; } = string.Empty;
+        public string? ClientDeviceId { get; set; }
         public long CreatedAtMs { get; set; }
         public long ExpiresAtMs { get; set; }
         public string DeviceName { get; set; } = string.Empty;
