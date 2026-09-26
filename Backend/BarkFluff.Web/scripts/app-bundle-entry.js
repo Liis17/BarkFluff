@@ -42,4 +42,5 @@ import '../wwwroot/js/app/deep-link.js';
 import '../wwwroot/js/app/search.js';
 import '../wwwroot/js/app/chat-media.js';
 import '../wwwroot/js/app/chat-calls.js';
+import '../wwwroot/js/app/chat-background.js';
 import '../wwwroot/js/app/main.js';
