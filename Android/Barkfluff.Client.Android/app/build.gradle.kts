@@ -316,3 +316,10 @@ dependencies {
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    systemProperty(
+        "androidUiCheckerScript",
+        rootProject.file("tools/check_android_ui.py").absolutePath,
+    )
+}
