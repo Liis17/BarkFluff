@@ -144,7 +144,7 @@ DeepLinkActivity (перехват bf:// ссылок)
 
 **Тип:** AppCompatActivity
 
-Авторизация через `AuthenticationChallengeGateway`: capabilities ограничивают Password / Telegram Login / Password + second factor; `AuthenticationChallengeDialog` открывает Telegram URL, принимает code/recovery code, ждёт `GetAuthChallenge` в foreground и обрабатывает terminal error. После `COMPLETED` сохраняет session в `GlobalParam`, загружает профиль → `MainActivity`.
+Авторизация через `AuthenticationChallengeGateway`: подписанный «Способ входа» находится перед полями логина/пароля, Password выбран по умолчанию, capabilities ограничивают Password / Telegram Login / Password + second factor; `AuthenticationChallengeDialog` открывает Telegram URL, принимает code/recovery code, ждёт `GetAuthChallenge` в foreground и обрабатывает terminal error. После `COMPLETED` сохраняет session в `GlobalParam`, загружает профиль → `MainActivity`.
 
 **Связи:** `GlobalParam`, `AuthenticationChallengeGateway`, `AuthenticationChallengeViewModel`, `AuthGateway` (создание клиента/refresh/logout), `MainActivity`, `RegisterActivity`, `ResetPasswordActivity`
 
