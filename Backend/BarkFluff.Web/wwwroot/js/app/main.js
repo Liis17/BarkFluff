@@ -67,13 +67,6 @@
     var sendBtn = $('#sendBtn');
     var attachBtn = $('#attachBtn');
     var fileInput = $('#fileInput');
-    // Scroll-to-bottom button
-    var scrollToBottomBtn = $('#scrollToBottomBtn');
-
-    // Delete confirmation dialog
-    var deleteMsgConfirmOverlay = $('#deleteMsgConfirmOverlay');
-    var deleteMsgCancel = $('#deleteMsgCancel');
-    var deleteMsgOk = $('#deleteMsgOk');
     var soonToastEl = $('#soonToast');
 
     // Settings and confirm overlays are managed by BF.settings module
@@ -874,6 +867,27 @@
         showToast: showToast
     });
 
+    // ========== MESSAGE EVENTS (incoming, read, edited, deleted, pinned) ==========
+
+    BF.messageEvents.init({
+        getChats: function () { return chats; },
+        getCurrentChatId: function () { return currentChatId; },
+        getMyUserId: function () { return myUserId; },
+        getMessages: function () { return messages; },
+        reconcilePendingUpload: reconcilePendingUpload,
+        renderChatList: renderChatList,
+        loadChats: loadChats,
+        showNewMessageNotification: showNewMessageNotification,
+        updateTitleBadge: updateTitleBadge,
+        appendMessageToView: appendMessageToView,
+        scrollToBottom: scrollToBottom,
+        renderMessages: renderMessages,
+        buildMessageViewElement: buildMessageViewElement,
+        showToast: showToast
+    });
+    var applyMessageEdit = BF.messageEvents.applyEdit;
+    var applyMessageDelete = BF.messageEvents.applyDelete;
+
     // ========== CONNECTION STATUS, RESYNC, RETURN TO THE TAB ==========
 
     BF.connection.init({
@@ -893,115 +907,6 @@
         applyMessageDelete: applyMessageDelete,
         applyMessageEdit: applyMessageEdit
     });
-
-    // ========== REALTIME HANDLERS ==========
-
-
-    BF.realtime.on('new_message', function (data) {
-        handleNewMessage(data.chatId, data.message);
-    });
-
-    BF.realtime.on('message_read', function (data) {
-        handleMessageRead(data.chatId, data.messageId, data.readBy);
-    });
-
-    BF.realtime.on('message_edited', function (data) {
-        applyMessageEdit(data.chatId, data.message);
-    });
-
-    BF.realtime.on('message_deleted', function (data) {
-        applyMessageDelete(data.chatId, data.messageId);
-    });
-
-    BF.realtime.on('message_pinned', function (data) {
-        if (BF.pinned && BF.pinned.applyPinnedEvent) BF.pinned.applyPinnedEvent(data);
-    });
-
-    BF.realtime.on('message_unpinned', function (data) {
-        if (BF.pinned && BF.pinned.applyUnpinnedEvent) BF.pinned.applyUnpinnedEvent(data);
-    });
-
-    BF.realtime.on('all_messages_unpinned', function (data) {
-        if (BF.pinned && BF.pinned.applyAllUnpinnedEvent) BF.pinned.applyAllUnpinnedEvent(data);
-    });
-
-    function handleNewMessage(chatId, msg) {
-        var reconciledPending = reconcilePendingUpload(chatId, msg);
-        if (!reconciledPending && chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
-
-        var chatIdx = chats.findIndex(function (c) { return c.id === chatId; });
-        var chatTitle = '';
-        if (chatIdx >= 0) {
-            var chat = chats[chatIdx];
-            chatTitle = chat.title || '';
-            chat.lastMessage = msg;
-            if (chatId !== currentChatId && msg.senderId !== myUserId) {
-                chat.countUnread = (chat.countUnread || 0) + 1;
-            }
-            chats.splice(chatIdx, 1);
-            chats.unshift(chat);
-            renderChatList();
-        } else {
-            // Unknown chat — reload the list to pick it up
-            loadChats(true);
-        }
-
-        // Browser notification for messages from others
-        if (msg.senderId !== myUserId) {
-            BF.sound.play('chime');
-            showNewMessageNotification(chatTitle, msg);
-        }
-
-        updateTitleBadge();
-
-        if (chatId === currentChatId && !reconciledPending) {
-            var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
-            if (msg.senderId !== myUserId) BF.feed.announceIncoming(msg);
-            messages.push(msg);
-            appendMessageToView(msg).then(function () {
-                if (isAtBottom) {
-                    scrollToBottom();
-                    if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
-                } else {
-                    if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
-                    BF.feed.incrementNewBelow();
-                }
-                // Auto-mark as read if message is visible (user is at bottom)
-                if (isAtBottom && msg.senderId !== myUserId) BF.markRead.markSoon(msg.id);
-            });
-        }
-    }
-
-    function handleMessageRead(chatId, messageId, readBy) {
-        // Update the message's readBy in the active chat view
-        if (chatId === currentChatId) {
-            var msg = messages.find(function (m) { return m.id === messageId; });
-            if (msg) {
-                msg.readBy = readBy;
-                // Update check-mark indicator (single = delivered, double = read by others)
-                var el = messagesArea.querySelector('.msg-status[data-msg-id="' + messageId + '"]');
-                if (el) {
-                    var rc = readBy.filter(function (id) { return id !== myUserId; }).length;
-                    BF.messages.updateMessageStatus(el, rc > 0);
-                }
-            }
-        }
-
-        // Update unread count in chat list
-        var chat = chats.find(function (c) { return c.id === chatId; });
-        if (chat) {
-            if (readBy.includes(myUserId)) {
-                // We read a message — if this chat is open, all visible are read
-                if (chatId === currentChatId) {
-                    chat.countUnread = 0;
-                } else {
-                    chat.countUnread = Math.max(0, (chat.countUnread || 0) - 1);
-                }
-            }
-            renderChatList();
-            updateTitleBadge();
-        }
-    }
 
     // ========== SEARCH ==========
 
@@ -1114,84 +1019,8 @@
         showToast: showToast
     });
 
-    // ========== REPLY / FORWARD / CONTEXT MENU ==========
+    // ========== FORWARD DIALOG ==========
 
-    function requestDelete(messageId) {
-        if (!deleteMsgConfirmOverlay || !messageId) return;
-        BF.utils.openOverlay(deleteMsgConfirmOverlay);
-        deleteMsgOk.onclick = function () {
-            deleteMsgOk.disabled = true;
-            BF.api.deleteMessage(messageId).then(function () {
-                applyMessageDelete(currentChatId, messageId);
-            }).catch(function () {
-                showToast(BF.i18n.t('error.deleteMessage'), true);
-            })
-            .finally(function () {
-                deleteMsgOk.disabled = false;
-                BF.utils.closeOverlay(deleteMsgConfirmOverlay);
-                deleteMsgOk.onclick = null;
-            });
-        };
-    }
-
-    function applyMessageEdit(chatId, updatedMsg) {
-        if (!updatedMsg) return;
-        var ch = chats.find(function (x) { return x.id === chatId; });
-        if (ch && ch.lastMessage && ch.lastMessage.id === updatedMsg.id) {
-            ch.lastMessage = updatedMsg;
-            renderChatList();
-        }
-        if (chatId !== currentChatId) return;
-        var idx = messages.findIndex(function (m) { return m.id === updatedMsg.id; });
-        if (idx < 0) return;
-        messages[idx] = updatedMsg;
-        var oldEl = messagesInner.querySelector('.msg-group[data-msg-id="' + updatedMsg.id + '"]');
-        if (!oldEl) return;
-        buildMessageViewElement(updatedMsg).then(function (newEl) {
-            newEl.dataset.date = oldEl.dataset.date;
-            BF.feed.replaceElement(oldEl, newEl);
-        });
-    }
-
-    function applyMessageDelete(chatId, messageId) {
-        if (messageId == null) return;
-        var msgIdNum = Number(messageId);
-        console.log('[main] applyMessageDelete', { chatId: chatId, messageId: messageId, currentChatId: currentChatId });
-        BF.composer.onMessageDeleted(msgIdNum);
-
-        // messageId глобально уникален: ищем и удаляем во всех текущих структурах,
-        // не привязываясь к chatId-сравнению (на случай расхождения форматов id).
-        var idx = messages.findIndex(function (m) { return Number(m.id) === msgIdNum; });
-        if (idx >= 0) messages.splice(idx, 1);
-        if (idx >= 0) renderMessages();
-
-        // Обновляем lastMessage чат-листа для всех чатов, где это сообщение последнее.
-        var anyChatTouched = false;
-        chats.forEach(function (c) {
-            if (c.lastMessage && Number(c.lastMessage.id) === msgIdNum) anyChatTouched = true;
-        });
-        if (anyChatTouched) loadChats(true);
-
-        if (BF.pinned && BF.pinned.applyMessageDeleted) BF.pinned.applyMessageDeleted(msgIdNum);
-    }
-
-    // --- Delete confirm cancel ---
-    if (deleteMsgCancel) {
-        deleteMsgCancel.addEventListener('click', function () {
-            if (deleteMsgConfirmOverlay) BF.utils.closeOverlay(deleteMsgConfirmOverlay);
-            if (deleteMsgOk) deleteMsgOk.onclick = null;
-        });
-    }
-    if (deleteMsgConfirmOverlay) {
-        deleteMsgConfirmOverlay.addEventListener('click', function (e) {
-            if (e.target === deleteMsgConfirmOverlay) {
-                BF.utils.closeOverlay(deleteMsgConfirmOverlay);
-                if (deleteMsgOk) deleteMsgOk.onclick = null;
-            }
-        });
-    }
-
-    // --- Forward dialog ---
     BF.forward.init({
         getChats: function () { return chats; },
         showToast: showToast
@@ -1205,7 +1034,7 @@
         setReply: setPendingReply,
         setEdit: setPendingEdit,
         forward: BF.forward.open,
-        requestDelete: requestDelete,
+        requestDelete: BF.messageEvents.requestDelete,
         showToast: showToast
     });
     var closeContextMenu = BF.messageMenu.close;
