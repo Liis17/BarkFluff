@@ -173,24 +173,6 @@
                 android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/loginModeLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:labelFor="@id/loginModeButton"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="@string/login_mode_title"
-                    android:textAppearance="@style/TextAppearance.Barkfluff.Register.FieldLabel" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/loginModeButton"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/login_field_height"
-                    android:text="@string/login_mode_password"
-                    android:textAllCaps="false" />
-
-                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:labelFor="@id/usernameEditText"
@@ -365,6 +347,25 @@
                     app:trackThickness="3dp" />
 
             </FrameLayout>
+
+            <TextView
+                android:id="@+id/loginModeLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/loginModeButton"
+                android:layout_marginStart="6dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/login_mode_title"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Register.FieldLabel" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/loginModeButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/login_field_height"
+                android:text="@string/login_mode_password"
+                android:textAllCaps="false" />
 
             <!-- Фиксированный ритм отделяет CTA от вторичного действия без пустого экрана. -->
             <View
