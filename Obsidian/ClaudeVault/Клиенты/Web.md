@@ -87,6 +87,7 @@ origin, сопоставить ключ нечем — вход потребуе
 
 ### Транспорт и авторизация
 - `js/app/network.js` (`BF.network.unary`) — единый bounded primitive для callback-style gRPC-Web unary. Он пересчитывает абсолютный `deadline` на каждую попытку, уважает общий бюджет, связывает `AbortSignal` с `call.cancel()` и нормализует ошибки в `timeout | cancelled | transport | grpc` с `code`, `retryable` и `outcomeUnknown`. Promise сначала reject'ится, затем call отменяется; поздний callback игнорируется.
+- Если unary завершился без data frame и `grpc-status`, библиотека grpc-web возвращает `Incomplete response`; Web-шлюз должен переносить статусы YARP в trailer-frame тела (см. [[Backend/Web]]).
 - Политики явные: `READ` — 12 с на попытку, 35 с общий бюджет, до 3 попыток для 2/4/14 и transport error с full jitter 250 мс→2 с; `REFRESH` — 10 с, до 2 попыток только transport/14; `DRAFT` — 8 с, до 3 попыток; `MUTATION` — 15 с и одна попытка. Все unary в `api.js` классифицированы; server-streaming остаётся на своём watchdog/reconnect.
 - gRPC-Web клиенты создаются в `js/app/clients.js`: `new window.barkfluff.<Service>ApiClient(BF.node.origin())`, складываются в `BF.clients` (`identity/users/messages/files/updates/onliner/fastAuth/calls`). Без выбранной ноды модуль редиректит на `/` до создания клиентов.
 - `auth.js`, `fast-auth.js`, `register.js`, `nodepicker.js`, `node.js` и `legal.js` держат **собственные** клиенты, но тоже вызывают их через `BF.network.unary`. На шелле ноду выбирают на той же странице, поэтому origin известен только к моменту первого вызова.
