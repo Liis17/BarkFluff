@@ -34,6 +34,7 @@ TECHNICAL_LINE = re.compile(
 STRING_LITERAL = re.compile(r'""".*?"""|"(?:\\.|[^"\\])*"', re.DOTALL)
 PLACEHOLDER = re.compile(r"%(?!%)(?:\d+\$)?[0-9.+\-()]*[a-zA-Z]")
 ALPHABETIC = re.compile(r"[A-Za-zА-Яа-яЁё]")
+KOTLIN_ESCAPED_CONTROL = re.compile(r"(?<!\\)(?:\\\\)*\\[btnr]")
 
 
 def local_name(name: str) -> str:
@@ -235,6 +236,12 @@ def strip_comments(source: str) -> str:
     return "".join(result)
 
 
+def has_alphabetic_kotlin_text(value: str, raw_string: bool) -> bool:
+    if not raw_string:
+        value = KOTLIN_ESCAPED_CONTROL.sub("", value)
+    return bool(ALPHABETIC.search(value))
+
+
 def check_kotlin(source_root: Path) -> list[str]:
     errors: list[str] = []
     for kotlin_file in sorted(source_root.rglob("*.kt")):
@@ -242,8 +249,9 @@ def check_kotlin(source_root: Path) -> list[str]:
         lines = source.splitlines()
         for match in STRING_LITERAL.finditer(source):
             literal = match.group(0)
-            value = literal[3:-3] if literal.startswith('"""') else literal[1:-1]
-            if not ALPHABETIC.search(value):
+            raw_string = literal.startswith('"""')
+            value = literal[3:-3] if raw_string else literal[1:-1]
+            if not has_alphabetic_kotlin_text(value, raw_string):
                 continue
 
             line_index = source.count("\n", 0, match.start())
