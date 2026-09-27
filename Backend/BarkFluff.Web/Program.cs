@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Web.Infrastructure;
 
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -252,6 +253,11 @@ app.Use(async (ctx, next) =>
 
     // --- ОТВЕТ: потоковая конвертация gRPC → gRPC-Web ---
     var originalResponseBody = ctx.Response.Body;
+    var originalTrailersFeature = ctx.Features.Get<IHttpResponseTrailersFeature>();
+    var grpcWebTrailersFeature = new GrpcWebResponseTrailersFeature();
+    // Входящий HTTP/1.1 может не поддерживать response trailers. Буферный feature
+    // заставляет YARP скопировать сюда трейлеры backend gRPC/HTTP2 для trailer-frame.
+    ctx.Features.Set<IHttpResponseTrailersFeature>(grpcWebTrailersFeature);
 
     // Перехватываем grpc-трейлеры, которые YARP продвигает в заголовки ответа
     var promotedTrailers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -287,40 +293,25 @@ app.Use(async (ctx, next) =>
     var bufferingFeature = ctx.Features.Get<IHttpResponseBodyFeature>();
     bufferingFeature?.DisableBuffering();
 
-    await next();
-
-    ctx.Response.Body = originalResponseBody;
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        ctx.Response.Body = originalResponseBody;
+        ctx.Features.Set<IHttpResponseTrailersFeature>(originalTrailersFeature);
+    }
 
     // Собираем трейлеры и отправляем trailer-frame
     var trailerHeaders = new Dictionary<string, string>(promotedTrailers, StringComparer.OrdinalIgnoreCase);
-    var trailerFeature = ctx.Features.Get<IHttpResponseTrailersFeature>();
-    if (trailerFeature?.Trailers != null)
+    foreach (var kvp in grpcWebTrailersFeature.Trailers)
     {
-        foreach (var kvp in trailerFeature.Trailers)
-            trailerHeaders[kvp.Key.ToString()] = kvp.Value.ToString();
+        trailerHeaders[kvp.Key] = kvp.Value.ToString();
     }
 
-    var trailerSb = new StringBuilder();
-    foreach (var (k, v) in trailerHeaders)
-        trailerSb.Append(k).Append(": ").Append(v).Append("\r\n");
-    var trailerData = Encoding.UTF8.GetBytes(trailerSb.ToString());
-    var trailerFrame = new byte[5 + trailerData.Length];
-    trailerFrame[0] = 0x80;
-    var lenBuf = BitConverter.GetBytes((uint)trailerData.Length);
-    if (BitConverter.IsLittleEndian) Array.Reverse(lenBuf);
-    lenBuf.CopyTo(trailerFrame, 1);
-    trailerData.CopyTo(trailerFrame, 5);
-
-    if (isGrpcWebText)
-    {
-        var b64Trailer = Encoding.ASCII.GetBytes(Convert.ToBase64String(trailerFrame));
-        await originalResponseBody.WriteAsync(b64Trailer);
-    }
-    else
-    {
-        await originalResponseBody.WriteAsync(trailerFrame);
-    }
-
+    var trailerFrame = GrpcWebTrailerFrame.CreateFrame(trailerHeaders, isGrpcWebText);
+    await originalResponseBody.WriteAsync(trailerFrame);
     await originalResponseBody.FlushAsync();
 });
 

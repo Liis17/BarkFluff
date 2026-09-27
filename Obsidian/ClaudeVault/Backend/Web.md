@@ -60,12 +60,12 @@ origin вызывающего заранее неизвестен, вести с
 
 ## gRPC-Web трейлеры (grpc-status) — критично
 
-Браузерный gRPC-Web (connect-es) ждёт `grpc-status` **в trailer-frame тела** (последний фрейм с флагом `0x80`), а не в HTTP-трейлерах. Middleware (`Program.cs:178-248`) собирает этот фрейм из **двух** источников:
+Браузерный gRPC-Web ждёт `grpc-status` **в trailer-frame тела** (последний фрейм с флагом `0x80`), а не в HTTP-трейлерах. Middleware собирает этот фрейм из нескольких источников:
 
 1. **promotedTrailers** — `grpc-status`/`grpc-message`/`grpc-status-details-bin`/`x-error-code`, продвинутые YARP в *заголовки* ответа; ловятся в `OnStarting` и удаляются из заголовков. Покрывает **trailers-only** случай: бизнес-ошибки (`OtpCodeNeedException` и пр.) бэкенд отдаёт через `RpcException` → статус летит в HTTP/2-**заголовках**.
-2. **IHttpResponseTrailersFeature.Trailers** — читаются после `await next()` и мёржатся поверх promotedTrailers (для успешных ответов, где Kestrel отдаёт реальные HTTP-трейлеры).
+2. **`GrpcWebResponseTrailersFeature`** — на время проксирования заменяет response-trailers feature на буферный. Благодаря этому YARP считает, что downstream принимает трейлеры, и копирует в буфер HTTP/2-трейлеры Identity даже если внешний HTTP/1.1 listener Web не поддерживает HTTP response trailers.
 
-Оба словаря объединяются в `trailerHeaders`, сериализуются в `key: value\r\n` и пишутся trailer-frame'ом (флаг `0x80`, для grpc-web-text — base64).
+Оба источника объединяются в `trailerHeaders`, сериализуются в `key: value\r\n` и пишутся trailer-frame'ом (флаг `0x80`, для grpc-web-text — base64). Без `grpc-status` браузерный клиент показывает `Incomplete response`, хотя HTTP-ответ может иметь статус `200`; клиентский транспорт описан в [[Клиенты/Web]].
 
 ## YARP Routes
 

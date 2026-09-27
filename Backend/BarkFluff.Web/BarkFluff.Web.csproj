@@ -34,6 +34,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="BarkFluff.Web.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Update="wwwroot\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
