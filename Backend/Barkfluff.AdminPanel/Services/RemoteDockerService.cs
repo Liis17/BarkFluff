@@ -36,6 +36,51 @@ public class RemoteDockerService
         .Select(ToDto)
         .ToList();
 
+    public IReadOnlyList<RemoteSshQuickActionDto> GetQuickActions(Guid serverId)
+    {
+        RequireServer(serverId);
+        return _db.QuickActions.Find(x => x.ServerId == serverId)
+            .OrderBy(x => x.Name)
+            .Select(ToDto)
+            .ToList();
+    }
+
+    public RemoteSshQuickActionDto CreateQuickAction(Guid serverId, SaveRemoteSshQuickActionRequest request)
+    {
+        RequireServer(serverId);
+        ValidateQuickActionRequest(request);
+
+        var action = new RemoteSshQuickAction
+        {
+            ServerId = serverId,
+            Name = request.Name.Trim(),
+            Commands = request.Commands
+        };
+        _db.QuickActions.Insert(action);
+        return ToDto(action);
+    }
+
+    public RemoteSshQuickActionDto? UpdateQuickAction(Guid serverId, Guid actionId, SaveRemoteSshQuickActionRequest request)
+    {
+        RequireServer(serverId);
+        var action = _db.QuickActions.FindById(actionId);
+        if (action is null || action.ServerId != serverId)
+            return null;
+
+        ValidateQuickActionRequest(request);
+        action.Name = request.Name.Trim();
+        action.Commands = request.Commands;
+        _db.QuickActions.Update(action);
+        return ToDto(action);
+    }
+
+    public bool DeleteQuickAction(Guid serverId, Guid actionId)
+    {
+        RequireServer(serverId);
+        var action = _db.QuickActions.FindById(actionId);
+        return action is not null && action.ServerId == serverId && _db.QuickActions.Delete(actionId);
+    }
+
     public async Task<RemoteServerDto> CreateServerAsync(SaveRemoteServerRequest request, CancellationToken cancellationToken = default)
     {
         ValidateServerRequest(request, passwordRequired: true);
@@ -80,6 +125,7 @@ public class RemoteDockerService
     public bool DeleteServer(Guid serverId)
     {
         _db.Containers.DeleteMany(x => x.ServerId == serverId);
+        _db.QuickActions.DeleteMany(x => x.ServerId == serverId);
         return _db.Servers.Delete(serverId);
     }
 
@@ -351,6 +397,18 @@ public class RemoteDockerService
             throw new ArgumentException("SSH-пароль обязателен");
     }
 
+    private static void ValidateQuickActionRequest(SaveRemoteSshQuickActionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            throw new ArgumentException("Укажите название SSH-действия");
+        if (request.Name.Trim().Length > 80)
+            throw new ArgumentException("Название SSH-действия не должно превышать 80 символов");
+        if (string.IsNullOrWhiteSpace(request.Commands))
+            throw new ArgumentException("Укажите хотя бы одну SSH-команду");
+        if (request.Commands.Length > 10000)
+            throw new ArgumentException("Последовательность команд не должна превышать 10000 символов");
+    }
+
     private static void ThrowIfFailed(RemoteSshCommandResult result, string message)
     {
         if (result.ExitCode != 0)
@@ -359,6 +417,9 @@ public class RemoteDockerService
 
     private static RemoteServerDto ToDto(RemoteServer server) => new(server.Id, server.Name, server.Host, server.Port,
         server.Username, !string.IsNullOrWhiteSpace(server.Password), server.CreatedAtUtc, server.UpdatedAtUtc);
+
+    private static RemoteSshQuickActionDto ToDto(RemoteSshQuickAction action) =>
+        new(action.Id, action.Name, action.Commands);
 
     private static RemoteContainerStatusDto ToStatusDto(RemoteContainer container, string state, string status) => new()
     {
