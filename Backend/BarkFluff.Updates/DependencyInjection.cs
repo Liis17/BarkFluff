@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddSingleton<Features.SubscribeMessagesPinned.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribeMessagesUnpinned.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribeAllMessagesUnpinned.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeChatHidden.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribePrivateMessages.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribePrivateMessageEdits.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribePrivateMessageDeletes.StreamSubscriptionsManager>();
