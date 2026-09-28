@@ -61,6 +61,8 @@ service IdentityApi {
   rpc CancelAuthChallenge(AuthChallengeReference) returns(AuthChallengeResponse);
   rpc ResendAuthChallenge(AuthChallengeReference) returns(AuthChallengeResponse);
   rpc GetSecuritySettings(GetSecuritySettingsRequest) returns(SecuritySettingsResponse);
+  rpc GetLoginNotificationSettings(GetLoginNotificationSettingsRequest) returns(LoginNotificationSettingsResponse);
+  rpc SetLoginNotificationChannel(SetLoginNotificationChannelRequest) returns(LoginNotificationSettingsResponse);
   rpc BeginReauthentication(BeginReauthenticationRequest) returns(AuthChallengeResponse);
   rpc UpdateSecuritySettings(UpdateSecuritySettingsRequest) returns(SecuritySettingsResponse);
   rpc BeginTelegramBinding(SecurityProofRequest) returns(AuthChallengeResponse);
@@ -403,6 +405,15 @@ message CompleteAuthChallengeResponse {
   string error_code = 5;
 }
 message GetSecuritySettingsRequest { }
+message GetLoginNotificationSettingsRequest { }
+message SetLoginNotificationChannelRequest {
+  LoginNotificationChannel channel = 1;
+}
+message LoginNotificationSettingsResponse {
+  LoginNotificationChannel channel = 1;
+  bool email_available = 2;
+  bool telegram_available = 3;
+}
 message SecuritySettingsResponse {
   AuthLoginMode login_mode = 1;
   OtpTypeId preferred_factor = 2;
@@ -416,6 +427,11 @@ message SecuritySettingsResponse {
   string verified_email = 10;
   int32 remaining_recovery_codes = 11;
   repeated string recovery_codes = 12;
+}
+enum LoginNotificationChannel {
+  LOGIN_NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  LOGIN_NOTIFICATION_CHANNEL_EMAIL = 1;
+  LOGIN_NOTIFICATION_CHANNEL_TELEGRAM = 2;
 }
 message BeginReauthenticationRequest {
   string password = 1;

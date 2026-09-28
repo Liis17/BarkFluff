@@ -103,7 +103,8 @@ parameterless-конструктора exception или физического �
 - `identity_api.proto` — Client (JWT-валидация)
 - Канонический источник опубликованных файлов — `Shared/BarkFluff.Proto/`; backend output
   собирается явным списком из 10 файлов. Изменения в proto и `Shared.Exceptions` запускают
-  Developers CI вместе с backend-тестами и frontend generation/drift-check.
+  Developers CI вместе с backend-тестами; frontend build автоматически синхронизирует proto
+  snapshot и генерирует TypeScript-контракты из канонических файлов.
 
 ## Docker
 

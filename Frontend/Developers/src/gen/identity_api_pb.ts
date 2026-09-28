@@ -127,6 +127,32 @@ proto3.util.setEnumType(AuthChallengeState, "barkfluff.identity.AuthChallengeSta
 ]);
 
 /**
+ * @generated from enum barkfluff.identity.LoginNotificationChannel
+ */
+export enum LoginNotificationChannel {
+  /**
+   * @generated from enum value: LOGIN_NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: LOGIN_NOTIFICATION_CHANNEL_EMAIL = 1;
+   */
+  EMAIL = 1,
+
+  /**
+   * @generated from enum value: LOGIN_NOTIFICATION_CHANNEL_TELEGRAM = 2;
+   */
+  TELEGRAM = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(LoginNotificationChannel)
+proto3.util.setEnumType(LoginNotificationChannel, "barkfluff.identity.LoginNotificationChannel", [
+  { no: 0, name: "LOGIN_NOTIFICATION_CHANNEL_UNSPECIFIED" },
+  { no: 1, name: "LOGIN_NOTIFICATION_CHANNEL_EMAIL" },
+  { no: 2, name: "LOGIN_NOTIFICATION_CHANNEL_TELEGRAM" },
+]);
+
+/**
  * @generated from message barkfluff.identity.CreateSessionForUserServerRequest
  */
 export class CreateSessionForUserServerRequest extends Message<CreateSessionForUserServerRequest> {
@@ -2663,6 +2689,123 @@ export class GetSecuritySettingsRequest extends Message<GetSecuritySettingsReque
 
   static equals(a: GetSecuritySettingsRequest | PlainMessage<GetSecuritySettingsRequest> | undefined, b: GetSecuritySettingsRequest | PlainMessage<GetSecuritySettingsRequest> | undefined): boolean {
     return proto3.util.equals(GetSecuritySettingsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.GetLoginNotificationSettingsRequest
+ */
+export class GetLoginNotificationSettingsRequest extends Message<GetLoginNotificationSettingsRequest> {
+  constructor(data?: PartialMessage<GetLoginNotificationSettingsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.GetLoginNotificationSettingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetLoginNotificationSettingsRequest {
+    return new GetLoginNotificationSettingsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetLoginNotificationSettingsRequest {
+    return new GetLoginNotificationSettingsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetLoginNotificationSettingsRequest {
+    return new GetLoginNotificationSettingsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetLoginNotificationSettingsRequest | PlainMessage<GetLoginNotificationSettingsRequest> | undefined, b: GetLoginNotificationSettingsRequest | PlainMessage<GetLoginNotificationSettingsRequest> | undefined): boolean {
+    return proto3.util.equals(GetLoginNotificationSettingsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.SetLoginNotificationChannelRequest
+ */
+export class SetLoginNotificationChannelRequest extends Message<SetLoginNotificationChannelRequest> {
+  /**
+   * @generated from field: barkfluff.identity.LoginNotificationChannel channel = 1;
+   */
+  channel = LoginNotificationChannel.UNSPECIFIED;
+
+  constructor(data?: PartialMessage<SetLoginNotificationChannelRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.SetLoginNotificationChannelRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "channel", kind: "enum", T: proto3.getEnumType(LoginNotificationChannel) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetLoginNotificationChannelRequest {
+    return new SetLoginNotificationChannelRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetLoginNotificationChannelRequest {
+    return new SetLoginNotificationChannelRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetLoginNotificationChannelRequest {
+    return new SetLoginNotificationChannelRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetLoginNotificationChannelRequest | PlainMessage<SetLoginNotificationChannelRequest> | undefined, b: SetLoginNotificationChannelRequest | PlainMessage<SetLoginNotificationChannelRequest> | undefined): boolean {
+    return proto3.util.equals(SetLoginNotificationChannelRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.LoginNotificationSettingsResponse
+ */
+export class LoginNotificationSettingsResponse extends Message<LoginNotificationSettingsResponse> {
+  /**
+   * @generated from field: barkfluff.identity.LoginNotificationChannel channel = 1;
+   */
+  channel = LoginNotificationChannel.UNSPECIFIED;
+
+  /**
+   * @generated from field: bool email_available = 2;
+   */
+  emailAvailable = false;
+
+  /**
+   * @generated from field: bool telegram_available = 3;
+   */
+  telegramAvailable = false;
+
+  constructor(data?: PartialMessage<LoginNotificationSettingsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.LoginNotificationSettingsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "channel", kind: "enum", T: proto3.getEnumType(LoginNotificationChannel) },
+    { no: 2, name: "email_available", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "telegram_available", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LoginNotificationSettingsResponse {
+    return new LoginNotificationSettingsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LoginNotificationSettingsResponse {
+    return new LoginNotificationSettingsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LoginNotificationSettingsResponse {
+    return new LoginNotificationSettingsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LoginNotificationSettingsResponse | PlainMessage<LoginNotificationSettingsResponse> | undefined, b: LoginNotificationSettingsResponse | PlainMessage<LoginNotificationSettingsResponse> | undefined): boolean {
+    return proto3.util.equals(LoginNotificationSettingsResponse, a, b);
   }
 }
 
