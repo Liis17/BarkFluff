@@ -229,6 +229,75 @@
             display: flex;
             flex-direction: column;
             z-index: 10;
+            transition: width 0.15s ease;
+        }
+
+        /* === SIDEBAR RESIZE (drag граница + компакт-режим) === */
+
+        .sidebar-resizer {
+            position: absolute;
+            left: calc(var(--sidebar-width) + 3px - 4px);
+            top: 3px;
+            bottom: 3px;
+            width: 8px;
+            cursor: col-resize;
+            z-index: 11;
+        }
+
+        .sidebar-resizer::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            transform: translateX(-50%);
+            background: transparent;
+            border-radius: 1px;
+            transition: background 0.15s;
+        }
+
+        .sidebar-resizer:hover::after,
+        html.sidebar-resizing .sidebar-resizer::after {
+            background: var(--primary);
+        }
+
+        html.sidebar-resizing,
+        html.sidebar-resizing .sidebar-resizer {
+            cursor: col-resize;
+        }
+
+        html.sidebar-resizing {
+            user-select: none;
+        }
+
+        html.sidebar-resizing .sidebar,
+        html.sidebar-resizing .chat-area {
+            transition: none;
+        }
+
+        /* Компакт-режим: сайдбар сужен настолько, что видны только аватары (как в Telegram) */
+        html.sidebar-compact .chat-item {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+            gap: 0;
+        }
+
+        html.sidebar-compact .chat-item .chat-info {
+            display: none;
+        }
+
+        html.sidebar-compact .search-container,
+        html.sidebar-compact .search-results,
+        html.sidebar-compact .folder-tabs,
+        html.sidebar-compact .newchat-fab,
+        html.sidebar-compact .newchat-menu {
+            display: none;
+        }
+
+        html.sidebar-compact .nav-btn > span:not(.nav-icon) {
+            display: none;
         }
 
         /* === SIDEBAR NAV (floating) === */
@@ -542,6 +611,7 @@
             position: relative;
             overflow: hidden;
             padding-left: calc(var(--sidebar-width) + 6px);
+            transition: padding-left 0.15s ease;
         }
 
         /* Контент чата над фоновыми слоями (.messages-bg-layer / .messages-bg-dim) */
@@ -4273,6 +4343,10 @@
                 z-index: 5;
                 /* Slide in/out */
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .sidebar-resizer {
+                display: none;
             }
 
             .chat-area {

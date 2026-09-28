@@ -32,6 +32,20 @@
         }
         var theme = getCookie('bf_theme') || 'light';
         document.documentElement.setAttribute('data-theme', theme);
+
+        // Применяем сохранённую ширину сайдбара синхронно, до первой отрисовки —
+        // иначе после асинхронной загрузки js-бандла будет виден скачок с дефолтных 340px.
+        try {
+            if (localStorage.getItem('bf_sidebar_compact') === '1') {
+                document.documentElement.classList.add('sidebar-compact');
+            } else {
+                var savedWidth = parseInt(localStorage.getItem('bf_sidebar_width'), 10);
+                if (savedWidth) {
+                    document.documentElement.style.setProperty('--sidebar-width', savedWidth + 'px');
+                }
+            }
+        } catch (_) { }
+
         window.__setTheme = function (t) {
             document.documentElement.setAttribute('data-theme', t);
             setCookie('bf_theme', t, 365);
@@ -86,6 +100,8 @@
                 </button>
             </div>
         </div>
+
+        <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Изменить ширину списка чатов"></div>
 
         <div class="connection-banner" id="connectionBanner" role="status" aria-live="polite">
             <span class="connection-banner-icon" aria-hidden="true">&#9888;</span>

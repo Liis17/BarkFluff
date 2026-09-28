@@ -416,6 +416,7 @@
 
     BF.settings.init({ myUserId: myUserId });
     BF.attach.init();
+    BF.sidebarResize.init();
     if (BF.pendingSends) {
         BF.pendingSends.init(myUserId);
         BF.sendQueue.restorePendingSends();
