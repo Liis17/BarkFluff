@@ -34,6 +34,7 @@ public static class ChatMapping
             PrivateInviteState = (BarkFluff.Proto.Shared.PrivateChatInviteState)chat.PrivateInviteState,
             PrivateInviterUserId = chat.PrivateInviterUserId ?? 0,
             HasDraft = chat.HasDraft,
+            IsFederated = chat.IsFederated,
         };
     }
 }

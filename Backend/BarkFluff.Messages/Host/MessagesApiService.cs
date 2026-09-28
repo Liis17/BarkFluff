@@ -4,6 +4,7 @@ using BarkFluff.Messages.Features.AckSecretMessage;
 using BarkFluff.Messages.Features.AddUser;
 using BarkFluff.Messages.Features.CreateGroupChat;
 using BarkFluff.Messages.Features.CreatePrivateChat;
+using BarkFluff.Messages.Features.DeleteChat;
 using BarkFluff.Messages.Features.DeleteChatDraft;
 using BarkFluff.Messages.Features.DeleteMessage;
 using BarkFluff.Messages.Features.DeletePrivateMessage;
@@ -13,6 +14,7 @@ using BarkFluff.Messages.Features.GetChatInfo;
 using BarkFluff.Messages.Features.GetChatDraft;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
+using BarkFluff.Messages.Features.LeaveChat;
 using BarkFluff.Messages.Features.ListChatAttachments;
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
@@ -220,6 +222,37 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         await _mediator.Send(command);
 
         return new AddUserResponse();
+    }
+
+    public override async Task<DeleteChatResponse> DeleteChat(DeleteChatRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new DeleteChatCommand
+        {
+            ChatId = chatId,
+            DeleteForEveryone = request.DeleteForEveryone
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<LeaveChatResponse> LeaveChat(LeaveChatRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new LeaveChatCommand
+        {
+            ChatId = chatId
+        };
+
+        return await _mediator.Send(command);
     }
 
     public override async Task<UpdateGroupChatResponse> UpdateGroupChat(UpdateGroupChatRequest request, ServerCallContext context)

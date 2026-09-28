@@ -269,6 +269,34 @@ public class MessagesStorage
         await _context.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// DeleteChat(delete_for_everyone=true): та же очистка, что делает DeleteMessage
+    /// для одного сообщения (IsDeleted + ClearContent), применённая ко всем ещё
+    /// неудалённым сообщениям чата одним SaveChanges. Возвращает id очищенных сообщений
+    /// (для рассылки MessageUnpinnedEvent по тем из них, что были закреплены).
+    /// </summary>
+    public async Task<List<long>> SoftDeleteAllInChatAsync(Guid chatId)
+    {
+        var messages = await _context.Messages
+            .Where(m => m.ChatId == chatId && !m.IsDeleted)
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+        foreach (var message in messages)
+        {
+            message.IsDeleted = true;
+            message.ClearContent();
+            message.LastChangeAt = now;
+        }
+
+        if (messages.Count > 0)
+        {
+            await _context.SaveChangesAsync();
+        }
+
+        return messages.Select(m => m.Id).ToList();
+    }
+
     public async Task MarkMessagesAsRead(List<long> messageIds, long userId)
     {
         if (_context.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
