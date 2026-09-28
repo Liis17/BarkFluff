@@ -12,6 +12,14 @@ public class SaveRemoteServerRequest
 public record RemoteServerDto(Guid Id, string Name, string Host, int Port, string Username,
     bool IsPasswordConfigured, DateTime CreatedAtUtc, DateTime UpdatedAtUtc);
 
+public class SaveRemoteSshQuickActionRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Commands { get; set; } = string.Empty;
+}
+
+public record RemoteSshQuickActionDto(Guid Id, string Name, string Commands);
+
 public record AddRemoteContainerRequest(string ContainerName);
 
 public class RemoteContainerStatusDto
