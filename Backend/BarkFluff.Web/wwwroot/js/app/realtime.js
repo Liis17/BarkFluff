@@ -27,6 +27,7 @@
     var pinnedStream = null;
     var unpinnedStream = null;
     var allUnpinnedStream = null;
+    var chatHiddenStream = null;
     var privateMsgStream = null;
     var onlineStream = null;
     var typingStream = null;
@@ -39,6 +40,7 @@
     var pinnedBackoff = 2000;
     var unpinnedBackoff = 2000;
     var allUnpinnedBackoff = 2000;
+    var chatHiddenBackoff = 2000;
     var privateMsgBackoff = 2000;
     var onlineBackoff = 2000;
     var typingBackoff = 2000;
@@ -60,6 +62,7 @@
     var pinnedAgeTimer  = null;
     var unpinnedAgeTimer = null;
     var allUnpinnedAgeTimer = null;
+    var chatHiddenAgeTimer = null;
     var privateMsgAgeTimer = null;
     var onlineAgeTimer  = null;
     var typingAgeTimer  = null;
@@ -71,6 +74,7 @@
     var pinnedOpenedAt  = 0;
     var unpinnedOpenedAt = 0;
     var allUnpinnedOpenedAt = 0;
+    var chatHiddenOpenedAt = 0;
     var privateMsgOpenedAt = 0;
     var onlineOpenedAt  = 0;
     var typingOpenedAt  = 0;
@@ -83,6 +87,7 @@
     var pinnedLastActivity  = 0;
     var unpinnedLastActivity = 0;
     var allUnpinnedLastActivity = 0;
+    var chatHiddenLastActivity = 0;
     var privateMsgLastActivity = 0;
     var onlineLastActivity  = 0;
     var typingLastActivity  = 0;
@@ -709,6 +714,63 @@
         }, function () { handleNoToken(); });
     }
 
+    // DeleteChat: чат скрыт/удалён (contentWiped=true — также стёрт контент сообщений).
+    function subscribeChatHidden(forceRefresh) {
+        var generation = beginSubscription('chatHidden');
+        if (generation === null) return;
+        getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart('chatHidden', generation); return; }
+            finishSubscriptionStart('chatHidden', generation);
+            if (!token) { handleNoToken(); return; }
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto.SubscribeChatHiddenRequest();
+
+            if (chatHiddenStream) { try { chatHiddenStream.cancel(); } catch (e) {} }
+            clearRetry('chatHidden');
+            var stream = chatHiddenStream = BF.clients.updates.subscribeChatHidden(req, meta);
+            chatHiddenOpenedAt = Date.now();
+            if (chatHiddenAgeTimer) clearTimeout(chatHiddenAgeTimer);
+            chatHiddenAgeTimer = setTimeout(function () {
+                if (_started) subscribeChatHidden(false);
+            }, STREAM_MAX_AGE);
+
+            chatHiddenLastActivity = Date.now();
+
+            chatHiddenStream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || chatHiddenStream !== stream) return;
+                chatHiddenBackoff = INITIAL_BACKOFF;
+                chatHiddenLastActivity = Date.now();
+                emit('chat_hidden', { chatId: evt.getChatId(), contentWiped: evt.getContentWiped() });
+            });
+
+            chatHiddenStream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || chatHiddenStream !== stream) return;
+                chatHiddenLastActivity = Date.now();
+                if (status && status.code === 0) chatHiddenBackoff = INITIAL_BACKOFF;
+            });
+
+            chatHiddenStream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || chatHiddenStream !== stream) return;
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    scheduleReconnect('chatHidden', function () { subscribeChatHidden(true); }, 0);
+                } else {
+                    scheduleReconnect('chatHidden', function () { subscribeChatHidden(false); }, chatHiddenBackoff);
+                    chatHiddenBackoff = Math.min(chatHiddenBackoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            chatHiddenStream.on('end', function () {
+                if (generation !== _reconnectGeneration || chatHiddenStream !== stream) return;
+                if (Date.now() - chatHiddenOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    chatHiddenBackoff = INITIAL_BACKOFF;
+                }
+                if (_started) scheduleReconnect('chatHidden', function () { subscribeChatHidden(false); }, chatHiddenBackoff);
+            });
+        }, function () { handleNoToken(); });
+    }
+
     // --- Updates: новые сообщения приватных чатов (шифротекст; расшифровка в UI) ---
 
     function subscribePrivateMessages(forceRefresh) {
@@ -994,6 +1056,10 @@
             console.warn('[realtime] watchdog: all-messages-unpinned stream silent, reconnecting');
             subscribeAllMessagesUnpinned();
         }
+        if (chatHiddenStream && (now - chatHiddenLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: chat-hidden stream silent, reconnecting');
+            subscribeChatHidden();
+        }
         if (privateMsgStream && (now - privateMsgLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
             console.warn('[realtime] watchdog: private-messages stream silent, reconnecting');
             subscribePrivateMessages();
@@ -1037,6 +1103,7 @@
             if (!pinnedStream) subscribeMessagesPinned();
             if (!unpinnedStream) subscribeMessagesUnpinned();
             if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
+            if (!chatHiddenStream) subscribeChatHidden();
             if (!privateMsgStream) subscribePrivateMessages();
             if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
             if (currentTypingChatId && !typingStream) subscribeTyping(currentTypingChatId);
@@ -1075,6 +1142,7 @@
         pinnedBackoff = INITIAL_BACKOFF;
         unpinnedBackoff = INITIAL_BACKOFF;
         allUnpinnedBackoff = INITIAL_BACKOFF;
+        chatHiddenBackoff = INITIAL_BACKOFF;
         privateMsgBackoff = INITIAL_BACKOFF;
         onlineBackoff = INITIAL_BACKOFF;
         typingBackoff = INITIAL_BACKOFF;
@@ -1088,6 +1156,7 @@
         subscribeMessagesPinned();
         subscribeMessagesUnpinned();
         subscribeAllMessagesUnpinned();
+        subscribeChatHidden();
         subscribePrivateMessages();
         if (currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
         if (currentTypingChatId) subscribeTyping(currentTypingChatId);
@@ -1115,6 +1184,7 @@
         if (pinnedStream) { try { pinnedStream.cancel(); } catch (e) {} pinnedStream = null; }
         if (unpinnedStream) { try { unpinnedStream.cancel(); } catch (e) {} unpinnedStream = null; }
         if (allUnpinnedStream) { try { allUnpinnedStream.cancel(); } catch (e) {} allUnpinnedStream = null; }
+        if (chatHiddenStream) { try { chatHiddenStream.cancel(); } catch (e) {} chatHiddenStream = null; }
         if (privateMsgStream) { try { privateMsgStream.cancel(); } catch (e) {} privateMsgStream = null; }
         if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} onlineStream = null; }
         if (typingStream) { try { typingStream.cancel(); } catch (e) {} typingStream = null; }
@@ -1125,6 +1195,7 @@
         if (pinnedAgeTimer)  { clearTimeout(pinnedAgeTimer);  pinnedAgeTimer  = null; }
         if (unpinnedAgeTimer) { clearTimeout(unpinnedAgeTimer); unpinnedAgeTimer = null; }
         if (allUnpinnedAgeTimer) { clearTimeout(allUnpinnedAgeTimer); allUnpinnedAgeTimer = null; }
+        if (chatHiddenAgeTimer) { clearTimeout(chatHiddenAgeTimer); chatHiddenAgeTimer = null; }
         if (privateMsgAgeTimer) { clearTimeout(privateMsgAgeTimer); privateMsgAgeTimer = null; }
         if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
         if (typingAgeTimer)  { clearTimeout(typingAgeTimer);  typingAgeTimer  = null; }

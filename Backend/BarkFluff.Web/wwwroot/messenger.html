@@ -220,6 +220,22 @@
         </div>
     </div>
 
+    <!-- Удаление чата (личный/приватный) или выход из группового чата -->
+    <div class="confirm-overlay" id="deleteChatConfirmOverlay">
+        <div class="confirm-dialog">
+            <h3 id="deleteChatTitle"></h3>
+            <p id="deleteChatText"></p>
+            <label class="private-pass-remember" id="deleteChatForEveryoneRow" style="display:none">
+                <input type="checkbox" id="deleteChatForEveryone">
+                <span id="deleteChatForEveryoneLabel"></span>
+            </label>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" id="deleteChatCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="btn-confirm-ok" id="deleteChatOk" data-i18n="common.delete">Удалить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Создание чата (ЛС / группа / приватный) -->
     <div class="confirm-overlay" id="newChatOverlay">
         <div class="confirm-dialog newchat-dialog">

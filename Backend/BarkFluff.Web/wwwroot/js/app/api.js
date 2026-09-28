@@ -135,7 +135,8 @@
             // PrivateChatInviteState: 0=PENDING, 1=ACCEPTED, 2=REJECTED
             privateInviteState: ch.getPrivateInviteState ? ch.getPrivateInviteState() : 0,
             privateInviterUserId: ch.getPrivateInviterUserId ? ch.getPrivateInviterUserId() : 0,
-            hasDraft: ch.getHasDraft ? ch.getHasDraft() : false
+            hasDraft: ch.getHasDraft ? ch.getHasDraft() : false,
+            isFederated: ch.getIsFederated ? ch.getIsFederated() : false
         };
     }
 
@@ -399,6 +400,22 @@
         req.setChatId(chatId);
         req.setUserId(userId);
         return mutationCall(messages().kickUser.bind(messages()), req);
+    }
+
+    // Личный/приватный чат. deleteForEveryone — чекбокс "удалить также для {имя}":
+    // дополнительно стирает контент сообщений у обоих (игнорируется для fed-DM на сервере).
+    function deleteChat(chatId, deleteForEveryone) {
+        var req = new (msgPb().DeleteChatRequest)();
+        req.setChatId(chatId);
+        req.setDeleteForEveryone(!!deleteForEveryone);
+        return mutationCall(messages().deleteChat.bind(messages()), req);
+    }
+
+    // Групповой чат — выход, не затрагивает остальных участников.
+    function leaveChat(chatId) {
+        var req = new (msgPb().LeaveChatRequest)();
+        req.setChatId(chatId);
+        return mutationCall(messages().leaveChat.bind(messages()), req);
     }
 
     function updateGroupChat(chatId, title, pictureFileId) {
@@ -1027,6 +1044,8 @@
         listChatMembers: listChatMembers,
         addUser: addUser,
         kickUser: kickUser,
+        deleteChat: deleteChat,
+        leaveChat: leaveChat,
         updateGroupChat: updateGroupChat,
         searchUsers: searchUsers,
         getUser: getUser,

@@ -1,7 +1,7 @@
 /**
  * Sidebar chat list: paged loading, windowed (virtualized) rendering, keyboard listbox navigation,
- * quiet catch-up refresh and the chat context menu (folders).
- * Requires: BF.api, BF.folders, BF.drafts, BF.i18n, BF.icons, BF.utils
+ * quiet catch-up refresh and the chat context menu (folders, delete chat / leave group).
+ * Requires: BF.api, BF.folders, BF.drafts, BF.i18n, BF.icons, BF.utils, BF.realtime
  * Exposes: BF.chatList
  */
 (function () {
@@ -13,6 +13,13 @@
     var u;
     var chatListEl;
     var chatContextMenu;
+    var deleteChatOverlay;
+    var deleteChatTitle;
+    var deleteChatText;
+    var deleteChatForEveryoneRow;
+    var deleteChatForEveryoneLabel;
+    var deleteChatForEveryoneCheckbox;
+    var deleteChatOk;
     var chatListUserIdsLoaded = new Set();
     var chatListOffset = 0;
     var chatListTotal = 0;
@@ -577,6 +584,71 @@
         }
 
         chatContextMenu.appendChild(menuItem('create-folder', null, BF.i18n.t('folder.create')));
+
+        var chat = deps.getChats().find(function (c) {
+            return c.id === chatId;
+        });
+        if (chat) {
+            var sep2 = document.createElement('div');
+            sep2.className = 'cm-separator';
+            sep2.setAttribute('role', 'separator');
+            chatContextMenu.appendChild(sep2);
+
+            var dangerBtn = menuItem(
+                chat.isGroupChat ? 'leave-chat' : 'delete-chat',
+                null,
+                BF.i18n.t(chat.isGroupChat ? 'chat.leave' : 'chat.delete')
+            );
+            dangerBtn.classList.add('cm-danger');
+            chatContextMenu.appendChild(dangerBtn);
+        }
+    }
+
+    // Личный/приватный (не группа, не fed-DM) — показываем чекбокс "удалить также для {имя}".
+    function openDeleteChatDialog(chatId) {
+        var chat = deps.getChats().find(function (c) {
+            return c.id === chatId;
+        });
+        if (!chat || !deleteChatOverlay) return;
+
+        var isGroup = chat.isGroupChat;
+        deleteChatTitle.textContent = BF.i18n.t(isGroup ? 'dialog.leaveChat.title' : 'dialog.deleteChat.title');
+        deleteChatText.textContent = BF.i18n.t(isGroup ? 'dialog.leaveChat.text' : 'dialog.deleteChat.text');
+        deleteChatOk.textContent = BF.i18n.t(isGroup ? 'chat.leave' : 'common.delete');
+
+        var showCheckbox = !isGroup && !chat.isFederated;
+        deleteChatForEveryoneCheckbox.checked = false;
+        deleteChatForEveryoneRow.style.display = showCheckbox ? '' : 'none';
+        if (showCheckbox) {
+            deleteChatForEveryoneLabel.textContent = BF.i18n.t('dialog.deleteChat.forEveryone', {
+                name: chat.title || ''
+            });
+        }
+
+        BF.utils.openOverlay(deleteChatOverlay);
+
+        deleteChatOk.onclick = function () {
+            deleteChatOk.disabled = true;
+            var action = isGroup
+                ? BF.api.leaveChat(chatId)
+                : BF.api.deleteChat(chatId, deleteChatForEveryoneCheckbox.checked);
+            action
+                .then(function () {
+                    var wasOpen = deps.getCurrentChatId && deps.getCurrentChatId() === chatId;
+                    return load(true).then(function () {
+                        if (wasOpen) window.location.href = '/messenger';
+                    });
+                })
+                .catch(function () {
+                    if (deps.showToast)
+                        deps.showToast(BF.i18n.t(isGroup ? 'error.leaveChat' : 'error.deleteChat'), true);
+                })
+                .finally(function () {
+                    deleteChatOk.disabled = false;
+                    BF.utils.closeOverlay(deleteChatOverlay);
+                    deleteChatOk.onclick = null;
+                });
+        };
     }
 
     // keyboard — открыто клавишей ContextMenu/Shift+F10: фокус сразу на первый пункт.
@@ -624,6 +696,36 @@
         u = BF.utils;
         chatListEl = $('#chatList');
         chatContextMenu = $('#chatContextMenu');
+        deleteChatOverlay = $('#deleteChatConfirmOverlay');
+        deleteChatTitle = $('#deleteChatTitle');
+        deleteChatText = $('#deleteChatText');
+        deleteChatForEveryoneRow = $('#deleteChatForEveryoneRow');
+        deleteChatForEveryoneLabel = $('#deleteChatForEveryoneLabel');
+        deleteChatForEveryoneCheckbox = $('#deleteChatForEveryone');
+        deleteChatOk = $('#deleteChatOk');
+        var deleteChatCancel = $('#deleteChatCancel');
+        if (deleteChatCancel) {
+            deleteChatCancel.addEventListener('click', function () {
+                if (deleteChatOverlay) BF.utils.closeOverlay(deleteChatOverlay);
+                if (deleteChatOk) deleteChatOk.onclick = null;
+            });
+        }
+        if (deleteChatOverlay) {
+            deleteChatOverlay.addEventListener('click', function (e) {
+                if (e.target === deleteChatOverlay) {
+                    BF.utils.closeOverlay(deleteChatOverlay);
+                    if (deleteChatOk) deleteChatOk.onclick = null;
+                }
+            });
+        }
+        if (BF.realtime) {
+            BF.realtime.on('chat_hidden', function (data) {
+                var wasOpen = deps.getCurrentChatId && deps.getCurrentChatId() === data.chatId;
+                load(true).then(function () {
+                    if (wasOpen) window.location.href = '/messenger';
+                });
+            });
+        }
         spacer = document.createElement('div');
         spacer.className = 'chat-list-spacer';
         spacer.setAttribute('role', 'none');
@@ -684,6 +786,10 @@
                 var folderId = btn.dataset.folderId || '';
                 var chatId = chatCmTargetId;
                 closeChatContextMenu();
+                if (act === 'delete-chat' || act === 'leave-chat') {
+                    if (chatId) openDeleteChatDialog(chatId);
+                    return;
+                }
                 if (!BF.folders) return;
                 if (act === 'add-folder' && folderId && chatId) {
                     BF.folders.addChatToFolder(folderId, chatId);
