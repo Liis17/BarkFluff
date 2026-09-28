@@ -238,4 +238,17 @@ public class MessageQueueSender
 
         await _publishEndpoint.Publish(allUnpinnedEvent);
     }
+
+    /// <summary>DeleteChat: скрытие чата у одного или обоих участников (см. ChatHiddenEvent).</summary>
+    public async Task SendChatHidden(Guid chatId, List<long> chatMembers, bool contentWiped)
+    {
+        var hiddenEvent = new ChatHiddenEvent
+        {
+            ChatId = chatId,
+            ChatMembers = chatMembers,
+            ContentWiped = contentWiped
+        };
+
+        await _publishEndpoint.Publish(hiddenEvent);
+    }
 }

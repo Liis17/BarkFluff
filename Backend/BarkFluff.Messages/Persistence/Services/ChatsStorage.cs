@@ -39,6 +39,7 @@ public class ChatsStorage
             .Select(c => new
             {
                 Chat = c,
+                MemberHiddenAt = c.Members!.Where(m => m.UserId == userId).Select(m => m.HiddenAt).FirstOrDefault(),
                 LastActivityAt = c.Type == ChatType.Private
                     ? _context.EncryptedMessages
                         .Where(m => m.ChatId == c.Id && !m.IsDeleted)
@@ -47,6 +48,9 @@ public class ChatsStorage
                         .Where(m => m.ChatId == c.Id && !m.IsDeleted)
                         .Max(m => (DateTime?)m.SentAt) ?? c.CreatedAt
             })
+            // DeleteChat: чат скрыт у этого пользователя, пока после HiddenAt не появится
+            // новое сообщение — тогда чат "воскресает" в списке без отдельного unhide-действия.
+            .Where(x => x.MemberHiddenAt == null || x.LastActivityAt > x.MemberHiddenAt)
             .OrderByDescending(x => x.LastActivityAt)
             .ThenBy(x => x.Chat.Id)
             .Skip(skip)
@@ -65,6 +69,7 @@ public class ChatsStorage
                 PrivateUserLowId = c.Chat.PrivateUserLowId,
                 PrivateUserHighId = c.Chat.PrivateUserHighId,
                 PrivateInviteState = c.Chat.PrivateInviteState,
+                IsFederated = c.Chat.IsFederated,
                 LastActivityAt = c.LastActivityAt,
                 CountUnread = c.Chat.Type == ChatType.Private
                     ? _context.EncryptedMessages.Count(m =>
@@ -181,11 +186,21 @@ public class ChatsStorage
         // Пустой PRIVATE чат — полноценный объект списка: он нужен создателю
         // до принятия инвайта и для идемпотентного повторного открытия.
         var count = await _context.Chats
-            .CountAsync(x => (x.Members.Any(c => c.UserId == userId)
+            .Where(x => (x.Members.Any(c => c.UserId == userId)
                     || (x.Type == ChatType.Private
                         && x.PrivateInviteState == PrivateChatInviteState.Pending
                         && (x.PrivateUserLowId == userId || x.PrivateUserHighId == userId))) &&
-                (x.Type == ChatType.Private || _context.Messages.Any(m => m.ChatId == x.Id && !m.IsDeleted)));
+                (x.Type == ChatType.Private || _context.Messages.Any(m => m.ChatId == x.Id && !m.IsDeleted)))
+            // DeleteChat: то же правило видимости, что и в GetUserChats — иначе total_count
+            // разойдётся со страницами списка.
+            .Where(x =>
+                x.Members.Where(m => m.UserId == userId).Select(m => m.HiddenAt).FirstOrDefault() == null
+                || (x.Type == ChatType.Private
+                    ? _context.EncryptedMessages.Any(m => m.ChatId == x.Id && !m.IsDeleted &&
+                        m.SentAt > x.Members.Where(mm => mm.UserId == userId).Select(mm => mm.HiddenAt).FirstOrDefault())
+                    : _context.Messages.Any(m => m.ChatId == x.Id && !m.IsDeleted &&
+                        m.SentAt > x.Members.Where(mm => mm.UserId == userId).Select(mm => mm.HiddenAt).FirstOrDefault())))
+            .CountAsync();
 
         return count;
     }
@@ -426,6 +441,28 @@ public class ChatsStorage
 
         _context.ChatMembers.Remove(chatMember);
         await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// DeleteChat: помечает чат скрытым для перечисленных участников (себя — всегда,
+    /// себя и собеседника — при delete_for_everyone). Чат "воскресает" в ListChats сам,
+    /// как только после этой метки появляется новое неудалённое сообщение.
+    /// </summary>
+    public async Task HideChatForUsers(Guid chatId, IReadOnlyCollection<long> userIds, DateTime hiddenAt)
+    {
+        var members = await _context.ChatMembers
+            .Where(x => x.ChatId == chatId && x.UserId != null && userIds.Contains(x.UserId.Value))
+            .ToListAsync();
+
+        foreach (var member in members)
+        {
+            member.HiddenAt = hiddenAt;
+        }
+
+        if (members.Count > 0)
+        {
+            await _context.SaveChangesAsync();
+        }
     }
 
     public async Task<ChatInfoDto?> GetChatInfo(Guid chatId, long userId)

@@ -20,4 +20,9 @@ public class ChatMember
 
     // Домен ноды remote-участника (punycode A-label lowercase); NULL для локального участника.
     public string? ServerName { get; set; }
+
+    // Момент, с которого чат скрыт у этого участника (DeleteChat). NULL = не скрыт.
+    // Чат снова становится видимым сам, как только появляется неудалённое сообщение
+    // с SentAt позже этой метки — отдельного действия "разскрыть" не требуется.
+    public DateTime? HiddenAt { get; set; }
 }

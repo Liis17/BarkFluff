@@ -30,6 +30,16 @@ service MessagesApi {
   // Добавить пользователя в групповой чат
   rpc AddUser(AddUserRequest) returns(AddUserResponse);
 
+  // Удалить личный/приватный чат (не для групп — см. LeaveChat). Без delete_for_everyone
+  // чат пропадает из списка только у вызывающего; с ним — дополнительно физически стирается
+  // контент всех сообщений чата у обоих участников. Для федеративных DM delete_for_everyone
+  // игнорируется (нет протокола синхронного стирания на удалённой ноде).
+  rpc DeleteChat(DeleteChatRequest) returns(DeleteChatResponse);
+
+  // Покинуть групповой чат (не для DM/приватных — см. DeleteChat). Чат и его сообщения
+  // пропадают только у вызывающего, остальные участники не затрагиваются.
+  rpc LeaveChat(LeaveChatRequest) returns(LeaveChatResponse);
+
   // Изменить групповой чат (название и/или аватар)
   rpc UpdateGroupChat(UpdateGroupChatRequest) returns(UpdateGroupChatResponse);
 
@@ -202,6 +212,19 @@ message AddUserRequest {
 
 message AddUserResponse { }
 
+message DeleteChatRequest {
+  string chat_id = 1; // Идентификатор чата (Regular DM или Private)
+  bool delete_for_everyone = 2; // "Удалить также для {имя}" — стирает контент сообщений у обоих
+}
+
+message DeleteChatResponse { }
+
+message LeaveChatRequest {
+  string chat_id = 1; // Идентификатор группового чата
+}
+
+message LeaveChatResponse { }
+
 message UpdateGroupChatRequest {
   string chat_id = 1; // Идентификатор чата
   string title = 2; // Новое название (пусто = не менять)
@@ -332,6 +355,11 @@ message Chat {
 
   // У текущего пользователя есть сохранённый черновик в этом обычном чате.
   bool has_draft = 17;
+
+  // Федеративный DM (между разными нодами BarkFluff). Клиент скрывает чекбокс
+  // "удалить также для {имя}" в DeleteChat для таких чатов — нет протокола
+  // синхронного стирания копии на чужой ноде.
+  bool is_federated = 18;
 }
 
 message ChatMember {
