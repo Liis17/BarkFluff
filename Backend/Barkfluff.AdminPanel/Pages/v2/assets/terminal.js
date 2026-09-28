@@ -355,6 +355,7 @@
         }
 
         putCharacter(character) {
+            // Defer wrapping at the last column until another printable character arrives.
             if (this.cursorX >= this.columns) {
                 this.cursorX = 0;
                 this.cursorY++;
@@ -362,11 +363,6 @@
             const line = this.ensureLine(this.cursorY);
             line[this.cursorX] = { character, style: this.style };
             this.cursorX++;
-            if (this.cursorX >= this.columns) {
-                this.cursorX = 0;
-                this.cursorY++;
-                this.ensureLine(this.cursorY);
-            }
         }
 
         lineFeed() {
