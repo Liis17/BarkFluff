@@ -102,7 +102,8 @@
         collectOnlineUserIds: BF.presence.collectUserIds,
         updateTitleBadge: updateTitleBadge,
         openChat: openChat,
-        botBadgeMarkup: botBadgeMarkup
+        botBadgeMarkup: botBadgeMarkup,
+        showToast: showToast
     });
     var loadChats = BF.chatList.load;
     var renderChatList = BF.chatList.render;
