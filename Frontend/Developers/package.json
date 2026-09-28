@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run sync-proto && npm run generate && tsc -b && vite build",
     "preview": "vite preview",
     "sync-proto": "node scripts/sync-public-proto.mjs",
     "sync-proto:check": "node scripts/sync-public-proto.mjs --check",

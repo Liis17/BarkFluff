@@ -1,16 +1,19 @@
 # syntax=docker/dockerfile:1
 
 FROM node:20-slim AS frontend-build
-WORKDIR /frontend
+WORKDIR /repo/Frontend/Developers
 COPY Frontend/Developers/package*.json ./
 RUN npm ci
-COPY Frontend/Developers/ ./
+WORKDIR /repo
+COPY Frontend/Developers/ ./Frontend/Developers/
+COPY Shared/BarkFluff.Proto/ ./Shared/BarkFluff.Proto/
+WORKDIR /repo/Frontend/Developers
 RUN npm run build
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
 WORKDIR /app
 COPY --chown=1654:1654 publish/ .
-COPY --from=frontend-build --chown=1654:1654 /frontend/dist/ ./wwwroot/
+COPY --from=frontend-build --chown=1654:1654 /repo/Frontend/Developers/dist/ ./wwwroot/
 USER $APP_UID
 EXPOSE 7020 7021
 ENTRYPOINT ["dotnet", "Barkfluff.Developers.dll"]

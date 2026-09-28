@@ -59,13 +59,10 @@ jobs:
           cache: npm
           cache-dependency-path: Frontend/Developers/package-lock.json
 
-      - name: "🔄 Проверка и генерация frontend-контрактов"
+      - name: "🔄 Сборка Developers frontend с актуальными контрактами"
         working-directory: Frontend/Developers
         run: |
           npm ci
-          npm run sync-proto:check
-          npm run generate
-          git -C ../.. diff --exit-code -- Frontend/Developers/proto Frontend/Developers/src/gen
           npm run build
 
       - name: "\u2699\uFE0F dotnet publish (Linux Release)"

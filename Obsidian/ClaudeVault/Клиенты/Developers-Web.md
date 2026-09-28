@@ -19,9 +19,7 @@ React-фронтенд портала документации BarkFluff для 
 
 ```bash
 cd Frontend/Developers
-npm install
-npm run sync-proto:check
-npm run generate
+npm ci
 npm run build     # → dist/
 npm run dev       # → http://localhost:5173
 ```
@@ -97,9 +95,9 @@ npm run generate   # = buf generate
 ```
 
 Три frontend snapshot-файла (`developers_api.proto`, `identity_api.proto`, `shared.proto`)
-синхронизируются из канонического `Shared/BarkFluff.Proto/` скриптом
-`npm run sync-proto`. `npm run sync-proto:check` завершается ошибкой при drift и выполняется
-в Developers CI перед генерацией.
+синхронизируются из канонического `Shared/BarkFluff.Proto/` при `npm run build`, после чего
+генерируются TypeScript-контракты через `buf generate`. Developers CI и Docker используют ту же
+сборку. `npm run sync-proto:check` доступен для ручной проверки snapshot.
 Сгенерированные файлы: `src/gen/` (identity_api_pb.ts, identity_api_connect.ts, developers_api_pb.ts, developers_api_connect.ts).
 
 ## Деплой
