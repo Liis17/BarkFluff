@@ -114,6 +114,15 @@ origin, сопоставить ключ нечем — вход потребуе
 - Издержки: Ctrl+F не находит чаты вне окна (есть поиск в сайдбаре); режим обзора скринридера видит только окно.
 - Тест — `scripts/test-chat-list.js` (vm + фейковый DOM).
 
+### Сайдбар: ширина по drag и компакт-режим
+
+`js/app/sidebar-resize.js` (`BF.sidebarResize`) — тянущаяся граница списка чатов, аналог Telegram. Хват `#sidebarResizer` — сиблинг `.sidebar` в разметке, `pointerdown`/`setPointerCapture`/`pointermove`/`pointerup` (паттерн `imageeditor.js::bindCropDrag`, не mouse-события).
+
+- Ширина хранится в CSS-переменной `--sidebar-width`, которую JS перекрывает inline-стилем на `<html>` (единый источник поверх всех трёх тем). Диапазон drag: `200px … window.innerWidth/2`.
+- Ниже `200px` сайдбар переключается в **компакт-режим** (класс `sidebar-compact` на `<html>`): ширина снапается к `76px` (аватар + запас), список чатов показывает только круглые аватары (`.chat-info` скрыт), поле поиска/результаты поиска/вкладки папок/FAB нового чата скрываются полностью, кнопки навигации внизу остаются в виде одних иконок (`.nav-btn > span:not(.nav-icon)` скрыт). Активный в момент входа в компакт поиск сбрасывается явно (`#searchInput`/`#searchResults`), иначе `.search-results.visible ~ .chat-list{display:none}` (существующее CSS-правило) оставило бы список чатов пустым.
+- Состояние (`bf_sidebar_width`, `bf_sidebar_compact` в localStorage, без суффикса ноды — как `bf_theme`) сохраняется на `pointerup` и восстанавливается синхронно **до** загрузки JS-бандла: inline-скрипт в `messenger.html` (тот же блок, что применяет `bf_theme` до отрисовки) читает оба ключа и выставляет `--sidebar-width`/класс компакта на `document.documentElement`, чтобы не было заметного скачка 340px → сохранённое значение после асинхронной загрузки `app-loader.js`.
+- На мобильной раскладке (`@media max-width: 768px`, тот же брейкпоинт, что у `.mobile-show-list/.mobile-show-chat`) хват скрыт (`display:none`) — там сайдбар и так открывается на весь экран через `transform`.
+
 ### Контекстные меню (клавиатура и a11y)
 
 Меню сообщения (`#msgContextMenu`, `message-menu.js`) и меню чата (`#chatContextMenu`, `chat-list.js`) — немодальные `role="menu"`: пункты `role="menuitem"` с `tabindex="-1"`, секции меню чата — `role="group"` с `aria-label` (видимый заголовок `aria-hidden`), разделитель — `role="separator"`.
