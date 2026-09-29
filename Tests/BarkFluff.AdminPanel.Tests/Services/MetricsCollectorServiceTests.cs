@@ -92,11 +92,13 @@ public class MetricsCollectorServiceTests
         private readonly string _directory;
         private readonly WebApplication _app;
         private readonly ServiceProvider _serviceProvider;
+        private readonly HttpClient _seqClient;
 
         private TrafficFixture(
             string directory,
             WebApplication app,
             HttpClient client,
+            HttpClient seqClient,
             MetricsCacheDbContext cache,
             SeqService seqService,
             MetricsCollectorService collector,
@@ -105,6 +107,7 @@ public class MetricsCollectorServiceTests
             _directory = directory;
             _app = app;
             Client = client;
+            _seqClient = seqClient;
             Cache = cache;
             SeqService = seqService;
             Collector = collector;
@@ -125,17 +128,21 @@ public class MetricsCollectorServiceTests
             var cache = new MetricsCacheDbContext(new MetricsCacheSettings { Path = Path.Combine(directory, "metrics.db") });
             WebApplication? app = null;
             ServiceProvider? serviceProvider = null;
+            HttpClient? seqClient = null;
 
             try
             {
                 seedCache?.Invoke(cache);
+                seqClient = new HttpClient(seqHandler, disposeHandler: false);
+                var seqService = new SeqService(
+                    seqClient,
+                    Options.Create(new SeqSettings { ServerUrl = "http://seq" }),
+                    NullLogger<SeqService>.Instance);
+
                 var builder = WebApplication.CreateBuilder();
                 builder.WebHost.UseTestServer();
                 builder.Services.AddSingleton(cache);
-                builder.Services.AddSingleton(_ => new SeqService(
-                    new HttpClient(seqHandler, disposeHandler: false),
-                    Options.Create(new SeqSettings { ServerUrl = "http://seq" }),
-                    NullLogger<SeqService>.Instance));
+                builder.Services.AddSingleton(seqService);
                 builder.Services.AddSingleton<DockerService>(_ => null!);
                 builder.Services.AddSingleton<DockerRegistryService>(_ => null!);
 
@@ -144,25 +151,21 @@ public class MetricsCollectorServiceTests
                 await app.StartAsync();
 
                 serviceProvider = new ServiceCollection().BuildServiceProvider();
-                var seqService = new SeqService(
-                    new HttpClient(seqHandler, disposeHandler: false),
-                    Options.Create(new SeqSettings { ServerUrl = "http://seq" }),
-                    NullLogger<SeqService>.Instance);
                 var collector = new MetricsCollectorService(
                     serviceProvider,
                     cache,
                     NullLogger<MetricsCollectorService>.Instance);
 
-                return new TrafficFixture(directory, app, app.GetTestClient(), cache, seqService, collector, serviceProvider);
+                return new TrafficFixture(directory, app, app.GetTestClient(), seqClient, cache, seqService, collector, serviceProvider);
             }
             catch
             {
-                if (app is null)
-                    cache.Dispose();
-                else
+                if (app is not null)
                     await app.DisposeAsync();
                 if (serviceProvider is not null)
                     await serviceProvider.DisposeAsync();
+                cache.Dispose();
+                seqClient?.Dispose();
                 try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
                 throw;
             }
@@ -180,6 +183,8 @@ public class MetricsCollectorServiceTests
             Client.Dispose();
             await _app.DisposeAsync();
             await _serviceProvider.DisposeAsync();
+            Cache.Dispose();
+            _seqClient.Dispose();
             try { Directory.Delete(_directory, recursive: true); } catch (IOException) { }
         }
     }
