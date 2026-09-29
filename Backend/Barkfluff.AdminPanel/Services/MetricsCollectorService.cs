@@ -42,7 +42,7 @@ public class MetricsCollectorService : BackgroundService
             using var scope = _serviceProvider.CreateScope();
             var seq = scope.ServiceProvider.GetRequiredService<SeqService>();
 
-            await CollectLogTrafficAsync(seq, ct);
+            await CollectSystemTrafficAsync(seq, ct);
             await CollectServiceMetricsAsync(seq, ct);
             CleanupOldData();
         }
@@ -53,7 +53,7 @@ public class MetricsCollectorService : BackgroundService
         }
     }
 
-    private async Task CollectLogTrafficAsync(SeqService seq, CancellationToken ct)
+    public async Task CollectSystemTrafficAsync(SeqService seq, CancellationToken ct)
     {
         var currentHour = TruncateToHour(DateTime.UtcNow);
         _trafficHoursToCollect ??= Enumerable.Range(0, StatsHoursToKeep + 1)
