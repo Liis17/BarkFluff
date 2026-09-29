@@ -200,6 +200,9 @@ function createHarness(chatCount) {
     var mobileShown = 0;
     var closedChatCount = 0;
     var listChatsCalls = 0;
+    var listChatsHandler = function () {
+        return Promise.resolve({ chats: [], totalCount: 0 });
+    };
     var realtimeListeners = {};
     var resolveDelete;
     var rejectDelete;
@@ -209,7 +212,7 @@ function createHarness(chatCount) {
         api: {
             listChats: function () {
                 listChatsCalls++;
-                return Promise.resolve({ chats: [], totalCount: 0 });
+                return listChatsHandler.apply(null, arguments);
             },
             deleteChat: function () {
                 return new Promise(function (resolve, reject) {
@@ -341,6 +344,9 @@ function createHarness(chatCount) {
         },
         closedChatCount: function () { return closedChatCount; },
         listChatsCalls: function () { return listChatsCalls; },
+        setListChats: function (handler) {
+            listChatsHandler = handler;
+        },
         emitRealtime: function (name, data) { realtimeListeners[name](data); },
         contextMenu: chatContextMenu,
         deleteChatOk: deleteChatOk,
@@ -590,6 +596,477 @@ async function runAsyncTests() {
         assert.equal(h.listChatsCalls(), 0, 'RPC success does not reload the chat list');
         assert.equal(h.deleteChatOverlay.classList.contains('visible'), false);
     });
+
+    await runAsyncTest('chat_hidden after a list snapshot reconciles the already-updated total', async function () {
+        var h = createHarness(0);
+        h.setListChats(function () {
+            return Promise.resolve({
+                chats: [
+                    { id: 1000, title: 'Chat 0', chatType: 0 },
+                    { id: 1001, title: 'Chat 1', chatType: 0 },
+                    { id: 1002, title: 'Chat 2', chatType: 0 }
+                ],
+                totalCount: 3
+            });
+        });
+        await h.BF.chatList.load(true);
+
+        h.setListChats(function () {
+            return Promise.resolve({
+                chats: [
+                    { id: 1001, title: 'Chat 1', chatType: 0 },
+                    { id: 1002, title: 'Chat 2', chatType: 0 }
+                ],
+                totalCount: 2
+            });
+        });
+        await h.BF.chatList.refreshQuiet();
+
+        h.emitRealtime('chat_hidden', { chatId: 1000 });
+        await new Promise(function (resolve) {
+            setImmediate(resolve);
+        });
+        await h.BF.chatList.load();
+
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1001, 1002]
+        );
+        assert.equal(h.listChatsCalls(), 3, 'an absent chat triggers quiet total reconciliation');
+    });
+
+    await runAsyncTest('removing a locally-created chat preserves server pagination counts', async function () {
+        var h = createHarness(0);
+        var offsets = [];
+        h.setListChats(function (offset) {
+            offsets.push(offset);
+            if (offset === 2) {
+                return Promise.resolve({ chats: [{ id: 1003, title: 'Chat 3', chatType: 0 }], totalCount: 3 });
+            }
+            return Promise.resolve({
+                chats: [
+                    { id: 1000, title: 'Chat 0', chatType: 0 },
+                    { id: 1001, title: 'Chat 1', chatType: 0 }
+                ],
+                totalCount: 3
+            });
+        });
+        await h.BF.chatList.load(true);
+        h.setChats(h.chats().concat([{ id: 1002, title: 'Locally-created chat', chatType: 0 }]));
+
+        h.emitRealtime('chat_hidden', { chatId: 1002 });
+        await new Promise(function (resolve) {
+            setImmediate(resolve);
+        });
+        await h.BF.chatList.load();
+
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1000, 1001, 1003]
+        );
+        assert.deepEqual(offsets, [0, 0, 2], 'the new chat is not counted in the server page offset');
+    });
+
+    await runAsyncTest('pagination offset ignores a locally-created chat that remains in the list', async function () {
+        var h = createHarness(0);
+        var offsets = [];
+        h.setListChats(function (offset) {
+            offsets.push(offset);
+            if (offset === 2) {
+                return Promise.resolve({ chats: [{ id: 1003, title: 'Chat 3', chatType: 0 }], totalCount: 4 });
+            }
+            if (offset === 3) {
+                return Promise.resolve({ chats: [{ id: 1004, title: 'Chat 4', chatType: 0 }], totalCount: 4 });
+            }
+            return Promise.resolve({
+                chats: [
+                    { id: 1000, title: 'Chat 0', chatType: 0 },
+                    { id: 1001, title: 'Chat 1', chatType: 0 }
+                ],
+                totalCount: 4
+            });
+        });
+        await h.BF.chatList.load(true);
+        h.setChats(h.chats().concat([{ id: 1002, title: 'Locally-created chat', chatType: 0 }]));
+
+        await h.BF.chatList.load();
+        await h.BF.chatList.load();
+
+        assert.deepEqual(offsets, [0, 2, 3]);
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1000, 1001, 1002, 1003, 1004]
+        );
+    });
+
+    await runAsyncTest('chat_hidden decrements pagination once for a chat outside the loaded page', async function () {
+        var h = createHarness(0);
+        var listPage = 0;
+        h.setListChats(function () {
+            listPage++;
+            if (listPage === 2) {
+                return Promise.resolve({ chats: [{ id: 1002, title: 'Chat 2', chatType: 0 }], totalCount: 4 });
+            }
+            if (listPage === 3) {
+                return Promise.resolve({
+                    chats: [
+                        { id: 1000, title: 'Chat 0', chatType: 0 },
+                        { id: 1001, title: 'Chat 1', chatType: 0 }
+                    ],
+                    totalCount: 3
+                });
+            }
+            return Promise.resolve({
+                chats: [
+                    { id: 1000, title: 'Chat 0', chatType: 0 },
+                    { id: 1001, title: 'Chat 1', chatType: 0 }
+                ],
+                totalCount: 4
+            });
+        });
+        await h.BF.chatList.load(true);
+        await h.BF.chatList.load();
+
+        h.emitRealtime('chat_hidden', { chatId: 1003 });
+        h.emitRealtime('chat_hidden', { chatId: 1003 });
+        await new Promise(function (resolve) {
+            setImmediate(resolve);
+        });
+        await h.BF.chatList.load();
+
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1000, 1001, 1002]
+        );
+        assert.equal(h.listChatsCalls(), 3, 'quiet total reconciliation keeps both loaded pages');
+    });
+
+    await runAsyncTest(
+        'removing a loaded chat invalidates an in-flight next page and retries at the shifted offset',
+        async function () {
+            var h = createHarness(0);
+            var offsets = [];
+            var resolvePage;
+            var requests = 0;
+            h.setListChats(function (offset) {
+                offsets.push(offset);
+                requests++;
+                if (requests === 1) {
+                    return Promise.resolve({
+                        chats: [
+                            { id: 1000, title: 'Chat 0', chatType: 0 },
+                            { id: 1001, title: 'Chat 1', chatType: 0 }
+                        ],
+                        totalCount: 3
+                    });
+                }
+                if (requests === 2)
+                    return new Promise(function (resolve) {
+                        resolvePage = resolve;
+                    });
+                if (requests === 3) {
+                    return Promise.resolve({
+                        chats: [
+                            { id: 1001, title: 'Chat 1', chatType: 0 },
+                            { id: 1002, title: 'Chat 2', chatType: 0 }
+                        ],
+                        totalCount: 2
+                    });
+                }
+                assert.equal(offset, 1, 'the retry starts at the adjusted server offset');
+                return Promise.resolve({ chats: [{ id: 1002, title: 'Chat 2', chatType: 0 }], totalCount: 2 });
+            });
+            await h.BF.chatList.load(true);
+            var nextPage = h.BF.chatList.load();
+            assert.deepEqual(offsets, [0, 2]);
+
+            h.emitRealtime('chat_hidden', { chatId: 1000 });
+            resolvePage({ chats: [{ id: 1002, title: 'Chat 2', chatType: 0 }], totalCount: 3 });
+            await nextPage;
+
+            assert.deepEqual(
+                h.chats().map(function (chat) {
+                    return chat.id;
+                }),
+                [1001, 1002]
+            );
+            assert.deepEqual(offsets, [0, 2, 0, 1]);
+        }
+    );
+
+    await runAsyncTest('a tombstone in a stale page response does not advance the server offset', async function () {
+        var h = createHarness(0);
+        var offsets = [];
+        var resolvePage;
+        var requests = 0;
+        h.setListChats(function (offset) {
+            offsets.push(offset);
+            requests++;
+            if (requests === 1) {
+                return Promise.resolve({
+                    chats: [
+                        { id: 1000, title: 'Chat 0', chatType: 0 },
+                        { id: 1001, title: 'Chat 1', chatType: 0 }
+                    ],
+                    totalCount: 5
+                });
+            }
+            if (requests === 2)
+                return new Promise(function (resolve) {
+                    resolvePage = resolve;
+                });
+            if (requests === 3) return Promise.resolve({ chats: [], totalCount: 4 });
+            assert.equal(offset, 3, 'offset counts current server rows, excluding the hidden row');
+            return Promise.resolve({ chats: [{ id: 1004, title: 'Chat 4', chatType: 0 }], totalCount: 4 });
+        });
+        await h.BF.chatList.load(true);
+        var nextPage = h.BF.chatList.load();
+        h.emitRealtime('chat_hidden', { chatId: 1002 });
+        resolvePage({
+            chats: [
+                { id: 1002, title: 'Deleted chat', chatType: 0 },
+                { id: 1003, title: 'Chat 3', chatType: 0 }
+            ],
+            totalCount: 5
+        });
+        await nextPage;
+        await h.BF.chatList.load();
+
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1000, 1001, 1003, 1004]
+        );
+        assert.deepEqual(offsets, [0, 2, 0, 3]);
+    });
+
+    await runAsyncTest('pagination requested during total reconciliation continues afterward', async function () {
+        var h = createHarness(0);
+        var resolveTotal;
+        var requests = 0;
+        h.setListChats(function (offset) {
+            requests++;
+            if (requests === 1) {
+                return Promise.resolve({
+                    chats: [
+                        { id: 1000, title: 'Chat 0', chatType: 0 },
+                        { id: 1001, title: 'Chat 1', chatType: 0 }
+                    ],
+                    totalCount: 4
+                });
+            }
+            if (requests === 2) {
+                return new Promise(function (resolve) {
+                    resolveTotal = resolve;
+                });
+            }
+            assert.equal(offset, 2, 'pagination keeps the loaded server offset');
+            return Promise.resolve({ chats: [{ id: 1002, title: 'Chat 2', chatType: 0 }], totalCount: 3 });
+        });
+        await h.BF.chatList.load(true);
+        h.emitRealtime('chat_hidden', { chatId: 1003 });
+        var queuedLoad = h.BF.chatList.load();
+        resolveTotal({ chats: [], totalCount: 3 });
+        await queuedLoad;
+
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1000, 1001, 1002]
+        );
+        assert.equal(h.listChatsCalls(), 3);
+    });
+
+    await runAsyncTest('reset requested during total reconciliation reloads the chat list', async function () {
+        var h = createHarness(0);
+        var resolveTotal;
+        var requests = 0;
+        h.setListChats(function (offset) {
+            requests++;
+            if (requests === 1) {
+                return Promise.resolve({
+                    chats: [
+                        { id: 1000, title: 'Chat 0', chatType: 0 },
+                        { id: 1001, title: 'Chat 1', chatType: 0 }
+                    ],
+                    totalCount: 2
+                });
+            }
+            if (requests === 2) return new Promise(function (resolve) { resolveTotal = resolve; });
+            assert.equal(offset, 0, 'a reset starts from the first server page');
+            return Promise.resolve({
+                chats: [
+                    { id: 1000, title: 'Chat 0', chatType: 0 },
+                    { id: 1001, title: 'Chat 1', chatType: 0 },
+                    { id: 1002, title: 'New chat', chatType: 0 }
+                ],
+                totalCount: 3
+            });
+        });
+        await h.BF.chatList.load(true);
+        h.emitRealtime('chat_hidden', { chatId: 1999 });
+        var queuedReset = h.BF.chatList.load(true);
+        resolveTotal({ chats: [], totalCount: 2 });
+        await queuedReset;
+
+        assert.deepEqual(h.chats().map(function (chat) { return chat.id; }), [1000, 1001, 1002]);
+        assert.equal(h.listChatsCalls(), 3);
+    });
+
+    await runAsyncTest('an in-flight page response cannot restore a hidden chat or stale total', async function () {
+        var h = createHarness(0);
+        var resolveList;
+        var requests = 0;
+        h.setListChats(function () {
+            requests++;
+            if (requests > 1) {
+                return Promise.resolve({ chats: [{ id: 1001, title: 'Remaining chat', chatType: 0 }], totalCount: 1 });
+            }
+            return new Promise(function (resolve) {
+                resolveList = resolve;
+            });
+        });
+        var request = h.BF.chatList.load(true);
+        h.emitRealtime('chat_hidden', { chatId: 1000 });
+        resolveList({
+            chats: [
+                { id: 1000, title: 'Deleted chat', chatType: 0 },
+                { id: 1001, title: 'Remaining chat', chatType: 0 }
+            ],
+            totalCount: 2
+        });
+        await request;
+        await new Promise(function (resolve) {
+            setImmediate(resolve);
+        });
+        await h.BF.chatList.load();
+
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1001]
+        );
+        assert.equal(h.listChatsCalls(), 2, 'a quiet follow-up reconciles the in-flight response');
+    });
+
+    await runAsyncTest('an in-flight quiet refresh cannot restore a hidden chat', async function () {
+        var h = createHarness(0);
+        h.setListChats(function () {
+            return Promise.resolve({
+                chats: [
+                    { id: 1000, title: 'Chat 0', chatType: 0 },
+                    { id: 1001, title: 'Chat 1', chatType: 0 }
+                ],
+                totalCount: 2
+            });
+        });
+        await h.BF.chatList.load(true);
+
+        var resolveRefresh;
+        h.setListChats(function () {
+            return new Promise(function (resolve) {
+                resolveRefresh = resolve;
+            });
+        });
+        var refresh = h.BF.chatList.refreshQuiet();
+        h.emitRealtime('chat_hidden', { chatId: 1000 });
+        h.setListChats(function () {
+            return Promise.resolve({
+                chats: [
+                    { id: 1002, title: 'New chat', chatType: 0 },
+                    { id: 1001, title: 'Chat 1', chatType: 0 }
+                ],
+                totalCount: 2
+            });
+        });
+        resolveRefresh({
+            chats: [
+                { id: 1000, title: 'Chat 0', chatType: 0 },
+                { id: 1001, title: 'Chat 1', chatType: 0 }
+            ],
+            totalCount: 2
+        });
+        await refresh;
+        await new Promise(function (resolve) {
+            setImmediate(resolve);
+        });
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1001]
+        );
+        h.setListChats(function () {
+            return Promise.resolve({ chats: [{ id: 1002, title: 'New chat', chatType: 0 }], totalCount: 2 });
+        });
+        await h.BF.chatList.load();
+        await h.BF.chatList.load();
+
+        assert.deepEqual(
+            h.chats().map(function (chat) {
+                return chat.id;
+            }),
+            [1001, 1002]
+        );
+        assert.equal(h.listChatsCalls(), 4, 'total reconciliation preserves pagination for the new chat');
+    });
+
+    await runAsyncTest(
+        'an in-flight response that already includes the removal does not decrement twice',
+        async function () {
+            var h = createHarness(0);
+            h.setListChats(function () {
+                return Promise.resolve({
+                    chats: [
+                        { id: 1000, title: 'Chat 0', chatType: 0 },
+                        { id: 1001, title: 'Chat 1', chatType: 0 }
+                    ],
+                    totalCount: 2
+                });
+            });
+            await h.BF.chatList.load(true);
+
+            var resolveRefresh;
+            h.setListChats(function () {
+                return new Promise(function (resolve) {
+                    resolveRefresh = resolve;
+                });
+            });
+            var refresh = h.BF.chatList.refreshQuiet();
+            h.emitRealtime('chat_hidden', { chatId: 1000 });
+            h.setListChats(function () {
+                return Promise.resolve({ chats: [{ id: 1001, title: 'Chat 1', chatType: 0 }], totalCount: 1 });
+            });
+            resolveRefresh({ chats: [{ id: 1001, title: 'Chat 1', chatType: 0 }], totalCount: 1 });
+            await refresh;
+            await new Promise(function (resolve) {
+                setImmediate(resolve);
+            });
+            h.setListChats(function () {
+                return Promise.resolve({ chats: [], totalCount: 1 });
+            });
+            await h.BF.chatList.load();
+
+            assert.deepEqual(
+                h.chats().map(function (chat) {
+                    return chat.id;
+                }),
+                [1001]
+            );
+            assert.equal(h.listChatsCalls(), 3, 'the response and follow-up each account for the removal once');
+        }
+    );
 
     await runAsyncTest('failed delete restores controls and keeps the chat', async function () {
         var h = createHarness(2);
