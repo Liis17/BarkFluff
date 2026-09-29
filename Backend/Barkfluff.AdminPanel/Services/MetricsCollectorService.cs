@@ -15,6 +15,7 @@ public class MetricsCollectorService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly MetricsCacheDbContext _cache;
     private readonly ILogger<MetricsCollectorService> _logger;
+    private HashSet<DateTime>? _trafficHoursToCollect;
 
     public MetricsCollectorService(IServiceProvider serviceProvider, MetricsCacheDbContext cache,
         ILogger<MetricsCollectorService> logger)
@@ -55,28 +56,62 @@ public class MetricsCollectorService : BackgroundService
     private async Task CollectLogTrafficAsync(SeqService seq, CancellationToken ct)
     {
         var currentHour = TruncateToHour(DateTime.UtcNow);
-        foreach (var hour in new[] { currentHour.AddHours(-1), currentHour })
+        _trafficHoursToCollect ??= Enumerable.Range(0, StatsHoursToKeep + 1)
+            .Select(offset => currentHour.AddHours(offset - StatsHoursToKeep))
+            .ToHashSet();
+
+        var oldestHour = currentHour.AddHours(-StatsHoursToKeep);
+        _trafficHoursToCollect.RemoveWhere(hour => hour < oldestHour);
+
+        var hours = _trafficHoursToCollect
+            .Concat(new[] { currentHour.AddHours(-1), currentHour })
+            .Distinct()
+            .OrderBy(hour => hour)
+            .ToArray();
+
+        foreach (var hour in hours)
         {
             ct.ThrowIfCancellationRequested();
-            var events = await seq.GetAllEventsListAsync(fromDateUtc: hour, toDateUtc: hour.AddHours(1), maxEvents: 10_000);
-            if (events is null) continue;
 
-            var perService = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-            long errors = 0;
-            long warnings = 0;
-            foreach (var evt in events)
+            var completed = await CollectLogTrafficHourAsync(seq, hour, ct);
+            if (completed)
+                _trafficHoursToCollect.Remove(hour);
+            else if (hour >= oldestHour)
+                _trafficHoursToCollect.Add(hour);
+        }
+    }
+
+    private async Task<bool> CollectLogTrafficHourAsync(SeqService seq, DateTime hour, CancellationToken ct)
+    {
+        var perService = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        long totalEvents = 0;
+        long errors = 0;
+        long warnings = 0;
+
+        var completed = await seq.ProcessAllEventsAsync(
+            processEvent: evt =>
             {
+                ct.ThrowIfCancellationRequested();
+                totalEvents++;
                 var level = GetEventLevel(evt);
                 if (level is "Error" or "Fatal") errors++;
                 if (level == "Warning") warnings++;
                 var service = GetEventApplication(evt);
                 if (service is not null) perService[service] = perService.GetValueOrDefault(service) + 1;
-            }
+            },
+            fromDateUtc: hour,
+            toDateUtc: hour.AddHours(1));
 
-            var stats = new HourlyStats { HourUtc = hour, TotalEvents = events.Count, ErrorCount = errors, WarningCount = warnings, PerService = perService };
-            _cache.HourlyStats.Upsert(stats);
-            _cache.HourlyTraffic.Upsert(new HourlyTraffic { HourUtc = hour, AllCount = stats.TotalEvents, ErrorCount = errors, WarningCount = warnings });
+        if (!completed)
+        {
+            _logger.LogWarning("MetricsCollector: could not fully read traffic events for {Hour:o}; keeping cached values and retrying", hour);
+            return false;
         }
+
+        var stats = new HourlyStats { HourUtc = hour, TotalEvents = totalEvents, ErrorCount = errors, WarningCount = warnings, PerService = perService };
+        _cache.HourlyStats.Upsert(stats);
+        _cache.HourlyTraffic.Upsert(new HourlyTraffic { HourUtc = hour, AllCount = stats.TotalEvents, ErrorCount = errors, WarningCount = warnings });
+        return true;
     }
 
     private async Task CollectServiceMetricsAsync(SeqService seq, CancellationToken ct)

@@ -249,18 +249,14 @@ public static class SeqEndpoints
             if (trafficData.Count == 0)
             {
                 var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
-                var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 50000);
-                if (events == null)
-                    return Results.StatusCode(502);
-
                 var allBuckets = new Dictionary<DateTime, long>();
                 var errorBuckets = new Dictionary<DateTime, long>();
                 var warningBuckets = new Dictionary<DateTime, long>();
 
-                foreach (var evt in events)
+                var complete = await seqService.ProcessAllEventsAsync(evt =>
                 {
                     var ts = GetEventTimestamp(evt);
-                    if (!ts.HasValue) continue;
+                    if (!ts.HasValue) return;
 
                     var bucket = TruncateToHour(ts.Value);
                     allBuckets[bucket] = allBuckets.GetValueOrDefault(bucket) + 1;
@@ -270,7 +266,9 @@ public static class SeqEndpoints
                         errorBuckets[bucket] = errorBuckets.GetValueOrDefault(bucket) + 1;
                     if (level == "Warning")
                         warningBuckets[bucket] = warningBuckets.GetValueOrDefault(bucket) + 1;
-                }
+                }, fromDateUtc: fromDateUtc);
+                if (!complete)
+                    return Results.StatusCode(502);
 
                 var fbAll = new List<object>();
                 var fbErrors = new List<object>();
