@@ -102,6 +102,7 @@
         collectOnlineUserIds: BF.presence.collectUserIds,
         updateTitleBadge: updateTitleBadge,
         openChat: openChat,
+        closeCurrentChat: closeCurrentChat,
         botBadgeMarkup: botBadgeMarkup,
         showToast: showToast
     });
@@ -125,9 +126,46 @@
 
     function updateOpenChatUrl(chatId) {
         var url = new URL(window.location.href);
-        url.searchParams.set('chat', chatId);
+        if (chatId == null) url.searchParams.delete('chat');
+        else url.searchParams.set('chat', chatId);
         url.searchParams.delete('call');
         window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    }
+
+    function closeCurrentChat() {
+        if (currentChatId == null) return;
+
+        if (currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
+        stopTypingSend(true);
+        BF.presence.resetTyping();
+        BF.realtime.unsubscribeTyping();
+        if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
+        if (BF.personalization) BF.personalization.applyForChat(null);
+
+        currentChatId = null;
+        currentChatInfo = null;
+        currentChatType = 0;
+        currentChatPeerIsBot = false;
+        messages = [];
+        updateOpenChatUrl(null);
+        BF.feed.reset();
+        clearPendingReply(false);
+        clearPendingEdit();
+        closeContextMenu();
+
+        messagesInner.innerHTML = '';
+        loadingMessages.classList.remove('visible');
+        chatHeader.classList.remove('visible');
+        messagesArea.classList.remove('visible');
+        messagesArea.parentElement.classList.remove('visible');
+        inputBar.classList.remove('visible', 'private-chat');
+        chatEmpty.style.display = '';
+        chatHeaderStatus.hidden = false;
+        chatHeaderStatus.textContent = '';
+        chatHeaderStatus.classList.remove('online');
+        setChatCallButtonsVisible(false);
+        resetChatTabContext();
+        if (window.__mobileShowList) window.__mobileShowList();
     }
 
     function openChat(chatId) {
@@ -176,6 +214,7 @@
         renderChatList();
 
         BF.api.getChatInfo(chatId).then(function (info) {
+            if (chatId !== currentChatId) return null;
             if (!info || info.error) { loadingMessages.classList.remove('visible'); return; }
             currentChatInfo = info;
 
@@ -223,6 +262,7 @@
             var fromId = info.firstUnreadMessageId || 0;
             return BF.api.listMessages(chatId, fromId, 30, 10);
         }).then(function (data) {
+            if (chatId !== currentChatId) return;
             loadingMessages.classList.remove('visible');
             if (data && data.messages) {
                 messages = data.messages;
@@ -232,7 +272,9 @@
                 BF.markRead.schedule();
                 restoreChatDraft(chatId);
             }
-        }).catch(function () { loadingMessages.classList.remove('visible'); });
+        }).catch(function () {
+            if (chatId === currentChatId) loadingMessages.classList.remove('visible');
+        });
     }
 
     // ========== MESSAGE FEED ==========
