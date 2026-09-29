@@ -3875,8 +3875,18 @@
 
         .btn-confirm-cancel { background: rgba(0, 0, 0, 0.07); color: var(--text-main); }
         .btn-confirm-ok { background: var(--error); color: white; }
+        .btn-confirm-ok.is-loading { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-confirm-ok.is-loading::before {
+            content: ''; width: 14px; height: 14px; flex: 0 0 14px;
+            border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff;
+            border-radius: 50%; animation: spin .8s linear infinite;
+        }
         .btn-confirm-cancel:hover { opacity: 0.8; }
         .btn-confirm-ok:hover { opacity: 0.85; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn-confirm-ok.is-loading::before { animation: none; }
+        }
 
         /* === PRIVATE CHATS === */
 

@@ -20,6 +20,7 @@
     var deleteChatForEveryoneLabel;
     var deleteChatForEveryoneCheckbox;
     var deleteChatOk;
+    var deleteChatCancel;
     var chatListUserIdsLoaded = new Set();
     var chatListOffset = 0;
     var chatListTotal = 0;
@@ -87,6 +88,28 @@
             });
         chatListRequest = request;
         return request;
+    }
+
+    function removeChat(chatId) {
+        var chats = deps.getChats();
+        var filtered = chats.filter(function (chat) {
+            return String(chat.id) !== String(chatId);
+        });
+        var removed = filtered.length !== chats.length;
+        var wasOpen = deps.getCurrentChatId && String(deps.getCurrentChatId()) === String(chatId);
+        if (!removed && !wasOpen) return false;
+
+        if (removed) {
+            deps.setChats(filtered);
+            chatListTotal = Math.max(0, chatListTotal - 1);
+            chatListOffset = Math.max(0, chatListOffset - 1);
+        }
+        if (wasOpen && deps.closeCurrentChat) deps.closeCurrentChat();
+
+        render();
+        if (deps.collectOnlineUserIds) deps.collectOnlineUserIds();
+        if (deps.updateTitleBadge) deps.updateTitleBadge();
+        return true;
     }
 
     function loadChatListUsers() {
@@ -614,7 +637,14 @@
         var isGroup = chat.isGroupChat;
         deleteChatTitle.textContent = BF.i18n.t(isGroup ? 'dialog.leaveChat.title' : 'dialog.deleteChat.title');
         deleteChatText.textContent = BF.i18n.t(isGroup ? 'dialog.leaveChat.text' : 'dialog.deleteChat.text');
-        deleteChatOk.textContent = BF.i18n.t(isGroup ? 'chat.leave' : 'common.delete');
+        var okLabel = BF.i18n.t(isGroup ? 'chat.leave' : 'common.delete');
+        var pendingLabel = BF.i18n.t(isGroup ? 'dialog.leaveChat.pending' : 'dialog.deleteChat.pending');
+        deleteChatOk.textContent = okLabel;
+        deleteChatOk.disabled = false;
+        deleteChatOk.classList.remove('is-loading');
+        deleteChatOk.removeAttribute('aria-busy');
+        deleteChatForEveryoneCheckbox.disabled = false;
+        if (deleteChatCancel) deleteChatCancel.disabled = false;
 
         var showCheckbox = !isGroup && !chat.isFederated;
         deleteChatForEveryoneCheckbox.checked = false;
@@ -628,16 +658,21 @@
         BF.utils.openOverlay(deleteChatOverlay);
 
         deleteChatOk.onclick = function () {
+            if (deleteChatOk.disabled) return;
+            var deleteForEveryone = deleteChatForEveryoneCheckbox.checked;
             deleteChatOk.disabled = true;
-            var action = isGroup
-                ? BF.api.leaveChat(chatId)
-                : BF.api.deleteChat(chatId, deleteChatForEveryoneCheckbox.checked);
+            deleteChatOk.textContent = pendingLabel;
+            deleteChatOk.classList.add('is-loading');
+            deleteChatOk.setAttribute('aria-busy', 'true');
+            deleteChatForEveryoneCheckbox.disabled = true;
+            if (deleteChatCancel) deleteChatCancel.disabled = true;
+
+            var action = Promise.resolve().then(function () {
+                return isGroup ? BF.api.leaveChat(chatId) : BF.api.deleteChat(chatId, deleteForEveryone);
+            });
             action
                 .then(function () {
-                    var wasOpen = deps.getCurrentChatId && deps.getCurrentChatId() === chatId;
-                    return load(true).then(function () {
-                        if (wasOpen) window.location.href = '/messenger';
-                    });
+                    removeChat(chatId);
                 })
                 .catch(function () {
                     if (deps.showToast)
@@ -645,6 +680,11 @@
                 })
                 .finally(function () {
                     deleteChatOk.disabled = false;
+                    deleteChatOk.textContent = okLabel;
+                    deleteChatOk.classList.remove('is-loading');
+                    deleteChatOk.removeAttribute('aria-busy');
+                    deleteChatForEveryoneCheckbox.disabled = false;
+                    if (deleteChatCancel) deleteChatCancel.disabled = false;
                     BF.utils.closeOverlay(deleteChatOverlay);
                     deleteChatOk.onclick = null;
                 });
@@ -703,16 +743,17 @@
         deleteChatForEveryoneLabel = $('#deleteChatForEveryoneLabel');
         deleteChatForEveryoneCheckbox = $('#deleteChatForEveryone');
         deleteChatOk = $('#deleteChatOk');
-        var deleteChatCancel = $('#deleteChatCancel');
+        deleteChatCancel = $('#deleteChatCancel');
         if (deleteChatCancel) {
             deleteChatCancel.addEventListener('click', function () {
+                if (deleteChatOk && deleteChatOk.disabled) return;
                 if (deleteChatOverlay) BF.utils.closeOverlay(deleteChatOverlay);
                 if (deleteChatOk) deleteChatOk.onclick = null;
             });
         }
         if (deleteChatOverlay) {
             deleteChatOverlay.addEventListener('click', function (e) {
-                if (e.target === deleteChatOverlay) {
+                if (e.target === deleteChatOverlay && (!deleteChatOk || !deleteChatOk.disabled)) {
                     BF.utils.closeOverlay(deleteChatOverlay);
                     if (deleteChatOk) deleteChatOk.onclick = null;
                 }
@@ -720,10 +761,7 @@
         }
         if (BF.realtime) {
             BF.realtime.on('chat_hidden', function (data) {
-                var wasOpen = deps.getCurrentChatId && deps.getCurrentChatId() === data.chatId;
-                load(true).then(function () {
-                    if (wasOpen) window.location.href = '/messenger';
-                });
+                removeChat(data.chatId);
             });
         }
         spacer = document.createElement('div');

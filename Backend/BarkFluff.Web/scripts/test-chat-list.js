@@ -18,6 +18,8 @@ class FakeElement {
         this.tabIndex = -1;
         this.className = '';
         this.textContent = '';
+        this.disabled = false;
+        this.checked = false;
         var self = this;
         this.classList = {
             names: function () {
@@ -73,6 +75,10 @@ class FakeElement {
         return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null;
     }
 
+    removeAttribute(name) {
+        delete this.attributes[name];
+    }
+
     appendChild(child) {
         return this.insertBefore(child, null);
     }
@@ -100,11 +106,15 @@ class FakeElement {
     }
 
     closest(selector) {
-        var className = selector.replace(/^\./, '');
         for (var cur = this; cur; cur = cur.parentNode) {
-            if (cur.classList && cur.classList.contains(className)) return cur;
+            if (selector === '.chat-item' && cur.classList && cur.classList.contains('chat-item')) return cur;
+            if (selector === 'button[data-act]' && cur.tagName === 'button' && cur.dataset.act) return cur;
         }
         return null;
+    }
+
+    getBoundingClientRect() {
+        return { left: 0, right: 100, top: 0, bottom: 20, width: 100, height: 20 };
     }
 
     querySelector() {
@@ -158,9 +168,28 @@ function createHarness(chatCount) {
     chatListEl.scrollTop = 0;
     chatListEl.scrollHeight = 1e9; // пагинация в этих сценариях не нужна
     var chatContextMenu = new FakeElement('div', document);
+    var deleteChatOverlay = new FakeElement('div', document);
+    var deleteChatTitle = new FakeElement('h3', document);
+    var deleteChatText = new FakeElement('p', document);
+    var deleteChatForEveryoneRow = new FakeElement('label', document);
+    var deleteChatForEveryoneLabel = new FakeElement('span', document);
+    var deleteChatForEveryoneCheckbox = new FakeElement('input', document);
+    var deleteChatOk = new FakeElement('button', document);
+    var deleteChatCancel = new FakeElement('button', document);
     document.body.appendChild(chatListEl);
     document.querySelector = function (selector) {
-        return { '#chatList': chatListEl, '#chatContextMenu': chatContextMenu }[selector] || null;
+        return {
+            '#chatList': chatListEl,
+            '#chatContextMenu': chatContextMenu,
+            '#deleteChatConfirmOverlay': deleteChatOverlay,
+            '#deleteChatTitle': deleteChatTitle,
+            '#deleteChatText': deleteChatText,
+            '#deleteChatForEveryoneRow': deleteChatForEveryoneRow,
+            '#deleteChatForEveryoneLabel': deleteChatForEveryoneLabel,
+            '#deleteChatForEveryone': deleteChatForEveryoneCheckbox,
+            '#deleteChatOk': deleteChatOk,
+            '#deleteChatCancel': deleteChatCancel
+        }[selector] || null;
     };
 
     var chats = [];
@@ -169,15 +198,33 @@ function createHarness(chatCount) {
     }
     var opened = [];
     var mobileShown = 0;
+    var closedChatCount = 0;
+    var listChatsCalls = 0;
+    var realtimeListeners = {};
+    var resolveDelete;
+    var rejectDelete;
+    var toastCalls = [];
     var frames = [];
     var BF = {
         api: {
             listChats: function () {
+                listChatsCalls++;
                 return Promise.resolve({ chats: [], totalCount: 0 });
+            },
+            deleteChat: function () {
+                return new Promise(function (resolve, reject) {
+                    resolveDelete = resolve;
+                    rejectDelete = reject;
+                });
+            },
+            leaveChat: function () {
+                return Promise.resolve();
             }
         },
         folders: {
             renderTabs: function () {},
+            getFoldersWithoutChat: function () { return []; },
+            getFoldersForChat: function () { return []; },
             filterChats: function (list) {
                 return list;
             }
@@ -201,6 +248,8 @@ function createHarness(chatCount) {
             }
         },
         utils: {
+            openOverlay: function (overlay) { overlay.classList.add('visible'); },
+            closeOverlay: function (overlay) { overlay.classList.remove('visible'); },
             escapeHtml: function (value) {
                 return String(value);
             },
@@ -213,6 +262,9 @@ function createHarness(chatCount) {
             formatChatListTime: function () {
                 return '12:00';
             }
+        },
+        realtime: {
+            on: function (name, callback) { realtimeListeners[name] = callback; }
         }
     };
     var state = { currentChatId: null };
@@ -233,7 +285,9 @@ function createHarness(chatCount) {
         addEventListener: function () {},
         __mobileShowChat: function () {
             mobileShown++;
-        }
+        },
+        innerWidth: 1024,
+        innerHeight: 768
     });
     context.window = context;
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/chat-list.js'), 'utf8'), context);
@@ -261,6 +315,11 @@ function createHarness(chatCount) {
         },
         collectOnlineUserIds: function () {},
         updateTitleBadge: function () {},
+        showToast: function (message, isError) { toastCalls.push([message, isError]); },
+        closeCurrentChat: function () {
+            closedChatCount++;
+            state.currentChatId = null;
+        },
         openChat: function (chatId) {
             opened.push(chatId);
         },
@@ -280,6 +339,16 @@ function createHarness(chatCount) {
         mobileShown: function () {
             return mobileShown;
         },
+        closedChatCount: function () { return closedChatCount; },
+        listChatsCalls: function () { return listChatsCalls; },
+        emitRealtime: function (name, data) { realtimeListeners[name](data); },
+        contextMenu: chatContextMenu,
+        deleteChatOk: deleteChatOk,
+        deleteChatCancel: deleteChatCancel,
+        deleteChatOverlay: deleteChatOverlay,
+        resolveDelete: function () { return resolveDelete; },
+        rejectDelete: function () { return rejectDelete; },
+        toastCalls: toastCalls,
         chats: function () {
             return chats;
         },
@@ -435,4 +504,110 @@ test('when the focused chat disappears, focus moves to its neighbour', function 
     h.BF.chatList.render();
     assert.equal(h.row(1004), undefined);
     assert.equal(h.document.activeElement, h.row(1005));
+});
+
+function openChatAction(h, chatId, action) {
+    h.BF.chatList.render();
+    h.row(chatId).dispatchEvent(makeEvent('contextmenu', { clientX: 20, clientY: 20 }));
+    var button = h.contextMenu.children.find(function (child) {
+        return child.dataset.act === action;
+    });
+    assert.ok(button, 'context menu action should exist');
+    button.dispatchEvent(makeEvent('click'));
+}
+
+async function runAsyncTest(name, fn) {
+    await fn();
+    console.log('PASS: ' + name);
+}
+
+async function runAsyncTests() {
+    await runAsyncTest('delete modal shows pending state and removes the chat after success', async function () {
+        var h = createHarness(3);
+        h.state.currentChatId = 1001;
+        openChatAction(h, 1001, 'delete-chat');
+
+        h.deleteChatOk.onclick();
+        assert.equal(h.deleteChatOk.disabled, true);
+        assert.equal(h.deleteChatOk.textContent, 'dialog.deleteChat.pending');
+        assert.equal(h.deleteChatOk.classList.contains('is-loading'), true);
+        assert.equal(h.deleteChatOk.getAttribute('aria-busy'), 'true');
+        assert.equal(h.deleteChatCancel.disabled, true);
+        assert.equal(h.deleteChatCancel.disabled, true);
+
+        await Promise.resolve();
+        h.resolveDelete()();
+        await new Promise(function (resolve) { setImmediate(resolve); });
+
+        assert.deepEqual(h.chats().map(function (chat) { return chat.id; }), [1000, 1002]);
+        assert.equal(h.closedChatCount(), 1);
+        assert.equal(h.deleteChatOverlay.classList.contains('visible'), false);
+        assert.equal(h.deleteChatOk.disabled, false);
+        assert.equal(h.deleteChatOk.classList.contains('is-loading'), false);
+        assert.equal(h.listChatsCalls(), 0, 'success does not reload the chat list');
+    });
+
+    await runAsyncTest('group leave uses its pending label and removes locally', async function () {
+        var h = createHarness(2);
+        h.chats()[0].isGroupChat = true;
+        openChatAction(h, 1000, 'leave-chat');
+
+        h.deleteChatOk.onclick();
+        assert.equal(h.deleteChatOk.disabled, true);
+        assert.equal(h.deleteChatOk.textContent, 'dialog.leaveChat.pending');
+        await new Promise(function (resolve) { setImmediate(resolve); });
+
+        assert.deepEqual(h.chats().map(function (chat) { return chat.id; }), [1001]);
+        assert.equal(h.listChatsCalls(), 0, 'success does not reload the chat list');
+    });
+
+    await runAsyncTest('chat_hidden removes and closes once without loading the list', async function () {
+        var h = createHarness(3);
+        h.state.currentChatId = 1001;
+        h.BF.chatList.render();
+
+        h.emitRealtime('chat_hidden', { chatId: 1001 });
+        h.emitRealtime('chat_hidden', { chatId: 1001 });
+
+        assert.deepEqual(h.chats().map(function (chat) { return chat.id; }), [1000, 1002]);
+        assert.equal(h.closedChatCount(), 1);
+        assert.equal(h.listChatsCalls(), 0, 'realtime removal does not reload the chat list');
+    });
+
+    await runAsyncTest('chat_hidden before the delete response does not remove twice', async function () {
+        var h = createHarness(3);
+        h.state.currentChatId = 1001;
+        openChatAction(h, 1001, 'delete-chat');
+        h.deleteChatOk.onclick();
+        await Promise.resolve();
+
+        h.emitRealtime('chat_hidden', { chatId: 1001 });
+        h.resolveDelete()();
+        await new Promise(function (resolve) { setImmediate(resolve); });
+
+        assert.deepEqual(h.chats().map(function (chat) { return chat.id; }), [1000, 1002]);
+        assert.equal(h.closedChatCount(), 1);
+        assert.equal(h.listChatsCalls(), 0, 'RPC success does not reload the chat list');
+        assert.equal(h.deleteChatOverlay.classList.contains('visible'), false);
+    });
+
+    await runAsyncTest('failed delete restores controls and keeps the chat', async function () {
+        var h = createHarness(2);
+        openChatAction(h, 1000, 'delete-chat');
+        h.deleteChatOk.onclick();
+        await Promise.resolve();
+        h.rejectDelete()(new Error('delete failed'));
+        await new Promise(function (resolve) { setImmediate(resolve); });
+
+        assert.deepEqual(h.chats().map(function (chat) { return chat.id; }), [1000, 1001]);
+        assert.equal(h.deleteChatOk.disabled, false);
+        assert.equal(h.deleteChatOk.textContent, 'common.delete');
+        assert.equal(h.deleteChatOk.classList.contains('is-loading'), false);
+        assert.deepEqual(h.toastCalls, [['error.deleteChat', true]]);
+    });
+}
+
+runAsyncTests().catch(function (error) {
+    console.error(error);
+    process.exitCode = 1;
 });
