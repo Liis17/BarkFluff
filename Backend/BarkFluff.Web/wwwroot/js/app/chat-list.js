@@ -24,8 +24,15 @@
     var chatListUserIdsLoaded = new Set();
     var chatListOffset = 0;
     var chatListTotal = 0;
+    var chatListTotalKnown = false;
+    var serverCountedChatIds = new Set();
     var chatListLoading = false;
     var chatListRequest = null;
+    var chatListPageRequest = null;
+    var refreshAfterCurrentRequest = false;
+    var loadAfterCurrentRequest = false;
+    var resetAfterCurrentRequest = false;
+    var removedChatIds = new Set();
     var chatCmTargetId = null;
     var chatCmShownAt = 0;
     var chatCmReturnChatId = null; // открыто с клавиатуры: фокус вернётся на строку чата
@@ -48,14 +55,95 @@
         return document.querySelector(selector);
     }
 
+    function filterRemovedChats(chats, totalCount, removedIdsAtRequest, totalKnownAtRequest) {
+        var removedDuringRequest = [];
+        removedChatIds.forEach(function (id) {
+            if (!removedIdsAtRequest.has(id)) removedDuringRequest.push(id);
+        });
+        if (removedDuringRequest.length > 0) {
+            if (totalKnownAtRequest) {
+                totalCount = Math.min(totalCount, chatListTotal);
+            } else {
+                var fetchedIds = new Set(
+                    chats.map(function (chat) {
+                        return String(chat.id);
+                    })
+                );
+                removedDuringRequest.forEach(function (id) {
+                    if (fetchedIds.has(id)) totalCount = Math.max(0, totalCount - 1);
+                });
+            }
+        }
+        return {
+            chats: chats.filter(function (chat) {
+                return !removedChatIds.has(String(chat.id));
+            }),
+            totalCount: Math.max(0, totalCount)
+        };
+    }
+
+    function rememberServerCountedChats(chats, reset) {
+        if (reset) serverCountedChatIds.clear();
+        chats.forEach(function (chat) {
+            serverCountedChatIds.add(String(chat.id));
+        });
+    }
+
+    function completeListRequest(request, result) {
+        var shouldRefresh = false;
+        var shouldLoad = false;
+        var shouldReset = false;
+        if (chatListRequest === request) {
+            chatListLoading = false;
+            chatListRequest = null;
+            chatListPageRequest = null;
+            shouldRefresh = refreshAfterCurrentRequest;
+            shouldLoad = loadAfterCurrentRequest;
+            shouldReset = resetAfterCurrentRequest;
+            refreshAfterCurrentRequest = false;
+            loadAfterCurrentRequest = false;
+            resetAfterCurrentRequest = false;
+        }
+        if (shouldRefresh) {
+            if (shouldReset) resetAfterCurrentRequest = true;
+            else if (shouldLoad) loadAfterCurrentRequest = true;
+            return refreshChatListTotal().then(function () {
+                return result;
+            });
+        }
+        if (shouldReset) {
+            return load(true).then(function () {
+                return result;
+            });
+        }
+        if (shouldLoad) {
+            return load().then(function () {
+                return result;
+            });
+        }
+        return result;
+    }
+
     function load(reset) {
-        if (chatListLoading) return chatListRequest || Promise.resolve(false);
-        var chats = deps.getChats();
-        if (!reset && chats.length >= chatListTotal && chatListTotal > 0) return Promise.resolve();
+        if (chatListLoading) {
+            if (reset) {
+                resetAfterCurrentRequest = true;
+                loadAfterCurrentRequest = false;
+            } else if (!resetAfterCurrentRequest) {
+                loadAfterCurrentRequest = true;
+            }
+            return chatListRequest || Promise.resolve(false);
+        }
+        if (!reset && chatListTotalKnown && chatListOffset >= chatListTotal) return Promise.resolve();
 
         chatListLoading = true;
+        var removedIdsAtRequest = new Set(removedChatIds);
+        var totalKnownAtRequest = chatListTotalKnown;
+        var pageRequest = !reset && chatListOffset > 0 ? { invalidated: false } : null;
+        chatListPageRequest = pageRequest;
         if (reset) {
             chatListOffset = 0;
+            serverCountedChatIds.clear();
             deps.setChats([]);
         }
 
@@ -63,14 +151,25 @@
             .listChats(chatListOffset, 50)
             .then(function (data) {
                 if (!data || !data.chats) return false;
-                chatListTotal = data.totalCount;
-                deps.setChats(reset ? data.chats : deps.getChats().concat(data.chats));
+                if (pageRequest && pageRequest.invalidated) return false;
+                var filtered = filterRemovedChats(
+                    data.chats,
+                    data.totalCount,
+                    removedIdsAtRequest,
+                    totalKnownAtRequest
+                );
+                chatListTotal = filtered.totalCount;
+                chatListTotalKnown = true;
+                var fetched = filtered.chats;
+                rememberServerCountedChats(fetched, reset);
+                deps.setChats(reset ? fetched : deps.getChats().concat(fetched));
                 deps.getChats().sort(function (a, b) {
                     var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
                     var at = (a.lastMessage && a.lastMessage.sentAt) || a.lastActivityAt || 0;
                     return bt - at;
                 });
-                chatListOffset = deps.getChats().length;
+                // Keep the offset in sync with live rows; a tombstoned API row no longer occupies a server slot.
+                chatListOffset = reset ? fetched.length : chatListOffset + fetched.length;
                 render();
                 deps.collectOnlineUserIds();
                 loadChatListUsers();
@@ -80,35 +179,48 @@
                 return false;
             })
             .then(function (result) {
-                if (chatListRequest === request) {
-                    chatListLoading = false;
-                    chatListRequest = null;
-                }
-                return result;
+                return completeListRequest(request, result);
             });
         chatListRequest = request;
         return request;
     }
 
     function removeChat(chatId) {
+        var id = String(chatId);
+        var alreadyRemoved = removedChatIds.has(id);
         var chats = deps.getChats();
         var filtered = chats.filter(function (chat) {
-            return String(chat.id) !== String(chatId);
+            return String(chat.id) !== id;
         });
         var removed = filtered.length !== chats.length;
-        var wasOpen = deps.getCurrentChatId && String(deps.getCurrentChatId()) === String(chatId);
-        if (!removed && !wasOpen) return false;
+        var wasCountedByServer = serverCountedChatIds.has(id);
+        var wasOpen = deps.getCurrentChatId && String(deps.getCurrentChatId()) === id;
+        if (!removed && !wasOpen && alreadyRemoved) return false;
 
+        if (!alreadyRemoved) {
+            removedChatIds.add(id);
+            if (removed && wasCountedByServer && chatListTotalKnown) chatListTotal = Math.max(0, chatListTotal - 1);
+        }
         if (removed) {
             deps.setChats(filtered);
-            chatListTotal = Math.max(0, chatListTotal - 1);
-            chatListOffset = Math.max(0, chatListOffset - 1);
+            if (wasCountedByServer) {
+                serverCountedChatIds.delete(id);
+                chatListOffset = Math.max(0, chatListOffset - 1);
+            }
         }
         if (wasOpen && deps.closeCurrentChat) deps.closeCurrentChat();
+        if (chatListLoading) {
+            refreshAfterCurrentRequest = true;
+            if (removed && wasCountedByServer && chatListPageRequest) {
+                chatListPageRequest.invalidated = true;
+                loadAfterCurrentRequest = true;
+            }
+        }
 
         render();
         if (deps.collectOnlineUserIds) deps.collectOnlineUserIds();
         if (deps.updateTitleBadge) deps.updateTitleBadge();
+        if ((!removed || (!wasCountedByServer && chatListTotalKnown)) && !chatListLoading) refreshChatListTotal();
         return true;
     }
 
@@ -506,12 +618,22 @@
     function refreshQuiet() {
         if (chatListLoading) return chatListRequest || Promise.resolve(false);
         chatListLoading = true;
+        var removedIdsAtRequest = new Set(removedChatIds);
+        var totalKnownAtRequest = chatListTotalKnown;
 
         var request = BF.api
             .listChats(0, 50)
             .then(function (data) {
                 if (!data || !data.chats) return false;
-                var fetched = data.chats.slice();
+                var filtered = filterRemovedChats(
+                    data.chats,
+                    data.totalCount,
+                    removedIdsAtRequest,
+                    totalKnownAtRequest
+                );
+                var totalCount = filtered.totalCount;
+                var fetched = filtered.chats;
+                chatListTotalKnown = true;
                 fetched.sort(function (a, b) {
                     var bt = (b.lastMessage && b.lastMessage.sentAt) || b.lastActivityAt || 0;
                     var at = (a.lastMessage && a.lastMessage.sentAt) || a.lastActivityAt || 0;
@@ -519,7 +641,7 @@
                 });
 
                 var chats = deps.getChats();
-                var same = data.totalCount === chatListTotal && fetched.length <= chats.length;
+                var same = totalCount === chatListTotal && fetched.length <= chats.length;
                 if (same) {
                     for (var i = 0; i < fetched.length; i++) {
                         if (chatSignature(fetched[i]) !== chatSignature(chats[i])) {
@@ -530,8 +652,10 @@
                 }
                 if (same) return true; // ничего не изменилось — DOM не трогаем
 
+                serverCountedChatIds.clear();
+                rememberServerCountedChats(fetched, false);
                 deps.setChats(fetched);
-                chatListTotal = data.totalCount;
+                chatListTotal = totalCount;
                 chatListOffset = fetched.length;
                 render();
                 deps.collectOnlineUserIds();
@@ -543,11 +667,37 @@
                 return false;
             })
             .then(function (result) {
-                if (chatListRequest === request) {
-                    chatListLoading = false;
-                    chatListRequest = null;
-                }
-                return result;
+                return completeListRequest(request, result);
+            });
+        chatListRequest = request;
+        return request;
+    }
+
+    function refreshChatListTotal() {
+        if (chatListLoading) return chatListRequest || Promise.resolve(false);
+        chatListLoading = true;
+        var removedIdsAtRequest = new Set(removedChatIds);
+        var totalKnownAtRequest = chatListTotalKnown;
+
+        var request = BF.api
+            .listChats(0, 50)
+            .then(function (data) {
+                if (!data || !data.chats) return false;
+                var filtered = filterRemovedChats(
+                    data.chats,
+                    data.totalCount,
+                    removedIdsAtRequest,
+                    totalKnownAtRequest
+                );
+                chatListTotal = filtered.totalCount;
+                chatListTotalKnown = true;
+                return true;
+            })
+            .catch(function () {
+                return false;
+            })
+            .then(function (result) {
+                return completeListRequest(request, result);
             });
         chatListRequest = request;
         return request;
