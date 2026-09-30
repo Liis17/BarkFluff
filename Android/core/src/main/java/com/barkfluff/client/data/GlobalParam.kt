@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import com.barkfluff.client.utils.NetworkUtils
+import com.barkfluff.client.domain.media.AutoDownloadMode
+import com.barkfluff.client.domain.media.AutoDownloadSettings
 import java.security.SecureRandom
 import java.util.UUID
 
@@ -30,6 +32,23 @@ class GlobalParam(private val context: Context) {
     }
 
     // Приложение
+    var autoDownloadSettings: AutoDownloadSettings
+        get() = AutoDownloadSettings(
+            modes = AutoDownloadSettings.TYPES.mapNotNull { type ->
+                val name = sharedPreferences.getString("$KEY_AUTO_DOWNLOAD_PREFIX${type.name}", null)
+                AutoDownloadMode.entries.find { it.name == name }?.let { type to it }
+            }.toMap(),
+            maxSizeMb = sharedPreferences.getInt(KEY_AUTO_DOWNLOAD_LIMIT, 2).coerceIn(1, 512),
+        )
+        set(value) {
+            sharedPreferences.edit().apply {
+                AutoDownloadSettings.TYPES.forEach { type ->
+                    putString("$KEY_AUTO_DOWNLOAD_PREFIX${type.name}", value.mode(type).name)
+                }
+                putInt(KEY_AUTO_DOWNLOAD_LIMIT, value.maxSizeMb)
+            }.apply()
+        }
+
     var socketBeacon: String
         get() = sharedPreferences.getString(KEY_SOCKET_BEACON, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SOCKET_BEACON, value).apply()
@@ -418,6 +437,8 @@ class GlobalParam(private val context: Context) {
     }
 
     companion object {
+        const val KEY_AUTO_DOWNLOAD_PREFIX = "auto_download_"
+        private const val KEY_AUTO_DOWNLOAD_LIMIT = "auto_download_limit_mb"
         private const val KEY_SOCKET_BEACON = "socket_beacon"
         private const val KEY_SOCKET_USERS = "socket_users"
         private const val KEY_SOCKET_IDENTITY = "socket_identity"

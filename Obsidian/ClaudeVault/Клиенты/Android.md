@@ -417,6 +417,12 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
 
 ## Система кеширования
 
+### Политика автозагрузки медиа
+
+`:core` содержит `AutoDownloadSettings`, `AutoDownloadPolicy`, `AutoDownloadNetworkState` и observable `AutoDownloadSettingsStore`. Режимы `Wi-Fi / любая сеть / вручную` хранятся в `GlobalParam` отдельно для IMAGE, GIF, VIDEO, AUDIO, VOICE и DOCUMENT. Исходный режим IMAGE — любая сеть, остальных типов — Wi-Fi; общий лимит — 2 МБ (1 МБ = 1024 × 1024 байт), допустимые значения 1–512 МБ. Неизвестный размер не разрешает автоматический старт. Настройки сохраняются при перезапуске и сбрасываются существующим `clearUserData()` при logout.
+
+Состояние сети обновляет существующий default-network callback приложения; Wi-Fi определяется по `TRANSPORT_WIFI` без `TRANSPORT_CELLULAR`, в том числе у VPN. Пока capabilities неизвестны или default network потеряна, новые автоматические загрузки запрещены. Проверка публичного интернета не требуется для локальных нод. Связано с [[Архитектура]] и [[Android-ProjectMap]].
+
 Четыре слоя кеша:
 1. **Runtime URL-кэш** — `AvatarLoader.urlCache` (`ConcurrentHashMap<fileId, URL>`, in-memory)
 2. **Persistent URL-кэш** — `FileUrlCache` → SharedPreferences `"file_url_cache"` (SHA-256 keys)

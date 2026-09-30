@@ -1,6 +1,9 @@
 package com.barkfluff.client.di
 
 import android.content.Context
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.calls.CallEventsService
@@ -74,6 +77,15 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideAutoDownloadSettings(@ApplicationContext context: Context): AutoDownloadSettingsStore =
+        AutoDownloadSettingsStore(GlobalParam(context))
+
+    @Provides
+    @Singleton
+    fun provideAutoDownloadNetworkState(): AutoDownloadNetworkState = AutoDownloadNetworkState()
 
     @Provides
     @Singleton
