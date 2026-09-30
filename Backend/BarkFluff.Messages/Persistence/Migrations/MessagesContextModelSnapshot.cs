@@ -21,6 +21,7 @@ namespace BarkFluff.Messages.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("BarkFluff.Messages.Domain.Chat", b =>
@@ -152,6 +153,10 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChatId", "UserId");
+
+                    b.HasIndex("UserId", "ChatId")
+                        .HasFilter("\"UserId\" IS NOT NULL")
+                        .HasAnnotation("Npgsql:CreatedConcurrently", true);
 
                     b.ToTable("ChatMembers");
                 });
@@ -478,6 +483,14 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                 .HasColumnType("character varying(4096)");
 
                             b1.HasKey("MessageId");
+
+                            b1.HasIndex("Text")
+                                .HasDatabaseName("IX_Messages_Content_Text_Search")
+                                .HasFilter("\"IsDeleted\" = FALSE AND \"Type\" <> 2")
+                                .HasAnnotation("Npgsql:CreatedConcurrently", true);
+
+                            NpgsqlIndexBuilderExtensions.HasMethod(b1.HasIndex("Text"), "gin");
+                            NpgsqlIndexBuilderExtensions.HasOperators(b1.HasIndex("Text"), new[] { "gin_trgm_ops" });
 
                             b1.ToTable("Messages");
 

@@ -12,5 +12,8 @@ public class ChatMemberConfiguration : IEntityTypeConfiguration<ChatMember>
         builder.HasKey(x => x.Id);
 
         builder.HasIndex(x => new { x.ChatId, x.UserId });
+        builder.HasIndex(x => new { x.UserId, x.ChatId })
+            .HasFilter("\"UserId\" IS NOT NULL")
+            .IsCreatedConcurrently();
     }
 }
