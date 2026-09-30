@@ -63,8 +63,6 @@ public class SendSecretMessageCommandHandler : IRequestHandler<SendSecretMessage
             request.Envelope,
             DateTime.UtcNow);
 
-        await _queueSender.SendSilentPush(request.RecipientUserId, "Новое секретное сообщение");
-
         _metrics.Increment("secret_messages_sent");
         _metrics.Add("secret_messages_envelope_bytes", request.Envelope.Length);
 

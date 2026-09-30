@@ -71,7 +71,8 @@ public class DismissPushConsumer : IConsumer<DismissPushEvent>
                 await _firebaseService.SendDismissBatchAsync(
                     androidTokens,
                     message.ChatId.ToString(),
-                    context.CancellationToken);
+                    context.CancellationToken,
+                    message.MessageId);
             }
 
             if (webTokens.Count > 0)
@@ -79,7 +80,8 @@ public class DismissPushConsumer : IConsumer<DismissPushEvent>
                 await _firebaseService.SendWebDismissBatchAsync(
                     webTokens,
                     message.ChatId.ToString(),
-                    context.CancellationToken);
+                    context.CancellationToken,
+                    message.MessageId);
             }
         }
         catch (Exception ex)

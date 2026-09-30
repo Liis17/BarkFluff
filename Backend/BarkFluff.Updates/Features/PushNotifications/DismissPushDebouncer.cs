@@ -6,7 +6,9 @@ public class DismissPushDebouncer
 {
     private static readonly TimeSpan DefaultDelay = TimeSpan.FromSeconds(1);
 
-    private readonly ConcurrentDictionary<(long UserId, Guid ChatId), CancellationTokenSource> _pending = new();
+    private sealed record Pending(CancellationTokenSource Cancellation, long MessageId);
+
+    private readonly ConcurrentDictionary<(long UserId, Guid ChatId), Pending> _pending = new();
     private readonly TimeSpan _delay;
 
     public DismissPushDebouncer() : this(DefaultDelay)
@@ -21,11 +23,13 @@ public class DismissPushDebouncer
     public async Task RunAsync(
         long userId,
         Guid chatId,
-        Func<CancellationToken, Task> action,
+        long messageId,
+        Func<long, CancellationToken, Task> action,
         CancellationToken cancellationToken)
     {
         var key = (userId, chatId);
-        var current = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var current = new Pending(cancellation, messageId);
 
         while (true)
         {
@@ -35,12 +39,13 @@ public class DismissPushDebouncer
             if (!_pending.TryGetValue(key, out var previous))
                 continue;
 
+            current = current with { MessageId = Math.Max(current.MessageId, previous.MessageId) };
             if (!_pending.TryUpdate(key, current, previous))
                 continue;
 
             try
             {
-                previous.Cancel();
+                previous.Cancellation.Cancel();
             }
             catch (ObjectDisposedException)
             {
@@ -51,18 +56,15 @@ public class DismissPushDebouncer
 
         try
         {
-            await Task.Delay(_delay, current.Token);
-            await action(current.Token);
+            await Task.Delay(_delay, cancellation.Token);
+            await action(current.MessageId, cancellation.Token);
         }
-        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
         }
         finally
         {
-            if (_pending.TryGetValue(key, out var pending) && ReferenceEquals(pending, current))
-                _pending.TryRemove(key, out _);
-
-            current.Dispose();
+            _pending.TryRemove(new KeyValuePair<(long UserId, Guid ChatId), Pending>(key, current));
         }
     }
 }

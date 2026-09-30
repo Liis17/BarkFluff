@@ -7,7 +7,8 @@ public interface IDismissPushSender
     Task<IReadOnlyList<DismissPushSendResult>> SendAsync(
         IReadOnlyList<string> fcmTokens,
         string chatId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        long messageId = 0);
 }
 
 public sealed record DismissPushSendResult(
@@ -20,7 +21,8 @@ internal sealed class FirebaseDismissPushSender(FirebaseMessaging messaging) : I
     public async Task<IReadOnlyList<DismissPushSendResult>> SendAsync(
         IReadOnlyList<string> fcmTokens,
         string chatId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        long messageId = 0)
     {
         var response = await messaging.SendEachForMulticastAsync(new MulticastMessage
         {
@@ -28,7 +30,8 @@ internal sealed class FirebaseDismissPushSender(FirebaseMessaging messaging) : I
             Data = new Dictionary<string, string>
             {
                 ["type"] = "dismiss_chat_notifications",
-                ["chat_id"] = chatId
+                ["chat_id"] = chatId,
+                ["message_id"] = messageId.ToString(System.Globalization.CultureInfo.InvariantCulture)
             },
             Android = new AndroidConfig
             {
