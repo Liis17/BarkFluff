@@ -16,6 +16,9 @@ import android.graphics.Typeface
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
+import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
 import android.os.Environment
 import android.text.Editable
 import android.text.TextWatcher
@@ -133,6 +136,8 @@ class ChatActivity : AppCompatActivity() {
     @Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
     @Inject lateinit var callGateway: CallGateway
     @Inject lateinit var fileMediaGateway: FileMediaGateway
+    @Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
+    @Inject lateinit var autoDownloadNetwork: AutoDownloadNetworkState
     @Inject lateinit var mediaHttpTransport: MediaHttpTransport
     @Inject lateinit var stickerGateway: StickerGateway
     @Inject lateinit var userProfileGateway: UserProfileGateway
@@ -1127,10 +1132,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessagesRecyclerView() {
+        val attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway)
         messageAdapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
-            attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway),
+            attachmentLoader = attachmentLoader,
+            autoDownloadViews = AttachmentAutoDownloadViews(attachmentLoader, this, autoDownloadSettings, autoDownloadNetwork),
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
             stickerSizeDp = globalParam.chatStickerSizeDp,
             eventSink = object : MessageRowEventSink {

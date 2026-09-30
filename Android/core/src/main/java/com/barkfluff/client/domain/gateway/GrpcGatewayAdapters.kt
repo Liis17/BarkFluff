@@ -508,6 +508,9 @@ class GrpcFileMediaGateway(private val repository: ChatRepository) : FileMediaGa
 
     override suspend fun download(fileId: String, onProgress: (Int) -> Unit): File? =
         repository.downloadFile(fileId, onProgress)
+
+    override suspend fun downloadAuto(fileId: String, maxBytes: Long, onProgress: (Int) -> Unit): File? =
+        repository.downloadFileAuto(fileId, maxBytes, onProgress)
 }
 
 class GrpcStickerGateway(private val grpc: GrpcApiTransport) : StickerGateway {

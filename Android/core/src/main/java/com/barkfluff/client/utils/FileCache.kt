@@ -55,6 +55,14 @@ object FileCache {
         } else false
     }
 
+    suspend fun saveAuto(
+        fileId: String,
+        stream: InputStream,
+        maxBytes: Long,
+        contentLength: Long,
+        onProgress: (Int) -> Unit,
+    ): File = BoundedFileDownload.save(stream, File(cacheDir, sanitize(fileId)), maxBytes, contentLength, onProgress)
+
     private fun sanitize(fileId: String): String =
         fileId.replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
 }

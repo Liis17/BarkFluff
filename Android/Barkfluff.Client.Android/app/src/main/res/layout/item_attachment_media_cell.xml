@@ -29,4 +29,20 @@
          android:importantForAccessibility="no"
          android:visibility="gone" />
 
+    <ImageView
+        android:id="@+id/mediaDownloadIcon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:padding="12dp"
+        android:src="@drawable/ic_download"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no" />
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/mediaDownloadProgress"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:visibility="gone" />
 </FrameLayout>

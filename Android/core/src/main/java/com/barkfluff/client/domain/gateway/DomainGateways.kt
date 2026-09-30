@@ -232,6 +232,7 @@ interface FileMediaGateway {
     suspend fun upload(bytes: ByteArray, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String>
     suspend fun upload(file: File, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String>
     suspend fun download(fileId: String, onProgress: (Int) -> Unit = {}): File?
+    suspend fun downloadAuto(fileId: String, maxBytes: Long, onProgress: (Int) -> Unit = {}): File?
 }
 
 interface StickerGateway {

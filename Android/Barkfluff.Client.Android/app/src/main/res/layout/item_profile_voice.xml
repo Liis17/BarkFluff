@@ -28,6 +28,12 @@
             android:importantForAccessibility="no"
             android:src="@drawable/ic_play_arrow"
             app:tint="@color/profile_on_accent" />
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/galleryVoiceProgress"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:visibility="gone" />
     </FrameLayout>
 
     <ImageView

@@ -3,6 +3,15 @@ package com.barkfluff.client
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
+import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
+import com.barkfluff.client.adapter.MessageAttachmentAction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
+import com.barkfluff.client.utils.FileSaveUtils
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -41,6 +50,8 @@ class PinnedMessagesActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPinnedMessagesBinding
     private lateinit var globalParam: GlobalParam
     @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
+    @javax.inject.Inject lateinit var autoDownloadNetwork: AutoDownloadNetworkState
     @javax.inject.Inject lateinit var messageGateway: MessageGateway
     @javax.inject.Inject lateinit var realtimeGateway: RealtimeGateway
     private lateinit var adapter: MessageAdapter
@@ -80,11 +91,14 @@ class PinnedMessagesActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
+        val attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway)
         adapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = true,
-            attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway),
+            attachmentLoader = attachmentLoader,
+            autoDownloadViews = AttachmentAutoDownloadViews(attachmentLoader, this, autoDownloadSettings, autoDownloadNetwork),
             eventSink = object : MessageRowEventSink {
+                override fun onAttachmentAction(action: MessageAttachmentAction) { handleAttachmentAction(action) }
                 override fun onMessageActionRequested(bubble: View, item: MessageItem) {
                     showUnpinMenu(item)
                 }
@@ -92,6 +106,42 @@ class PinnedMessagesActivity : AppCompatActivity() {
         )
         binding.pinnedRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.pinnedRecyclerView.adapter = adapter
+    }
+
+    private fun handleAttachmentAction(action: MessageAttachmentAction) {
+        when (action) {
+            is MessageAttachmentAction.OpenImage -> startActivity(ImageViewerActivity.createIntent(
+                this, action.fileIds, action.previewUrls, action.clickedIndex,
+                fileNames = action.fileNames, sourceMessageIds = action.sourceMessageIds,
+            ))
+            is MessageAttachmentAction.OpenVideo -> startActivity(MediaViewerActivity.createIntent(
+                this, action.fileId, action.fileName, action.cachedPath,
+            ))
+            is MessageAttachmentAction.OpenDocument -> {
+                try {
+                    val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", action.cachedFile)
+                    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(action.fileName.substringAfterLast('.', "").lowercase())
+                        ?: "application/octet-stream"
+                    startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, mime)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }, getString(R.string.open_with)))
+                } catch (_: Exception) {
+                    Toast.makeText(this, R.string.file_open_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+            is MessageAttachmentAction.Save -> lifecycleScope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    FileSaveUtils.saveToDownloads(this@PinnedMessagesActivity, action.cachedFile, action.fileName)
+                }
+                Toast.makeText(this@PinnedMessagesActivity,
+                    if (saved) R.string.file_saved_to_downloads else R.string.file_save_failed, Toast.LENGTH_SHORT).show()
+            }
+            is MessageAttachmentAction.ToastRes -> {
+                val text = action.formatArg?.let { getString(action.resId, it) } ?: getString(action.resId)
+                Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun subscribeToRealtimeEvents() {

@@ -13,7 +13,9 @@ import java.io.OutputStream
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -641,6 +643,46 @@ class ChatRepository(
         } catch (e: Exception) {
             Log.e(TAG, "Error downloading file $fileId", e)
             null
+        }
+    }
+
+    /** Automatic requests have a captured size budget; explicit downloads keep their own path. */
+    suspend fun downloadFileAuto(
+        fileId: String,
+        maxBytes: Long,
+        onProgress: (Int) -> Unit = {},
+    ): File? = withContext(Dispatchers.IO) {
+        currentCoroutineContext().ensureActive()
+        val url = getFileDownloadUrl(fileId).getOrNull() ?: return@withContext null
+        currentCoroutineContext().ensureActive()
+        val connection = mediaTransport.openConnection(url)
+        coroutineScope {
+            val cancellation = launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    awaitCancellation()
+                } finally {
+                    connection.disconnect()
+                }
+            }
+            try {
+                connection.connectTimeout = 30_000
+                connection.readTimeout = 60_000
+                connection.connect()
+                connection.inputStream.use { input ->
+                    com.barkfluff.client.utils.FileCache.saveAuto(
+                        fileId, input, maxBytes, connection.contentLengthLong, onProgress,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
+                Log.w(TAG, "Auto-download failed for fileId=$fileId", e)
+                null
+            } finally {
+                cancellation.cancel()
+                connection.disconnect()
+            }
         }
     }
 

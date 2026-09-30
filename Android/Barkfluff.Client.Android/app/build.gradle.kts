@@ -254,6 +254,7 @@ dependencies {
 
     // Image loading and caching
     implementation("io.coil-kt:coil:2.7.0")
+    implementation("io.coil-kt:coil-gif:2.7.0")
     implementation("io.coil-kt:coil-video:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
