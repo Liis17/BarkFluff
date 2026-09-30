@@ -265,6 +265,12 @@
     .hero-sub { font-size: 17px; line-height: 1.55; color: var(--ink-dim); max-width: 460px; }
     .hero-sub s { color: var(--ink-mute); text-decoration-color: color-mix(in srgb, var(--brand) 50%, transparent); text-decoration-thickness: 2px; }
 
+    .hero-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-top: 4px; }
+    .hero-cta-btn { padding: 15px 24px; font-size: 15px; }
+    .hero-cta-btn.is-pending { opacity: .7; }
+    .hero-cta-note { color: var(--ink-mute); font: 11px 'JetBrains Mono', monospace; }
+    .hero-cta-note:empty { display: none; }
+
     .hero-meta {
       display: flex; align-items: center; gap: 18px; margin-top: 8px;
       font-size: 12px; color: var(--ink-mute); font-weight: 500;
@@ -663,6 +669,7 @@
       .features-strip { grid-template-columns: 1fr; }
       .hero-title { font-size: clamp(34px, 12.5vw, 50px); }
       .hero-meta { font-size: 10.5px; }
+      .hero-cta-btn { width: 100%; }
       .channel-tab { padding: 9px 7px; }
       .channel-tab-top { font-size: 11px; }
       .channel-tab-branch { font-size: 9px; padding-left: 12px; }
@@ -746,6 +753,10 @@
             <span style="color: var(--brand-soft);">Без рекламы, без трекинга</span>, без лишнего шума.<br>
             Просто <span style="color: var(--brand-soft);">отправляй сообщения</span> — друзьям, себе, кому угодно.
           </p>
+          <div class="hero-cta">
+            <a href="#clientHub" class="btn btn-primary hero-cta-btn" id="heroCtaBtn"><span id="heroCtaLabel">Скачать</span><span id="heroCtaArrow" aria-hidden="true">↓</span></a>
+            <span class="hero-cta-note" id="heroCtaNote"></span>
+          </div>
           <div class="hero-meta">
             <span id="heroMeta1"><b>Лёгкий</b>&nbsp;нативный&nbsp;клиент</span>
             <span class="divider"></span>
@@ -1197,6 +1208,8 @@
           meta1:          '<b>Лёгкий</b>&nbsp;нативный&nbsp;клиент',
           meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;шифрование',
           meta3:          '<b>Мультиплатформенность</b>',
+          ctaDownload:    'Скачать для',
+          ctaWeb:         'Открыть в браузере',
           prevCaption:    'Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке',
           clientEyebrow:  'Канал сборки',
           clientDescription: 'Переключай ветку — ссылки, версии и визуальный режим страницы меняются вместе с каналом.',
@@ -1267,6 +1280,8 @@
           meta1:          '<b>Lightweight</b>&nbsp;native&nbsp;client',
           meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;encryption',
           meta3:          '<b>Cross-platform</b>',
+          ctaDownload:    'Download for',
+          ctaWeb:         'Open in browser',
           prevCaption:    'Switch platform — press <span class="kbd">←</span> <span class="kbd">→</span> or click a card',
           clientEyebrow:  'Build channel',
           clientDescription: 'Switch branches to update the links, versions and visual mode together.',
@@ -1352,8 +1367,38 @@
         const ua = navigator.userAgent;
         if (/android/i.test(ua)) return 'android';
         if (/win/i.test(navigator.platform || '') || /windows/i.test(ua)) return 'windows';
+        if (/iphone|ipad|ipod/i.test(ua) || (/mac/i.test(navigator.platform || '') && navigator.maxTouchPoints > 1)) return 'ios';
         if (/mac/i.test(navigator.platform || '') || /macintosh/i.test(ua)) return 'macos';
         return 'other';
+      }
+
+      const platformNames = { windows: 'Windows', macos: 'macOS', android: 'Android' };
+
+      function applyHeroCta() {
+        const btn = $e('heroCtaBtn');
+        if (!btn) return;
+        const t = S[window.__lang];
+        const platform = detectPlatform();
+        const config = clientConfig[platform];
+        const version = config && _ver && _ver[config.apiKey] ? (_ver[config.apiKey][currentChannel] || '') : '';
+
+        if (config) {
+          btn.href = 'https://storage.barkfluff.com/get/barkfluff' + config.slug + '/' + currentChannel;
+          btn.removeAttribute('target');
+          btn.removeAttribute('rel');
+          $e('heroCtaLabel').textContent = t.ctaDownload + ' ' + platformNames[platform];
+          $e('heroCtaArrow').textContent = '↓';
+        } else {
+          btn.href = 'https://web.barkfluff.com';
+          btn.target = '_blank';
+          btn.rel = 'noopener';
+          $e('heroCtaLabel').textContent = t.ctaWeb;
+          $e('heroCtaArrow').textContent = '→';
+        }
+
+        btn.classList.toggle('is-pending', Boolean(config && _ver && !version));
+        const channelName = currentChannel.charAt(0).toUpperCase() + currentChannel.slice(1);
+        $e('heroCtaNote').textContent = config && version ? 'v' + version + ' · ' + channelName : '';
       }
 
       function setBuildStatus(id, key) {
@@ -1395,6 +1440,7 @@
         const channel = channelConfig[currentChannel];
         const eyebrowEl = $e('heroEyebrowText');
         if (eyebrowEl) eyebrowEl.textContent = S[window.__lang][channel.eyebrow] + (selectedVersion ? ' · v' + selectedVersion : '');
+        applyHeroCta();
       }
 
       async function loadVersions() {
