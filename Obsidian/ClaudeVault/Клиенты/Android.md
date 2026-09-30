@@ -374,7 +374,11 @@ Backend заполняет эти поля при доставке сообще�
 
 ### Durable outbox обычных чатов
 
-`OutgoingMessageQueue` — единственный публичный seam отправки обычных чатов: `enqueue`, `observeChat`, `retry`, `cancel`. До успешного `enqueue` текст/медиа **не** считаются принятыми: все `content://` URI, voice/cache-файлы и edited/sticker `ByteArray` копируются в `noBackupFilesDir/outgoing/<scope>/<operationId>`. Затем SQLCipher Room `offline_chat_cache.db` v4 фиксирует `QUEUED`; после этого process kill, перезапуск устройства и пропажа сети не теряют работу.
+`OutgoingMessageQueue` — единственный публичный seam отправки обычных чатов: `enqueue`, `observeChat`, `retry`, `cancel`. До успешного `enqueue` текст/медиа **не** считаются принятыми: все `content://` URI, voice/cache-файлы и edited/sticker `ByteArray` копируются в `noBackupFilesDir/outgoing/<scope>/<operationId>`. Затем SQLCipher Room `offline_chat_cache.db` v5 фиксирует `QUEUED`; после этого process kill, перезапуск устройства и пропажа сети не теряют работу. Миграция v4→v5 добавляет `pending_message_reads`, сохраняя историю, outbox и черновики.
+
+Ответ из уведомления передаёт в `SendJob.notificationReply` ожидаемый server/account scope и ID входящего сообщения. Финальная Room-транзакция проверяет актуальность scope и атомарно сохраняет `QUEUED` вместе с независимой записью ожидающего прочтения. Успех `enqueue` определяется этой транзакцией; ошибка последующего планирования WorkManager не отклоняет уже принятый ответ. `replyId=0` и `draftGeneration=null` сохраняют черновик открытого чата.
+
+`OutgoingMessageWorker` обрабатывает отправки и журнал прочтений независимо: `MarkAsRead` использует исходный ID, временные ошибки получают собственный backoff, ближайший запуск учитывает обе очереди. Повтор прочтения не повторяет отправку; Cancel и очистка подтверждённых отправок не удаляют прочтение. Logout/очистка кеша удаляют журнал вместе с соответствующим scope. Серверное прочтение и ограничение dismiss по ID описаны в [[Backend/Updates]] и [[Backend/CloudMessaging]].
 
 Принятые preview-вложения обычного чата хранятся отдельно в `noBackupFilesDir/composer/<scope>/<chatId>/`, а их упорядоченные записи — в `composer_attachments`. `ComposerAttachmentStore` публикует preview только после атомарного staging. `draftGeneration` связывает journal черновика с outbox: при crash между `QUEUED` и очисткой UI распознаёт уже переданную generation и удаляет только подтверждённые копии. `remove`, logout, cache clear и orphan cleanup удаляют и записи, и файлы.
 

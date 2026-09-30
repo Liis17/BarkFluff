@@ -66,6 +66,20 @@ class OutgoingMessageDaoTest {
         assertEquals(12_345L, wakeAt)
     }
 
+    @Test
+    fun readsAreScopedAndKeepTheirRetryWhenDuplicateIsInserted() = runBlocking {
+        val dao = database.pendingReadDao()
+        dao.insert(PendingMessageReadEntity(SCOPE, 42, "chat", 2, 100))
+        dao.insert(PendingMessageReadEntity(SCOPE, 42, "chat"))
+        dao.insert(PendingMessageReadEntity("other-account", 43, "chat"))
+        assertEquals(emptyList<PendingMessageReadEntity>(), dao.ready(SCOPE, 99, 50))
+        assertEquals(2, dao.ready(SCOPE, 100, 50).single().attemptCount)
+        assertEquals(100L, dao.nextWakeAt(SCOPE))
+        dao.clear(SCOPE)
+        assertEquals(null, dao.nextWakeAt(SCOPE))
+        assertEquals(1, dao.ready("other-account", 100, 50).size)
+    }
+
     private fun message(operationId: String, chatId: String, createdAtMillis: Long) = OutgoingMessageEntity(
         scopeId = SCOPE,
         operationId = operationId,

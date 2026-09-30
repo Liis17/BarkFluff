@@ -59,5 +59,8 @@ data class SendJob(
     /** File ids that already exist on the server (for example, a sticker pack item). */
     val existingFileIds: List<String> = emptyList(),
     /** Generation of the draft represented by this send; cleared only after its ACK. */
-    val draftGeneration: Long? = null
+    val draftGeneration: Long? = null,
+    val notificationReply: NotificationReplyMetadata? = null
 )
+
+data class NotificationReplyMetadata(val expectedScopeId: String, val messageId: Long)
