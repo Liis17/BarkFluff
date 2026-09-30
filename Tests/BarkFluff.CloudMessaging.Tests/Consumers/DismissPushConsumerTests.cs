@@ -49,7 +49,7 @@ public class DismissPushConsumerTests
     {
         var consumer = CreateConsumer();
         var chatId = Guid.NewGuid();
-        var @event = new DismissPushEvent { ChatId = chatId, UserId = 42 };
+        var @event = new DismissPushEvent { ChatId = chatId, UserId = 42, MessageId = 123 };
         var context = CreateContext(@event);
 
         SetupGetDevicesWithTokens(
@@ -62,7 +62,7 @@ public class DismissPushConsumerTests
             f => f.SendDismissBatchAsync(
                 It.Is<IReadOnlyList<string>>(t => t.SequenceEqual(new List<string> { "token-1", "token-2" })),
                 chatId.ToString(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(), 123),
             Times.Once);
     }
 
@@ -79,7 +79,7 @@ public class DismissPushConsumerTests
             PushPlatform = PushPlatform.Web
         });
         _firebaseService
-            .Setup(f => f.SendWebDismissBatchAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.SendWebDismissBatchAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<long>()))
             .Returns(Task.CompletedTask);
 
         await consumer.Consume(context.Object);
@@ -87,9 +87,9 @@ public class DismissPushConsumerTests
         _firebaseService.Verify(f => f.SendWebDismissBatchAsync(
             It.Is<IReadOnlyList<string>>(tokens => tokens.SequenceEqual(new[] { "web-token" })),
             chatId.ToString(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(), It.IsAny<long>()), Times.Once);
         _firebaseService.Verify(f => f.SendDismissBatchAsync(
-            It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<long>()), Times.Never);
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class DismissPushConsumerTests
             f => f.SendDismissBatchAsync(
                 It.Is<IReadOnlyList<string>>(tokens => tokens.SequenceEqual(new[] { "same-token" })),
                 chatId.ToString(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(), It.IsAny<long>()),
             Times.Once);
     }
 
@@ -128,7 +128,7 @@ public class DismissPushConsumerTests
             f => f.SendDismissBatchAsync(
                 It.IsAny<IReadOnlyList<string>>(),
                 It.IsAny<string>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(), It.IsAny<long>()),
             Times.Never);
     }
 
@@ -150,7 +150,7 @@ public class DismissPushConsumerTests
             f => f.SendDismissBatchAsync(
                 It.Is<IReadOnlyList<string>>(t => t.Count == 1 && t[0] == "valid-token"),
                 It.IsAny<string>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(), It.IsAny<long>()),
             Times.Once);
     }
 
@@ -171,7 +171,7 @@ public class DismissPushConsumerTests
             f => f.SendDismissBatchAsync(
                 It.IsAny<IReadOnlyList<string>>(),
                 It.IsAny<string>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(), It.IsAny<long>()),
             Times.Never);
     }
 
@@ -204,7 +204,7 @@ public class DismissPushConsumerTests
 
         _firebaseService
             .Setup(f => f.SendDismissBatchAsync(
-                It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<long>()))
             .ThrowsAsync(new Exception("FCM error"));
 
         var act = async () => await consumer.Consume(context.Object);
@@ -233,7 +233,7 @@ public class DismissPushConsumerTests
             f => f.SendDismissBatchAsync(
                 It.IsAny<IReadOnlyList<string>>(),
                 chatId.ToString(),
-                token),
+                token, It.IsAny<long>()),
             Times.Once);
     }
 
@@ -273,7 +273,7 @@ public class DismissPushConsumerTests
             f => f.SendDismissBatchAsync(
                 It.IsAny<IReadOnlyList<string>>(),
                 chatId.ToString(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(), It.IsAny<long>()),
             Times.Once);
     }
 }

@@ -47,6 +47,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<IncomingCallPushConsumer>();
     x.AddConsumer<CallDismissPushConsumer>();
     x.AddConsumer<PrivateChatInvitePushConsumer>();
+    x.AddConsumer<NewEncryptedMessagePushConsumer>();
+    x.AddConsumer<NewSecretMessagePushConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -84,6 +86,16 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("private-chat-invite-push-handler", e =>
         {
             e.ConfigureConsumer<PrivateChatInvitePushConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("new-encrypted-message-push-handler", e =>
+        {
+            e.ConfigureConsumer<NewEncryptedMessagePushConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("new-secret-message-push-handler", e =>
+        {
+            e.ConfigureConsumer<NewSecretMessagePushConsumer>(context);
         });
     });
 });

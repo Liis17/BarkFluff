@@ -4,7 +4,7 @@ namespace BarkFluff.Shared.Queue.Messages;
 /// Новое секретное сообщение (Signal Double Ratchet).
 /// Updates маршрутизирует по device-scope подписке именно на RecipientDeviceId.
 /// Если устройство оффлайн — Updates ничего не делает: envelope уже лежит в Redis-буфере (24ч).
-/// PushNotificationEvent для push без содержимого публикуется отдельно.
+/// CloudMessaging отправляет metadata-only push на RecipientDeviceId по этому событию.
 /// </summary>
 public class NewSecretMessageEvent
 {

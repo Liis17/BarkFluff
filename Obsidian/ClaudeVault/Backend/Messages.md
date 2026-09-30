@@ -66,7 +66,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `SendSecretChatInvite` | Отправить инвайт секретного чата конкретному устройству. Кладёт opaque PreKeySignalMessage в `SecretMessageBuffer.EnqueueInviteAsync` (Redis 24ч), публикует `SecretChatInviteEvent` + silent push. Лимит envelope 32Б-16КиБ |
 | `AcceptSecretChatInvite` | Принять инвайт на устройстве-получателе: атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=true)` инициатору, опционально вкладывает первое ответное SignalMessage |
 | `RejectSecretChatInvite` | Отклонить инвайт: `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
-| `SendSecretMessage` | Отправить opaque envelope конкретному устройству через `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч). Публикует `NewSecretMessageEvent` + silent push. Лимит envelope 16Б-16КиБ |
+| `SendSecretMessage` | Отправить opaque envelope конкретному устройству через `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч). Публикует `NewSecretMessageEvent`; [[Backend/CloudMessaging]] потребляет его для metadata-only push на конкретное устройство. Лимит envelope 16Б-16КиБ |
 | `AckSecretMessage` | Подтвердить доставку секретного сообщения — `SecretMessageBuffer.AckMessageAsync(deviceId, messageId)`. Idempotent |
 | `GetChatDraft` / `UpsertChatDraft` / `DeleteChatDraft` | Кросс-клиентский черновик обычного чата: текст ≤4096 и выбранный reply. Хранится по `(ChatId, UserId)`; Upsert создаёт новую revision, Delete удаляет только совпавшую версию после отправки. Private/Secret исключены |
 
@@ -111,16 +111,16 @@ docker-compose -f docker-compose-dev.yml up -d messages
 - `MessagePinnedEvent` → [[Backend/Updates]] (PinMessage)
 - `MessageUnpinnedEvent` → [[Backend/Updates]] (UnpinMessage; также при DeleteMessage если сообщение было закреплено)
 - `AllMessagesUnpinnedEvent` → [[Backend/Updates]] (UnpinAll)
-- `NewEncryptedMessageEvent` → [[Backend/Updates]] (SendPrivateMessage; user-scope)
+- `NewEncryptedMessageEvent` → [[Backend/Updates]] + [[Backend/CloudMessaging]] (SendPrivateMessage; user-scope)
 - `EncryptedMessageEditedEvent` → [[Backend/Updates]] (EditPrivateMessage; user-scope)
 - `EncryptedMessageDeletedEvent` → [[Backend/Updates]] (DeletePrivateMessage; user-scope)
 - `PrivateMessagesReadEvent` → [[Backend/Updates]] (MarkPrivateMessagesAsRead; user-scope)
 - `PrivateChatInviteEvent` → [[Backend/Updates]] (CreatePrivateChat; адресовано приглашённому)
 - `PrivateChatInviteResolutionEvent` → [[Backend/Updates]] (AcceptPrivateChat / RejectPrivateChat; адресовано инициатору)
-- `NewSecretMessageEvent` → [[Backend/Updates]] (SendSecretMessage; **device-scope**)
+- `NewSecretMessageEvent` → [[Backend/Updates]] + [[Backend/CloudMessaging]] (SendSecretMessage; **device-scope**)
 - `SecretChatInviteEvent` → [[Backend/Updates]] (SendSecretChatInvite; **device-scope**)
 - `SecretChatInviteResolutionEvent` → [[Backend/Updates]] (Accept/Reject секретного инвайта; **device-scope** инициатора)
-- `PushNotificationEvent` → CloudMessaging (silent push при SendSecretChatInvite/SendSecretMessage — без content)
+- `PushNotificationEvent` → CloudMessaging (silent push при SendSecretChatInvite — без content)
 
 **Потребляет:**
 - `user-changed-name-messages` → `UserChangedNameConsumer` → Redis-кеш имён

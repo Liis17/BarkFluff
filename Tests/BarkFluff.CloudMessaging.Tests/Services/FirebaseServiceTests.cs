@@ -241,6 +241,19 @@ public class FirebaseServiceTests : IDisposable
     public class SendDismissBatchAsync : FirebaseServiceTests
     {
         [Fact]
+        public async Task ReadBoundary_IsPassedToSender()
+        {
+            var sender = new Mock<IDismissPushSender>();
+            sender.Setup(value => value.SendAsync(It.IsAny<IReadOnlyList<string>>(), "chat1",
+                It.IsAny<CancellationToken>(), 123)).ReturnsAsync([]);
+            var service = new FirebaseService(_loggerMock.Object, Mock.Of<IConfiguration>(), sender.Object);
+
+            await service.SendDismissBatchAsync(["token"], "chat1", messageId: 123);
+
+            sender.VerifyAll();
+        }
+
+        [Fact]
         public async Task NotInitialized_DoesNotThrow()
         {
             var service = CreateServiceWithConfig(NoFirebaseConfig());
@@ -268,7 +281,7 @@ public class FirebaseServiceTests : IDisposable
                 .Setup(value => value.SendAsync(
                     It.IsAny<IReadOnlyList<string>>(),
                     "chat1",
-                    It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>(), It.IsAny<long>()))
                 .ReturnsAsync([
                     new DismissPushSendResult(false, MessagingErrorCode.QuotaExceeded, new Exception("quota")),
                     new DismissPushSendResult(false, MessagingErrorCode.QuotaExceeded, new Exception("quota"))

@@ -37,7 +37,7 @@
 - `MessagePinnedEvent` / `MessageUnpinnedEvent` / `AllMessagesUnpinnedEvent` — закрепы
 - `ReadReceiptEvent` — подтверждение прочтения (ChatId, MessageId, ReadBy, IsLastMessage, ReadAt)
 - `PushNotificationEvent` — данные для push-уведомления (отправитель, чат, превью)
-- `DismissPushEvent` — отзыв push (когда сообщение прочитано/удалено)
+- `DismissPushEvent` — отзыв push (ChatId, UserId, MessageId); положительный MessageId ограничивает отмену прочитанной границей, 0 сохраняет legacy-отмену всего чата
 - `AdminBroadcastNotificationEvent` — админ-рассылка push (Title, Body, ImageUrl, TargetDeviceIds). Публикуется из [[Backend/AdminPanel|AdminPanel]] страницы «Уведомления», потребляется [[Backend/CloudMessaging|CloudMessaging]] (очередь `admin-broadcast-handler`).
 - `IncomingCallPushEvent` — входящий звонок для high-priority FCM push (CallId, CallerUserId, RecipientUserIds, ChatId — null для личного, MediaType, StartedAt). Публикуется [[Backend/Calls]] при инициации звонка, потребляется [[Backend/CloudMessaging|CloudMessaging]].
 - `CallDismissPushEvent` — погасить push входящего звонка на всех устройствах получателей (CallId, RecipientUserIds, Reason: accepted/rejected/ended/timeout/busy). Публикуется [[Backend/Calls]] при завершении ринга, потребляется [[Backend/CloudMessaging|CloudMessaging]].
@@ -108,3 +108,7 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
 - `SendMessage(...)` — обычный путь, fed-поля default.
 - `SendFederatedMessage(...)` — исходящий fed-путь (создание чата + сообщение); заполняет fed-поля, консюмер Federation кладёт в outbox.
 - `SendImportedMessage(...)` — импортированное сообщение (от ноды-партнёра): `IsFederated=true`, но `RemoteParticipants=пусто` — консюмер Federation не входит в publish-ветку (сообщение пришло снаружи, наружу не пересылается).
+
+## E2E push для Android
+
+[[Backend/CloudMessaging]] потребляет существующие `NewEncryptedMessageEvent` и `NewSecretMessageEvent` параллельно с [[Backend/Updates]]. FCM содержит только идентификаторы: ciphertext/envelope не передаются. Private направляется участникам кроме отправителя с учётом mute, Secret — строго RecipientDeviceId. [[Клиенты/Android]] показывает скрытый маркер с действием «Скрыть».

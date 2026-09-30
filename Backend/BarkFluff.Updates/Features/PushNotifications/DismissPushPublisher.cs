@@ -36,13 +36,15 @@ public class DismissPushPublisher : INotificationHandler<ReadByNotification>
             .Select(userId => _debouncer.RunAsync(
                 userId,
                 notification.ChatId,
-                async token =>
+                notification.MessageId,
+                async (messageId, token) =>
                 {
                     await _publishEndpoint.Publish(
                         new DismissPushEvent
                         {
                             ChatId = notification.ChatId,
-                            UserId = userId
+                            UserId = userId,
+                            MessageId = messageId
                         },
                         token);
 
