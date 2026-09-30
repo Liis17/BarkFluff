@@ -1356,4 +1356,5 @@
     <string name="search_attachment_voice">Mensajes de voz</string>
     <string name="search_attachment_sticker">Stickers</string>
     <string name="search_date_range">%1$s – %2$s</string>
+    <string name="search_message_unavailable">El mensaje se eliminó o ya no está disponible</string>
 </resources>

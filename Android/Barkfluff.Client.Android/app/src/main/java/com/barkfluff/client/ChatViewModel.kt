@@ -12,6 +12,9 @@ import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.chat.RegularChatSession
+import com.barkfluff.client.chat.MessageNavigator
+import com.barkfluff.client.chat.MessageTarget
+import com.barkfluff.client.chat.MessageTargetMissingException
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.OutgoingAttachmentKind
@@ -38,6 +41,7 @@ import java.io.File
 import barkfluff.files.FilesApiOuterClass.UploadFileType
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
@@ -90,6 +94,7 @@ data class TimelineState(
     val isLoading: Boolean = false,
     val firstVisibleMessageId: Long = 0L,
     val lastVisibleMessageId: Long = 0L,
+    val target: MessageTarget? = null,
 )
 
 /** Text, reply/edit mode and accepted preview attachments survive Activity recreation. */
@@ -154,7 +159,10 @@ sealed interface ChatIntent {
         val isGroupChat: Boolean,
         val otherUserId: Long,
         val supportsDrafts: Boolean,
+        val targetMessageId: Long = 0L,
     ) : ChatIntent
+    data class NavigateToMessage(val messageId: Long) : ChatIntent
+    data class MessageNavigationHandled(val requestId: Long) : ChatIntent
     data object Load : ChatIntent
     data object LoadUp : ChatIntent
     data object LoadDown : ChatIntent
@@ -226,6 +234,7 @@ class ChatViewModel @Inject constructor(
         private const val KEY_PENDING_EDIT = "pending_edit_message_id"
         private const val KEY_SELECTED_MESSAGE_IDS = "selected_message_ids"
         private const val KEY_CHAT_ID = "chat_id"
+        private const val KEY_TARGET_MESSAGE = "target_message_id"
     }
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -239,6 +248,9 @@ class ChatViewModel @Inject constructor(
     private val composerReducer = ChatComposer()
     private val rowProjector = MessageRowProjector()
     private val regularChatSession = RegularChatSession(messageGateway, chatCacheRepository)
+    private val messageNavigator = MessageNavigator { id, before, after ->
+        messageGateway.loadMessages(chatId, fromMessageId = id, offsetBefore = before, offsetAfter = after)
+    }
     private val presenceSession by lazy { ChatPresenceSession(realtimeGateway, viewModelScope) }
 
     private fun emitEffect(effect: ChatEffect) {
@@ -255,7 +267,10 @@ class ChatViewModel @Inject constructor(
                 isGroupChat = intent.isGroupChat,
                 otherUserId = intent.otherUserId,
                 supportsDrafts = intent.supportsDrafts,
+                targetMessageId = intent.targetMessageId,
             )
+            is ChatIntent.NavigateToMessage -> navigateToMessage(intent.messageId)
+            is ChatIntent.MessageNavigationHandled -> acknowledgeMessageNavigation(intent.requestId)
             ChatIntent.Load -> loadMessages()
             ChatIntent.LoadUp -> loadMessagesUp()
             ChatIntent.LoadDown -> loadMessagesDown()
@@ -301,6 +316,7 @@ class ChatViewModel @Inject constructor(
     private var hasMoreMessagesDown = true
     private var isLoadingMessages = false
     private var loadMessagesJob: Job? = null
+    private var timelineLoadVersion = 0L
     private var firstUnreadMessageId = 0L
     private var lastBottomReadTriggerId = -1L
 
@@ -331,6 +347,7 @@ class ChatViewModel @Inject constructor(
         isGroupChat: Boolean,
         otherUserId: Long,
         supportsDrafts: Boolean,
+        targetMessageId: Long = 0L,
     ) {
         if (initialized) {
             if (this.chatId != chatId) {
@@ -343,6 +360,9 @@ class ChatViewModel @Inject constructor(
         this.supportsDrafts = supportsDrafts
         cacheScope = CacheScope.from(globalParam)
         savedStateHandle[KEY_CHAT_ID] = chatId
+        val target = (savedStateHandle.get<Long>(KEY_TARGET_MESSAGE) ?: targetMessageId)
+            .takeIf { it > 0L }?.let { messageNavigator.request(it) }
+        savedStateHandle[KEY_TARGET_MESSAGE] = target?.messageId
 
         _uiState.value = ChatUiState(
             session = ChatSessionState(
@@ -352,6 +372,7 @@ class ChatViewModel @Inject constructor(
                 isGroupChat = isGroupChat,
                 otherUserId = otherUserId,
             ),
+            timeline = TimelineState(target = target),
         )
 
         configurePresence(if (isGroupChat) emptyList() else listOf(otherUserId))
@@ -525,16 +546,18 @@ class ChatViewModel @Inject constructor(
     // ═══════════════════════════════════════════════════════════════
 
     private fun loadCachedMessages() {
+        if (messageNavigator.pending != null) return
         val scope = cacheScope ?: return
+        val version = timelineLoadVersion
         viewModelScope.launch {
             val messages = runCatching {
                 regularChatSession.cached(scope, chatId, PAGE_SIZE)
             }.getOrNull().orEmpty()
-            if (messages.isEmpty()) return@launch
+            if (messages.isEmpty() || version != timelineLoadVersion) return@launch
 
             displayMessages(messages)
             reconcileSelection(messages.map { it.id }.toSet())
-            val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+            val sortedMessages = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
             firstVisibleMessageId = sortedMessages.first().id
             lastVisibleMessageId = sortedMessages.last().id
             hasMoreMessagesUp = messages.size >= PAGE_SIZE
@@ -544,6 +567,7 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun loadChatInfoAndMessages() {
+        val version = timelineLoadVersion
         loadCachedMessages()
         setLoading(true)
 
@@ -585,74 +609,102 @@ class ChatViewModel @Inject constructor(
                 Log.e(TAG, "Error loading chat info", e)
             }
 
-            loadMessages()
+            if (version == timelineLoadVersion) loadMessages()
         }
     }
 
     fun loadMessages(isRetry: Boolean = false) {
+        loadMessagesJob?.cancel()
+        val version = ++timelineLoadVersion
+        val target = messageNavigator.pending
+        setLoading(true)
         loadMessagesJob = viewModelScope.launch {
             try {
-                val result = if (firstUnreadMessageId > 0) {
-                    messageGateway.loadMessages(
-                        chatId = chatId,
-                        fromMessageId = firstUnreadMessageId,
-                        offsetBefore = 15,
-                        offsetAfter = 30
-                    )
+                val result = if (target != null) {
+                    messageNavigator.window(target) ?: return@launch
+                } else if (firstUnreadMessageId > 0) {
+                    messageGateway.loadMessages(chatId, fromMessageId = firstUnreadMessageId, offsetBefore = 15, offsetAfter = 30)
                 } else {
-                    messageGateway.loadMessages(
-                        chatId = chatId,
-                        fromMessageId = 0L,
-                        offsetBefore = 0,
-                        offsetAfter = 0,
-                        count = PAGE_SIZE
-                    )
+                    messageGateway.loadMessages(chatId, fromMessageId = 0L, offsetBefore = 0, offsetAfter = 0, count = PAGE_SIZE)
                 }
-
+                if (version != timelineLoadVersion) return@launch
                 if (result.isSuccess) {
-                    val messages = result.getOrNull()!!
+                    val messages = result.getOrThrow()
                     cacheScope?.let { scope ->
                         runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
                             .onFailure { Log.w(TAG, "Не удалось сохранить сообщения в кеш", it) }
                     }
+                    if (version != timelineLoadVersion) return@launch
                     displayMessages(messages)
                     reconcileSelection(messages.map { it.id }.toSet())
-
-                    if (messages.isNotEmpty()) {
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-                        firstVisibleMessageId = sortedMessages.first().id
-                        lastVisibleMessageId = sortedMessages.last().id
+                    val sorted = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
+                    firstVisibleMessageId = sorted.firstOrNull()?.id ?: 0L
+                    lastVisibleMessageId = sorted.lastOrNull()?.id ?: 0L
+                    if (target != null) {
+                        val targetIndex = sorted.indexOfFirst { it.id == target.messageId }
+                        hasMoreMessagesUp = targetIndex >= 20
+                        hasMoreMessagesDown = sorted.size - targetIndex - 1 >= 20
+                    } else {
+                        hasMoreMessagesUp = messages.size >= 15
+                        hasMoreMessagesDown = true
+                        markVisibleMessagesAsRead(messages)
                     }
-
-                    hasMoreMessagesUp = messages.size >= 15
-                    hasMoreMessagesDown = true
-
-                    markVisibleMessagesAsRead(messages)
+                } else if (target != null) {
+                    failMessageNavigation(target, result.exceptionOrNull())
+                } else if (!isRetry) {
+                    delay(300)
+                    if (version == timelineLoadVersion) loadMessages(isRetry = true)
                 } else {
-                    if (!isRetry) {
-                        Log.w(TAG, "Message load failed, retrying after channel refresh...")
-                        delay(300)
-                        loadMessages(isRetry = true)
-                        return@launch
-                    }
                     emitEffect(ChatEffect.ToastRes(R.string.messages_load_failed))
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading messages", e)
-                if (!isRetry) {
-                    Log.w(TAG, "Message load exception, retrying after channel refresh...")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (version != timelineLoadVersion) return@launch
+                if (target != null) failMessageNavigation(target, error)
+                else if (!isRetry) {
                     delay(300)
-                    loadMessages(isRetry = true)
-                    return@launch
-                }
+                    if (version == timelineLoadVersion) loadMessages(isRetry = true)
+                } else emitEffect(ChatEffect.ToastRes(R.string.messages_load_failed))
             } finally {
-                setLoading(false)
+                if (version == timelineLoadVersion) setLoading(false)
             }
         }
     }
 
+    private fun navigateToMessage(messageId: Long) {
+        if (messageId <= 0L) return
+        val target = messageNavigator.request(messageId)
+        savedStateHandle[KEY_TARGET_MESSAGE] = messageId
+        ++timelineLoadVersion
+        loadMessagesJob?.cancel()
+        _uiState.value = _uiState.value.copy(timeline = _uiState.value.timeline.copy(target = target))
+        if (_uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }) {
+            setLoading(false)
+        } else loadMessages()
+    }
+
+    fun targetPositionIn(committedMessageIds: List<Long>): Int? =
+        messageNavigator.pending?.let { messageNavigator.position(it, committedMessageIds) }
+
+    private fun acknowledgeMessageNavigation(requestId: Long) {
+        if (!messageNavigator.acknowledge(requestId)) return
+        savedStateHandle[KEY_TARGET_MESSAGE] = null
+        _uiState.value = _uiState.value.copy(timeline = _uiState.value.timeline.copy(target = null))
+    }
+
+    private fun failMessageNavigation(target: MessageTarget, error: Throwable?) {
+        if (messageNavigator.pending != target) return
+        acknowledgeMessageNavigation(target.requestId)
+        val missing = error is MessageTargetMissingException ||
+            io.grpc.Status.fromThrowable(error ?: MessageTargetMissingException()).code == io.grpc.Status.Code.NOT_FOUND
+        emitEffect(ChatEffect.ToastRes(if (missing) R.string.search_message_unavailable else R.string.messages_load_failed))
+        if (_uiState.value.items.isEmpty()) loadMessages()
+    }
+
     fun loadMessagesUp() {
-        if (isLoadingMessages || !hasMoreMessagesUp) return
+        if (isLoadingMessages || !hasMoreMessagesUp || messageNavigator.pending != null) return
+        val version = timelineLoadVersion
 
         setLoading(true)
         Log.d(TAG, "Loading messages up from $firstVisibleMessageId")
@@ -660,11 +712,12 @@ class ChatViewModel @Inject constructor(
         loadMessagesJob = viewModelScope.launch {
             try {
                 val page = regularChatSession.before(cacheScope, chatId, firstVisibleMessageId, PAGE_SIZE)
+                if (version != timelineLoadVersion) return@launch
                 if (page.isSuccess) {
                     val messages = page.getOrThrow().messages
                     if (messages.isNotEmpty()) {
                         prependMessages(messages)
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+                        val sortedMessages = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
                         firstVisibleMessageId = sortedMessages.first().id
                         hasMoreMessagesUp = page.getOrThrow().hasMoreBefore
                     } else {
@@ -674,13 +727,14 @@ class ChatViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages up", e)
             } finally {
-                setLoading(false)
+                if (version == timelineLoadVersion) setLoading(false)
             }
         }
     }
 
     fun loadMessagesDown() {
-        if (isLoadingMessages || !hasMoreMessagesDown) return
+        if (isLoadingMessages || !hasMoreMessagesDown || messageNavigator.pending != null) return
+        val version = timelineLoadVersion
 
         setLoading(true)
         Log.d(TAG, "Loading messages down from $lastVisibleMessageId")
@@ -688,11 +742,12 @@ class ChatViewModel @Inject constructor(
         loadMessagesJob = viewModelScope.launch {
             try {
                 val page = regularChatSession.after(cacheScope, chatId, lastVisibleMessageId, PAGE_SIZE)
+                if (version != timelineLoadVersion) return@launch
                 if (page.isSuccess) {
                     val messages = page.getOrThrow().messages
                     if (messages.isNotEmpty()) {
                         appendMessages(messages)
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+                        val sortedMessages = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
                         lastVisibleMessageId = sortedMessages.last().id
                         hasMoreMessagesDown = page.getOrThrow().hasMoreAfter
                         markVisibleMessagesAsRead(messages)
@@ -703,7 +758,7 @@ class ChatViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages down", e)
             } finally {
-                setLoading(false)
+                if (version == timelineLoadVersion) setLoading(false)
             }
         }
     }
@@ -756,7 +811,8 @@ class ChatViewModel @Inject constructor(
      * Ждёт переподключения RealtimeService (каналы пересоздаются в ProcessLifecycleOwner.onStart).
      */
     fun onStartCatchUp() {
-        if (lastVisibleMessageId <= 0L || isLoadingMessages) return
+        if (lastVisibleMessageId <= 0L || isLoadingMessages || messageNavigator.pending != null) return
+        val version = timelineLoadVersion
         viewModelScope.launch {
             val tokenValid = authGateway.ensureValid()
             if (!tokenValid) {
@@ -766,7 +822,7 @@ class ChatViewModel @Inject constructor(
             }
 
             waitForConnection()
-            if (lastVisibleMessageId > 0L && !isLoadingMessages) {
+            if (lastVisibleMessageId > 0L && !isLoadingMessages && version == timelineLoadVersion && messageNavigator.pending == null) {
                 Log.d(TAG, "onStartCatchUp: loading missed messages from lastVisibleMessageId=$lastVisibleMessageId")
                 hasMoreMessagesDown = true
                 loadMessagesDown()
@@ -781,6 +837,7 @@ class ChatViewModel @Inject constructor(
      *  — сообщения с обновлённым текстом/вложениями/isEdited обновляются.
      */
     private suspend fun syncRecentMessages() {
+        val version = timelineLoadVersion
         val visibleMessages = _uiState.value.items.filter { it.type == MessageType.MESSAGE }
         if (visibleMessages.isEmpty()) return
 
@@ -793,6 +850,7 @@ class ChatViewModel @Inject constructor(
             offsetBefore = 0,
             offsetAfter = 50
         )
+        if (version != timelineLoadVersion) return
         if (result.isFailure) {
             Log.w(TAG, "syncRecentMessages: load failed: ${result.exceptionOrNull()?.message}")
             return
@@ -1637,15 +1695,9 @@ class ChatViewModel @Inject constructor(
      * @return true если сообщение доступно в [state] после вызова.
      */
     suspend fun ensureMessageLoaded(messageId: Long): Boolean {
-        if (_uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }) {
-            return true
-        }
-        val result = messageGateway.loadMessages(chatId, fromMessageId = messageId, offsetBefore = 20, offsetAfter = 20)
-        if (result.isSuccess) {
-            rebuildMessagesFromList(result.getOrNull() ?: emptyList())
-            return _uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }
-        }
-        return false
+        navigateToMessage(messageId)
+        loadMessagesJob?.join()
+        return _uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }
     }
 
     // ═══════════════════════════════════════════════════════════════

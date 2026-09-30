@@ -134,10 +134,11 @@ public class MessagesStorage
                 .AsNoTracking()
                 .Where(x => x.ChatId == chatId && !x.IsDeleted)
                 .OrderByDescending(m => m.SentAt)
+                .ThenByDescending(m => m.Id)
                 .Take(count)
                 .ToListAsync();
 
-            return latestMessages.OrderBy(m => m.SentAt).ToList();
+            return latestMessages.OrderBy(m => m.SentAt).ThenBy(m => m.Id).ToList();
         }
 
         var referenceMessage = await _context.Messages
@@ -156,8 +157,10 @@ public class MessagesStorage
             var messagesBefore = await _context
                 .Messages
                 .AsNoTracking()
-                .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt < referenceMessage.SentAt)
+                .Where(x => x.ChatId == chatId && !x.IsDeleted &&
+                    (x.SentAt < referenceMessage.SentAt || (x.SentAt == referenceMessage.SentAt && x.Id < referenceMessage.Id)))
                 .OrderByDescending(m => m.SentAt)
+                .ThenByDescending(m => m.Id)
                 .Take(offsetBefore)
                 .ToListAsync();
 
@@ -173,8 +176,10 @@ public class MessagesStorage
             var messagesAfter = await _context
                 .Messages
                 .AsNoTracking()
-                .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt > referenceMessage.SentAt)
+                .Where(x => x.ChatId == chatId && !x.IsDeleted &&
+                    (x.SentAt > referenceMessage.SentAt || (x.SentAt == referenceMessage.SentAt && x.Id > referenceMessage.Id)))
                 .OrderBy(m => m.SentAt)
+                .ThenBy(m => m.Id)
                 .Take(offsetAfter)
                 .ToListAsync();
 
@@ -182,7 +187,7 @@ public class MessagesStorage
         }
 
         // Return messages sorted by sent time
-        return result.OrderBy(m => m.SentAt).ToList();
+        return result.OrderBy(m => m.SentAt).ThenBy(m => m.Id).ToList();
     }
 
     public async Task<Message> AddMessage(Message message)

@@ -36,6 +36,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.doOnNextLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
@@ -250,6 +251,7 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INVITE_STATE = "invite_state"
         private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
+        const val EXTRA_TARGET_MESSAGE_ID = "target_message_id"
         /** Метка ClipData — техническая, пользователю не показывается. */
         private const val CLIP_LABEL = "BarkFluff message"
         private const val CLIP_LABEL_MULTIPLE = "BarkFluff messages"
@@ -313,6 +315,12 @@ class ChatActivity : AppCompatActivity() {
             setIntent(intent)
             viewModelStore.clear()
             recreate()
+        } else if (newChatId == chatId && intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_REGULAR) {
+            val target = intent.getLongExtra(EXTRA_TARGET_MESSAGE_ID, intent.getLongExtra("voice_message_id", 0L))
+            if (target > 0L) {
+                setIntent(intent)
+                viewModel.dispatch(ChatIntent.NavigateToMessage(target))
+            }
         }
     }
 
@@ -359,6 +367,7 @@ class ChatActivity : AppCompatActivity() {
             isGroupChat = isGroupChat,
             otherUserId = otherUserId,
             supportsDrafts = supportsDrafts,
+            targetMessageId = intent.getLongExtra(EXTRA_TARGET_MESSAGE_ID, intent.getLongExtra("voice_message_id", 0L)),
         ))
         observeViewModel()
 
@@ -429,7 +438,9 @@ class ChatActivity : AppCompatActivity() {
 
                 if (state.items != previousItems) {
                     messageAdapter.submitList(messageRowProjector.project(state.items)) {
-                        if (unreadAppeared) {
+                        if (applyMessageNavigation()) {
+                            // A target has priority while its window is loading or committing.
+                        } else if (unreadAppeared) {
                             val idx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.UNREAD_SEPARATOR }
                             if (idx >= 0) {
                                 (binding.messagesRecyclerView.layoutManager as LinearLayoutManager)
@@ -443,6 +454,7 @@ class ChatActivity : AppCompatActivity() {
                     }
                     previousItems = state.items
                 } else {
+                    applyMessageNavigation()
                     updateScrollToBottomButton()
                 }
 
@@ -2982,19 +2994,24 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun scrollToMessageId(messageId: Long) {
-        val list = messageAdapter.currentList
-        val idx = list.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
-        if (idx >= 0) {
-            binding.messagesRecyclerView.smoothScrollToPosition(idx)
-        } else {
-            // Сообщение не загружено — VM подгружает окно вокруг него.
-            lifecycleScope.launch {
-                if (viewModel.ensureMessageLoaded(messageId)) {
-                    val newIdx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
-                    if (newIdx >= 0) binding.messagesRecyclerView.scrollToPosition(newIdx)
-                }
-            }
+        viewModel.dispatch(ChatIntent.NavigateToMessage(messageId))
+    }
+
+    /** Returns true while navigation owns scrolling, including a pending adapter diff. */
+    private fun applyMessageNavigation(): Boolean {
+        val target = viewModel.state.value.timeline.target ?: return false
+        val index = viewModel.targetPositionIn(messageAdapter.currentList.map { it.messageId }) ?: return true
+        val recycler = binding.messagesRecyclerView
+        recycler.stopScroll()
+        (recycler.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(index, recycler.height / 3)
+        recycler.doOnNextLayout {
+            val position = messageAdapter.currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == target.messageId }
+            if (position >= 0) highlightMessageAt(position)
         }
+        viewModel.dispatch(ChatIntent.MessageNavigationHandled(target.requestId))
+        intent.removeExtra(EXTRA_TARGET_MESSAGE_ID)
+        intent.removeExtra("voice_message_id")
+        return true
     }
 
     override fun onStart() {
