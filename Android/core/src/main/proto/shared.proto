@@ -32,6 +32,12 @@ message Message {
 
   google.protobuf.Timestamp edited_at = 8; // Дата последней правки сообщения
 
+  string federated_id = 9; // Глобальный ID сообщения в федеративном чате
+
+  string sender_uuid = 10; // UUID автора федеративного сообщения
+
+  repeated string federated_read_by = 11; // UUID прочитавших remote-участников
+
   ReplyInfo reply_to = 12; // Заполнено => сообщение является ответом. Резолвится сервером при выдаче
 
   string client_operation_id = 13; // UUID клиентской операции отправителя; пусто у старых сообщений

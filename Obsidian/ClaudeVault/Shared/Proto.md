@@ -52,6 +52,8 @@ dotnet build BarkFluff.Proto.csproj
 
 ## Важные детали
 
+- `MessagesApi.SearchMessages`: аддитивный RPC глобального поиска обычной переписки. `SearchMessagesRequest` содержит текст, oneof автора (local ID/UUID), `[sent_from, sent_before)`, presence/типы вложений, `MessageSearchCursor` и размер страницы. `MessageSearchHit` возвращает ID чата/сообщения, название и тип чата, автора, точный Timestamp, текст и типы прямых вложений; `next_cursor` отсутствует на последней странице. Контракт добавлен также в `Android/core/src/main/proto`; Android `shared.Message` синхронизирован по федеративным полям 9–11. Реализация — [[Backend/Messages]], клиент — [[Клиенты/Android]].
+
 - `shared.proto` импортируется в `messages_api.proto`, `updates_api.proto`, `users_api.proto` — общие типы сюда
 - `MessageAttachmentType` enum — в `shared.proto` (не в `messages_api.proto`), т.к. используется и в `files_api.proto`
 - `CreateTokenResponse.access_token` имеет **field_number=2** (не 1) — важно при ручной десериализации

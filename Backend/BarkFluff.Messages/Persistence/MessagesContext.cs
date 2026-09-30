@@ -35,6 +35,7 @@ public class MessagesContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("pg_trgm");
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
         modelBuilder.ApplyConfiguration(new ChatMemberConfiguration());
         modelBuilder.ApplyConfiguration(new MessageConfiguration());

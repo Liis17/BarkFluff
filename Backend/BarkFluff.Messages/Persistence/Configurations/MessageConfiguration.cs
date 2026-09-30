@@ -33,6 +33,12 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         {
             // Настраиваем свойства MessageContent
             contentBuilder.Property(c => c.Text).HasMaxLength(4096);
+            contentBuilder.HasIndex(c => c.Text)
+                .HasDatabaseName("IX_Messages_Content_Text_Search")
+                .HasMethod("gin")
+                .HasOperators("gin_trgm_ops")
+                .IsCreatedConcurrently()
+                .HasFilter("\"IsDeleted\" = FALSE AND \"Type\" <> 2");
 
             // Настраиваем отношение с MessageAttachment
             contentBuilder.OwnsMany(c => c.Attachments, attachmentBuilder =>

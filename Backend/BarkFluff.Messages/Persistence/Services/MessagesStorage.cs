@@ -22,6 +22,66 @@ public class MessagesStorage
         _chatsStorage = chatsStorage;
     }
 
+    public async Task<List<Message>> SearchMessages(
+        long userId,
+        MessageSearchFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var visibleChatIds = _context.ChatMembers
+            .Where(member => member.UserId == userId && member.Chat.Type == ChatType.Regular)
+            .Where(member => member.HiddenAt == null || _context.Messages.Any(message =>
+                message.ChatId == member.ChatId && !message.IsDeleted && message.SentAt > member.HiddenAt))
+            .Select(member => member.ChatId);
+        var query = _context.Messages.AsNoTracking()
+            .Where(message => !message.IsDeleted && message.Type != MessageContentType.System
+                && message.Content != null && visibleChatIds.Contains(message.ChatId));
+        if (!string.IsNullOrEmpty(filter.Text))
+        {
+            var escaped = filter.Text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+            var pattern = $"%{escaped}%";
+            query = query.Where(message => EF.Functions.ILike(message.Content!.Text!, pattern, "\\"));
+        }
+        if (filter.AuthorUserId is { } authorId)
+            query = query.Where(message => message.SenderId == authorId);
+        if (filter.AuthorUserUuid is { } authorUuid)
+            query = query.Where(message => message.SenderUuid == authorUuid);
+        if (filter.SentFrom is { } sentFrom)
+            query = query.Where(message => message.SentAt >= sentFrom);
+        if (filter.SentBefore is { } sentBefore)
+            query = query.Where(message => message.SentAt < sentBefore);
+        if (filter.HasAttachments is { } hasAttachments)
+            query = query.Where(message => (message.Content!.Attachments != null
+                && message.Content.Attachments.Any(attachment => attachment.Type != MessageAttachmentType.Unknown
+                    && attachment.Type != MessageAttachmentType.ForwardedMessage)) == hasAttachments);
+        if (filter.AttachmentTypes.Count > 0)
+        {
+            var types = filter.AttachmentTypes.ToArray();
+            query = query.Where(message => message.Content!.Attachments != null
+                && message.Content.Attachments.Any(attachment => types.Contains(attachment.Type)));
+        }
+        if (filter.CursorSentAt is { } cursorSentAt)
+            query = query.Where(message => message.SentAt < cursorSentAt
+                || (message.SentAt == cursorSentAt && message.Id < filter.CursorMessageId));
+        return await query.OrderByDescending(message => message.SentAt).ThenByDescending(message => message.Id)
+            .Take(Math.Clamp(filter.PageSize, 1, 50) + 1)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<List<MessageSearchChat>> GetSearchChats(
+        long userId,
+        IReadOnlyList<Guid> chatIds,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Chats.AsNoTracking().Where(chat => chatIds.Contains(chat.Id))
+            .Select(chat => new MessageSearchChat(
+                chat.Id, chat.Title, chat.Picture, chat.IsGroupChat,
+                chat.IsGroupChat ? null : chat.Members!.Where(member => member.UserId != userId)
+                    .Select(member => member.UserId).FirstOrDefault(),
+                chat.IsGroupChat ? null : chat.Members!.Where(member => member.UserId != userId)
+                    .Select(member => member.UserUuid).FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<List<Message>> GetChatMessages(Guid chatId, long? fromMessageId, int count)
     {
 

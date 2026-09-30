@@ -8,6 +8,8 @@ using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
+using Grpc.Core;
+using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.Messages.Tests.Host;
 
@@ -22,6 +24,20 @@ public class MessagesApiServiceTests
         _mediator
             .Setup(m => m.Send(It.IsAny<GetPersonChatIdCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GetPersonChatIdResponse { ChatId = Guid.NewGuid().ToString() });
+    }
+
+    [Fact]
+    public async Task SearchMessages_RejectsEmptySearchAndReversedDates()
+    {
+        var empty = async () => await _service.SearchMessages(new SearchMessagesRequest(), new TestServerCallContext());
+        (await empty.Should().ThrowAsync<RpcException>()).Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+        var reversed = async () => await _service.SearchMessages(new SearchMessagesRequest
+        {
+            Query = "текст",
+            SentFrom = Timestamp.FromDateTime(new DateTime(2026, 9, 2, 0, 0, 0, DateTimeKind.Utc)),
+            SentBefore = Timestamp.FromDateTime(new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc)),
+        }, new TestServerCallContext());
+        (await reversed.Should().ThrowAsync<RpcException>()).Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
     }
 
     [Fact]
