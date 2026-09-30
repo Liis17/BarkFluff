@@ -4,17 +4,13 @@ import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioPlayerHelper
 import java.io.File
 
-/** View-independent ownership of audio auto-download and waveform caches. */
+/** View-independent audio playback and waveform cache. */
 class AudioPlaybackController {
-    private val autoDownloads = mutableSetOf<String>()
     private val waveforms = mutableMapOf<String, FloatArray>()
 
-    fun claimAutoDownload(fileId: String): Boolean = autoDownloads.add(fileId)
-    fun releaseAutoDownload(fileId: String) { autoDownloads.remove(fileId) }
     fun waveform(fileId: String): FloatArray? = waveforms[fileId]
     fun cacheWaveform(fileId: String, waveform: FloatArray) { waveforms[fileId] = waveform }
     fun remove(fileId: String) {
-        autoDownloads.remove(fileId)
         waveforms.remove(fileId)
     }
 

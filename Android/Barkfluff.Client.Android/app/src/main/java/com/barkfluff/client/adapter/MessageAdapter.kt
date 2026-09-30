@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
+import coil.dispose
 import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
@@ -59,6 +60,7 @@ class MessageAdapter(
     var stickerSizeDp: Int = GlobalParam.DEFAULT_STICKER_SIZE_DP,
     /** Единственная граница событий строки; adapter не знает о навигации и domain side effects. */
     private val eventSink: MessageRowEventSink? = null,
+    private val autoDownloadViews: AttachmentAutoDownloadViews? = null,
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     private val audioPlaybackController = AudioPlaybackController()
@@ -105,7 +107,6 @@ class MessageAdapter(
         private const val VIEW_TYPE_UNREAD_SEPARATOR = 4
         private const val VIEW_TYPE_FOOTER = 5
         private const val VIEW_TYPE_SYSTEM = 6
-        private const val VOICE_AUTO_DOWNLOAD_LIMIT_BYTES = 2L * 1024L * 1024L
 
         /**
          * Payload для случая, когда подгрузился кэш участников группы: меняются только
@@ -214,6 +215,8 @@ class MessageAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        autoDownloadViews?.recycleTree(holder.itemView)
+        viewOperations.cancelTree(holder.itemView)
         val item = getItem(position)
         when (holder) {
             is SentMessageViewHolder -> holder.bind(item, groupPositionOf(position))
@@ -241,13 +244,34 @@ class MessageAdapter(
     }
 
     override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        autoDownloadViews?.recycleTree(holder.itemView)
+        clearMediaImages(holder.itemView)
         viewOperations.cancelTree(holder.itemView)
         super.onViewRecycled(holder)
     }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        autoDownloadViews?.detach(recyclerView)
         viewOperations.cancelAll()
         super.onDetachedFromRecyclerView(recyclerView)
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        autoDownloadViews?.attach(recyclerView)
+    }
+
+    override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        autoDownloadViews?.refresh()
+    }
+
+    private fun clearMediaImages(root: View) {
+        if (root is ImageView && root.id == R.id.thumbnailImage) {
+            root.dispose()
+            root.tag = null
+        }
+        if (root is ViewGroup) for (index in 0 until root.childCount) clearMediaImages(root.getChildAt(index))
     }
 
     /** Место сообщения в серии подряд идущих сообщений одного отправителя. */
@@ -1185,24 +1209,44 @@ class MessageAdapter(
 
         val isVideo = attachment.type == Shared.MessageAttachmentType.VIDEO
         videoOverlay.visibility = if (isVideo) View.VISIBLE else View.GONE
-        playIcon.visibility     = if (isVideo) View.VISIBLE else View.GONE
+        playIcon.visibility = View.GONE
 
-        // Загружаем превью (previewFileId → fileId как fallback)
-        val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
-        val previewUrl    = attachmentRenderer.previewUrl(thumbnail.context, attachment)
-
-        val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
-            { previewUrl }
-        } else {
-            { attachmentLoader.url(previewFileId) }
+        val downloadIcon = cellView.findViewById<View>(R.id.mediaDownloadIcon)
+        val progress = cellView.findViewById<com.google.android.material.progressindicator.CircularProgressIndicator>(R.id.mediaDownloadProgress)
+        thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+        downloadIcon.visibility = View.VISIBLE
+        cellView.contentDescription = thumbnail.context.getString(R.string.cd_download_file)
+        viewOperations.launch(thumbnail) {
+            if (ImageLoadHelper.loadCached(thumbnail, attachment)) {
+                downloadIcon.visibility = View.GONE
+                if (isVideo && progress.visibility != View.VISIBLE) playIcon.visibility = View.VISIBLE
+            }
         }
-
-        ImageLoadHelper.loadByFileId(
-            imageView = thumbnail,
-            fileId = previewFileId,
-            getUrlCallback = getUrl,
-            onError = { thumbnail.setImageResource(R.drawable.ic_image_placeholder) }
-        )
+        val render: (AttachmentDownloadState) -> Unit = { state ->
+            when (state) {
+                is AttachmentDownloadState.Cached -> {
+                    viewOperations.cancel(thumbnail)
+                    ImageLoadHelper.loadLocal(thumbnail, attachment, state.file)
+                    downloadIcon.visibility = View.GONE
+                    progress.visibility = View.GONE
+                    playIcon.visibility = if (isVideo) View.VISIBLE else View.GONE
+                    cellView.contentDescription = thumbnail.context.getString(if (isVideo) R.string.cd_play_video else R.string.cd_open_file)
+                }
+                is AttachmentDownloadState.Downloading -> {
+                    downloadIcon.visibility = View.GONE
+                    progress.visibility = View.VISIBLE
+                    playIcon.visibility = View.GONE
+                    progress.progress = state.progress
+                }
+                AttachmentDownloadState.Waiting, AttachmentDownloadState.Failed -> {
+                    downloadIcon.visibility = View.VISIBLE
+                    progress.visibility = View.GONE
+                    playIcon.visibility = View.GONE
+                }
+            }
+        }
+        if (autoDownloadViews != null) autoDownloadViews.bind(cellView, attachment, render)
+        else attachmentLoader.cached(attachment.fileId)?.let { render(AttachmentDownloadState.Cached(it)) }
 
         // Navigation is owned by the Activity/controller; recycled rows only emit a typed event.
         if (isVideo) {
@@ -1353,28 +1397,23 @@ class MessageAdapter(
             }
         }
 
-        fun startDownload(auto: Boolean) {
-            if (auto && !audioPlaybackController.claimAutoDownload(fileId)) {
-                updateUiForDownloading()
-                return
-            }
-
+        fun startDownload() {
+            autoDownloadViews?.setManualDownloading(binding.root, true)
             updateUiForDownloading()
             binding.downloadProgressBar.progress = 0
             binding.root.tag = fileId
             binding.downloadButton.tag = fileId
 
-            viewOperations.launch(binding.root) {
-                val file = attachmentLoader.download(fileId) { progress ->
-                    binding.root.post {
-                        if (binding.root.tag == fileId) {
-                            binding.downloadProgressBar.progress = progress
+            viewOperations.launch(binding.downloadButton) {
+                try {
+                    val file = attachmentLoader.download(fileId) { progress ->
+                        binding.root.post {
+                            if (binding.root.tag == fileId) {
+                                binding.downloadProgressBar.progress = progress
+                            }
                         }
                     }
-                }
-                withContext(Dispatchers.Main) {
-                    if (auto) audioPlaybackController.releaseAutoDownload(fileId)
-                    if (binding.root.tag != fileId) return@withContext
+                    if (binding.root.tag != fileId) return@launch
 
                     if (file != null) {
                         val durationMs = audioRenderer.duration(file)
@@ -1383,6 +1422,8 @@ class MessageAdapter(
                     } else {
                         updateUiForNotCached()
                     }
+                } finally {
+                    if (binding.root.tag == fileId) autoDownloadViews?.setManualDownloading(binding.root, false)
                 }
             }
         }
@@ -1403,13 +1444,24 @@ class MessageAdapter(
             }
         } else {
             updateUiForNotCached()
-            if (isVoice && attachment.attachmentSize in 1L..VOICE_AUTO_DOWNLOAD_LIMIT_BYTES) {
-                startDownload(auto = true)
-            }
         }
 
         binding.downloadButton.setOnClickListener {
-            startDownload(auto = false)
+            startDownload()
+        }
+
+        autoDownloadViews?.bind(binding.root, attachment) { state ->
+            when (state) {
+                is AttachmentDownloadState.Cached -> {
+                    updateUiForCached(audioRenderer.duration(state.file))
+                    loadVoiceWaveform(fileId, state.file, binding)
+                }
+                is AttachmentDownloadState.Downloading -> {
+                    updateUiForDownloading()
+                    binding.downloadProgressBar.progress = state.progress
+                }
+                AttachmentDownloadState.Waiting, AttachmentDownloadState.Failed -> updateUiForNotCached()
+            }
         }
 
         binding.playPauseButton.setOnClickListener {
@@ -1692,6 +1744,7 @@ class MessageAdapter(
         val previewUrl = attachmentRenderer.previewUrl(context, attachment)
 
         binding.docFileName.text = fileName
+        binding.root.tag = fileId
         binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
         binding.docDownloadProgress.visibility = View.GONE
 
@@ -1738,19 +1791,32 @@ class MessageAdapter(
 
         // Download button
         binding.docDownloadButton.setOnClickListener {
+            autoDownloadViews?.setManualDownloading(binding.root, true)
             updateUiForDownloading()
 
-            viewOperations.launch(binding.root) {
-                val file = attachmentLoader.download(fileId) { progress ->
-                    binding.root.post {
-                        binding.docDownloadProgress.progress = progress
+            viewOperations.launch(binding.docDownloadButton) {
+                try {
+                    val file = attachmentLoader.download(fileId) { progress ->
+                        binding.root.post {
+                            if (binding.root.tag == fileId) binding.docDownloadProgress.progress = progress
+                        }
                     }
+                    if (binding.root.tag != fileId) return@launch
+                    if (file != null) updateUiForCached() else updateUiForNotCached()
+                } finally {
+                    if (binding.root.tag == fileId) autoDownloadViews?.setManualDownloading(binding.root, false)
                 }
-                if (file != null) {
-                    updateUiForCached()
-                } else {
-                    updateUiForNotCached()
+            }
+        }
+
+        autoDownloadViews?.bind(binding.root, attachment) { state ->
+            when (state) {
+                is AttachmentDownloadState.Cached -> updateUiForCached()
+                is AttachmentDownloadState.Downloading -> {
+                    updateUiForDownloading()
+                    binding.docDownloadProgress.progress = state.progress
                 }
+                AttachmentDownloadState.Waiting, AttachmentDownloadState.Failed -> updateUiForNotCached()
             }
         }
 

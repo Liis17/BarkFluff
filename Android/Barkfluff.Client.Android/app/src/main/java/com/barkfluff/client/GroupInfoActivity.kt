@@ -8,6 +8,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
+import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
+import com.barkfluff.client.adapter.FileMediaAttachmentLoader
 import android.util.Log
 import android.view.View
 import android.widget.EditText
@@ -62,6 +66,8 @@ class GroupInfoActivity : AppCompatActivity() {
     private lateinit var globalParam: GlobalParam
     @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
     @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
+    @javax.inject.Inject lateinit var autoDownloadNetwork: AutoDownloadNetworkState
     @javax.inject.Inject lateinit var messageGateway: MessageGateway
     @javax.inject.Inject lateinit var presenceGateway: PresenceGateway
     @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
@@ -274,7 +280,8 @@ class GroupInfoActivity : AppCompatActivity() {
             getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onAttachmentClick = { info -> openAttachment(info, adapter) },
             downloadToCache = { fileId -> FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId) },
-            scope = lifecycleScope
+            scope = lifecycleScope,
+            autoDownloadViews = AttachmentAutoDownloadViews(FileMediaAttachmentLoader(fileMediaGateway), this, autoDownloadSettings, autoDownloadNetwork),
         )
         recyclerView.adapter = adapter
         return AttachmentsPanel(container, loading, recyclerView, empty, adapter)

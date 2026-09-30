@@ -59,6 +59,22 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             tools:text="1.2 МБ" />
 
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/galleryFileProgress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
+
     </LinearLayout>
 
+    <ImageView
+        android:id="@+id/galleryFileDownloadIcon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:padding="12dp"
+        android:src="@drawable/ic_download"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        app:tint="?attr/colorOnSurfaceVariant" />
 </LinearLayout>

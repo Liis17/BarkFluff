@@ -407,7 +407,7 @@ Backend заполняет эти поля при доставке сообще�
 - Отправка: отпускание кнопки создаёт `SendJob(AttachmentSpec.Voice)` и сначала durable-stage'ит OGG в outbox; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
 - Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, подсказка едет за пальцем (0.35 смещения) и меняет текст на «Отпустите для отмены», при отпускании запись удаляется и сообщение не отправляется.
 - Cleanup: `onStop()` отменяет активную запись и удаляет временный файл. Слишком короткая запись (`<500ms`) не отправляется.
-- Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые вложения размером `1..2 МБ` автоматически скачиваются в `FileCache`; более крупные остаются с ручной кнопкой загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
+- Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые используют общую политику автозагрузки: исходно Wi-Fi и максимум 2 МБ; при запрете остаётся ручная кнопка загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
 
 ### Вложения в профиле и группе
 
@@ -444,6 +444,12 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
 `:core` содержит `AutoDownloadSettings`, `AutoDownloadPolicy`, `AutoDownloadNetworkState` и observable `AutoDownloadSettingsStore`. Режимы `Wi-Fi / любая сеть / вручную` хранятся в `GlobalParam` отдельно для IMAGE, GIF, VIDEO, AUDIO, VOICE и DOCUMENT. Исходный режим IMAGE — любая сеть, остальных типов — Wi-Fi; общий лимит — 2 МБ (1 МБ = 1024 × 1024 байт), допустимые значения 1–512 МБ. Неизвестный размер не разрешает автоматический старт. Настройки сохраняются при перезапуске и сбрасываются существующим `clearUserData()` при logout.
 
 Состояние сети обновляет существующий default-network callback приложения; Wi-Fi определяется по `TRANSPORT_WIFI` без `TRANSPORT_CELLULAR`, в том числе у VPN. Пока capabilities неизвестны или default network потеряна, новые автоматические загрузки запрещены. Проверка публичного интернета не требуется для локальных нод. Связано с [[Архитектура]] и [[Android-ProjectMap]].
+
+`AttachmentAutoDownloadController` и его lifecycle/view bridge используются `MessageAdapter` (чат и закреплённые сообщения) и `AttachmentPreviewAdapter` (галереи пользователя и группы). Только видимые вложения запускают скачивание оригиналов, не более двух запросов на адаптер; повторные потребители одного `fileId` разделяют запрос. Смена сети/настроек проверяет ожидающие видимые строки без полного bind и не отменяет активные запросы. Лимит фиксируется в момент фактического старта; остановка lifecycle и recycling отменяют работу и освобождают отметку загрузки. Явная загрузка, viewer и сохранение обходят автоматические ограничения.
+
+`AttachmentLoader.downloadAuto` → `FileMediaGateway.downloadAuto` → `ChatRepository.downloadFileAuto` пишет HTTP-поток во временный файл через `FileCache.saveAuto`/`BoundedFileDownload`. Проверяются `Content-Length` и прочитанные байты; только полный успешный файл атомарно становится кешем. Ошибка, превышение размера и отмена удаляют временные данные. Ручной `download` сохраняет прежний путь без лимита автозагрузки.
+
+Фото и GIF отображаются из локального оригинала, видео получает локальный кадр через Coil `VideoFrameDecoder` (включая кеш-файлы без расширения). Автоматические строки не запрашивают URL/сетевые превью. Ранее сохранённые изображения доступны через файловый кеш и cache-only чтение обоих Coil loaders; при запрете загрузки остаётся действие ручного открытия/скачивания. Аватары, стикеры и фоны чатов не входят в эту политику.
 
 Четыре слоя кеша:
 1. **Runtime URL-кэш** — `AvatarLoader.urlCache` (`ConcurrentHashMap<fileId, URL>`, in-memory)

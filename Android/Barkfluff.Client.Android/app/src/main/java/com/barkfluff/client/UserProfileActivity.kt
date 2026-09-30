@@ -5,6 +5,10 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
+import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
+import com.barkfluff.client.adapter.FileMediaAttachmentLoader
 import android.util.Log
 import android.view.View
 import android.widget.TextView
@@ -58,6 +62,8 @@ class UserProfileActivity : AppCompatActivity() {
 
     @javax.inject.Inject lateinit var callGateway: CallGateway
     @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
+    @javax.inject.Inject lateinit var autoDownloadNetwork: AutoDownloadNetworkState
     @javax.inject.Inject lateinit var messageGateway: MessageGateway
     @javax.inject.Inject lateinit var presenceGateway: PresenceGateway
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
@@ -384,7 +390,8 @@ class UserProfileActivity : AppCompatActivity() {
             downloadToCache = { fileId ->
                 FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId)
             },
-            scope = lifecycleScope
+            scope = lifecycleScope,
+            autoDownloadViews = AttachmentAutoDownloadViews(FileMediaAttachmentLoader(fileMediaGateway), this, autoDownloadSettings, autoDownloadNetwork),
         )
         recyclerView.adapter = adapter
         return AttachmentsPanel(container, loading, recyclerView, empty, adapter)
