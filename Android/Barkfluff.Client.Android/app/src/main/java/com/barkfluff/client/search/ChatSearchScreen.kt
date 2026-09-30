@@ -24,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -38,14 +40,25 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.barkfluff.client.R
+import com.barkfluff.client.domain.model.MessageSearchHit
 
 @Composable
 fun ChatSearchScreen(
     state: ChatSearchUiState,
+    messages: MessageSearchUiState,
     onQueryChanged: (String) -> Unit,
+    onTabChanged: (SearchTab) -> Unit,
+    onSubmit: () -> Unit,
+    onMessageRetry: () -> Unit,
+    onLoadMore: () -> Unit,
+    onAuthorFilter: () -> Unit,
+    onDateFilter: () -> Unit,
+    onAttachmentFilter: () -> Unit,
+    onClearFilters: () -> Unit,
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onChatClick: (SearchChat) -> Unit,
+    onMessageClick: (MessageSearchHit) -> Unit,
     getAvatarUrl: suspend (String) -> String?,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -58,15 +71,29 @@ fun ChatSearchScreen(
     Surface(Modifier.fillMaxSize().imePadding(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize()) {
             SearchHeader(
-                query = state.query,
-                placeholder = stringResource(R.string.search_chats_hint),
+                query = messages.query,
+                placeholder = stringResource(if (messages.tab == SearchTab.Chats) R.string.search_chats_hint else R.string.search_messages_hint),
                 focusRequester = focusRequester,
                 onQueryChanged = onQueryChanged,
-                onSubmit = { keyboard?.hide() },
+                onSubmit = { keyboard?.hide(); onSubmit() },
                 onClear = { onQueryChanged("") },
                 onBack = onBack,
             )
-            if (state.isRefreshing || state.isPartial) {
+            TabRow(selectedTabIndex = messages.tab.ordinal) {
+                SearchTab.entries.forEach { tab ->
+                    Tab(selected = messages.tab == tab, onClick = { onTabChanged(tab) },
+                        text = { Text(stringResource(if (tab == SearchTab.Chats) R.string.search_tab_chats else R.string.search_tab_messages)) })
+                }
+            }
+            if (messages.tab == SearchTab.Messages) {
+                MessageSearchContent(messages, onMessageRetry, onLoadMore,
+                    onAuthorFilter = { keyboard?.hide(); onAuthorFilter() },
+                    onDateFilter = { keyboard?.hide(); onDateFilter() },
+                    onAttachmentFilter = { keyboard?.hide(); onAttachmentFilter() },
+                    onClearFilters = onClearFilters, onMessageClick = onMessageClick,
+                    modifier = Modifier.weight(1f).navigationBarsPadding())
+            }
+            if (messages.tab == SearchTab.Chats && (state.isRefreshing || state.isPartial)) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -82,7 +109,7 @@ fun ChatSearchScreen(
                     if (!state.isRefreshing) TextButton(onClick = onRetry) { Text(stringResource(R.string.search_retry)) }
                 }
             }
-            Box(Modifier.weight(1f).fillMaxWidth().navigationBarsPadding()) {
+            if (messages.tab == SearchTab.Chats) Box(Modifier.weight(1f).fillMaxWidth().navigationBarsPadding()) {
                 when (state.phase) {
                     SearchPhase.Idle, SearchPhase.TooShort -> SearchMessageState(
                         R.drawable.ic_search, stringResource(R.string.search_chats_prompt), stringResource(R.string.search_chats_description),

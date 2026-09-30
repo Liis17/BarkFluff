@@ -52,6 +52,9 @@ class SearchActivity : AppCompatActivity() {
         private const val TAG = "SearchActivity"
         const val EXTRA_MODE = "search_mode"
         const val MODE_PRIVATE = "private"
+        const val MODE_PICK_AUTHOR = "pick_author"
+        const val EXTRA_AUTHOR_ID = "author_user_id"
+        const val EXTRA_AUTHOR_NAME = "author_name"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +87,12 @@ class SearchActivity : AppCompatActivity() {
 
     private fun onUserClick(user: SearchUser) {
         if (isActionInProgress) return
+        if (intent.getStringExtra(EXTRA_MODE) == MODE_PICK_AUTHOR) {
+            setResult(RESULT_OK, Intent().putExtra(EXTRA_AUTHOR_ID, user.userData.userId)
+                .putExtra(EXTRA_AUTHOR_NAME, user.displayFullName))
+            finish()
+            return
+        }
         if (isPrivateMode) {
             showPrivateChatPassword(user.userData)
         } else {
