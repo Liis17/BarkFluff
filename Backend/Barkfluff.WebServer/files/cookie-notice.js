@@ -62,7 +62,7 @@
         '#bfCookieNotice a{color:var(--brand,#ff9a4c);text-decoration:none;white-space:nowrap}',
         '#bfCookieNotice a:hover{text-decoration:underline}',
         '#bfCookieNoticeOk{flex:0 0 auto;padding:9px 20px;border:0;border-radius:10px;cursor:pointer;',
-        'background:var(--brand,#ff9a4c);color:var(--button-ink,#1c0d0a);font:inherit;font-weight:600}',
+        'background:var(--brand,#ff9a4c);color:#1c0d0a;font:inherit;font-weight:600}',
         '#bfCookieNoticeOk:hover{filter:brightness(1.08)}',
         '@media (prefers-reduced-motion:reduce){#bfCookieNotice{transition:none}}'
     ].join('');
