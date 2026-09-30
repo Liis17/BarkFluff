@@ -1348,4 +1348,5 @@
     <string name="search_attachment_voice">语音消息</string>
     <string name="search_attachment_sticker">贴纸</string>
     <string name="search_date_range">%1$s – %2$s</string>
+    <string name="search_message_unavailable">消息已删除或无法访问</string>
 </resources>

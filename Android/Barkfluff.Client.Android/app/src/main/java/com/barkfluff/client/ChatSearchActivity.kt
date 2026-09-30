@@ -144,7 +144,15 @@ class ChatSearchActivity : AppCompatActivity() {
                 content.addView(this)
             }
         }
-        group.setOnCheckedChangeListener { _, checkedId -> checks.forEach { it.isEnabled = checkedId != choices[SearchAttachmentPresence.Without.ordinal].id } }
+        group.setOnCheckedChangeListener { _, checkedId ->
+            checks.forEach {
+                it.isEnabled = checkedId != choices[SearchAttachmentPresence.Without.ordinal].id
+                if (checkedId != choices[SearchAttachmentPresence.With.ordinal].id) it.isChecked = false
+            }
+        }
+        checks.forEach { check -> check.setOnCheckedChangeListener { _, checked ->
+            if (checked) group.check(choices[SearchAttachmentPresence.With.ordinal].id)
+        } }
         val scroll = android.widget.ScrollView(this).apply { addView(content) }
         MaterialAlertDialogBuilder(this).setTitle(R.string.search_filter_attachments).setView(scroll)
             .setNegativeButton(R.string.btn_cancel, null).setPositiveButton(R.string.search_filter_apply) { _, _ ->
@@ -160,7 +168,7 @@ class ChatSearchActivity : AppCompatActivity() {
             putExtra("chat_avatar_file_id", hit.chatPictureFileId.ifBlank { null })
             putExtra("is_group_chat", hit.isGroupChat)
             putExtra("other_user_id", hit.otherUserId)
-            putExtra("target_message_id", hit.messageId)
+            putExtra(ChatActivity.EXTRA_TARGET_MESSAGE_ID, hit.messageId)
         })
     }
 

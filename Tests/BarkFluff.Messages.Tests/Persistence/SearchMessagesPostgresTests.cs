@@ -12,6 +12,25 @@ namespace BarkFluff.Messages.Tests.Persistence;
 public class SearchMessagesPostgresTests
 {
     [SearchPostgresFact]
+    public async Task ContextWindow_ContainsBothSidesOfTargetWithIdenticalTimestamps()
+    {
+        await using var database = await SearchDatabase.Create();
+        var context = database.Context;
+        var chat = Chat(1);
+        context.Chats.Add(chat);
+        var messages = Enumerable.Range(0, 5).Select(_ => Message(chat.Id, "Контекст")).ToArray();
+        var timestamp = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
+        foreach (var message in messages) message.SentAt = timestamp;
+        context.Messages.AddRange(messages);
+        await context.SaveChangesAsync();
+        var storage = new MessagesStorage(context, new ChatsStorage(context));
+
+        var window = await storage.GetChatMessagesWithOffset(chat.Id, messages[2].Id, 1, 1);
+
+        window.Select(message => message.Id).Should().Equal(messages[1].Id, messages[2].Id, messages[3].Id);
+    }
+
+    [SearchPostgresFact]
     public async Task Search_FindsLiteralCaseInsensitiveTextOnlyInVisibleRegularChats()
     {
         await using var database = await SearchDatabase.Create();

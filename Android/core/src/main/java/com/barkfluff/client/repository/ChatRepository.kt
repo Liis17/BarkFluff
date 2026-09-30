@@ -85,9 +85,11 @@ class ChatRepository(
 
             Log.d(TAG, "Loaded ${response.messagesList.size} messages for chat $chatId")
             Result.success(response.messagesList)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error loading messages for chat $chatId", e)
-            Result.failure(Exception("Ошибка загрузки сообщений: ${e.message}"))
+            Result.failure(e)
         }
     }
 
