@@ -784,29 +784,6 @@
       </div>
 
       <section class="client-hub" id="clientHub" aria-labelledby="clientTitle">
-        <div class="channel-head">
-          <div class="channel-head-copy">
-            <span class="eyebrow" id="clientEyebrow">Канал сборки</span>
-            <h2 class="channel-title" id="clientTitle">Спокойный проверенный релиз</h2>
-            <p class="channel-description" id="clientDescription">Стабильные версии из ветки master с чистым светлым оформлением.</p>
-            <div class="channel-status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span></div>
-          </div>
-          <div class="channel-switcher" role="tablist" aria-label="Канал сборки">
-            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="nightly">
-              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Nightly</span></span>
-              <span class="channel-tab-branch">nightly</span>
-            </button>
-            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="dev">
-              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Dev</span></span>
-              <span class="channel-tab-branch">dev</span>
-            </button>
-            <button class="channel-tab is-active" type="button" role="tab" aria-selected="true" data-channel="release">
-              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Release</span></span>
-              <span class="channel-tab-branch">master</span>
-            </button>
-          </div>
-        </div>
-
         <section class="web-client-section" data-platform="web" aria-labelledby="webTitle">
           <div class="web-client-copy">
             <span class="eyebrow" id="webEyebrow">Веб-клиент</span>
@@ -851,6 +828,29 @@
             </div>
           </div>
         </section>
+
+        <div class="channel-head">
+          <div class="channel-head-copy">
+            <span class="eyebrow" id="clientEyebrow">Канал сборки</span>
+            <h2 class="channel-title" id="clientTitle">Спокойный проверенный релиз</h2>
+            <p class="channel-description" id="clientDescription">Стабильные версии из ветки master с чистым светлым оформлением.</p>
+            <div class="channel-status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span></div>
+          </div>
+          <div class="channel-switcher" role="tablist" aria-label="Канал сборки">
+            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="nightly">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Nightly</span></span>
+              <span class="channel-tab-branch">nightly</span>
+            </button>
+            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="dev">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Dev</span></span>
+              <span class="channel-tab-branch">dev</span>
+            </button>
+            <button class="channel-tab is-active" type="button" role="tab" aria-selected="true" data-channel="release">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Release</span></span>
+              <span class="channel-tab-branch">master</span>
+            </button>
+          </div>
+        </div>
 
         <div class="client-groups">
           <section class="client-group" data-client-group="desktop" aria-labelledby="desktopTitle">
