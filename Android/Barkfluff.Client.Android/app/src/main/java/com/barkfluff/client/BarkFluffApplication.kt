@@ -5,6 +5,7 @@ import android.app.DownloadManager
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -21,6 +22,7 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
@@ -79,15 +81,30 @@ class BarkFluffApplication : Application() {
 
     @Inject lateinit var callEventsService: CallEventsService
 
+    @Inject lateinit var autoDownloadNetworkState: AutoDownloadNetworkState
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var callEventsUiJob: Job? = null
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            autoDownloadNetworkState.available(network)
             applicationScope.launch(Dispatchers.IO) {
                 chatDraftRepository.flushAll()
                 outgoingMessageQueue.resume()
             }
+        }
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            autoDownloadNetworkState.capabilities(
+                network,
+                wifi = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI),
+                cellular = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR),
+            )
+        }
+
+        override fun onLost(network: Network) {
+            autoDownloadNetworkState.lost(network)
         }
     }
 
