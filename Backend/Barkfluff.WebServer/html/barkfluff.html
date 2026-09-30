@@ -38,7 +38,7 @@
       --line-strong: rgba(255, 240, 220, 0.14);
       --ink: #fef6ea;
       --ink-dim: #c9a893;
-      --ink-mute: #8a6a5b;
+      --ink-mute: #a08272;
       --brand: #ff7a29;
       --brand-2: #e25a12;
       --brand-deep: #8a2e06;
@@ -128,7 +128,7 @@
       --line-strong: rgba(23, 48, 66, 0.2);
       --ink: #173042;
       --ink-dim: #526b7b;
-      --ink-mute: #78909d;
+      --ink-mute: #587080;
       --brand: #c75f31;
       --brand-2: #a84822;
       --brand-deep: #7d351b;
@@ -438,6 +438,9 @@
     .client-card.is-pending .client-card-state { color: #fbbf24; }
     .client-card.is-pending .state-dot { box-shadow: 0 0 8px rgba(251,191,36,.55); }
     .client-card.is-unknown .client-card-state { color: var(--ink-mute); }
+    body[data-channel="release"] .client-card:not(.disabled) .client-card-state { color: #15803d; }
+    body[data-channel="release"] .client-card.is-pending .client-card-state { color: #b45309; }
+    body[data-channel="release"] .client-card.is-unknown .client-card-state { color: var(--ink-mute); }
     .client-card-title { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
     .client-card-subtitle { margin-top: 5px; color: var(--ink-mute); font-size: 12px; line-height: 1.45; }
     .client-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; }
@@ -810,7 +813,7 @@
         <section class="web-client-section" data-platform="web" aria-labelledby="webTitle">
           <div class="web-client-copy">
             <span class="eyebrow" id="webEyebrow">Веб-клиент</span>
-            <h3 class="web-client-title" id="webTitle">Barkfluff в браузере</h3>
+            <h2 class="web-client-title" id="webTitle">Barkfluff в браузере</h2>
             <p class="web-client-description" id="webDescription">Открывается сразу в браузере по единой ссылке.</p>
             <div class="web-client-meta">
               <span id="webSubtitle">Любой современный браузер</span>
