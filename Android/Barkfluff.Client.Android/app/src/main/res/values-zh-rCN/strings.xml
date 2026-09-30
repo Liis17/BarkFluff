@@ -1309,4 +1309,14 @@
     <string name="auth_factor_email">电子邮箱</string>
     <string name="auth_factor_telegram">Telegram</string>
     <string name="auth_factor_none">无第二验证因素</string>
+    <!-- Conversation search -->
+    <string name="search_chats_hint">搜索聊天</string>
+    <string name="search_chats_prompt">查找对话</string>
+    <string name="search_chats_description">输入联系人姓名或群组名称</string>
+    <string name="search_chats_updating">正在加载所有对话…</string>
+    <string name="search_chats_cached">正在搜索已保存和已加载的聊天。列表可能不完整。</string>
+    <string name="search_chat_direct">私聊</string>
+    <string name="search_chat_group">群聊</string>
+    <string name="search_chat_private">私人聊天</string>
+    <string name="search_chat_secret">秘密聊天</string>
 </resources>
