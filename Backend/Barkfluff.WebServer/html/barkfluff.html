@@ -359,6 +359,9 @@
       background: color-mix(in srgb, var(--surface-panel) 75%, transparent);
     }
     .channel-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,.55); }
+    .channel-status.is-error .channel-status-dot { background: #fbbf24; box-shadow: 0 0 10px rgba(251,191,36,.55); }
+    .channel-status-retry { padding: 0; border: 0; background: none; color: var(--brand-soft); font: inherit; text-decoration: underline; cursor: pointer; }
+    .channel-status-retry[hidden] { display: none; }
 
     .web-client-section {
       position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: center;
@@ -425,12 +428,19 @@
     .client-card-state .state-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
     .client-card.is-pending .client-card-state { color: #fbbf24; }
     .client-card.is-pending .state-dot { box-shadow: 0 0 8px rgba(251,191,36,.55); }
+    .client-card.is-unknown .client-card-state { color: var(--ink-mute); }
     .client-card-title { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
     .client-card-subtitle { margin-top: 5px; color: var(--ink-mute); font-size: 12px; line-height: 1.45; }
     .client-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; }
     .client-version { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--brand-soft); font: 11px 'JetBrains Mono', monospace; }
     .client-version svg { flex-shrink: 0; }
     .client-version-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-version-value.is-skeleton {
+      display: inline-block; width: 56px; height: 10px; border-radius: 5px;
+      background: linear-gradient(90deg, var(--line) 25%, var(--line-strong) 50%, var(--line) 75%); background-size: 200% 100%;
+      animation: skeletonShimmer 1.2s linear infinite;
+    }
+    @keyframes skeletonShimmer { to { background-position: -200% 0; } }
     .client-card-action { flex-shrink: 0; padding: 10px 13px; font-size: 12px; border-radius: 10px; }
     .client-card-action.is-pending { opacity: .7; }
     .client-card-action svg { width: 14px; height: 14px; }
@@ -820,7 +830,7 @@
             <span class="eyebrow" id="clientEyebrow">Канал сборки</span>
             <h2 class="channel-title" id="clientTitle">Проверенный релиз</h2>
             <p class="channel-description" id="clientDescription">Рекомендуемые стабильные версии из ветки master.</p>
-            <div class="channel-status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span></div>
+            <div class="channel-status" id="channelStatus" role="status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span><button type="button" class="channel-status-retry" id="channelStatusRetry" hidden>Повторить</button></div>
           </div>
           <div class="channel-switcher" role="tablist" aria-label="Канал сборки">
             <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="nightly">
@@ -1159,6 +1169,8 @@
     /* ===== i18n + Versions + Platform ===== */
     (function () {
       let _ver = null;
+      let _verState = 'loading';
+      let _verAttempts = 0;
       let currentChannel = 'release';
 
       const channelConfig = {
@@ -1198,6 +1210,8 @@
           releaseTitle:   'Проверенный релиз',
           releaseDescription: 'Рекомендуемые стабильные версии из ветки master.',
           channelStatus: 'Версии обновляются автоматически',
+          channelStatusError: 'Не удалось загрузить версии',
+          channelRetry: 'Повторить',
           desktopKicker: '01 / Desktop',
           desktopTitle: 'Настольные приложения',
           desktopDescription: 'Нативные сборки для компьютера.',
@@ -1220,6 +1234,7 @@
           buildChecking:'Проверяем',
           buildReady:   'Готово',
           buildWaiting: 'Ожидает сборку',
+          buildUnknown: 'Нет данных',
           iosTitle:     'iOS',
           linuxTitle:   'Linux',
           comingSoon:   'Скоро',
@@ -1270,6 +1285,8 @@
           releaseTitle:   'Verified release',
           releaseDescription: 'Recommended stable versions from master.',
           channelStatus: 'Versions update automatically',
+          channelStatusError: 'Couldn\'t load versions',
+          channelRetry: 'Retry',
           desktopKicker: '01 / Desktop',
           desktopTitle: 'Desktop apps',
           desktopDescription: 'Native builds for your computer.',
@@ -1292,6 +1309,7 @@
           buildChecking:'Checking',
           buildReady:   'Ready',
           buildWaiting: 'Build pending',
+          buildUnknown: 'No data',
           iosTitle:     'iOS',
           linuxTitle:   'Linux',
           comingSoon:   'Soon',
@@ -1383,6 +1401,8 @@
       }
 
       function applyVersions() {
+        const loading = _verState === 'loading';
+        const failed = _verState === 'error';
         Object.entries(clientConfig).forEach(([platform, config]) => {
           const card = document.querySelector('[data-client="' + platform + '"]');
           const link = $e(config.linkId);
@@ -1390,11 +1410,18 @@
           const statusEl = $e(config.statusId);
           const version = _ver && _ver[config.apiKey] ? (_ver[config.apiKey][currentChannel] || '') : '';
 
-          if (versionEl) versionEl.textContent = version ? 'v' + version : (_ver ? '—' : '…');
-          if (card) card.classList.toggle('is-pending', Boolean(_ver && !version));
+          if (versionEl) {
+            versionEl.textContent = version ? 'v' + version : (loading ? '' : '—');
+            versionEl.classList.toggle('is-skeleton', loading);
+          }
+          if (card) {
+            card.classList.toggle('is-pending', Boolean(_ver && !version));
+            card.classList.toggle('is-unknown', failed);
+          }
 
           if (statusEl) {
-            if (!_ver) setBuildStatus(config.statusId, 'buildChecking');
+            if (loading) setBuildStatus(config.statusId, 'buildChecking');
+            else if (failed) setBuildStatus(config.statusId, 'buildUnknown');
             else if (version) setBuildStatus(config.statusId, 'buildReady');
             else setBuildStatus(config.statusId, 'buildWaiting');
           }
@@ -1406,6 +1433,11 @@
             link.setAttribute('aria-label', S[window.__lang][config.titleKey] + ' · ' + currentChannel);
           }
         });
+
+        $e('channelStatus').classList.toggle('is-error', failed);
+        txt('channelStatusText', failed ? 'channelStatusError' : 'channelStatus');
+        $e('channelStatusRetry').hidden = !failed;
+        txt('channelStatusRetry', 'channelRetry');
 
         const detected = detectPlatform();
         const selectedClient = clientConfig[detected];
@@ -1419,16 +1451,28 @@
       }
 
       async function loadVersions() {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
         try {
-          const res = await fetch('/api/versions');
+          const res = await fetch('/api/versions', { signal: controller.signal });
           if (!res.ok) throw new Error('Version endpoint returned ' + res.status);
           _ver = await res.json();
-          applyVersions();
+          _verState = 'ready';
         } catch (_) {
-          _ver = null;
-          applyVersions();
+          if (_ver || ++_verAttempts < 2) return;
+          _verState = 'error';
+        } finally {
+          clearTimeout(timer);
         }
+        applyVersions();
       }
+
+      $e('channelStatusRetry').addEventListener('click', () => {
+        _verAttempts = 1;
+        _verState = 'loading';
+        applyVersions();
+        loadVersions();
+      });
 
       function applyChannel(channel) {
         if (!channelConfig[channel]) return;
@@ -1447,7 +1491,6 @@
         if (channelSwitcher) channelSwitcher.setAttribute('aria-label', S[window.__lang].clientEyebrow);
         txt('clientTitle', meta.title);
         txt('clientDescription', meta.description);
-        txt('channelStatusText', 'channelStatus');
         applyVersions();
       }
 
