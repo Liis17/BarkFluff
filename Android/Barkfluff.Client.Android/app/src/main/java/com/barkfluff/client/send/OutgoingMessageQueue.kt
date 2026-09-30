@@ -3,6 +3,7 @@ package com.barkfluff.client.send
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
@@ -95,6 +96,11 @@ class OutgoingMessageQueue(
     suspend fun enqueue(request: SendJob): List<OperationId> {
         require(request.chatId.isNotBlank()) { "Chat id is required" }
         val scope = requireScope()
+        request.notificationReply?.let { reply ->
+            require(reply.expectedScopeId == scope.id && reply.messageId > 0) { "Stale notification" }
+            require(request.text.isNotBlank() && request.attachments.isEmpty() &&
+                request.existingFileIds.isEmpty() && request.replyId == 0L && request.draftGeneration == null)
+        }
         val groups = if (request.sendSeparately && request.attachments.isNotEmpty()) {
             request.attachments.mapIndexed { index, attachment ->
                 SendPart(
@@ -119,7 +125,12 @@ class OutgoingMessageQueue(
         request.draftGeneration?.let { generation ->
             composerAttachmentStore?.clearAfterEnqueue(scope, request.chatId, generation)
         }
-        wake()
+        // The transaction above is acceptance. Scheduling failures cannot reject a durable send.
+        try {
+            wake()
+        } catch (e: RuntimeException) {
+            Log.e("OutgoingMessageQueue", "Unable to schedule durable outbox: ${e::class.java.simpleName}")
+        }
         return operationIds
     }
 
@@ -197,9 +208,40 @@ class OutgoingMessageQueue(
 
             val ready = cache.readyOutgoing(scope, now, limit = 2)
             coroutineScope {
+                val reads = async { drainPendingReads(scope, now) }
                 ready.map { record -> async { process(scope, record, onForeground) } }.awaitAll()
+                reads.await()
             }
             scheduleNext(scope)
+        }
+    }
+
+    /** A read failure only updates its own journal; it never re-enters the send state machine. */
+    internal suspend fun drainPendingReads(
+        scope: CacheScope,
+        nowMillis: Long,
+        markRead: suspend (List<Long>) -> Result<Unit> = { ids ->
+            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) chatRepository.markAsRead(ids)
+            else Result.failure(IllegalStateException("Read authorization unavailable"))
+        }
+    ) {
+        for (read in cache.readyPendingReads(scope, nowMillis)) {
+            if (currentScopeOrNull() != scope) return
+            try {
+                markRead(listOf(read.messageId)).getOrThrow()
+                cache.deletePendingRead(scope, read.messageId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                if (currentScopeOrNull() != scope) return
+                if (classifyPermanent(e) != null) {
+                    cache.deletePendingRead(scope, read.messageId)
+                } else {
+                    val attempt = read.attemptCount + 1
+                    cache.retryPendingRead(scope, read.messageId, attempt,
+                        System.currentTimeMillis() + OutgoingRetryPolicy.delayForAttempt(attempt))
+                }
+            }
         }
     }
 
@@ -243,7 +285,8 @@ class OutgoingMessageQueue(
             cache.saveOutgoing(scope, staging.copy(
                 state = OutgoingMessageState.QUEUED,
                 attachments = attachments
-            ))
+            ), notificationReadMessageId = request.notificationReply?.messageId,
+                expectedScopeId = request.notificationReply?.expectedScopeId)
             operationId
         } catch (e: Throwable) {
             cache.deleteOutgoing(scope, operationId)
@@ -621,7 +664,8 @@ class OutgoingMessageQueue(
     }
 
     private suspend fun scheduleNext(scope: CacheScope) {
-        val next = cache.nextOutgoingAttempt(scope) ?: return
+        val next = listOfNotNull(cache.nextOutgoingAttempt(scope), cache.nextPendingReadAttempt(scope))
+            .minOrNull() ?: return
         val delay = (next - System.currentTimeMillis()).coerceAtLeast(0)
         val request = OneTimeWorkRequestBuilder<OutgoingMessageWorker>()
             .setConstraints(networkConstraints())

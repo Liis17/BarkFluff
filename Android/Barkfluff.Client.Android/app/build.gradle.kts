@@ -116,6 +116,8 @@ android {
         }
     }
 
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+
     /**
      * Каналы обновлений. Каждый — отдельный applicationId, поэтому сборки разных каналов
      * ставятся на устройство рядом. Стабильный канал называется stable, а не release:
@@ -261,6 +263,7 @@ dependencies {
 
     // ExoPlayer for video/audio playback
     implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-session:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
 
     // Media3 Transformer + Effects for video transcoding (480p compress + trim)

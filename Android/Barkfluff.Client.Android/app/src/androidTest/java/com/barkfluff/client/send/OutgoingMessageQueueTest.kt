@@ -6,6 +6,7 @@ import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.data.GlobalParam
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -55,6 +56,56 @@ class OutgoingMessageQueueTest {
         assertEquals("offline text", record!!.text)
         assertTrue(record.state != com.barkfluff.client.cache.OutgoingMessageState.STAGING)
     }
+
+    @Test
+    fun notificationReplyAndReadAreDurableBeforeAcceptanceAndCancelOnlyDeletesSend() = runBlocking {
+        val operationId = enqueueReply()
+        val record = application.chatCacheRepository.outgoing(scope(), operationId)!!
+        assertEquals(0L, record.replyToMessageId)
+        assertEquals(null, record.draftGeneration)
+        assertEquals("reply", record.text)
+        assertEquals(42L, application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single().messageId)
+
+        application.outgoingMessageQueue.cancel(operationId)
+
+        assertEquals(null, application.chatCacheRepository.outgoing(scope(), operationId))
+        assertEquals(42L, application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single().messageId)
+    }
+
+    @Test
+    fun staleNotificationIsRejectedBeforeEitherJournalIsWritten() = runBlocking {
+        val result = runCatching {
+            application.outgoingMessageQueue.enqueue(SendJob("chat", "Chat", "reply", emptyList(),
+                notificationReply = NotificationReplyMetadata("different-account", 42)))
+        }
+        assertTrue(result.isFailure)
+        assertTrue(application.chatCacheRepository.outgoingOperationIds(scope()).isEmpty())
+        assertTrue(application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).isEmpty())
+    }
+
+    @Test
+    fun readRetriesIndependentlyAfterSendWasCancelled() = runBlocking {
+        val operationId = enqueueReply()
+        application.outgoingMessageQueue.cancel(operationId)
+        application.outgoingMessageQueue.drainPendingReads(scope(), Long.MAX_VALUE) {
+            Result.failure(IOException("offline"))
+        }
+        assertTrue(application.chatCacheRepository.outgoingOperationIds(scope()).isEmpty())
+        val pending = application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single()
+        assertTrue(pending.attemptCount > 0)
+        assertTrue(pending.nextAttemptAtMillis > System.currentTimeMillis())
+
+        application.outgoingMessageQueue.drainPendingReads(scope(), Long.MAX_VALUE) { ids ->
+            assertEquals(listOf(42L), ids)
+            Result.success(Unit)
+        }
+        assertTrue(application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).isEmpty())
+    }
+
+    private suspend fun enqueueReply() = application.outgoingMessageQueue.enqueue(
+        SendJob("chat", "Chat", "reply", emptyList(),
+            notificationReply = NotificationReplyMetadata(scope().id, 42))
+    ).single()
 
     @Test
     fun voiceFileIsCopiedToOutboxAndCancelDeletesItsCopy() = runBlocking {
