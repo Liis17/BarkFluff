@@ -46,6 +46,10 @@ class GrpcChatDraftGateway(private val repository: ChatRepository) : ChatDraftGa
         repository.deleteChatDraft(chatId, expectedRevision)
 }
 
+class GrpcMessageSearchGateway(private val grpc: GrpcApiTransport) : MessageSearchGateway {
+    override suspend fun search(query: MessageSearchQuery): Result<MessageSearchPage> = grpc.searchMessages(query)
+}
+
 class GrpcAuthGateway(
     private val grpc: GrpcApiTransport,
 ) : AuthGateway {

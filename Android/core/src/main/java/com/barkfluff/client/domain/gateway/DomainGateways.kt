@@ -178,6 +178,10 @@ interface ChatDirectoryGateway {
     suspend fun updateGroup(chatId: String, title: String? = null, pictureFileId: String? = null): Result<ChatSummary>
 }
 
+interface MessageSearchGateway {
+    suspend fun search(query: com.barkfluff.client.domain.model.MessageSearchQuery): Result<com.barkfluff.client.domain.model.MessageSearchPage>
+}
+
 interface MessageGateway {
     suspend fun loadMessages(
         chatId: String,

@@ -44,6 +44,8 @@ import com.barkfluff.client.domain.gateway.GrpcUserDirectoryGateway
 import com.barkfluff.client.domain.gateway.GrpcUserProfileGateway
 import com.barkfluff.client.domain.gateway.GrpcUserSettingsGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.MessageSearchGateway
+import com.barkfluff.client.domain.gateway.GrpcMessageSearchGateway
 import com.barkfluff.client.domain.gateway.PrekeyGateway
 import com.barkfluff.client.domain.gateway.PrivateChatGateway
 import com.barkfluff.client.domain.gateway.RealtimeGateway
@@ -168,6 +170,11 @@ object AppModule {
         chatRepository: ChatRepository,
         transport: GrpcApiTransport,
     ): MessageGateway = GrpcMessageGateway(chatRepository, transport)
+
+    @Provides
+    @Singleton
+    fun provideMessageSearchGateway(transport: GrpcApiTransport): MessageSearchGateway =
+        GrpcMessageSearchGateway(transport)
 
     @Provides
     @Singleton

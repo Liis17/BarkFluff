@@ -24,6 +24,15 @@ import barkfluff.shared.Shared
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
+import com.barkfluff.client.domain.model.MessageSearchAuthor
+import com.barkfluff.client.domain.model.MessageSearchCursor
+import com.barkfluff.client.domain.model.MessageSearchHit
+import com.barkfluff.client.domain.model.MessageSearchPage
+import com.barkfluff.client.domain.model.MessageSearchQuery
+import com.barkfluff.client.domain.model.MessageSearchUnavailableException
+import com.barkfluff.client.domain.model.SearchAttachmentPresence
+import com.google.protobuf.Timestamp
+import kotlinx.coroutines.CancellationException
 import com.barkfluff.client.security.TlsTransportFactory
 import io.grpc.*
 import kotlinx.coroutines.Dispatchers
@@ -1040,10 +1049,51 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
-    /**
-     * Поиск пользователей по запросу
-     * Аналог SearchUser в WebApiSearchManager
-     */
+    /** Search accessible regular chats; preserve nanoseconds in the pagination cursor. */
+    suspend fun searchMessages(query: MessageSearchQuery): Result<MessageSearchPage> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages client unavailable"))
+            val builder = MessagesApiOuterClass.SearchMessagesRequest.newBuilder()
+                .setQuery(query.text)
+                .setPageSize(query.pageSize)
+                .setAttachmentPresence(when (query.attachmentPresence) {
+                    SearchAttachmentPresence.Any -> MessagesApiOuterClass.MessageSearchAttachmentPresence.MESSAGE_SEARCH_ATTACHMENT_PRESENCE_ANY
+                    SearchAttachmentPresence.With -> MessagesApiOuterClass.MessageSearchAttachmentPresence.MESSAGE_SEARCH_ATTACHMENT_PRESENCE_WITH
+                    SearchAttachmentPresence.Without -> MessagesApiOuterClass.MessageSearchAttachmentPresence.MESSAGE_SEARCH_ATTACHMENT_PRESENCE_WITHOUT
+                })
+                .addAllAttachmentTypes(query.attachmentTypes)
+            query.author?.let { author ->
+                if (author.userId > 0L) builder.authorUserId = author.userId else builder.authorUserUuid = author.userUuid
+            }
+            query.sentFromSeconds?.let { builder.sentFrom = Timestamp.newBuilder().setSeconds(it).build() }
+            query.sentBeforeSeconds?.let { builder.sentBefore = Timestamp.newBuilder().setSeconds(it).build() }
+            query.cursor?.let { cursor ->
+                builder.cursor = MessagesApiOuterClass.MessageSearchCursor.newBuilder()
+                    .setMessageId(cursor.messageId)
+                    .setSentAt(Timestamp.newBuilder().setSeconds(cursor.sentAtSeconds).setNanos(cursor.sentAtNanos)).build()
+            }
+            val response = client.searchMessages(builder.build())
+            Result.success(MessageSearchPage(
+                hits = response.hitsList.map { hit ->
+                    MessageSearchHit(
+                        hit.messageId, hit.chatId, hit.chatTitle, hit.isGroupChat, hit.chatPictureFileId, hit.otherUserId,
+                        MessageSearchAuthor(hit.author.userId, hit.author.userUuid, hit.author.displayName),
+                        hit.sentAt.seconds * 1000L + hit.sentAt.nanos / 1_000_000,
+                        hit.text, hit.attachmentTypesList.toSet(),
+                    )
+                },
+                nextCursor = if (response.hasNextCursor()) response.nextCursor.let {
+                    MessageSearchCursor(it.sentAt.seconds, it.sentAt.nanos, it.messageId)
+                } else null,
+            ))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(if (Status.fromThrowable(error).code == Status.Code.UNIMPLEMENTED) MessageSearchUnavailableException() else error)
+        }
+    }
+
+    /** Поиск пользователей по запросу, аналог SearchUser в WebApiSearchManager. */
     suspend fun searchUsers(query: String, offset: Int = 0, size: Int = 50): Result<List<UserData>> = withContext(Dispatchers.IO) {
         try {
             if (usersClient == null) {
