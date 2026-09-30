@@ -388,13 +388,6 @@
       color: var(--brand-soft);
     }
     .browser-glyph svg { display: block; width: 100%; height: 100%; overflow: visible; }
-    .browser-window { fill: color-mix(in srgb, var(--bg-0) 86%, transparent); stroke: var(--line-strong); stroke-width: 1.5; }
-    .browser-toolbar { stroke: var(--line); stroke-width: 1.5; }
-    .browser-toolbar-dot { fill: var(--brand); opacity: .85; }
-    .browser-address { fill: color-mix(in srgb, var(--ink) 5%, transparent); stroke: var(--line); stroke-width: 1; }
-    .browser-icon-shell { fill: color-mix(in srgb, var(--brand) 11%, transparent); stroke: color-mix(in srgb, var(--brand) 35%, transparent); stroke-width: 1.5; }
-    .browser-icon-stroke { fill: none; stroke: var(--brand-soft); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .browser-icon-fill { fill: var(--brand-soft); }
 
     .client-groups { display: grid; gap: 24px; }
     .client-group {
@@ -808,33 +801,15 @@
           </div>
           <div class="web-client-preview">
             <div class="browser-glyph" aria-hidden="true">
-              <svg viewBox="0 0 320 200" fill="none">
-                <rect class="browser-window" x="18" y="18" width="284" height="164" rx="22" />
-                <path class="browser-toolbar" d="M18 62h284" />
-                <circle class="browser-toolbar-dot" cx="42" cy="40" r="5" />
-                <circle class="browser-toolbar-dot" cx="58" cy="40" r="5" opacity=".55" />
-                <circle class="browser-toolbar-dot" cx="74" cy="40" r="5" opacity=".3" />
-                <rect class="browser-address" x="94" y="32" width="132" height="16" rx="8" />
-                <g transform="translate(90 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <path class="browser-icon-stroke" d="M-13-4a14 14 0 0 1 25-8M-12 5a14 14 0 0 0 23 8M-4-15l7 12-13 1" />
-                  <circle class="browser-icon-fill" cx="-1" cy="-1" r="3" />
-                </g>
-                <g transform="translate(143 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <path class="browser-icon-stroke" d="M-11 8c-5-8-2-18 7-22 8-4 18 0 21 8-5-3-10-3-14 1-4 3-5 8-3 13-4 2-8 2-11 0z" />
-                  <path class="browser-icon-fill" d="M7-12c-5 0-10 4-11 9 4-2 8-1 11 2 2 2 3 5 3 8 6-4 8-11 4-16-2-2-4-3-7-3z" opacity=".7" />
-                </g>
-                <g transform="translate(196 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <circle class="browser-icon-stroke" r="13" />
-                  <path class="browser-icon-stroke" d="M0-13L-3 3l10 7M0-13l-4 4" />
-                </g>
-                <g transform="translate(249 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <path class="browser-icon-stroke" d="M15-5C11-14-1-17-10-11c-6 4-8 11-5 17 3-5 8-8 14-7 7 1 11 0 16-4z" />
-                  <path class="browser-icon-fill" d="M-15 6c5 4 12 5 18 2 5-2 9-6 12-11-5 4-9 5-16 4-6-1-11 1-14 5z" opacity=".7" />
-                </g>
+              <svg viewBox="0 0 320 200" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="18" y="18" width="284" height="164" rx="18" />
+                <path d="M18 58h284" />
+                <circle cx="40" cy="38" r="4" fill="currentColor" stroke="none" />
+                <circle cx="54" cy="38" r="4" fill="currentColor" stroke="none" />
+                <circle cx="68" cy="38" r="4" fill="currentColor" stroke="none" />
+                <rect x="92" y="30" width="150" height="16" rx="8" />
+                <path d="M44 88h120M44 108h200M44 128h96" opacity=".6" />
+                <rect x="44" y="144" width="72" height="22" rx="11" />
               </svg>
             </div>
           </div>
