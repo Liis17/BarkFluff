@@ -148,7 +148,7 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 
 - `AppBarLayout` + `MaterialToolbar` удалены. Вместо них `headerContainer` (LinearLayout): сворачиваемый блок `headerCollapsible` (заголовок «Чаты» 36sp/44 weight 600 + `headerSubtitle` + аватар пользователя 48dp справа), лента папок `foldersRecyclerView`, строка поиска.
 - `headerSubtitle` — одна строка на два назначения: статус синхронизации (`chats_sync_updating` / `chats_sync_offline` / `connecting`), иначе счётчик непрочитанных (`plurals/chats_unread_summary`, при нуле `chats_unread_none`). Обновляется из `publishMainUnread()`, анимация смены текста — прежняя fade/slide (`updateHeaderSubtitle`).
-- `searchField` — pill-поле (`bg_chats_search_field`, ripple) с иконкой и подписью «Поиск чатов»; тап открывает существующий `SearchActivity`. Инлайн-фильтрации списка нет.
+- `searchField` — pill-поле (`bg_chats_search_field`, ripple) с иконкой и подписью «Поиск чатов»; тап открывает `ChatSearchActivity`. Инлайн-фильтрации списка нет.
 - **Сворачивание по направлению прокрутки** (`ChatsFragment.updateHeaderCollapse` / `setHeaderCollapsed`): прокрутка вниз при offset > 20dp схлопывает `headerCollapsible` (высота → 0 + alpha, 360 мс, `PathInterpolator(0.2,0,0,1)`) и сжимает поле поиска 52→48dp (300 мс); прокрутка вверх возвращает. Порог реакции — 6dp, чтобы состояние не дребезжало. По окончании разворачивания высота возвращается в `WRAP_CONTENT` — иначе блок «залипает» на пиксельном значении при смене контента.
 - `item_chat.xml` — один layout на два состояния, всё различие выставляет `ChatAdapter.applyUnreadStyle(isUnread)`: корневая `MaterialCardView` `chatCard` (радиус 20→28dp, фон transparent→`colorPrimaryContainer`, нижний отступ 0→8dp), паддинг строки 12→16dp, `avatarContainer` 50→58dp, заголовок 16sp/w400→17sp/w600, превью w400→w500, вторичный цвет `colorOnSurfaceVariant`→`colorOnPrimaryContainer`, бейдж непрочитанных 26dp pill. Вес шрифта задаётся `Typeface.create(SANS_SERIF, weight, false)` (API 28+).
 - `item_chat_skeleton.xml` синхронизирован с новой геометрией строки (74dp, аватар 50dp, паддинг 18dp).
@@ -163,7 +163,15 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
 
-## Экран поиска (`SearchActivity`)
+## Поиск существующих диалогов (`ChatSearchActivity`)
+
+- Отдельный Compose-экран поиска по отображаемому имени собеседника и названию группы, без ограничения в три символа. `ChatSearchViewModel` сохраняет запрос в `SavedStateHandle` и фильтрует общий каталог независимо от выбранной папки.
+- `SearchChatsGateway` сначала отдаёт scoped-кеш, затем ViewModel проходит все страницы `ListChats` из [[Backend/Messages]] по 50 записей, включая страницы после начальных 150 чатов. До завершения прохода показан статус обновления; при ошибке остаются найденные сохранённые/загруженные чаты с явной отметкой неполноты и повтором.
+- Полный серверный снимок заменяет каталог и кеш, чтобы удалённые диалоги исчезали из результатов. Некорректные GUID отбрасываются. Private-диалоги открываются через `privateChatIntent`; локальные secret-метаданные подключаются при включённом флаге через `SecretChatRepository` и открываются через `secretChatIntent`.
+- Поиск пользователей для создания обычного/private-чата остаётся в `SearchActivity`. `username` не входит в контракт каталога чатов: первый этап ищет только по отображаемым названиям.
+- Unit-тесты проверяют совпадение на четвёртой странице, короткий запрос по кешу при offline, восстановление запроса и удаление устаревших кешированных строк после полного обновления.
+
+## Поиск пользователей (`SearchActivity`)
 
 Самостоятельный поиск пользователей перенесён на Compose + Material 3 Expressive; Compose подключён только в `:app-v1`, остальные V1-экраны остаются View/XML. `SearchActivity` сохраняется Activity-хостом, помечен `@AndroidEntryPoint` и использует `SearchViewModel` с `StateFlow<SearchUiState>`.
 

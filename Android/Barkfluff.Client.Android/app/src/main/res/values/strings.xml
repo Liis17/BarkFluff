@@ -1361,4 +1361,14 @@
     <string name="auth_factor_email">Email</string>
     <string name="auth_factor_telegram">Telegram</string>
     <string name="auth_factor_none">Без второго фактора</string>
+    <!-- Conversation search -->
+    <string name="search_chats_hint">Поиск чатов</string>
+    <string name="search_chats_prompt">Найти диалог</string>
+    <string name="search_chats_description">Введите имя собеседника или название группы</string>
+    <string name="search_chats_updating">Загружаем все диалоги…</string>
+    <string name="search_chats_cached">По сохранённым и загруженным чатам. Список может быть неполным.</string>
+    <string name="search_chat_direct">Личный чат</string>
+    <string name="search_chat_group">Групповой чат</string>
+    <string name="search_chat_private">Приватный чат</string>
+    <string name="search_chat_secret">Секретный чат</string>
 </resources>

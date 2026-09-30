@@ -135,7 +135,7 @@ fun SearchScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchHeader(
+internal fun SearchHeader(
     query: String,
     placeholder: String,
     focusRequester: FocusRequester,
@@ -379,7 +379,7 @@ private fun SearchResultItem(
 }
 
 @Composable
-private fun SearchAvatar(
+internal fun SearchAvatar(
     fileId: String?,
     displayName: String,
     userId: Long,
@@ -406,7 +406,7 @@ private fun SearchAvatar(
 }
 
 @Composable
-private fun SearchMessageState(
+internal fun SearchMessageState(
     icon: Int,
     title: String,
     description: String
@@ -482,7 +482,7 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun SearchErrorState(onRetry: () -> Unit) {
+internal fun SearchErrorState(onRetry: () -> Unit) {
     val title = stringResourceCompat(R.string.search_error_title)
     val description = stringResourceCompat(R.string.search_error_description)
     val retryLabel = stringResourceCompat(R.string.search_retry)

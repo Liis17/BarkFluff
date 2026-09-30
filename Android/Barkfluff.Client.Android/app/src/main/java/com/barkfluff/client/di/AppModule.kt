@@ -58,6 +58,8 @@ import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.search.GrpcSearchUsersGateway
 import com.barkfluff.client.search.SearchUsersGateway
+import com.barkfluff.client.search.SearchChatsGateway
+import com.barkfluff.client.search.GrpcSearchChatsGateway
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -96,6 +98,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSearchUsersGateway(implementation: GrpcSearchUsersGateway): SearchUsersGateway =
+        implementation
+
+    @Provides
+    fun provideSearchChatsGateway(implementation: GrpcSearchChatsGateway): SearchChatsGateway =
         implementation
 
     @Provides

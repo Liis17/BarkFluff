@@ -1317,4 +1317,14 @@
     <string name="auth_factor_email">Correo</string>
     <string name="auth_factor_telegram">Telegram</string>
     <string name="auth_factor_none">Sin segundo factor</string>
+    <!-- Conversation search -->
+    <string name="search_chats_hint">Buscar chats</string>
+    <string name="search_chats_prompt">Encontrar una conversación</string>
+    <string name="search_chats_description">Introduce el nombre de un contacto o de un grupo</string>
+    <string name="search_chats_updating">Cargando todas las conversaciones…</string>
+    <string name="search_chats_cached">Buscando en chats guardados y cargados. La lista puede estar incompleta.</string>
+    <string name="search_chat_direct">Chat directo</string>
+    <string name="search_chat_group">Chat de grupo</string>
+    <string name="search_chat_private">Chat privado</string>
+    <string name="search_chat_secret">Chat secreto</string>
 </resources>
