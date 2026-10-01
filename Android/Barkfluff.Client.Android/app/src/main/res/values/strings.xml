@@ -1436,4 +1436,7 @@
     <string name="cd_voice_discard">Удалить запись</string>
     <string name="cd_voice_speed">Изменить скорость. Сейчас %1$s</string>
     <string name="cd_voice_seek">Позиция %1$s из %2$s</string>
+    <string name="voice_playback_title">Голосовое сообщение</string>
+    <string name="voice_playback_channel">Воспроизведение голосовых</string>
+    <string name="voice_sender_you">Вы</string>
 </resources>

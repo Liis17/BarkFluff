@@ -23,6 +23,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 @AndroidEntryPoint
 class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
+
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
 
     companion object {
@@ -242,6 +244,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
 
         serviceScope.launch {
+            withContext(Dispatchers.Main.immediate) { audioPlayback.pause() }
             // Аватар готовим до показа звонка: при убитом приложении процесс поднимает FCM,
             // gRPC-клиентов ещё нет, и звонок успевал показаться только с инициалами.
             val prefetched = withTimeoutOrNull(AVATAR_PREFETCH_TIMEOUT_MS) {

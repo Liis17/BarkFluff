@@ -57,6 +57,7 @@ import java.util.Locale
 @AndroidEntryPoint
 class UserProfileActivity : AppCompatActivity() {
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     private lateinit var binding: ActivityUserProfileBinding
     private lateinit var globalParam: GlobalParam
 
@@ -324,6 +325,16 @@ class UserProfileActivity : AppCompatActivity() {
     ): AttachmentsPanel {
         lateinit var adapter: AttachmentPreviewAdapter
         adapter = AttachmentPreviewAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = chatTitle,
+            playbackIsGroupChat = isGroupChat,
+            playbackOtherUserId = otherUserId,
+            resolveSender = { userId ->
+                userProfileGateway.user(userId).getOrNull()?.let { user ->
+                    listOf(user.firstName, user.lastName).filter(String::isNotBlank).joinToString(" ").ifBlank { user.username }
+                }
+            },
             getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onAttachmentClick = { attachmentInfo ->
                 val att = attachmentInfo.attachment
@@ -390,7 +401,6 @@ class UserProfileActivity : AppCompatActivity() {
             downloadToCache = { fileId ->
                 FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId)
             },
-            scope = lifecycleScope,
             autoDownloadViews = AttachmentAutoDownloadViews(FileMediaAttachmentLoader(fileMediaGateway), this, autoDownloadSettings, autoDownloadNetwork),
         )
         recyclerView.adapter = adapter
@@ -746,6 +756,9 @@ class UserProfileActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        binding.mediaAttachmentsRecyclerView.adapter = null
+        binding.filesAttachmentsRecyclerView.adapter = null
+        binding.voiceAttachmentsRecyclerView.adapter = null
         fileSearchJob?.cancel()
         super.onDestroy()
     }

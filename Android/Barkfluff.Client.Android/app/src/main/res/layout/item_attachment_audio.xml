@@ -19,13 +19,13 @@
 
         <!-- Кнопка плей/пауза + кнопка скачать поверх -->
         <FrameLayout
-            android:layout_width="40dp"
-            android:layout_height="40dp">
+            android:layout_width="48dp"
+            android:layout_height="48dp">
 
             <ImageButton
                 android:id="@+id/playPauseButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:background="@drawable/background_color_indicator"
@@ -36,8 +36,8 @@
 
             <ImageButton
                 android:id="@+id/downloadButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:background="@drawable/background_color_indicator"
@@ -72,12 +72,16 @@
             <com.barkfluff.client.view.VoiceWaveformView
                 android:id="@+id/voiceWaveform"
                 android:layout_width="0dp"
-                android:layout_height="32dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:enabled="false"
-                android:importantForAccessibility="no"
+                android:importantForAccessibility="yes"
                 android:visibility="gone"
                 tools:visibility="visible" />
+
+            <Button android:id="@+id/voiceSpeed" android:layout_width="48dp" android:layout_height="48dp"
+                android:minWidth="48dp" android:padding="0dp" android:visibility="gone"
+                android:background="?attr/selectableItemBackgroundBorderless" android:textColor="?attr/colorPrimary" />
 
             <TextView
                 android:id="@+id/durationText"

@@ -1384,4 +1384,7 @@
     <string name="cd_voice_discard">删除录音</string>
     <string name="cd_voice_speed">更改速度，当前为 %1$s</string>
     <string name="cd_voice_seek">播放位置 %1$s，共 %2$s</string>
+    <string name="voice_playback_title">语音消息</string>
+    <string name="voice_playback_channel">语音消息播放</string>
+    <string name="voice_sender_you">你</string>
 </resources>

@@ -1392,4 +1392,7 @@
     <string name="cd_voice_discard">Eliminar grabación</string>
     <string name="cd_voice_speed">Cambiar velocidad. Actual: %1$s</string>
     <string name="cd_voice_seek">Posición %1$s de %2$s</string>
+    <string name="voice_playback_title">Mensaje de voz</string>
+    <string name="voice_playback_channel">Reproducción de mensajes de voz</string>
+    <string name="voice_sender_you">Tú</string>
 </resources>

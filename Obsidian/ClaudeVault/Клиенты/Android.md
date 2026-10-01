@@ -412,6 +412,13 @@ Backend заполняет эти поля при доставке сообще�
 - Отправка сначала копирует файл в durable outbox и принимает `SendJob`; затем очищает preview. Ошибка staging/enqueue оставляет клип для повторной попытки; повторное нажатие во время передачи не создаёт второй job. Ошибка очистки после принятия очередью не превращается в отказ: восстановление сверяет generation с durable handoff. Upload остаётся `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Backend/Messages]], [[Shared/Proto]]).
 - `onStop()` удаляет активную или приостановленную запись; завершённый черновик сохраняется. Предпрослушивание использует локальный ExoPlayer, останавливается при уходе с экрана и не воспроизводится в фоне. Начало записи или предпрослушивания приостанавливает проигрываемое аудио.
 
+`AudioPlayback` — единый observable фасад для чата, закреплённых сообщений, вкладки голоса профиля системных медиакнопок. `PlaybackState` содержит исходный чат/сообщение, отправителя, позицию, длительность, скорость и ошибку; pause сохраняет отображаемую позицию. `VoicePlaybackService : MediaSessionService` владеет ExoPlayer/MediaSession, а фасад использует один MediaController. В manifest объявлены `FOREGROUND_SERVICE_MEDIA_PLAYBACK` и service type `mediaPlayback`; системное уведомление и экран блокировки получают media controls через Media3 ([Android background playback](https://developer.android.com/media/media3/session/background-playback)).
+
+- Выбор 1×/1,5×/2× хранится на устройстве в `voice_playback/speed`, исходно 1×; высота голоса остаётся 1. Изменение синхронизирует preview, строки, профиль и мини-плеер. Для обычного AUDIO скорость остаётся 1×.
+- Воспроизведение отправленного/полученного файла продолжается при смене экрана, блокировке и уходе в другое приложение. Потеря audio focus (в том числе звонок), сигнал отключения наушников и incoming call ставят плеер на паузу без автоматического продолжения. Во время записи или звонка системное/локальное play блокируется. Logout/смена scope и очистка кеша останавливают плеер.
+- Строки отписываются от state при recycle/detach; Activities очищают адаптеры при уничтожении. `VoiceWaveformView` поддерживает TalkBack range/set-progress/scroll actions. Новые строки и динамические подписи есть в ru/en/de/es/zh-CN; интерактивные области — не менее 48dp.
+- Волны извлекаются через `AudioWaveformExtractor` и кешируются по `fileId`. Сохраняется общая политика автозагрузки: исходно Wi-Fi и максимум 2 МБ, при запрете — ручная кнопка. Вкладка «Голосовые» профиля запрашивает `MessageAttachmentType.VOICE`.
+
 ### Вложения в профиле и группе
 
 `UserProfileActivity` и `GroupInfoActivity` используют отдельные панели и `RecyclerView` для «Медиа» (постоянная сетка), «Файлов» и, в профиле, «Голосовых». Поэтому переключение вкладок не меняет `LayoutManager` у уже отображаемого списка и запоздалый ответ прежней вкладки не может показать чужую геометрию. Ответы дополнительно сверяются с текущей вкладкой и версией загрузки.
@@ -464,7 +471,7 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
 
 Бинарные файлы (аудио/видео/документы):
 - `FileCache` (`utils/FileCache.kt`) — singleton disk cache, путь: `cacheDir/media_files/`
-- `AudioPlayerHelper` (`utils/AudioPlayerHelper.kt`) — MediaPlayer singleton, один аудио за раз
+- `AudioPlayback` / `VoicePlaybackService` (`audio/`) — общий ExoPlayer и MediaSession для аудио/голосовых
 - `ImageGridAdapter` (`adapter/ImageGridAdapter.kt`) — квадратная сетка с `SquareImageView`
 - `SquareImageView` (`views/SquareImageView.kt`) — `onMeasure` устанавливает height=width
 - `AspectRatioImageView` (`views/AspectRatioImageView.kt`) — `onMeasure` устанавливает height=width*3/2 (2:3, для превью фонов)
@@ -477,6 +484,7 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
 ```
 androidx.media3:media3-exoplayer:1.3.1
 androidx.media3:media3-ui:1.3.1
+androidx.media3:media3-session:1.3.1
 ```
 
 ## Пересылка и ответы (Forward / Reply)
@@ -846,7 +854,7 @@ Android/
 
 ### Состав `:core`
 
-`com.android.library`, namespace `com.barkfluff.client.core`, minSdk 31. Пакеты сохранили имена `com.barkfluff.client.*` (V1-код не правит импорты). Содержит: `grpc/` (`GrpcClientRegistry`, `GrpcApiTransport`, `TokenCoordinator`, `MediaHttpTransport`, interceptors, `RealtimeService`), `domain/` (typed gateways, domain DTO и row/state seams), `data/` (GlobalParam, ClientColors, ServerDataElement, OpenChatManager), `repository/` (Chat/Private/Secret), `crypto/` (BarkFluffSignalStore, PrekeyManager, PrivateChatCrypto), чистые `utils/` (FileCache, ImageCompressor, FileUrlCache, ImageCache, NetworkUtils, AudioPlayerHelper, FileSaveUtils, AppVersionUtil), `proto/` (protobuf-плагин, режим lite). `api(libsignal-android)`, `consumer-rules.pro` с keep-правилами.
+`com.android.library`, namespace `com.barkfluff.client.core`, minSdk 31. Пакеты сохранили имена `com.barkfluff.client.*` (V1-код не правит импорты). Содержит: `grpc/` (`GrpcClientRegistry`, `GrpcApiTransport`, `TokenCoordinator`, `MediaHttpTransport`, interceptors, `RealtimeService`), `domain/` (typed gateways, domain DTO и row/state seams), `data/` (GlobalParam, ClientColors, ServerDataElement, OpenChatManager), `repository/` (Chat/Private/Secret), `crypto/` (BarkFluffSignalStore, PrekeyManager, PrivateChatCrypto), чистые `utils/` (FileCache, ImageCompressor, FileUrlCache, ImageCache, NetworkUtils, FileSaveUtils, AppVersionUtil), `proto/` (protobuf-плагин, режим lite). `api(libsignal-android)`, `consumer-rules.pro` с keep-правилами.
 
 **Развязка границы:** `RealtimeService` не зависит от UI/Notification/Widget — введён интерфейс `RealtimeSideEffects` (onChatChanged / dismissChatNotifications / showMessageNotification). Реализация `RealtimeSideEffectsImpl` живёт в app-слое (пакет `notifications/`, грузит уведомления через NotificationHelper + AvatarLoader/Coil).
 

@@ -112,6 +112,8 @@ class VoiceComposerTest {
         scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
         assertTrue("Canceling a paused recorder must not block the UI", android.os.SystemClock.elapsedRealtime() - leavingAt < 5_000L)
         assertFalse(active.single().exists())
+        assertFalse(app.audioPlayback.state.value.isPlaying)
+        assertTrue(app.audioPlayback.playbackAllowed)
         runBlocking { assertTrue(ComposerAttachmentStore(app, app.chatCacheRepository).restore(scope, chatId).isEmpty()) }
     }
 

@@ -130,6 +130,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class ChatActivity : AppCompatActivity() {
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     @javax.inject.Inject lateinit var voiceCallEvents: com.barkfluff.client.calls.CallEventsService
     private lateinit var binding: ActivityChatBinding
     private val viewModel: ChatViewModel by viewModels()
@@ -202,6 +203,7 @@ class ChatActivity : AppCompatActivity() {
     private val voiceRecording: VoiceRecordingController by lazy {
         VoiceRecordingController(AndroidVoiceRecordingDevice(applicationContext) {
             voiceRecording.cancel()
+            audioPlayback.setRecordingActive(false)
             Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show()
         }, SystemClock::elapsedRealtime)
     }
@@ -293,6 +295,17 @@ class ChatActivity : AppCompatActivity() {
         const val KIND_REGULAR = 0
         const val KIND_PRIVATE = 1
         const val KIND_SECRET = 2
+
+        fun voiceMessageIntent(context: Context, chatId: String, title: String, messageId: Long,
+            isGroupChat: Boolean = false, otherUserId: Long = 0L): Intent =
+            Intent(context, ChatActivity::class.java).apply {
+                putExtra(EXTRA_CHAT_ID, chatId)
+                putExtra(EXTRA_CHAT_TITLE, title)
+                putExtra(EXTRA_TARGET_MESSAGE_ID, messageId)
+                putExtra(EXTRA_IS_GROUP_CHAT, isGroupChat)
+                putExtra(EXTRA_OTHER_USER_ID, otherUserId)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
 
         /** Intent для приватного E2E-чата в общем ChatActivity. inviteState<0 = определить из ListChats. */
         fun privateChatIntent(
@@ -643,6 +656,10 @@ class ChatActivity : AppCompatActivity() {
 
         // Адаптер без вложений и меню действий (все callback'и — дефолтные no-op).
         val e2eAdapter = MessageAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = chatTitle,
+            playbackOtherUserId = otherUserId,
             currentUserId = currentUserId,
             isGroupChat = false,
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
@@ -1157,6 +1174,10 @@ class ChatActivity : AppCompatActivity() {
     private fun setupMessagesRecyclerView() {
         val attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway)
         messageAdapter = MessageAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = chatTitle,
+            playbackOtherUserId = otherUserId,
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
             attachmentLoader = attachmentLoader,
@@ -1767,7 +1788,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupVoiceUi() {
-        voicePreview = VoiceDraftPreview(binding.voiceDraft, lifecycleScope,
+        voicePreview = VoiceDraftPreview(binding.voiceDraft, lifecycleScope, audioPlayback,
             onSend = { sendVoiceDraft() },
             onDiscard = { viewModel.dispatch(ChatIntent.DiscardVoice) },
         )
@@ -1838,9 +1859,9 @@ class ChatActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     private fun startVoiceRecording(locked: Boolean = false) {
-        if (voiceCallEvents.currentCall.value?.isTerminal == false) return
+        if (!audioPlayback.playbackAllowed) return
         voicePreview?.pause()
-        com.barkfluff.client.utils.AudioPlayerHelper.pause()
+        audioPlayback.pause()
         WindowInsetsControllerCompat(window, binding.root).hide(WindowInsetsCompat.Type.ime())
         runCatching { voiceRecording.start(locked) }.onSuccess {
             voiceTimerJob?.cancel()
@@ -1863,6 +1884,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun renderVoiceRecording(state: VoiceRecordingState) {
+        audioPlayback.setRecordingActive(state.isActive)
         binding.sendButton.importantForAccessibility = if (state.isActive) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_YES
         binding.inputBar.visibility = if (state.isActive) View.INVISIBLE else View.VISIBLE
         binding.voiceRecordBar.visibility = if (state.isActive) View.VISIBLE else View.GONE
@@ -3019,6 +3041,7 @@ class ChatActivity : AppCompatActivity() {
     override fun onStop() {
         scheduleDraftSave(immediate = true)
         voiceRecording.cancel()
+        audioPlayback.setRecordingActive(false)
         voicePreview?.pause()
         stopTypingHeartbeat(sendCancel = true)
         if (messageActionsOverlay.isShowing) messageActionsOverlay.dismiss(animate = false)

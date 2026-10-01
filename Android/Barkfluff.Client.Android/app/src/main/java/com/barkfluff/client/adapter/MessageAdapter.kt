@@ -3,8 +3,6 @@ package com.barkfluff.client.adapter
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -31,7 +29,9 @@ import com.barkfluff.client.databinding.ItemMessageDateSeparatorBinding
 import com.barkfluff.client.databinding.ItemMessageReceivedBinding
 import com.barkfluff.client.databinding.ItemMessageSentBinding
 import com.barkfluff.client.databinding.ViewMessageQuoteBinding
-import com.barkfluff.client.utils.AudioCallbacks
+import com.barkfluff.client.audio.AudioPlayback
+import com.barkfluff.client.audio.AudioTrack
+import com.barkfluff.client.voice.VoicePlaybackSpeed
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.cache.OutgoingMessageState
@@ -51,6 +51,10 @@ import java.io.File
  * разделители дат и разделитель непрочитанных сообщений.
  */
 class MessageAdapter(
+    private val playback: AudioPlayback,
+    private val playbackChatId: String = "",
+    private val playbackChatTitle: String = "",
+    private val playbackOtherUserId: Long = 0L,
     private val currentUserId: Long,
     private val isGroupChat: Boolean,
     private val attachmentLoader: AttachmentLoader = EmptyAttachmentLoader,
@@ -63,7 +67,7 @@ class MessageAdapter(
     private val autoDownloadViews: AttachmentAutoDownloadViews? = null,
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
-    private val audioPlaybackController = AudioPlaybackController()
+    private val audioPlaybackController = AudioPlaybackController(playback)
     private val viewOperations = ViewBoundOperationController()
     private val contentRenderer = MessageContentRenderer()
     private val attachmentRenderer = MessageAttachmentRenderer(attachmentLoader)
@@ -1015,7 +1019,7 @@ class MessageAdapter(
 
         // Audio rows
         for (audio in audios) {
-            val audioView = inflateAudioRow(container, audio, isSentByMe)
+            val audioView = inflateAudioRow(container, audio, isSentByMe, sourceMessageId)
             wrapper.addView(audioView)
         }
 
@@ -1291,7 +1295,7 @@ class MessageAdapter(
 
     // ─── Audio Row ────────────────────────────────────────────────────────────
 
-    private fun inflateAudioRow(container: ViewGroup, attachment: Shared.MessageAttachment, isSentByMe: Boolean = false): View {
+    private fun inflateAudioRow(container: ViewGroup, attachment: Shared.MessageAttachment, isSentByMe: Boolean = false, sourceMessageId: Long? = null): View {
         val binding = ItemAttachmentAudioBinding.inflate(
             LayoutInflater.from(container.context), container, false
         )
@@ -1307,7 +1311,10 @@ class MessageAdapter(
         binding.voiceWaveform.visibility = if (isVoice) View.VISIBLE else View.GONE
         binding.voiceWaveform.isEnabled = false
         binding.voiceWaveform.resetAmplitudes()
-        binding.durationText.text = "0:00"
+        var cachedDurationMillis = 0L
+        binding.durationText.text = formatAudioTime(0L)
+        binding.voiceSpeed.visibility = if (isVoice) View.VISIBLE else View.GONE
+        binding.voiceSpeed.setOnClickListener { playback.cycleSpeed() }
 
         if (isSentByMe) {
             val onContainer = resolveOnPrimaryContainerColor(context)
@@ -1364,7 +1371,8 @@ class MessageAdapter(
             }
 
             if (durationMs > 0) {
-                binding.durationText.text = formatAudioTime(durationMs.toLong())
+                cachedDurationMillis = durationMs.toLong()
+                binding.durationText.text = formatAudioTime(cachedDurationMillis)
             }
         }
 
@@ -1447,7 +1455,6 @@ class MessageAdapter(
                     val progress = audioPlaybackController.currentPosition().toFloat() / duration
                     if (isVoice) binding.voiceWaveform.setProgress(progress) else binding.audioSeekBar.progress = (progress * 1000).toInt()
                 }
-                if (audioPlaybackController.isPlaying()) startAudioProgressPolling(fileId, binding)
             }
         } else {
             updateUiForNotCached()
@@ -1477,33 +1484,40 @@ class MessageAdapter(
         binding.playPauseButton.setOnClickListener {
             val file = attachmentLoader.cached(fileId) ?: return@setOnClickListener
             if (audioPlaybackController.isActiveFile(fileId)) {
-                if (audioPlaybackController.isPlaying()) {
-                    audioPlaybackController.pause()
-                    updateAudioPlaybackUI(binding, false)
-                } else {
-                    audioPlaybackController.resume()
-                    updateAudioPlaybackUI(binding, true)
-                    startAudioProgressPolling(fileId, binding)
-                }
+                if (audioPlaybackController.isPlaying()) audioPlaybackController.pause() else audioPlaybackController.resume()
             } else {
-                audioPlaybackController.play(fileId, file, object : AudioCallbacks {
-                    override fun onStateChanged(isPlaying: Boolean) {
-                        updateAudioPlaybackUI(binding, isPlaying)
-                        if (isPlaying) startAudioProgressPolling(fileId, binding)
-                    }
-                    override fun onProgress(positionMs: Int, durationMs: Int) {}
-                    override fun onComplete() {
-                        updateAudioPlaybackUI(binding, false)
-                        binding.audioSeekBar.progress = 0
-                        binding.voiceWaveform.setProgress(0f)
-                        binding.durationText.text = formatAudioTime(
-                            audioPlaybackController.duration().toLong()
-                        )
-                    }
-                    override fun onError() {
-                        updateAudioPlaybackUI(binding, false)
-                    }
-                })
+                val source = currentList.firstOrNull { it.messageId == sourceMessageId }
+                val sender = if (isSentByMe) context.getString(R.string.voice_sender_you) else
+                    source?.let { item ->
+                        eventSink?.senderInfo(item.senderId)?.first?.takeIf(String::isNotBlank)
+                            ?: item.senderName?.takeIf(String::isNotBlank)
+                            ?: playbackChatTitle.takeIf { !isGroupChat && it.isNotBlank() }
+                            ?: context.getString(R.string.group_member_id, item.senderId)
+                    }.orEmpty()
+                audioPlaybackController.play(AudioTrack(fileId, playbackChatId, playbackChatTitle,
+                    sender, sourceMessageId ?: 0L, isVoice, isGroupChat, playbackOtherUserId), file)
+            }
+        }
+        viewOperations.launch(binding.playPauseButton) {
+            playback.state.collect { state ->
+                val active = state.track?.fileId == fileId
+                updateAudioPlaybackUI(binding, active && state.isPlaying)
+                val speed = VoicePlaybackSpeed.label(context, state.speed)
+                binding.voiceSpeed.text = speed
+                binding.voiceSpeed.contentDescription = context.getString(R.string.cd_voice_speed, speed)
+                if (active && state.durationMillis > 0L) {
+                    val progress = (state.positionMillis.toFloat() / state.durationMillis).coerceIn(0f, 1f)
+                    if (!binding.voiceWaveform.isPressed) binding.voiceWaveform.setProgress(progress)
+                    if (!binding.audioSeekBar.isPressed) binding.audioSeekBar.progress = (progress * 1000).toInt()
+                    binding.durationText.text = context.getString(R.string.audio_position,
+                        formatAudioTime(state.positionMillis), formatAudioTime(state.durationMillis))
+                    binding.voiceWaveform.contentDescription = context.getString(R.string.cd_voice_seek,
+                        formatAudioTime(state.positionMillis), formatAudioTime(state.durationMillis))
+                } else if (!active) {
+                    binding.voiceWaveform.setProgress(0f)
+                    binding.audioSeekBar.progress = 0
+                    binding.durationText.text = formatAudioTime(cachedDurationMillis)
+                }
             }
         }
 
@@ -1642,35 +1656,9 @@ class MessageAdapter(
         binding.playPauseButton.setImageResource(
             if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
         )
+        binding.playPauseButton.contentDescription = binding.root.context.getString(if (isPlaying) R.string.cd_pause else R.string.cd_play)
     }
 
-    private fun startAudioProgressPolling(fileId: String, binding: ItemAttachmentAudioBinding) {
-        val handler = Handler(Looper.getMainLooper())
-        val runnable = object : Runnable {
-            override fun run() {
-                if (binding.root.tag != fileId) return
-                if (!audioPlaybackController.isActiveFile(fileId)) return
-                if (!audioPlaybackController.isPlaying()) return
-                val pos = audioPlaybackController.currentPosition()
-                val dur = audioPlaybackController.duration()
-                if (dur > 0) {
-                    val progress = (pos.toFloat() / dur).coerceIn(0f, 1f)
-                    if (binding.voiceWaveform.visibility == View.VISIBLE) {
-                        binding.voiceWaveform.setProgress(progress)
-                    } else {
-                        binding.audioSeekBar.progress = (progress * 1000).toInt()
-                    }
-                    binding.durationText.text = binding.root.context.getString(
-                        R.string.audio_position,
-                        formatAudioTime(pos.toLong()),
-                        formatAudioTime(dur.toLong())
-                    )
-                }
-                handler.postDelayed(this, 250)
-            }
-        }
-        handler.post(runnable)
-    }
     // ─── Video Row ────────────────────────────────────────────────────────────
 
     private fun inflateVideoRow(container: ViewGroup, attachment: Shared.MessageAttachment): View {
