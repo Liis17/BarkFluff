@@ -4,7 +4,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.OutgoingFailureCategory
+import com.barkfluff.client.cache.OutgoingMessageRecord
+import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.grpc.GrpcApiTransport
+import com.barkfluff.client.grpc.TokenCoordinator
+import com.barkfluff.client.grpc.TokenValidity
+import com.barkfluff.client.repository.ChatRepository
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -155,6 +162,69 @@ class OutgoingMessageQueueTest {
 
         assertEquals(null, application.chatCacheRepository.outgoing(scope(), operationId))
         assertFalse(File(copiedPath).exists())
+    }
+
+    @Test
+    fun unreachableIdentityKeepsTheSendQueuedForRetryInsteadOfFailingIt() = runBlocking {
+        val operationId = saveQueuedText("sent right after the network returned")
+
+        queueWith(TokenValidity.UNAVAILABLE).processReady()
+
+        val record = application.chatCacheRepository.outgoing(scope(), operationId)!!
+        assertEquals(OutgoingMessageState.QUEUED, record.state)
+        assertEquals(OutgoingFailureCategory.NETWORK, record.failureCategory)
+        assertEquals(1, record.attemptCount)
+        assertTrue(record.nextAttemptAtMillis > System.currentTimeMillis())
+    }
+
+    @Test
+    fun rejectedRefreshTokenStillFailsTheSendForTheUser() = runBlocking {
+        val operationId = saveQueuedText("session was revoked")
+
+        queueWith(TokenValidity.REJECTED).processReady()
+
+        val record = application.chatCacheRepository.outgoing(scope(), operationId)!!
+        assertEquals(OutgoingMessageState.FAILED, record.state)
+        assertEquals(OutgoingFailureCategory.AUTH_REQUIRED, record.failureCategory)
+    }
+
+    /** Writes a QUEUED row directly: unlike enqueue() it does not wake the real worker that could race the test. */
+    private suspend fun saveQueuedText(text: String): String {
+        val operationId = UUID.randomUUID().toString()
+        application.chatCacheRepository.saveOutgoing(scope(), OutgoingMessageRecord(
+            operationId = operationId,
+            batchId = null,
+            chatId = "chat",
+            chatTitle = "Chat",
+            text = text,
+            replyToMessageId = 0L,
+            draftGeneration = null,
+            sendAsFile = false,
+            existingFileIds = emptyList(),
+            createdAtMillis = System.currentTimeMillis(),
+            state = OutgoingMessageState.QUEUED,
+            progress = 0,
+            attemptCount = 0,
+            nextAttemptAtMillis = 0,
+            failureCategory = null,
+            failureDetail = null,
+            leaseOwner = null,
+            leaseExpiresAtMillis = 0,
+            serverMessageId = 0,
+            serverMessagePayload = null,
+            attachments = emptyList(),
+        ))
+        return operationId
+    }
+
+    private fun queueWith(validity: TokenValidity): OutgoingMessageQueue {
+        val context = application.applicationContext
+        val coordinator = object : TokenCoordinator {
+            override suspend fun validity(forceRefresh: Boolean) = validity
+        }
+        return OutgoingMessageQueue(
+            context, application.chatCacheRepository, ChatRepository(context, GrpcApiTransport(context)), coordinator
+        )
     }
 
     private fun scope() = requireNotNull(CacheScope.from(globalParam))

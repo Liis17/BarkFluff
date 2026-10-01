@@ -119,7 +119,7 @@
 |------|------|
 | `grpc/GrpcClientRegistry.kt` | Typed stub/channel registry: explicit Navigator/Beacon, lazy user clients, normalization, recreation и shutdown |
 | `grpc/GrpcApiTransport.kt` | Внутренний production transport adapter для gateway/repository; не передаётся в UI |
-| `grpc/TokenCoordinator.kt` | Единый mutex refresh, freshness buffer и rotation refresh-токена |
+| `grpc/TokenCoordinator.kt` | Единый mutex refresh, freshness buffer и rotation refresh-токена; `validity()` различает `VALID` / `REJECTED` / `UNAVAILABLE`, `ensureValid()` — его Boolean-обёртка |
 | `grpc/MediaHttpTransport.kt` | TLS-конфигурация HTTP и переписывание media-origin |
 | `grpc/RealtimeService.kt` | gRPC streaming: подписки на новые сообщения, read receipts, онлайн-статусы; exponential backoff; ping-loop |
 | `grpc/RealtimeSideEffects.kt` | Интерфейс побочных эффектов realtime-событий (уведомления/аватары/виджеты), реализуется на стороне приложения — см. `notifications/RealtimeSideEffectsImpl.kt` (app) |

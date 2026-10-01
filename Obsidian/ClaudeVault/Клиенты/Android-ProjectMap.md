@@ -473,7 +473,7 @@ Files HTTP проверяется запросом `GET /web/download/{случ�
 Актуальная transport-граница: registry владеет channel/stub lifecycle, а UI и background-компоненты получают только typed gateways через Hilt. `GrpcApiTransport` используется production adapters/repositories и не экспортируется в экранный слой.
 
 - `GrpcClientRegistry`: Navigator/Beacon создаются explicit; остальные clients lazy; endpoint нормализуется; `recreateAllClients()` идемпотентен; `shutdown()` запрещает resurrection.
-- `TokenCoordinator`: process-wide mutex, пятиминутный freshness buffer и запись rotated refresh-token.
+- `TokenCoordinator`: process-wide mutex, пятиминутный freshness buffer и запись rotated refresh-token. `validity()` отличает отказ Identity (`REJECTED`: нет токена или статус `FAILED_PRECONDITION`/`UNAUTHENTICATED`/`PERMISSION_DENIED`) от недоступности (`UNAVAILABLE`: любая другая ошибка refresh); `GrpcApiTransport.refreshAccessToken` сохраняет исходное исключение как cause, чтобы статус не терялся. `ensureValid()` остался Boolean для прочих потребителей.
 - `MediaHttpTransport`: TLS policy и переписывание media-origin для HTTP файлов.
 - `domain/gateway/DomainGateways.kt`: discovery/auth/challenge-auth/account/users/settings/directory/chat/message/media/call/FastAuth/E2E/prekey ports.
 - `domain/gateway/GrpcGatewayAdapters.kt`: production mapping protobuf → domain DTO/Result.
