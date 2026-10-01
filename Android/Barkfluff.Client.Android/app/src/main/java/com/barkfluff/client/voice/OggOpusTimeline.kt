@@ -48,7 +48,7 @@ internal object OggOpusTimeline {
                 repeat(8) { originalGranule = originalGranule or ((header[6 + it].toLong() and 255L) shl (it * 8)) }
                 // Keep the final packet's end trim, including an empty EOS page. Pre-skip
                 // stays in OpusHead and is applied by the decoder (RFC 7845 section 4).
-                val trim = if (eos) (previousGranule + samples - before - originalGranule).coerceIn(0L, samples) else 0L
+                val trim = if (eos && originalGranule >= 0L) (previousGranule + samples - before - originalGranule).coerceIn(0L, samples) else 0L
                 val granule = samples - trim
                 repeat(8) { header[6 + it] = (granule ushr (it * 8)).toByte() }
                 repeat(4) { header[22 + it] = 0 }

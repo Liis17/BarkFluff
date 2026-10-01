@@ -1395,4 +1395,6 @@
     <string name="voice_playback_title">Sprachnachricht</string>
     <string name="voice_playback_channel">Sprachnachrichten abspielen</string>
     <string name="voice_sender_you">Du</string>
+    <string name="cd_voice_player_close">Player schließen</string>
+    <string name="voice_player_error">Audio konnte nicht abgespielt werden</string>
 </resources>

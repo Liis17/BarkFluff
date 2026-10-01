@@ -1395,4 +1395,6 @@
     <string name="voice_playback_title">Mensaje de voz</string>
     <string name="voice_playback_channel">Reproducción de mensajes de voz</string>
     <string name="voice_sender_you">Tú</string>
+    <string name="cd_voice_player_close">Cerrar reproductor</string>
+    <string name="voice_player_error">No se pudo reproducir el audio</string>
 </resources>

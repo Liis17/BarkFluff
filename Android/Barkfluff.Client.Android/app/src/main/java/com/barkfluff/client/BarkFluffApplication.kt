@@ -142,6 +142,7 @@ class BarkFluffApplication : Application() {
         cleanupPendingUpdate()
         // Apply Material You dynamic colors system-wide (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
+        registerActivityLifecycleCallbacks(com.barkfluff.client.audio.AudioMiniPlayerHost(audioPlayback))
         NotificationHelper.createChannels(this)
         CallTelecomManager.registerPhoneAccount(this)
         connectivityManager = getSystemService(ConnectivityManager::class.java)
