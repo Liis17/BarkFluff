@@ -81,6 +81,24 @@ class OutgoingMessageDaoTest {
     }
 
     @Test
+    fun clearBackoffMakesOnlyWaitingQueuedRowsReadyNow() = runBlocking {
+        val dao = database.outgoingDao()
+        dao.upsertMessage(message("waiting", "chat-a", 10).copy(nextAttemptAtMillis = 900))
+        dao.upsertMessage(message("due", "chat-b", 20).copy(nextAttemptAtMillis = 50))
+        dao.upsertMessage(message("failed", "chat-c", 30).copy(
+            state = OutgoingMessageState.FAILED.name, nextAttemptAtMillis = 900
+        ))
+        dao.upsertMessage(message("other-account", "chat-d", 40).copy(scopeId = "other", nextAttemptAtMillis = 900))
+
+        assertEquals(1, dao.clearBackoff(SCOPE, OutgoingMessageState.QUEUED.name, nowMillis = 100))
+
+        assertEquals(0L, dao.message(SCOPE, "waiting")!!.nextAttemptAtMillis)
+        assertEquals(50L, dao.message(SCOPE, "due")!!.nextAttemptAtMillis)
+        assertEquals(900L, dao.message(SCOPE, "failed")!!.nextAttemptAtMillis)
+        assertEquals(900L, dao.message("other", "other-account")!!.nextAttemptAtMillis)
+    }
+
+    @Test
     fun draftHandoffCountsSentRowsButOnlyForTheSameDraft() = runBlocking {
         val dao = database.outgoingDao()
         dao.upsertMessage(message("sent", "chat-a", 10).copy(
