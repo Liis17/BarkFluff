@@ -125,6 +125,9 @@ class ChatActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityChatBinding
     private val viewModel: ChatViewModel by viewModels()
+    private var submittedItemsVersion = 0L
+    private var committedItemsVersion = 0L
+    private var scrollToBottomJob: Job? = null
 
     private lateinit var globalParam: GlobalParam
     @Inject lateinit var realtimeService: RealtimeService
@@ -402,6 +405,10 @@ class ChatActivity : AppCompatActivity() {
             var previousPresence: PresenceState? = null
             var observedOnlineUserId = 0L
             viewModel.state.collect { state ->
+                if (state.timeline.target != null) {
+                    scrollToBottomJob?.cancel()
+                    binding.messagesRecyclerView.stopScroll()
+                }
                 // Кэш значений для синхронных читателей (шапка, звонки, меню, forward)
                 chatTitle = state.chatTitle
                 chatAvatarFileId = state.chatAvatarFileId
@@ -442,8 +449,11 @@ class ChatActivity : AppCompatActivity() {
                 val ownAtTail = lastMessage?.senderId == currentUserId
 
                 if (state.items != previousItems) {
+                    val version = ++submittedItemsVersion
                     messageAdapter.submitList(messageRowProjector.project(state.items)) {
-                        if (applyMessageNavigation()) {
+                        if (version != submittedItemsVersion) return@submitList
+                        committedItemsVersion = version
+                        if (applyMessageNavigation(listIsCommitted = true)) {
                             // A target has priority while its window is loading or committing.
                         } else if (unreadAppeared) {
                             val idx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.UNREAD_SEPARATOR }
@@ -459,7 +469,7 @@ class ChatActivity : AppCompatActivity() {
                     }
                     previousItems = state.items
                 } else {
-                    applyMessageNavigation()
+                    applyMessageNavigation(listIsCommitted = committedItemsVersion == submittedItemsVersion)
                     updateScrollToBottomButton()
                 }
 
@@ -1420,8 +1430,9 @@ class ChatActivity : AppCompatActivity() {
      * Если расстояние до конца > 500px: рывок на 120dp выше финала → плавное торможение по кривой.
      */
     private fun scrollToLatestMessages() {
-        if (viewModel.state.value.isLoading) return
-        lifecycleScope.launch {
+        if (viewModel.state.value.isLoading || viewModel.state.value.timeline.target != null) return
+        scrollToBottomJob?.cancel()
+        scrollToBottomJob = lifecycleScope.launch {
             val lm = binding.messagesRecyclerView.layoutManager as? LinearLayoutManager
 
             // Сразу запускаем быстрый плавный скролл (скорость в 3x быстрее стандартной)
@@ -1440,10 +1451,10 @@ class ChatActivity : AppCompatActivity() {
             delay(300)
 
             try {
-                viewModel.refreshLatestMessages()
-
                 // Рывок в конец с эффектом плавного торможения если расстояние большое
-                snapToBottom()
+                if (viewModel.refreshLatestMessages()) snapToBottom()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error scrolling to latest messages", e)
                 binding.messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
@@ -3005,18 +3016,22 @@ class ChatActivity : AppCompatActivity() {
     }
 
     /** Returns true while navigation owns scrolling, including a pending adapter diff. */
-    private fun applyMessageNavigation(): Boolean {
+    private fun applyMessageNavigation(listIsCommitted: Boolean): Boolean {
         val target = viewModel.state.value.timeline.target ?: return false
-        val index = viewModel.targetPositionIn(messageAdapter.currentList.map { it.messageId }) ?: return true
+        val index = viewModel.targetPositionIn(messageAdapter.currentList.map { it.messageId }, listIsCommitted) ?: return true
         val recycler = binding.messagesRecyclerView
+        val version = committedItemsVersion
         recycler.stopScroll()
         (recycler.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(index, recycler.height / 3)
         recycler.doOnNextLayout {
+            if (version != committedItemsVersion || committedItemsVersion != submittedItemsVersion || viewModel.state.value.timeline.target != target) return@doOnNextLayout
             val position = messageAdapter.currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == target.messageId }
-            if (position >= 0) highlightMessageAt(position)
+            if (position >= 0) {
+                highlightMessageAt(position)
+                viewModel.dispatch(ChatIntent.MessageNavigationHandled(target.requestId))
+                intent.removeExtra(EXTRA_TARGET_MESSAGE_ID)
+            }
         }
-        viewModel.dispatch(ChatIntent.MessageNavigationHandled(target.requestId))
-        intent.removeExtra(EXTRA_TARGET_MESSAGE_ID)
         intent.removeExtra("voice_message_id")
         return true
     }

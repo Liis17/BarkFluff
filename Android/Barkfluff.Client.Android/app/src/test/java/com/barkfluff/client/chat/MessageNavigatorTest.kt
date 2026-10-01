@@ -23,23 +23,24 @@ class MessageNavigatorTest {
         val target = navigator.request(900L)
         val window = navigator.window(target)!!.getOrThrow()
         assertEquals(900L, requestedId)
-        assertEquals(900L, window.single().id)
+        assertEquals(900L, window.messages.single().id)
     }
 
     @Test fun waitsForCommittedTargetAndAcknowledgesOnlyThatRequest() = runTest {
         val navigator = MessageNavigator { id, _, _ -> Result.success(listOf(message(id))) }
         val first = navigator.request(9)
         navigator.window(first)
-        assertNull(navigator.position(first, listOf(1, 2, 3)))
+        assertNull(navigator.position(first, listOf(1, 2, 3), listIsCommitted = true))
+        assertNull(navigator.position(first, listOf(1, 9, 10), listIsCommitted = false))
         assertEquals(first, navigator.pending)
-        assertEquals(1, navigator.position(first, listOf(1, 9, 10)))
+        assertEquals(1, navigator.position(first, listOf(1, 9, 10), listIsCommitted = true))
         assertTrue(navigator.acknowledge(first.requestId))
         assertNull(navigator.pending)
 
         val second = navigator.request(10)
         assertFalse(navigator.acknowledge(first.requestId))
         assertEquals(second, navigator.pending)
-        assertNull(navigator.position(first, listOf(9, 10)))
+        assertNull(navigator.position(first, listOf(9, 10), listIsCommitted = true))
     }
 
     @Test fun discardsLateContextFromPreviousNavigation() = runTest {
@@ -60,10 +61,33 @@ class MessageNavigatorTest {
         assertTrue(navigator.window(target)!!.exceptionOrNull() is MessageTargetMissingException)
     }
 
+    @Test fun deletedTargetDiscardsItsInFlightWindow() = runTest {
+        val deferred = CompletableDeferred<Result<List<Shared.Message>>>()
+        val navigator = MessageNavigator { _, _, _ -> deferred.await() }
+        val target = navigator.request(9)
+        val window = async { navigator.window(target) }
+        runCurrent()
+        navigator.acknowledge(target.requestId)
+        deferred.complete(Result.success(listOf(message(9))))
+        assertNull(window.await())
+        assertNull(navigator.pending)
+    }
+
     @Test fun sortsContextByTimestampThenId() = runTest {
         val navigator = MessageNavigator { _, _, _ -> Result.success(listOf(message(10), message(9), message(8))) }
         val target = navigator.request(9)
-        assertEquals(listOf(8L, 9L, 10L), navigator.window(target)!!.getOrThrow().map { it.id })
+        assertEquals(listOf(8L, 9L, 10L), navigator.window(target)!!.getOrThrow().messages.map { it.id })
+    }
+
+    @Test fun liveMessageDuringLastWindowResponseKeepsForwardPaginationOpen() = runTest {
+        val oldTail = CompletableDeferred<Result<List<Shared.Message>>>()
+        val navigator = MessageNavigator { _, _, _ -> oldTail.await() }
+        val target = navigator.request(1000)
+        val window = async { navigator.window(target) }
+        runCurrent()
+        navigator.deferLiveMessage() // Realtime 1001 arrived after the server took its snapshot.
+        oldTail.complete(Result.success(listOf(message(999), message(1000))))
+        assertTrue(window.await()!!.getOrThrow().hasMoreAfter)
     }
 
     private fun message(id: Long) = Shared.Message.newBuilder().setId(id).build()

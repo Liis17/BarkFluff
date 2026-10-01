@@ -12,6 +12,27 @@ namespace BarkFluff.Messages.Tests.Persistence;
 public class SearchMessagesPostgresTests
 {
     [SearchPostgresFact]
+    public async Task FilterOnly_WithoutAttachmentsIgnoresForwardedSnapshots()
+    {
+        await using var database = await SearchDatabase.Create();
+        var context = database.Context;
+        var chat = Chat(1);
+        context.Chats.Add(chat);
+        var plain = Message(chat.Id, "");
+        var forwarded = Message(chat.Id, "");
+        forwarded.Content!.Attachments = [new MessageAttachment { Type = MessageAttachmentType.ForwardedMessage }];
+        var image = Message(chat.Id, "");
+        image.Content!.Attachments = [new MessageAttachment { Type = MessageAttachmentType.Image }];
+        context.Messages.AddRange(plain, forwarded, image);
+        await context.SaveChangesAsync();
+        var storage = new MessagesStorage(context, new ChatsStorage(context));
+
+        var found = await storage.SearchMessages(1, new MessageSearchFilter { AuthorUserId = 1, HasAttachments = false });
+
+        found.Select(message => message.Id).Should().BeEquivalentTo([plain.Id, forwarded.Id]);
+    }
+
+    [SearchPostgresFact]
     public async Task ContextWindow_ContainsBothSidesOfTargetWithIdenticalTimestamps()
     {
         await using var database = await SearchDatabase.Create();

@@ -80,6 +80,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 - Метаданные чатов получают одним SQL-батчем, имена локальных/remote-авторов и DM-собеседников — максимум двумя вызовами [[Backend/Users]] (`ListByIds`, `GetUsersByUuid`). Нет N+1; CancellationToken передаётся из gRPC до EF и S2S.
 - Миграция `AddMessageSearchIndexes`: `pg_trgm`, частичный GIN `IX_Messages_Content_Text_Search` по неудалённым несистемным сообщениям, индекс членства `(UserId, ChatId)`. Оба индекса создаются concurrently.
 - Контекст найденного сообщения загружается через `ListMessages`. `GetChatMessagesWithOffset` сравнивает и сортирует пары `(SentAt, Id)` в обе стороны: сообщения с одинаковым Timestamp больше не теряются рядом с якорем. PostgreSQL-тест проверяет обе стороны такого окна.
+- Локальная проверка `EXPLAIN ANALYZE` на искусственной истории из 150 000 сообщений / 300 чатов подтвердила использование нового GIN-индекса и индекса членства для поиска буквальной подстроки. Для фильтра «без вложений» отдельный PostgreSQL-тест проверяет запрос без текста и исключение direct-медиа при наличии пересланных снимков.
 - Тесты: `Features/SearchMessages` и `Host/MessagesApiServiceTests`; реальные PostgreSQL-проверки `Persistence/SearchMessagesPostgresTests` включаются переменной `BARKFLUFF_SEARCH_POSTGRES` (временная БД, право CREATE DATABASE). Проверяют кириллицу, literal wildcards, доступ/hidden/delete/type, совместные фильтры, remote UUID, точные даты и курсор при одинаковом времени.
 
 См. [[Shared/Proto]] и [[Клиенты/Android]].
