@@ -3,9 +3,11 @@ package com.barkfluff.client.notifications
 import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -16,12 +18,14 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import android.telecom.DisconnectCause
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
+import androidx.core.app.RemoteInput
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -33,15 +37,20 @@ import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.calls.IncomingCallActivity
 import com.barkfluff.client.calls.IncomingCallPrefetch
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.utils.MarkdownRenderer
+import java.util.Locale
+import kotlinx.coroutines.delay
 
 object NotificationHelper {
 
     private const val TAG = "NotificationHelper"
 
-    // Дедупликация уведомлений по messageId - публичный для использования в FirebaseMessagingService
-    val recentlyShownMessages = mutableSetOf<Long>()
     private const val DEDUP_MAX_SIZE = 100
+    private const val DEDUP_PREFS = "message_notification_events"
+    private val latestRegularTargets = mutableMapOf<Int, MessageNotificationTarget>()
+    private val pendingReplyDismissals = mutableMapOf<Int, Int>()
 
     // Пул активных уведомлений — chatId'ы у которых сейчас висит уведомление в шторке
     val activeNotificationChats: MutableSet<String> =
@@ -72,7 +81,28 @@ object NotificationHelper {
     const val EXTRA_CHAT_ID = "extra_chat_id"
     const val EXTRA_MESSAGE_ID = "extra_message_id"
     const val EXTRA_IS_PRIVATE_CHAT = "extra_is_private_chat"
+    const val EXTRA_SCOPE_ID = "extra_notification_scope"
+    const val EXTRA_KIND = "extra_notification_kind"
+    const val EXTRA_EVENT_ID = "extra_notification_event"
+    const val EXTRA_THREAD_ID = "extra_notification_thread"
+    const val EXTRA_OPEN_CHAT_LIST = "extra_notification_open_chat_list"
+    const val KIND_REGULAR = "regular"
+    const val KIND_PRIVATE = "private"
+    const val KIND_SECRET = "secret"
     const val ACTION_MARK_AS_READ = "com.barkfluff.client.ACTION_MARK_AS_READ"
+    const val ACTION_REPLY = "com.barkfluff.client.ACTION_NOTIFICATION_REPLY"
+    const val ACTION_HIDE = "com.barkfluff.client.ACTION_NOTIFICATION_HIDE"
+    const val REPLY_INPUT_KEY = "notification_reply_text"
+
+    // A receiver can start the process before an AppCompat Activity applies the saved locale.
+    internal fun localizedContext(context: Context): Context {
+        val language = GlobalParam(context).appLanguage
+        if (language !in setOf(GlobalParam.LANGUAGE_RU, GlobalParam.LANGUAGE_EN,
+                GlobalParam.LANGUAGE_DE, GlobalParam.LANGUAGE_ES, GlobalParam.LANGUAGE_ZH)) return context
+        val configuration = Configuration(context.resources.configuration)
+        configuration.setLocale(Locale.forLanguageTag(language))
+        return context.createConfigurationContext(configuration)
+    }
 
     fun createChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -154,28 +184,21 @@ object NotificationHelper {
         avatarBitmap: Bitmap?,
         chatId: String,
         messageId: Long = 0,
-        imageBitmap: Bitmap? = null
+        imageBitmap: Bitmap? = null,
+        expectedScopeId: String? = CacheScope.from(GlobalParam(context))?.id
     ) {
+        val scopeId = expectedScopeId ?: return
+        if (CacheScope.from(GlobalParam(context))?.id != scopeId) return
+        val target = MessageNotificationTarget(scopeId, KIND_REGULAR, chatId, messageId.toString())
+        val strings = localizedContext(context)
         try {
-            // Проверяем дубликаты по messageId
-            synchronized(recentlyShownMessages) {
-                if (messageId > 0 && recentlyShownMessages.contains(messageId)) {
-                    Log.d(TAG, "Skipping duplicate notification for messageId=$messageId")
-                    return
-                }
-                if (messageId > 0) {
-                    recentlyShownMessages.add(messageId)
-                    if (recentlyShownMessages.size > DEDUP_MAX_SIZE) {
-                        recentlyShownMessages.clear()
-                    }
-                }
-            }
-
             val notificationId = chatId.hashCode()
 
             // Content intent — открыть чат
             val contentIntent = Intent(context, MainActivity::class.java).apply {
                 putExtra(EXTRA_CHAT_ID, chatId)
+                putExtra(EXTRA_SCOPE_ID, scopeId)
+                data = actionUri(target, Intent.ACTION_VIEW)
                 action = Intent.ACTION_VIEW
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
@@ -183,18 +206,14 @@ object NotificationHelper {
                 context,
                 notificationId,
                 contentIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
             // "Прочитано" action
-            val readIntent = Intent(context, MarkAsReadReceiver::class.java).apply {
-                action = ACTION_MARK_AS_READ
-                putExtra(EXTRA_CHAT_ID, chatId)
-                putExtra(EXTRA_MESSAGE_ID, messageId)
-            }
+            val readIntent = actionIntent(context, target, ACTION_MARK_AS_READ)
             val readPendingIntent = PendingIntent.getBroadcast(
                 context,
-                notificationId,
+                0,
                 readIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -224,15 +243,15 @@ object NotificationHelper {
             ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
 
             // "Я" — текущий пользователь, передаётся в конструктор MessagingStyle
-            val mePerson = Person.Builder().setName(context.getString(R.string.notification_me)).build()
+            val mePerson = Person.Builder().setName(strings.getString(R.string.notification_me)).build()
 
             // MessagingStyle — Android берёт иконку из senderPerson → большая круглая аватарка,
             // setSmallIcon → маленький бейдж в углу аватарки
             val cleanText = MarkdownRenderer.strip(messageText)
             val displayText = if (imageBitmap != null && cleanText.isBlank()) {
-                context.getString(R.string.notification_photo)
+                strings.getString(R.string.notification_photo)
             } else if (imageBitmap != null) {
-                context.getString(R.string.notification_photo_caption, cleanText)
+                strings.getString(R.string.notification_photo_caption, cleanText)
             } else {
                 cleanText
             }
@@ -240,7 +259,7 @@ object NotificationHelper {
             val messagingStyle = NotificationCompat.MessagingStyle(mePerson)
                 .addMessage(displayText, System.currentTimeMillis(), senderPerson)
 
-            val builder = NotificationCompat.Builder(context, CHANNEL_CHAT_MESSAGES)
+            val builder = NotificationCompat.Builder(strings, CHANNEL_CHAT_MESSAGES)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setLargeIcon(softBitmap)
                 .setColor(context.resources.getColor(R.color.primary, null))
@@ -249,7 +268,23 @@ object NotificationHelper {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setContentIntent(contentPendingIntent)
-                .addAction(0, context.getString(R.string.notification_mark_read), readPendingIntent)
+                .addExtras(metadata(target))
+
+            if (messageId > 0) {
+                val replyPendingIntent = PendingIntent.getBroadcast(
+                    context, 0, actionIntent(context, target, ACTION_REPLY),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                )
+                val remoteInput = RemoteInput.Builder(REPLY_INPUT_KEY)
+                    .setLabel(strings.getString(R.string.notification_reply_hint))
+                    .build()
+                builder.addAction(NotificationCompat.Action.Builder(
+                    0, strings.getString(R.string.notification_reply), replyPendingIntent
+                ).addRemoteInput(remoteInput)
+                    .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                    .build())
+                builder.addAction(0, strings.getString(R.string.notification_mark_read), readPendingIntent)
+            }
 
             // BigPictureStyle для изображений, иначе MessagingStyle
             if (imageBitmap != null) {
@@ -262,8 +297,7 @@ object NotificationHelper {
             }
 
             try {
-                NotificationManagerCompat.from(context).notify(notificationId, builder.build())
-                activeNotificationChats.add(chatId)
+                postMessage(context, target, null, notificationId, builder.build())
             } catch (e: SecurityException) {
                 Log.w(TAG, "No notification permission", e)
             }
@@ -274,6 +308,187 @@ object NotificationHelper {
         }
     }
 
+
+    fun showEncryptedMessageNotification(
+        context: Context,
+        kind: String,
+        threadId: String,
+        eventId: String,
+        chatId: String = threadId,
+        expectedScopeId: String? = CacheScope.from(GlobalParam(context))?.id
+    ) {
+        if (kind != KIND_PRIVATE && kind != KIND_SECRET) return
+        val scopeId = expectedScopeId ?: return
+        if (threadId.isBlank() || eventId.isBlank()) return
+        val target = MessageNotificationTarget(scopeId, kind, chatId, eventId, threadId)
+        val strings = localizedContext(context)
+        val contentIntent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            putExtra(EXTRA_OPEN_CHAT_LIST, true)
+            putExtra(EXTRA_SCOPE_ID, scopeId)
+            data = actionUri(target, Intent.ACTION_VIEW)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context, 0, contentIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val hidePendingIntent = PendingIntent.getBroadcast(
+            context, 0, actionIntent(context, target, ACTION_HIDE),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = NotificationCompat.Builder(strings, CHANNEL_CHAT_MESSAGES)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(context.resources.getColor(R.color.primary, null))
+            .setContentTitle(strings.getString(R.string.app_name))
+            .setContentText(strings.getString(R.string.notification_encrypted_message))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(contentPendingIntent)
+            .setAllowSystemGeneratedContextualActions(false)
+            .addExtras(metadata(target))
+            .addAction(NotificationCompat.Action.Builder(
+                0, strings.getString(R.string.notification_hide), hidePendingIntent
+            ).setAllowGeneratedReplies(false).build())
+        try {
+            postMessage(context, target, encryptedTag(target), 0, builder.build())
+        } catch (e: SecurityException) {
+            Log.w(TAG, "No notification permission")
+        }
+    }
+
+    internal fun actionIntent(context: Context, target: MessageNotificationTarget, action: String) =
+        Intent(context, if (action == ACTION_MARK_AS_READ) MarkAsReadReceiver::class.java
+            else NotificationActionReceiver::class.java).apply {
+            this.action = action
+            data = actionUri(target, action)
+            putExtras(metadata(target))
+        }
+
+    private fun actionUri(target: MessageNotificationTarget, action: String) = Uri.Builder()
+        .scheme("barkfluff").authority("message-notification")
+        .appendPath(target.scopeId).appendPath(target.kind).appendPath(target.threadId)
+        .appendPath(target.eventId).appendPath(action).build()
+
+    private fun metadata(target: MessageNotificationTarget) = Bundle().apply {
+        putString(EXTRA_SCOPE_ID, target.scopeId)
+        putString(EXTRA_KIND, target.kind)
+        putString(EXTRA_CHAT_ID, target.chatId)
+        putString(EXTRA_THREAD_ID, target.threadId)
+        putString(EXTRA_EVENT_ID, target.eventId)
+        putLong(EXTRA_MESSAGE_ID, target.eventId.toLongOrNull() ?: 0)
+    }
+
+    internal fun currentTarget(context: Context, intent: Intent): MessageNotificationTarget? {
+        val scopeId = intent.getStringExtra(EXTRA_SCOPE_ID)?.takeIf(String::isNotBlank) ?: return null
+        if (CacheScope.from(GlobalParam(context))?.id != scopeId) return null
+        val kind = intent.getStringExtra(EXTRA_KIND) ?: return null
+        if (kind !in setOf(KIND_REGULAR, KIND_PRIVATE, KIND_SECRET)) return null
+        val chatId = intent.getStringExtra(EXTRA_CHAT_ID)?.takeIf(String::isNotBlank) ?: return null
+        val eventId = intent.getStringExtra(EXTRA_EVENT_ID)?.takeIf(String::isNotBlank) ?: return null
+        val threadId = intent.getStringExtra(EXTRA_THREAD_ID)?.takeIf(String::isNotBlank) ?: return null
+        val target = MessageNotificationTarget(scopeId, kind, chatId, eventId, threadId)
+        if (intent.data != actionUri(target, intent.action ?: return null)) return null
+        return target
+    }
+
+    private fun encryptedTag(target: MessageNotificationTarget) =
+        "encrypted:${target.scopeId}:${target.kind}:${target.threadId}"
+
+    @Synchronized
+    private fun postMessage(
+        context: Context, target: MessageNotificationTarget, tag: String?, id: Int, notification: Notification
+    ) {
+        if (CacheScope.from(GlobalParam(context))?.id != target.scopeId) return
+        val prefs = context.getSharedPreferences(DEDUP_PREFS, Context.MODE_PRIVATE)
+        val key = Uri.Builder().appendPath(target.scopeId).appendPath(target.kind)
+            .appendPath(target.eventId).build().toString()
+        val recent = LinkedHashSet(prefs.getStringSet("shown", emptySet()).orEmpty())
+        val deduplicate = target.eventId != "0"
+        if (deduplicate && key in recent) return
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (target.kind == KIND_REGULAR) {
+            val previous = manager.activeNotifications.firstOrNull { it.tag == null && it.id == id }
+            val previousId = previous?.notification?.takeIf {
+                it.extras.getString(EXTRA_SCOPE_ID) == target.scopeId
+            }?.extras?.getLong(EXTRA_MESSAGE_ID, 0) ?: 0
+            val submittedId = latestRegularTargets[id]?.takeIf { it.scopeId == target.scopeId }
+                ?.eventId?.toLongOrNull() ?: 0
+            if (maxOf(previousId, submittedId) > (target.eventId.toLongOrNull() ?: 0)) return
+        }
+        NotificationManagerCompat.from(context).notify(tag, id, notification)
+        if (target.kind == KIND_REGULAR) {
+            // Keep submitted replacements until the system sees them, including active close loops.
+            val activeIds = manager.activeNotifications.filter { it.tag == null }.map { it.id }.toSet()
+            latestRegularTargets.keys.retainAll(activeIds + pendingReplyDismissals.keys + id)
+            latestRegularTargets[id] = target
+        }
+        if (deduplicate) {
+            recent.add(key)
+            while (recent.size > DEDUP_MAX_SIZE) recent.remove(recent.first())
+            prefs.edit().putStringSet("shown", recent).apply()
+        }
+        if (target.kind == KIND_REGULAR) activeNotificationChats.add(target.chatId)
+    }
+
+    internal suspend fun dismissAcceptedReply(context: Context, target: MessageNotificationTarget) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val id = target.chatId.hashCode()
+        fun currentNotification() = if (CacheScope.from(GlobalParam(context))?.id != target.scopeId ||
+            latestRegularTargets[id]?.let { it != target } == true) null
+        else manager.activeNotifications.firstOrNull {
+            it.tag == null && it.id == id &&
+                it.notification.extras.getString(EXTRA_SCOPE_ID) == target.scopeId &&
+                it.notification.extras.getString(EXTRA_KIND) == KIND_REGULAR &&
+                it.notification.extras.getString(EXTRA_EVENT_ID) == target.eventId
+        }
+        var pending = false
+        try {
+            synchronized(this) {
+                val active = currentNotification() ?: return
+                pendingReplyDismissals[id] = (pendingReplyDismissals[id] ?: 0) + 1
+                pending = true
+                // An app update releases SystemUI's Direct Reply lifetime extension.
+                manager.notify(id, NotificationCompat.Builder(context, active.notification)
+                    .setOnlyAlertOnce(true).build())
+            }
+            repeat(80) {
+                delay(25)
+                synchronized(this) {
+                    currentNotification() ?: return
+                    // A pending update may already be visible while the old posted record is retained.
+                    manager.cancel(id)
+                    activeNotificationChats.remove(target.chatId)
+                }
+            }
+            Log.w(TAG, "Timed out closing accepted reply notification")
+        } finally {
+            if (pending) synchronized(this) {
+                val remaining = requireNotNull(pendingReplyDismissals[id]) - 1
+                if (remaining == 0) pendingReplyDismissals.remove(id) else pendingReplyDismissals[id] = remaining
+            }
+        }
+    }
+
+    internal fun hideEncryptedNotification(context: Context, target: MessageNotificationTarget) {
+        if (target.kind != KIND_PRIVATE && target.kind != KIND_SECRET) return
+        context.getSystemService(NotificationManager::class.java).cancel(encryptedTag(target), 0)
+    }
+
+    @Synchronized
+    internal fun showReplyError(context: Context, target: MessageNotificationTarget) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (latestRegularTargets[target.chatId.hashCode()]?.let { it != target } == true) return
+        val active = manager.activeNotifications.firstOrNull {
+            it.tag == null && it.id == target.chatId.hashCode() &&
+                it.notification.extras.getString(EXTRA_SCOPE_ID) == target.scopeId &&
+                it.notification.extras.getString(EXTRA_EVENT_ID) == target.eventId
+        } ?: return
+        val notification = NotificationCompat.Builder(context, active.notification)
+            .setSubText(localizedContext(context).getString(R.string.notification_reply_failed))
+            .setOnlyAlertOnce(true).build()
+        NotificationManagerCompat.from(context).notify(active.id, notification)
+    }
 
     /**
      * Уведомление о запросе на приватный чат (type=private_chat_invite).
@@ -529,9 +744,30 @@ object NotificationHelper {
         context.getSystemService(NotificationManager::class.java).cancel(callId.hashCode())
     }
 
-    fun dismissForChat(context: Context, chatId: String) {
-        if (!activeNotificationChats.remove(chatId)) return  // уведомления нет — выход
-        context.getSystemService(NotificationManager::class.java).cancel(chatId.hashCode())
+    @Synchronized
+    fun dismissForChat(context: Context, chatId: String, messageId: Long = 0) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val scopeId = CacheScope.from(GlobalParam(context))?.id
+        if (messageId <= 0) {
+            manager.cancel(chatId.hashCode())
+            manager.activeNotifications.filter {
+                it.notification.extras.getString(EXTRA_SCOPE_ID) == scopeId &&
+                    it.notification.extras.getString(EXTRA_CHAT_ID) == chatId && it.tag != null
+            }.forEach { manager.cancel(it.tag, it.id) }
+            activeNotificationChats.remove(chatId)
+        } else {
+            val submitted = latestRegularTargets[chatId.hashCode()]
+            if (submitted != null && submitted.scopeId == scopeId &&
+                (submitted.eventId.toLongOrNull() ?: 0) > messageId) return
+            val active = manager.activeNotifications.firstOrNull {
+                it.tag == null && it.id == chatId.hashCode() &&
+                    it.notification.extras.getString(EXTRA_SCOPE_ID) == scopeId &&
+                    it.notification.extras.getString(EXTRA_KIND) == KIND_REGULAR &&
+                    it.notification.extras.getLong(EXTRA_MESSAGE_ID, 0) in 1..messageId
+            } ?: return
+            manager.cancel(active.id)
+            activeNotificationChats.remove(chatId)
+        }
         Log.d(TAG, "Notification dismissed for chatId=$chatId")
     }
 

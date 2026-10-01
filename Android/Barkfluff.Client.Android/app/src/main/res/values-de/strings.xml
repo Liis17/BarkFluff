@@ -927,6 +927,11 @@
     <string name="notification_channel_media_send_description">Fortschritt beim Senden von Fotos und Videos in einen Chat</string>
     <string name="notification_me">Ich</string>
     <string name="notification_mark_read">Als gelesen markieren</string>
+    <string name="notification_reply">Antworten</string>
+    <string name="notification_reply_hint">Nachricht</string>
+    <string name="notification_reply_failed">Die Antwort konnte nicht gespeichert werden. Bitte erneut versuchen.</string>
+    <string name="notification_hide">Ausblenden</string>
+    <string name="notification_encrypted_message">Neue verschlüsselte Nachricht</string>
     <string name="notification_photo">Foto</string>
     <string name="notification_photo_caption">Foto: %1$s</string>
     <string name="notification_call_in_progress">%1$s läuft</string>

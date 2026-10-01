@@ -921,6 +921,11 @@
     <string name="notification_channel_media_send_description">向聊天发送照片和视频时的进度</string>
     <string name="notification_me">我</string>
     <string name="notification_mark_read">标记为已读</string>
+    <string name="notification_reply">回复</string>
+    <string name="notification_reply_hint">消息</string>
+    <string name="notification_reply_failed">无法保存回复，请重试。</string>
+    <string name="notification_hide">隐藏</string>
+    <string name="notification_encrypted_message">新的加密消息</string>
     <string name="notification_photo">照片</string>
     <string name="notification_photo_caption">照片：%1$s</string>
     <string name="notification_call_in_progress">%1$s进行中</string>

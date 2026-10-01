@@ -155,6 +155,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleChatIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(NotificationHelper.EXTRA_OPEN_CHAT_LIST, false) == true) {
+            val expectedScopeId = intent.getStringExtra(NotificationHelper.EXTRA_SCOPE_ID)
+            intent.removeExtra(NotificationHelper.EXTRA_OPEN_CHAT_LIST)
+            if (expectedScopeId != null && expectedScopeId == com.barkfluff.client.cache.CacheScope.from(GlobalParam(this))?.id) {
+                pendingChatId = null
+                pendingChatIsPrivate = false
+                if (currentTabIndex != TAB_CHATS) switchTab(TAB_CHATS)
+                binding.bottomNavigation.selectedItemId = R.id.navigation_chats
+            }
+            return
+        }
         // extra_chat_id — из нашего PendingIntent, chat_id — fallback из FCM data payload,
         // pendingChatId — сохранённый chatId после cold start через SplashActivity
         val chatId = intent?.getStringExtra(NotificationHelper.EXTRA_CHAT_ID)

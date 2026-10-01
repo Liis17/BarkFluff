@@ -939,6 +939,11 @@
     <string name="notification_channel_media_send_description">Прогресс отправки фото и видео в чат</string>
     <string name="notification_me">Я</string>
     <string name="notification_mark_read">Прочитано</string>
+    <string name="notification_reply">Ответить</string>
+    <string name="notification_reply_hint">Сообщение</string>
+    <string name="notification_reply_failed">Не удалось сохранить ответ. Попробуйте ещё раз.</string>
+    <string name="notification_hide">Скрыть</string>
+    <string name="notification_encrypted_message">Новое зашифрованное сообщение</string>
     <string name="notification_photo">Фото</string>
     <string name="notification_photo_caption">Фото: %1$s</string>
     <string name="notification_call_in_progress">%1$s идёт</string>
