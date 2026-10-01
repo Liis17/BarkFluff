@@ -1,11 +1,11 @@
 package com.barkfluff.client.adapter
 
-import com.barkfluff.client.utils.AudioCallbacks
-import com.barkfluff.client.utils.AudioPlayerHelper
+import com.barkfluff.client.audio.AudioPlayback
+import com.barkfluff.client.audio.AudioTrack
 import java.io.File
 
 /** View-independent audio playback and waveform cache. */
-class AudioPlaybackController {
+class AudioPlaybackController(private val playback: AudioPlayback) {
     private val waveforms = mutableMapOf<String, FloatArray>()
 
     fun waveform(fileId: String): FloatArray? = waveforms[fileId]
@@ -14,14 +14,13 @@ class AudioPlaybackController {
         waveforms.remove(fileId)
     }
 
-    fun isActiveFile(fileId: String): Boolean = AudioPlayerHelper.isActiveFile(fileId)
-    fun isPlaying(): Boolean = AudioPlayerHelper.isPlaying()
-    fun play(fileId: String, file: File, callbacks: AudioCallbacks) =
-        AudioPlayerHelper.play(fileId, file, callbacks)
-    fun pause() = AudioPlayerHelper.pause()
-    fun resume() = AudioPlayerHelper.resume()
-    fun stop() = AudioPlayerHelper.stop()
-    fun seekTo(positionMs: Int) = AudioPlayerHelper.seekTo(positionMs)
-    fun currentPosition(): Int = AudioPlayerHelper.getCurrentPosition()
-    fun duration(): Int = AudioPlayerHelper.getDuration()
+    fun isActiveFile(fileId: String): Boolean = playback.state.value.track?.fileId == fileId
+    fun isPlaying(): Boolean = playback.state.value.isPlaying
+    fun play(track: AudioTrack, file: File) = playback.play(track, file)
+    fun pause() = playback.pause()
+    fun resume() = playback.resume()
+    fun stop() = playback.stop()
+    fun seekTo(positionMs: Int) = playback.seekTo(positionMs.toLong())
+    fun currentPosition(): Int = playback.state.value.positionMillis.toInt()
+    fun duration(): Int = playback.state.value.durationMillis.toInt()
 }

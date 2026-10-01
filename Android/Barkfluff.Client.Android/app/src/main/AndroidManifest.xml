@@ -15,6 +15,7 @@
     <!-- Foreground service for media send queue (compress/upload/send) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <!-- Full storage access for Android 11+ (API 30+) -->
     <uses-permission
@@ -63,6 +64,13 @@
         android:usesCleartextTraffic="false"
         android:requestLegacyExternalStorage="true"
         android:enableOnBackInvokedCallback="true">
+
+        <service android:name=".audio.VoicePlaybackService"
+            android:exported="true" android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
         <activity
             android:name=".SplashActivity"

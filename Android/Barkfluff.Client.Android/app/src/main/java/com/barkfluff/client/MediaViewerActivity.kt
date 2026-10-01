@@ -122,7 +122,12 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun initPlayer(uri: Uri) {
-        player = ExoPlayer.Builder(this).build().also { exo ->
+        player = ExoPlayer.Builder(this)
+            .setAudioAttributes(androidx.media3.common.AudioAttributes.Builder()
+                .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE).build(), true)
+            .setHandleAudioBecomingNoisy(true)
+            .build().also { exo ->
             binding.playerView.player = exo
             exo.setMediaItem(MediaItem.fromUri(uri))
             exo.prepare()

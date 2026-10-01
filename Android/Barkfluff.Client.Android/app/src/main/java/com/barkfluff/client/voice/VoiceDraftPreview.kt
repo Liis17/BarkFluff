@@ -11,6 +11,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ViewVoiceDraftBinding
+import com.barkfluff.client.audio.AudioPlayback
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,7 @@ import kotlinx.coroutines.withContext
 class VoiceDraftPreview(
     private val binding: ViewVoiceDraftBinding,
     private val scope: LifecycleCoroutineScope,
+    private val playback: AudioPlayback,
     private val onSend: () -> Unit,
     private val onDiscard: () -> Unit,
 ) {
@@ -37,8 +39,8 @@ class VoiceDraftPreview(
 
     init {
         binding.voicePreviewPlay.setOnClickListener {
-            if (player.isPlaying) player.pause() else {
-                com.barkfluff.client.utils.AudioPlayerHelper.pause()
+            if (player.isPlaying) player.pause() else if (playback.playbackAllowed) {
+                playback.pause()
                 if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
                 player.play()
                 resumeUpdates()
@@ -54,6 +56,12 @@ class VoiceDraftPreview(
         binding.voicePreviewWaveform.onSeekRequested = { fraction ->
             player.seekTo((fraction * player.duration.coerceAtLeast(0L)).toLong())
             render()
+        }
+        scope.launch {
+            playback.state.collect { state ->
+                if (state.isPlaying) pause()
+                render()
+            }
         }
         player.addListener(object : Player.Listener {
             override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {

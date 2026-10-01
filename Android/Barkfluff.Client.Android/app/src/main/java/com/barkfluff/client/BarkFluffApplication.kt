@@ -79,6 +79,8 @@ class BarkFluffApplication : Application() {
 
     @Inject lateinit var callRepository: CallRepository
 
+    @Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
+
     @Inject lateinit var callEventsService: CallEventsService
 
     @Inject lateinit var autoDownloadNetworkState: AutoDownloadNetworkState
@@ -186,6 +188,7 @@ class BarkFluffApplication : Application() {
     }
 
     override fun onTerminate() {
+        audioPlayback.stop()
         connectivityManager.unregisterNetworkCallback(networkCallback)
         realtimeService.shutdown()
         stopCallEventsUiBridge()
@@ -220,6 +223,7 @@ class BarkFluffApplication : Application() {
     }
 
     private fun presentIncomingCall(event: CallsApiOuterClass.IncomingCallEvent) {
+        audioPlayback.pause()
         if (event.callId.isBlank() || presentedIncomingCallId == event.callId || CallTelecomRegistry.isAnsweringOrActive(event.callId)) return
         presentedIncomingCallId = event.callId
 

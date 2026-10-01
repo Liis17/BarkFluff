@@ -62,6 +62,7 @@ import java.io.File
 @AndroidEntryPoint
 class GroupInfoActivity : AppCompatActivity() {
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     private lateinit var binding: ActivityGroupInfoBinding
     private lateinit var globalParam: GlobalParam
     @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
@@ -277,10 +278,18 @@ class GroupInfoActivity : AppCompatActivity() {
     ): AttachmentsPanel {
         lateinit var adapter: AttachmentPreviewAdapter
         adapter = AttachmentPreviewAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = chatTitle,
+            playbackIsGroupChat = true,
+            resolveSender = { userId ->
+                userProfileGateway.user(userId).getOrNull()?.let { user ->
+                    listOf(user.firstName, user.lastName).filter(String::isNotBlank).joinToString(" ").ifBlank { user.username }
+                }
+            },
             getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onAttachmentClick = { info -> openAttachment(info, adapter) },
             downloadToCache = { fileId -> FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId) },
-            scope = lifecycleScope,
             autoDownloadViews = AttachmentAutoDownloadViews(FileMediaAttachmentLoader(fileMediaGateway), this, autoDownloadSettings, autoDownloadNetwork),
         )
         recyclerView.adapter = adapter
@@ -648,6 +657,8 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        binding.mediaAttachmentsRecyclerView.adapter = null
+        binding.filesAttachmentsRecyclerView.adapter = null
         fileSearchJob?.cancel()
         super.onDestroy()
     }

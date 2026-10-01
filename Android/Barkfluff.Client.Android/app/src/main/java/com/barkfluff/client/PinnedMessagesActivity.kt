@@ -3,15 +3,6 @@ package com.barkfluff.client
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import com.barkfluff.client.data.AutoDownloadSettingsStore
-import com.barkfluff.client.domain.media.AutoDownloadNetworkState
-import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
-import com.barkfluff.client.adapter.MessageAttachmentAction
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import android.webkit.MimeTypeMap
-import androidx.core.content.FileProvider
-import com.barkfluff.client.utils.FileSaveUtils
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -22,17 +13,26 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.MessageAdapter
 import com.barkfluff.client.adapter.FileMediaAttachmentLoader
 import com.barkfluff.client.adapter.MessageRowEventSink
+import com.barkfluff.client.adapter.MessageAttachmentAction
 import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
+import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
 import com.barkfluff.client.databinding.ActivityPinnedMessagesBinding
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
 import com.barkfluff.client.domain.gateway.RealtimeGateway
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
+import com.barkfluff.client.utils.FileSaveUtils
 
 /**
  * Полноэкранный список всех закреплённых сообщений в чате.
@@ -47,6 +47,7 @@ class PinnedMessagesActivity : AppCompatActivity() {
         private const val TAG = "PinnedMessagesActivity"
     }
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     private lateinit var binding: ActivityPinnedMessagesBinding
     private lateinit var globalParam: GlobalParam
     @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
@@ -93,8 +94,12 @@ class PinnedMessagesActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         val attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway)
         adapter = MessageAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = intent.getStringExtra("chat_title").orEmpty(),
+            playbackOtherUserId = intent.getLongExtra("other_user_id", 0L),
             currentUserId = currentUserId,
-            isGroupChat = true,
+            isGroupChat = intent.getBooleanExtra("is_group_chat", false),
             attachmentLoader = attachmentLoader,
             autoDownloadViews = AttachmentAutoDownloadViews(attachmentLoader, this, autoDownloadSettings, autoDownloadNetwork),
             eventSink = object : MessageRowEventSink {
@@ -248,4 +253,9 @@ class PinnedMessagesActivity : AppCompatActivity() {
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
+    override fun onDestroy() {
+        binding.pinnedRecyclerView.adapter = null
+        super.onDestroy()
+    }
+
 }
