@@ -153,6 +153,15 @@ class OutgoingMessageQueue(
         return cache.hasActiveOutgoingHandoff(scope, chatId, generation)
     }
 
+    /**
+     * True when the outbox already owns this exact draft, in any state up to SENT. Restoring it into
+     * the composer would show the same text twice and allow a duplicate send.
+     */
+    suspend fun hasDraftHandoff(chatId: String, generation: Long, text: String, replyToMessageId: Long): Boolean {
+        val scope = currentScopeOrNull() ?: return false
+        return cache.hasOutgoingDraftHandoff(scope, chatId, generation, text, replyToMessageId)
+    }
+
     suspend fun retry(operationId: OperationId) {
         val scope = requireScope()
         val record = cache.outgoing(scope, operationId) ?: return
