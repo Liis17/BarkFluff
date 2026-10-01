@@ -2,6 +2,7 @@ package com.barkfluff.client.grpc
 
 import android.content.Context
 import com.barkfluff.client.data.GlobalParam
+import io.grpc.Status
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -31,7 +32,21 @@ private object ProcessWideTokenRefresh {
  * own retry/refresh lock around this interface.
  */
 interface TokenCoordinator {
-    suspend fun ensureValid(forceRefresh: Boolean = false): Boolean
+    suspend fun validity(forceRefresh: Boolean = false): TokenValidity
+
+    suspend fun ensureValid(forceRefresh: Boolean = false): Boolean =
+        validity(forceRefresh) == TokenValidity.VALID
+}
+
+/** Why an access token is or is not usable; lets callers retry later instead of treating every failure as a logout. */
+enum class TokenValidity {
+    VALID,
+
+    /** Credentials are missing, or Identity answered that the refresh token is no longer accepted. */
+    REJECTED,
+
+    /** Identity could not be reached or failed; the same refresh token may work later. */
+    UNAVAILABLE,
 }
 
 /** Token values exchanged with the Identity service. */
@@ -100,7 +115,7 @@ class GrpcTokenCoordinator(
         const val TOKEN_BUFFER_MINUTES = 5
     }
 
-    override suspend fun ensureValid(forceRefresh: Boolean): Boolean {
+    override suspend fun validity(forceRefresh: Boolean): TokenValidity {
         val tokenBeforeRefresh = store.accessToken
         val refreshKeyBefore = RefreshKey(store.identityAddress, store.refreshToken)
         val generationBeforeRefresh = ProcessWideTokenRefresh.generation(refreshKeyBefore)
@@ -108,7 +123,7 @@ class GrpcTokenCoordinator(
         val expiration = store.accessTokenExpiration
 
         if (!forceRefresh && expiration > 0 && nowMillis() + bufferMs < expiration) {
-            return true
+            return TokenValidity.VALID
         }
 
         return ProcessWideTokenRefresh.mutex.withLock {
@@ -123,30 +138,37 @@ class GrpcTokenCoordinator(
                 ProcessWideTokenRefresh.generation(currentRefreshKey) != generationBeforeRefresh ||
                 (!forceRefresh && currentExpiration > 0 && nowMillis() + bufferMs < currentExpiration)
             ) {
-                return@withLock true
+                return@withLock TokenValidity.VALID
             }
             if (!tokenBeforeRefresh.isNullOrBlank() && currentToken != tokenBeforeRefresh) {
-                return@withLock true
+                return@withLock TokenValidity.VALID
             }
 
             val refreshToken = store.refreshToken
             if (refreshToken.isNullOrBlank() || store.identityAddress.isBlank()) {
-                return@withLock false
+                return@withLock TokenValidity.REJECTED
             }
             if (!ensureIdentityClient()) {
-                return@withLock false
+                return@withLock TokenValidity.UNAVAILABLE
             }
 
-            val result = refreshAccessToken(refreshToken, store.refreshTokenExpiration)
-            if (result.isFailure) return@withLock false
-
-            val refreshed = result.getOrNull() ?: return@withLock false
+            val refreshed = refreshAccessToken(refreshToken, store.refreshTokenExpiration)
+                .getOrElse { return@withLock classifyRefreshFailure(it) }
             store.accessToken = refreshed.accessToken
             store.accessTokenExpiration = refreshed.accessTokenExpiration
             store.refreshToken = refreshed.refreshToken
             store.refreshTokenExpiration = refreshed.refreshTokenExpiration
             ProcessWideTokenRefresh.markRefreshed(refreshKeyBefore)
-            true
+            TokenValidity.VALID
         }
     }
+
+    /** Identity refuses a bad refresh token with an application status; any other failure is transport trouble. */
+    private fun classifyRefreshFailure(error: Throwable): TokenValidity =
+        when (Status.fromThrowable(error).code) {
+            Status.Code.FAILED_PRECONDITION,
+            Status.Code.UNAUTHENTICATED,
+            Status.Code.PERMISSION_DENIED -> TokenValidity.REJECTED
+            else -> TokenValidity.UNAVAILABLE
+        }
 }

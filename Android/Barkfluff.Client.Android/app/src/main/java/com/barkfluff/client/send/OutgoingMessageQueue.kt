@@ -28,6 +28,7 @@ import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.TokenCoordinator
+import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.ChatRepository.UploadHttpException
 import com.barkfluff.client.utils.ImageCompressor
@@ -327,8 +328,12 @@ class OutgoingMessageQueue(
             cache.saveOutgoing(scope, record)
             onForeground(snapshotOf(record))
 
-            if (!tokenCoordinator.ensureValid()) {
-                throw PermanentOutgoingException(OutgoingFailureCategory.AUTH_REQUIRED, "Token refresh failed")
+            when (tokenCoordinator.validity()) {
+                TokenValidity.VALID -> Unit
+                TokenValidity.REJECTED ->
+                    throw PermanentOutgoingException(OutgoingFailureCategory.AUTH_REQUIRED, "Token refresh rejected")
+                // Identity is often unreachable right after the network returns; that must not end the send.
+                TokenValidity.UNAVAILABLE -> throw RetryOutgoingException(0L)
             }
 
             for (index in record.attachments.indices) {
@@ -430,6 +435,7 @@ class OutgoingMessageQueue(
             val latest = cache.outgoing(scope, initial.operationId) ?: return
             val permanent = classifyPermanent(e)
             if (permanent != null) {
+                Log.w("OutgoingMessageQueue", "Outgoing send failed permanently: $permanent, ${safeDetail(e)}")
                 cache.saveOutgoing(scope, latest.copy(
                     state = OutgoingMessageState.FAILED,
                     failureCategory = permanent,

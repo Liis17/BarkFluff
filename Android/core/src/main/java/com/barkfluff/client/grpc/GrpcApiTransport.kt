@@ -331,7 +331,7 @@ class GrpcApiTransport(context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка обновления токена", e)
-            Result.failure(Exception("Ошибка обновления токена: ${e.message}"))
+            Result.failure(Exception("Ошибка обновления токена: ${e.message}", e))
         }
     }
 
