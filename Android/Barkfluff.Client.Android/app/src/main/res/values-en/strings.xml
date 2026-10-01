@@ -1356,4 +1356,25 @@
     <string name="search_attachment_sticker">Stickers</string>
     <string name="search_date_range">%1$s – %2$s</string>
     <string name="search_message_unavailable">The message was deleted or is no longer available</string>
+
+    <!-- Media auto-download -->
+    <string name="auto_download_title">Auto-download</string>
+    <string name="auto_download_photos">Still photos</string>
+    <string name="auto_download_gifs">GIF</string>
+    <string name="auto_download_videos">Video</string>
+    <string name="auto_download_audio">Audio</string>
+    <string name="auto_download_voice">Voice messages</string>
+    <string name="auto_download_documents">Documents</string>
+    <string name="auto_download_wifi">Wi-Fi</string>
+    <string name="auto_download_any_network">Any network</string>
+    <string name="auto_download_manual">Manually</string>
+    <string name="auto_download_limit">Size limit</string>
+    <string name="auto_download_limit_value">%1$d MB</string>
+    <string name="auto_download_limit_hint">Maximum size of one automatically downloaded file.</string>
+    <string name="auto_download_limit_input">Size in MB</string>
+    <string name="auto_download_limit_error">Enter a whole number from 1 to 512 MB.</string>
+    <string name="cd_auto_download_mode">%1$s: %2$s. Change auto-download mode.</string>
+    <string name="cd_auto_download_limit">Auto-download limit: %1$d MB. Change limit.</string>
+    <string name="cd_auto_download_progress">Downloading file, %1$d%%.</string>
+    <string name="auto_download_failed">Download failed. Tap to try again.</string>
 </resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.textfield.TextInputLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="20dp"
+    android:paddingTop="8dp"
+    android:hint="@string/auto_download_limit_input">
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/autoDownloadLimitInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:maxLines="1" />
+</com.google.android.material.textfield.TextInputLayout>

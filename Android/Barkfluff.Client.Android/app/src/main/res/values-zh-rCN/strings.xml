@@ -1349,4 +1349,25 @@
     <string name="search_attachment_sticker">贴纸</string>
     <string name="search_date_range">%1$s – %2$s</string>
     <string name="search_message_unavailable">消息已删除或无法访问</string>
+
+    <!-- Media auto-download -->
+    <string name="auto_download_title">自动下载</string>
+    <string name="auto_download_photos">静态照片</string>
+    <string name="auto_download_gifs">GIF</string>
+    <string name="auto_download_videos">视频</string>
+    <string name="auto_download_audio">音频</string>
+    <string name="auto_download_voice">语音消息</string>
+    <string name="auto_download_documents">文档</string>
+    <string name="auto_download_wifi">Wi-Fi</string>
+    <string name="auto_download_any_network">任意网络</string>
+    <string name="auto_download_manual">手动</string>
+    <string name="auto_download_limit">大小限制</string>
+    <string name="auto_download_limit_value">%1$d MB</string>
+    <string name="auto_download_limit_hint">每个自动下载文件的最大大小。</string>
+    <string name="auto_download_limit_input">大小（MB）</string>
+    <string name="auto_download_limit_error">请输入 1 到 512 MB 之间的整数。</string>
+    <string name="cd_auto_download_mode">%1$s：%2$s。更改自动下载模式。</string>
+    <string name="cd_auto_download_limit">自动下载限制：%1$d MB。更改限制。</string>
+    <string name="cd_auto_download_progress">正在下载文件：%1$d%%。</string>
+    <string name="auto_download_failed">下载失败。点击重试。</string>
 </resources>
