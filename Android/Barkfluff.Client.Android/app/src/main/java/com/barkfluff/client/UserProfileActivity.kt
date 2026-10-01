@@ -401,6 +401,7 @@ class UserProfileActivity : AppCompatActivity() {
             downloadToCache = { fileId ->
                 FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId)
             },
+            scope = lifecycleScope,
             autoDownloadViews = AttachmentAutoDownloadViews(FileMediaAttachmentLoader(fileMediaGateway), this, autoDownloadSettings, autoDownloadNetwork),
         )
         recyclerView.adapter = adapter

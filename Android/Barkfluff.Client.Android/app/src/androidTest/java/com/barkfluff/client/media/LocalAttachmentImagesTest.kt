@@ -6,20 +6,25 @@ import android.graphics.drawable.Drawable
 import android.util.Base64
 import android.widget.ImageView
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.lifecycleScope
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import barkfluff.shared.Shared
 import coil.memory.MemoryCache
 import com.barkfluff.client.StorageSettingsActivity
+import com.barkfluff.client.adapter.ViewBoundOperationController
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.ImageLoadHelper
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -88,5 +93,21 @@ class LocalAttachmentImagesTest {
                 assertEquals(Color.BLUE, view.drawable.toBitmap(16, 16).getPixel(8, 8))
             }
         } finally { loader.memoryCache!!.remove(key) }
+    }
+
+    @Test fun endingTheOwnerLifecycleCancelsItsViewBoundWork() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val cancelled = CompletableDeferred<Unit>()
+        val scenario = ActivityScenario.launch(StorageSettingsActivity::class.java)
+        try {
+            scenario.onActivity { activity ->
+                ViewBoundOperationController(activity.lifecycleScope).launch(ImageView(activity)) {
+                    started.complete(Unit)
+                    try { awaitCancellation() } finally { cancelled.complete(Unit) }
+                }
+            }
+            withTimeout(5_000) { started.await() }
+        } finally { scenario.close() }
+        withTimeout(5_000) { cancelled.await() }
     }
 }

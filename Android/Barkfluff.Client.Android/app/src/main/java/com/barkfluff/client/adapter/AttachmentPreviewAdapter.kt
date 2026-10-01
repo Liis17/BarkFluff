@@ -22,6 +22,7 @@ import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.voice.VoicePlaybackSpeed
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.ImageLoadHelper
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
@@ -43,10 +44,11 @@ class AttachmentPreviewAdapter(
     private val getFileUrl: suspend (String) -> String?,
     private val onAttachmentClick: (MessagesApiOuterClass.ChatAttachmentInfo) -> Unit,
     private val downloadToCache: (suspend (String) -> File?)? = null,
+    private val scope: CoroutineScope? = null,
     private val autoDownloadViews: AttachmentAutoDownloadViews? = null,
 ) : ListAdapter<MessagesApiOuterClass.ChatAttachmentInfo, RecyclerView.ViewHolder>(DiffCallback()) {
 
-    private val viewOperations = ViewBoundOperationController()
+    private val viewOperations = ViewBoundOperationController(scope)
 
     companion object {
         private const val VIEW_TYPE_MEDIA = 0
