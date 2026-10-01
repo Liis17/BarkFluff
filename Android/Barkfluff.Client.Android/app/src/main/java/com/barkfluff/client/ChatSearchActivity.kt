@@ -23,6 +23,7 @@ import com.barkfluff.client.search.ChatSearchScreen
 import com.barkfluff.client.search.ChatSearchViewModel
 import com.barkfluff.client.search.MessageSearchViewModel
 import com.barkfluff.client.search.SearchTab
+import com.barkfluff.client.search.linkAttachmentTypeChecks
 import com.barkfluff.client.search.searchAttachmentTypes
 import com.barkfluff.client.search.SearchChat
 import com.google.android.material.color.DynamicColors
@@ -144,15 +145,7 @@ class ChatSearchActivity : AppCompatActivity() {
                 content.addView(this)
             }
         }
-        group.setOnCheckedChangeListener { _, checkedId ->
-            checks.forEach {
-                it.isEnabled = checkedId != choices[SearchAttachmentPresence.Without.ordinal].id
-                if (checkedId != choices[SearchAttachmentPresence.With.ordinal].id) it.isChecked = false
-            }
-        }
-        checks.forEach { check -> check.setOnCheckedChangeListener { _, checked ->
-            if (checked) group.check(choices[SearchAttachmentPresence.With.ordinal].id)
-        } }
+        linkAttachmentTypeChecks(group, choices[SearchAttachmentPresence.With.ordinal].id, choices[SearchAttachmentPresence.Without.ordinal].id, checks)
         val scroll = android.widget.ScrollView(this).apply { addView(content) }
         MaterialAlertDialogBuilder(this).setTitle(R.string.search_filter_attachments).setView(scroll)
             .setNegativeButton(R.string.btn_cancel, null).setPositiveButton(R.string.search_filter_apply) { _, _ ->
