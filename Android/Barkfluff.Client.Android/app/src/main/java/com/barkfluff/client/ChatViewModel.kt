@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import barkfluff.shared.Shared
 import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageRowProjector
@@ -42,6 +44,7 @@ import java.io.File
 import barkfluff.files.FilesApiOuterClass.UploadFileType
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -107,6 +110,10 @@ data class ComposerState(
     val attachmentKinds: List<String> = emptyList(),
     val draftGeneration: Long? = null,
     val isRestoring: Boolean = false,
+    val voiceSourcePath: String? = null,
+    val isVoiceStaging: Boolean = false,
+    val isRestoringAttachments: Boolean = false,
+    val isSending: Boolean = false,
 )
 
 /** Selection is a value object; the adapter never owns this set. */
@@ -174,6 +181,8 @@ sealed interface ChatIntent {
     data object StopTyping : ChatIntent
     data class Send(val text: String, val fileIds: List<String> = emptyList()) : ChatIntent
     data class SendMedia(val job: SendJob) : ChatIntent
+    data class StageVoice(val file: File, val sendImmediately: Boolean = false) : ChatIntent
+    data object DiscardVoice : ChatIntent
     data class StageAttachment(
         val uri: Uri,
         val kind: String,
@@ -282,6 +291,8 @@ class ChatViewModel @Inject constructor(
             ChatIntent.StopTyping -> presenceSession.stopTyping(sendCancel = true)
             is ChatIntent.Send -> sendMessage(intent.text, intent.fileIds)
             is ChatIntent.SendMedia -> enqueueMedia(intent.job)
+            is ChatIntent.StageVoice -> stageVoice(intent)
+            ChatIntent.DiscardVoice -> discardVoice()
             is ChatIntent.StageAttachment -> stageAttachment(intent)
             is ChatIntent.RemoveAttachment -> removeComposerAttachment(intent.attachmentIndex)
             is ChatIntent.SetReply -> setPendingReply(intent.item)
@@ -376,6 +387,7 @@ class ChatViewModel @Inject constructor(
                 otherUserId = otherUserId,
             ),
             timeline = TimelineState(target = target),
+            composer = ComposerState(isRestoring = supportsDrafts, isRestoringAttachments = true),
         )
 
         configurePresence(if (isGroupChat) emptyList() else listOf(otherUserId))
@@ -390,6 +402,51 @@ class ChatViewModel @Inject constructor(
     }
 
     /** Copies a picked URI before it is exposed as an accepted composer preview. */
+    private fun stageVoice(intent: ChatIntent.StageVoice) {
+        if (sendInFlight || state.value.composer.isVoiceStaging || state.value.composer.isRestoring || state.value.composer.isRestoringAttachments) return
+        val scope = cacheScope ?: return
+        val current = state.value.composer
+        if (current.attachmentPaths.isNotEmpty()) return
+        _uiState.value = state.value.copy(composer = current.copy(
+            voiceSourcePath = intent.file.absolutePath,
+            isVoiceStaging = true,
+        ))
+        viewModelScope.launch {
+            try {
+                // Persist the reply before publishing the accepted voice preview.
+                val (draft, attachment) = withContext(NonCancellable) {
+                    val savedDraft = chatDraftRepository.edit(chatId, current.text, current.pendingReply?.messageId ?: 0L)
+                    // MediaRecorder's OGG granules can retain paused wall time. Repair only
+                    // the new local recording, on IO, before publishing a playable preview.
+                    withContext(Dispatchers.IO) { com.barkfluff.client.voice.OggOpusTimeline.normalize(intent.file) }
+                    val savedAttachment = composerAttachmentStore.stageFile(
+                        scope, chatId, intent.file, nextComposerGeneration(),
+                        OutgoingAttachmentKind.VOICE.name, "voice.ogg", "audio/ogg",
+                    )
+                    intent.file.delete()
+                    savedDraft to savedAttachment
+                }
+                val latest = state.value
+                _uiState.value = latest.copy(composer = composerReducer.stagedAttachment(
+                    latest.composer, attachment.path, attachment.kind,
+                ).copy(voiceSourcePath = null, isVoiceStaging = false, draftGeneration = draft?.generation))
+                if (intent.sendImmediately) sendMessage("")
+            } catch (error: Exception) {
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isVoiceStaging = false))
+                emitEffect(ChatEffect.ToastRes(R.string.voice_draft_save_failed))
+            }
+        }
+    }
+
+    private fun discardVoice() {
+        val composer = state.value.composer
+        if (composer.isVoiceStaging || sendInFlight) return
+        composer.voiceSourcePath?.let { File(it).delete() }
+        _uiState.value = state.value.copy(composer = composer.copy(voiceSourcePath = null))
+        composer.attachmentKinds.indexOf(OutgoingAttachmentKind.VOICE.name)
+            .takeIf { it >= 0 }?.let(::removeComposerAttachment)
+    }
+
     private fun stageAttachment(intent: ChatIntent.StageAttachment) {
         val scope = cacheScope ?: run {
             emitEffect(ChatEffect.AttachmentStageFailed(intent.uri))
@@ -435,6 +492,7 @@ class ChatViewModel @Inject constructor(
     }
 
     fun removeComposerAttachment(attachmentIndex: Int) {
+        if (sendInFlight || state.value.composer.isVoiceStaging || state.value.composer.isRestoring || state.value.composer.isRestoringAttachments) return
         val scope = cacheScope ?: return
         viewModelScope.launch {
             composerAttachmentStore.remove(scope, chatId, attachmentIndex)
@@ -449,61 +507,69 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun restoreComposerAttachments() {
-        val scope = cacheScope ?: return
+        val scope = cacheScope ?: run {
+            _uiState.value = state.value.copy(composer = state.value.composer.copy(isRestoringAttachments = false))
+            return
+        }
         viewModelScope.launch {
-            runCatching { composerAttachmentStore.cleanupOrphans(scope) }
-                .onFailure { Log.w(TAG, "Composer orphan cleanup failed", it) }
-            val restored = composerAttachmentStore.restore(scope, chatId)
-            if (restored.isEmpty()) return@launch
-            composerGenerationCounter = maxOf(
-                composerGenerationCounter,
-                restored.maxOf { it.generation },
-            )
+            try {
+                runCatching { composerAttachmentStore.cleanupOrphans(scope) }
+                    .onFailure { Log.w(TAG, "Composer orphan cleanup failed", it) }
+                val restored = composerAttachmentStore.restore(scope, chatId)
+                if (restored.isEmpty()) return@launch
+                composerGenerationCounter = maxOf(
+                    composerGenerationCounter,
+                    restored.maxOf { it.generation },
+                )
 
-            // A queue row may already own the preview when the old process died between QUEUED
-            // and clearAfterEnqueue. Clear only that generation, then render any newer records.
-            val handoffGeneration = restored.maxOf { it.generation }
-            if (outgoingMessageQueue.hasDurableHandoff(chatId, handoffGeneration)) {
-                composerAttachmentStore.clearAfterEnqueue(scope, chatId, handoffGeneration)
-                val remaining = composerAttachmentStore.restore(scope, chatId)
-                val state = _uiState.value
-                _uiState.value = if (remaining.isEmpty()) {
-                    state.copy(
-                        composer = composerReducer.clearAfterDurableEnqueue(
+                // A queue row may already own the preview when the old process died between QUEUED
+                // and clearAfterEnqueue. Clear only that generation, then render any newer records.
+                val handoffGeneration = restored.maxOf { it.generation }
+                if (outgoingMessageQueue.hasDurableHandoff(chatId, handoffGeneration)) {
+                    composerAttachmentStore.clearAfterEnqueue(scope, chatId, handoffGeneration)
+                    val remaining = composerAttachmentStore.restore(scope, chatId)
+                    val state = _uiState.value
+                    _uiState.value = if (remaining.isEmpty()) {
+                        state.copy(
+                            composer = composerReducer.clearAfterDurableEnqueue(
+                                state.composer,
+                                handoffGeneration,
+                            )
+                        )
+                    } else {
+                        composerReducer.clearAfterDurableEnqueue(
                             state.composer,
                             handoffGeneration,
-                        )
-                    )
-                } else {
-                    composerReducer.clearAfterDurableEnqueue(
-                        state.composer,
-                        handoffGeneration,
-                        remaining,
-                    ).let { next -> state.copy(composer = next) }
+                            remaining,
+                        ).let { next -> state.copy(composer = next) }
+                    }
+                    return@launch
                 }
-                return@launch
+
+                val state = _uiState.value
+                val ordered = restored.sortedBy { it.attachmentIndex }
+                // Merge with a preview that completed while restore was reading Room; never let a
+                // stale restore result remove a newly accepted path.
+                val currentPaths = state.composer.attachmentPaths
+                val currentKinds = state.composer.attachmentKinds
+                val currentEntries = currentPaths.mapIndexed { index, path ->
+                    path to currentKinds.getOrNull(index).orEmpty().ifBlank { OutgoingAttachmentKind.DOCUMENT.name }
+                }
+                val restoredEntries = ordered.map { it.path to it.kind }
+                val restoredPathSet = restoredEntries.mapTo(HashSet()) { it.first }
+                val merged = restoredEntries + currentEntries.filterNot { it.first in restoredPathSet }
+                _uiState.value = state.copy(
+                    composer = state.composer.copy(
+                        attachmentPaths = merged.map { it.first },
+                        attachmentKinds = merged.map { it.second },
+                        draftGeneration = state.composer.draftGeneration
+                            ?: ordered.maxOfOrNull { it.generation },
+                    )
+                )
+            } finally {
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isRestoringAttachments = false))
             }
 
-            val state = _uiState.value
-            val ordered = restored.sortedBy { it.attachmentIndex }
-            // Merge with a preview that completed while restore was reading Room; never let a
-            // stale restore result remove a newly accepted path.
-            val currentPaths = state.composer.attachmentPaths
-            val currentKinds = state.composer.attachmentKinds
-            val currentEntries = currentPaths.mapIndexed { index, path ->
-                path to currentKinds.getOrNull(index).orEmpty().ifBlank { OutgoingAttachmentKind.DOCUMENT.name }
-            }
-            val restoredEntries = ordered.map { it.path to it.kind }
-            val restoredPathSet = restoredEntries.mapTo(HashSet()) { it.first }
-            val merged = restoredEntries + currentEntries.filterNot { it.first in restoredPathSet }
-            _uiState.value = state.copy(
-                composer = state.composer.copy(
-                    attachmentPaths = merged.map { it.first },
-                    attachmentKinds = merged.map { it.second },
-                    draftGeneration = state.composer.draftGeneration
-                        ?: ordered.maxOfOrNull { it.generation },
-                )
-            )
         }
     }
 
@@ -910,6 +976,7 @@ class ChatViewModel @Inject constructor(
     // ═══════════════════════════════════════════════════════════════
 
     fun sendMessage(text: String, fileIds: List<String> = emptyList()) {
+        if (sendInFlight || state.value.composer.isVoiceStaging || state.value.composer.isRestoring || state.value.composer.isRestoringAttachments) return
         val messageText = text.trim()
 
         val edit = _uiState.value.pendingEdit
@@ -922,8 +989,8 @@ class ChatViewModel @Inject constructor(
         val hasStagedComposerAttachments = _uiState.value.composer.attachmentPaths.isNotEmpty()
         if (messageText.isBlank() && fileIds.isEmpty() && !hasStagedComposerAttachments && replyId == 0L) return
 
-        if (sendInFlight) return
         sendInFlight = true
+        _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = true))
         viewModelScope.launch {
             try {
                 val sentDraft = chatDraftRepository.edit(chatId, messageText, replyId)
@@ -949,9 +1016,14 @@ class ChatViewModel @Inject constructor(
                     existingFileIds = fileIds,
                     draftGeneration = handoffGeneration
                 ))
-                val remaining = cacheScope?.let { scope ->
-                    composerAttachmentStore.restore(scope, chatId)
-                }.orEmpty()
+                val remaining = runCatching {
+                    cacheScope?.let { scope -> composerAttachmentStore.restore(scope, chatId) }.orEmpty()
+                        .filter { handoffGeneration == null || it.generation > handoffGeneration }
+                }.getOrElse { error ->
+                    // Acceptance is durable even if the preview journal cannot be read now.
+                    Log.w(TAG, "Unable to reload accepted composer preview", error)
+                    emptyList()
+                }
                 val currentState = _uiState.value
                 _uiState.value = currentState.copy(
                     composer = if (remaining.isEmpty()) {
@@ -974,6 +1046,7 @@ class ChatViewModel @Inject constructor(
                 emitEffect(ChatEffect.ToastRes(R.string.message_send_error, e.message.orEmpty()))
             } finally {
                 sendInFlight = false
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = false))
             }
         }
     }
@@ -1004,6 +1077,7 @@ class ChatViewModel @Inject constructor(
     fun enqueueMedia(job: SendJob) {
         if (sendInFlight) return
         sendInFlight = true
+        _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = true))
         viewModelScope.launch {
             try {
                 val draft = chatDraftRepository.edit(job.chatId, job.text, job.replyId)
@@ -1021,6 +1095,7 @@ class ChatViewModel @Inject constructor(
                 emitEffect(ChatEffect.ToastRes(R.string.message_send_error, e.message.orEmpty()))
             } finally {
                 sendInFlight = false
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = false))
             }
         }
     }
@@ -1234,42 +1309,46 @@ class ChatViewModel @Inject constructor(
     private fun restoreDraft() {
         if (!supportsDrafts || draftRestored) return
         draftRestored = true
+        isRestoringDraft = true
         viewModelScope.launch {
-            val draft = chatDraftRepository.restore(chatId) ?: return@launch
-            isRestoringDraft = true
-            _uiState.value = _uiState.value.copy(
-                composer = _uiState.value.composer.copy(
-                    text = draft.text,
-                    draftGeneration = draft.generation,
-                    isRestoring = true,
+            try {
+                val draft = chatDraftRepository.restore(chatId) ?: return@launch
+                _uiState.value = _uiState.value.copy(
+                    composer = _uiState.value.composer.copy(
+                        text = draft.text,
+                        draftGeneration = draft.generation,
+                        isRestoring = true,
+                    )
                 )
-            )
-            emitEffect(ChatEffect.DraftRestored(draft.text))
-            if (draft.replyToMessageId == 0L) {
+                emitEffect(ChatEffect.DraftRestored(draft.text))
+                if (draft.replyToMessageId == 0L) {
+                    return@launch
+                }
+
+                val item = _uiState.value.items.firstOrNull { it.messageId == draft.replyToMessageId }
+                    ?: messageGateway.loadMessages(
+                        chatId = chatId,
+                        fromMessageId = draft.replyToMessageId,
+                        offsetBefore = 1,
+                        offsetAfter = 1
+                    ).getOrNull()?.firstOrNull { it.id == draft.replyToMessageId }?.let(::toMessageItem)
+                if (item != null) {
+                    setPendingReply(item)
+                } else if (cacheScope?.let { scope ->
+                        composerAttachmentStore.restore(scope, chatId).any { it.kind == OutgoingAttachmentKind.VOICE.name }
+                    } == true) {
+                    // A local voice reply must retain its target while the source message is offline.
+                    setPendingReply(MessageItem(draft.replyToMessageId, 0L, text = "", timestamp = 0L, attachments = emptyList()))
+                } else {
+                    chatDraftRepository.edit(chatId, draft.text, 0L)
+                    chatDraftRepository.flush(chatId)
+                }
+            } finally {
                 isRestoringDraft = false
                 _uiState.value = _uiState.value.copy(
                     composer = _uiState.value.composer.copy(isRestoring = false)
                 )
-                return@launch
             }
-
-            val item = _uiState.value.items.firstOrNull { it.messageId == draft.replyToMessageId }
-                ?: messageGateway.loadMessages(
-                    chatId = chatId,
-                    fromMessageId = draft.replyToMessageId,
-                    offsetBefore = 1,
-                    offsetAfter = 1
-                ).getOrNull()?.firstOrNull { it.id == draft.replyToMessageId }?.let(::toMessageItem)
-            if (item != null) {
-                setPendingReply(item)
-            } else {
-                chatDraftRepository.edit(chatId, draft.text, 0L)
-                chatDraftRepository.flush(chatId)
-            }
-            isRestoringDraft = false
-            _uiState.value = _uiState.value.copy(
-                composer = _uiState.value.composer.copy(isRestoring = false)
-            )
         }
     }
 

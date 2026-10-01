@@ -1422,4 +1422,18 @@
     <string name="cd_auto_download_limit">Лимит автозагрузки: %1$d МБ. Изменить лимит.</string>
     <string name="cd_auto_download_progress">Скачивание файла, %1$d%%.</string>
     <string name="auto_download_failed">Загрузка не удалась. Нажмите, чтобы повторить.</string>
+    <string name="voice_record_gesture_hint">Влево — отменить · вверх — зафиксировать</string>
+    <string name="voice_record_locked">Запись без удержания</string>
+    <string name="voice_record_paused">Запись приостановлена</string>
+    <string name="voice_record_pause">Приостановить запись</string>
+    <string name="voice_record_resume">Продолжить запись</string>
+    <string name="voice_record_stop">Остановить и прослушать</string>
+    <string name="voice_record_start_locked">Начать запись без удержания</string>
+    <string name="voice_draft_title">Голосовой черновик</string>
+    <string name="voice_draft_saving">Обработка записи…</string>
+    <string name="voice_draft_save_failed">Не удалось сохранить запись. Повторите отправку</string>
+    <string name="voice_preview_play_failed">Не удалось воспроизвести запись</string>
+    <string name="cd_voice_discard">Удалить запись</string>
+    <string name="cd_voice_speed">Изменить скорость. Сейчас %1$s</string>
+    <string name="cd_voice_seek">Позиция %1$s из %2$s</string>
 </resources>

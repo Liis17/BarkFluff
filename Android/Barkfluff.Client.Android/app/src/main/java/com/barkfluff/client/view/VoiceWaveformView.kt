@@ -7,6 +7,8 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.MotionEvent
+import android.os.Bundle
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.View
 import kotlin.math.abs
 import kotlin.math.max
@@ -20,7 +22,7 @@ class VoiceWaveformView @JvmOverloads constructor(
 
     private val density = resources.displayMetrics.density
     private val minBarHeight = 4f * density
-    private val preferredHeight = 32f * density
+    private val preferredHeight = 48f * density
     private val preferredWidth = 190f * density
     private val barGap = 2f * density
     private val cornerRadius = 2f * density
@@ -130,6 +132,35 @@ class VoiceWaveformView @JvmOverloads constructor(
             }
             else -> super.onTouchEvent(event)
         }
+    }
+
+    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        info.className = android.widget.SeekBar::class.java.name
+        info.rangeInfo = AccessibilityNodeInfo.RangeInfo.obtain(AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_FLOAT, 0f, 1f, progress)
+        if (isEnabled && onSeekRequested != null) {
+            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS)
+            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD)
+            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_BACKWARD)
+        }
+    }
+
+    override fun performAccessibilityAction(action: Int, arguments: Bundle?): Boolean {
+        if (isEnabled && onSeekRequested != null) {
+            val value = when (action) {
+                AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id -> arguments?.getFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE)
+                AccessibilityNodeInfo.ACTION_SCROLL_FORWARD -> progress + 0.1f
+                AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD -> progress - 0.1f
+                else -> null
+            }
+            if (value != null) {
+                val next = value.coerceIn(0f, 1f)
+                setProgress(next)
+                onSeekRequested?.invoke(next)
+                return true
+            }
+        }
+        return super.performAccessibilityAction(action, arguments)
     }
 
     override fun performClick(): Boolean {

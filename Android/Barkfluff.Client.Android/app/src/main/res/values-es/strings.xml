@@ -1378,4 +1378,18 @@
     <string name="cd_auto_download_limit">Límite de descarga automática: %1$d MB. Cambiar límite.</string>
     <string name="cd_auto_download_progress">Descargando archivo, %1$d%%.</string>
     <string name="auto_download_failed">La descarga falló. Toca para volver a intentarlo.</string>
+    <string name="voice_record_gesture_hint">Izquierda: cancelar · arriba: fijar</string>
+    <string name="voice_record_locked">Grabación sin mantener pulsado</string>
+    <string name="voice_record_paused">Grabación en pausa</string>
+    <string name="voice_record_pause">Pausar grabación</string>
+    <string name="voice_record_resume">Continuar grabación</string>
+    <string name="voice_record_stop">Detener y escuchar</string>
+    <string name="voice_record_start_locked">Iniciar grabación sin mantener pulsado</string>
+    <string name="voice_draft_title">Borrador de voz</string>
+    <string name="voice_draft_saving">Procesando grabación…</string>
+    <string name="voice_draft_save_failed">No se pudo guardar la grabación. Intenta enviarla de nuevo</string>
+    <string name="voice_preview_play_failed">No se pudo reproducir la grabación</string>
+    <string name="cd_voice_discard">Eliminar grabación</string>
+    <string name="cd_voice_speed">Cambiar velocidad. Actual: %1$s</string>
+    <string name="cd_voice_seek">Posición %1$s de %2$s</string>
 </resources>
