@@ -85,6 +85,7 @@ class AttachmentPreviewAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         autoDownloadViews?.recycleTree(holder.itemView)
         viewOperations.cancelTree(holder.itemView)
+        holder.itemView.findViewById<android.widget.ImageView>(R.id.previewImageView)?.dispose()
         val item = getItem(position)
         when (holder) {
             is MediaViewHolder -> holder.bind(item)
@@ -158,12 +159,14 @@ class AttachmentPreviewAdapter(
                             binding.galleryDownloadIcon.visibility = View.GONE
                             binding.galleryDownloadProgress.visibility = View.VISIBLE
                             binding.galleryDownloadProgress.progress = state.progress
+                            binding.galleryDownloadProgress.isIndeterminate = state.progress == 0
+                            binding.root.stateDescription = binding.root.context.getString(R.string.cd_auto_download_progress, state.progress)
                         }
                         AttachmentDownloadState.Waiting, AttachmentDownloadState.Failed -> {
                             binding.galleryDownloadIcon.visibility = View.VISIBLE
                             binding.galleryDownloadProgress.visibility = View.GONE
                             binding.root.stateDescription = binding.root.context.getString(
-                                if (state == AttachmentDownloadState.Failed) R.string.profile_download_failed else R.string.cd_download_file
+                                if (state == AttachmentDownloadState.Failed) R.string.auto_download_failed else R.string.cd_download_file
                             )
                         }
                     }
@@ -196,10 +199,14 @@ class AttachmentPreviewAdapter(
             autoDownloadViews?.bind(binding.root, attachment) { state ->
                 binding.galleryFileProgress.visibility = if (state is AttachmentDownloadState.Downloading) View.VISIBLE else View.GONE
                 binding.galleryFileDownloadIcon.visibility = if (state == AttachmentDownloadState.Waiting || state == AttachmentDownloadState.Failed) View.VISIBLE else View.GONE
-                if (state is AttachmentDownloadState.Downloading) binding.galleryFileProgress.progress = state.progress
+                if (state is AttachmentDownloadState.Downloading) {
+                    binding.galleryFileProgress.progress = state.progress
+                    binding.galleryFileProgress.isIndeterminate = state.progress == 0
+                    binding.galleryFileProgress.contentDescription = binding.root.context.getString(R.string.cd_auto_download_progress, state.progress)
+                }
                 binding.root.stateDescription = binding.root.context.getString(when (state) {
                     is AttachmentDownloadState.Cached -> R.string.cd_open_file
-                    AttachmentDownloadState.Failed -> R.string.profile_download_failed
+                    AttachmentDownloadState.Failed -> R.string.auto_download_failed
                     else -> R.string.cd_download_file
                 })
             }
@@ -240,8 +247,11 @@ class AttachmentPreviewAdapter(
             autoDownloadViews?.bind(binding.root, item.attachment) { state ->
                 val downloading = state is AttachmentDownloadState.Downloading
                 binding.galleryVoiceProgress.visibility = if (downloading) View.VISIBLE else View.GONE
-                binding.galleryVoiceProgress.isIndeterminate = false
-                if (state is AttachmentDownloadState.Downloading) binding.galleryVoiceProgress.progress = state.progress
+                binding.galleryVoiceProgress.isIndeterminate = (state as? AttachmentDownloadState.Downloading)?.progress == 0
+                if (state is AttachmentDownloadState.Downloading) {
+                    binding.galleryVoiceProgress.progress = state.progress
+                    binding.galleryVoiceProgress.contentDescription = binding.root.context.getString(R.string.cd_auto_download_progress, state.progress)
+                }
                 binding.playButton.isEnabled = !downloading
                 binding.playIcon.visibility = if (downloading) View.INVISIBLE else View.VISIBLE
                 val cached = state is AttachmentDownloadState.Cached
@@ -256,7 +266,7 @@ class AttachmentPreviewAdapter(
                     cached -> R.string.cd_play
                     else -> R.string.cd_download_file
                 })
-                binding.root.stateDescription = if (state == AttachmentDownloadState.Failed) binding.root.context.getString(R.string.profile_download_failed) else null
+                binding.root.stateDescription = if (state == AttachmentDownloadState.Failed) binding.root.context.getString(R.string.auto_download_failed) else null
             }
 
             binding.playButton.setOnClickListener {

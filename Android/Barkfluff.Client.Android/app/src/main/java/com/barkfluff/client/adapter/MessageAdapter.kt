@@ -216,6 +216,7 @@ class MessageAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         autoDownloadViews?.recycleTree(holder.itemView)
+        clearMediaImages(holder.itemView)
         viewOperations.cancelTree(holder.itemView)
         val item = getItem(position)
         when (holder) {
@@ -1231,17 +1232,22 @@ class MessageAdapter(
                     progress.visibility = View.GONE
                     playIcon.visibility = if (isVideo) View.VISIBLE else View.GONE
                     cellView.contentDescription = thumbnail.context.getString(if (isVideo) R.string.cd_play_video else R.string.cd_open_file)
+                    cellView.stateDescription = null
                 }
                 is AttachmentDownloadState.Downloading -> {
                     downloadIcon.visibility = View.GONE
                     progress.visibility = View.VISIBLE
                     playIcon.visibility = View.GONE
                     progress.progress = state.progress
+                    progress.isIndeterminate = state.progress == 0
+                    cellView.stateDescription = thumbnail.context.getString(R.string.cd_auto_download_progress, state.progress)
                 }
                 AttachmentDownloadState.Waiting, AttachmentDownloadState.Failed -> {
                     downloadIcon.visibility = View.VISIBLE
                     progress.visibility = View.GONE
                     playIcon.visibility = View.GONE
+                    cellView.contentDescription = thumbnail.context.getString(R.string.cd_download_file)
+                    cellView.stateDescription = if (state == AttachmentDownloadState.Failed) thumbnail.context.getString(R.string.auto_download_failed) else null
                 }
             }
         }
@@ -1399,6 +1405,7 @@ class MessageAdapter(
 
         fun startDownload() {
             autoDownloadViews?.setManualDownloading(binding.root, true)
+            binding.downloadProgressBar.isIndeterminate = false
             updateUiForDownloading()
             binding.downloadProgressBar.progress = 0
             binding.root.tag = fileId
@@ -1451,6 +1458,7 @@ class MessageAdapter(
         }
 
         autoDownloadViews?.bind(binding.root, attachment) { state ->
+            binding.root.stateDescription = if (state == AttachmentDownloadState.Failed) context.getString(R.string.auto_download_failed) else null
             when (state) {
                 is AttachmentDownloadState.Cached -> {
                     updateUiForCached(audioRenderer.duration(state.file))
@@ -1459,6 +1467,8 @@ class MessageAdapter(
                 is AttachmentDownloadState.Downloading -> {
                     updateUiForDownloading()
                     binding.downloadProgressBar.progress = state.progress
+                    binding.downloadProgressBar.isIndeterminate = state.progress == 0
+                    binding.downloadProgressBar.contentDescription = context.getString(R.string.cd_auto_download_progress, state.progress)
                 }
                 AttachmentDownloadState.Waiting, AttachmentDownloadState.Failed -> updateUiForNotCached()
             }
@@ -1779,6 +1789,7 @@ class MessageAdapter(
             binding.docDownloadButton.visibility = View.VISIBLE
             binding.docDownloadButton.isEnabled = false
             binding.docOpenButton.visibility = View.GONE
+            binding.docDownloadProgress.isIndeterminate = false
             binding.docDownloadProgress.visibility = View.VISIBLE
             binding.docDownloadProgress.progress = 0
         }
@@ -1810,11 +1821,14 @@ class MessageAdapter(
         }
 
         autoDownloadViews?.bind(binding.root, attachment) { state ->
+            binding.root.stateDescription = if (state == AttachmentDownloadState.Failed) context.getString(R.string.auto_download_failed) else null
             when (state) {
                 is AttachmentDownloadState.Cached -> updateUiForCached()
                 is AttachmentDownloadState.Downloading -> {
                     updateUiForDownloading()
                     binding.docDownloadProgress.progress = state.progress
+                    binding.docDownloadProgress.isIndeterminate = state.progress == 0
+                    binding.docDownloadProgress.contentDescription = context.getString(R.string.cd_auto_download_progress, state.progress)
                 }
                 AttachmentDownloadState.Waiting, AttachmentDownloadState.Failed -> updateUiForNotCached()
             }

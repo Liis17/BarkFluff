@@ -1401,4 +1401,25 @@
     <string name="search_attachment_sticker">Стикеры</string>
     <string name="search_date_range">%1$s – %2$s</string>
     <string name="search_message_unavailable">Сообщение удалено или больше недоступно</string>
+
+    <!-- Media auto-download -->
+    <string name="auto_download_title">Автозагрузка</string>
+    <string name="auto_download_photos">Статичные фото</string>
+    <string name="auto_download_gifs">GIF</string>
+    <string name="auto_download_videos">Видео</string>
+    <string name="auto_download_audio">Аудио</string>
+    <string name="auto_download_voice">Голосовые сообщения</string>
+    <string name="auto_download_documents">Документы</string>
+    <string name="auto_download_wifi">Wi-Fi</string>
+    <string name="auto_download_any_network">Любая сеть</string>
+    <string name="auto_download_manual">Вручную</string>
+    <string name="auto_download_limit">Лимит размера</string>
+    <string name="auto_download_limit_value">%1$d МБ</string>
+    <string name="auto_download_limit_hint">Максимум для одного автоматически скачиваемого файла.</string>
+    <string name="auto_download_limit_input">Размер в МБ</string>
+    <string name="auto_download_limit_error">Введите целое число от 1 до 512 МБ.</string>
+    <string name="cd_auto_download_mode">%1$s: %2$s. Изменить режим автозагрузки.</string>
+    <string name="cd_auto_download_limit">Лимит автозагрузки: %1$d МБ. Изменить лимит.</string>
+    <string name="cd_auto_download_progress">Скачивание файла, %1$d%%.</string>
+    <string name="auto_download_failed">Загрузка не удалась. Нажмите, чтобы повторить.</string>
 </resources>

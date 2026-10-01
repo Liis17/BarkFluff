@@ -13,11 +13,21 @@ import androidx.appcompat.app.AppCompatActivity
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.ChatCacheStats
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import barkfluff.shared.Shared
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadMode
+import com.barkfluff.client.domain.media.AutoDownloadSettings
 import com.barkfluff.client.databinding.ActivityStorageSettingsBinding
+import com.barkfluff.client.databinding.ItemAutoDownloadSettingBinding
+import com.barkfluff.client.databinding.DialogAutoDownloadLimitBinding
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.StorageInfo
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import androidx.appcompat.app.AlertDialog
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,7 +39,10 @@ class StorageSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityStorageSettingsBinding
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
     private lateinit var chatCacheRepository: ChatCacheRepository
+    private val autoDownloadRows = linkedMapOf<Shared.MessageAttachmentType, ItemAutoDownloadSettingBinding>()
+    private lateinit var autoDownloadLimitRow: ItemAutoDownloadSettingBinding
 
     companion object {
         private const val TAG = "StorageSettings"
@@ -60,6 +73,7 @@ class StorageSettingsActivity : AppCompatActivity() {
 
         setupToolbar()
         setupClickListeners()
+        setupAutoDownload()
         loadStorageInfo()
         updateCacheSize()
     }
@@ -95,6 +109,92 @@ class StorageSettingsActivity : AppCompatActivity() {
                 binding.textStorageLimit.text = ""
             }
         }
+    }
+
+    private fun setupAutoDownload() {
+        val container = binding.autoDownloadSettingsLayout
+        AutoDownloadSettings.TYPES.forEachIndexed { index, type ->
+            val row = ItemAutoDownloadSettingBinding.inflate(layoutInflater, container, false)
+            row.settingTitle.setText(when (type) {
+                Shared.MessageAttachmentType.IMAGE -> R.string.auto_download_photos
+                Shared.MessageAttachmentType.GIF -> R.string.auto_download_gifs
+                Shared.MessageAttachmentType.VIDEO -> R.string.auto_download_videos
+                Shared.MessageAttachmentType.AUDIO -> R.string.auto_download_audio
+                Shared.MessageAttachmentType.VOICE -> R.string.auto_download_voice
+                else -> R.string.auto_download_documents
+            })
+            row.root.setBackgroundResource(if (index == 0) R.drawable.bg_settings_item_top else R.drawable.bg_settings_item_middle)
+            row.root.setOnClickListener { showAutoDownloadMode(type, row.settingTitle.text.toString()) }
+            autoDownloadRows[type] = row
+            container.addView(row.root)
+            container.addView(Space(this).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                    resources.getDimensionPixelSize(R.dimen.settings_split_gap))
+            })
+        }
+        autoDownloadLimitRow = ItemAutoDownloadSettingBinding.inflate(layoutInflater, container, false)
+        autoDownloadLimitRow.settingTitle.setText(R.string.auto_download_limit)
+        autoDownloadLimitRow.root.setBackgroundResource(R.drawable.bg_settings_item_bottom)
+        autoDownloadLimitRow.root.setOnClickListener { showAutoDownloadLimit() }
+        container.addView(autoDownloadLimitRow.root)
+        renderAutoDownload(autoDownloadSettings.settings.value)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                autoDownloadSettings.settings.collect(::renderAutoDownload)
+            }
+        }
+    }
+
+    private fun modeLabel(mode: AutoDownloadMode): String = getString(when (mode) {
+        AutoDownloadMode.WIFI_ONLY -> R.string.auto_download_wifi
+        AutoDownloadMode.ANY_NETWORK -> R.string.auto_download_any_network
+        AutoDownloadMode.MANUAL -> R.string.auto_download_manual
+    })
+
+    private fun renderAutoDownload(settings: AutoDownloadSettings) {
+        autoDownloadRows.forEach { (type, row) ->
+            val mode = modeLabel(settings.mode(type))
+            row.settingValue.text = mode
+            row.root.contentDescription = getString(R.string.cd_auto_download_mode, row.settingTitle.text, mode)
+        }
+        autoDownloadLimitRow.settingValue.text = getString(R.string.auto_download_limit_value, settings.maxSizeMb)
+        autoDownloadLimitRow.root.contentDescription = getString(R.string.cd_auto_download_limit, settings.maxSizeMb)
+    }
+
+    private fun showAutoDownloadMode(type: Shared.MessageAttachmentType, title: String) {
+        val modes = AutoDownloadMode.entries
+        MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setSingleChoiceItems(modes.map(::modeLabel).toTypedArray(), modes.indexOf(autoDownloadSettings.settings.value.mode(type))) { dialog, index ->
+                autoDownloadSettings.setMode(type, modes[index])
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun showAutoDownloadLimit() {
+        val input = DialogAutoDownloadLimitBinding.inflate(layoutInflater)
+        input.autoDownloadLimitInput.setText(autoDownloadSettings.settings.value.maxSizeMb.toString())
+        input.autoDownloadLimitInput.selectAll()
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.auto_download_limit)
+            .setView(input.root)
+            .setPositiveButton(R.string.btn_save, null)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val size = input.autoDownloadLimitInput.text?.toString()?.trim()?.toIntOrNull()
+                if (size == null || size !in 1..512) {
+                    input.root.error = getString(R.string.auto_download_limit_error)
+                } else {
+                    autoDownloadSettings.setMaxSizeMb(size)
+                    dialog.dismiss()
+                }
+            }
+        }
+        dialog.show()
     }
 
     private fun populateStorageBar(info: StorageInfo) {

@@ -266,6 +266,31 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/auto_download_title"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Settings2A.Section"
+                android:accessibilityHeading="true" />
+
+            <LinearLayout
+                android:id="@+id/autoDownloadSettingsLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/auto_download_limit_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/profile_settings_on_surface_variant" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonClearCache"
                 android:layout_width="match_parent"
