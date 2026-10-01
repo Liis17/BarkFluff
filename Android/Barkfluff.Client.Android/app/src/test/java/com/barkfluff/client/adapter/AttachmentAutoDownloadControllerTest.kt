@@ -206,4 +206,35 @@ class AttachmentAutoDownloadControllerTest {
         assertEquals(AttachmentDownloadState.Cached(File("photo")), states.last())
         assertTrue(downloads.requests.isEmpty())
     }
+
+    @Test
+    fun `forbidden queued items immediately restore manual action while started transfers keep running`() = runTest {
+        val denied = listOf(
+            AutoDownloadSettings(mapOf(Shared.MessageAttachmentType.IMAGE to AutoDownloadMode.MANUAL)) to AutoDownloadNetwork.WIFI,
+            AutoDownloadSettings(maxSizeMb = 1) to AutoDownloadNetwork.WIFI,
+            AutoDownloadSettings() to AutoDownloadNetwork.UNAVAILABLE,
+        )
+        for ((settings, network) in denied) {
+            val downloads = Downloads()
+            val controller = AttachmentAutoDownloadController(downloads.loader, this)
+            controller.update(AutoDownloadSettings(), AutoDownloadNetwork.WIFI)
+            controller.setActive(true)
+            val runningStates = mutableListOf<AttachmentDownloadState>()
+            val queuedStates = mutableListOf<AttachmentDownloadState>()
+            controller.bind(attachment("one"), runningStates::add).setVisible(true)
+            controller.bind(attachment("two")) {}.setVisible(true)
+            val queued = attachment("three").toBuilder().setAttachmentSize(3L * 1024 * 1024 / 2).build()
+            controller.bind(queued, queuedStates::add).setVisible(true)
+            runCurrent()
+            assertEquals(2, downloads.requests.size)
+            controller.update(settings, network)
+            runCurrent()
+            assertEquals(AttachmentDownloadState.Waiting, queuedStates.last())
+            assertTrue(runningStates.last() is AttachmentDownloadState.Downloading)
+            assertTrue(downloads.cancelled.isEmpty())
+            assertEquals(2, downloads.running)
+            controller.setActive(false)
+            runCurrent()
+        }
+    }
 }

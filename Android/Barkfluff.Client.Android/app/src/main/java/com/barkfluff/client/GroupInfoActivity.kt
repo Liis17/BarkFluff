@@ -290,6 +290,7 @@ class GroupInfoActivity : AppCompatActivity() {
             getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onAttachmentClick = { info -> openAttachment(info, adapter) },
             downloadToCache = { fileId -> FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId) },
+            scope = lifecycleScope,
             autoDownloadViews = AttachmentAutoDownloadViews(FileMediaAttachmentLoader(fileMediaGateway), this, autoDownloadSettings, autoDownloadNetwork),
         )
         recyclerView.adapter = adapter

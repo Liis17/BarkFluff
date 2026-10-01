@@ -35,7 +35,8 @@ class AttachmentAutoDownloadController(
 
     private class Transfer {
         var job: Job? = null
-        var state: AttachmentDownloadState = AttachmentDownloadState.Downloading(0)
+        var started = false
+        var state: AttachmentDownloadState = AttachmentDownloadState.Waiting
     }
 
     inner class Binding internal constructor(
@@ -106,11 +107,14 @@ class AttachmentAutoDownloadController(
             return
         }
         downloads[fileId]?.let {
-            binding.emit(it.state)
+            if (!it.started && (!active || !hasEligibleConsumer(fileId) || isManualDownloading(fileId))) {
+                it.job?.cancel()
+                binding.emit(AttachmentDownloadState.Waiting)
+            } else binding.emit(it.state)
             return
         }
         if (!active || !scope.isActive || !binding.visible || fileId.isBlank() ||
-            bindings.any { it.attachment.fileId == fileId && it.manualDownloading } ||
+            isManualDownloading(fileId) ||
             !AutoDownloadPolicy.mayStart(settings, attachment.type, attachment.attachmentSize, network)) {
             binding.emit(AttachmentDownloadState.Waiting)
             return
@@ -125,12 +129,13 @@ class AttachmentAutoDownloadController(
             try {
                 slots.withPermit {
                     // A queued transfer is still a new start: use the latest policy now.
-                    if (!active || bindings.none { it.visible && it.attachment.fileId == fileId } ||
-                        bindings.any { it.attachment.fileId == fileId && it.manualDownloading } ||
-                        !AutoDownloadPolicy.mayStart(settings, attachment.type, attachment.attachmentSize, network)) return@withPermit
+                    if (!active || !hasEligibleConsumer(fileId) || isManualDownloading(fileId)) return@withPermit
                     val snapshot = settings
                     val attempt = snapshot to network
                     bindings.filter { it.attachment.fileId == fileId }.forEach { it.attempted = attempt }
+                    transfer.started = true
+                    transfer.state = AttachmentDownloadState.Downloading(0)
+                    notify(fileId, transfer.state)
                     val file = loader.downloadAuto(fileId, snapshot.maxBytes) { progress ->
                         scope.launch {
                             if (downloads[fileId] === transfer) {
@@ -162,6 +167,15 @@ class AttachmentAutoDownloadController(
         if (cancelled) bindings.filter { it.attachment.fileId == fileId }.forEach { it.attempted = null }
         downloads.remove(fileId)
         refresh()
+    }
+
+    private fun hasEligibleConsumer(fileId: String): Boolean = bindings.any {
+        it.visible && it.attachment.fileId == fileId &&
+            AutoDownloadPolicy.mayStart(settings, it.attachment.type, it.attachment.attachmentSize, network)
+    }
+
+    private fun isManualDownloading(fileId: String): Boolean = bindings.any {
+        it.attachment.fileId == fileId && it.manualDownloading
     }
 
     private fun notify(fileId: String, state: AttachmentDownloadState) {
