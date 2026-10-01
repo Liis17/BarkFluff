@@ -1387,4 +1387,6 @@
     <string name="voice_playback_title">语音消息</string>
     <string name="voice_playback_channel">语音消息播放</string>
     <string name="voice_sender_you">你</string>
+    <string name="cd_voice_player_close">关闭播放器</string>
+    <string name="voice_player_error">无法播放音频</string>
 </resources>

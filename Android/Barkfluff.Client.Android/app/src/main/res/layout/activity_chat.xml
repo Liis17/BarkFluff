@@ -765,10 +765,10 @@
 
         <ImageButton android:id="@+id/voiceRecordDelete" android:layout_width="48dp" android:layout_height="48dp"
             android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/cd_voice_discard" android:src="@android:drawable/ic_menu_delete" app:tint="?attr/colorOnSurfaceVariant" />
+            android:contentDescription="@string/cd_voice_discard" android:src="@drawable/ic_delete" app:tint="?attr/colorOnSurfaceVariant" />
         <ImageButton android:id="@+id/voiceRecordPause" android:layout_width="48dp" android:layout_height="48dp"
             android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/voice_record_pause" android:src="@android:drawable/ic_media_pause" app:tint="?attr/colorPrimary" />
+            android:contentDescription="@string/voice_record_pause" android:src="@drawable/ic_pause" app:tint="?attr/colorPrimary" />
         <ImageButton android:id="@+id/voiceRecordStop" android:layout_width="48dp" android:layout_height="48dp"
             android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
             android:contentDescription="@string/voice_record_stop" android:src="@drawable/ic_voice_stop" app:tint="?attr/colorPrimary" />

@@ -1897,7 +1897,7 @@ class ChatActivity : AppCompatActivity() {
             state.durationMillis / 60_000L, state.durationMillis / 1_000L % 60)
         binding.voiceRecordHint.setText(if (state.cancelPending) R.string.voice_record_release_to_cancel else R.string.voice_record_gesture_hint)
         binding.voiceRecordPause.setImageResource(if (state.mode == VoiceRecordingMode.PAUSED)
-            android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause)
+            R.drawable.ic_play_arrow else R.drawable.ic_pause)
         binding.voiceRecordPause.contentDescription = getString(if (state.mode == VoiceRecordingMode.PAUSED)
             R.string.voice_record_resume else R.string.voice_record_pause)
         ViewCompat.setStateDescription(binding.voiceRecordBar, getString(if (state.mode == VoiceRecordingMode.PAUSED)

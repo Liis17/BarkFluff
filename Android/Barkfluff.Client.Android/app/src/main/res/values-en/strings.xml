@@ -1394,4 +1394,6 @@
     <string name="voice_playback_title">Voice message</string>
     <string name="voice_playback_channel">Voice message playback</string>
     <string name="voice_sender_you">You</string>
+    <string name="cd_voice_player_close">Close player</string>
+    <string name="voice_player_error">Could not play audio</string>
 </resources>

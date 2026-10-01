@@ -1439,4 +1439,6 @@
     <string name="voice_playback_title">Голосовое сообщение</string>
     <string name="voice_playback_channel">Воспроизведение голосовых</string>
     <string name="voice_sender_you">Вы</string>
+    <string name="cd_voice_player_close">Закрыть плеер</string>
+    <string name="voice_player_error">Не удалось воспроизвести аудио</string>
 </resources>
