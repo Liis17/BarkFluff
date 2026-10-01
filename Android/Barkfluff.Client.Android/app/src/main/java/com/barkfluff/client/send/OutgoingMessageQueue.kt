@@ -123,7 +123,12 @@ class OutgoingMessageQueue(
             throw e
         }
         request.draftGeneration?.let { generation ->
-            composerAttachmentStore?.clearAfterEnqueue(scope, request.chatId, generation)
+            try {
+                composerAttachmentStore?.clearAfterEnqueue(scope, request.chatId, generation)
+            } catch (error: Exception) {
+                // QUEUED already owns the bytes. Restore reconciles the handoff if cleanup fails.
+                Log.w("OutgoingMessageQueue", "Unable to clear accepted composer preview", error)
+            }
         }
         // The transaction above is acceptance. Scheduling failures cannot reject a durable send.
         try {

@@ -1370,4 +1370,18 @@
     <string name="cd_auto_download_limit">自动下载限制：%1$d MB。更改限制。</string>
     <string name="cd_auto_download_progress">正在下载文件：%1$d%%。</string>
     <string name="auto_download_failed">下载失败。点击重试。</string>
+    <string name="voice_record_gesture_hint">向左取消 · 向上锁定</string>
+    <string name="voice_record_locked">免按住录音</string>
+    <string name="voice_record_paused">录音已暂停</string>
+    <string name="voice_record_pause">暂停录音</string>
+    <string name="voice_record_resume">继续录音</string>
+    <string name="voice_record_stop">停止并试听</string>
+    <string name="voice_record_start_locked">开始免按住录音</string>
+    <string name="voice_draft_title">语音草稿</string>
+    <string name="voice_draft_saving">正在处理录音…</string>
+    <string name="voice_draft_save_failed">无法保存录音，请重新发送</string>
+    <string name="voice_preview_play_failed">无法播放录音</string>
+    <string name="cd_voice_discard">删除录音</string>
+    <string name="cd_voice_speed">更改速度，当前为 %1$s</string>
+    <string name="cd_voice_seek">播放位置 %1$s，共 %2$s</string>
 </resources>

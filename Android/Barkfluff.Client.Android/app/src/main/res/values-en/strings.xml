@@ -1377,4 +1377,18 @@
     <string name="cd_auto_download_limit">Auto-download limit: %1$d MB. Change limit.</string>
     <string name="cd_auto_download_progress">Downloading file, %1$d%%.</string>
     <string name="auto_download_failed">Download failed. Tap to try again.</string>
+    <string name="voice_record_gesture_hint">Left to cancel · up to lock</string>
+    <string name="voice_record_locked">Hands-free recording</string>
+    <string name="voice_record_paused">Recording paused</string>
+    <string name="voice_record_pause">Pause recording</string>
+    <string name="voice_record_resume">Resume recording</string>
+    <string name="voice_record_stop">Stop and preview</string>
+    <string name="voice_record_start_locked">Start hands-free recording</string>
+    <string name="voice_draft_title">Voice draft</string>
+    <string name="voice_draft_saving">Processing recording…</string>
+    <string name="voice_draft_save_failed">Could not save the recording. Try sending again</string>
+    <string name="voice_preview_play_failed">Could not play the recording</string>
+    <string name="cd_voice_discard">Delete recording</string>
+    <string name="cd_voice_speed">Change speed. Currently %1$s</string>
+    <string name="cd_voice_seek">Position %1$s of %2$s</string>
 </resources>

@@ -1378,4 +1378,18 @@
     <string name="cd_auto_download_limit">Limit für automatische Downloads: %1$d MB. Limit ändern.</string>
     <string name="cd_auto_download_progress">Datei wird heruntergeladen, %1$d%%.</string>
     <string name="auto_download_failed">Download fehlgeschlagen. Tippen, um es erneut zu versuchen.</string>
+    <string name="voice_record_gesture_hint">Links: abbrechen · oben: fixieren</string>
+    <string name="voice_record_locked">Freihändige Aufnahme</string>
+    <string name="voice_record_paused">Aufnahme pausiert</string>
+    <string name="voice_record_pause">Aufnahme pausieren</string>
+    <string name="voice_record_resume">Aufnahme fortsetzen</string>
+    <string name="voice_record_stop">Stoppen und anhören</string>
+    <string name="voice_record_start_locked">Freihändige Aufnahme starten</string>
+    <string name="voice_draft_title">Sprachnachricht-Entwurf</string>
+    <string name="voice_draft_saving">Aufnahme wird verarbeitet…</string>
+    <string name="voice_draft_save_failed">Aufnahme konnte nicht gespeichert werden. Erneut senden</string>
+    <string name="voice_preview_play_failed">Aufnahme konnte nicht abgespielt werden</string>
+    <string name="cd_voice_discard">Aufnahme löschen</string>
+    <string name="cd_voice_speed">Geschwindigkeit ändern. Aktuell %1$s</string>
+    <string name="cd_voice_seek">Position %1$s von %2$s</string>
 </resources>
