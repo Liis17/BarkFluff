@@ -15,6 +15,7 @@ import com.barkfluff.client.chat.RegularChatSession
 import com.barkfluff.client.chat.MessageNavigator
 import com.barkfluff.client.chat.MessageTarget
 import com.barkfluff.client.chat.MessageTargetMissingException
+import com.barkfluff.client.chat.messageChronologicalOrder
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.OutgoingAttachmentKind
@@ -317,6 +318,7 @@ class ChatViewModel @Inject constructor(
     private var isLoadingMessages = false
     private var loadMessagesJob: Job? = null
     private var timelineLoadVersion = 0L
+    private var isAnchoredTimeline = false
     private var firstUnreadMessageId = 0L
     private var lastBottomReadTriggerId = -1L
 
@@ -363,6 +365,7 @@ class ChatViewModel @Inject constructor(
         val target = (savedStateHandle.get<Long>(KEY_TARGET_MESSAGE) ?: targetMessageId)
             .takeIf { it > 0L }?.let { messageNavigator.request(it) }
         savedStateHandle[KEY_TARGET_MESSAGE] = target?.messageId
+        isAnchoredTimeline = target != null
 
         _uiState.value = ChatUiState(
             session = ChatSessionState(
@@ -557,7 +560,7 @@ class ChatViewModel @Inject constructor(
 
             displayMessages(messages)
             reconcileSelection(messages.map { it.id }.toSet())
-            val sortedMessages = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
+            val sortedMessages = messages.sortedWith(messageChronologicalOrder)
             firstVisibleMessageId = sortedMessages.first().id
             lastVisibleMessageId = sortedMessages.last().id
             hasMoreMessagesUp = messages.size >= PAGE_SIZE
@@ -617,11 +620,13 @@ class ChatViewModel @Inject constructor(
         loadMessagesJob?.cancel()
         val version = ++timelineLoadVersion
         val target = messageNavigator.pending
+        val tailVersion = messageNavigator.liveTailVersion
         setLoading(true)
         loadMessagesJob = viewModelScope.launch {
             try {
+                val targetPage = target?.let { messageNavigator.window(it) ?: return@launch }
                 val result = if (target != null) {
-                    messageNavigator.window(target) ?: return@launch
+                    targetPage!!.map { it.messages }
                 } else if (firstUnreadMessageId > 0) {
                     messageGateway.loadMessages(chatId, fromMessageId = firstUnreadMessageId, offsetBefore = 15, offsetAfter = 30)
                 } else {
@@ -637,16 +642,17 @@ class ChatViewModel @Inject constructor(
                     if (version != timelineLoadVersion) return@launch
                     displayMessages(messages)
                     reconcileSelection(messages.map { it.id }.toSet())
-                    val sorted = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
+                    val sorted = messages.sortedWith(messageChronologicalOrder)
                     firstVisibleMessageId = sorted.firstOrNull()?.id ?: 0L
                     lastVisibleMessageId = sorted.lastOrNull()?.id ?: 0L
                     if (target != null) {
-                        val targetIndex = sorted.indexOfFirst { it.id == target.messageId }
-                        hasMoreMessagesUp = targetIndex >= 20
-                        hasMoreMessagesDown = sorted.size - targetIndex - 1 >= 20
+                        isAnchoredTimeline = true
+                        hasMoreMessagesUp = targetPage!!.getOrThrow().hasMoreBefore
+                        hasMoreMessagesDown = targetPage.getOrThrow().hasMoreAfter || messageNavigator.hasUnloadedTailSince(tailVersion)
                     } else {
-                        hasMoreMessagesUp = messages.size >= 15
-                        hasMoreMessagesDown = true
+                        isAnchoredTimeline = messageNavigator.hasUnloadedTailSince(tailVersion)
+                        hasMoreMessagesUp = messages.size >= if (firstUnreadMessageId > 0L) 15 else PAGE_SIZE
+                        hasMoreMessagesDown = firstUnreadMessageId > 0L || isAnchoredTimeline
                         markVisibleMessagesAsRead(messages)
                     }
                 } else if (target != null) {
@@ -675,6 +681,7 @@ class ChatViewModel @Inject constructor(
     private fun navigateToMessage(messageId: Long) {
         if (messageId <= 0L) return
         val target = messageNavigator.request(messageId)
+        isAnchoredTimeline = true
         savedStateHandle[KEY_TARGET_MESSAGE] = messageId
         ++timelineLoadVersion
         loadMessagesJob?.cancel()
@@ -684,8 +691,8 @@ class ChatViewModel @Inject constructor(
         } else loadMessages()
     }
 
-    fun targetPositionIn(committedMessageIds: List<Long>): Int? =
-        messageNavigator.pending?.let { messageNavigator.position(it, committedMessageIds) }
+    fun targetPositionIn(committedMessageIds: List<Long>, listIsCommitted: Boolean): Int? =
+        messageNavigator.pending?.let { messageNavigator.position(it, committedMessageIds, listIsCommitted) }
 
     private fun acknowledgeMessageNavigation(requestId: Long) {
         if (!messageNavigator.acknowledge(requestId)) return
@@ -695,7 +702,10 @@ class ChatViewModel @Inject constructor(
 
     private fun failMessageNavigation(target: MessageTarget, error: Throwable?) {
         if (messageNavigator.pending != target) return
+        ++timelineLoadVersion
+        loadMessagesJob?.cancel()
         acknowledgeMessageNavigation(target.requestId)
+        setLoading(false)
         val missing = error is MessageTargetMissingException ||
             io.grpc.Status.fromThrowable(error ?: MessageTargetMissingException()).code == io.grpc.Status.Code.NOT_FOUND
         emitEffect(ChatEffect.ToastRes(if (missing) R.string.search_message_unavailable else R.string.messages_load_failed))
@@ -711,13 +721,13 @@ class ChatViewModel @Inject constructor(
 
         loadMessagesJob = viewModelScope.launch {
             try {
-                val page = regularChatSession.before(cacheScope, chatId, firstVisibleMessageId, PAGE_SIZE)
+                val page = regularChatSession.before(cacheScope, chatId, firstVisibleMessageId, PAGE_SIZE, preferCache = !isAnchoredTimeline)
                 if (version != timelineLoadVersion) return@launch
                 if (page.isSuccess) {
                     val messages = page.getOrThrow().messages
                     if (messages.isNotEmpty()) {
                         prependMessages(messages)
-                        val sortedMessages = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
+                        val sortedMessages = messages.sortedWith(messageChronologicalOrder)
                         firstVisibleMessageId = sortedMessages.first().id
                         hasMoreMessagesUp = page.getOrThrow().hasMoreBefore
                     } else {
@@ -735,24 +745,25 @@ class ChatViewModel @Inject constructor(
     fun loadMessagesDown() {
         if (isLoadingMessages || !hasMoreMessagesDown || messageNavigator.pending != null) return
         val version = timelineLoadVersion
+        val tailVersion = messageNavigator.liveTailVersion
 
         setLoading(true)
         Log.d(TAG, "Loading messages down from $lastVisibleMessageId")
 
         loadMessagesJob = viewModelScope.launch {
             try {
-                val page = regularChatSession.after(cacheScope, chatId, lastVisibleMessageId, PAGE_SIZE)
+                val page = regularChatSession.after(cacheScope, chatId, lastVisibleMessageId, PAGE_SIZE, preferCache = !isAnchoredTimeline)
                 if (version != timelineLoadVersion) return@launch
                 if (page.isSuccess) {
                     val messages = page.getOrThrow().messages
                     if (messages.isNotEmpty()) {
                         appendMessages(messages)
-                        val sortedMessages = messages.sortedWith(compareBy<Shared.Message> { it.sentAt.seconds }.thenBy { it.sentAt.nanos }.thenBy { it.id })
+                        val sortedMessages = messages.sortedWith(messageChronologicalOrder)
                         lastVisibleMessageId = sortedMessages.last().id
-                        hasMoreMessagesDown = page.getOrThrow().hasMoreAfter
+                        hasMoreMessagesDown = page.getOrThrow().hasMoreAfter || messageNavigator.hasUnloadedTailSince(tailVersion)
                         markVisibleMessagesAsRead(messages)
                     } else {
-                        hasMoreMessagesDown = false
+                        hasMoreMessagesDown = messageNavigator.hasUnloadedTailSince(tailVersion)
                     }
                 }
             } catch (e: Exception) {
@@ -1579,6 +1590,7 @@ class ChatViewModel @Inject constructor(
 
     private fun addNewMessage(msg: Shared.Message) {
         val currentList = _uiState.value.items.toMutableList()
+        val deferLiveTail = isAnchoredTimeline && (hasMoreMessagesDown || isLoadingMessages || messageNavigator.pending != null)
 
         // Реконсиляция своего оптимистичного сообщения. Realtime-эхо и ответ sendMessage
         // (который проставляет messageId через clearOptimisticUploadProgress) могут прийти в
@@ -1600,6 +1612,10 @@ class ChatViewModel @Inject constructor(
                     )
             }
             if (optIdx >= 0) {
+                if (deferLiveTail) {
+                    messageNavigator.deferLiveMessage()
+                    hasMoreMessagesDown = true
+                }
                 currentList[optIdx] = toMessageItem(msg).copy(localId = currentList[optIdx].localId)
                 submitItems(currentList)
                 return
@@ -1608,6 +1624,13 @@ class ChatViewModel @Inject constructor(
 
         // Проверка дубликата
         if (currentList.any { (it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM) && it.messageId == msg.id }) {
+            return
+        }
+
+        // The cached live tail can be far beyond a search window; keep its paging boundary.
+        if (deferLiveTail) {
+            messageNavigator.deferLiveMessage()
+            hasMoreMessagesDown = true
             return
         }
 
@@ -1683,6 +1706,9 @@ class ChatViewModel @Inject constructor(
         }
         if (removed) {
             submitItems(currentList)
+        }
+        messageNavigator.pending?.takeIf { it.messageId == messageId }?.let {
+            failMessageNavigation(it, MessageTargetMissingException())
         }
     }
 
@@ -1767,33 +1793,31 @@ class ChatViewModel @Inject constructor(
      * Кнопка «вниз»: подтягивает последние сообщения с сервера, если локальный хвост протух.
      * Вызывается из Activity параллельно с плавным скроллом (UX-тайминг остаётся в Activity).
      */
-    suspend fun refreshLatestMessages() {
-        if (isLoadingMessages) return
+    suspend fun refreshLatestMessages(): Boolean {
+        if (isLoadingMessages || messageNavigator.pending != null) return false
+        val version = timelineLoadVersion
         val serverLastMessageId = messageGateway.chatInfo(chatId).getOrNull()?.lastMessageId ?: 0L
-        if (serverLastMessageId <= 0L || serverLastMessageId == lastVisibleMessageId) return
-
+        if (version != timelineLoadVersion || messageNavigator.pending != null) return false
+        if (serverLastMessageId <= 0L || serverLastMessageId == lastVisibleMessageId) return true
+        val tailVersion = messageNavigator.liveTailVersion
         setLoading(true)
-        hasMoreMessagesDown = false
-        val result = messageGateway.loadMessages(
-            chatId = chatId,
-            fromMessageId = 0L,
-            offsetBefore = 0,
-            offsetAfter = 0,
-            count = PAGE_SIZE
-        )
-        setLoading(false)
-
-        if (result.isSuccess) {
-            val messages = result.getOrNull()!!
-            displayMessages(messages)
-            if (messages.isNotEmpty()) {
-                val sorted = messages.sortedBy { it.sentAt.seconds }
-                firstVisibleMessageId = sorted.first().id
-                lastVisibleMessageId = sorted.last().id
+        try {
+            val result = messageGateway.loadMessages(chatId, fromMessageId = 0L, count = PAGE_SIZE)
+            if (version != timelineLoadVersion || messageNavigator.pending != null) return false
+            if (result.isSuccess) {
+                val messages = result.getOrThrow()
+                displayMessages(messages)
+                val sorted = messages.sortedWith(messageChronologicalOrder)
+                firstVisibleMessageId = sorted.firstOrNull()?.id ?: 0L
+                lastVisibleMessageId = sorted.lastOrNull()?.id ?: 0L
+                hasMoreMessagesUp = messages.size >= PAGE_SIZE
+                hasMoreMessagesDown = messageNavigator.hasUnloadedTailSince(tailVersion)
+                isAnchoredTimeline = hasMoreMessagesDown
+                markVisibleMessagesAsRead(messages)
             }
-            hasMoreMessagesUp = messages.size >= 15
-            hasMoreMessagesDown = false
-            markVisibleMessagesAsRead(messages)
+            return result.isSuccess
+        } finally {
+            if (version == timelineLoadVersion) setLoading(false)
         }
     }
 
