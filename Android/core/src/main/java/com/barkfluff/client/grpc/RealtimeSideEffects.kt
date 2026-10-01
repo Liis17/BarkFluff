@@ -15,7 +15,7 @@ interface RealtimeSideEffects {
     fun onChatChanged(chatId: String)
 
     /** Сообщения чата прочитаны — убрать уведомления чата из шторки. */
-    fun dismissChatNotifications(chatId: String)
+    fun dismissChatNotifications(chatId: String, messageId: Long = 0)
 
     /**
      * Показать уведомление о новом входящем сообщении.
@@ -23,4 +23,13 @@ interface RealtimeSideEffects {
      * не своё ли сообщение), резолвит отправителя и грузит аватар/превью.
      */
     suspend fun showMessageNotification(event: UpdatesApiOuterClass.NewMessageEvent)
+
+    /** Metadata-only markers: the app must not decrypt message contents to display them. */
+    suspend fun showPrivateMessageNotification(
+        chatId: String, messageId: Long, senderUserId: Long, expectedScopeId: String? = null
+    ) {}
+
+    suspend fun showSecretMessageNotification(
+        messageId: String, senderUserId: Long, senderDeviceId: String, expectedScopeId: String? = null
+    ) {}
 }

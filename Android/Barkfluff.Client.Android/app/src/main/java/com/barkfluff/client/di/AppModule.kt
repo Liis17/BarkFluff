@@ -242,7 +242,8 @@ object AppModule {
         @ApplicationContext context: Context,
         userProfileGateway: UserProfileGateway,
         fileMediaGateway: FileMediaGateway,
-    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, userProfileGateway, fileMediaGateway)
+        secretChatRepository: SecretChatRepository,
+    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, userProfileGateway, fileMediaGateway, secretChatRepository)
 
     @Provides
     @Singleton

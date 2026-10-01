@@ -9,12 +9,15 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
+import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.grpc.RealtimeSideEffects
+import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.widget.WidgetUpdater
 import java.util.concurrent.ConcurrentHashMap
+import java.util.UUID
 
 /**
  * App-реализация [RealtimeSideEffects]: уведомления о новых сообщениях ([NotificationHelper]),
@@ -26,21 +29,23 @@ class RealtimeSideEffectsImpl(
     private val context: Context,
     private val userProfileGateway: UserProfileGateway,
     private val fileMediaGateway: FileMediaGateway,
+    private val secretChatRepository: SecretChatRepository,
 ) : RealtimeSideEffects {
 
     private val globalParam = GlobalParam(context)
-    private val userInfoCache = ConcurrentHashMap<Long, CachedUserInfo>()
+    private val userInfoCache = ConcurrentHashMap<Pair<String, Long>, CachedUserInfo>()
 
     override fun onChatChanged(chatId: String) {
         WidgetUpdater.scheduleRefreshForChat(context, chatId)
     }
 
-    override fun dismissChatNotifications(chatId: String) {
-        NotificationHelper.dismissForChat(context, chatId)
+    override fun dismissChatNotifications(chatId: String, messageId: Long) {
+        NotificationHelper.dismissForChat(context, chatId, messageId)
     }
 
     override suspend fun showMessageNotification(event: UpdatesApiOuterClass.NewMessageEvent) {
         if (!globalParam.notificationsEnabled) return
+        val scopeId = CacheScope.from(globalParam)?.id ?: return
 
         val msg = event.message ?: return
         val senderId = msg.senderId
@@ -48,13 +53,14 @@ class RealtimeSideEffectsImpl(
 
         val chatId = event.chatId
         // Чат открыт — не показываем уведомление
-        if (OpenChatManager.isOpen(chatId)) return
+        if (OpenChatManager.isOpen(chatId) || chatId in globalParam.mutedChatIds) return
 
         val messageId = msg.id
         val messageText = msg.content?.text ?: ""
 
         // Инфо об отправителе (cache first)
-        val userInfo = userInfoCache[senderId] ?: run {
+        val userKey = scopeId to senderId
+        val userInfo = userInfoCache[userKey] ?: run {
             val result = userProfileGateway.user(senderId)
             if (result.isFailure) {
                 Log.w(TAG, "Failed to get user data for notification: senderId=$senderId")
@@ -69,7 +75,7 @@ class RealtimeSideEffectsImpl(
                 user.profilePicturePreviewUrl,
                 user.profilePictureUrl
             )
-            userInfoCache[senderId] = info
+            userInfoCache[userKey] = info
             info
         }
 
@@ -110,7 +116,34 @@ class RealtimeSideEffectsImpl(
             avatarBitmap,
             chatId,
             messageId,
-            imageBitmap
+            imageBitmap,
+            expectedScopeId = scopeId
+        )
+    }
+
+    override suspend fun showPrivateMessageNotification(chatId: String, messageId: Long, senderUserId: Long, expectedScopeId: String?) {
+        val scopeId = expectedScopeId ?: CacheScope.from(globalParam)?.id ?: return
+        if (CacheScope.from(globalParam)?.id != scopeId) return
+        if (!globalParam.notificationsEnabled || senderUserId <= 0 || senderUserId == globalParam.userId ||
+            chatId.isBlank() || messageId <= 0 || chatId in globalParam.mutedChatIds || OpenChatManager.isOpen(chatId)) return
+        NotificationHelper.showEncryptedMessageNotification(
+            context, NotificationHelper.KIND_PRIVATE, chatId, messageId.toString(), expectedScopeId = scopeId
+        )
+    }
+
+    override suspend fun showSecretMessageNotification(messageId: String, senderUserId: Long, senderDeviceId: String, expectedScopeId: String?) {
+        val scopeId = expectedScopeId ?: CacheScope.from(globalParam)?.id ?: return
+        if (CacheScope.from(globalParam)?.id != scopeId) return
+        if (!globalParam.notificationsEnabled || senderUserId <= 0) return
+        val eventId = runCatching { UUID.fromString(messageId).toString() }.getOrNull() ?: return
+        val deviceId = runCatching { UUID.fromString(senderDeviceId).toString() }.getOrNull() ?: return
+        if (senderUserId == globalParam.userId && deviceId.equals(globalParam.deviceId, ignoreCase = true)) return
+        val chat = secretChatRepository.findByPeer(senderUserId, deviceId)
+        if (chat != null && (chat.id in globalParam.mutedChatIds || OpenChatManager.isOpen(chat.id))) return
+        val threadId = "$senderUserId:$deviceId"
+        NotificationHelper.showEncryptedMessageNotification(
+            context, NotificationHelper.KIND_SECRET, threadId, eventId, chatId = chat?.id ?: threadId,
+            expectedScopeId = scopeId
         )
     }
 
