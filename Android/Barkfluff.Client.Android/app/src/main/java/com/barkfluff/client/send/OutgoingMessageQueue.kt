@@ -194,6 +194,13 @@ class OutgoingMessageQueue(
         wake()
     }
 
+    /** The network returned: sends waiting out a backoff retry now instead of when it expires. */
+    suspend fun retryAfterNetworkReturn() {
+        val scope = currentScopeOrNull() ?: return
+        cache.clearOutgoingBackoff(scope, System.currentTimeMillis())
+        wake()
+    }
+
     suspend fun cancelAllForCurrentScope() {
         val scope = currentScopeOrNull() ?: return
         val now = System.currentTimeMillis()

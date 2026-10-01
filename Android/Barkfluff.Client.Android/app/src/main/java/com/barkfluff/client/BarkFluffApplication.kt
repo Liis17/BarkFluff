@@ -93,7 +93,7 @@ class BarkFluffApplication : Application() {
             autoDownloadNetworkState.available(network)
             applicationScope.launch(Dispatchers.IO) {
                 chatDraftRepository.flushAll()
-                outgoingMessageQueue.resume()
+                outgoingMessageQueue.retryAfterNetworkReturn()
             }
         }
 

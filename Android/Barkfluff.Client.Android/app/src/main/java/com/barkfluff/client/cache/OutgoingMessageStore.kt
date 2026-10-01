@@ -221,6 +221,13 @@ interface OutgoingMessageDao {
         sendingState: String
     ): Long?
 
+    @Query("""
+        UPDATE outgoing_messages
+        SET nextAttemptAtMillis = 0
+        WHERE scopeId = :scopeId AND state = :queuedState AND nextAttemptAtMillis > :nowMillis
+    """)
+    suspend fun clearBackoff(scopeId: String, queuedState: String, nowMillis: Long): Int
+
     @Query("SELECT * FROM outgoing_messages WHERE scopeId = :scopeId AND state = :sentState AND createdAtMillis < :beforeMillis")
     suspend fun oldSent(scopeId: String, sentState: String, beforeMillis: Long): List<OutgoingMessageEntity>
 

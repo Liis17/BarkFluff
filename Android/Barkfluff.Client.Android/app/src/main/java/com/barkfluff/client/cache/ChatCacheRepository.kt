@@ -655,6 +655,10 @@ class ChatCacheRepository(context: Context) {
         )
     }
 
+    suspend fun clearOutgoingBackoff(scope: CacheScope, nowMillis: Long) = withContext(Dispatchers.IO) {
+        database().outgoingDao().clearBackoff(scope.id, OutgoingMessageState.QUEUED.name, nowMillis)
+    }
+
     suspend fun oldSentOutgoing(scope: CacheScope, beforeMillis: Long): List<OutgoingMessageRecord> =
         withContext(Dispatchers.IO) {
             val dao = database().outgoingDao()
