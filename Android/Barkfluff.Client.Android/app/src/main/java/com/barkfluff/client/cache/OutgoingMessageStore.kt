@@ -242,6 +242,28 @@ interface OutgoingMessageDao {
         cancelledState: String,
     ): Int
 
+    /**
+     * Unlike [activeHandoffs] this also counts SENT rows (kept for a day), so it needs the text and
+     * reply to pin the exact draft: journal generations restart from 1 once an entry is removed.
+     */
+    @Query("""
+        SELECT COUNT(*) FROM outgoing_messages
+        WHERE scopeId = :scopeId
+          AND chatId = :chatId
+          AND draftGeneration = :generation
+          AND text = :text
+          AND replyToMessageId = :replyToMessageId
+          AND state != :cancelledState
+    """)
+    suspend fun draftHandoffs(
+        scopeId: String,
+        chatId: String,
+        generation: Long,
+        text: String,
+        replyToMessageId: Long,
+        cancelledState: String,
+    ): Int
+
     @Query("DELETE FROM outgoing_messages WHERE scopeId = :scopeId AND state = :stagingState")
     suspend fun deleteStaging(scopeId: String, stagingState: String): Int
 

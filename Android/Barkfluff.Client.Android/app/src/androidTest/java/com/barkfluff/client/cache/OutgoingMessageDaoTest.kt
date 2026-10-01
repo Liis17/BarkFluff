@@ -80,6 +80,30 @@ class OutgoingMessageDaoTest {
         assertEquals(1, dao.ready("other-account", 100, 50).size)
     }
 
+    @Test
+    fun draftHandoffCountsSentRowsButOnlyForTheSameDraft() = runBlocking {
+        val dao = database.outgoingDao()
+        dao.upsertMessage(message("sent", "chat-a", 10).copy(
+            text = "hello", draftGeneration = 3, state = OutgoingMessageState.SENT.name
+        ))
+        dao.upsertMessage(message("cancelled", "chat-a", 20).copy(
+            text = "bye", draftGeneration = 5, state = OutgoingMessageState.CANCEL_REQUESTED.name
+        ))
+
+        assertEquals(1, draftHandoffs("chat-a", 3, "hello"))
+        // Generations restart from 1 after a draft entry is removed, so a reused number alone is not a match.
+        assertEquals(0, draftHandoffs("chat-a", 3, "hello again"))
+        assertEquals(0, draftHandoffs("chat-a", 4, "hello"))
+        assertEquals(0, draftHandoffs("chat-a", 3, "hello", replyToMessageId = 42))
+        assertEquals(0, draftHandoffs("chat-b", 3, "hello"))
+        assertEquals(0, draftHandoffs("chat-a", 5, "bye"))
+    }
+
+    private suspend fun draftHandoffs(chatId: String, generation: Long, text: String, replyToMessageId: Long = 0) =
+        database.outgoingDao().draftHandoffs(
+            SCOPE, chatId, generation, text, replyToMessageId, OutgoingMessageState.CANCEL_REQUESTED.name
+        )
+
     private fun message(operationId: String, chatId: String, createdAtMillis: Long) = OutgoingMessageEntity(
         scopeId = SCOPE,
         operationId = operationId,

@@ -58,6 +58,28 @@ class OutgoingMessageQueueTest {
     }
 
     @Test
+    fun draftHandoffHoldsFromAcceptanceThroughDeliveryAndEndsOnCancel() = runBlocking {
+        val queue = application.outgoingMessageQueue
+        val operationId = queue.enqueue(
+            SendJob(chatId = "chat", chatTitle = "Chat", text = "offline text", attachments = emptyList(), draftGeneration = 7L)
+        ).single()
+
+        assertTrue(queue.hasDraftHandoff("chat", 7L, "offline text", 0L))
+        assertFalse(queue.hasDraftHandoff("chat", 7L, "newer text", 0L))
+        assertFalse(queue.hasDraftHandoff("chat", 8L, "offline text", 0L))
+
+        // The worker may deliver while the chat is closed; the unacknowledged draft must still be recognised.
+        val record = application.chatCacheRepository.outgoing(scope(), operationId)!!
+        application.chatCacheRepository.saveOutgoing(
+            scope(), record.copy(state = com.barkfluff.client.cache.OutgoingMessageState.SENT)
+        )
+        assertTrue(queue.hasDraftHandoff("chat", 7L, "offline text", 0L))
+
+        queue.cancel(operationId)
+        assertFalse(queue.hasDraftHandoff("chat", 7L, "offline text", 0L))
+    }
+
+    @Test
     fun notificationReplyAndReadAreDurableBeforeAcceptanceAndCancelOnlyDeletesSend() = runBlocking {
         val operationId = enqueueReply()
         val record = application.chatCacheRepository.outgoing(scope(), operationId)!!

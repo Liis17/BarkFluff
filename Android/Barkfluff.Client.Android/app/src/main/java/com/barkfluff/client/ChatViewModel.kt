@@ -1313,6 +1313,10 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val draft = chatDraftRepository.restore(chatId) ?: return@launch
+                // The journal keeps a sent draft until SENT; an outbox bubble already shows its text.
+                if (outgoingMessageQueue.hasDraftHandoff(chatId, draft.generation, draft.text, draft.replyToMessageId)) {
+                    return@launch
+                }
                 _uiState.value = _uiState.value.copy(
                     composer = _uiState.value.composer.copy(
                         text = draft.text,
