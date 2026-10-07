@@ -55,6 +55,8 @@
             margin-bottom: 12px;
         }
         .actions-row .spacer { flex: 1; }
+        .remote-quick-action { display: inline-flex; align-items: center; gap: 2px; }
+        .remote-quick-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
         .panel {
             background: var(--md-surface-container-lowest);
@@ -322,6 +324,23 @@
     </div>
 </div>
 
+<div id="quickActionDialogScrim" class="md-scrim" onclick="if(event.target===this)closeDialog('quickActionDialogScrim')">
+    <form class="md-dialog md-dialog-lg" id="quickActionForm">
+        <div class="md-dialog-header"><h3 id="quickActionDialogTitle">Добавить SSH-действие</h3></div>
+        <div class="md-dialog-body" style="display:grid;gap:12px;">
+            <input class="md-input-outlined" id="quickActionName" placeholder="Название действия" maxlength="80" required>
+            <label for="quickActionCommands" style="font-size:13px;color:var(--md-on-surface-variant);">Команды выполняются по порядку, по одной на строку</label>
+            <textarea class="md-input-outlined" id="quickActionCommands" rows="10" maxlength="10000" placeholder="docker ps -a&#10;uptime" required style="resize:vertical;padding:12px;font-family:'Roboto Mono',monospace;"></textarea>
+            <div style="font-size:12px;color:var(--md-on-surface-variant);">При запуске откроется SSH-консоль выбранного сервера, и команды отправятся сразу после подключения.</div>
+            <div id="quickActionDialogError" style="display:none;color:var(--md-error);font-size:13px;"></div>
+        </div>
+        <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" onclick="closeDialog('quickActionDialogScrim')">Отмена</button>
+            <button class="md-btn md-btn-filled" id="saveQuickActionBtn" type="submit">Сохранить</button>
+        </div>
+    </form>
+</div>
+
 <div id="consoleDialogScrim" class="md-scrim" onclick="if(event.target===this)closeConsoleDialog()">
     <div class="md-dialog md-dialog-xl remote-console-dialog">
         <div class="md-dialog-header">
@@ -384,7 +403,7 @@
 <script src="assets/api.js?v=6"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
-<script src="assets/terminal.js?v=1"></script>
+<script src="assets/terminal.js?v=2"></script>
 <script>
     let servicesData = [];
     let branchesByContainer = {};
@@ -917,9 +936,12 @@
 
     // ---- Remote servers ----
     let remoteServers = [];
+    let remoteQuickActions = {};
     let activeTab = 'barkfluff';
     let editingServerId = null;
     let containerServerId = null;
+    let quickActionServerId = null;
+    let editingQuickActionId = null;
     let consoleSocket = null;
     let consoleRenderer = null;
     const consoleReadyMessage = '\u0000barkfluff:console-ready\u0000';
@@ -936,7 +958,10 @@
         document.querySelectorAll('[data-server-tab]').forEach(tab => tab.classList.toggle('active', tab.dataset.serverTab === id));
         document.getElementById('panel-barkfluff').style.display = id === 'barkfluff' ? '' : 'none';
         document.querySelectorAll('.remote-server-panel').forEach(panel => panel.style.display = panel.dataset.serverId === id ? '' : 'none');
-        if (id !== 'barkfluff') loadRemoteContainers(id);
+        if (id !== 'barkfluff') {
+            loadRemoteContainers(id);
+            loadRemoteQuickActions(id);
+        }
     }
 
     async function loadRemoteServers(selectServerId = null) {
@@ -948,6 +973,7 @@
         }
         try {
             remoteServers = await BF.request('/api/remote/servers', { errorToast: false });
+            remoteQuickActions = {};
             renderRemoteServers();
             const selected = selectServerId || (activeTab !== 'barkfluff' && remoteServers.some(s => s.id === activeTab) ? activeTab : 'barkfluff');
             switchTab(selected);
@@ -973,7 +999,9 @@
                 </div>
                 <div class="actions-row">
                     ${canManage ? `<button class="md-btn md-btn-tonal md-btn-xs" onclick="openContainerDialog('${server.id}')">${bfIcon('add', 'size-18')}Добавить контейнер</button>
-                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openConsoleDialog('${server.id}')">${bfIcon('terminal', 'size-18')}Открыть консоль</button>` : ''}
+                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openConsoleDialog('${server.id}')">${bfIcon('terminal', 'size-18')}Открыть консоль</button>
+                    <button class="md-btn md-btn-tonal md-btn-xs" onclick="openQuickActionDialog('${server.id}')">${bfIcon('add', 'size-18')}Добавить SSH-действие</button>` : ''}
+                    <div class="remote-quick-actions" id="remoteQuickActions-${server.id}"></div>
                     <div class="spacer"></div>
                     ${canManage ? `<button class="md-icon-btn" title="Изменить сервер" onclick="openServerDialog('${server.id}')">${bfIcon('edit')}</button>
                     <button class="md-icon-btn" title="Удалить сервер" onclick="deleteServer('${server.id}')">${bfIcon('delete')}</button>` : ''}
@@ -984,6 +1012,32 @@
                     <tbody id="remote-${server.id}-body"><tr><td colspan="3" class="empty-cell">Загрузка...</td></tr></tbody></table>
                 </div>
             </div>`).join('');
+    }
+
+    async function loadRemoteQuickActions(serverId) {
+        const container = document.getElementById(`remoteQuickActions-${serverId}`);
+        if (!container) return;
+        try {
+            remoteQuickActions[serverId] = await BF.request(`/api/remote/servers/${serverId}/quick-actions`, { errorToast: false });
+            renderRemoteQuickActions(serverId);
+        } catch (e) {
+            container.textContent = '';
+            showNotification('error', 'Не удалось загрузить SSH-действия: ' + e.message);
+        }
+    }
+
+    function renderRemoteQuickActions(serverId) {
+        const container = document.getElementById(`remoteQuickActions-${serverId}`);
+        if (!container) return;
+        const actions = remoteQuickActions[serverId] || [];
+        const canRun = BF.can('remote.console');
+        const canManage = BF.can('remote.servers');
+        container.innerHTML = actions.map(action => `
+            <span class="remote-quick-action">
+                ${canRun ? `<button class="md-btn md-btn-tonal md-btn-xs" title="Выполнить SSH-действие" onclick="runQuickAction('${serverId}','${action.id}')">${bfIcon('terminal', 'size-18')}${escapeHtml(action.name)}</button>` : ''}
+                ${canManage ? `<button class="md-icon-btn" title="Изменить SSH-действие" onclick="openQuickActionDialog('${serverId}','${action.id}')">${bfIcon('edit')}</button>
+                <button class="md-icon-btn" title="Удалить SSH-действие" onclick="deleteQuickAction('${serverId}','${action.id}')">${bfIcon('delete')}</button>` : ''}
+            </span>`).join('');
     }
 
     async function loadRemoteContainers(serverId) {
@@ -1101,7 +1155,62 @@
         } catch (e) { showDialogError('containerDialogError', e.message); }
     }
 
-    async function openConsoleDialog(serverId) {
+    function openQuickActionDialog(serverId, actionId = null) {
+        quickActionServerId = serverId;
+        editingQuickActionId = actionId;
+        const action = actionId ? (remoteQuickActions[serverId] || []).find(item => item.id === actionId) : null;
+        if (actionId && !action) return;
+
+        document.getElementById('quickActionDialogTitle').textContent = action ? 'Изменить SSH-действие' : 'Добавить SSH-действие';
+        document.getElementById('quickActionName').value = action?.name || '';
+        document.getElementById('quickActionCommands').value = action?.commands || '';
+        hideDialogError('quickActionDialogError');
+        document.getElementById('quickActionDialogScrim').classList.add('open');
+    }
+
+    async function saveQuickAction(event) {
+        event.preventDefault();
+        const request = {
+            name: document.getElementById('quickActionName').value,
+            commands: document.getElementById('quickActionCommands').value
+        };
+        const isEditing = editingQuickActionId !== null;
+        const url = isEditing
+            ? `/api/remote/servers/${quickActionServerId}/quick-actions/${editingQuickActionId}`
+            : `/api/remote/servers/${quickActionServerId}/quick-actions`;
+        const button = document.getElementById('saveQuickActionBtn');
+        try {
+            await BF.request(url, {
+                method: isEditing ? 'PUT' : 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(request),
+                loading: button,
+                errorToast: false
+            });
+            closeDialog('quickActionDialogScrim');
+            showNotification('success', 'SSH-действие сохранено');
+            await loadRemoteQuickActions(quickActionServerId);
+        } catch (e) {
+            showDialogError('quickActionDialogError', e.message);
+        }
+    }
+
+    async function deleteQuickAction(serverId, actionId) {
+        const action = (remoteQuickActions[serverId] || []).find(item => item.id === actionId);
+        if (!action || !confirm(`Удалить SSH-действие «${action.name}»?`)) return;
+        try {
+            await BF.request(`/api/remote/servers/${serverId}/quick-actions/${actionId}`, { method:'DELETE', errorToast:false });
+            showNotification('success', 'SSH-действие удалено');
+            await loadRemoteQuickActions(serverId);
+        } catch (e) { showNotification('error', 'Не удалось удалить SSH-действие: ' + e.message); }
+    }
+
+    function runQuickAction(serverId, actionId) {
+        const action = (remoteQuickActions[serverId] || []).find(item => item.id === actionId);
+        if (action) openConsoleDialog(serverId, action.commands);
+    }
+
+    async function openConsoleDialog(serverId, initialCommands = null) {
         const server = remoteServers.find(item => item.id === serverId);
         if (!server) return;
 
@@ -1140,6 +1249,10 @@
             if (event.data === consoleReadyMessage) {
                 setConsoleStatus('Подключено', 'md-status-success');
                 setConsoleInputEnabled(true);
+                if (initialCommands !== null) {
+                    const commands = initialCommands.replace(/\r\n?/g, '\n').replace(/\n/g, '\r');
+                    socket.send(commands.endsWith('\r') ? commands : commands + '\r');
+                }
                 document.getElementById('consoleInput').focus();
                 return;
             }
@@ -1232,6 +1345,7 @@
     function hideDialogError(id) { document.getElementById(id).style.display = 'none'; }
 
     document.getElementById('serverForm').addEventListener('submit', saveServer);
+    document.getElementById('quickActionForm').addEventListener('submit', saveQuickAction);
     document.getElementById('consoleInputForm').addEventListener('submit', sendConsoleCommand);
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
@@ -1249,7 +1363,10 @@
     document.addEventListener('bf:roles', () => {
         applyPermissions();
         if (servicesData.length) renderServicesTable();
-        if (remoteServers.length) renderRemoteServers();
+        if (remoteServers.length) {
+            renderRemoteServers();
+            if (activeTab !== 'barkfluff') loadRemoteQuickActions(activeTab);
+        }
     });
 
     (async function () {

@@ -9,7 +9,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -59,6 +61,9 @@ class WelcomeActivity : AppCompatActivity() {
         binding = ActivityWelcomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        applyAdaptiveContentWidth()
+        configureFeatureChipsAccessibility()
+
         // Edge-to-edge: инсеты вешаем на contentPanel, а не на android.R.id.content.
         // Иначе весь корень уезжает вниз, над ним остаётся полоса windowBackground другого
         // цвета, а декоративные круги обрезаются по нижней границе статус-бара.
@@ -72,6 +77,41 @@ class WelcomeActivity : AppCompatActivity() {
         }
 
         setupClickListeners()
+    }
+
+    /**
+     * На compact-экранах сохраняем full-width композицию макета 1c.
+     * В окнах Medium/Expanded ограничиваем ширину контента и центрируем его,
+     * чтобы CTA и hero не растягивались на всю ширину планшета или landscape-окна.
+     */
+    private fun applyAdaptiveContentWidth() {
+        if (resources.configuration.screenWidthDp < MEDIUM_WINDOW_MIN_WIDTH_DP) return
+
+        val sideMarginPx = resources.getDimensionPixelSize(R.dimen.welcome_medium_window_margin)
+        val maxContentWidthPx = resources.getDimensionPixelSize(R.dimen.welcome_content_max_width)
+        val availableWidthPx = resources.configuration.screenWidthDp.dpToPx()
+        val contentWidthPx = minOf(maxContentWidthPx, availableWidthPx - sideMarginPx * 2)
+        if (contentWidthPx <= 0) return
+
+        val layoutParams = binding.contentPanel.layoutParams as? FrameLayout.LayoutParams
+            ?: return
+        layoutParams.width = contentWidthPx
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL
+        binding.contentPanel.layoutParams = layoutParams
+    }
+
+    /**
+     * Feature-чипы — информационные метки, а не действия. Оставляем их
+     * узлами TalkBack для чтения, но убираем лишний keyboard focus, который
+     * Material Chip может включить после инфлейта.
+     */
+    private fun configureFeatureChipsAccessibility() {
+        listOf(binding.chipFast, binding.chipPrivate, binding.chipOwnPack).forEach { chip ->
+            chip.isClickable = false
+            chip.isFocusable = false
+            chip.isFocusableInTouchMode = false
+            chip.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
     }
 
     /**
@@ -208,6 +248,8 @@ class WelcomeActivity : AppCompatActivity() {
     private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
     companion object {
+        private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
+
         /** Отступ hero-блока от статус-бара; складывается с системным инсетом. */
         private const val WELCOME_TOP_PADDING_DP = 24
         private const val WELCOME_BOTTOM_PADDING_DP = 24

@@ -134,6 +134,38 @@ public class SeqService
     }
 
     /// <summary>
+    /// Processes every matching event page-by-page without retaining the full result set.
+    /// Returns false when a page cannot be read or decoded completely.
+    /// </summary>
+    public async Task<bool> ProcessAllEventsAsync(
+        Action<JsonElement> processEvent,
+        string? filter = null,
+        DateTime? fromDateUtc = null,
+        DateTime? toDateUtc = null)
+    {
+        const int pageSize = 500;
+        string? afterId = null;
+
+        while (true)
+        {
+            var result = await GetEventsAsync(filter, pageSize, fromDateUtc, afterId, toDateUtc);
+            if (result is null) return false;
+
+            var pageEvents = ExtractEventsArray(result.Value);
+            if (pageEvents is null) return false;
+
+            foreach (var evt in pageEvents)
+                processEvent(evt);
+
+            if (pageEvents.Count < pageSize) return true;
+
+            var nextAfterId = GetEventId(pageEvents[^1]);
+            if (string.IsNullOrEmpty(nextAfterId) || nextAfterId == afterId) return false;
+            afterId = nextAfterId;
+        }
+    }
+
+    /// <summary>
     /// Extracts events array from Seq response, handling both formats:
     /// bare array [...] and wrapped {"Events": [...]}.
     /// </summary>

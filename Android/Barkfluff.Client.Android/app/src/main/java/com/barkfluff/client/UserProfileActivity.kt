@@ -5,6 +5,10 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
+import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
+import com.barkfluff.client.adapter.FileMediaAttachmentLoader
 import android.util.Log
 import android.view.View
 import android.widget.TextView
@@ -53,11 +57,14 @@ import java.util.Locale
 @AndroidEntryPoint
 class UserProfileActivity : AppCompatActivity() {
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     private lateinit var binding: ActivityUserProfileBinding
     private lateinit var globalParam: GlobalParam
 
     @javax.inject.Inject lateinit var callGateway: CallGateway
     @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
+    @javax.inject.Inject lateinit var autoDownloadNetwork: AutoDownloadNetworkState
     @javax.inject.Inject lateinit var messageGateway: MessageGateway
     @javax.inject.Inject lateinit var presenceGateway: PresenceGateway
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
@@ -318,6 +325,16 @@ class UserProfileActivity : AppCompatActivity() {
     ): AttachmentsPanel {
         lateinit var adapter: AttachmentPreviewAdapter
         adapter = AttachmentPreviewAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = chatTitle,
+            playbackIsGroupChat = isGroupChat,
+            playbackOtherUserId = otherUserId,
+            resolveSender = { userId ->
+                userProfileGateway.user(userId).getOrNull()?.let { user ->
+                    listOf(user.firstName, user.lastName).filter(String::isNotBlank).joinToString(" ").ifBlank { user.username }
+                }
+            },
             getFileUrl = { fileId -> fileMediaGateway.downloadUrl(fileId).getOrNull() },
             onAttachmentClick = { attachmentInfo ->
                 val att = attachmentInfo.attachment
@@ -384,7 +401,8 @@ class UserProfileActivity : AppCompatActivity() {
             downloadToCache = { fileId ->
                 FileCache.getFile(fileId) ?: fileMediaGateway.download(fileId)
             },
-            scope = lifecycleScope
+            scope = lifecycleScope,
+            autoDownloadViews = AttachmentAutoDownloadViews(FileMediaAttachmentLoader(fileMediaGateway), this, autoDownloadSettings, autoDownloadNetwork),
         )
         recyclerView.adapter = adapter
         return AttachmentsPanel(container, loading, recyclerView, empty, adapter)
@@ -739,6 +757,9 @@ class UserProfileActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        binding.mediaAttachmentsRecyclerView.adapter = null
+        binding.filesAttachmentsRecyclerView.adapter = null
+        binding.voiceAttachmentsRecyclerView.adapter = null
         fileSearchJob?.cancel()
         super.onDestroy()
     }

@@ -7,8 +7,16 @@ import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.shared.Shared
 import barkfluff.updates.UpdatesApiOuterClass
 import barkfluff.users.UsersApiOuterClass
-import com.barkfluff.client.domain.model.AuthenticationResult
-import com.barkfluff.client.domain.model.AuthResult
+import com.barkfluff.client.domain.model.AuthenticationCapabilities
+import com.barkfluff.client.domain.model.AuthenticationChallenge
+import com.barkfluff.client.domain.model.AuthenticationChallengeReference
+import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.domain.model.RegistrationRequest
+import com.barkfluff.client.domain.model.SecuritySettings
+import com.barkfluff.client.domain.model.SecuritySettingsUpdate
+import com.barkfluff.client.domain.model.SignInRequest
+import com.barkfluff.client.domain.model.OtpEnrollment
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatInfo
 import com.barkfluff.client.domain.model.ChatMember
@@ -19,11 +27,7 @@ import com.barkfluff.client.domain.model.PinnedMessagePage
 import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.domain.model.UserProfile
 import com.barkfluff.client.domain.model.UserPresence
-import com.barkfluff.client.domain.model.ConfirmAccountResult
-import com.barkfluff.client.domain.model.ConfirmResetPasswordResult
 import com.barkfluff.client.domain.model.InvalidOldPasswordException
-import com.barkfluff.client.domain.model.OtpSetupResult
-import com.barkfluff.client.domain.model.OtpStatus
 import com.barkfluff.client.domain.model.PrivateChatCreateResult
 import com.barkfluff.client.domain.model.SecretInviteSent
 import com.barkfluff.client.domain.model.SecretMessageSent
@@ -56,25 +60,66 @@ interface ServerDiscoveryGateway {
 }
 
 interface AuthGateway {
-    suspend fun authenticate(
-        email: String?,
-        username: String?,
-        password: String,
-        otpCode: String?,
-    ): AuthenticationResult
-
     suspend fun ensureValid(forceRefresh: Boolean = false): Boolean
     suspend fun refresh(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<com.barkfluff.client.grpc.TokenRefreshResult>
     suspend fun logout(): Result<Unit>
     fun createIdentity(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit>
 }
 
-interface AccountSecurityGateway {
-    suspend fun register(firstName: String, lastName: String, email: String, login: String): Result<String>
-    suspend fun resetPassword(email: String?, username: String?): Result<String>
-    suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult>
-    suspend fun confirmResetPassword(resetId: String, code: String): Result<ConfirmResetPasswordResult>
-    suspend fun setPasswordAfterReset(newPassword: String): Result<Unit>
+/**
+ * Current Identity authentication contract. Challenge references and security proofs are opaque
+ * and must be held by the caller in memory only.
+ */
+interface AuthenticationChallengeGateway {
+    suspend fun capabilities(): Result<AuthenticationCapabilities>
+    suspend fun beginRegistration(request: RegistrationRequest): Result<AuthenticationChallenge>
+    suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge>
+    suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+    suspend fun completeChallenge(
+        reference: AuthenticationChallengeReference,
+        code: String = "",
+        useRecoveryCode: Boolean = false,
+    ): Result<AuthenticationCompletion>
+    suspend fun cancelChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+    suspend fun resendChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+
+    suspend fun securitySettings(): Result<SecuritySettings>
+    suspend fun beginReauthentication(
+        password: String,
+        factor: AuthenticationFactor,
+        useRecoveryCode: Boolean,
+    ): Result<AuthenticationChallenge>
+    suspend fun updateSecuritySettings(
+        securityProof: AuthenticationChallengeReference,
+        update: SecuritySettingsUpdate,
+    ): Result<SecuritySettings>
+    suspend fun beginTelegramBinding(securityProof: AuthenticationChallengeReference): Result<AuthenticationChallenge>
+    suspend fun unlinkTelegram(
+        securityProof: AuthenticationChallengeReference,
+        update: SecuritySettingsUpdate,
+    ): Result<SecuritySettings>
+    suspend fun beginEmailBinding(
+        securityProof: AuthenticationChallengeReference,
+        email: String,
+    ): Result<AuthenticationChallenge>
+    suspend fun generateRecoveryCodes(securityProof: AuthenticationChallengeReference): Result<List<String>>
+    suspend fun beginPasswordRecovery(login: String): Result<AuthenticationChallenge>
+    suspend fun setRecoveredPassword(
+        securityProof: AuthenticationChallengeReference,
+        password: String,
+    ): Result<Unit>
+    suspend fun enableOtpVerification(
+        factor: AuthenticationFactor,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<OtpEnrollment>
+    suspend fun confirmOtpVerification(
+        code: String,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<List<String>>
+    suspend fun disableOtpVerification(
+        factor: AuthenticationFactor,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<Unit>
 }
 
 interface UserProfileGateway {
@@ -93,11 +138,6 @@ interface UserProfileGateway {
     suspend fun renameDevice(deviceId: String, customName: String): Result<Unit>
     suspend fun removeActiveSession(deviceId: String): Result<Unit>
     suspend fun password(password: String): Result<Unit>
-    suspend fun otpSetup(): Result<OtpSetupResult>
-    suspend fun confirmOtpSetup(code: String): Result<Unit>
-    suspend fun otpStatus(): Result<OtpStatus>
-    suspend fun enableOtpEmail(): Result<Unit>
-    suspend fun disableOtp(type: barkfluff.identity.IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit>
     suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit>
     suspend fun storageInfo(): Result<StorageInfo>
 }
@@ -136,6 +176,10 @@ interface ChatDirectoryGateway {
     suspend fun removeMember(chatId: String, userId: Long): Result<Unit>
     suspend fun createGroup(userIds: List<Long>, title: String, pictureFileId: String? = null): Result<ChatSummary>
     suspend fun updateGroup(chatId: String, title: String? = null, pictureFileId: String? = null): Result<ChatSummary>
+}
+
+interface MessageSearchGateway {
+    suspend fun search(query: com.barkfluff.client.domain.model.MessageSearchQuery): Result<com.barkfluff.client.domain.model.MessageSearchPage>
 }
 
 interface MessageGateway {
@@ -188,6 +232,7 @@ interface FileMediaGateway {
     suspend fun upload(bytes: ByteArray, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String>
     suspend fun upload(file: File, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String>
     suspend fun download(fileId: String, onProgress: (Int) -> Unit = {}): File?
+    suspend fun downloadAuto(fileId: String, maxBytes: Long, onProgress: (Int) -> Unit = {}): File?
 }
 
 interface StickerGateway {

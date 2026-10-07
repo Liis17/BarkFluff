@@ -29,6 +29,9 @@ service UpdatesApi {
   // Подписаться на события открепления всех сообщений в чате
   rpc SubscribeAllMessagesUnpinned(SubscribeAllMessagesUnpinnedRequest) returns (stream AllMessagesUnpinnedEvent);
 
+  // Подписаться на скрытие/удаление чатов (DeleteChat) на всех своих устройствах
+  rpc SubscribeChatHidden(SubscribeChatHiddenRequest) returns (stream ChatHiddenEvent);
+
   // -- Приватные чаты (user-scoped: получают все устройства пользователя) -----
 
   // Новые сообщения в приватных чатах (шифротекст; расшифровка только клиентом со знанием passphrase)
@@ -82,6 +85,16 @@ message SubscribeMessagesPinnedRequest { }
 message SubscribeMessagesUnpinnedRequest { }
 
 message SubscribeAllMessagesUnpinnedRequest { }
+
+message SubscribeChatHiddenRequest { }
+
+message ChatHiddenEvent {
+  string chat_id = 1; // Идентификатор скрытого/удалённого чата
+
+  // true, если вместе со скрытием был стёрт контент всех сообщений чата
+  // (delete_for_everyone) — клиент должен очистить локальный кеш сообщений.
+  bool content_wiped = 2;
+}
 
 message NewMessageEvent {
   barkfluff.shared.Message message = 1; //Отправленное сообщение

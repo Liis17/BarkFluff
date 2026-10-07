@@ -456,6 +456,7 @@
             });
             if (encryptedMessage.senderId !== deps.getMyUserId()) {
                 BF.api.markPrivateMessagesAsRead(chatId, encryptedMessage.id).catch(function () {});
+                if (deps.announceIncoming) deps.announceIncoming(message);
             }
         });
     }

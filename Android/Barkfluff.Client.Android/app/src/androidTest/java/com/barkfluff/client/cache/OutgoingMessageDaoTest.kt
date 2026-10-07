@@ -66,6 +66,62 @@ class OutgoingMessageDaoTest {
         assertEquals(12_345L, wakeAt)
     }
 
+    @Test
+    fun readsAreScopedAndKeepTheirRetryWhenDuplicateIsInserted() = runBlocking {
+        val dao = database.pendingReadDao()
+        dao.insert(PendingMessageReadEntity(SCOPE, 42, "chat", 2, 100))
+        dao.insert(PendingMessageReadEntity(SCOPE, 42, "chat"))
+        dao.insert(PendingMessageReadEntity("other-account", 43, "chat"))
+        assertEquals(emptyList<PendingMessageReadEntity>(), dao.ready(SCOPE, 99, 50))
+        assertEquals(2, dao.ready(SCOPE, 100, 50).single().attemptCount)
+        assertEquals(100L, dao.nextWakeAt(SCOPE))
+        dao.clear(SCOPE)
+        assertEquals(null, dao.nextWakeAt(SCOPE))
+        assertEquals(1, dao.ready("other-account", 100, 50).size)
+    }
+
+    @Test
+    fun clearBackoffMakesOnlyWaitingQueuedRowsReadyNow() = runBlocking {
+        val dao = database.outgoingDao()
+        dao.upsertMessage(message("waiting", "chat-a", 10).copy(nextAttemptAtMillis = 900))
+        dao.upsertMessage(message("due", "chat-b", 20).copy(nextAttemptAtMillis = 50))
+        dao.upsertMessage(message("failed", "chat-c", 30).copy(
+            state = OutgoingMessageState.FAILED.name, nextAttemptAtMillis = 900
+        ))
+        dao.upsertMessage(message("other-account", "chat-d", 40).copy(scopeId = "other", nextAttemptAtMillis = 900))
+
+        assertEquals(1, dao.clearBackoff(SCOPE, OutgoingMessageState.QUEUED.name, nowMillis = 100))
+
+        assertEquals(0L, dao.message(SCOPE, "waiting")!!.nextAttemptAtMillis)
+        assertEquals(50L, dao.message(SCOPE, "due")!!.nextAttemptAtMillis)
+        assertEquals(900L, dao.message(SCOPE, "failed")!!.nextAttemptAtMillis)
+        assertEquals(900L, dao.message("other", "other-account")!!.nextAttemptAtMillis)
+    }
+
+    @Test
+    fun draftHandoffCountsSentRowsButOnlyForTheSameDraft() = runBlocking {
+        val dao = database.outgoingDao()
+        dao.upsertMessage(message("sent", "chat-a", 10).copy(
+            text = "hello", draftGeneration = 3, state = OutgoingMessageState.SENT.name
+        ))
+        dao.upsertMessage(message("cancelled", "chat-a", 20).copy(
+            text = "bye", draftGeneration = 5, state = OutgoingMessageState.CANCEL_REQUESTED.name
+        ))
+
+        assertEquals(1, draftHandoffs("chat-a", 3, "hello"))
+        // Generations restart from 1 after a draft entry is removed, so a reused number alone is not a match.
+        assertEquals(0, draftHandoffs("chat-a", 3, "hello again"))
+        assertEquals(0, draftHandoffs("chat-a", 4, "hello"))
+        assertEquals(0, draftHandoffs("chat-a", 3, "hello", replyToMessageId = 42))
+        assertEquals(0, draftHandoffs("chat-b", 3, "hello"))
+        assertEquals(0, draftHandoffs("chat-a", 5, "bye"))
+    }
+
+    private suspend fun draftHandoffs(chatId: String, generation: Long, text: String, replyToMessageId: Long = 0) =
+        database.outgoingDao().draftHandoffs(
+            SCOPE, chatId, generation, text, replyToMessageId, OutgoingMessageState.CANCEL_REQUESTED.name
+        )
+
     private fun message(operationId: String, chatId: String, createdAtMillis: Long) = OutgoingMessageEntity(
         scopeId = SCOPE,
         operationId = operationId,

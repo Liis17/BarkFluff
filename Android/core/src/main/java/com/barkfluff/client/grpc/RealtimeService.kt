@@ -319,7 +319,7 @@ class RealtimeService(
             // Если текущий пользователь в списке прочитавших — убираем уведомление из шторки
             val uid = globalParam.userId
             if (uid > 0 && event.newReadByList.contains(uid)) {
-                sideEffects?.dismissChatNotifications(event.chatId)
+                sideEffects?.dismissChatNotifications(event.chatId, event.messageId)
                 sideEffects?.onChatChanged(event.chatId)
             }
         }
@@ -384,6 +384,13 @@ class RealtimeService(
         client.subscribePrivateMessages(request).collect { event ->
             Log.v(TAG, "Private encrypted msg received: chatId=${event.chatId}, msgId=${event.message.id}")
             _privateMessages.emit(event)
+            try {
+                sideEffects?.showPrivateMessageNotification(event.chatId, event.message.id, event.message.senderId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Private notification dispatch error: ${e::class.java.simpleName}")
+            }
         }
     }
 
@@ -458,6 +465,15 @@ class RealtimeService(
         client.subscribeSecretMessages(request).collect { event ->
             Log.v(TAG, "Secret envelope received: msgId=${event.envelope.messageId}")
             _secretMessages.emit(event)
+            try {
+                sideEffects?.showSecretMessageNotification(
+                    event.envelope.messageId, event.envelope.senderUserId, event.envelope.senderDeviceId
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Secret notification dispatch error: ${e::class.java.simpleName}")
+            }
         }
     }
 

@@ -24,6 +24,11 @@ public class EmailQueueConsumer : IConsumer<EmailNotification>
     {
         _metrics.Increment("rabbitmq_events_consumed");
         var notification = context.Message;
+        if (!_emailSender.Enabled || string.IsNullOrWhiteSpace(notification.Address))
+        {
+            _metrics.Increment("emails_skipped");
+            return;
+        }
 
         _logger.LogInformation(
             "Получено уведомление для отправки email. Адрес: {Email}, Тип: {Type}, Заголовок: '{Title}'",

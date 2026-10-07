@@ -142,12 +142,22 @@ public sealed class SettingsSetupCoordinator
                 && bool.TryParse(enabledValue, out var requestedFederationEnabled))
                 federationEnabled = requestedFederationEnabled;
 
+            var emailEnabled = IsEmailEnabled(current);
+            var telegramEnabled = IsTelegramEnabled(current);
+            foreach (var (fieldId, rawValue) in values)
+            {
+                if (bool.TryParse(rawValue, out var enabled))
+                {
+                    if (knownIds[fieldId].StorageKey == "Email:Enabled") emailEnabled = enabled;
+                    if (knownIds[fieldId].StorageKey == "TelegramAuth:Enabled") telegramEnabled = enabled;
+                }
+            }
+
             var changed = 0;
             foreach (var (fieldId, rawValue) in values)
             {
                 var entry = knownIds[fieldId];
-                if (entry.Setup!.Requirement == SetupRequirement.FederationEnabled && !federationEnabled
-                    && entry.StorageKey != "Federation:Enabled")
+                if (!SettingsSetupMetadata.IsApplicable(entry.Setup!.Requirement, federationEnabled, emailEnabled, telegramEnabled))
                     continue;
 
                 var scope = SettingsScopes.Get(entry.ServiceId);
@@ -253,6 +263,8 @@ public sealed class SettingsSetupCoordinator
     private SetupSnapshot BuildSnapshot(IReadOnlyDictionary<(ServiceId ServiceId, string StorageKey), string> values)
     {
         var federationEnabled = IsFederationEnabled(values);
+        var emailEnabled = IsEmailEnabled(values);
+        var telegramEnabled = IsTelegramEnabled(values);
         var groups = SettingsSetupMetadata.Groups
             .OrderBy(group => group.Order)
             .Select(group =>
@@ -261,7 +273,7 @@ public sealed class SettingsSetupCoordinator
                 var fields = SettingsCatalog.All
                     .Where(entry => entry.Setup?.GroupId == group.Id)
                     .OrderBy(entry => entry.Setup!.Order)
-                    .Select(entry => BuildFieldSnapshot(entry, values, federationEnabled, applicable))
+                    .Select(entry => BuildFieldSnapshot(entry, values, federationEnabled, applicable, emailEnabled, telegramEnabled))
                     .ToArray();
                 var complete = !applicable || fields.All(field =>
                     !field.Applicable || (field.Error is null && (!field.Required || field.Configured)));
@@ -281,16 +293,18 @@ public sealed class SettingsSetupCoordinator
         SettingsCatalogEntry entry,
         IReadOnlyDictionary<(ServiceId ServiceId, string StorageKey), string> values,
         bool federationEnabled,
-        bool groupApplicable)
+        bool groupApplicable, bool emailEnabled, bool telegramEnabled)
     {
         var metadata = entry.Setup!;
         var value = values.GetValueOrDefault((entry.ServiceId, entry.StorageKey), string.Empty);
         var applicable = (metadata.Requirement is SetupRequirement.None || groupApplicable)
-            && SettingsSetupMetadata.IsApplicable(metadata.Requirement, federationEnabled);
+            && SettingsSetupMetadata.IsApplicable(metadata.Requirement, federationEnabled, emailEnabled, telegramEnabled);
         var required = applicable && metadata.Requirement is not SetupRequirement.None;
         var validation = string.IsNullOrEmpty(value) && !required
             ? SetupValidationResult.Success(value)
             : SettingsSetupValidation.Validate(entry, value, value);
+        if (entry.StorageKey == "TelegramAuth:Enabled" && !emailEnabled && !telegramEnabled)
+            validation = SetupValidationResult.Failure("Включите почту или Telegram для подтверждения регистрации.");
         var configured = !string.IsNullOrWhiteSpace(value);
         return new SetupFieldSnapshot(
             SettingsSetupMetadata.GetFieldId(entry),
@@ -324,6 +338,12 @@ public sealed class SettingsSetupCoordinator
 
         return result;
     }
+
+    internal static bool IsEmailEnabled(IReadOnlyDictionary<(ServiceId ServiceId, string StorageKey), string> values) =>
+        !values.TryGetValue((ServiceId.Unknown, "Email:Enabled"), out var value) || !bool.TryParse(value, out var enabled) || enabled;
+
+    internal static bool IsTelegramEnabled(IReadOnlyDictionary<(ServiceId ServiceId, string StorageKey), string> values) =>
+        values.TryGetValue((ServiceId.Identity, "TelegramAuth:Enabled"), out var value) && bool.TryParse(value, out var enabled) && enabled;
 
     private static bool IsFederationEnabled(IReadOnlyDictionary<(ServiceId ServiceId, string StorageKey), string> values) =>
         values.TryGetValue((ServiceId.Federation, "Federation:Enabled"), out var value)

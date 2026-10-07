@@ -116,6 +116,8 @@ android {
         }
     }
 
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+
     /**
      * Каналы обновлений. Каждый — отдельный applicationId, поэтому сборки разных каналов
      * ставятся на устройство рядом. Стабильный канал называется stable, а не release:
@@ -252,6 +254,7 @@ dependencies {
 
     // Image loading and caching
     implementation("io.coil-kt:coil:2.7.0")
+    implementation("io.coil-kt:coil-gif:2.7.0")
     implementation("io.coil-kt:coil-video:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
@@ -261,6 +264,7 @@ dependencies {
 
     // ExoPlayer for video/audio playback
     implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-session:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
 
     // Media3 Transformer + Effects for video transcoding (480p compress + trim)
@@ -315,4 +319,11 @@ dependencies {
     androidTestImplementation("androidx.work:work-testing:2.9.1")
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    systemProperty(
+        "androidUiCheckerScript",
+        rootProject.file("tools/check_android_ui.py").absolutePath,
+    )
 }

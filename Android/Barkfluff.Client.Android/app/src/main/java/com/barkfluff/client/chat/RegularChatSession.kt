@@ -54,9 +54,10 @@ class RegularChatSession(
         chatId: String,
         beforeMessageId: Long,
         pageSize: Int = 30,
+        preferCache: Boolean = true,
     ): Result<Page> {
         if (beforeMessageId <= 0L) return Result.success(Page(emptyList(), false, false, true))
-        val cached = scope?.let { cache.messagesBefore(it, chatId, beforeMessageId, pageSize) }.orEmpty()
+        val cached = if (preferCache) scope?.let { cache.messagesBefore(it, chatId, beforeMessageId, pageSize) }.orEmpty() else emptyList()
         if (cached.isNotEmpty()) {
             return Result.success(Page(cached, cached.size >= pageSize, hasMoreAfter = true, fromCache = true))
         }
@@ -71,9 +72,10 @@ class RegularChatSession(
         chatId: String,
         afterMessageId: Long,
         pageSize: Int = 30,
+        preferCache: Boolean = true,
     ): Result<Page> {
         if (afterMessageId <= 0L) return Result.success(Page(emptyList(), false, false, true))
-        val cached = scope?.let { cache.messagesAfter(it, chatId, afterMessageId, pageSize) }.orEmpty()
+        val cached = if (preferCache) scope?.let { cache.messagesAfter(it, chatId, afterMessageId, pageSize) }.orEmpty() else emptyList()
         if (cached.isNotEmpty()) {
             return Result.success(Page(cached, hasMoreBefore = true, hasMoreAfter = cached.size >= pageSize, fromCache = true))
         }

@@ -221,6 +221,13 @@ interface OutgoingMessageDao {
         sendingState: String
     ): Long?
 
+    @Query("""
+        UPDATE outgoing_messages
+        SET nextAttemptAtMillis = 0
+        WHERE scopeId = :scopeId AND state = :queuedState AND nextAttemptAtMillis > :nowMillis
+    """)
+    suspend fun clearBackoff(scopeId: String, queuedState: String, nowMillis: Long): Int
+
     @Query("SELECT * FROM outgoing_messages WHERE scopeId = :scopeId AND state = :sentState AND createdAtMillis < :beforeMillis")
     suspend fun oldSent(scopeId: String, sentState: String, beforeMillis: Long): List<OutgoingMessageEntity>
 
@@ -239,6 +246,28 @@ interface OutgoingMessageDao {
         chatId: String,
         generation: Long,
         sentState: String,
+        cancelledState: String,
+    ): Int
+
+    /**
+     * Unlike [activeHandoffs] this also counts SENT rows (kept for a day), so it needs the text and
+     * reply to pin the exact draft: journal generations restart from 1 once an entry is removed.
+     */
+    @Query("""
+        SELECT COUNT(*) FROM outgoing_messages
+        WHERE scopeId = :scopeId
+          AND chatId = :chatId
+          AND draftGeneration = :generation
+          AND text = :text
+          AND replyToMessageId = :replyToMessageId
+          AND state != :cancelledState
+    """)
+    suspend fun draftHandoffs(
+        scopeId: String,
+        chatId: String,
+        generation: Long,
+        text: String,
+        replyToMessageId: Long,
         cancelledState: String,
     ): Int
 

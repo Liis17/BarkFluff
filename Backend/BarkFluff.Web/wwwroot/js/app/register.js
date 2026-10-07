@@ -1,15 +1,4 @@
-/**
- * Multi-step registration wizard for the login page (index.html).
- * Mirrors the 9-step flow of the mobile/desktop clients (Android RegisterActivity,
- * macOS/iOS RegisterView).
- *
- * Requires: barkfluff.bundle.js (window.barkfluff / window.proto), BF.metadata, BF.tokens, BF.device, BF.network
- * Exposes: BF.register
- *
- * Auth model (mirrors auth.js): dedicated gRPC-Web clients, metadata built manually.
- *   Steps 2–4 are anonymous (no token); after ConfirmAccount+CreateToken the access
- *   token is saved into BF.tokens and used for steps 5–9.
- */
+/* Registration wizard: collect a password, confirm email/Telegram, then finish the profile. */
 (function () {
     'use strict';
 
@@ -17,7 +6,6 @@
 
     var bf = window.barkfluff;
 
-    var identPb = function () { return window.proto.barkfluff.identity; };
     var usrPb = function () { return window.proto.barkfluff.users; };
     var filePb = function () { return window.proto.barkfluff.files; };
 
@@ -50,18 +38,16 @@
         });
     }
 
-    var identityClient = lazyClient('identity');
     var usersClient = lazyClient('users');
     var filesClient = lazyClient('files');
 
-    var ERROR_CODES = {
-        INVALID_OTP: '803B632C-4457-4B05-9435-9C3DD0F41E00',
-        INVALID_USERNAME_FORMAT: 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47'
-    };
-
-    var TOTAL_STEPS = 9;
+    var TOTAL_STEPS = 8;
+    var STEP_ORDER = [1, 2, 3, 5, 6, 7, 8, 9];
+    var registrationGeneration = 0;
+    var registrationController = new AbortController();
+    var registrationChannelReady = false;
     var STEP_TITLE_KEYS = {
-        1: 'register.createAccount', 2: 'register.username', 3: 'register.email',
+        1: 'register.createAccount', 2: 'register.username', 3: 'security.confirmation',
         4: 'register.confirmation', 5: 'common.password', 6: 'settings.profilePhoto', 7: 'register.aboutYou',
         8: 'settings.section.security', 9: 'common.done'
     };
@@ -74,22 +60,18 @@
     };
 
     var step = 1;
-    var usernameOk = false;
-    var emailOk = false;
-    var twoFaMode = 'intro'; // 'intro' | 'setup'
-    var resendCooldown = 0;
-    var resendTimer = null;
 
     // ─────────────── gRPC helpers ───────────────
 
     function meta(token) { return BF.metadata.build(token); }
 
     function rpc(method, request, token, policy) {
-        return BF.network.unary(method, request, meta(token), policy || BF.network.POLICIES.MUTATION);
-    }
-
-    function errorCodeOf(err) {
-        return (err && err.metadata && err.metadata['x-error-code']) || null;
+        var generation = registrationGeneration, origin = BF.node.origin();
+        return BF.network.unary(method, request, meta(token), BF.network.withSignal(policy || BF.network.POLICIES.MUTATION, registrationController.signal))
+            .then(function (response) {
+                if (generation !== registrationGeneration || origin !== BF.node.origin()) throw new DOMException('Cancelled', 'AbortError');
+                return response;
+            });
     }
 
     function checkUsername(username) {
@@ -104,56 +86,6 @@
         req.setEmail(email);
         return rpc(usersClient.checkExistEmail, req, null, BF.network.POLICIES.READ)
             .then(function (resp) { return resp.getExist(); });
-    }
-
-    function createAccount() {
-        var req = new (identPb().CreateAccountRequest)();
-        req.setFirstName(state.firstName);
-        req.setLastName(state.lastName);
-        req.setUsername(state.username);
-        req.setEmail(state.email);
-        return rpc(identityClient.createAccount, req).then(function (resp) {
-                state.codeId = resp.getCodeId();
-            });
-    }
-
-    function confirmAccount(code) {
-        var req = new (identPb().ConfirmAccountRequest)();
-        req.setCodeId(state.codeId);
-        req.setCodeValue(code);
-        return rpc(identityClient.confirmAccount, req).then(function (resp) {
-                var rt = resp.getRefreshToken();
-                if (!rt) throw new Error('no_refresh');
-                state.refreshToken = rt.getValue();
-                state.refreshTokenExpiration = rt.getExpirationDate().toDate().getTime();
-
-                // Exchange refresh token for an access token.
-                var treq = new (identPb().CreateTokenRequest)();
-                treq.setRefreshToken(state.refreshToken);
-                return rpc(identityClient.createToken, treq, null, BF.network.POLICIES.REFRESH);
-            }).then(function (tresp) {
-                    if (!tresp) throw new Error('no_token');
-                    var at = tresp.getAccessToken();
-                    if (!at) throw new Error('no_token');
-                    state.accessToken = at.getValue();
-                    state.accessTokenExpiration = at.getExpirationDate().toDate().getTime();
-                    BF.tokens.save({
-                        accessToken: state.accessToken,
-                        accessTokenExpiration: state.accessTokenExpiration,
-                        refreshToken: state.refreshToken,
-                        refreshTokenExpiration: state.refreshTokenExpiration
-                    });
-                    // Первый момент, когда согласие (данное на странице входа) можно
-                    // зафиксировать в профиле: до этого шага токена не было.
-                    BF.legal.flushConsent();
-            });
-    }
-
-    function setPassword(password) {
-        var req = new (identPb().SetPasswordRequest)();
-        req.setPassword(password);
-        req.setOldPassword('');
-        return rpc(identityClient.setPassword, req, state.accessToken).then(function () {});
     }
 
     function uploadAvatar(blob) {
@@ -183,19 +115,6 @@
         var req = new (usrPb().ChangeBioRequest)();
         req.setBio(bio);
         return rpc(usersClient.changeBio, req, state.accessToken).then(function () {});
-    }
-
-    function enable2fa() {
-        var req = new (identPb().EnableOtpVerificationRequest)();
-        req.setOtpType(identPb().OtpTypeId.AUTHENTICATOR);
-        return rpc(identityClient.enableOtpVerification, req, state.accessToken)
-            .then(function (resp) { return { qr: resp.getOtpQr(), secret: resp.getOtpCode() }; });
-    }
-
-    function confirm2fa(code) {
-        var req = new (identPb().ConfirmOtpVerificationRequest)();
-        req.setOtpCode(code);
-        return rpc(identityClient.confirmOtpVerification, req, state.accessToken).then(function () {});
     }
 
     // ─────────────── DOM refs ───────────────
@@ -230,48 +149,6 @@
     function currentStepEl() {
         return dialog.querySelector('.reg-step[data-step="' + step + '"]');
     }
-
-    // ─────────────── OTP input wiring ───────────────
-
-    function wireOtp(container, onComplete) {
-        var inputs = Array.prototype.slice.call(container.querySelectorAll('.otp-input'));
-        inputs.forEach(function (input, index) {
-            input.addEventListener('input', function (e) {
-                var v = e.target.value.replace(/[^0-9]/g, '');
-                e.target.value = v;
-                input.classList.toggle('filled', !!v);
-                if (v) BF.sound.play('tick');
-                if (v && index < inputs.length - 1) inputs[index + 1].focus();
-                var code = inputs.map(function (i) { return i.value; }).join('');
-                if (code.length === inputs.length) onComplete(code);
-            });
-            input.addEventListener('keydown', function (e) {
-                if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                    inputs[index - 1].focus();
-                    inputs[index - 1].value = '';
-                    inputs[index - 1].classList.remove('filled');
-                }
-            });
-            input.addEventListener('paste', function (e) {
-                e.preventDefault();
-                var paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
-                inputs.forEach(function (inp, i) {
-                    if (i < paste.length) { inp.value = paste[i]; inp.classList.add('filled'); }
-                });
-                var next = Math.min(paste.length, inputs.length - 1);
-                inputs[next].focus();
-                var code = inputs.map(function (i) { return i.value; }).join('');
-                if (code.length === inputs.length) onComplete(code);
-            });
-        });
-        return {
-            value: function () { return inputs.map(function (i) { return i.value; }).join(''); },
-            clear: function () { inputs.forEach(function (i) { i.value = ''; i.classList.remove('filled'); }); },
-            focus: function () { if (inputs[0]) inputs[0].focus(); }
-        };
-    }
-
-    var otp4, otp8;
 
     // ─────────────── password strength ───────────────
 
@@ -396,7 +273,6 @@
         canvas.addEventListener('touchend', up);
 
         $('regCropZoom').addEventListener('input', function () {
-            var stage = $('regCropStage');
             var cx = crop.stageW / 2, cy = crop.stageH / 2;
             // keep center anchored while zooming
             var prevEff = crop.baseScale * crop.zoom;
@@ -440,7 +316,6 @@
     function onUsernameInput() {
         var v = $('regUsername').value.toLowerCase();
         if ($('regUsername').value !== v) $('regUsername').value = v;
-        usernameOk = false;
         showFieldError('regUsernameErr', '');
         clearTimeout(usernameDebounce);
         if (!v) { setFieldStatus('regUsernameStatus', ''); return; }
@@ -453,16 +328,13 @@
             checkUsername(v).then(function (exist) {
                 if ($('regUsername').value.toLowerCase() !== v) return;
                 if (exist) {
-                    usernameOk = false;
                     setFieldStatus('regUsernameStatus', 'err');
                     showFieldError('regUsernameErr', BF.i18n.t('register.error.usernameTaken'));
                 } else {
-                    usernameOk = true;
                     setFieldStatus('regUsernameStatus', 'ok');
                 }
             }).catch(function () {
                 // On network error allow proceeding (server validates again on CreateAccount)
-                usernameOk = true;
                 setFieldStatus('regUsernameStatus', '');
             });
         }, 500);
@@ -470,7 +342,6 @@
 
     function onEmailInput() {
         var v = $('regEmail').value.trim().toLowerCase();
-        emailOk = false;
         showFieldError('regEmailErr', '');
         clearTimeout(emailDebounce);
         if (!v) { setFieldStatus('regEmailStatus', ''); return; }
@@ -480,15 +351,12 @@
             checkEmail(v).then(function (exist) {
                 if ($('regEmail').value.trim().toLowerCase() !== v) return;
                 if (exist) {
-                    emailOk = false;
                     setFieldStatus('regEmailStatus', 'err');
                     showFieldError('regEmailErr', BF.i18n.t('register.error.emailTaken'));
                 } else {
-                    emailOk = true;
                     setFieldStatus('regEmailStatus', 'ok');
                 }
             }).catch(function () {
-                emailOk = true;
                 setFieldStatus('regEmailStatus', '');
             });
         }, 500);
@@ -497,15 +365,14 @@
     // ─────────────── navigation ───────────────
 
     function configFooter() {
-        backBtn.hidden = !(step === 2 || step === 3);
+        backBtn.hidden = !(step === 2 || step === 3 || step === 5);
         skipBtn.hidden = !(step === 6 || step === 7 || step === 8);
         var label = BF.i18n.t('common.next.step');
-        if (step === 4 || step === 8) label = BF.i18n.t('common.confirm');
         if (step === 9) label = BF.i18n.t('register.goToChats');
         nextLabel.textContent = label;
-        nextBtn.hidden = (step === 8 && twoFaMode === 'intro');
-        progressBar.style.width = (step / TOTAL_STEPS * 100) + '%';
-        stepLabel.textContent = BF.i18n.t('register.step', { step: step, total: TOTAL_STEPS });
+        nextBtn.hidden = step === 8;
+        progressBar.style.width = ((STEP_ORDER.indexOf(step) + 1) / TOTAL_STEPS * 100) + '%';
+        stepLabel.textContent = BF.i18n.t('register.step', { step: STEP_ORDER.indexOf(step) + 1, total: TOTAL_STEPS });
         titleEl.textContent = BF.i18n.t(STEP_TITLE_KEYS[step]);
         footer.style.display = '';
     }
@@ -522,23 +389,7 @@
 
     function onEnterStep(n) {
         var el = currentStepEl();
-        if (n === 4) {
-            $('regOtpDesc').textContent = BF.i18n.t('register.codeSentTo', { email: state.email });
-            otp4.clear();
-            setTimeout(function () { otp4.focus(); }, 50);
-        } else if (n === 8) {
-            twoFaMode = 'intro';
-            $('reg2faIntro').hidden = false;
-            $('reg2faSetup').hidden = true;
-            var qrImg = $('reg2faQr');
-            qrImg.onload = null;
-            qrImg.classList.remove('visible');
-            qrImg.setAttribute('aria-hidden', 'true');
-            qrImg.hidden = true;
-            qrImg.removeAttribute('src');
-            otp8.clear();
-            configFooter();
-        } else if (n === 9) {
+        if (n === 9) {
             var name = state.firstName + (state.lastName ? ' ' + state.lastName : '');
             $('regCompleteName').textContent = BF.i18n.t('register.welcomeUser', { name: name, username: state.username });
         } else {
@@ -548,22 +399,16 @@
         }
     }
 
-    function fail(msg, fieldErrId) {
-        setLoading(nextBtn, false);
-        if (fieldErrId) showFieldError(fieldErrId, msg);
-    }
-
     function handleNext() {
         clearStepErrors();
         switch (step) {
             case 1: return doStep1();
             case 2: return doStep2();
             case 3: return doStep3();
-            case 4: return doStep4(otp4.value());
             case 5: return doStep5();
             case 6: return doStep6();
             case 7: return doStep7();
-            case 8: return doStep8(otp8.value());
+            case 8: return goToStep(9);
             case 9: window.location.href = '/messenger'; return;
         }
     }
@@ -598,59 +443,35 @@
     }
 
     function doStep3() {
-        var v = $('regEmail').value.trim().toLowerCase();
-        if (!EMAIL_RE.test(v)) return showFieldError('regEmailErr', BF.i18n.t('register.error.badEmail'));
-        state.email = v;
-        setLoading(nextBtn, true);
-        checkEmail(v).then(function (exist) {
-            if (exist) { setLoading(nextBtn, false); return showFieldError('regEmailErr', BF.i18n.t('register.error.emailTaken')); }
-            return createAccount().then(function () {
-                setLoading(nextBtn, false);
-                startResendCooldown();
-                goToStep(4);
-            });
-        }).catch(function (err) {
-            setLoading(nextBtn, false);
-            if (errorCodeOf(err) === ERROR_CODES.INVALID_USERNAME_FORMAT) {
-                goToStep(2);
-                showFieldError('regUsernameErr', BF.i18n.t('profile.username.invalidFormat'));
-            } else {
-                showFieldError('regEmailErr', BF.i18n.t('register.error.createFailed'));
-            }
-        });
+        var channel = Number($('regChannel').value);
+        var email = $('regEmail').value.trim().toLowerCase();
+        if (!registrationChannelReady || $('regChannel').selectedOptions[0].disabled) {
+            return showFieldError('regEmailErr', BF.i18n.t('auth.error.network'));
+        }
+        if (channel === 2 && !EMAIL_RE.test(email)) return showFieldError('regEmailErr', BF.i18n.t('register.error.badEmail'));
+        state.email = channel === 2 ? email : '';
+        goToStep(5);
     }
 
-    function doStep4(code) {
-        if (code.length !== 6) return showFieldError('regOtpErr', BF.i18n.t('auth.error.incompleteCode'));
-        setLoading(nextBtn, true);
-        confirmAccount(code).then(function () {
-            setLoading(nextBtn, false);
-            goToStep(5);
-        }).catch(function (err) {
-            setLoading(nextBtn, false);
-            if (errorCodeOf(err) === ERROR_CODES.INVALID_OTP) {
-                showFieldError('regOtpErr', BF.i18n.t('twofa.error.wrongCode'));
-            } else {
-                showFieldError('regOtpErr', BF.i18n.t('register.error.codeExpired'));
-            }
-            otp4.clear();
-            otp4.focus();
-        });
-    }
-
-    function doStep5() {
-        var pw = $('regPassword').value;
-        var pw2 = $('regPassword2').value;
-        if (pw.length < 8) return showFieldError('regPasswordErr', BF.i18n.t('register.error.min8'));
+    async function doStep5() {
+        var pw = $('regPassword').value, pw2 = $('regPassword2').value;
+        if (pw.length < 8 || new TextEncoder().encode(pw).length > 72) return showFieldError('regPasswordErr', BF.i18n.t('security.passwordLength'));
         if (pw !== pw2) return showFieldError('regPasswordErr', BF.i18n.t('password.error.mismatch'));
+        var origin = BF.node.origin(), generation = registrationGeneration;
         setLoading(nextBtn, true);
-        setPassword(pw).then(function () {
-            setLoading(nextBtn, false);
-            goToStep(6);
-        }).catch(function () {
-            setLoading(nextBtn, false);
-            showFieldError('regPasswordErr', BF.i18n.t('register.error.passwordFailed'));
-        });
+        try {
+            var response = await BF.authUI.run('beginRegistration', 'BeginRegistrationRequest', {
+                username: state.username, firstName: state.firstName, lastName: state.lastName,
+                password: pw, email: state.email, confirmationMethod: Number($('regChannel').value), loginMode: Number($('regLoginMode').value)
+            });
+            if (origin !== BF.node.origin() || generation !== registrationGeneration) return;
+            var session = BF.confirmations.session(response.getSession());
+            Object.assign(state, session); BF.tokens.setTempMode(false); BF.tokens.save(session);
+            $('regPassword').value = ''; $('regPassword2').value = '';
+            BF.legal.flushConsent(); goToStep(6);
+        } catch (error) {
+            if (error.name !== 'AbortError') showFieldError('regPasswordErr', BF.authUI.errorText(error));
+        } finally { setLoading(nextBtn, false); }
     }
 
     function doStep6() {
@@ -682,50 +503,6 @@
         });
     }
 
-    function doStep8(code) {
-        if (twoFaMode !== 'setup') { goToStep(9); return; }
-        if (code.length !== 6) return showFieldError('reg2faErr', BF.i18n.t('auth.error.incompleteCode'));
-        setLoading(nextBtn, true);
-        confirm2fa(code).then(function () {
-            setLoading(nextBtn, false);
-            goToStep(9);
-        }).catch(function () {
-            setLoading(nextBtn, false);
-            showFieldError('reg2faErr', BF.i18n.t('twofa.error.wrongCode'));
-            otp8.clear();
-            otp8.focus();
-        });
-    }
-
-    // ─────────────── resend OTP ───────────────
-
-    function startResendCooldown() {
-        resendCooldown = 60;
-        var btn = $('regOtpResend');
-        if (!btn) return;
-        btn.disabled = true;
-        clearInterval(resendTimer);
-        resendTimer = setInterval(function () {
-            resendCooldown--;
-            if (resendCooldown <= 0) {
-                clearInterval(resendTimer);
-                btn.disabled = false;
-                btn.textContent = BF.i18n.t('register.resendCode');
-            } else {
-                btn.textContent = BF.i18n.t('register.resendIn', { seconds: resendCooldown });
-            }
-        }, 1000);
-    }
-
-    function handleResend() {
-        showFieldError('regOtpErr', '');
-        createAccount().then(function () {
-            startResendCooldown();
-        }).catch(function () {
-            showFieldError('regOtpErr', BF.i18n.t('register.error.resendFailed'));
-        });
-    }
-
     // ─────────────── open / close ───────────────
 
     function resetState() {
@@ -735,11 +512,7 @@
             refreshToken: '', refreshTokenExpiration: 0,
             twoFaSecret: '', avatarBlob: null, avatarFileId: ''
         };
-        usernameOk = false; emailOk = false; twoFaMode = 'intro';
-        clearInterval(resendTimer);
         dialog.querySelectorAll('input.form-input, textarea.form-input').forEach(function (i) { i.value = ''; });
-        if (otp4) otp4.clear();
-        if (otp8) otp8.clear();
         setFieldStatus('regUsernameStatus', '');
         setFieldStatus('regEmailStatus', '');
         var prev = $('regAvatarPreview');
@@ -756,18 +529,46 @@
     }
 
     function open() {
+        registrationGeneration++; registrationController.abort(); registrationController = new AbortController();
+        if (BF.fastAuth) BF.fastAuth.cancel();
         resetState();
+        var generation = registrationGeneration;
+        registrationChannelReady = false;
+        $('regChannel').options[0].disabled = true;
+        $('regChannel').options[1].disabled = true;
+        $('regChannel').value = '2';
+        updateChannel();
+        BF.confirmations.call('getAuthCapabilities', 'GetAuthCapabilitiesRequest', {}, { read: true, signal: registrationController.signal }).then(function (capabilities) {
+            if (generation !== registrationGeneration) return;
+            var emailAvailable = capabilities.getEmailAvailable();
+            var telegramAvailable = capabilities.getTelegramAvailable();
+            $('regChannel').options[0].disabled = !emailAvailable;
+            $('regChannel').options[1].disabled = !telegramAvailable;
+            registrationChannelReady = emailAvailable || telegramAvailable;
+            $('regChannel').value = emailAvailable ? '2' : '3';
+            updateChannel();
+            if (!registrationChannelReady) showFieldError('regEmailErr', BF.i18n.t('auth.error.network'));
+        }).catch(function (error) { if (error.name !== 'AbortError') showFieldError('regEmailErr', BF.authUI.errorText(error)); });
         goToStep(1);
         BF.utils.openOverlay(overlay);
         document.body.style.overflow = 'hidden';
     }
 
     function close() {
-        BF.utils.closeOverlay(overlay);
+        registrationGeneration++; registrationController.abort(); BF.authUI.cancelAll();
+        clearTimeout(usernameDebounce); clearTimeout(emailDebounce);
+        if (overlay) BF.utils.closeOverlay(overlay);
         document.body.style.overflow = '';
     }
 
     // ─────────────── init ───────────────
+
+    function updateChannel() {
+        var telegram = $('regChannel').value === '3';
+        $('regEmail').closest('.form-group').hidden = telegram;
+        $('regLoginMode').querySelector('option[value="2"]').disabled = !telegram;
+        $('regLoginMode').value = telegram ? '3' : '1';
+    }
 
     function init() {
         overlay = $('registerOverlay');
@@ -782,14 +583,12 @@
         stepLabel = $('regStepLabel');
         titleEl = $('regTitle');
 
-        otp4 = wireOtp($('regOtp4'), function () { if (step === 4) doStep4(otp4.value()); });
-        otp8 = wireOtp($('regOtp8'), function () { if (step === 8 && twoFaMode === 'setup') doStep8(otp8.value()); });
 
         var openBtn = $('toRegisterBtn');
         if (openBtn) openBtn.addEventListener('click', open);
 
         $('regClose').addEventListener('click', close);
-        backBtn.addEventListener('click', function () { if (step > 1) goToStep(step - 1); });
+        backBtn.addEventListener('click', function () { if (step > 1) goToStep(STEP_ORDER[STEP_ORDER.indexOf(step) - 1]); });
         skipBtn.addEventListener('click', function () {
             if (step === 6) goToStep(7);
             else if (step === 7) goToStep(8);
@@ -836,53 +635,13 @@
             $('regBioCount').textContent = String(this.value.length);
         });
 
-        // Step 8 2FA
-        $('reg2faEnable').addEventListener('click', function () {
-            var btn = this;
-            setLoading(btn, true);
-            enable2fa().then(function (res) {
-                setLoading(btn, false);
-                state.twoFaSecret = res.secret || '';
-                twoFaMode = 'setup';
-                $('reg2faIntro').hidden = true;
-                $('reg2faSetup').hidden = false;
-                $('reg2faSecret').textContent = res.secret || '';
-                var qrImg = $('reg2faQr');
-                qrImg.classList.remove('visible');
-                qrImg.setAttribute('aria-hidden', 'true');
-                if (res.qr) {
-                    var qrSrc = 'data:image/png;base64,' + res.qr;
-                    qrImg.onload = function () {
-                        if (qrImg.getAttribute('src') !== qrSrc) return;
-                        qrImg.onload = null;
-                        qrImg.classList.add('visible');
-                        qrImg.setAttribute('aria-hidden', 'false');
-                    };
-                    qrImg.hidden = false;
-                    qrImg.src = qrSrc;
-                } else {
-                    qrImg.onload = null;
-                    qrImg.hidden = true;
-                    qrImg.removeAttribute('src');
-                }
-                configFooter();
-                otp8.focus();
-            }).catch(function () {
-                setLoading(btn, false);
-                showFieldError('reg2faErr', BF.i18n.t('register.error.twofaFailed'));
-            });
+        $('regChannel').addEventListener('change', updateChannel);
+        $('reg2faEnable').addEventListener('click', async function () {
+            this.disabled = true;
+            try { await BF.authUI.setupFactor(1); if (!registrationController.signal.aborted) goToStep(9); }
+            catch (error) { if (error.name !== 'AbortError') showFieldError('reg2faErr', BF.authUI.errorText(error)); }
+            finally { this.disabled = false; }
         });
-        $('reg2faCopy').addEventListener('click', function () {
-            if (state.twoFaSecret && navigator.clipboard) {
-                navigator.clipboard.writeText(state.twoFaSecret);
-                this.textContent = BF.i18n.t('common.copied');
-                var self = this;
-                setTimeout(function () { self.textContent = BF.i18n.t('common.copy'); }, 1500);
-            }
-        });
-
-        var resendBtn = $('regOtpResend');
-        if (resendBtn) resendBtn.addEventListener('click', handleResend);
     }
 
     if (document.readyState === 'loading') {

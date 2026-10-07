@@ -22,6 +22,8 @@ public class Program
         builder.SetRunningAddress(builder.Configuration);
         builder.Services.AddBarkFluffMetrics("BarkFluff.Notification");
 
+        if (!builder.Configuration.GetValue("Email:Enabled", true) && string.IsNullOrWhiteSpace(builder.Configuration["Email:Port"]))
+            builder.Configuration["Email:Port"] = "0";
         builder.Services.AddSettings<EmailConfiguration>(builder.Configuration, "Email");
         builder.Services.AddMassTransit(x =>
         {

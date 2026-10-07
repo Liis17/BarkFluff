@@ -67,6 +67,58 @@ public static class RemoteDockerEndpoints
         })
         .RequireStepUp(StepUpActions.RemoteServerDelete, context => $"serverId={context.Request.RouteValues["serverId"]}");
 
+        group.MapGet("/servers/{serverId:guid}/quick-actions", (RemoteDockerService service, Guid serverId) =>
+        {
+            try { return Results.Ok(service.GetQuickActions(serverId)); }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+        });
+
+        group.MapPost("/servers/{serverId:guid}/quick-actions", (RemoteDockerService service, Guid serverId,
+            SaveRemoteSshQuickActionRequest request) =>
+        {
+            try { return Results.Ok(service.CreateQuickAction(serverId, request)); }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+            catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
+        })
+        .RequireStepUpFromArguments(StepUpActions.RemoteQuickActionSave, context =>
+        {
+            var request = context.Arguments.OfType<SaveRemoteSshQuickActionRequest>().FirstOrDefault();
+            var serverId = context.HttpContext.Request.RouteValues["serverId"];
+            return request is null
+                ? $"serverId={serverId}"
+                : $"serverId={serverId};payloadHash={StepUpService.ComputeParamsHash("remote.quick-action", $"{serverId}|{request.Name}|{request.Commands}")}";
+        });
+
+        group.MapPut("/servers/{serverId:guid}/quick-actions/{actionId:guid}", (
+            RemoteDockerService service, Guid serverId, Guid actionId, SaveRemoteSshQuickActionRequest request) =>
+        {
+            try
+            {
+                var action = service.UpdateQuickAction(serverId, actionId, request);
+                return action is null ? Results.NotFound() : Results.Ok(action);
+            }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+            catch (ArgumentException ex) { return Results.BadRequest(new { message = ex.Message }); }
+        })
+        .RequireStepUpFromArguments(StepUpActions.RemoteQuickActionSave, context =>
+        {
+            var request = context.Arguments.OfType<SaveRemoteSshQuickActionRequest>().FirstOrDefault();
+            var serverId = context.HttpContext.Request.RouteValues["serverId"];
+            var actionId = context.HttpContext.Request.RouteValues["actionId"];
+            return request is null
+                ? $"serverId={serverId};actionId={actionId}"
+                : $"serverId={serverId};actionId={actionId};payloadHash={StepUpService.ComputeParamsHash("remote.quick-action", $"{serverId}|{actionId}|{request.Name}|{request.Commands}")}";
+        });
+
+        group.MapDelete("/servers/{serverId:guid}/quick-actions/{actionId:guid}",
+            (RemoteDockerService service, Guid serverId, Guid actionId) =>
+            {
+                try { return service.DeleteQuickAction(serverId, actionId) ? Results.NoContent() : Results.NotFound(); }
+                catch (KeyNotFoundException) { return Results.NotFound(); }
+            })
+            .RequireStepUp(StepUpActions.RemoteQuickActionDelete, context =>
+                $"serverId={context.Request.RouteValues["serverId"]};actionId={context.Request.RouteValues["actionId"]}");
+
         group.MapGet("/servers/{serverId:guid}/discover", async (RemoteDockerService service, Guid serverId,
             CancellationToken cancellationToken) =>
         {

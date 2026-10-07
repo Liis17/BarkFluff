@@ -4,6 +4,7 @@
 
     <!-- Internet permission -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Install APK from unknown sources -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -14,6 +15,7 @@
     <!-- Foreground service for media send queue (compress/upload/send) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <!-- Full storage access for Android 11+ (API 30+) -->
     <uses-permission
@@ -63,6 +65,13 @@
         android:requestLegacyExternalStorage="true"
         android:enableOnBackInvokedCallback="true">
 
+        <service android:name=".audio.VoicePlaybackService"
+            android:exported="true" android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".SplashActivity"
             android:exported="true"
@@ -110,6 +119,7 @@
             android:name=".LoginActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
         <activity
@@ -131,6 +141,13 @@
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait"
             android:launchMode="singleTop" />
+
+        <activity
+            android:name=".ChatSearchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".SearchActivity"
@@ -396,6 +413,10 @@
 
         <receiver
             android:name=".notifications.MarkAsReadReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notifications.NotificationActionReceiver"
             android:exported="false" />
 
         <receiver

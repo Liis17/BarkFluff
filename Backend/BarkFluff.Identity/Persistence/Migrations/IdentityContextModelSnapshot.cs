@@ -17,7 +17,7 @@ namespace BarkFluff.Identity.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -33,8 +33,22 @@ namespace BarkFluff.Identity.Persistence.Migrations
                     b.Property<bool>("EmailOtpEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("FastAuthTelegramEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastEmailAuthCode")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastEmailAuthCodeExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LoginMode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("NotificationChannel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<bool>("OtpEnabled")
                         .HasColumnType("boolean");
@@ -42,15 +56,158 @@ namespace BarkFluff.Identity.Persistence.Migrations
                     b.Property<string>("OtpSecret")
                         .HasColumnType("text");
 
+                    b.Property<int>("PolicyVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PreferredFactor")
+                        .HasColumnType("integer");
+
                     b.Property<int>("SelectedOtpType")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("TelegramEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("TelegramId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("TelegramOtpEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TelegramUsername")
+                        .HasColumnType("text");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TelegramId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
                     b.ToTable("AuthUserProperties");
+                });
+
+            modelBuilder.Entity("BarkFluff.Identity.Domain.AuthenticationChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AppName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AttemptId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CodeHash")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DeviceName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Factor")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("LoginMode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OperationSystem")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PolicyVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ProofConsumed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ProofScope")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("SessionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("TelegramId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TelegramTokenHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TelegramUsername")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("UseRecoveryCode")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttemptId")
+                        .IsUnique();
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TelegramTokenHash")
+                        .IsUnique();
+
+                    b.ToTable("AuthenticationChallenges");
                 });
 
             modelBuilder.Entity("BarkFluff.Identity.Domain.ConfirmationCode", b =>
@@ -75,6 +232,30 @@ namespace BarkFluff.Identity.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ConfirmationCodes");
+                });
+
+            modelBuilder.Entity("BarkFluff.Identity.Domain.RecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Hash")
+                        .IsUnique();
+
+                    b.ToTable("RecoveryCodes");
                 });
 
             modelBuilder.Entity("BarkFluff.Identity.Domain.RefreshToken", b =>
@@ -137,6 +318,22 @@ namespace BarkFluff.Identity.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ResetPasswords");
+                });
+
+            modelBuilder.Entity("BarkFluff.Identity.Domain.TelegramPollingState", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("Offset")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TelegramPollingStates");
                 });
 
             modelBuilder.Entity("BarkFluff.Identity.Domain.UserPassword", b =>

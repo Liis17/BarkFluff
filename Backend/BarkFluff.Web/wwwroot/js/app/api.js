@@ -135,7 +135,8 @@
             // PrivateChatInviteState: 0=PENDING, 1=ACCEPTED, 2=REJECTED
             privateInviteState: ch.getPrivateInviteState ? ch.getPrivateInviteState() : 0,
             privateInviterUserId: ch.getPrivateInviterUserId ? ch.getPrivateInviterUserId() : 0,
-            hasDraft: ch.getHasDraft ? ch.getHasDraft() : false
+            hasDraft: ch.getHasDraft ? ch.getHasDraft() : false,
+            isFederated: ch.getIsFederated ? ch.getIsFederated() : false
         };
     }
 
@@ -401,6 +402,22 @@
         return mutationCall(messages().kickUser.bind(messages()), req);
     }
 
+    // Личный/приватный чат. deleteForEveryone — чекбокс "удалить также для {имя}":
+    // дополнительно стирает контент сообщений у обоих (игнорируется для fed-DM на сервере).
+    function deleteChat(chatId, deleteForEveryone) {
+        var req = new (msgPb().DeleteChatRequest)();
+        req.setChatId(chatId);
+        req.setDeleteForEveryone(!!deleteForEveryone);
+        return mutationCall(messages().deleteChat.bind(messages()), req);
+    }
+
+    // Групповой чат — выход, не затрагивает остальных участников.
+    function leaveChat(chatId) {
+        var req = new (msgPb().LeaveChatRequest)();
+        req.setChatId(chatId);
+        return mutationCall(messages().leaveChat.bind(messages()), req);
+    }
+
     function updateGroupChat(chatId, title, pictureFileId) {
         var req = new (msgPb().UpdateGroupChatRequest)();
         req.setChatId(chatId);
@@ -627,6 +644,29 @@
         req.setPassword(password);
         if (oldPassword) req.setOldPassword(oldPassword);
         return mutationCall(identity().setPassword.bind(identity()), req);
+    }
+
+    function getLoginNotificationSettings() {
+        var req = new (identPb().GetLoginNotificationSettingsRequest)();
+        return readCall(identity().getLoginNotificationSettings.bind(identity()), req).then(function (resp) {
+            return {
+                channel: resp.getChannel(),
+                emailAvailable: resp.getEmailAvailable(),
+                telegramAvailable: resp.getTelegramAvailable()
+            };
+        });
+    }
+
+    function setLoginNotificationChannel(channel) {
+        var req = new (identPb().SetLoginNotificationChannelRequest)();
+        req.setChannel(channel);
+        return mutationCall(identity().setLoginNotificationChannel.bind(identity()), req).then(function (resp) {
+            return {
+                channel: resp.getChannel(),
+                emailAvailable: resp.getEmailAvailable(),
+                telegramAvailable: resp.getTelegramAvailable()
+            };
+        });
     }
 
     // --- User devices / notifications (UsersApi) ---
@@ -1004,6 +1044,8 @@
         listChatMembers: listChatMembers,
         addUser: addUser,
         kickUser: kickUser,
+        deleteChat: deleteChat,
+        leaveChat: leaveChat,
         updateGroupChat: updateGroupChat,
         searchUsers: searchUsers,
         getUser: getUser,
@@ -1030,6 +1072,8 @@
         confirmOtpVerification: confirmOtpVerification,
         disableOtpVerification: disableOtpVerification,
         setPassword: setPassword,
+        getLoginNotificationSettings: getLoginNotificationSettings,
+        setLoginNotificationChannel: setLoginNotificationChannel,
         // User devices / notifications / privacy / personalization
         renameDevice: renameDevice,
         setNotificationsEnabled: setNotificationsEnabled,

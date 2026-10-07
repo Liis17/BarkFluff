@@ -1,5 +1,7 @@
 package com.barkfluff.client.grpc
 
+import io.grpc.Status
+import io.grpc.StatusException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -164,9 +166,63 @@ class GrpcTokenCoordinatorTest {
             nowMillis = { 1_000_000L },
         )
 
+        assertEquals(TokenValidity.REJECTED, coordinator.validity())
         assertFalse(coordinator.ensureValid())
         assertEquals(0, identityCalls)
     }
+
+    @Test
+    fun `unreachable identity is unavailable rather than rejected`() = runBlocking {
+        val coordinator = failingCoordinator(StatusException(Status.UNAVAILABLE))
+
+        assertEquals(TokenValidity.UNAVAILABLE, coordinator.validity())
+        assertFalse(coordinator.ensureValid())
+    }
+
+    @Test
+    fun `a forcefully shut down channel is unavailable`() = runBlocking {
+        val coordinator = failingCoordinator(StatusException(Status.CANCELLED.withDescription("Channel is forcefully shutdown")))
+
+        assertEquals(TokenValidity.UNAVAILABLE, coordinator.validity())
+    }
+
+    @Test
+    fun `a failure without any grpc status is unavailable`() = runBlocking {
+        val coordinator = failingCoordinator(IllegalStateException("Identity клиент не создан"))
+
+        assertEquals(TokenValidity.UNAVAILABLE, coordinator.validity())
+    }
+
+    @Test
+    fun `refresh token refused by identity is rejected even when the transport wraps the status`() = runBlocking {
+        // Identity answers InvalidRefreshTokenException with FAILED_PRECONDITION; the transport wraps it.
+        val wrapped = Exception("Ошибка обновления токена", StatusException(Status.FAILED_PRECONDITION))
+        val coordinator = failingCoordinator(wrapped)
+
+        assertEquals(TokenValidity.REJECTED, coordinator.validity())
+        assertFalse(coordinator.ensureValid())
+    }
+
+    @Test
+    fun `identity client that cannot be created is unavailable and never refreshes`() = runBlocking {
+        var refreshCalls = 0
+        val coordinator = GrpcTokenCoordinator(
+            store = FakeTokenStore("old", 1_000L, "refresh", 3_000_000L),
+            ensureIdentityClient = { false },
+            refreshAccessToken = { _, _ -> refreshCalls += 1; Result.failure(IllegalStateException()) },
+            nowMillis = { 1_000_000L },
+        )
+
+        assertEquals(TokenValidity.UNAVAILABLE, coordinator.validity())
+        assertEquals(0, refreshCalls)
+    }
+
+    private fun failingCoordinator(error: Throwable) = GrpcTokenCoordinator(
+        store = FakeTokenStore("old", 1_000L, "refresh", 3_000_000L),
+        ensureIdentityClient = { true },
+        refreshAccessToken = { _, _ -> Result.failure(error) },
+        nowMillis = { 1_000_000L },
+    )
 
     private fun coordinator(
         store: FakeTokenStore,

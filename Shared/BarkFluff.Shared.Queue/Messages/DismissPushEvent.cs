@@ -9,4 +9,7 @@ public class DismissPushEvent
     public Guid ChatId { get; set; }
 
     public long UserId { get; set; }
+
+    /// <summary>Прочитанная граница; 0 сохраняет legacy отмену всего чата.</summary>
+    public long MessageId { get; set; }
 }

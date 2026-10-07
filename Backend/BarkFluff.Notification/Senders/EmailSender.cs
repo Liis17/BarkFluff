@@ -10,6 +10,7 @@ namespace BarkFluff.Notification.Senders;
 
 public class EmailSender
 {
+    public bool Enabled => _emailConfiguration.Enabled;
     private readonly EmailConfiguration _emailConfiguration;
     private readonly HtmlEmailTemplateParser _templateParser;
     private readonly ILogger<EmailSender> _logger;
@@ -26,6 +27,7 @@ public class EmailSender
 
     public virtual async Task SendEmail(EmailNotification notification)
     {
+        if (!_emailConfiguration.Enabled || string.IsNullOrWhiteSpace(notification.Address)) return;
         _logger.LogInformation(
             "Начало отправки email на {Email} с темой '{Subject}'",
             EmailMasker.Mask(notification.Address),

@@ -34,6 +34,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`) с очисткой `Content.Text` и записей `MessageAttachments`; файлы в [[Backend/Files]] остаются. Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
 | `ListChats` | Список непустых чатов с пагинацией по последнему неудалённому сообщению (`last_message.SentAt DESC`); имена/аватары из Redis или Users API (недостающие добираются одним батч-вызовом `ListByIds`, не GetById на каждый чат). Приватные Pending-чаты видны и приглашённому (по `PrivateUserLowId/HighId`, он ещё не member); Rejected — только инициатору. В proto `Chat.private_inviter_user_id=16` — инициатор инвайта (вычисляется: до Accept единственный реальный member = инициатор), клиент по нему определяет роль |
 | `ListMessages` | Двунаправленная пагинация (до 50 в каждую сторону) |
+| `SearchMessages` | Поиск текста/подписей в доступных обычных чатах: автор (local ID или UUID), UTC-диапазон дат, наличие/типы вложений, cursor-пагинация до 50 результатов |
 | `CreateGroupChat` | Создание группы с системным сообщением |
 | `KickUser` | Исключение с проверкой прав, системное сообщение |
 | `AddUser` | Добавление участника в группу (зеркало `KickUser`): проверка прав по `GroupChatInfo.UsersCanKick`, проверка что не состоит (`UserAlreadyMemberChatException`), системное сообщение, рассылка членам + новому |
@@ -65,9 +66,24 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `SendSecretChatInvite` | Отправить инвайт секретного чата конкретному устройству. Кладёт opaque PreKeySignalMessage в `SecretMessageBuffer.EnqueueInviteAsync` (Redis 24ч), публикует `SecretChatInviteEvent` + silent push. Лимит envelope 32Б-16КиБ |
 | `AcceptSecretChatInvite` | Принять инвайт на устройстве-получателе: атомарно `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=true)` инициатору, опционально вкладывает первое ответное SignalMessage |
 | `RejectSecretChatInvite` | Отклонить инвайт: `ConsumeInviteAsync`, публикует `SecretChatInviteResolutionEvent(accepted=false)` |
-| `SendSecretMessage` | Отправить opaque envelope конкретному устройству через `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч). Публикует `NewSecretMessageEvent` + silent push. Лимит envelope 16Б-16КиБ |
+| `SendSecretMessage` | Отправить opaque envelope конкретному устройству через `SecretMessageBuffer.EnqueueMessageAsync` (Redis 24ч). Публикует `NewSecretMessageEvent`; [[Backend/CloudMessaging]] потребляет его для metadata-only push на конкретное устройство. Лимит envelope 16Б-16КиБ |
 | `AckSecretMessage` | Подтвердить доставку секретного сообщения — `SecretMessageBuffer.AckMessageAsync(deviceId, messageId)`. Idempotent |
 | `GetChatDraft` / `UpsertChatDraft` / `DeleteChatDraft` | Кросс-клиентский черновик обычного чата: текст ≤4096 и выбранный reply. Хранится по `(ChatId, UserId)`; Upsert создаёт новую revision, Delete удаляет только совпавшую версию после отправки. Private/Secret исключены |
+
+### Поиск сообщений
+
+`MessagesApi.SearchMessages` → `Features/SearchMessages/SearchMessagesQueryHandler` → `MessagesStorage.SearchMessages`. Поиск глобальный по чатам вызывающего пользователя, включая группы; членство и `ChatType.Regular` ограничивают SQL-выборку до пагинации. Скрытый через `DeleteChat` диалог исключён, пока после `HiddenAt` не появилось новое сообщение, как в `ListChats`. Soft-deleted и системные сообщения исключены.
+
+- Текст: буквальная подстрока `Content_Text` без учёта регистра (`ILIKE` с escaping `%`, `_`, `\\`), максимум 256 символов. Пустой текст разрешён при заданном фильтре. Сохранённый текст пересылки и её вложенные медиа не входят в этот поиск; Private/Secret plaintext серверу недоступен.
+- Фильтры автора: `author_user_id` либо `author_user_uuid` (oneof), даты — `[sent_from, sent_before)`, типы вложений — OR между выбранными типами, остальные условия — AND. Presence относится к файлам/медиа самого сообщения, без `FORWARDED_MESSAGE`/`UNKNOWN`; «без вложений» несовместимо с выбранными типами.
+- Сортировка `SentAt DESC, Id DESC`; курсор хранит точный Timestamp и ID последней показанной строки. Выборка читает одну дополнительную строку для `next_cursor`, без дорогого общего count. Default page size 30, максимум 50.
+- Метаданные чатов получают одним SQL-батчем, имена локальных/remote-авторов и DM-собеседников — максимум двумя вызовами [[Backend/Users]] (`ListByIds`, `GetUsersByUuid`). Нет N+1; CancellationToken передаётся из gRPC до EF и S2S.
+- Миграция `AddMessageSearchIndexes`: `pg_trgm`, частичный GIN `IX_Messages_Content_Text_Search` по неудалённым несистемным сообщениям, индекс членства `(UserId, ChatId)`. Оба индекса создаются concurrently.
+- Контекст найденного сообщения загружается через `ListMessages`. `GetChatMessagesWithOffset` сравнивает и сортирует пары `(SentAt, Id)` в обе стороны: сообщения с одинаковым Timestamp больше не теряются рядом с якорем. PostgreSQL-тест проверяет обе стороны такого окна.
+- Локальная проверка `EXPLAIN ANALYZE` на искусственной истории из 150 000 сообщений / 300 чатов подтвердила использование нового GIN-индекса и индекса членства для поиска буквальной подстроки. Для фильтра «без вложений» отдельный PostgreSQL-тест проверяет запрос без текста и исключение direct-медиа при наличии пересланных снимков.
+- Тесты: `Features/SearchMessages` и `Host/MessagesApiServiceTests`; реальные PostgreSQL-проверки `Persistence/SearchMessagesPostgresTests` включаются переменной `BARKFLUFF_SEARCH_POSTGRES` (временная БД, право CREATE DATABASE). Проверяют кириллицу, literal wildcards, доступ/hidden/delete/type, совместные фильтры, remote UUID, точные даты и курсор при одинаковом времени.
+
+См. [[Shared/Proto]] и [[Клиенты/Android]].
 
 ### gRPC-сервисы
 
@@ -97,16 +113,16 @@ docker-compose -f docker-compose-dev.yml up -d messages
 - `MessagePinnedEvent` → [[Backend/Updates]] (PinMessage)
 - `MessageUnpinnedEvent` → [[Backend/Updates]] (UnpinMessage; также при DeleteMessage если сообщение было закреплено)
 - `AllMessagesUnpinnedEvent` → [[Backend/Updates]] (UnpinAll)
-- `NewEncryptedMessageEvent` → [[Backend/Updates]] (SendPrivateMessage; user-scope)
+- `NewEncryptedMessageEvent` → [[Backend/Updates]] + [[Backend/CloudMessaging]] (SendPrivateMessage; user-scope)
 - `EncryptedMessageEditedEvent` → [[Backend/Updates]] (EditPrivateMessage; user-scope)
 - `EncryptedMessageDeletedEvent` → [[Backend/Updates]] (DeletePrivateMessage; user-scope)
 - `PrivateMessagesReadEvent` → [[Backend/Updates]] (MarkPrivateMessagesAsRead; user-scope)
 - `PrivateChatInviteEvent` → [[Backend/Updates]] (CreatePrivateChat; адресовано приглашённому)
 - `PrivateChatInviteResolutionEvent` → [[Backend/Updates]] (AcceptPrivateChat / RejectPrivateChat; адресовано инициатору)
-- `NewSecretMessageEvent` → [[Backend/Updates]] (SendSecretMessage; **device-scope**)
+- `NewSecretMessageEvent` → [[Backend/Updates]] + [[Backend/CloudMessaging]] (SendSecretMessage; **device-scope**)
 - `SecretChatInviteEvent` → [[Backend/Updates]] (SendSecretChatInvite; **device-scope**)
 - `SecretChatInviteResolutionEvent` → [[Backend/Updates]] (Accept/Reject секретного инвайта; **device-scope** инициатора)
-- `PushNotificationEvent` → CloudMessaging (silent push при SendSecretChatInvite/SendSecretMessage — без content)
+- `PushNotificationEvent` → CloudMessaging (silent push при SendSecretChatInvite — без content)
 
 **Потребляет:**
 - `user-changed-name-messages` → `UserChangedNameConsumer` → Redis-кеш имён

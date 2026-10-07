@@ -28,19 +28,21 @@ namespace BarkFluff.Identity.Host;
 using Features.ConfirmResetPassword;
 using Features.SetPassword;
 
-public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityApiBase
+public partial class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityApiBase
 {
     private readonly IMediator _mediator;
     private readonly JwtService _jwtService;
     private readonly MetricsCollector _metrics;
     private readonly RequestContext _requestContext;
+    private readonly AuthenticationService? _authentication;
 
-    public IdentityApiService(IMediator mediator, JwtService jwtService, MetricsCollector metrics, RequestContext requestContext)
+    public IdentityApiService(IMediator mediator, JwtService jwtService, MetricsCollector metrics, RequestContext requestContext, AuthenticationService? authentication = null)
     {
         _mediator = mediator;
         _jwtService = jwtService;
         _metrics = metrics;
         _requestContext = requestContext;
+        _authentication = authentication;
     }
 
     public override async Task<AuthResponse> Auth(AuthRequest request, ServerCallContext context)
@@ -76,6 +78,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     public override async Task<CreateAccountResponse> CreateAccount(CreateAccountRequest request, ServerCallContext context)
     {
         _metrics.Increment("account_creation_attempts");
+        _authentication?.RequireEmailDelivery();
 
         var command = new CreateAccountCommand
         {
@@ -121,7 +124,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     }
 
     [Authorize(Policy = nameof(TokenType.User))]
-    public override Task<EnableOtpVerificationResponse> EnableOtpVerification(EnableOtpVerificationRequest request,
+    public override async Task<EnableOtpVerificationResponse> EnableOtpVerification(EnableOtpVerificationRequest request,
         ServerCallContext context)
     {
         var command = new EnableOtpVerificationCommand()
@@ -129,7 +132,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             OptType = request.OtpType,
         };
 
-        return _mediator.Send(command);
+        return await _authentication!.SetupFactor(request.SecurityProof, request.OtpType,
+            () => _mediator.Send(command), context.CancellationToken);
     }
 
     [Authorize(Policy = nameof(TokenType.User))]
@@ -140,20 +144,12 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             OtpCode = request.OtpCode
         };
 
-        return _mediator.Send(command);
+        return _authentication!.ConfirmFactorSetup(request.SecurityProof, () => _mediator.Send(command), context.CancellationToken);
     }
 
     [Authorize(Policy = nameof(TokenType.User))]
-    public override Task<DisableOtpVerificationResponse> DisableOtpVerification(DisableOtpVerificationRequest request, ServerCallContext context)
-    {
-        var command = new DisableOtpVerificationCommand
-        {
-            OtpCode = request.OtpCode,
-            OptType = request.OtpType
-        };
-
-        return _mediator.Send(command);
-    }
+    public override Task<DisableOtpVerificationResponse> DisableOtpVerification(DisableOtpVerificationRequest request, ServerCallContext context) =>
+        _authentication!.DisableFactor(request, context.CancellationToken);
 
     [Authorize(Policy = nameof(TokenType.User))]
     public override Task<ListOtpVerificationResponse> ListOtpVerification(ListOtpVerificationRequest request, ServerCallContext context)
@@ -167,6 +163,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         ServerCallContext context)
     {
         _metrics.Increment("password_reset_requests");
+        if (request.OtpType == OtpTypeId.Email) _authentication?.RequireEmailDelivery();
 
         var command = new ResetPasswordCommand()
         {

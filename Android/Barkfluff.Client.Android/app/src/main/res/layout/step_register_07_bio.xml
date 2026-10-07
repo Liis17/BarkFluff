@@ -69,7 +69,7 @@
                     android:layout_marginTop="4dp"
                     tools:text="\@username"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorPrimaryContainer" />
+                    android:textColor="?attr/colorOnPrimary" />
 
             </LinearLayout>
 
@@ -79,6 +79,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:labelFor="@id/bioEditText"
             android:layout_marginTop="18dp"
             android:layout_marginStart="6dp"
             android:layout_marginBottom="7dp"
@@ -88,7 +89,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_register_field_row"
+            android:background="@drawable/bg_register_input_row"
             android:orientation="vertical"
             android:padding="16dp">
 
@@ -98,9 +99,11 @@
                 android:layout_height="wrap_content"
                 android:background="@null"
                 android:gravity="top"
+                android:includeFontPadding="false"
                 android:inputType="textMultiLine"
                 android:maxLength="200"
                 android:minLines="4"
+                android:paddingVertical="0dp"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurface" />
 

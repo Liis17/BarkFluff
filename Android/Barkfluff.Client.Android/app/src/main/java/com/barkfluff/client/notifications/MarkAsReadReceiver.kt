@@ -20,19 +20,22 @@ class MarkAsReadReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != NotificationHelper.ACTION_MARK_AS_READ) return
 
-        val chatId = intent.getStringExtra(NotificationHelper.EXTRA_CHAT_ID) ?: return
-        val messageId = intent.getLongExtra(NotificationHelper.EXTRA_MESSAGE_ID, 0)
+        val target = NotificationHelper.currentTarget(context, intent) ?: return
+        if (target.kind != NotificationHelper.KIND_REGULAR) return
+        val chatId = target.chatId
+        val messageId = target.eventId.toLongOrNull()?.takeIf { it > 0 } ?: return
 
         Log.d(TAG, "Mark as read: chatId=$chatId, messageId=$messageId")
 
         // Dismiss the notification (через NotificationHelper чтобы синхронизировать пул)
-        NotificationHelper.dismissForChat(context, chatId)
+        NotificationHelper.dismissForChat(context, chatId, messageId)
 
         // Mark the message as read via gRPC
         if (messageId > 0) {
             val pendingResult = goAsync()
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 try {
+                    if (NotificationHelper.currentTarget(context, intent) == null) return@launch
                     EntryPointAccessors.fromApplication(
                         context.applicationContext,
                         MessageGatewayEntryPoint::class.java,

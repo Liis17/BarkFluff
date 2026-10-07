@@ -14,17 +14,19 @@ struct LoginView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                // Логотип
-                logoSection
-                    .padding(.top, 60)
+            ReadableContentContainer(maxWidth: ReadableContentWidth.authentication) {
+                VStack(spacing: 24) {
+                    // Логотип
+                    logoSection
+                        .padding(.top, 60)
 
-                // Форма
-                if let viewModel {
-                    formSection(viewModel)
+                    // Форма
+                    if let viewModel {
+                        formSection(viewModel)
+                    }
+
+                    Spacer()
                 }
-
-                Spacer()
             }
         }
         .background(Color(uiColor: .systemGroupedBackground))

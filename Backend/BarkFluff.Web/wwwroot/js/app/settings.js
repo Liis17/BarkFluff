@@ -14,8 +14,6 @@
     var viewStack = [];
 
     // OtpTypeId enum values (mirrors proto)
-    var OTP_AUTHENTICATOR = 1;
-    var OTP_EMAIL = 2;
 
     // ProfileFieldVisibility enum values (mirrors proto)
     var VIS_ALL = 0;
@@ -30,6 +28,8 @@
     // UploadFileType enum values used here
     var FT_MESSAGE_ATTACHMENT_IMAGE = 2;
     var FT_USER_PROFILE_POSTER = 10;
+    var LOGIN_NOTIFICATION_EMAIL = 1;
+    var LOGIN_NOTIFICATION_TELEGRAM = 2;
 
     // Web app version (shown in About)
     var WEB_VERSION = '1.0';
@@ -98,6 +98,7 @@
     }
 
     function close() {
+        BF.authUI.cancelAll();
         BF.utils.closeOverlay(overlay);
         viewStack = [];
     }
@@ -117,6 +118,7 @@
     }
 
     function showView(name) {
+        if (securityCleanup) { securityCleanup(); securityCleanup = null; BF.authUI.cancelAll(); }
         backBtn.classList.toggle('visible', viewStack.length > 0);
         body.dataset.view = name;
         switch (name) {
@@ -361,6 +363,65 @@
             });
         if (!pushSupported || pushStatus === 'denied') pushToggle.setDisabled(true);
         secNotifications.appendChild(pushToggle.row);
+        var loginAlerts = document.createElement('div');
+        loginAlerts.className = 'sd-notification-channel';
+        var loginAlertsInfo = document.createElement('div');
+        loginAlertsInfo.className = 'sd-toggle-info';
+        var loginAlertsTitle = document.createElement('div');
+        loginAlertsTitle.className = 'sd-toggle-title';
+        loginAlertsTitle.textContent = BF.i18n.t('settings.loginAlerts.title');
+        var loginAlertsDescription = document.createElement('div');
+        loginAlertsDescription.className = 'sd-toggle-desc';
+        loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.loading');
+        loginAlertsInfo.appendChild(loginAlertsTitle);
+        loginAlertsInfo.appendChild(loginAlertsDescription);
+        var loginAlertsChannel = document.createElement('select');
+        loginAlertsChannel.className = 'sd-input sd-notification-channel-select';
+        loginAlertsChannel.setAttribute('aria-label', BF.i18n.t('settings.loginAlerts.title'));
+        loginAlerts.appendChild(loginAlertsInfo);
+        loginAlerts.appendChild(loginAlertsChannel);
+        secNotifications.appendChild(loginAlerts);
+        BF.api.getLoginNotificationSettings().then(function (data) {
+            if (!loginAlerts.isConnected) return;
+            var options = [];
+            if (data.emailAvailable) options.push({ value: LOGIN_NOTIFICATION_EMAIL, label: BF.i18n.t('settings.loginAlerts.email') });
+            if (data.telegramAvailable) options.push({ value: LOGIN_NOTIFICATION_TELEGRAM, label: BF.i18n.t('settings.loginAlerts.telegram') });
+            loginAlertsChannel.replaceChildren();
+            options.forEach(function (option) {
+                var element = document.createElement('option');
+                element.value = String(option.value);
+                element.textContent = option.label;
+                loginAlertsChannel.appendChild(element);
+            });
+            if (!options.length) {
+                loginAlertsChannel.disabled = true;
+                loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.unavailable');
+                return;
+            }
+            loginAlertsChannel.value = String(data.channel);
+            loginAlertsChannel.disabled = options.length < 2;
+            loginAlertsDescription.textContent = options.length > 1
+                ? BF.i18n.t('settings.loginAlerts.description')
+                : BF.i18n.t('settings.loginAlerts.required');
+            loginAlertsChannel.addEventListener('change', function () {
+                var previous = data.channel;
+                loginAlertsChannel.disabled = true;
+                BF.api.setLoginNotificationChannel(Number(loginAlertsChannel.value)).then(function (updated) {
+                    data = updated;
+                    loginAlertsChannel.value = String(data.channel);
+                }).catch(function () {
+                    loginAlertsChannel.value = String(previous);
+                    loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.saveError');
+                }).finally(function () {
+                    if (!loginAlerts.isConnected) return;
+                    loginAlertsChannel.disabled = options.length < 2;
+                });
+            });
+        }).catch(function () {
+            if (!loginAlerts.isConnected) return;
+            loginAlertsChannel.disabled = true;
+            loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.loadError');
+        });
         body.appendChild(secNotifications);
 
         if (BF.push && BF.push.canInstall && BF.push.canInstall()) {
@@ -743,159 +804,12 @@
         });
     }
 
-    // --- Two-Factor Authentication ---
+    // --- Login mode, factors and verified contacts ---
+    var securityCleanup = null;
     function renderTwoFA() {
         titleEl.textContent = BF.i18n.t('settings.twofa');
-        body.innerHTML = '';
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
-
-        BF.api.listOtpVerification().then(function (data) {
-            body.innerHTML = '';
-            renderTwoFARow('Authenticator (TOTP)', data.authenticatorEnabled, OTP_AUTHENTICATOR);
-            renderTwoFARow(BF.i18n.t('twofa.email'), data.emailEnabled, OTP_EMAIL);
-        }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.loadError') + '</div>';
-        });
-    }
-
-    function renderTwoFARow(label, enabled, otpType) {
-        var row = document.createElement('div');
-        row.className = 'twofa-status';
-
-        var typeEl = document.createElement('div');
-        typeEl.className = 'twofa-type';
-        typeEl.textContent = label;
-
-        var badge = document.createElement('span');
-        badge.className = 'twofa-badge ' + (enabled ? 'on' : 'off');
-        badge.textContent = BF.i18n.t(enabled ? 'twofa.enabled' : 'twofa.disabled');
-
-        var toggleBtn = document.createElement('button');
-        toggleBtn.className = 'twofa-toggle ' + (enabled ? 'disable' : 'enable');
-        toggleBtn.textContent = BF.i18n.t(enabled ? 'common.disable' : 'common.enable');
-
-        row.appendChild(typeEl);
-        row.appendChild(badge);
-        row.appendChild(toggleBtn);
-        body.appendChild(row);
-
-        if (enabled) {
-            // Disable flow
-            toggleBtn.addEventListener('click', function () {
-                if (otpType === OTP_AUTHENTICATOR) {
-                    // Need OTP code to disable
-                    renderTwoFADisableAuthenticator();
-                } else {
-                    // Email: disable without code
-                    toggleBtn.disabled = true;
-                    BF.api.disableOtpVerification(otpType, null).then(function () {
-                        renderTwoFA();
-                    }).catch(function () { toggleBtn.disabled = false; });
-                }
-            });
-        } else {
-            // Enable flow
-            toggleBtn.addEventListener('click', function () {
-                if (otpType === OTP_AUTHENTICATOR) {
-                    renderTwoFAEnableAuthenticator();
-                } else {
-                    toggleBtn.disabled = true;
-                    BF.api.enableOtpVerification(otpType).then(function () {
-                        renderTwoFA();
-                    }).catch(function () { toggleBtn.disabled = false; });
-                }
-            });
-        }
-    }
-
-    function renderTwoFAEnableAuthenticator() {
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('twofa.creatingQr') + '</div>';
-        BF.api.enableOtpVerification(OTP_AUTHENTICATOR).then(function (data) {
-            body.innerHTML = '';
-            var form = document.createElement('div');
-            form.className = 'sd-form';
-
-            var instr = document.createElement('div');
-            instr.className = 'sd-hint';
-            instr.textContent = BF.i18n.t('twofa.scanQr');
-            form.appendChild(instr);
-
-            if (data.otpQr) {
-                var img = document.createElement('img');
-                img.src = 'data:image/png;base64,' + data.otpQr;
-                img.style.cssText = 'width:180px;height:180px;display:block;margin:0 auto;border-radius:8px;';
-                form.appendChild(img);
-            }
-            if (data.otpCode) {
-                var codeEl = document.createElement('div');
-                codeEl.style.cssText = 'text-align:center;font-family:monospace;font-size:16px;letter-spacing:2px;padding:8px;background:rgba(0,0,0,0.05);border-radius:8px;';
-                codeEl.textContent = data.otpCode;
-                form.appendChild(codeEl);
-            }
-
-            var otpInput = makeInput('text', BF.i18n.t('twofa.codeFromApp'), '');
-            otpInput.maxLength = 8;
-            var errEl = makeHint('', true);
-            errEl.style.display = 'none';
-            var confirmBtn = makeSaveBtn(BF.i18n.t('common.confirm'));
-
-            form.appendChild(makeField(BF.i18n.t('twofa.confirmationCode'), otpInput));
-            form.appendChild(errEl);
-            form.appendChild(confirmBtn);
-            body.appendChild(form);
-
-            confirmBtn.addEventListener('click', function () {
-                var code = otpInput.value.trim();
-                if (!code) return;
-                confirmBtn.disabled = true;
-                BF.api.confirmOtpVerification(code).then(function () {
-                    renderTwoFA();
-                }).catch(function () {
-                    confirmBtn.disabled = false;
-                    errEl.textContent = BF.i18n.t('twofa.error.wrongCode');
-                    errEl.style.display = '';
-                });
-            });
-        }).catch(function () {
-            body.innerHTML = '<div class="sd-hint error" style="padding:20px">' + BF.i18n.t('common.error') + '</div>';
-        });
-    }
-
-    function renderTwoFADisableAuthenticator() {
-        body.innerHTML = '';
-        var form = document.createElement('div');
-        form.className = 'sd-form';
-
-        var instr = document.createElement('div');
-        instr.className = 'sd-hint';
-        instr.textContent = BF.i18n.t('twofa.disableHint');
-        form.appendChild(instr);
-
-        var otpInput = makeInput('text', BF.i18n.t('twofa.codeFromApp'), '');
-        otpInput.maxLength = 8;
-        var errEl = makeHint('', true);
-        errEl.style.display = 'none';
-        var confirmBtn = makeSaveBtn(BF.i18n.t('common.disable'));
-        confirmBtn.className = 'sd-btn';
-        confirmBtn.style.cssText = 'background:rgba(220,38,38,0.1);color:var(--error);';
-
-        form.appendChild(makeField(BF.i18n.t('twofa.confirmationCode'), otpInput));
-        form.appendChild(errEl);
-        form.appendChild(confirmBtn);
-        body.appendChild(form);
-
-        confirmBtn.addEventListener('click', function () {
-            var code = otpInput.value.trim();
-            if (!code) return;
-            confirmBtn.disabled = true;
-            BF.api.disableOtpVerification(OTP_AUTHENTICATOR, code).then(function () {
-                renderTwoFA();
-            }).catch(function () {
-                confirmBtn.disabled = false;
-                errEl.textContent = BF.i18n.t('twofa.error.wrongCode');
-                errEl.style.display = '';
-            });
-        });
+        body.replaceChildren();
+        securityCleanup = BF.authUI.renderSecurity(body);
     }
 
     // --- Sessions ---

@@ -14,6 +14,9 @@ service MessagesApi {
   
   // Получить список сообщений в чате
   rpc ListMessages(ListMessagesRequest) returns(ListMessagesResponse);
+
+  // Поиск текста сообщений с фильтрами по автору, дате и вложениям
+  rpc SearchMessages(SearchMessagesRequest) returns(SearchMessagesResponse);
   
   // Получить список участников в чате
   rpc ListChatMembers(ListChatMembersRequest) returns(ListChatMembersResponse);
@@ -29,6 +32,16 @@ service MessagesApi {
 
   // Добавить пользователя в групповой чат
   rpc AddUser(AddUserRequest) returns(AddUserResponse);
+
+  // Удалить личный/приватный чат (не для групп — см. LeaveChat). Без delete_for_everyone
+  // чат пропадает из списка только у вызывающего; с ним — дополнительно физически стирается
+  // контент всех сообщений чата у обоих участников. Для федеративных DM delete_for_everyone
+  // игнорируется (нет протокола синхронного стирания на удалённой ноде).
+  rpc DeleteChat(DeleteChatRequest) returns(DeleteChatResponse);
+
+  // Покинуть групповой чат (не для DM/приватных — см. DeleteChat). Чат и его сообщения
+  // пропадают только у вызывающего, остальные участники не затрагиваются.
+  rpc LeaveChat(LeaveChatRequest) returns(LeaveChatResponse);
 
   // Изменить групповой чат (название и/или аватар)
   rpc UpdateGroupChat(UpdateGroupChatRequest) returns(UpdateGroupChatResponse);
@@ -202,6 +215,19 @@ message AddUserRequest {
 
 message AddUserResponse { }
 
+message DeleteChatRequest {
+  string chat_id = 1; // Идентификатор чата (Regular DM или Private)
+  bool delete_for_everyone = 2; // "Удалить также для {имя}" — стирает контент сообщений у обоих
+}
+
+message DeleteChatResponse { }
+
+message LeaveChatRequest {
+  string chat_id = 1; // Идентификатор группового чата
+}
+
+message LeaveChatResponse { }
+
 message UpdateGroupChatRequest {
   string chat_id = 1; // Идентификатор чата
   string title = 2; // Новое название (пусто = не менять)
@@ -264,6 +290,56 @@ message ListChatMembersResponse {
   repeated DetailedChatMemberInfo chat_members = 1; // Участники чата
   
   int32 total_count = 2; // Общее количество записей
+}
+
+// Поиск по обычным чатам текущего пользователя. Даты: [sent_from, sent_before).
+message SearchMessagesRequest {
+  string query = 1;
+  oneof author {
+    int64 author_user_id = 2;
+    string author_user_uuid = 3;
+  }
+  google.protobuf.Timestamp sent_from = 4;
+  google.protobuf.Timestamp sent_before = 5;
+  MessageSearchAttachmentPresence attachment_presence = 6;
+  repeated barkfluff.shared.MessageAttachmentType attachment_types = 7;
+  MessageSearchCursor cursor = 8;
+  int32 page_size = 9;
+}
+
+enum MessageSearchAttachmentPresence {
+  MESSAGE_SEARCH_ATTACHMENT_PRESENCE_ANY = 0;
+  MESSAGE_SEARCH_ATTACHMENT_PRESENCE_WITH = 1;
+  MESSAGE_SEARCH_ATTACHMENT_PRESENCE_WITHOUT = 2;
+}
+
+message MessageSearchCursor {
+  google.protobuf.Timestamp sent_at = 1;
+  int64 message_id = 2;
+}
+
+message MessageSearchAuthor {
+  int64 user_id = 1;
+  string user_uuid = 2;
+  string display_name = 3;
+}
+
+message MessageSearchHit {
+  int64 message_id = 1;
+  string chat_id = 2;
+  string chat_title = 3;
+  bool is_group_chat = 4;
+  string chat_picture_file_id = 5;
+  int64 other_user_id = 6;
+  MessageSearchAuthor author = 7;
+  google.protobuf.Timestamp sent_at = 8;
+  string text = 9;
+  repeated barkfluff.shared.MessageAttachmentType attachment_types = 10;
+}
+
+message SearchMessagesResponse {
+  repeated MessageSearchHit hits = 1;
+  MessageSearchCursor next_cursor = 2;
 }
 
 message ListMessagesRequest {
@@ -332,6 +408,11 @@ message Chat {
 
   // У текущего пользователя есть сохранённый черновик в этом обычном чате.
   bool has_draft = 17;
+
+  // Федеративный DM (между разными нодами BarkFluff). Клиент скрывает чекбокс
+  // "удалить также для {имя}" в DeleteChat для таких чатов — нет протокола
+  // синхронного стирания копии на чужой ноде.
+  bool is_federated = 18;
 }
 
 message ChatMember {

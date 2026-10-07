@@ -11,6 +11,8 @@ namespace BarkFluff.FastAuth.Domain;
 public sealed record FastAuthSessionState
 {
     public required string Id { get; init; }
+    /// <summary>UUID устройства, которое создало QR; не совпадает с ID одноразовой QR-попытки.</summary>
+    public required string ClientDeviceId { get; init; }
     public required DateTime CreatedAt { get; init; }
     public required DateTime ExpiresAt { get; init; }
     public required string DeviceName { get; init; }

@@ -133,6 +133,78 @@
                     <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switchTwoFactorEmail" android:layout_width="wrap_content" android:layout_height="wrap_content" app:thumbTint="@color/settings_switch_thumb" app:trackTint="@color/settings_switch_track" />
                 </LinearLayout>
             </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="22dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/security_section_login"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Settings2A.Section" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/telegramBindingButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/emailBindingButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/loginPolicyButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAllCaps="false" />
+
+            <LinearLayout
+                android:id="@+id/itemTwoFactorTelegram"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_settings_item_middle"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:visibility="gone">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_two_factor"
+                    app:tint="@color/profile_settings_icon" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="@string/security_2fa_telegram"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="@color/profile_settings_on_surface" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchTwoFactorTelegram"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/settings_switch_thumb"
+                    app:trackTint="@color/settings_switch_track" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/recoveryCodesButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAllCaps="false" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

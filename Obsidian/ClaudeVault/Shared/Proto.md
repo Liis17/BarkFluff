@@ -1,5 +1,11 @@
 # BarkFluff.Proto
 
+## Telegram и политика входа
+
+`identity_api.proto` добавляет `OtpTypeId.Telegram=3`, `AuthLoginMode`, `AuthChallengeState`, операции подтверждений и защищённых настроек. Существующие номера сохранены. `AuthChallengeReference` содержит ID и секрет инициатора; его нельзя заменять данными ссылки/кнопки бота. `AuthChallengeResponse.error_code=8` возвращает `login_mode_disabled`, если пароль уже проверен, но выбранный парольный режим не совпадает с политикой аккаунта; challenge при этом не создаётся. Для безпарольного Telegram-входа сохраняется нейтральный challenge без раскрытия режима по одному логину. `CompleteAuthChallenge` выдаёт сессию только для входа/регистрации, а для повторной проверки/восстановления — ограниченный proof. Коды восстановления возвращаются только в ответе выпуска, включая настройку защищённого режима. См. [[Backend/Identity]] и [[Клиенты/Web]].
+
+`users_api.proto`: `AddDraftUserRequest.registration_id=5` для идемпотентного создания и `UsersServerApi.SetVerifiedEmail` для подтверждённой почты, см. [[Backend/Users]].
+
 Единый проект со всеми `.proto`-контрактами платформы. Только proto-файлы + `.csproj`, без рукописного C#.
 
 Расположение: `Shared/BarkFluff.Proto/`
@@ -45,6 +51,8 @@ dotnet build BarkFluff.Proto.csproj
 Исключения (один сервис): `UpdatesApi`, `OnlinerApi`, `NavigatorApi`, `BeaconApi`, `ConfigurationApi`, `CallsApi`.
 
 ## Важные детали
+
+- `MessagesApi.SearchMessages`: аддитивный RPC глобального поиска обычной переписки. `SearchMessagesRequest` содержит текст, oneof автора (local ID/UUID), `[sent_from, sent_before)`, presence/типы вложений, `MessageSearchCursor` и размер страницы. `MessageSearchHit` возвращает ID чата/сообщения, название и тип чата, автора, точный Timestamp, текст и типы прямых вложений; `next_cursor` отсутствует на последней странице. Контракт добавлен также в `Android/core/src/main/proto`; Android `shared.Message` синхронизирован по федеративным полям 9–11. Реализация — [[Backend/Messages]], клиент — [[Клиенты/Android]].
 
 - `shared.proto` импортируется в `messages_api.proto`, `updates_api.proto`, `users_api.proto` — общие типы сюда
 - `MessageAttachmentType` enum — в `shared.proto` (не в `messages_api.proto`), т.к. используется и в `files_api.proto`

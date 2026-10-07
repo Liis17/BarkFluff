@@ -13,21 +13,11 @@ typealias LastMessageData = LastMessageSummary
 typealias ChatMemberInfo = ChatMember
 typealias UploadUrlResult = MediaUpload
 
-data class ConfirmAccountResult(
-    val refreshToken: String,
-    val refreshTokenExpiration: Long,
-)
-
 data class ChatDraftData(
     val text: String,
     val replyToMessageId: Long,
     val revision: String,
     val updatedAtMillis: Long,
-)
-
-data class OtpSetupResult(
-    val qrBase64: String,
-    val justCode: String,
 )
 
 data class SessionData(
@@ -42,22 +32,10 @@ data class SessionData(
     val location: String,
 )
 
-data class OtpStatus(
-    val authenticatorEnabled: Boolean,
-    val emailEnabled: Boolean,
-)
-
 data class StorageInfo(
     val totalUsed: Long,
     val limit: Long,
     val byType: Map<String, Long>,
-)
-
-data class ConfirmResetPasswordResult(
-    val accessToken: String,
-    val accessTokenExpiration: Long,
-    val refreshToken: String,
-    val refreshTokenExpiration: Long,
 )
 
 data class SyncedChatBackgroundSettings(

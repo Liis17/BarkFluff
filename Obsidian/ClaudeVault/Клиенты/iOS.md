@@ -34,11 +34,26 @@ iOS-клиент использует тот же `Database`/`LocalChatRepositor
 
 ## iOS-specific
 
-- Навигация: `NavigationStack` + `TabView` (2 таба: Чаты / Профиль) вместо `NavigationSplitView`. Категории настроек живут внутри таба Профиль (по образцу Android).
-- Tab bar вместо Sidebar для основного интерфейса.
-- Профиль собеседника / инфо группы — push в стек чата (`ConversationDestination.userProfile(chat)`), не боковая панель.
-- Адаптивный UI для разных размеров экрана.
+- Навигация: `TabView` (2 таба: Чаты / Профиль). Внутри таба Чаты используется адаптивный `NavigationSplitView`: sidebar со списком и detail с диалогом; в compact-размере система сворачивает его в привычный push-стек.
+- `ChatListView` использует `List(selection:)`, а `AppCoordinator.selectedChat` является единственным источником выбранного диалога. `chatNavigationPath` хранит только вторичные detail-маршруты.
+- Tab bar сохраняется как основная навигация между Чатами и Профилем; в compact-режиме он скрывается внутри открытого диалога, в regular-режиме остаётся доступен.
+- Профиль собеседника / инфо группы — push в detail-стек чата (`ConversationDestination.userProfile(chat)`).
+- Формы и информационные экраны используют `ReadableContentContainer` с ограничением ширины; чаты и media-layout рассчитывают ширину от доступной локальной области.
 - Touch-ориентированные жесты, `.contextMenu` через long-press.
+
+### Изменяемые окна iOS 27
+
+iOS-клиент собирается SDK iOS 27 при минимальной версии iOS 26.0. `UIRequiresFullScreen` не используется. Для iPhone и iPad объявлены все четыре ориентации, чтобы scene корректно работала в изменяемом окне.
+
+Правила адаптации:
+
+- Для выбора структуры навигации используется системный `NavigationSplitView`, без проверок модели устройства.
+- Для локальных размеров сообщений и вложений используется размер текущего detail/view; `UIScreen.main.bounds`, `userInterfaceIdiom` и ориентация не используются как источник layout-решений.
+- Пузырь сообщения сохраняет компактный максимум 300 pt и расширяется в широком detail до 560 pt; media-grid масштабируется вместе с доступной шириной.
+- `MessageInputView` использует `ViewThatFits`: однострочная раскладка в широком detail и двухстрочная в узком.
+- Авторизация, профиль, настройки и sheets ограничивают читаемую ширину примерно 560/720 pt и центрируются в широком окне.
+
+Связанные компоненты: `Navigation/MainTabView.swift`, `Navigation/AppCoordinator.swift`, `DesignSystem/Components/ReadableContentContainer.swift`, `Features/Conversation/Helpers/AttachmentLayoutCalculator.swift`.
 
 ### iOS-замены macOS API
 

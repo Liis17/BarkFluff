@@ -3,27 +3,38 @@ package com.barkfluff.client
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
-import android.text.InputFilter
 import android.text.TextWatcher
 import android.util.Log
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
-import android.widget.EditText
+import android.widget.FrameLayout
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivityLoginBinding
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
-import com.barkfluff.client.domain.model.AuthenticationResult
+import com.barkfluff.client.domain.auth.AuthenticationUiPolicy
+import com.barkfluff.client.domain.model.AuthSession
+import com.barkfluff.client.domain.model.AuthenticationCapabilities
+import com.barkfluff.client.domain.model.AuthenticationLoginMode
+import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -42,7 +53,7 @@ class LoginActivity : AppCompatActivity() {
         private val USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9._]{3,}$")
         private val EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
         private const val MIN_PASSWORD_LENGTH = 6
-
+        private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
         /** Отступы hero-блока; складываются с системными инсетами. */
         private const val LOGIN_TOP_PADDING_DP = 20
         private const val LOGIN_BOTTOM_PADDING_DP = 16
@@ -52,19 +63,17 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var globalParam: GlobalParam
+    private val authenticationChallengeViewModel: AuthenticationChallengeViewModel by viewModels()
     @javax.inject.Inject lateinit var authGateway: AuthGateway
+    @javax.inject.Inject lateinit var authenticationChallengeGateway: AuthenticationChallengeGateway
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
     @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
 
-    private var isOtpMode = false
     private var isLoading = false
-
-    // Saved login/password for OTP retry
-    private var savedLogin = ""
-    private var savedPassword = ""
-
-    private lateinit var otpBoxes: List<EditText>
+    private var identityErrorVisible = false
+    private var selectedLoginMode = AuthenticationLoginMode.PASSWORD
+    private var authenticationCapabilities: AuthenticationCapabilities? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -73,7 +82,9 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        applyAdaptiveContentWidth()
         globalParam = GlobalParam(this)
+        renderNodeSummary()
 
         // Edge-to-edge: инсеты на contentPanel, а не на корень — иначе декоративный круг
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
@@ -86,11 +97,6 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
-        otpBoxes = listOf(
-            binding.otpBox1, binding.otpBox2, binding.otpBox3,
-            binding.otpBox4, binding.otpBox5, binding.otpBox6
-        )
-
         // Загружаем внешний IP-адрес асинхронно
         lifecycleScope.launch {
             GlobalParam.loadIpAddress(globalParam.sharedPreferences)
@@ -98,20 +104,58 @@ class LoginActivity : AppCompatActivity() {
 
         initIdentityClient()
         setupClickListeners()
-        setupOtpBoxes()
+        setupLoginFields()
+        loadAuthenticationCapabilities()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        renderNodeSummary()
+    }
+
+    /** На широких окнах ограничиваем форму 600dp и сохраняем читаемую длину строки. */
+    private fun applyAdaptiveContentWidth() {
+        if (resources.configuration.screenWidthDp < MEDIUM_WINDOW_MIN_WIDTH_DP) return
+
+        val sideMarginPx = resources.getDimensionPixelSize(R.dimen.server_medium_window_margin)
+        val maxContentWidthPx = resources.getDimensionPixelSize(R.dimen.server_content_max_width)
+        val availableWidthPx = resources.configuration.screenWidthDp.dpToPx()
+        val contentWidthPx = minOf(maxContentWidthPx, availableWidthPx - sideMarginPx * 2)
+        if (contentWidthPx <= 0) return
+
+        val layoutParams = binding.contentPanel.layoutParams as? FrameLayout.LayoutParams
+            ?: return
+        layoutParams.width = contentWidthPx
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL
+        binding.contentPanel.layoutParams = layoutParams
+    }
+
+    private fun renderNodeSummary() {
+        val nodeName = globalParam.serverName.trim()
+        val nodeAddress = globalParam.socketBeacon.ifBlank { globalParam.socketIdentity }.trim()
+
+        binding.nodeSummaryText.text = nodeName.ifBlank {
+            nodeAddress.ifBlank { getString(R.string.login_node_not_selected) }
+        }
+        if (nodeName.isNotBlank() && nodeAddress.isNotBlank()) {
+            binding.nodeSummaryAddress.text = nodeAddress
+            binding.nodeSummaryAddress.visibility = View.VISIBLE
+        } else {
+            binding.nodeSummaryAddress.visibility = View.GONE
+        }
     }
 
     private fun initIdentityClient() {
         val identityAddress = globalParam.socketIdentity
         if (identityAddress.isBlank()) {
-            showError(getString(R.string.login_identity_address_missing))
+            showIdentityError(getString(R.string.login_identity_address_missing))
             return
         }
 
-        // Для авторизации не используем interceptor, так как токена еще нет
-        val result = authGateway.createIdentity(identityAddress)
+        // Identity остается анонимным до входа, но reset-password требует метаданные устройства.
+        val result = authGateway.createIdentity(identityAddress, includeDeviceInfo = true)
         if (result.isFailure) {
-            showError(getString(R.string.login_identity_connection_failed))
+            showIdentityError(getString(R.string.login_identity_connection_failed))
             Log.e(TAG, "Failed to create identity client", result.exceptionOrNull())
         }
     }
@@ -119,15 +163,18 @@ class LoginActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         binding.loginButton.applySpringPress()
         binding.loginButton.setOnClickListener {
-            if (isOtpMode) {
-                performOtpLogin()
-            } else {
-                performLogin()
-            }
+            performLogin()
         }
+
+        binding.loginModeButton.setOnClickListener { showLoginModePicker() }
 
         binding.changeServerLink.setOnClickListener {
             navigateToSelectServer()
+        }
+
+        binding.retryIdentityButton.setOnClickListener {
+            hideError()
+            initIdentityClient()
         }
 
         binding.registerButton.setOnClickListener {
@@ -140,133 +187,168 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupOtpBoxes() {
-        for (i in otpBoxes.indices) {
-            val box = otpBoxes[i]
+    private fun setupLoginFields() {
+        binding.usernameEditText.apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPaddingRelative(paddingStart, 0, paddingEnd, 0)
+        }
+        binding.passwordEditText.apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPaddingRelative(paddingStart, 0, paddingEnd, 0)
+        }
 
-            if (i == 0) {
-                box.filters = arrayOf(InputFilter { source, start, end, _, _, _ ->
-                    val code = source.subSequence(start, end).toString()
-                    if (code.length == otpBoxes.size && code.all(Char::isDigit)) {
-                        box.post { fillOtpBoxes(code) }
-                        ""
-                    } else {
-                        null
-                    }
-                }) + box.filters
+        binding.usernameEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                binding.usernameInputLayout.error = null
+                clearErrorIfNotIdentity()
             }
+        })
 
-            box.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                override fun afterTextChanged(s: Editable?) {
-                    if (s != null && s.length == 1 && i < otpBoxes.size - 1) {
-                        otpBoxes[i + 1].requestFocus()
-                    }
-                    // Auto-submit when all 6 digits are filled
-                    if (i == otpBoxes.size - 1 && s != null && s.length == 1) {
-                        val otp = getOtpCode()
-                        if (otp.length == 6) {
-                            performOtpLogin()
-                        }
-                    }
-                }
-            })
+        binding.passwordEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                binding.passwordInputLayout.error = null
+                clearErrorIfNotIdentity()
+            }
+        })
 
-            box.setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEYCODE_DEL && event.action == KeyEvent.ACTION_DOWN) {
-                    if (box.text.isNullOrEmpty() && i > 0) {
-                        otpBoxes[i - 1].apply {
-                            requestFocus()
-                            text?.clear()
-                        }
-                        return@setOnKeyListener true
-                    }
-                }
+        binding.usernameEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT || isEnterKey(event)) {
+                binding.passwordEditText.requestFocus()
+                true
+            } else {
+                false
+            }
+        }
+
+        binding.passwordEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_DONE || isEnterKey(event)) {
+                performLogin()
+                true
+            } else {
                 false
             }
         }
     }
 
-    private fun fillOtpBoxes(code: String) {
-        otpBoxes.forEachIndexed { index, box ->
-            box.setText(code[index].toString())
-        }
-        otpBoxes.last().requestFocus()
-    }
-
-    private fun getOtpCode(): String {
-        return otpBoxes.joinToString("") { it.text.toString() }
+    private fun isEnterKey(event: KeyEvent?): Boolean {
+        return event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN
     }
 
     private fun performLogin() {
-        hideError()
+        clearErrorIfNotIdentity()
+
+        if (isLoading) return
 
         val loginInput = binding.usernameEditText.text.toString().trim()
         val password = binding.passwordEditText.text.toString()
 
-        // Validate
-        if (!validateLogin(loginInput) || !validatePassword(password)) {
+        val loginValid = validateLogin(loginInput)
+        val passwordValid = selectedLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN || validatePassword(password)
+        if (!loginValid || !passwordValid) {
+            focusFirstInvalidField(loginValid, passwordValid)
             return
         }
 
-        savedLogin = loginInput
-        savedPassword = password
-
-        val isEmail = loginInput.contains("@")
-        val email = if (isEmail) loginInput else null
-        val username = if (isEmail) null else loginInput
-
+        hideKeyboard()
         setLoadingState(true)
 
         lifecycleScope.launch {
-            val result = authGateway.authenticate(
-                email = email,
-                username = username,
-                password = password,
-                otpCode = null,
-            )
-            handleAuthResult(result)
+            val result = AuthenticationChallengeDialog(
+                this@LoginActivity,
+                authenticationChallengeGateway,
+                authenticationChallengeViewModel.controller,
+            ).run(
+                title = getString(R.string.login_2fa_title),
+                useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
+                restartWithFactor = { factor ->
+                    authenticationChallengeGateway.beginSignIn(
+                        SignInRequest(
+                            login = loginInput,
+                            password = password,
+                            loginMode = selectedLoginMode,
+                            factor = factor,
+                            useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
+                        ),
+                    )
+                },
+            ) {
+                authenticationChallengeGateway.beginSignIn(
+                    SignInRequest(
+                        login = loginInput,
+                        password = password,
+                        loginMode = selectedLoginMode,
+                        useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
+                    ),
+                )
+            }
+            setLoadingState(false)
+            result.onSuccess { completion ->
+                completion.session?.let(::handleCompletedSession)
+                    ?: showError(getString(R.string.auth_error))
+            }.onFailure { failure ->
+                if (failure !is java.util.concurrent.CancellationException) {
+                    showError(failure.message ?: getString(R.string.auth_error))
+                }
+            }
         }
     }
 
-    private fun performOtpLogin() {
-        hideError()
-
-        val otpCode = getOtpCode()
-        if (otpCode.length != 6) {
-            showError(getString(R.string.login_otp_invalid_length))
-            return
-        }
-
-        val isEmail = savedLogin.contains("@")
-        val email = if (isEmail) savedLogin else null
-        val username = if (isEmail) null else savedLogin
-
-        setLoadingState(true)
-
+    private fun loadAuthenticationCapabilities() {
         lifecycleScope.launch {
-            val result = authGateway.authenticate(
-                email = email,
-                username = username,
-                password = savedPassword,
-                otpCode = otpCode,
-            )
-            handleAuthResult(result)
+            authenticationChallengeGateway.capabilities().onSuccess { capabilities ->
+                authenticationCapabilities = capabilities
+                if (!capabilities.telegramAvailable && selectedLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
+                    selectedLoginMode = AuthenticationLoginMode.PASSWORD
+                }
+                renderLoginMode()
+            }
         }
     }
 
-    private fun handleAuthResult(result: AuthenticationResult) {
-        setLoadingState(false)
+    private fun showLoginModePicker() {
+        val capabilities = authenticationCapabilities ?: return
+        val modes = AuthenticationUiPolicy.signInModes(capabilities)
+        val labels = modes.map { getString(loginModeLabel(it)) }.toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.login_mode_title)
+            .setSingleChoiceItems(labels, modes.indexOf(selectedLoginMode)) { dialog, which ->
+                selectedLoginMode = modes[which]
+                binding.recoveryCodeCheckBox.isChecked = false
+                renderLoginMode()
+                dialog.dismiss()
+            }
+            .show()
+    }
 
-        when (result) {
-            is AuthenticationResult.Success -> {
-                lifecycleScope.launch {
+    private fun renderLoginMode() {
+        val passwordRequired = selectedLoginMode != AuthenticationLoginMode.TELEGRAM_LOGIN
+        binding.loginModeButton.setText(loginModeLabel(selectedLoginMode))
+        binding.passwordLabel.visibility = if (passwordRequired) View.VISIBLE else View.GONE
+        binding.passwordInputLayout.visibility = if (passwordRequired) View.VISIBLE else View.GONE
+        binding.recoveryCodeCheckBox.visibility = if (
+            selectedLoginMode == AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+        ) View.VISIBLE else View.GONE
+        binding.forgotPasswordLink.visibility = if (passwordRequired) View.VISIBLE else View.GONE
+        if (!passwordRequired) binding.passwordInputLayout.error = null
+    }
+
+    private fun loginModeLabel(mode: AuthenticationLoginMode): Int = when (mode) {
+        AuthenticationLoginMode.PASSWORD -> R.string.login_mode_password
+        AuthenticationLoginMode.TELEGRAM_LOGIN -> R.string.login_mode_telegram
+        AuthenticationLoginMode.PASSWORD_SECOND_FACTOR -> R.string.login_mode_password_factor
+    }
+
+    private fun handleCompletedSession(session: AuthSession) {
+        lifecycleScope.launch {
                     // Сохраняем токены
-                    globalParam.accessToken = result.session.accessToken
-                    globalParam.refreshToken = result.session.refreshToken
-                    globalParam.accessTokenExpiration = result.session.accessTokenExpiration
-                    globalParam.refreshTokenExpiration = result.session.refreshTokenExpiration
+                    globalParam.accessToken = session.accessToken
+                    globalParam.refreshToken = session.refreshToken
+                    globalParam.accessTokenExpiration = session.accessTokenExpiration
+                    globalParam.refreshTokenExpiration = session.refreshTokenExpiration
 
                     // Создаем Users клиент для загрузки данных пользователя
                     val usersAddress = globalParam.socketUsers
@@ -309,28 +391,7 @@ class LoginActivity : AppCompatActivity() {
                     // Переходим в чаты. Fresh channels pick up the newly persisted token.
                     clientRegistry.recreateAllClients(globalParam, this@LoginActivity)
                     navigateToChats()
-                }
-            }
-            AuthenticationResult.OtpRequired -> {
-                showOtpMode()
-            }
-            is AuthenticationResult.Error -> {
-                showError(result.message)
-            }
         }
-    }
-
-    private fun showOtpMode() {
-        isOtpMode = true
-        binding.loginFieldsGroup.visibility = View.GONE
-        binding.otpGroup.visibility = View.VISIBLE
-        binding.titleText.setText(R.string.login_2fa_title)
-        binding.subtitleText.setText(R.string.login_2fa_message)
-        binding.loginButton.setText(R.string.btn_confirm)
-
-        // Clear and focus first box
-        otpBoxes.forEach { it.text?.clear() }
-        otpBoxes[0].requestFocus()
     }
 
     private fun validateLogin(login: String): Boolean {
@@ -368,19 +429,54 @@ class LoginActivity : AppCompatActivity() {
     private fun setLoadingState(loading: Boolean) {
         isLoading = loading
         binding.loginButton.isEnabled = !loading
-        binding.loginButton.text = if (loading) "" else getString(
-            if (isOtpMode) R.string.btn_confirm else R.string.btn_login
-        )
+        binding.retryIdentityButton.isEnabled = !loading
+        binding.loginButton.text = if (loading) "" else getString(R.string.btn_login)
         binding.loginProgressBar.visibility = if (loading) View.VISIBLE else View.GONE
     }
 
     private fun showError(message: String) {
-        binding.errorText.text = message
+        identityErrorVisible = false
         binding.errorText.visibility = View.VISIBLE
+        binding.errorText.text = message
+        binding.retryIdentityButton.visibility = View.GONE
+    }
+
+    private fun showIdentityError(message: String) {
+        showError(message)
+        identityErrorVisible = true
+        binding.retryIdentityButton.visibility = View.VISIBLE
     }
 
     private fun hideError() {
+        identityErrorVisible = false
         binding.errorText.visibility = View.GONE
+        binding.retryIdentityButton.visibility = View.GONE
+    }
+
+    private fun clearErrorIfNotIdentity() {
+        if (!identityErrorVisible) {
+            hideError()
+        }
+    }
+
+    private fun focusFirstInvalidField(loginValid: Boolean, passwordValid: Boolean) {
+        val target = when {
+            !loginValid -> binding.usernameEditText
+            !passwordValid -> binding.passwordEditText
+            else -> return
+        }
+        target.requestFocus()
+        target.post {
+            val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.showSoftInput(target, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun hideKeyboard() {
+        currentFocus?.windowToken?.let { token ->
+            val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.hideSoftInputFromWindow(token, 0)
+        }
     }
 
     private fun navigateToChats() {
@@ -390,30 +486,15 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun navigateToSelectServer() {
-        val intent = Intent(this, SelectServerActivity::class.java)
+        val intent = Intent(this, SelectServerActivity::class.java).apply {
+            putExtra(SelectServerActivity.EXTRA_RETURN_TO_LOGIN, true)
+        }
         startActivity(intent)
-        finish()
     }
 
     private fun navigateToRegister() {
         val intent = Intent(this, RegisterActivity::class.java)
         startActivity(intent)
-    }
-
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        if (isOtpMode) {
-            // Return to login fields from OTP mode
-            isOtpMode = false
-            binding.loginFieldsGroup.visibility = View.VISIBLE
-            binding.otpGroup.visibility = View.GONE
-            binding.titleText.setText(R.string.login_welcome_title)
-            binding.subtitleText.setText(R.string.login_account_prompt)
-            binding.loginButton.setText(R.string.btn_login)
-            hideError()
-        } else {
-            super.onBackPressed()
-        }
     }
 
 }

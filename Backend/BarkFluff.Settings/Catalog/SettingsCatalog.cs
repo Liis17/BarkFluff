@@ -99,6 +99,10 @@ public static class SettingsCatalog
         AddServiceClient(entries, ServiceId.Unknown, "FederationService", ServiceId.Federation);
         AddDefault(entries, ServiceId.Unknown, "SettingsService", "Host", _ => "http://settings:7003");
 
+        AddSetupControl(entries, ServiceId.Unknown, "Email", "Enabled", "true", SettingsSetupMetadata.Email("Enabled"));
+        AddSetupControl(entries, ServiceId.Identity, "TelegramAuth", "Enabled", "false", SettingsSetupMetadata.Telegram("Enabled"));
+        AddManual(entries, ServiceId.Identity, "TelegramAuth", "BotToken", SettingsSetupMetadata.Telegram("BotToken"));
+        AddManual(entries, ServiceId.Identity, "TelegramAuth", "NodeName", SettingsSetupMetadata.Telegram("NodeName"));
         AddServiceBase(entries, ServiceId.Identity, "IdentityDb");
         AddLiteral(entries, ServiceId.Identity, "Redis", "", "redis:6379");
         foreach (var (key, value) in new Dictionary<string, string>
@@ -245,6 +249,6 @@ public static class SettingsCatalog
         };
 
     private static bool IsSensitive(string section, string key) =>
-        key is "SecretKey" or "Password" or "Token" or "ApiSecret" or "ApiKey" or "AccessKey" or "SenderPassword"
+        key is "SecretKey" or "Password" or "Token" or "ApiSecret" or "ApiKey" or "AccessKey" or "SenderPassword" or "BotToken"
         || section.EndsWith("Db", StringComparison.Ordinal);
 }

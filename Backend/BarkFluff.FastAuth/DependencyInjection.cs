@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddSingleton<QrCodeGenerator>();
 
         services.AddScoped<SubscribeFastAuthResultQueryHandler>();
+        services.AddScoped<FastAuthCompletion>();
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
 

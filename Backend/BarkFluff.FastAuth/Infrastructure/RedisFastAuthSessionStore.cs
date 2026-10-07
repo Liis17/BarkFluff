@@ -29,7 +29,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
         local s = cjson.decode(raw)
         local now = tonumber(ARGV[1])
         if tonumber(s.ExpiresAtMs) <= now then
-            if s.Status < 3 then
+            if s.Status < 3 or s.Status == 6 then
                 s.Status = 5
                 s.FinalizedAtMs = now
                 s.Result = { Status = 5 }
@@ -53,7 +53,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
         local s = cjson.decode(raw)
         local now = tonumber(ARGV[1])
         if tonumber(s.ExpiresAtMs) <= now then
-            if s.Status < 3 then
+            if s.Status < 3 or s.Status == 6 then
                 s.Status = 5
                 s.FinalizedAtMs = now
                 s.Result = { Status = 5 }
@@ -61,7 +61,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
             end
             return 'EXPIRED'
         end
-        if s.Status ~= 2 then return 'INVALID' end
+        if s.Status ~= 2 and s.Status ~= 6 then return 'INVALID' end
         if s.ConfirmationCode ~= ARGV[3] then return 'INVALID' end
         if s.UserId ~= tonumber(ARGV[4]) then return 'INVALID' end
         s.Status = 3
@@ -78,7 +78,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
         local s = cjson.decode(raw)
         local now = tonumber(ARGV[1])
         if tonumber(s.ExpiresAtMs) <= now then
-            if s.Status < 3 then
+            if s.Status < 3 or s.Status == 6 then
                 s.Status = 5
                 s.FinalizedAtMs = now
                 s.Result = { Status = 5 }
@@ -86,7 +86,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
             end
             return 'EXPIRED'
         end
-        if s.Status ~= 2 then return 'INVALID' end
+        if s.Status ~= 2 and s.Status ~= 6 then return 'INVALID' end
         if s.ConfirmationCode ~= ARGV[3] then return 'INVALID' end
         if s.UserId ~= tonumber(ARGV[4]) then return 'INVALID' end
         s.Status = 4
@@ -101,13 +101,29 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
         local raw = redis.call('GET', KEYS[1])
         if not raw then return 0 end
         local s = cjson.decode(raw)
-        if s.Status >= 3 then return 0 end
+        if s.Status >= 3 and s.Status <= 5 then return 0 end
         s.Status = 5
         s.FinalizedAtMs = tonumber(ARGV[1])
         s.Result = { Status = 5 }
         redis.call('PSETEX', KEYS[1], ARGV[2], cjson.encode(s))
         return 1
         """;
+
+    private const string WaitScript = """
+        local raw = redis.call('GET', KEYS[1])
+        if not raw then return 'NOT_FOUND' end
+        local s = cjson.decode(raw)
+        if tonumber(s.ExpiresAtMs) <= tonumber(ARGV[1]) then return 'EXPIRED' end
+        if s.Status ~= 2 and s.Status ~= 6 then return 'INVALID' end
+        if s.ConfirmationCode ~= ARGV[2] or s.UserId ~= tonumber(ARGV[3]) then return 'INVALID' end
+        s.Status = 6
+        redis.call('SET', KEYS[1], cjson.encode(s), 'KEEPTTL')
+        return 'OK'
+        """;
+
+    public async Task<FastAuthTransition> TryWaitForTelegramAsync(string id, string confirmationCode, long userId,
+        CancellationToken ct = default) => MapTransition(await Db.ScriptEvaluateAsync(WaitScript,
+            [SessionKey(id)], [NowMs(), confirmationCode, userId]));
 
     // KEYS[1] — ключ захвата подписчика; ARGV[1] — токен владельца.
     private const string ReleaseSubscriberScript = """
@@ -120,12 +136,15 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private IDatabase Db => redis.GetDatabase();
 
     public async Task<FastAuthSessionState> CreateAsync(string deviceName, string operationSystem,
-        string appName, string appVersion, string ipAddress, CancellationToken ct = default)
+        string appName, string appVersion, string ipAddress, string? clientDeviceId = null,
+        CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
+        var id = Guid.NewGuid().ToString();
         var session = new FastAuthSessionState
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = id,
+            ClientDeviceId = Guid.TryParse(clientDeviceId, out var parsedDeviceId) ? parsedDeviceId.ToString() : id,
             CreatedAt = now,
             ExpiresAt = now + FastAuthSessionTiming.SessionTtl,
             DeviceName = deviceName,
@@ -233,6 +252,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private static StoredSession ToStored(FastAuthSessionState s) => new()
     {
         Id = s.Id,
+        ClientDeviceId = s.ClientDeviceId,
         CreatedAtMs = ToUnixMs(s.CreatedAt)!.Value,
         ExpiresAtMs = ToUnixMs(s.ExpiresAt)!.Value,
         DeviceName = s.DeviceName,
@@ -257,6 +277,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private static FastAuthSessionState FromStored(StoredSession s) => new()
     {
         Id = s.Id,
+        ClientDeviceId = string.IsNullOrWhiteSpace(s.ClientDeviceId) ? s.Id : s.ClientDeviceId,
         CreatedAt = FromUnixMs(s.CreatedAtMs)!.Value,
         ExpiresAt = FromUnixMs(s.ExpiresAtMs)!.Value,
         DeviceName = s.DeviceName,
@@ -284,6 +305,7 @@ public class RedisFastAuthSessionStore(IConnectionMultiplexer redis) : IFastAuth
     private sealed class StoredSession
     {
         public string Id { get; set; } = string.Empty;
+        public string? ClientDeviceId { get; set; }
         public long CreatedAtMs { get; set; }
         public long ExpiresAtMs { get; set; }
         public string DeviceName { get; set; } = string.Empty;

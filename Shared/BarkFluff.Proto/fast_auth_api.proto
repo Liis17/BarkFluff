@@ -114,6 +114,7 @@ enum FastAuthStatus {
   FAST_AUTH_STATUS_ACCEPTED = 3;                 // Подтверждён, токены выпущены.
   FAST_AUTH_STATUS_REJECTED = 4;                 // Отклонён мобильным.
   FAST_AUTH_STATUS_EXPIRED = 5;                  // Истёк (TTL = 5 минут с момента генерации).
+  FAST_AUTH_STATUS_TELEGRAM_PENDING = 6;         // QR одобрен, ожидается подтверждение Identity/Telegram.
 }
 
 enum TokenFormat {

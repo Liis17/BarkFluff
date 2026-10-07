@@ -40,6 +40,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<MessagePinnedConsumer>();
     x.AddConsumer<MessageUnpinnedConsumer>();
     x.AddConsumer<AllMessagesUnpinnedConsumer>();
+    x.AddConsumer<ChatHiddenConsumer>();
     x.AddConsumer<NewEncryptedMessageConsumer>();
     x.AddConsumer<EncryptedMessageEditedConsumer>();
     x.AddConsumer<EncryptedMessageDeletedConsumer>();
@@ -114,6 +115,13 @@ builder.Services.AddMassTransit(x =>
             e.AutoDelete = true;
             e.Durable = false;
             e.ConfigureConsumer<AllMessagesUnpinnedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint($"chats-hidden-updates-{InstanceId.Current}", e =>
+        {
+            e.AutoDelete = true;
+            e.Durable = false;
+            e.ConfigureConsumer<ChatHiddenConsumer>(context);
         });
 
         cfg.ReceiveEndpoint($"new-encrypted-messages-updates-{InstanceId.Current}", e =>
@@ -203,6 +211,7 @@ startupMetrics.Set("messages_deleted_subscriptions_active", 0);
 startupMetrics.Set("messages_pinned_subscriptions_active", 0);
 startupMetrics.Set("messages_unpinned_subscriptions_active", 0);
 startupMetrics.Set("all_messages_unpinned_subscriptions_active", 0);
+startupMetrics.Set("chats_hidden_subscriptions_active", 0);
 startupMetrics.Set("private_messages_subscriptions_active", 0);
 startupMetrics.Set("private_message_edits_subscriptions_active", 0);
 startupMetrics.Set("private_message_deletes_subscriptions_active", 0);

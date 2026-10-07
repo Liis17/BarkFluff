@@ -25,7 +25,9 @@ docker-compose -f docker/backend/docker-compose-dev-backend.yml up -d cloudmessa
 5. **IncomingCallPushConsumer** — consumer для `IncomingCallPushEvent` из [[Backend/Calls]]. Резолвит имя звонящего/аватар (`Users.GetById`) и заголовок чата для группового (`Messages.GetChatInfo`), берёт токены получателей и шлёт `FirebaseService.SendIncomingCallBatchAsync` (`type=incoming_call`). Best-effort, без retry.
 6. **CallDismissPushConsumer** — consumer для `CallDismissPushEvent`. Берёт токены получателей и шлёт `FirebaseService.SendCallDismissBatchAsync` (`type=dismiss_call`, `reason`) — гасит нотификацию входящего звонка. Best-effort, без retry.
 7. **PrivateChatInvitePushConsumer** — consumer для `PrivateChatInviteEvent` из [[Backend/Messages]] (fanout, параллельно с Updates). Резолвит имя/аватар инициатора (`Users.GetById`), берёт токены приглашённого и шлёт `FirebaseService.SendPrivateChatInviteBatchAsync` (`type=private_chat_invite`; текст локализуется на клиенте). Best-effort, без retry.
-8. **FirebaseService** — singleton над Firebase Admin SDK.
+8. **NewEncryptedMessagePushConsumer** — потребляет `NewEncryptedMessageEvent`; получатели — участники кроме отправителя, token lookup с `chat_id` сохраняет mute-фильтр. Только Android-токены.
+9. **NewSecretMessagePushConsumer** — потребляет `NewSecretMessageEvent`; token lookup строго по `RecipientDeviceId`. Envelope не передаётся в Firebase.
+10. **FirebaseService** — singleton над Firebase Admin SDK.
    - `SendNotificationBatchAsync` / `SendDismissBatchAsync` / `SendIncomingCallBatchAsync` / `SendCallDismissBatchAsync` / `SendPrivateChatInviteBatchAsync` — **data-only** сообщения (без `Notification` блока), Android-клиент сам рисует уведомления.
    - `SendAdminBroadcastBatchAsync` — **native Notification-блок** (title/body/imageUrl) для админ-рассылок, чтобы Android-система показала уведомление без вовлечения клиентского кода. Чанкование по 500 токенов (FCM лимит на multicast).
    Все методы используют `SendEachForMulticastAsync` и обрабатывают `Unregistered`-ошибки для последующей очистки токенов.
@@ -114,6 +116,7 @@ Messages (CreatePrivateChat) → PrivateChatInviteEvent → RabbitMQ (fanout: Up
 | Ключ | Значение |
 |------|---------|
 | `chat_id` | ID чата, нотификацию которого нужно убрать |
+| `message_id` | Максимальный прочитанный ID; 0 — legacy-отмена всего чата |
 
 ### `type = "incoming_call"` (входящий звонок)
 
@@ -176,3 +179,12 @@ Messages (CreatePrivateChat) → PrivateChatInviteEvent → RabbitMQ (fanout: Up
 `DeviceFirebaseToken.push_platform` разделяет Android и Web. Android сохраняет прежний подробный payload. Для Web `FirebaseService` посылает отдельные **data-only** сообщения: новое/секретное сообщение содержит только `chat_id`, `message_id`, `sender_id`, `sender_name`, `avatar_url`; E2E-инвайт — ID чата и пригласившего; входящий звонок — ID звонка, опциональный ID чата и данные звонящего. `dismiss`/`dismiss_call` закрывают уведомления по tag, а click открывает мессенджер, не принимает звонок в фоне.
 
 Web payload никогда не содержит `message_text`, вложения, изображения либо текст/картинку админ-рассылки. Для broadcast передаётся лишь `type=admin_broadcast`. Метрики отдельных web-отправок: `web_pushes_sent` и `web_pushes_failed`.
+
+## Скрытые уведомления E2E
+
+Новые receive endpoints: `new-encrypted-message-push-handler` и `new-secret-message-push-handler`. Existing events из [[Shared/Queue]] потребляются параллельно с [[Backend/Updates]].
+
+- `new_private_message`: `private_chat_id`, `event_id`, `sender_user_id`.
+- `new_secret_message`: `event_id`, `sender_user_id`, `sender_device_id`.
+
+Data-only high-priority Android push не содержит text/ciphertext/envelope. Отсутствие legacy `chat_id` заставляет старые клиенты пропустить маркер. [[Клиенты/Android]] локализует общий текст и даёт только «Скрыть»; reply/read для E2E отсутствуют. Secret-сообщения больше не создают обычный `PushNotificationEvent` в [[Backend/Messages]].

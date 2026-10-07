@@ -6,12 +6,18 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import barkfluff.shared.Shared
 import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.chat.RegularChatSession
+import com.barkfluff.client.chat.MessageNavigator
+import com.barkfluff.client.chat.MessageTarget
+import com.barkfluff.client.chat.MessageTargetMissingException
+import com.barkfluff.client.chat.messageChronologicalOrder
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.OutgoingAttachmentKind
@@ -38,6 +44,8 @@ import java.io.File
 import barkfluff.files.FilesApiOuterClass.UploadFileType
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
@@ -90,6 +98,7 @@ data class TimelineState(
     val isLoading: Boolean = false,
     val firstVisibleMessageId: Long = 0L,
     val lastVisibleMessageId: Long = 0L,
+    val target: MessageTarget? = null,
 )
 
 /** Text, reply/edit mode and accepted preview attachments survive Activity recreation. */
@@ -101,6 +110,10 @@ data class ComposerState(
     val attachmentKinds: List<String> = emptyList(),
     val draftGeneration: Long? = null,
     val isRestoring: Boolean = false,
+    val voiceSourcePath: String? = null,
+    val isVoiceStaging: Boolean = false,
+    val isRestoringAttachments: Boolean = false,
+    val isSending: Boolean = false,
 )
 
 /** Selection is a value object; the adapter never owns this set. */
@@ -154,7 +167,10 @@ sealed interface ChatIntent {
         val isGroupChat: Boolean,
         val otherUserId: Long,
         val supportsDrafts: Boolean,
+        val targetMessageId: Long = 0L,
     ) : ChatIntent
+    data class NavigateToMessage(val messageId: Long) : ChatIntent
+    data class MessageNavigationHandled(val requestId: Long) : ChatIntent
     data object Load : ChatIntent
     data object LoadUp : ChatIntent
     data object LoadDown : ChatIntent
@@ -165,6 +181,8 @@ sealed interface ChatIntent {
     data object StopTyping : ChatIntent
     data class Send(val text: String, val fileIds: List<String> = emptyList()) : ChatIntent
     data class SendMedia(val job: SendJob) : ChatIntent
+    data class StageVoice(val file: File, val sendImmediately: Boolean = false) : ChatIntent
+    data object DiscardVoice : ChatIntent
     data class StageAttachment(
         val uri: Uri,
         val kind: String,
@@ -226,6 +244,7 @@ class ChatViewModel @Inject constructor(
         private const val KEY_PENDING_EDIT = "pending_edit_message_id"
         private const val KEY_SELECTED_MESSAGE_IDS = "selected_message_ids"
         private const val KEY_CHAT_ID = "chat_id"
+        private const val KEY_TARGET_MESSAGE = "target_message_id"
     }
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -239,6 +258,9 @@ class ChatViewModel @Inject constructor(
     private val composerReducer = ChatComposer()
     private val rowProjector = MessageRowProjector()
     private val regularChatSession = RegularChatSession(messageGateway, chatCacheRepository)
+    private val messageNavigator = MessageNavigator { id, before, after ->
+        messageGateway.loadMessages(chatId, fromMessageId = id, offsetBefore = before, offsetAfter = after)
+    }
     private val presenceSession by lazy { ChatPresenceSession(realtimeGateway, viewModelScope) }
 
     private fun emitEffect(effect: ChatEffect) {
@@ -255,7 +277,10 @@ class ChatViewModel @Inject constructor(
                 isGroupChat = intent.isGroupChat,
                 otherUserId = intent.otherUserId,
                 supportsDrafts = intent.supportsDrafts,
+                targetMessageId = intent.targetMessageId,
             )
+            is ChatIntent.NavigateToMessage -> navigateToMessage(intent.messageId)
+            is ChatIntent.MessageNavigationHandled -> acknowledgeMessageNavigation(intent.requestId)
             ChatIntent.Load -> loadMessages()
             ChatIntent.LoadUp -> loadMessagesUp()
             ChatIntent.LoadDown -> loadMessagesDown()
@@ -266,6 +291,8 @@ class ChatViewModel @Inject constructor(
             ChatIntent.StopTyping -> presenceSession.stopTyping(sendCancel = true)
             is ChatIntent.Send -> sendMessage(intent.text, intent.fileIds)
             is ChatIntent.SendMedia -> enqueueMedia(intent.job)
+            is ChatIntent.StageVoice -> stageVoice(intent)
+            ChatIntent.DiscardVoice -> discardVoice()
             is ChatIntent.StageAttachment -> stageAttachment(intent)
             is ChatIntent.RemoveAttachment -> removeComposerAttachment(intent.attachmentIndex)
             is ChatIntent.SetReply -> setPendingReply(intent.item)
@@ -301,6 +328,8 @@ class ChatViewModel @Inject constructor(
     private var hasMoreMessagesDown = true
     private var isLoadingMessages = false
     private var loadMessagesJob: Job? = null
+    private var timelineLoadVersion = 0L
+    private var isAnchoredTimeline = false
     private var firstUnreadMessageId = 0L
     private var lastBottomReadTriggerId = -1L
 
@@ -331,6 +360,7 @@ class ChatViewModel @Inject constructor(
         isGroupChat: Boolean,
         otherUserId: Long,
         supportsDrafts: Boolean,
+        targetMessageId: Long = 0L,
     ) {
         if (initialized) {
             if (this.chatId != chatId) {
@@ -343,6 +373,10 @@ class ChatViewModel @Inject constructor(
         this.supportsDrafts = supportsDrafts
         cacheScope = CacheScope.from(globalParam)
         savedStateHandle[KEY_CHAT_ID] = chatId
+        val target = (savedStateHandle.get<Long>(KEY_TARGET_MESSAGE) ?: targetMessageId)
+            .takeIf { it > 0L }?.let { messageNavigator.request(it) }
+        savedStateHandle[KEY_TARGET_MESSAGE] = target?.messageId
+        isAnchoredTimeline = target != null
 
         _uiState.value = ChatUiState(
             session = ChatSessionState(
@@ -352,6 +386,8 @@ class ChatViewModel @Inject constructor(
                 isGroupChat = isGroupChat,
                 otherUserId = otherUserId,
             ),
+            timeline = TimelineState(target = target),
+            composer = ComposerState(isRestoring = supportsDrafts, isRestoringAttachments = true),
         )
 
         configurePresence(if (isGroupChat) emptyList() else listOf(otherUserId))
@@ -366,6 +402,51 @@ class ChatViewModel @Inject constructor(
     }
 
     /** Copies a picked URI before it is exposed as an accepted composer preview. */
+    private fun stageVoice(intent: ChatIntent.StageVoice) {
+        if (sendInFlight || state.value.composer.isVoiceStaging || state.value.composer.isRestoring || state.value.composer.isRestoringAttachments) return
+        val scope = cacheScope ?: return
+        val current = state.value.composer
+        if (current.attachmentPaths.isNotEmpty()) return
+        _uiState.value = state.value.copy(composer = current.copy(
+            voiceSourcePath = intent.file.absolutePath,
+            isVoiceStaging = true,
+        ))
+        viewModelScope.launch {
+            try {
+                // Persist the reply before publishing the accepted voice preview.
+                val (draft, attachment) = withContext(NonCancellable) {
+                    val savedDraft = chatDraftRepository.edit(chatId, current.text, current.pendingReply?.messageId ?: 0L)
+                    // MediaRecorder's OGG granules can retain paused wall time. Repair only
+                    // the new local recording, on IO, before publishing a playable preview.
+                    withContext(Dispatchers.IO) { com.barkfluff.client.voice.OggOpusTimeline.normalize(intent.file) }
+                    val savedAttachment = composerAttachmentStore.stageFile(
+                        scope, chatId, intent.file, nextComposerGeneration(),
+                        OutgoingAttachmentKind.VOICE.name, "voice.ogg", "audio/ogg",
+                    )
+                    intent.file.delete()
+                    savedDraft to savedAttachment
+                }
+                val latest = state.value
+                _uiState.value = latest.copy(composer = composerReducer.stagedAttachment(
+                    latest.composer, attachment.path, attachment.kind,
+                ).copy(voiceSourcePath = null, isVoiceStaging = false, draftGeneration = draft?.generation))
+                if (intent.sendImmediately) sendMessage("")
+            } catch (error: Exception) {
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isVoiceStaging = false))
+                emitEffect(ChatEffect.ToastRes(R.string.voice_draft_save_failed))
+            }
+        }
+    }
+
+    private fun discardVoice() {
+        val composer = state.value.composer
+        if (composer.isVoiceStaging || sendInFlight) return
+        composer.voiceSourcePath?.let { File(it).delete() }
+        _uiState.value = state.value.copy(composer = composer.copy(voiceSourcePath = null))
+        composer.attachmentKinds.indexOf(OutgoingAttachmentKind.VOICE.name)
+            .takeIf { it >= 0 }?.let(::removeComposerAttachment)
+    }
+
     private fun stageAttachment(intent: ChatIntent.StageAttachment) {
         val scope = cacheScope ?: run {
             emitEffect(ChatEffect.AttachmentStageFailed(intent.uri))
@@ -411,6 +492,7 @@ class ChatViewModel @Inject constructor(
     }
 
     fun removeComposerAttachment(attachmentIndex: Int) {
+        if (sendInFlight || state.value.composer.isVoiceStaging || state.value.composer.isRestoring || state.value.composer.isRestoringAttachments) return
         val scope = cacheScope ?: return
         viewModelScope.launch {
             composerAttachmentStore.remove(scope, chatId, attachmentIndex)
@@ -425,61 +507,69 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun restoreComposerAttachments() {
-        val scope = cacheScope ?: return
+        val scope = cacheScope ?: run {
+            _uiState.value = state.value.copy(composer = state.value.composer.copy(isRestoringAttachments = false))
+            return
+        }
         viewModelScope.launch {
-            runCatching { composerAttachmentStore.cleanupOrphans(scope) }
-                .onFailure { Log.w(TAG, "Composer orphan cleanup failed", it) }
-            val restored = composerAttachmentStore.restore(scope, chatId)
-            if (restored.isEmpty()) return@launch
-            composerGenerationCounter = maxOf(
-                composerGenerationCounter,
-                restored.maxOf { it.generation },
-            )
+            try {
+                runCatching { composerAttachmentStore.cleanupOrphans(scope) }
+                    .onFailure { Log.w(TAG, "Composer orphan cleanup failed", it) }
+                val restored = composerAttachmentStore.restore(scope, chatId)
+                if (restored.isEmpty()) return@launch
+                composerGenerationCounter = maxOf(
+                    composerGenerationCounter,
+                    restored.maxOf { it.generation },
+                )
 
-            // A queue row may already own the preview when the old process died between QUEUED
-            // and clearAfterEnqueue. Clear only that generation, then render any newer records.
-            val handoffGeneration = restored.maxOf { it.generation }
-            if (outgoingMessageQueue.hasDurableHandoff(chatId, handoffGeneration)) {
-                composerAttachmentStore.clearAfterEnqueue(scope, chatId, handoffGeneration)
-                val remaining = composerAttachmentStore.restore(scope, chatId)
-                val state = _uiState.value
-                _uiState.value = if (remaining.isEmpty()) {
-                    state.copy(
-                        composer = composerReducer.clearAfterDurableEnqueue(
+                // A queue row may already own the preview when the old process died between QUEUED
+                // and clearAfterEnqueue. Clear only that generation, then render any newer records.
+                val handoffGeneration = restored.maxOf { it.generation }
+                if (outgoingMessageQueue.hasDurableHandoff(chatId, handoffGeneration)) {
+                    composerAttachmentStore.clearAfterEnqueue(scope, chatId, handoffGeneration)
+                    val remaining = composerAttachmentStore.restore(scope, chatId)
+                    val state = _uiState.value
+                    _uiState.value = if (remaining.isEmpty()) {
+                        state.copy(
+                            composer = composerReducer.clearAfterDurableEnqueue(
+                                state.composer,
+                                handoffGeneration,
+                            )
+                        )
+                    } else {
+                        composerReducer.clearAfterDurableEnqueue(
                             state.composer,
                             handoffGeneration,
-                        )
-                    )
-                } else {
-                    composerReducer.clearAfterDurableEnqueue(
-                        state.composer,
-                        handoffGeneration,
-                        remaining,
-                    ).let { next -> state.copy(composer = next) }
+                            remaining,
+                        ).let { next -> state.copy(composer = next) }
+                    }
+                    return@launch
                 }
-                return@launch
+
+                val state = _uiState.value
+                val ordered = restored.sortedBy { it.attachmentIndex }
+                // Merge with a preview that completed while restore was reading Room; never let a
+                // stale restore result remove a newly accepted path.
+                val currentPaths = state.composer.attachmentPaths
+                val currentKinds = state.composer.attachmentKinds
+                val currentEntries = currentPaths.mapIndexed { index, path ->
+                    path to currentKinds.getOrNull(index).orEmpty().ifBlank { OutgoingAttachmentKind.DOCUMENT.name }
+                }
+                val restoredEntries = ordered.map { it.path to it.kind }
+                val restoredPathSet = restoredEntries.mapTo(HashSet()) { it.first }
+                val merged = restoredEntries + currentEntries.filterNot { it.first in restoredPathSet }
+                _uiState.value = state.copy(
+                    composer = state.composer.copy(
+                        attachmentPaths = merged.map { it.first },
+                        attachmentKinds = merged.map { it.second },
+                        draftGeneration = state.composer.draftGeneration
+                            ?: ordered.maxOfOrNull { it.generation },
+                    )
+                )
+            } finally {
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isRestoringAttachments = false))
             }
 
-            val state = _uiState.value
-            val ordered = restored.sortedBy { it.attachmentIndex }
-            // Merge with a preview that completed while restore was reading Room; never let a
-            // stale restore result remove a newly accepted path.
-            val currentPaths = state.composer.attachmentPaths
-            val currentKinds = state.composer.attachmentKinds
-            val currentEntries = currentPaths.mapIndexed { index, path ->
-                path to currentKinds.getOrNull(index).orEmpty().ifBlank { OutgoingAttachmentKind.DOCUMENT.name }
-            }
-            val restoredEntries = ordered.map { it.path to it.kind }
-            val restoredPathSet = restoredEntries.mapTo(HashSet()) { it.first }
-            val merged = restoredEntries + currentEntries.filterNot { it.first in restoredPathSet }
-            _uiState.value = state.copy(
-                composer = state.composer.copy(
-                    attachmentPaths = merged.map { it.first },
-                    attachmentKinds = merged.map { it.second },
-                    draftGeneration = state.composer.draftGeneration
-                        ?: ordered.maxOfOrNull { it.generation },
-                )
-            )
         }
     }
 
@@ -525,16 +615,18 @@ class ChatViewModel @Inject constructor(
     // ═══════════════════════════════════════════════════════════════
 
     private fun loadCachedMessages() {
+        if (messageNavigator.pending != null) return
         val scope = cacheScope ?: return
+        val version = timelineLoadVersion
         viewModelScope.launch {
             val messages = runCatching {
                 regularChatSession.cached(scope, chatId, PAGE_SIZE)
             }.getOrNull().orEmpty()
-            if (messages.isEmpty()) return@launch
+            if (messages.isEmpty() || version != timelineLoadVersion) return@launch
 
             displayMessages(messages)
             reconcileSelection(messages.map { it.id }.toSet())
-            val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+            val sortedMessages = messages.sortedWith(messageChronologicalOrder)
             firstVisibleMessageId = sortedMessages.first().id
             lastVisibleMessageId = sortedMessages.last().id
             hasMoreMessagesUp = messages.size >= PAGE_SIZE
@@ -544,6 +636,7 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun loadChatInfoAndMessages() {
+        val version = timelineLoadVersion
         loadCachedMessages()
         setLoading(true)
 
@@ -585,86 +678,122 @@ class ChatViewModel @Inject constructor(
                 Log.e(TAG, "Error loading chat info", e)
             }
 
-            loadMessages()
+            if (version == timelineLoadVersion) loadMessages()
         }
     }
 
     fun loadMessages(isRetry: Boolean = false) {
+        loadMessagesJob?.cancel()
+        val version = ++timelineLoadVersion
+        val target = messageNavigator.pending
+        val tailVersion = messageNavigator.liveTailVersion
+        setLoading(true)
         loadMessagesJob = viewModelScope.launch {
             try {
-                val result = if (firstUnreadMessageId > 0) {
-                    messageGateway.loadMessages(
-                        chatId = chatId,
-                        fromMessageId = firstUnreadMessageId,
-                        offsetBefore = 15,
-                        offsetAfter = 30
-                    )
+                val targetPage = target?.let { messageNavigator.window(it) ?: return@launch }
+                val result = if (target != null) {
+                    targetPage!!.map { it.messages }
+                } else if (firstUnreadMessageId > 0) {
+                    messageGateway.loadMessages(chatId, fromMessageId = firstUnreadMessageId, offsetBefore = 15, offsetAfter = 30)
                 } else {
-                    messageGateway.loadMessages(
-                        chatId = chatId,
-                        fromMessageId = 0L,
-                        offsetBefore = 0,
-                        offsetAfter = 0,
-                        count = PAGE_SIZE
-                    )
+                    messageGateway.loadMessages(chatId, fromMessageId = 0L, offsetBefore = 0, offsetAfter = 0, count = PAGE_SIZE)
                 }
-
+                if (version != timelineLoadVersion) return@launch
                 if (result.isSuccess) {
-                    val messages = result.getOrNull()!!
+                    val messages = result.getOrThrow()
                     cacheScope?.let { scope ->
                         runCatching { chatCacheRepository.saveMessages(scope, chatId, messages) }
                             .onFailure { Log.w(TAG, "Не удалось сохранить сообщения в кеш", it) }
                     }
+                    if (version != timelineLoadVersion) return@launch
                     displayMessages(messages)
                     reconcileSelection(messages.map { it.id }.toSet())
-
-                    if (messages.isNotEmpty()) {
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-                        firstVisibleMessageId = sortedMessages.first().id
-                        lastVisibleMessageId = sortedMessages.last().id
+                    val sorted = messages.sortedWith(messageChronologicalOrder)
+                    firstVisibleMessageId = sorted.firstOrNull()?.id ?: 0L
+                    lastVisibleMessageId = sorted.lastOrNull()?.id ?: 0L
+                    if (target != null) {
+                        isAnchoredTimeline = true
+                        hasMoreMessagesUp = targetPage!!.getOrThrow().hasMoreBefore
+                        hasMoreMessagesDown = targetPage.getOrThrow().hasMoreAfter || messageNavigator.hasUnloadedTailSince(tailVersion)
+                    } else {
+                        isAnchoredTimeline = messageNavigator.hasUnloadedTailSince(tailVersion)
+                        hasMoreMessagesUp = messages.size >= if (firstUnreadMessageId > 0L) 15 else PAGE_SIZE
+                        hasMoreMessagesDown = firstUnreadMessageId > 0L || isAnchoredTimeline
+                        markVisibleMessagesAsRead(messages)
                     }
-
-                    hasMoreMessagesUp = messages.size >= 15
-                    hasMoreMessagesDown = true
-
-                    markVisibleMessagesAsRead(messages)
+                } else if (target != null) {
+                    failMessageNavigation(target, result.exceptionOrNull())
+                } else if (!isRetry) {
+                    delay(300)
+                    if (version == timelineLoadVersion) loadMessages(isRetry = true)
                 } else {
-                    if (!isRetry) {
-                        Log.w(TAG, "Message load failed, retrying after channel refresh...")
-                        delay(300)
-                        loadMessages(isRetry = true)
-                        return@launch
-                    }
                     emitEffect(ChatEffect.ToastRes(R.string.messages_load_failed))
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading messages", e)
-                if (!isRetry) {
-                    Log.w(TAG, "Message load exception, retrying after channel refresh...")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (version != timelineLoadVersion) return@launch
+                if (target != null) failMessageNavigation(target, error)
+                else if (!isRetry) {
                     delay(300)
-                    loadMessages(isRetry = true)
-                    return@launch
-                }
+                    if (version == timelineLoadVersion) loadMessages(isRetry = true)
+                } else emitEffect(ChatEffect.ToastRes(R.string.messages_load_failed))
             } finally {
-                setLoading(false)
+                if (version == timelineLoadVersion) setLoading(false)
             }
         }
     }
 
+    private fun navigateToMessage(messageId: Long) {
+        if (messageId <= 0L) return
+        val target = messageNavigator.request(messageId)
+        isAnchoredTimeline = true
+        savedStateHandle[KEY_TARGET_MESSAGE] = messageId
+        ++timelineLoadVersion
+        loadMessagesJob?.cancel()
+        _uiState.value = _uiState.value.copy(timeline = _uiState.value.timeline.copy(target = target))
+        if (_uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }) {
+            setLoading(false)
+        } else loadMessages()
+    }
+
+    fun targetPositionIn(committedMessageIds: List<Long>, listIsCommitted: Boolean): Int? =
+        messageNavigator.pending?.let { messageNavigator.position(it, committedMessageIds, listIsCommitted) }
+
+    private fun acknowledgeMessageNavigation(requestId: Long) {
+        if (!messageNavigator.acknowledge(requestId)) return
+        savedStateHandle[KEY_TARGET_MESSAGE] = null
+        _uiState.value = _uiState.value.copy(timeline = _uiState.value.timeline.copy(target = null))
+    }
+
+    private fun failMessageNavigation(target: MessageTarget, error: Throwable?) {
+        if (messageNavigator.pending != target) return
+        ++timelineLoadVersion
+        loadMessagesJob?.cancel()
+        acknowledgeMessageNavigation(target.requestId)
+        setLoading(false)
+        val missing = error is MessageTargetMissingException ||
+            io.grpc.Status.fromThrowable(error ?: MessageTargetMissingException()).code == io.grpc.Status.Code.NOT_FOUND
+        emitEffect(ChatEffect.ToastRes(if (missing) R.string.search_message_unavailable else R.string.messages_load_failed))
+        if (_uiState.value.items.isEmpty()) loadMessages()
+    }
+
     fun loadMessagesUp() {
-        if (isLoadingMessages || !hasMoreMessagesUp) return
+        if (isLoadingMessages || !hasMoreMessagesUp || messageNavigator.pending != null) return
+        val version = timelineLoadVersion
 
         setLoading(true)
         Log.d(TAG, "Loading messages up from $firstVisibleMessageId")
 
         loadMessagesJob = viewModelScope.launch {
             try {
-                val page = regularChatSession.before(cacheScope, chatId, firstVisibleMessageId, PAGE_SIZE)
+                val page = regularChatSession.before(cacheScope, chatId, firstVisibleMessageId, PAGE_SIZE, preferCache = !isAnchoredTimeline)
+                if (version != timelineLoadVersion) return@launch
                 if (page.isSuccess) {
                     val messages = page.getOrThrow().messages
                     if (messages.isNotEmpty()) {
                         prependMessages(messages)
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+                        val sortedMessages = messages.sortedWith(messageChronologicalOrder)
                         firstVisibleMessageId = sortedMessages.first().id
                         hasMoreMessagesUp = page.getOrThrow().hasMoreBefore
                     } else {
@@ -674,36 +803,39 @@ class ChatViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages up", e)
             } finally {
-                setLoading(false)
+                if (version == timelineLoadVersion) setLoading(false)
             }
         }
     }
 
     fun loadMessagesDown() {
-        if (isLoadingMessages || !hasMoreMessagesDown) return
+        if (isLoadingMessages || !hasMoreMessagesDown || messageNavigator.pending != null) return
+        val version = timelineLoadVersion
+        val tailVersion = messageNavigator.liveTailVersion
 
         setLoading(true)
         Log.d(TAG, "Loading messages down from $lastVisibleMessageId")
 
         loadMessagesJob = viewModelScope.launch {
             try {
-                val page = regularChatSession.after(cacheScope, chatId, lastVisibleMessageId, PAGE_SIZE)
+                val page = regularChatSession.after(cacheScope, chatId, lastVisibleMessageId, PAGE_SIZE, preferCache = !isAnchoredTimeline)
+                if (version != timelineLoadVersion) return@launch
                 if (page.isSuccess) {
                     val messages = page.getOrThrow().messages
                     if (messages.isNotEmpty()) {
                         appendMessages(messages)
-                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+                        val sortedMessages = messages.sortedWith(messageChronologicalOrder)
                         lastVisibleMessageId = sortedMessages.last().id
-                        hasMoreMessagesDown = page.getOrThrow().hasMoreAfter
+                        hasMoreMessagesDown = page.getOrThrow().hasMoreAfter || messageNavigator.hasUnloadedTailSince(tailVersion)
                         markVisibleMessagesAsRead(messages)
                     } else {
-                        hasMoreMessagesDown = false
+                        hasMoreMessagesDown = messageNavigator.hasUnloadedTailSince(tailVersion)
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages down", e)
             } finally {
-                setLoading(false)
+                if (version == timelineLoadVersion) setLoading(false)
             }
         }
     }
@@ -756,7 +888,8 @@ class ChatViewModel @Inject constructor(
      * Ждёт переподключения RealtimeService (каналы пересоздаются в ProcessLifecycleOwner.onStart).
      */
     fun onStartCatchUp() {
-        if (lastVisibleMessageId <= 0L || isLoadingMessages) return
+        if (lastVisibleMessageId <= 0L || isLoadingMessages || messageNavigator.pending != null) return
+        val version = timelineLoadVersion
         viewModelScope.launch {
             val tokenValid = authGateway.ensureValid()
             if (!tokenValid) {
@@ -766,7 +899,7 @@ class ChatViewModel @Inject constructor(
             }
 
             waitForConnection()
-            if (lastVisibleMessageId > 0L && !isLoadingMessages) {
+            if (lastVisibleMessageId > 0L && !isLoadingMessages && version == timelineLoadVersion && messageNavigator.pending == null) {
                 Log.d(TAG, "onStartCatchUp: loading missed messages from lastVisibleMessageId=$lastVisibleMessageId")
                 hasMoreMessagesDown = true
                 loadMessagesDown()
@@ -781,6 +914,7 @@ class ChatViewModel @Inject constructor(
      *  — сообщения с обновлённым текстом/вложениями/isEdited обновляются.
      */
     private suspend fun syncRecentMessages() {
+        val version = timelineLoadVersion
         val visibleMessages = _uiState.value.items.filter { it.type == MessageType.MESSAGE }
         if (visibleMessages.isEmpty()) return
 
@@ -793,6 +927,7 @@ class ChatViewModel @Inject constructor(
             offsetBefore = 0,
             offsetAfter = 50
         )
+        if (version != timelineLoadVersion) return
         if (result.isFailure) {
             Log.w(TAG, "syncRecentMessages: load failed: ${result.exceptionOrNull()?.message}")
             return
@@ -841,6 +976,7 @@ class ChatViewModel @Inject constructor(
     // ═══════════════════════════════════════════════════════════════
 
     fun sendMessage(text: String, fileIds: List<String> = emptyList()) {
+        if (sendInFlight || state.value.composer.isVoiceStaging || state.value.composer.isRestoring || state.value.composer.isRestoringAttachments) return
         val messageText = text.trim()
 
         val edit = _uiState.value.pendingEdit
@@ -853,8 +989,8 @@ class ChatViewModel @Inject constructor(
         val hasStagedComposerAttachments = _uiState.value.composer.attachmentPaths.isNotEmpty()
         if (messageText.isBlank() && fileIds.isEmpty() && !hasStagedComposerAttachments && replyId == 0L) return
 
-        if (sendInFlight) return
         sendInFlight = true
+        _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = true))
         viewModelScope.launch {
             try {
                 val sentDraft = chatDraftRepository.edit(chatId, messageText, replyId)
@@ -880,9 +1016,14 @@ class ChatViewModel @Inject constructor(
                     existingFileIds = fileIds,
                     draftGeneration = handoffGeneration
                 ))
-                val remaining = cacheScope?.let { scope ->
-                    composerAttachmentStore.restore(scope, chatId)
-                }.orEmpty()
+                val remaining = runCatching {
+                    cacheScope?.let { scope -> composerAttachmentStore.restore(scope, chatId) }.orEmpty()
+                        .filter { handoffGeneration == null || it.generation > handoffGeneration }
+                }.getOrElse { error ->
+                    // Acceptance is durable even if the preview journal cannot be read now.
+                    Log.w(TAG, "Unable to reload accepted composer preview", error)
+                    emptyList()
+                }
                 val currentState = _uiState.value
                 _uiState.value = currentState.copy(
                     composer = if (remaining.isEmpty()) {
@@ -905,6 +1046,7 @@ class ChatViewModel @Inject constructor(
                 emitEffect(ChatEffect.ToastRes(R.string.message_send_error, e.message.orEmpty()))
             } finally {
                 sendInFlight = false
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = false))
             }
         }
     }
@@ -935,6 +1077,7 @@ class ChatViewModel @Inject constructor(
     fun enqueueMedia(job: SendJob) {
         if (sendInFlight) return
         sendInFlight = true
+        _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = true))
         viewModelScope.launch {
             try {
                 val draft = chatDraftRepository.edit(job.chatId, job.text, job.replyId)
@@ -952,6 +1095,7 @@ class ChatViewModel @Inject constructor(
                 emitEffect(ChatEffect.ToastRes(R.string.message_send_error, e.message.orEmpty()))
             } finally {
                 sendInFlight = false
+                _uiState.value = state.value.copy(composer = state.value.composer.copy(isSending = false))
             }
         }
     }
@@ -1165,42 +1309,50 @@ class ChatViewModel @Inject constructor(
     private fun restoreDraft() {
         if (!supportsDrafts || draftRestored) return
         draftRestored = true
+        isRestoringDraft = true
         viewModelScope.launch {
-            val draft = chatDraftRepository.restore(chatId) ?: return@launch
-            isRestoringDraft = true
-            _uiState.value = _uiState.value.copy(
-                composer = _uiState.value.composer.copy(
-                    text = draft.text,
-                    draftGeneration = draft.generation,
-                    isRestoring = true,
+            try {
+                val draft = chatDraftRepository.restore(chatId) ?: return@launch
+                // The journal keeps a sent draft until SENT; an outbox bubble already shows its text.
+                if (outgoingMessageQueue.hasDraftHandoff(chatId, draft.generation, draft.text, draft.replyToMessageId)) {
+                    return@launch
+                }
+                _uiState.value = _uiState.value.copy(
+                    composer = _uiState.value.composer.copy(
+                        text = draft.text,
+                        draftGeneration = draft.generation,
+                        isRestoring = true,
+                    )
                 )
-            )
-            emitEffect(ChatEffect.DraftRestored(draft.text))
-            if (draft.replyToMessageId == 0L) {
+                emitEffect(ChatEffect.DraftRestored(draft.text))
+                if (draft.replyToMessageId == 0L) {
+                    return@launch
+                }
+
+                val item = _uiState.value.items.firstOrNull { it.messageId == draft.replyToMessageId }
+                    ?: messageGateway.loadMessages(
+                        chatId = chatId,
+                        fromMessageId = draft.replyToMessageId,
+                        offsetBefore = 1,
+                        offsetAfter = 1
+                    ).getOrNull()?.firstOrNull { it.id == draft.replyToMessageId }?.let(::toMessageItem)
+                if (item != null) {
+                    setPendingReply(item)
+                } else if (cacheScope?.let { scope ->
+                        composerAttachmentStore.restore(scope, chatId).any { it.kind == OutgoingAttachmentKind.VOICE.name }
+                    } == true) {
+                    // A local voice reply must retain its target while the source message is offline.
+                    setPendingReply(MessageItem(draft.replyToMessageId, 0L, text = "", timestamp = 0L, attachments = emptyList()))
+                } else {
+                    chatDraftRepository.edit(chatId, draft.text, 0L)
+                    chatDraftRepository.flush(chatId)
+                }
+            } finally {
                 isRestoringDraft = false
                 _uiState.value = _uiState.value.copy(
                     composer = _uiState.value.composer.copy(isRestoring = false)
                 )
-                return@launch
             }
-
-            val item = _uiState.value.items.firstOrNull { it.messageId == draft.replyToMessageId }
-                ?: messageGateway.loadMessages(
-                    chatId = chatId,
-                    fromMessageId = draft.replyToMessageId,
-                    offsetBefore = 1,
-                    offsetAfter = 1
-                ).getOrNull()?.firstOrNull { it.id == draft.replyToMessageId }?.let(::toMessageItem)
-            if (item != null) {
-                setPendingReply(item)
-            } else {
-                chatDraftRepository.edit(chatId, draft.text, 0L)
-                chatDraftRepository.flush(chatId)
-            }
-            isRestoringDraft = false
-            _uiState.value = _uiState.value.copy(
-                composer = _uiState.value.composer.copy(isRestoring = false)
-            )
         }
     }
 
@@ -1521,6 +1673,7 @@ class ChatViewModel @Inject constructor(
 
     private fun addNewMessage(msg: Shared.Message) {
         val currentList = _uiState.value.items.toMutableList()
+        val deferLiveTail = isAnchoredTimeline && (hasMoreMessagesDown || isLoadingMessages || messageNavigator.pending != null)
 
         // Реконсиляция своего оптимистичного сообщения. Realtime-эхо и ответ sendMessage
         // (который проставляет messageId через clearOptimisticUploadProgress) могут прийти в
@@ -1542,6 +1695,10 @@ class ChatViewModel @Inject constructor(
                     )
             }
             if (optIdx >= 0) {
+                if (deferLiveTail) {
+                    messageNavigator.deferLiveMessage()
+                    hasMoreMessagesDown = true
+                }
                 currentList[optIdx] = toMessageItem(msg).copy(localId = currentList[optIdx].localId)
                 submitItems(currentList)
                 return
@@ -1550,6 +1707,13 @@ class ChatViewModel @Inject constructor(
 
         // Проверка дубликата
         if (currentList.any { (it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM) && it.messageId == msg.id }) {
+            return
+        }
+
+        // The cached live tail can be far beyond a search window; keep its paging boundary.
+        if (deferLiveTail) {
+            messageNavigator.deferLiveMessage()
+            hasMoreMessagesDown = true
             return
         }
 
@@ -1626,6 +1790,9 @@ class ChatViewModel @Inject constructor(
         if (removed) {
             submitItems(currentList)
         }
+        messageNavigator.pending?.takeIf { it.messageId == messageId }?.let {
+            failMessageNavigation(it, MessageTargetMissingException())
+        }
     }
 
     private fun rebuildMessagesFromList(messages: List<Shared.Message>) {
@@ -1637,15 +1804,9 @@ class ChatViewModel @Inject constructor(
      * @return true если сообщение доступно в [state] после вызова.
      */
     suspend fun ensureMessageLoaded(messageId: Long): Boolean {
-        if (_uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }) {
-            return true
-        }
-        val result = messageGateway.loadMessages(chatId, fromMessageId = messageId, offsetBefore = 20, offsetAfter = 20)
-        if (result.isSuccess) {
-            rebuildMessagesFromList(result.getOrNull() ?: emptyList())
-            return _uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }
-        }
-        return false
+        navigateToMessage(messageId)
+        loadMessagesJob?.join()
+        return _uiState.value.items.any { it.type == MessageType.MESSAGE && it.messageId == messageId }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1715,33 +1876,31 @@ class ChatViewModel @Inject constructor(
      * Кнопка «вниз»: подтягивает последние сообщения с сервера, если локальный хвост протух.
      * Вызывается из Activity параллельно с плавным скроллом (UX-тайминг остаётся в Activity).
      */
-    suspend fun refreshLatestMessages() {
-        if (isLoadingMessages) return
+    suspend fun refreshLatestMessages(): Boolean {
+        if (isLoadingMessages || messageNavigator.pending != null) return false
+        val version = timelineLoadVersion
         val serverLastMessageId = messageGateway.chatInfo(chatId).getOrNull()?.lastMessageId ?: 0L
-        if (serverLastMessageId <= 0L || serverLastMessageId == lastVisibleMessageId) return
-
+        if (version != timelineLoadVersion || messageNavigator.pending != null) return false
+        if (serverLastMessageId <= 0L || serverLastMessageId == lastVisibleMessageId) return true
+        val tailVersion = messageNavigator.liveTailVersion
         setLoading(true)
-        hasMoreMessagesDown = false
-        val result = messageGateway.loadMessages(
-            chatId = chatId,
-            fromMessageId = 0L,
-            offsetBefore = 0,
-            offsetAfter = 0,
-            count = PAGE_SIZE
-        )
-        setLoading(false)
-
-        if (result.isSuccess) {
-            val messages = result.getOrNull()!!
-            displayMessages(messages)
-            if (messages.isNotEmpty()) {
-                val sorted = messages.sortedBy { it.sentAt.seconds }
-                firstVisibleMessageId = sorted.first().id
-                lastVisibleMessageId = sorted.last().id
+        try {
+            val result = messageGateway.loadMessages(chatId, fromMessageId = 0L, count = PAGE_SIZE)
+            if (version != timelineLoadVersion || messageNavigator.pending != null) return false
+            if (result.isSuccess) {
+                val messages = result.getOrThrow()
+                displayMessages(messages)
+                val sorted = messages.sortedWith(messageChronologicalOrder)
+                firstVisibleMessageId = sorted.firstOrNull()?.id ?: 0L
+                lastVisibleMessageId = sorted.lastOrNull()?.id ?: 0L
+                hasMoreMessagesUp = messages.size >= PAGE_SIZE
+                hasMoreMessagesDown = messageNavigator.hasUnloadedTailSince(tailVersion)
+                isAnchoredTimeline = hasMoreMessagesDown
+                markVisibleMessagesAsRead(messages)
             }
-            hasMoreMessagesUp = messages.size >= 15
-            hasMoreMessagesDown = false
-            markVisibleMessagesAsRead(messages)
+            return result.isSuccess
+        } finally {
+            if (version == timelineLoadVersion) setLoading(false)
         }
     }
 

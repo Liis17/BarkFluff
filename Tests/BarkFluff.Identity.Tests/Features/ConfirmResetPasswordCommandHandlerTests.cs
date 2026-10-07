@@ -73,7 +73,7 @@ public class ConfirmResetPasswordCommandHandlerTests
         return new ConfirmResetPasswordCommandHandler(
             _resetPasswordsStorage, _authPropsStorage, _passwordsStorage,
             _refreshTokensStorage, _mediator.Object, ctx ?? _requestContext, _metrics, _logger.Object,
-            abuseGuard ?? TestHelper.CreateAbuseGuard());
+            abuseGuard ?? TestHelper.CreateAbuseGuard(), new AuthenticationStore(_context));
     }
 
     [Fact]

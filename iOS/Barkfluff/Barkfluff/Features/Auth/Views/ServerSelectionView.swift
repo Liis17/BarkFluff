@@ -15,27 +15,29 @@ struct ServerSelectionView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                // Заголовок
-                headerSection
+            ReadableContentContainer(maxWidth: ReadableContentWidth.authentication) {
+                VStack(spacing: 24) {
+                    // Заголовок
+                    headerSection
 
-                // Основной контент
-                if let viewModel {
-                    // Секция списка серверов
-                    serverListSection(viewModel)
+                    // Основной контент
+                    if let viewModel {
+                        // Секция списка серверов
+                        serverListSection(viewModel)
 
-                    // Ручное подключение
-                    manualConnectionSection(viewModel)
+                        // Ручное подключение
+                        manualConnectionSection(viewModel)
 
-                    // Ошибка
-                    if let errorMessage = viewModel.errorMessage {
-                        Text(errorMessage)
-                            .font(.subheadline)
-                            .foregroundStyle(.red)
+                        // Ошибка
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage)
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                        }
                     }
                 }
+                .padding(20)
             }
-            .padding(20)
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .onAppear {

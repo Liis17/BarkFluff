@@ -18,6 +18,29 @@ class OutgoingMessageMigrationTest {
     )
 
     @Test
+    fun migrationFrom4PreservesDraftsAndAddsIndependentReadJournal() {
+        val name = "notification-read-migration-test"
+        helper.createDatabase(name, 4).apply {
+            execSQL("INSERT INTO cached_chat_drafts(scopeId, chatId, text, replyToMessageId, revision, generation, syncState) " +
+                "VALUES ('scope', 'chat', 'draft', 0, 'r1', 1, 0)")
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 5, true, ChatCacheRepository.MIGRATION_4_5).apply {
+            query("SELECT text FROM cached_chat_drafts").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("draft", cursor.getString(0))
+            }
+            execSQL("INSERT INTO pending_message_reads(scopeId, messageId, chatId, attemptCount, nextAttemptAtMillis) " +
+                "VALUES ('scope', 42, 'chat', 0, 0)")
+            query("SELECT messageId FROM pending_message_reads").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(42L, cursor.getLong(0))
+            }
+            close()
+        }
+    }
+
+    @Test
     fun migrationFrom2PreservesCachedMessagesAndAddsOutboxTables() {
         val name = "outgoing-migration-test"
         helper.createDatabase(name, 2).apply {

@@ -70,7 +70,8 @@ public class AcceptFastAuthCommandHandlerTests
             c => c.CreateSessionForUserServerAsync(
                 It.Is<CreateSessionForUserServerRequest>(r =>
                     r.UserId == 42 &&
-                    !string.IsNullOrEmpty(r.DeviceId) &&
+                    r.DeviceId == session.ClientDeviceId &&
+                    r.AttemptId == session.Id &&
                     r.DeviceName == "TestDevice" &&
                     r.OperationSystem == "Windows" &&
                     r.IpAddress == "127.0.0.1"),
@@ -194,7 +195,7 @@ public class AcceptFastAuthCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AlreadyAcceptedSession_ThrowsFastAuthInvalidStateException()
+    public async Task Handle_AlreadyAcceptedSession_IsIdempotent()
     {
         var (session, code) = await _h.CreateAndScanSessionAsync();
         var handler = CreateHandler();
@@ -207,7 +208,7 @@ public class AcceptFastAuthCommandHandlerTests
             new AcceptFastAuthCommand { FastAuthId = session.Id, ConfirmationCode = code },
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<FastAuthInvalidStateException>();
+        await act.Should().NotThrowAsync();
     }
 
     [Fact]

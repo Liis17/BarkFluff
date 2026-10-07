@@ -30,26 +30,26 @@
 
     /* ===== BASE (styles.css) ===== */
     :root {
-      --bg-0: #14070a;
-      --bg-1: #1c0d0a;
-      --bg-2: #241310;
-      --bg-3: #2d1914;
-      --line: rgba(255, 240, 220, 0.08);
-      --line-strong: rgba(255, 240, 220, 0.14);
-      --ink: #fef6ea;
-      --ink-dim: #c9a893;
-      --ink-mute: #8a6a5b;
-      --brand: #ff7a29;
-      --brand-2: #e25a12;
-      --brand-deep: #8a2e06;
-      --brand-glow: rgba(255, 122, 41, 0.35);
-      --brand-soft: #ffb47a;
-      --button-top: #ff8a3c;
-      --button-end: #e65c12;
-      --button-ink: #fff;
-      --surface-card: linear-gradient(180deg, rgba(45,25,20,0.72), rgba(22,11,9,0.72));
-      --surface-panel: rgba(10,5,6,0.58);
-      --grid-line: rgba(255,240,220,0.025);
+      --bg-0: #050820;
+      --bg-1: #080c28;
+      --bg-2: #0e1538;
+      --bg-3: #172052;
+      --line: rgba(190, 205, 255, 0.10);
+      --line-strong: rgba(190, 205, 255, 0.18);
+      --ink: #f2f4ff;
+      --ink-dim: #b4bcdf;
+      --ink-mute: #98a3d0;
+      --brand: #8f9cff;
+      --brand-2: #6a78ee;
+      --brand-deep: #3a45a8;
+      --brand-glow: rgba(143, 156, 255, 0.35);
+      --brand-soft: #c3cbff;
+      --button-top: #a3adff;
+      --button-end: #6f7df0;
+      --button-ink: #060a24;
+      --surface-card: linear-gradient(180deg, rgba(22,32,82,0.72), rgba(8,12,38,0.72));
+      --surface-panel: rgba(5,8,30,0.62);
+      --grid-line: rgba(170,190,255,0.03);
       --radius-sm: 10px;
       --radius: 16px;
       --radius-lg: 24px;
@@ -81,8 +81,8 @@
     .bg-mesh {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        linear-gradient(180deg, rgba(20,7,10,0.74), rgba(20,7,10,0.92)),
-        url('/assets/channel-nightly.webp') center / cover;
+        linear-gradient(180deg, rgba(3,5,18,0.2), rgba(3,5,18,0.42)),
+        url('/assets/channel-nightly.webp') center / cover #050820;
       transition: opacity .45s ease;
     }
     .bg-mesh::after {
@@ -109,7 +109,8 @@
       --brand-glow: rgba(80, 191, 255, 0.32);
       --brand-soft: #9bdcff;
       --button-top: #54c9ff;
-      --button-end: #197cc4;
+      --button-end: #2388d0;
+      --button-ink: #04121f;
       --surface-card: linear-gradient(180deg, rgba(13,43,75,0.84), rgba(5,21,42,0.82));
       --surface-panel: rgba(4, 19, 38, 0.72);
       --grid-line: rgba(124, 198, 255, 0.11);
@@ -128,14 +129,15 @@
       --line-strong: rgba(23, 48, 66, 0.2);
       --ink: #173042;
       --ink-dim: #526b7b;
-      --ink-mute: #78909d;
+      --ink-mute: #587080;
       --brand: #c75f31;
       --brand-2: #a84822;
       --brand-deep: #7d351b;
       --brand-glow: rgba(199, 95, 49, 0.25);
       --brand-soft: #b6532a;
-      --button-top: #de8152;
-      --button-end: #bd522b;
+      --button-top: #b95229;
+      --button-end: #a84822;
+      --button-ink: #fff;
       --surface-card: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(239,245,247,0.86));
       --surface-panel: rgba(255,255,255,0.7);
       --grid-line: rgba(23,48,66,0.045);
@@ -265,6 +267,12 @@
     .hero-sub { font-size: 17px; line-height: 1.55; color: var(--ink-dim); max-width: 460px; }
     .hero-sub s { color: var(--ink-mute); text-decoration-color: color-mix(in srgb, var(--brand) 50%, transparent); text-decoration-thickness: 2px; }
 
+    .hero-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-top: 4px; }
+    .hero-cta-btn { padding: 15px 24px; font-size: 15px; }
+    .hero-cta-btn.is-pending { opacity: .7; }
+    .hero-cta-note { color: var(--ink-mute); font: 11px 'JetBrains Mono', monospace; }
+    .hero-cta-note:empty { display: none; }
+
     .hero-meta {
       display: flex; align-items: center; gap: 18px; margin-top: 8px;
       font-size: 12px; color: var(--ink-mute); font-weight: 500;
@@ -353,6 +361,9 @@
       background: color-mix(in srgb, var(--surface-panel) 75%, transparent);
     }
     .channel-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,.55); }
+    .channel-status.is-error .channel-status-dot { background: #fbbf24; box-shadow: 0 0 10px rgba(251,191,36,.55); }
+    .channel-status-retry { padding: 0; border: 0; background: none; color: var(--brand-soft); font: inherit; text-decoration: underline; cursor: pointer; }
+    .channel-status-retry[hidden] { display: none; }
 
     .web-client-section {
       position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: center;
@@ -382,13 +393,6 @@
       color: var(--brand-soft);
     }
     .browser-glyph svg { display: block; width: 100%; height: 100%; overflow: visible; }
-    .browser-window { fill: color-mix(in srgb, var(--bg-0) 86%, transparent); stroke: var(--line-strong); stroke-width: 1.5; }
-    .browser-toolbar { stroke: var(--line); stroke-width: 1.5; }
-    .browser-toolbar-dot { fill: var(--brand); opacity: .85; }
-    .browser-address { fill: color-mix(in srgb, var(--ink) 5%, transparent); stroke: var(--line); stroke-width: 1; }
-    .browser-icon-shell { fill: color-mix(in srgb, var(--brand) 11%, transparent); stroke: color-mix(in srgb, var(--brand) 35%, transparent); stroke-width: 1.5; }
-    .browser-icon-stroke { fill: none; stroke: var(--brand-soft); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .browser-icon-fill { fill: var(--brand-soft); }
 
     .client-groups { display: grid; gap: 24px; }
     .client-group {
@@ -426,12 +430,22 @@
     .client-card-state .state-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
     .client-card.is-pending .client-card-state { color: #fbbf24; }
     .client-card.is-pending .state-dot { box-shadow: 0 0 8px rgba(251,191,36,.55); }
+    .client-card.is-unknown .client-card-state { color: var(--ink-mute); }
+    body[data-channel="release"] .client-card:not(.disabled) .client-card-state { color: #15803d; }
+    body[data-channel="release"] .client-card.is-pending .client-card-state { color: #b45309; }
+    body[data-channel="release"] .client-card.is-unknown .client-card-state { color: var(--ink-mute); }
     .client-card-title { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
     .client-card-subtitle { margin-top: 5px; color: var(--ink-mute); font-size: 12px; line-height: 1.45; }
     .client-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; }
     .client-version { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--brand-soft); font: 11px 'JetBrains Mono', monospace; }
     .client-version svg { flex-shrink: 0; }
     .client-version-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-version-value.is-skeleton {
+      display: inline-block; width: 56px; height: 10px; border-radius: 5px;
+      background: linear-gradient(90deg, var(--line) 25%, var(--line-strong) 50%, var(--line) 75%); background-size: 200% 100%;
+      animation: skeletonShimmer 1.2s linear infinite;
+    }
+    @keyframes skeletonShimmer { to { background-position: -200% 0; } }
     .client-card-action { flex-shrink: 0; padding: 10px 13px; font-size: 12px; border-radius: 10px; }
     .client-card-action.is-pending { opacity: .7; }
     .client-card-action svg { width: 14px; height: 14px; }
@@ -504,12 +518,13 @@
       display: flex; align-items: center; justify-content: center;
       transition: transform 0.2s, box-shadow 0.2s; z-index: 1000; animation: chatPulse 3s infinite;
     }
-    .chat-support-btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 12px 30px rgba(255,122,41,0.6); }
+    .chat-support-btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 12px 30px color-mix(in srgb, var(--brand) 60%, transparent); }
     .chat-support-btn.chat-btn-active { animation: none; background: linear-gradient(135deg, var(--brand-2), var(--brand-deep)); }
-    .chat-support-btn svg { width: 24px; height: 24px; fill: white; }
+    .chat-support-btn svg { width: 24px; height: 24px; fill: var(--button-ink); }
+    .chat-support-btn.chat-btn-active svg { fill: #fff; }
     @keyframes chatPulse {
       0%   { box-shadow: var(--shadow-brand); }
-      50%  { box-shadow: var(--shadow-brand), 0 0 0 10px rgba(255,122,41,0.08); }
+      50%  { box-shadow: var(--shadow-brand), 0 0 0 10px color-mix(in srgb, var(--brand) 8%, transparent); }
       100% { box-shadow: var(--shadow-brand); }
     }
 
@@ -545,7 +560,7 @@
     .chat-messages::-webkit-scrollbar { width: 4px; }
     .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
     .chat-msg { padding: 10px 14px; border-radius: 14px; max-width: 80%; font-size: 13px; line-height: 1.5; word-wrap: break-word; }
-    .chat-msg-user { background: linear-gradient(135deg, #ff8a3c, #e65c12); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .chat-msg-user { background: linear-gradient(135deg, var(--button-top), var(--button-end)); color: var(--button-ink); align-self: flex-end; border-bottom-right-radius: 4px; }
     .chat-msg-admin { background: rgba(255,255,255,0.08); color: var(--ink); align-self: flex-start; border-bottom-left-radius: 4px; }
     .chat-msg-system { background: transparent; color: var(--ink-mute); align-self: center; font-size: 12px; text-align: center; padding: 8px; }
     .chat-input-area { padding: 12px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
@@ -558,12 +573,12 @@
     .chat-input-area input::placeholder { color: var(--ink-mute); }
     .chat-send-btn {
       width: 40px; height: 40px; border-radius: 12px;
-      background: linear-gradient(135deg, #ff8a3c, #e65c12);
+      background: linear-gradient(135deg, var(--button-top), var(--button-end));
       border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-      color: white; transition: transform 0.2s, box-shadow 0.2s; flex-shrink: 0;
+      color: var(--button-ink); transition: transform 0.2s, box-shadow 0.2s; flex-shrink: 0;
     }
-    .chat-send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(255,122,41,0.4); }
-    .chat-send-btn svg { width: 18px; height: 18px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .chat-send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px color-mix(in srgb, var(--brand) 40%, transparent); }
+    .chat-send-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--button-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
     /* ===== RESPONSIVE ===== */
     @media (max-width: 900px) {
@@ -612,7 +627,7 @@
       .hero-meta .divider { display: none; }
       .hero-meta > span {
         padding: 5px 10px; border-radius: 999px;
-        background: rgba(255,240,220,0.04);
+        background: color-mix(in srgb, var(--ink) 4%, transparent);
         border: 1px solid var(--line);
       }
 
@@ -663,6 +678,7 @@
       .features-strip { grid-template-columns: 1fr; }
       .hero-title { font-size: clamp(34px, 12.5vw, 50px); }
       .hero-meta { font-size: 10.5px; }
+      .hero-cta-btn { width: 100%; }
       .channel-tab { padding: 9px 7px; }
       .channel-tab-top { font-size: 11px; }
       .channel-tab-branch { font-size: 9px; padding-left: 12px; }
@@ -746,6 +762,10 @@
             <span style="color: var(--brand-soft);">Без рекламы, без трекинга</span>, без лишнего шума.<br>
             Просто <span style="color: var(--brand-soft);">отправляй сообщения</span> — друзьям, себе, кому угодно.
           </p>
+          <div class="hero-cta">
+            <a href="#clientHub" class="btn btn-primary hero-cta-btn" id="heroCtaBtn"><span id="heroCtaLabel">Скачать</span><span id="heroCtaArrow" aria-hidden="true">↓</span></a>
+            <span class="hero-cta-note" id="heroCtaNote"></span>
+          </div>
           <div class="hero-meta">
             <span id="heroMeta1"><b>Лёгкий</b>&nbsp;нативный&nbsp;клиент</span>
             <span class="divider"></span>
@@ -784,12 +804,39 @@
       </div>
 
       <section class="client-hub" id="clientHub" aria-labelledby="clientTitle">
+        <section class="web-client-section" data-platform="web" aria-labelledby="webTitle">
+          <div class="web-client-copy">
+            <span class="eyebrow" id="webEyebrow">Веб-клиент</span>
+            <h2 class="web-client-title" id="webTitle">Barkfluff в браузере</h2>
+            <p class="web-client-description" id="webDescription">Открывается сразу в браузере по единой ссылке.</p>
+            <div class="web-client-meta">
+              <span id="webSubtitle">Любой современный браузер</span>
+              <span id="webFixedLabel">Всегда nightly</span>
+            </div>
+            <a href="https://web.barkfluff.com" target="_blank" rel="noopener" class="btn btn-primary web-client-action" id="webOpenBtn"><span id="webOpenLabel">Открыть</span><span aria-hidden="true">→</span></a>
+          </div>
+          <div class="web-client-preview">
+            <div class="browser-glyph" aria-hidden="true">
+              <svg viewBox="0 0 320 200" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="18" y="18" width="284" height="164" rx="18" />
+                <path d="M18 58h284" />
+                <circle cx="40" cy="38" r="4" fill="currentColor" stroke="none" />
+                <circle cx="54" cy="38" r="4" fill="currentColor" stroke="none" />
+                <circle cx="68" cy="38" r="4" fill="currentColor" stroke="none" />
+                <rect x="92" y="30" width="150" height="16" rx="8" />
+                <path d="M44 88h120M44 108h200M44 128h96" opacity=".6" />
+                <rect x="44" y="144" width="72" height="22" rx="11" />
+              </svg>
+            </div>
+          </div>
+        </section>
+
         <div class="channel-head">
           <div class="channel-head-copy">
             <span class="eyebrow" id="clientEyebrow">Канал сборки</span>
-            <h2 class="channel-title" id="clientTitle">Спокойный проверенный релиз</h2>
-            <p class="channel-description" id="clientDescription">Стабильные версии из ветки master с чистым светлым оформлением.</p>
-            <div class="channel-status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span></div>
+            <h2 class="channel-title" id="clientTitle">Проверенный релиз</h2>
+            <p class="channel-description" id="clientDescription">Рекомендуемые стабильные версии из ветки master.</p>
+            <div class="channel-status" id="channelStatus" role="status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span><button type="button" class="channel-status-retry" id="channelStatusRetry" hidden>Повторить</button></div>
           </div>
           <div class="channel-switcher" role="tablist" aria-label="Канал сборки">
             <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="nightly">
@@ -806,51 +853,6 @@
             </button>
           </div>
         </div>
-
-        <section class="web-client-section" data-platform="web" aria-labelledby="webTitle">
-          <div class="web-client-copy">
-            <span class="eyebrow" id="webEyebrow">Веб-клиент</span>
-            <h3 class="web-client-title" id="webTitle">Barkfluff в браузере</h3>
-            <p class="web-client-description" id="webDescription">Открывается сразу в браузере и всегда использует одну актуальную ссылку.</p>
-            <div class="web-client-meta">
-              <span id="webSubtitle">Любой современный браузер</span>
-              <span id="webFixedLabel">Единая ссылка</span>
-            </div>
-            <a href="https://web.barkfluff.com" target="_blank" rel="noopener" class="btn btn-primary web-client-action" id="webOpenBtn"><span id="webOpenLabel">Открыть</span><span aria-hidden="true">→</span></a>
-          </div>
-          <div class="web-client-preview">
-            <div class="browser-glyph" aria-hidden="true">
-              <svg viewBox="0 0 320 200" fill="none">
-                <rect class="browser-window" x="18" y="18" width="284" height="164" rx="22" />
-                <path class="browser-toolbar" d="M18 62h284" />
-                <circle class="browser-toolbar-dot" cx="42" cy="40" r="5" />
-                <circle class="browser-toolbar-dot" cx="58" cy="40" r="5" opacity=".55" />
-                <circle class="browser-toolbar-dot" cx="74" cy="40" r="5" opacity=".3" />
-                <rect class="browser-address" x="94" y="32" width="132" height="16" rx="8" />
-                <g transform="translate(90 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <path class="browser-icon-stroke" d="M-13-4a14 14 0 0 1 25-8M-12 5a14 14 0 0 0 23 8M-4-15l7 12-13 1" />
-                  <circle class="browser-icon-fill" cx="-1" cy="-1" r="3" />
-                </g>
-                <g transform="translate(143 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <path class="browser-icon-stroke" d="M-11 8c-5-8-2-18 7-22 8-4 18 0 21 8-5-3-10-3-14 1-4 3-5 8-3 13-4 2-8 2-11 0z" />
-                  <path class="browser-icon-fill" d="M7-12c-5 0-10 4-11 9 4-2 8-1 11 2 2 2 3 5 3 8 6-4 8-11 4-16-2-2-4-3-7-3z" opacity=".7" />
-                </g>
-                <g transform="translate(196 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <circle class="browser-icon-stroke" r="13" />
-                  <path class="browser-icon-stroke" d="M0-13L-3 3l10 7M0-13l-4 4" />
-                </g>
-                <g transform="translate(249 121)">
-                  <circle class="browser-icon-shell" r="27" />
-                  <path class="browser-icon-stroke" d="M15-5C11-14-1-17-10-11c-6 4-8 11-5 17 3-5 8-8 14-7 7 1 11 0 16-4z" />
-                  <path class="browser-icon-fill" d="M-15 6c5 4 12 5 18 2 5-2 9-6 12-11-5 4-9 5-16 4-6-1-11 1-14 5z" opacity=".7" />
-                </g>
-              </svg>
-            </div>
-          </div>
-        </section>
 
         <div class="client-groups">
           <section class="client-group" data-client-group="desktop" aria-labelledby="desktopTitle">
@@ -1173,6 +1175,8 @@
     /* ===== i18n + Versions + Platform ===== */
     (function () {
       let _ver = null;
+      let _verState = 'loading';
+      let _verAttempts = 0;
       let currentChannel = 'release';
 
       const channelConfig = {
@@ -1197,19 +1201,23 @@
           meta1:          '<b>Лёгкий</b>&nbsp;нативный&nbsp;клиент',
           meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;шифрование',
           meta3:          '<b>Мультиплатформенность</b>',
+          ctaDownload:    'Скачать для',
+          ctaWeb:         'Открыть в браузере',
           prevCaption:    'Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке',
           clientEyebrow:  'Канал сборки',
           clientDescription: 'Переключай ветку — ссылки, версии и визуальный режим страницы меняются вместе с каналом.',
           nightlyEyebrow: 'Ночная сборка',
-          nightlyTitle:  'Свежая сборка каждую ночь',
-          nightlyDescription: 'Последние изменения из ветки nightly для ранней проверки.',
+          nightlyTitle:  'Свежее каждую ночь',
+          nightlyDescription: 'Самое новое из ветки nightly, возможны ошибки.',
           devEyebrow:    'Dev-сборка',
-          devChannelTitle: 'Ветка в разработке',
-          devChannelDescription: 'Плотная blueprint-тема и сборки из актуального dev-кода.',
+          devChannelTitle: 'Ветка разработки',
+          devChannelDescription: 'Актуальный dev-код: раньше релиза, без гарантий.',
           releaseEyebrow: 'Релизная сборка',
-          releaseTitle:   'Спокойный проверенный релиз',
-          releaseDescription: 'Стабильные версии из ветки master с чистым светлым оформлением.',
+          releaseTitle:   'Проверенный релиз',
+          releaseDescription: 'Рекомендуемые стабильные версии из ветки master.',
           channelStatus: 'Версии обновляются автоматически',
+          channelStatusError: 'Не удалось загрузить версии',
+          channelRetry: 'Повторить',
           desktopKicker: '01 / Desktop',
           desktopTitle: 'Настольные приложения',
           desktopDescription: 'Нативные сборки для компьютера.',
@@ -1218,9 +1226,9 @@
           mobileDescription: 'Сборки для телефона и планшета.',
           webEyebrow:   'Веб-клиент',
           webTitle:     'Barkfluff в браузере',
-          webDescription: 'Открывается сразу в браузере и всегда использует одну актуальную ссылку.',
+          webDescription: 'Открывается сразу в браузере по единой ссылке.',
           webSub:       'Любой современный браузер',
-          webFixed:     'Единая ссылка',
+          webFixed:     'Всегда nightly',
           webOpen:      'Открыть',
           winTitle:     'Windows WinUI',
           winSub:       'WinUI 3 · x64 · Windows 10+',
@@ -1232,6 +1240,7 @@
           buildChecking:'Проверяем',
           buildReady:   'Готово',
           buildWaiting: 'Ожидает сборку',
+          buildUnknown: 'Нет данных',
           iosTitle:     'iOS',
           linuxTitle:   'Linux',
           comingSoon:   'Скоро',
@@ -1267,19 +1276,23 @@
           meta1:          '<b>Lightweight</b>&nbsp;native&nbsp;client',
           meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;encryption',
           meta3:          '<b>Cross-platform</b>',
+          ctaDownload:    'Download for',
+          ctaWeb:         'Open in browser',
           prevCaption:    'Switch platform — press <span class="kbd">←</span> <span class="kbd">→</span> or click a card',
           clientEyebrow:  'Build channel',
           clientDescription: 'Switch branches to update the links, versions and visual mode together.',
           nightlyEyebrow: 'Nightly build',
-          nightlyTitle:  'A fresh build every night',
-          nightlyDescription: 'The latest changes from nightly for early testing.',
+          nightlyTitle:  'Fresh every night',
+          nightlyDescription: 'The newest from nightly, bugs are possible.',
           devEyebrow:    'Dev build',
           devChannelTitle: 'Work in progress',
-          devChannelDescription: 'A dense blueprint theme with builds from the current dev code.',
+          devChannelDescription: 'Current dev code: ahead of release, no guarantees.',
           releaseEyebrow: 'Release build',
-          releaseTitle:   'A calm, verified release',
-          releaseDescription: 'Stable versions from master with a clean light presentation.',
+          releaseTitle:   'Verified release',
+          releaseDescription: 'Recommended stable versions from master.',
           channelStatus: 'Versions update automatically',
+          channelStatusError: 'Couldn\'t load versions',
+          channelRetry: 'Retry',
           desktopKicker: '01 / Desktop',
           desktopTitle: 'Desktop apps',
           desktopDescription: 'Native builds for your computer.',
@@ -1288,9 +1301,9 @@
           mobileDescription: 'Builds for phones and tablets.',
           webEyebrow:   'Web client',
           webTitle:     'Barkfluff in your browser',
-          webDescription: 'Open it instantly in a browser with one always-current link.',
+          webDescription: 'Opens instantly in a browser from a single link.',
           webSub:       'Any modern browser',
-          webFixed:     'One fixed link',
+          webFixed:     'Always nightly',
           webOpen:      'Open',
           winTitle:     'Windows WinUI',
           winSub:       'WinUI 3 · x64 · Windows 10+',
@@ -1302,6 +1315,7 @@
           buildChecking:'Checking',
           buildReady:   'Ready',
           buildWaiting: 'Build pending',
+          buildUnknown: 'No data',
           iosTitle:     'iOS',
           linuxTitle:   'Linux',
           comingSoon:   'Soon',
@@ -1352,8 +1366,38 @@
         const ua = navigator.userAgent;
         if (/android/i.test(ua)) return 'android';
         if (/win/i.test(navigator.platform || '') || /windows/i.test(ua)) return 'windows';
+        if (/iphone|ipad|ipod/i.test(ua) || (/mac/i.test(navigator.platform || '') && navigator.maxTouchPoints > 1)) return 'ios';
         if (/mac/i.test(navigator.platform || '') || /macintosh/i.test(ua)) return 'macos';
         return 'other';
+      }
+
+      const platformNames = { windows: 'Windows', macos: 'macOS', android: 'Android' };
+
+      function applyHeroCta() {
+        const btn = $e('heroCtaBtn');
+        if (!btn) return;
+        const t = S[window.__lang];
+        const platform = detectPlatform();
+        const config = clientConfig[platform];
+        const version = config && _ver && _ver[config.apiKey] ? (_ver[config.apiKey][currentChannel] || '') : '';
+
+        if (config) {
+          btn.href = 'https://storage.barkfluff.com/get/barkfluff' + config.slug + '/' + currentChannel;
+          btn.removeAttribute('target');
+          btn.removeAttribute('rel');
+          $e('heroCtaLabel').textContent = t.ctaDownload + ' ' + platformNames[platform];
+          $e('heroCtaArrow').textContent = '↓';
+        } else {
+          btn.href = 'https://web.barkfluff.com';
+          btn.target = '_blank';
+          btn.rel = 'noopener';
+          $e('heroCtaLabel').textContent = t.ctaWeb;
+          $e('heroCtaArrow').textContent = '→';
+        }
+
+        btn.classList.toggle('is-pending', Boolean(config && _ver && !version));
+        const channelName = currentChannel.charAt(0).toUpperCase() + currentChannel.slice(1);
+        $e('heroCtaNote').textContent = config && version ? 'v' + version + ' · ' + channelName : '';
       }
 
       function setBuildStatus(id, key) {
@@ -1363,6 +1407,8 @@
       }
 
       function applyVersions() {
+        const loading = _verState === 'loading';
+        const failed = _verState === 'error';
         Object.entries(clientConfig).forEach(([platform, config]) => {
           const card = document.querySelector('[data-client="' + platform + '"]');
           const link = $e(config.linkId);
@@ -1370,11 +1416,18 @@
           const statusEl = $e(config.statusId);
           const version = _ver && _ver[config.apiKey] ? (_ver[config.apiKey][currentChannel] || '') : '';
 
-          if (versionEl) versionEl.textContent = version ? 'v' + version : (_ver ? '—' : '…');
-          if (card) card.classList.toggle('is-pending', Boolean(_ver && !version));
+          if (versionEl) {
+            versionEl.textContent = version ? 'v' + version : (loading ? '' : '—');
+            versionEl.classList.toggle('is-skeleton', loading);
+          }
+          if (card) {
+            card.classList.toggle('is-pending', Boolean(_ver && !version));
+            card.classList.toggle('is-unknown', failed);
+          }
 
           if (statusEl) {
-            if (!_ver) setBuildStatus(config.statusId, 'buildChecking');
+            if (loading) setBuildStatus(config.statusId, 'buildChecking');
+            else if (failed) setBuildStatus(config.statusId, 'buildUnknown');
             else if (version) setBuildStatus(config.statusId, 'buildReady');
             else setBuildStatus(config.statusId, 'buildWaiting');
           }
@@ -1387,6 +1440,11 @@
           }
         });
 
+        $e('channelStatus').classList.toggle('is-error', failed);
+        txt('channelStatusText', failed ? 'channelStatusError' : 'channelStatus');
+        $e('channelStatusRetry').hidden = !failed;
+        txt('channelStatusRetry', 'channelRetry');
+
         const detected = detectPlatform();
         const selectedClient = clientConfig[detected];
         const selectedVersion = selectedClient && _ver && _ver[selectedClient.apiKey]
@@ -1395,19 +1453,32 @@
         const channel = channelConfig[currentChannel];
         const eyebrowEl = $e('heroEyebrowText');
         if (eyebrowEl) eyebrowEl.textContent = S[window.__lang][channel.eyebrow] + (selectedVersion ? ' · v' + selectedVersion : '');
+        applyHeroCta();
       }
 
       async function loadVersions() {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
         try {
-          const res = await fetch('/api/versions');
+          const res = await fetch('/api/versions', { signal: controller.signal });
           if (!res.ok) throw new Error('Version endpoint returned ' + res.status);
           _ver = await res.json();
-          applyVersions();
+          _verState = 'ready';
         } catch (_) {
-          _ver = null;
-          applyVersions();
+          if (_ver || ++_verAttempts < 2) return;
+          _verState = 'error';
+        } finally {
+          clearTimeout(timer);
         }
+        applyVersions();
       }
+
+      $e('channelStatusRetry').addEventListener('click', () => {
+        _verAttempts = 1;
+        _verState = 'loading';
+        applyVersions();
+        loadVersions();
+      });
 
       function applyChannel(channel) {
         if (!channelConfig[channel]) return;
@@ -1426,7 +1497,6 @@
         if (channelSwitcher) channelSwitcher.setAttribute('aria-label', S[window.__lang].clientEyebrow);
         txt('clientTitle', meta.title);
         txt('clientDescription', meta.description);
-        txt('channelStatusText', 'channelStatus');
         applyVersions();
       }
 

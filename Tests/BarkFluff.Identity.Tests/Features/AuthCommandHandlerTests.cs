@@ -21,6 +21,9 @@ using MediatR;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
+using BarkFluff.Identity.Settings;
 
 using Moq;
 
@@ -46,6 +49,7 @@ public class AuthCommandHandlerTests
     private readonly AuthPropertiesStorage _authPropsStorage;
     private readonly RefreshTokensStorage _refreshTokensStorage;
     private readonly PasswordsStorage _passwordsStorage;
+    private readonly LoginNotificationService _loginNotifications;
 
     public AuthCommandHandlerTests()
     {
@@ -70,6 +74,12 @@ public class AuthCommandHandlerTests
         _authPropsStorage = new AuthPropertiesStorage(_context);
         _refreshTokensStorage = new RefreshTokensStorage(_context);
         _passwordsStorage = new PasswordsStorage(_context);
+        var telegramBot = new Mock<ITelegramAuthBot>();
+        telegramBot.Setup(bot => bot.Send(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _loginNotifications = new LoginNotificationService(_authPropsStorage, _usersClient.Object,
+            _notificationSender, telegramBot.Object, new TelegramAuthOptions(), new ConfigurationBuilder().Build(),
+            NullLogger<LoginNotificationService>.Instance);
     }
 
     private static RequestContext BuildRequestContext(
@@ -97,7 +107,31 @@ public class AuthCommandHandlerTests
         return new AuthCommandHandler(
             _usersClient.Object, _mediator.Object, _authPropsStorage,
             _notificationSender, _refreshTokensStorage, ctx ?? _requestContext,
-            _passwordsStorage, _locationClient, _metrics, _logger.Object, abuseGuard ?? TestHelper.CreateAbuseGuard());
+            _passwordsStorage, _locationClient, _metrics, _logger.Object, _loginNotifications,
+            abuseGuard ?? TestHelper.CreateAbuseGuard(),
+            authenticationStore: new AuthenticationStore(_context));
+    }
+
+    [Fact]
+    public async Task Handle_WrongPasswordWithEmailOtp_DoesNotSendConfirmationCode()
+    {
+        _usersClient.Setup(c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<FindByLoginResponse>(Task.FromResult(new FindByLoginResponse { User = new User { Id = 1, Username = "user" } }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        _usersClient.Setup(c => c.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetUserContactsResponse>(Task.FromResult(new GetUserContactsResponse
+            {
+                User = new User { Id = 1, Username = "user" },
+                Contact = new UserContact { Email = "test@test.com" }
+            }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("correct") });
+        _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, EmailOtpEnabled = true });
+        await _context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => CreateHandler().Handle(
+            new AuthCommand { Username = "user", Password = "wrong" }, CancellationToken.None));
+
+        _publishEndpoint.Verify(p => p.Publish(It.Is<EmailNotification>(n =>
+            n.Type == NotificationType.ConfirmationAuth), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -190,6 +224,7 @@ public class AuthCommandHandlerTests
             .Returns(new AsyncUnaryCall<FindByLoginResponse>(
                 Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
 
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("pass") });
         _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, OtpEnabled = true, OtpSecret = "SECRET" });
         _context.SaveChanges();
 
@@ -221,6 +256,7 @@ public class AuthCommandHandlerTests
                     Contact = new UserContact { Email = "test@test.com" }
                 }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
 
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("pass") });
         _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, OtpEnabled = false, EmailOtpEnabled = true });
         _context.SaveChanges();
 
@@ -320,6 +356,7 @@ public class AuthCommandHandlerTests
                 Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess,
                 () => new Metadata(), () => { }));
 
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("password") });
         _context.AuthUserProperties.Add(new AuthUserProperty
         {
             UserId = 1,
@@ -540,6 +577,7 @@ public class AuthCommandHandlerTests
             .Returns(new AsyncUnaryCall<FindByLoginResponse>(
                 Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
 
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("pass") });
         _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, OtpEnabled = true, EmailOtpEnabled = true, OtpSecret = "SECRET" });
         _context.SaveChanges();
 
@@ -612,6 +650,7 @@ public class AuthCommandHandlerTests
             .Returns(new AsyncUnaryCall<FindByLoginResponse>(
                 Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
 
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("pass") });
         _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, OtpEnabled = true, OtpSecret = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20)) });
         _context.SaveChanges();
 
@@ -677,6 +716,7 @@ public class AuthCommandHandlerTests
             .Returns(new AsyncUnaryCall<FindByLoginResponse>(
                 Task.FromResult(user), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
 
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("pass") });
         _context.AuthUserProperties.Add(new AuthUserProperty { UserId = 1, OtpEnabled = false, EmailOtpEnabled = true, LastEmailAuthCode = "123456" });
         _context.SaveChanges();
 

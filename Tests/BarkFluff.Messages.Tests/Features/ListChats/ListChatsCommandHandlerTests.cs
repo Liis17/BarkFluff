@@ -169,6 +169,50 @@ public class ListChatsCommandHandlerTests
         result.Chats[0].Muted.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task Handle_HiddenChat_IsExcluded()
+    {
+        var userId = 1L;
+        var chat = await _h.SeedChat(isGroupChat: true, title: "Hidden", memberUserIds: [userId, 2]);
+        await _h.SeedMessage(chat.Id, userId, "hello", sentAt: DateTime.UtcNow.AddMinutes(-10));
+        await _h.ChatsStorage.HideChatForUsers(chat.Id, [userId], DateTime.UtcNow);
+        var handler = CreateHandler(userId);
+
+        var result = await handler.Handle(new ListChatsCommand { Skip = 0, Size = 10 }, CancellationToken.None);
+
+        result.Chats.Should().BeEmpty();
+        result.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_HiddenChat_ResurfacesAfterNewMessage()
+    {
+        var userId = 1L;
+        var chat = await _h.SeedChat(isGroupChat: true, title: "Resurfaced", memberUserIds: [userId, 2]);
+        await _h.SeedMessage(chat.Id, userId, "old", sentAt: DateTime.UtcNow.AddMinutes(-10));
+        await _h.ChatsStorage.HideChatForUsers(chat.Id, [userId], DateTime.UtcNow.AddMinutes(-5));
+        await _h.SeedMessage(chat.Id, 2, "new after hide", sentAt: DateTime.UtcNow);
+        var handler = CreateHandler(userId);
+
+        var result = await handler.Handle(new ListChatsCommand { Skip = 0, Size = 10 }, CancellationToken.None);
+
+        result.Chats.Should().ContainSingle().Which.Id.Should().Be(chat.Id.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_HiddenChat_StaysHiddenForOtherMember()
+    {
+        var hiderId = 1L;
+        var peerId = 2L;
+        var chat = await _h.SeedChat(isGroupChat: true, title: "Peer visible", memberUserIds: [hiderId, peerId]);
+        await _h.SeedMessage(chat.Id, hiderId, "hello", sentAt: DateTime.UtcNow.AddMinutes(-10));
+        await _h.ChatsStorage.HideChatForUsers(chat.Id, [hiderId], DateTime.UtcNow);
+
+        var result = await CreateHandler(peerId).Handle(new ListChatsCommand { Skip = 0, Size = 10 }, CancellationToken.None);
+
+        result.Chats.Should().ContainSingle();
+    }
+
     private void SetupCacheValue(string key, string? value)
     {
         _cacheMock.Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))

@@ -99,6 +99,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Author-стили с собственным display (напр. .md-status, .state-block) иначе
+   перебивают дефолтный UA-стиль [hidden] { display: none } той же специфичности. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0; padding: 0;
   font-family: 'Roboto Flex', 'Roboto', system-ui, -apple-system, sans-serif;

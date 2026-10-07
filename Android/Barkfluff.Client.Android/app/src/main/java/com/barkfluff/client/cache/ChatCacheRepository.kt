@@ -318,14 +318,16 @@ interface ChatCacheDao {
         CachedPrivateMessageEntity::class,
         CachedSecretMessageEntity::class,
         OutgoingMessageEntity::class,
-        OutgoingAttachmentEntity::class
+        OutgoingAttachmentEntity::class,
+        PendingMessageReadEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
     abstract fun cacheDao(): ChatCacheDao
     abstract fun outgoingDao(): OutgoingMessageDao
+    abstract fun pendingReadDao(): PendingMessageReadDao
 }
 
 class ChatCacheRepository(context: Context) {
@@ -558,14 +560,44 @@ class ChatCacheRepository(context: Context) {
             database().cacheDao().deleteMessage(scope.id, chatId, messageId)
         }
 
-    suspend fun saveOutgoing(scope: CacheScope, record: OutgoingMessageRecord) = withContext(Dispatchers.IO) {
+    suspend fun saveOutgoing(
+        scope: CacheScope,
+        record: OutgoingMessageRecord,
+        notificationReadMessageId: Long? = null,
+        expectedScopeId: String? = null
+    ) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
+            if (expectedScopeId != null) {
+                require(scope.id == expectedScopeId && CacheScope.from(GlobalParam(appContext)) == scope) {
+                    "Notification belongs to a different account"
+                }
+            }
+            if (notificationReadMessageId != null) {
+                require(notificationReadMessageId > 0 && record.state == OutgoingMessageState.QUEUED)
+            }
             val dao = db.outgoingDao()
             dao.upsertMessage(record.toEntity(scope.id))
             dao.upsertAttachments(record.attachments.map { it.toEntity(scope.id, record.operationId) })
+            notificationReadMessageId?.let { messageId ->
+                db.pendingReadDao().insert(PendingMessageReadEntity(scope.id, messageId, record.chatId))
+            }
         }
     }
+
+    suspend fun readyPendingReads(scope: CacheScope, nowMillis: Long, limit: Int = 50) =
+        withContext(Dispatchers.IO) { database().pendingReadDao().ready(scope.id, nowMillis, limit) }
+
+    suspend fun nextPendingReadAttempt(scope: CacheScope): Long? =
+        withContext(Dispatchers.IO) { database().pendingReadDao().nextWakeAt(scope.id) }
+
+    suspend fun deletePendingRead(scope: CacheScope, messageId: Long) =
+        withContext(Dispatchers.IO) { database().pendingReadDao().delete(scope.id, messageId) }
+
+    suspend fun retryPendingRead(scope: CacheScope, messageId: Long, attemptCount: Int, nextAttemptAtMillis: Long) =
+        withContext(Dispatchers.IO) {
+            database().pendingReadDao().retry(scope.id, messageId, attemptCount, nextAttemptAtMillis)
+        }
 
     suspend fun outgoing(scope: CacheScope, operationId: String): OutgoingMessageRecord? =
         withContext(Dispatchers.IO) {
@@ -623,6 +655,10 @@ class ChatCacheRepository(context: Context) {
         )
     }
 
+    suspend fun clearOutgoingBackoff(scope: CacheScope, nowMillis: Long) = withContext(Dispatchers.IO) {
+        database().outgoingDao().clearBackoff(scope.id, OutgoingMessageState.QUEUED.name, nowMillis)
+    }
+
     suspend fun oldSentOutgoing(scope: CacheScope, beforeMillis: Long): List<OutgoingMessageRecord> =
         withContext(Dispatchers.IO) {
             val dao = database().outgoingDao()
@@ -648,6 +684,23 @@ class ChatCacheRepository(context: Context) {
         ) > 0
     }
 
+    suspend fun hasOutgoingDraftHandoff(
+        scope: CacheScope,
+        chatId: String,
+        generation: Long,
+        text: String,
+        replyToMessageId: Long,
+    ): Boolean = withContext(Dispatchers.IO) {
+        generation > 0L && database().outgoingDao().draftHandoffs(
+            scopeId = scope.id,
+            chatId = chatId,
+            generation = generation,
+            text = text,
+            replyToMessageId = replyToMessageId,
+            cancelledState = OutgoingMessageState.CANCEL_REQUESTED.name,
+        ) > 0
+    }
+
     suspend fun discardStagingOutgoing(scope: CacheScope) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
@@ -661,6 +714,7 @@ class ChatCacheRepository(context: Context) {
         db.withTransaction {
             db.outgoingDao().deleteAllAttachments(scope.id)
             db.outgoingDao().deleteAllMessages(scope.id)
+            db.pendingReadDao().clear(scope.id)
         }
     }
 
@@ -698,7 +752,7 @@ class ChatCacheRepository(context: Context) {
         val passphrase = databasePassphrase()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
             .openHelperFactory(SupportOpenHelperFactory(passphrase))
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 
@@ -989,6 +1043,21 @@ class ChatCacheRepository(context: Context) {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_composer_attachments_scopeId_chatId " +
                         "ON composer_attachments(scopeId, chatId)"
+                )
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS pending_message_reads (" +
+                        "scopeId TEXT NOT NULL, messageId INTEGER NOT NULL, chatId TEXT NOT NULL, " +
+                        "attemptCount INTEGER NOT NULL, nextAttemptAtMillis INTEGER NOT NULL, " +
+                        "PRIMARY KEY(scopeId, messageId))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_pending_message_reads_scopeId_nextAttemptAtMillis " +
+                        "ON pending_message_reads(scopeId, nextAttemptAtMillis)"
                 )
             }
         }

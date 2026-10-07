@@ -33,8 +33,11 @@ public enum AttachmentLayoutCalculator {
     // MARK: - Constants
 
     /// Максимальная ширина для одного вложения
-    public static let maxSingleWidth: CGFloat = 260
-    public static let maxSingleHeight: CGFloat = 260
+    public static let maxSingleWidth: CGFloat = 520
+    public static let maxSingleHeight: CGFloat = 520
+
+    /// Максимальная ширина всей раскладки в широком detail.
+    public static let maxLayoutWidth: CGFloat = 520
 
     /// Размеры для двух вложений
     public static let doubleItemWidth: CGFloat = 128
@@ -83,8 +86,8 @@ public enum AttachmentLayoutCalculator {
     // MARK: - Layout Variants
 
     private static func layoutSingle(containerWidth: CGFloat) -> AttachmentLayout {
-        let width = min(maxSingleWidth, containerWidth)
-        let height = maxSingleHeight
+        let width = min(maxSingleWidth, max(0, containerWidth))
+        let height = min(maxSingleHeight, width)
 
         let item = LayoutItem(
             index: 0,
@@ -100,48 +103,58 @@ public enum AttachmentLayoutCalculator {
     }
 
     private static func layoutDouble(containerWidth: CGFloat) -> AttachmentLayout {
-        let totalWidth = doubleItemWidth * 2 + spacing
+        let totalWidth = min(maxLayoutWidth, max(0, containerWidth))
+        let itemWidth = max(0, (totalWidth - spacing) / 2)
+        let scale = doubleItemWidth > 0 ? itemWidth / doubleItemWidth : 0
+        let itemHeight = doubleItemHeight * scale
 
         let item1 = LayoutItem(
             index: 0,
-            frame: CGRect(x: 0, y: 0, width: doubleItemWidth, height: doubleItemHeight),
-            size: CGSize(width: doubleItemWidth, height: doubleItemHeight)
+            frame: CGRect(x: 0, y: 0, width: itemWidth, height: itemHeight),
+            size: CGSize(width: itemWidth, height: itemHeight)
         )
 
         let item2 = LayoutItem(
             index: 1,
-            frame: CGRect(x: doubleItemWidth + spacing, y: 0, width: doubleItemWidth, height: doubleItemHeight),
-            size: CGSize(width: doubleItemWidth, height: doubleItemHeight)
+            frame: CGRect(x: itemWidth + spacing, y: 0, width: itemWidth, height: itemHeight),
+            size: CGSize(width: itemWidth, height: itemHeight)
         )
 
         return AttachmentLayout(
             items: [item1, item2],
-            containerSize: CGSize(width: totalWidth, height: doubleItemHeight),
+            containerSize: CGSize(width: totalWidth, height: itemHeight),
             hiddenCount: 0
         )
     }
 
     private static func layoutTriple(containerWidth: CGFloat) -> AttachmentLayout {
         // 1 большой слева, 2 маленьких справа сверху вниз
-        let totalWidth = tripleMainWidth + spacing + tripleSmallWidth
-        let totalHeight = tripleMainHeight
+        let totalWidth = min(maxLayoutWidth, max(0, containerWidth))
+        let availableItemWidth = max(0, totalWidth - spacing)
+        let compactItemWidth = tripleMainWidth + tripleSmallWidth
+        let scale = compactItemWidth > 0 ? availableItemWidth / compactItemWidth : 0
+        let mainWidth = tripleMainWidth * scale
+        let mainHeight = tripleMainHeight * scale
+        let smallWidth = tripleSmallWidth * scale
+        let smallHeight = tripleSmallHeight * scale
+        let totalHeight = max(mainHeight, smallHeight * 2 + spacing)
 
         let item1 = LayoutItem(
             index: 0,
-            frame: CGRect(x: 0, y: 0, width: tripleMainWidth, height: tripleMainHeight),
-            size: CGSize(width: tripleMainWidth, height: tripleMainHeight)
+            frame: CGRect(x: 0, y: 0, width: mainWidth, height: mainHeight),
+            size: CGSize(width: mainWidth, height: mainHeight)
         )
 
         let item2 = LayoutItem(
             index: 1,
-            frame: CGRect(x: tripleMainWidth + spacing, y: 0, width: tripleSmallWidth, height: tripleSmallHeight),
-            size: CGSize(width: tripleSmallWidth, height: tripleSmallHeight)
+            frame: CGRect(x: mainWidth + spacing, y: 0, width: smallWidth, height: smallHeight),
+            size: CGSize(width: smallWidth, height: smallHeight)
         )
 
         let item3 = LayoutItem(
             index: 2,
-            frame: CGRect(x: tripleMainWidth + spacing, y: tripleSmallHeight + spacing, width: tripleSmallWidth, height: tripleSmallHeight),
-            size: CGSize(width: tripleSmallWidth, height: tripleSmallHeight)
+            frame: CGRect(x: mainWidth + spacing, y: smallHeight + spacing, width: smallWidth, height: smallHeight),
+            size: CGSize(width: smallWidth, height: smallHeight)
         )
 
         return AttachmentLayout(
@@ -153,8 +166,9 @@ public enum AttachmentLayoutCalculator {
 
     private static func layoutGrid(count: Int, containerWidth: CGFloat, hiddenCount: Int) -> AttachmentLayout {
         // Сетка 2x2
-        let totalWidth = gridItemSize * 2 + spacing
-        let totalHeight = gridItemSize * 2 + spacing
+        let totalWidth = min(maxLayoutWidth, max(0, containerWidth))
+        let itemSize = max(0, (totalWidth - spacing) / 2)
+        let totalHeight = itemSize * 2 + spacing
 
         var items: [LayoutItem] = []
 
@@ -162,13 +176,13 @@ public enum AttachmentLayoutCalculator {
             let row = i / 2
             let col = i % 2
 
-            let x = CGFloat(col) * (gridItemSize + spacing)
-            let y = CGFloat(row) * (gridItemSize + spacing)
+            let x = CGFloat(col) * (itemSize + spacing)
+            let y = CGFloat(row) * (itemSize + spacing)
 
             let item = LayoutItem(
                 index: i,
-                frame: CGRect(x: x, y: y, width: gridItemSize, height: gridItemSize),
-                size: CGSize(width: gridItemSize, height: gridItemSize)
+                frame: CGRect(x: x, y: y, width: itemSize, height: itemSize),
+                size: CGSize(width: itemSize, height: itemSize)
             )
             items.append(item)
         }

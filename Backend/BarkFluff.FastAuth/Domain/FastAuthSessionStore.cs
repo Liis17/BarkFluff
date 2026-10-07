@@ -12,7 +12,8 @@ namespace BarkFluff.FastAuth.Domain;
 public interface IFastAuthSessionStore
 {
     Task<FastAuthSessionState> CreateAsync(string deviceName, string operationSystem,
-        string appName, string appVersion, string ipAddress, CancellationToken ct = default);
+        string appName, string appVersion, string ipAddress, string? clientDeviceId = null,
+        CancellationToken ct = default);
 
     Task<FastAuthSessionState?> GetAsync(string id, CancellationToken ct = default);
 
@@ -21,6 +22,9 @@ public interface IFastAuthSessionStore
 
     Task<FastAuthTransition> TryAcceptAsync(string id, string confirmationCode, long userId,
         FastAuthSessionResult result, CancellationToken ct = default);
+
+    Task<FastAuthTransition> TryWaitForTelegramAsync(string id, string confirmationCode, long userId,
+        CancellationToken ct = default);
 
     Task<FastAuthTransition> TryRejectAsync(string id, string confirmationCode, long userId,
         CancellationToken ct = default);

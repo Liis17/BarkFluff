@@ -42,7 +42,8 @@ public class GenerateFastAuthTokenCommandHandler(
             appName: requestContext.AppName!,
             appVersion: requestContext.AppVersion!,
             ipAddress: requestContext.IpAddress ?? string.Empty,
-            cancellationToken);
+            clientDeviceId: requestContext.DeviceId,
+            ct: cancellationToken);
 
         metrics.Increment("sessions_generated");
 

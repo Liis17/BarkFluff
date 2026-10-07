@@ -2,6 +2,8 @@ namespace BarkFluff.Identity.Security;
 
 public interface IIdentityAbuseGuard
 {
+    Task EnsureChallengeReadAllowedAsync(Guid challengeId, string? trustedIpAddress, CancellationToken ct = default) =>
+        EnsureRequestAllowedAsync(IdentityAbuseOperation.Auth, trustedIpAddress, null, false, ct);
     Task EnsureRequestAllowedAsync(
         IdentityAbuseOperation operation,
         string? trustedIpAddress,

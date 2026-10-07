@@ -40,19 +40,11 @@ struct MessageInputView: View {
                 .padding(.top, Theme.Spacing.sm)
             }
 
-            // Основная строка ввода
-            HStack(alignment: .center, spacing: Theme.Spacing.sm) {
-                // Кнопка прикрепления
-                attachButton
-
-                // Кнопка стикеров
-                stickerButton
-
-                // Поле ввода текста с Liquid Glass
-                textFieldView
-
-                // Кнопка отправки
-                sendButton
+            // Основная раскладка ввода. В узком detail ViewThatFits
+            // переключается на две строки, не сжимая поле до нечитаемого размера.
+            ViewThatFits(in: .horizontal) {
+                regularInputRow
+                compactInputColumn
             }
             .padding(.horizontal, Theme.Spacing.md)
             .padding(.vertical, Theme.Spacing.sm)
@@ -76,6 +68,33 @@ struct MessageInputView: View {
                 onFileSelected(urls, true)
             case .failure:
                 break
+            }
+        }
+    }
+
+    // MARK: - Input Layouts
+
+    private var regularInputRow: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+            attachButton
+            stickerButton
+            textFieldView
+                .frame(minWidth: 120)
+                .layoutPriority(1)
+            sendButton
+        }
+        .frame(minWidth: 260)
+    }
+
+    private var compactInputColumn: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            textFieldView
+
+            HStack(spacing: Theme.Spacing.sm) {
+                attachButton
+                stickerButton
+                Spacer(minLength: 0)
+                sendButton
             }
         }
     }

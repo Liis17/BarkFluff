@@ -1,42 +1,54 @@
 package com.barkfluff.client
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.core.widget.NestedScrollView
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivityRegisterBinding
 import com.barkfluff.client.databinding.StepRegister01NameBinding
 import com.barkfluff.client.databinding.StepRegister02UsernameBinding
 import com.barkfluff.client.databinding.StepRegister03EmailBinding
-import com.barkfluff.client.databinding.StepRegister04VerifyBinding
 import com.barkfluff.client.databinding.StepRegister05PasswordBinding
 import com.barkfluff.client.databinding.StepRegister06AvatarBinding
 import com.barkfluff.client.databinding.StepRegister07BioBinding
-import com.barkfluff.client.databinding.StepRegister082faBinding
 import com.barkfluff.client.databinding.StepRegister09CompleteBinding
-import com.barkfluff.client.domain.gateway.AccountSecurityGateway
-import com.barkfluff.client.domain.gateway.AuthGateway
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.auth.AuthenticationUiPolicy
+import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.domain.model.AuthenticationLoginMode
+import com.barkfluff.client.domain.model.RegistrationRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
-import com.barkfluff.client.utils.OtpCellsHelper
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
@@ -48,23 +60,21 @@ import java.io.File
 
 /**
  * Активность регистрации
- * Реализует 9 шагов как в десктопном приложении:
+ * Реализует challenge-based регистрацию:
  * 1. Имя и фамилия
  * 2. Логин (проверка на существование)
- * 3. Email (создание аккаунта, отправка кода)
- * 4. Код подтверждения (подтверждение аккаунта)
- * 5. Пароль
- * 6. Аватар (с кропом через uCrop)
- * 7. Био
- * 8. 2FA
- * 9. Завершение
+ * 3. Email или Telegram
+ * 4. Пароль, если нужен выбранному режиму
+ * 5. Аватар (с кропом через uCrop)
+ * 6. Био
+ * 7. Завершение
  */
 @AndroidEntryPoint
 class RegisterActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "RegisterActivity"
-        private const val TOTAL_STEPS = 9
+        private const val TOTAL_STEPS = 7
         private const val MIN_PASSWORD_LENGTH = 8
         private const val MAX_BIO_LENGTH = 200
         private const val MIN_NAME_LENGTH = 3
@@ -79,15 +89,15 @@ class RegisterActivity : AppCompatActivity() {
         private const val KEY_EMAIL = "email"
         private const val KEY_PASSWORD = "password"
         private const val KEY_BIO = "bio"
-        private const val KEY_CODE_ID = "code_id"
-        private const val KEY_2FA_ENABLED = "2fa_enabled"
         private const val KEY_AVATAR_BYTES = "avatar_bytes"
+        private const val KEY_CONFIRMATION_METHOD = "confirmation_method"
+        private const val KEY_LOGIN_MODE = "login_mode"
     }
 
     private lateinit var binding: ActivityRegisterBinding
     private lateinit var globalParam: GlobalParam
-    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
-    @javax.inject.Inject lateinit var authGateway: AuthGateway
+    private val authenticationChallengeViewModel: AuthenticationChallengeViewModel by viewModels()
+    @javax.inject.Inject lateinit var authenticationChallengeGateway: AuthenticationChallengeGateway
     @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
@@ -101,20 +111,19 @@ class RegisterActivity : AppCompatActivity() {
     private var password = ""
     private var bio = ""
     private var avatarBytes: ByteArray? = null
-    private var codeId: String? = null  // CodeId от CreateAccount
-    private var is2faEnabled = false
-    private var otpHelper: OtpCellsHelper? = null
+    private var confirmationMethod = AuthenticationFactor.EMAIL
+    private var registrationLoginMode = AuthenticationLoginMode.PASSWORD
 
     // Bindings for each step
     private var step1Binding: StepRegister01NameBinding? = null
     private var step2Binding: StepRegister02UsernameBinding? = null
     private var step3Binding: StepRegister03EmailBinding? = null
-    private var step4Binding: StepRegister04VerifyBinding? = null
     private var step5Binding: StepRegister05PasswordBinding? = null
     private var step6Binding: StepRegister06AvatarBinding? = null
     private var step7Binding: StepRegister07BioBinding? = null
-    private var step8Binding: StepRegister082faBinding? = null
     private var step9Binding: StepRegister09CompleteBinding? = null
+    private var preparedStepContent: View? = null
+    private var preparedStepContentBottomPadding = 0
 
     // Photo picker
     private val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -146,6 +155,7 @@ class RegisterActivity : AppCompatActivity() {
 
         binding = ActivityRegisterBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupWindowInsets()
 
         globalParam = GlobalParam(this)
 
@@ -164,8 +174,12 @@ class RegisterActivity : AppCompatActivity() {
             email = it.getString(KEY_EMAIL, "")
             password = it.getString(KEY_PASSWORD, "")
             bio = it.getString(KEY_BIO, "")
-            codeId = it.getString(KEY_CODE_ID)
-            is2faEnabled = it.getBoolean(KEY_2FA_ENABLED, false)
+            confirmationMethod = it.getString(KEY_CONFIRMATION_METHOD)?.let { value ->
+                runCatching { AuthenticationFactor.valueOf(value) }.getOrDefault(AuthenticationFactor.EMAIL)
+            } ?: AuthenticationFactor.EMAIL
+            registrationLoginMode = it.getString(KEY_LOGIN_MODE)?.let { value ->
+                runCatching { AuthenticationLoginMode.valueOf(value) }.getOrDefault(AuthenticationLoginMode.PASSWORD)
+            } ?: AuthenticationLoginMode.PASSWORD
             avatarBytes = it.getByteArray(KEY_AVATAR_BYTES)
             Log.d(TAG, "Состояние восстановлено: шаг $currentStep")
         }
@@ -182,10 +196,10 @@ class RegisterActivity : AppCompatActivity() {
         outState.putString(KEY_LAST_NAME, lastName)
         outState.putString(KEY_USERNAME, username)
         outState.putString(KEY_EMAIL, email)
-        outState.putString(KEY_PASSWORD, password)
+        // Password, challenge references and security proofs are intentionally never persisted.
         outState.putString(KEY_BIO, bio)
-        outState.putString(KEY_CODE_ID, codeId)
-        outState.putBoolean(KEY_2FA_ENABLED, is2faEnabled)
+        outState.putString(KEY_CONFIRMATION_METHOD, confirmationMethod.name)
+        outState.putString(KEY_LOGIN_MODE, registrationLoginMode.name)
         outState.putByteArray(KEY_AVATAR_BYTES, avatarBytes)
         Log.d(TAG, "Состояние сохранено: шаг $currentStep")
     }
@@ -209,11 +223,9 @@ class RegisterActivity : AppCompatActivity() {
             when (currentStep) {
                 2 -> checkUsernameOnServerAndProceed()
                 3 -> checkEmailOnServerAndProceed()
-                4 -> confirmAccountAndProceed()
-                5 -> setPasswordOnServerAndProceed()
-                6 -> uploadAvatarAndProceed()
-                7 -> saveBioOnServerAndProceed()
-                8 -> verify2faAndProceed()
+                4 -> beginRegistrationAndProceed()
+                5 -> uploadAvatarAndProceed()
+                6 -> saveBioOnServerAndProceed()
                 else -> {
                     if (validateCurrentStep()) {
                         if (currentStep < TOTAL_STEPS) {
@@ -230,10 +242,16 @@ class RegisterActivity : AppCompatActivity() {
     private fun checkEmailOnServerAndProceed() {
         if (!validateCurrentStep()) return
 
+        if (confirmationMethod == AuthenticationFactor.TELEGRAM) {
+            currentStep = 4
+            loadStep(currentStep)
+            return
+        }
+
         val b = step3Binding ?: return
         b.emailValidationText.text = getString(R.string.register_checking)
         b.emailValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -244,28 +262,29 @@ class RegisterActivity : AppCompatActivity() {
                     if (exists) {
                         b.emailValidationText.text = getString(R.string.register_email_taken)
                         b.emailValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = true
+                        setNextButtonEnabled(true)
                     } else {
                         b.emailValidationText.text = getString(R.string.register_email_available)
                         b.emailValidationText.visibility = View.VISIBLE
                         delay(500)
-                        createAccountAndProceed()
+                        proceedToPasswordStep()
                     }
                 } else {
                     Log.e(TAG, "Check email failed: ${existsResult.exceptionOrNull()?.message}")
                     b.emailValidationText.text = getString(R.string.register_check_error)
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check email error: ${e.message}", e)
                 b.emailValidationText.text = getString(R.string.register_check_error)
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
 
     private fun loadStep(step: Int) {
         binding.contentFrame.removeAllViews()
+        preparedStepContent = null
 
         // Обновляем крупную нумерацию и сегментный прогресс-бар
         binding.numberBigText.text = step.toString().padStart(2, '0')
@@ -280,26 +299,19 @@ class RegisterActivity : AppCompatActivity() {
         if (step == TOTAL_STEPS) {
             // На финальном шаге скрываем весь нижний бар — у шага 9 своя кнопка
             binding.headerPanel.visibility = View.GONE
-            binding.buttonPanel.visibility = View.GONE
+            setNextButtonEnabled(false)
         } else {
             binding.headerPanel.visibility = View.VISIBLE
-            binding.buttonPanel.visibility = View.VISIBLE
+            setNextButtonEnabled(
+                when (step) {
+                    3 -> false
+                    5 -> avatarBytes != null
+                    else -> true
+                }
+            )
         }
 
-        binding.nextButton.isEnabled = true
         binding.nextButton.setText(R.string.btn_next)
-
-        // Специфичные настройки кнопки для шагов
-        when (step) {
-            6 -> {
-                // Далее доступен только если аватар выбран
-                binding.nextButton.isEnabled = avatarBytes != null
-            }
-            8 -> {
-                // Далее доступен только после ввода 6-значного кода
-                binding.nextButton.isEnabled = false
-            }
-        }
 
         val inflater = LayoutInflater.from(this)
         when (step) {
@@ -316,29 +328,120 @@ class RegisterActivity : AppCompatActivity() {
                 setupStep3()
             }
             4 -> {
-                step4Binding = StepRegister04VerifyBinding.inflate(inflater, binding.contentFrame, true)
-                setupStep4()
-            }
-            5 -> {
                 step5Binding = StepRegister05PasswordBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep5()
             }
-            6 -> {
+            5 -> {
                 step6Binding = StepRegister06AvatarBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep6()
             }
-            7 -> {
+            6 -> {
                 step7Binding = StepRegister07BioBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep7()
             }
-            8 -> {
-                step8Binding = StepRegister082faBinding.inflate(inflater, binding.contentFrame, true)
-                setupStep8()
-            }
-            9 -> {
+            7 -> {
                 step9Binding = StepRegister09CompleteBinding.inflate(inflater, binding.contentFrame, true)
                 setupStep9()
             }
+        }
+
+        prepareStepScroll()
+    }
+
+    private fun setupWindowInsets() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val headerBasePaddingLeft = binding.headerPanel.paddingLeft
+        val headerBasePaddingTop = binding.headerPanel.paddingTop
+        val headerBasePaddingRight = binding.headerPanel.paddingRight
+        val contentBasePaddingLeft = binding.contentFrame.paddingLeft
+        val contentBasePaddingBottom = binding.contentFrame.paddingBottom
+        val contentBasePaddingRight = binding.contentFrame.paddingRight
+        val buttonBasePaddingLeft = binding.buttonPanel.paddingLeft
+        val buttonBasePaddingBottom = binding.buttonPanel.paddingBottom
+        val buttonBasePaddingRight = binding.buttonPanel.paddingRight
+        val buttonBaseMarginBottom =
+            (binding.buttonPanel.layoutParams as? android.widget.FrameLayout.LayoutParams)?.bottomMargin ?: 0
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.headerPanel) { view, insets ->
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.updatePadding(
+                left = headerBasePaddingLeft + safeArea.left,
+                top = headerBasePaddingTop + safeArea.top,
+                right = headerBasePaddingRight + safeArea.right
+            )
+            insets
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.contentFrame) { view, insets ->
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            view.updatePadding(
+                left = contentBasePaddingLeft + safeArea.left,
+                right = contentBasePaddingRight + safeArea.right,
+                bottom = contentBasePaddingBottom + maxOf(safeArea.bottom, ime.bottom)
+            )
+            insets
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.buttonPanel) { view, insets ->
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            view.updatePadding(
+                left = buttonBasePaddingLeft + safeArea.left,
+                right = buttonBasePaddingRight + safeArea.right,
+                bottom = buttonBasePaddingBottom
+            )
+
+            val layoutParams = view.layoutParams as? android.widget.FrameLayout.LayoutParams
+            layoutParams?.let {
+                it.bottomMargin = buttonBaseMarginBottom + maxOf(safeArea.bottom, ime.bottom)
+                view.layoutParams = it
+            }
+            insets
+        }
+
+        ViewCompat.requestApplyInsets(binding.root)
+    }
+
+    private fun prepareStepScroll() {
+        val scrollView = binding.contentFrame.getChildAt(0) as? NestedScrollView ?: return
+        scrollView.clipToPadding = false
+
+        val content = scrollView.getChildAt(0) ?: return
+        if (preparedStepContent !== content) {
+            preparedStepContent = content
+            preparedStepContentBottomPadding = content.paddingBottom
+        }
+        val keyboardPadding = resources.getDimensionPixelSize(R.dimen.register_keyboard_content_padding)
+        val buttonReserve = if (binding.buttonPanel.visibility == View.VISIBLE) {
+            resources.getDimensionPixelSize(R.dimen.register_cta_height) +
+                binding.buttonPanel.paddingTop + binding.buttonPanel.paddingBottom
+        } else {
+            0
+        }
+        content.setPaddingRelative(
+            content.paddingStart,
+            content.paddingTop,
+            content.paddingEnd,
+            preparedStepContentBottomPadding + keyboardPadding + buttonReserve
+        )
+    }
+
+    private fun setNextButtonEnabled(enabled: Boolean) {
+        binding.nextButton.isEnabled = enabled
+
+        val visibility = if (enabled) View.VISIBLE else View.GONE
+        if (binding.buttonPanel.visibility != visibility) {
+            binding.buttonPanel.visibility = visibility
+            prepareStepScroll()
+            ViewCompat.requestApplyInsets(binding.root)
         }
     }
 
@@ -346,6 +449,8 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return
         b.firstNameEditText.setText(firstName)
         b.lastNameEditText.setText(lastName)
+        setupTextField(b.firstNameEditText, focusContainer = b.firstNameEditText.parent as? View)
+        setupTextField(b.lastNameEditText, focusContainer = b.lastNameEditText.parent as? View)
         b.firstNameCounterText.text = getString(R.string.register_bio_counter, firstName.length, MAX_NAME_LENGTH)
         b.lastNameCounterText.text = getString(R.string.register_bio_counter, lastName.length, MAX_NAME_LENGTH)
 
@@ -360,25 +465,47 @@ class RegisterActivity : AppCompatActivity() {
             b.lastNameCounterText.text = getString(R.string.register_bio_counter, it?.length ?: 0, MAX_NAME_LENGTH)
             validateLastName()
         }
+
+        b.firstNameEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT || isEnterKey(event)) {
+                b.lastNameEditText.requestFocus()
+                true
+            } else {
+                false
+            }
+        }
+
+        b.lastNameEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_DONE || isEnterKey(event)) {
+                binding.nextButton.performClick()
+                true
+            } else {
+                false
+            }
+        }
     }
 
     private fun validateFirstName(): Boolean {
         val b = step1Binding ?: return false
         if (firstName.isEmpty()) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_required_error)
+            b.firstNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.firstNameValidationText.visibility = View.VISIBLE
             return false
         }
         return if (firstName.length < MIN_NAME_LENGTH) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_min_length, MIN_NAME_LENGTH)
+            b.firstNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else if (firstName.length > MAX_NAME_LENGTH) {
             b.firstNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
+            b.firstNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.firstNameValidationText.visibility = View.VISIBLE
             false
         } else {
             b.firstNameValidationText.text = getString(R.string.register_first_name_valid)
+            b.firstNameValidationText.setTextColor(getColor(R.color.success))
             b.firstNameValidationText.visibility = View.VISIBLE
             true
         }
@@ -388,16 +515,20 @@ class RegisterActivity : AppCompatActivity() {
         val b = step1Binding ?: return false
         return if (lastName.isNotEmpty() && lastName.length > MAX_NAME_LENGTH) {
             b.lastNameValidationText.text = getString(R.string.register_first_name_max_length, MAX_NAME_LENGTH)
+            b.lastNameValidationText.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorError))
             b.lastNameValidationText.visibility = View.VISIBLE
             false
         } else {
-            b.lastNameValidationText.visibility = View.GONE
+            b.lastNameValidationText.text = getString(R.string.register_last_name_hint)
+            b.lastNameValidationText.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
+            b.lastNameValidationText.visibility = View.VISIBLE
             true
         }
     }
 
     private fun setupStep2() {
         val b = step2Binding ?: return
+        setupTextField(b.usernameEditText)
         b.usernameEditText.setText(username)
 
         b.usernameEditText.doAfterTextChanged {
@@ -426,7 +557,7 @@ class RegisterActivity : AppCompatActivity() {
         b.usernameValidationText.text = getString(R.string.register_checking)
         b.usernameValidationText.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         b.usernameValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -438,7 +569,7 @@ class RegisterActivity : AppCompatActivity() {
                         b.usernameValidationText.text = getString(R.string.register_username_status_taken)
                         b.usernameValidationText.setTextColor(getColor(R.color.error))
                         b.usernameValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = true
+                        setNextButtonEnabled(true)
                     } else {
                         b.usernameValidationText.text = getString(R.string.register_username_status_free)
                         b.usernameValidationText.setTextColor(getColor(R.color.success))
@@ -451,35 +582,82 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     Log.e(TAG, "Check username failed: ${existsResult.exceptionOrNull()?.message}")
                     b.usernameValidationText.text = getString(R.string.register_check_error)
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check username error: ${e.message}", e)
                 b.usernameValidationText.text = getString(R.string.register_check_error)
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
 
     private fun setupStep3() {
         val b = step3Binding ?: return
+        setupTextField(b.emailEditText)
         b.emailEditText.setText(email)
+        b.emailInputContainer.visibility = if (confirmationMethod == AuthenticationFactor.TELEGRAM) View.GONE else View.VISIBLE
+
+        b.telegramRegistrationButton.setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.register_telegram_title)
+                .setSingleChoiceItems(
+                    arrayOf(
+                        getString(R.string.register_login_mode_telegram),
+                        getString(R.string.register_login_mode_password_factor),
+                    ),
+                    if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) 0 else 1,
+                ) { dialog, selected ->
+                    confirmationMethod = AuthenticationFactor.TELEGRAM
+                    registrationLoginMode = if (selected == 0) {
+                        AuthenticationLoginMode.TELEGRAM_LOGIN
+                    } else {
+                        AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+                    }
+                    email = ""
+                    b.emailInputContainer.visibility = View.GONE
+                    b.emailValidationText.text = getString(R.string.register_telegram_selected)
+                    b.emailValidationText.visibility = View.VISIBLE
+                    setNextButtonEnabled(true)
+                    dialog.dismiss()
+                }
+                .show()
+        }
+        b.emailRegistrationButton.setOnClickListener {
+            confirmationMethod = AuthenticationFactor.EMAIL
+            registrationLoginMode = AuthenticationLoginMode.PASSWORD
+            b.emailInputContainer.visibility = View.VISIBLE
+            setNextButtonEnabled(email.isNotBlank())
+        }
+        lifecycleScope.launch {
+            authenticationChallengeGateway.capabilities().onSuccess { capabilities ->
+                val methods = AuthenticationUiPolicy.registrationConfirmationMethods(capabilities)
+                b.telegramRegistrationButton.visibility = if (AuthenticationFactor.TELEGRAM in methods) View.VISIBLE else View.GONE
+                b.emailRegistrationButton.visibility = if (
+                    confirmationMethod == AuthenticationFactor.TELEGRAM && AuthenticationFactor.EMAIL in methods
+                ) View.VISIBLE else View.GONE
+                if (AuthenticationFactor.EMAIL !in methods && AuthenticationFactor.TELEGRAM in methods && confirmationMethod == AuthenticationFactor.EMAIL) {
+                    b.telegramRegistrationButton.performClick()
+                }
+            }
+        }
 
         b.emailEditText.doAfterTextChanged {
             email = it?.toString()?.trim()?.lowercase() ?: ""
+            if (confirmationMethod == AuthenticationFactor.TELEGRAM) return@doAfterTextChanged
             if (email.isNotEmpty()) {
                 val emailPattern = android.util.Patterns.EMAIL_ADDRESS
                 if (!emailPattern.matcher(email).matches()) {
                     b.emailValidationText.text = getString(R.string.register_email_invalid)
                     b.emailValidationText.visibility = View.VISIBLE
-                    binding.nextButton.isEnabled = false
+                    setNextButtonEnabled(false)
                 } else {
                     // Email валиден, проверяем на сервере
                     checkEmailExists()
                 }
             } else {
                 b.emailValidationText.visibility = View.GONE
-                binding.nextButton.isEnabled = false
+                setNextButtonEnabled(false)
             }
         }
     }
@@ -498,7 +676,7 @@ class RegisterActivity : AppCompatActivity() {
             
             b.emailValidationText.text = getString(R.string.register_checking)
             b.emailValidationText.visibility = View.VISIBLE
-            binding.nextButton.isEnabled = false
+            setNextButtonEnabled(false)
             
             try {
                 val existsResult = userDirectoryGateway.checkEmail(email)
@@ -508,147 +686,52 @@ class RegisterActivity : AppCompatActivity() {
                     if (exists) {
                         b.emailValidationText.text = getString(R.string.register_email_taken)
                         b.emailValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = false
+                        setNextButtonEnabled(false)
                     } else {
                         b.emailValidationText.text = getString(R.string.register_email_available)
                         b.emailValidationText.visibility = View.VISIBLE
-                        binding.nextButton.isEnabled = true
+                        setNextButtonEnabled(true)
                     }
                 } else {
                     Log.e(TAG, "Check email failed: ${existsResult.exceptionOrNull()?.message}")
                     b.emailValidationText.text = getString(R.string.register_check_error)
                     b.emailValidationText.visibility = View.VISIBLE
-                    binding.nextButton.isEnabled = false
+                    setNextButtonEnabled(false)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Check email error: ${e.message}", e)
                 b.emailValidationText.text = getString(R.string.register_check_error)
                 b.emailValidationText.visibility = View.VISIBLE
-                binding.nextButton.isEnabled = false
+                setNextButtonEnabled(false)
             }
         }
     }
 
-    private fun createAccountAndProceed() {
+    private fun proceedToPasswordStep() {
         if (!validateCurrentStep()) return
 
         val b = step3Binding ?: return
         b.emailValidationText.text = getString(R.string.register_account_creating)
         b.emailValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
-        lifecycleScope.launch {
-            try {
-                // Создаем аккаунт - сервер отправит код на почту
-                val createResult = accountSecurityGateway.register(firstName, lastName, email, username)
-                if (createResult.isSuccess) {
-                    codeId = createResult.getOrNull()
-                    Log.d(TAG, "Аккаунт создан, CodeId: $codeId")
-                    
-                    b.emailValidationText.text = getString(R.string.register_code_sent, email)
-                    b.emailValidationText.visibility = View.VISIBLE
-                    delay(1000)
-                    saveCurrentStepData()
-                    currentStep++
-                    loadStep(currentStep)
-                } else {
-                    Log.e(TAG, "Create account failed: ${createResult.exceptionOrNull()?.message}")
-                    b.emailValidationText.text = getString(
-                        R.string.register_error_detail,
-                        createResult.exceptionOrNull()?.message.orEmpty()
-                    )
-                    binding.nextButton.isEnabled = true
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Create account error: ${e.message}", e)
-                b.emailValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                binding.nextButton.isEnabled = true
-            }
-        }
-    }
-
-    private fun setupStep4() {
-        val b = step4Binding ?: return
-        otpHelper = OtpCellsHelper(
-            listOf(b.otpCell1, b.otpCell2, b.otpCell3, b.otpCell4, b.otpCell5, b.otpCell6)
-        ) { confirmAccountAndProceed() }
-        otpHelper?.setup()
-        otpHelper?.focusFirst()
-    }
-
-    private fun confirmAccountAndProceed() {
-        val b = step4Binding ?: return
-        val code = otpHelper?.getCode() ?: ""
-
-        if (code.length != 6) {
-            b.verificationCodeValidationText.text = getString(R.string.register_code_incomplete)
-            b.verificationCodeValidationText.visibility = View.VISIBLE
-            return
-        }
-
-        if (codeId == null) {
-            b.verificationCodeValidationText.text = getString(R.string.register_account_not_created)
-            b.verificationCodeValidationText.visibility = View.VISIBLE
-            return
-        }
-
-        b.verificationCodeValidationText.text = getString(R.string.register_checking)
-        b.verificationCodeValidationText.visibility = View.VISIBLE
-        binding.nextButton.isEnabled = false
-
-        lifecycleScope.launch {
-            try {
-                // Подтверждаем аккаунт - получаем refresh токен
-                val confirmResult = accountSecurityGateway.confirmAccount(codeId!!, code)
-                if (confirmResult.isSuccess) {
-                    val confirmData = confirmResult.getOrNull()!!
-                    Log.d(TAG, "Аккаунт подтвержден, получен refresh токен")
-                    
-                    // Сохраняем refresh токен
-                    globalParam.refreshToken = confirmData.refreshToken
-                    globalParam.refreshTokenExpiration = confirmData.refreshTokenExpiration
-                    
-                    // Создаем access токен
-                    val tokenResult = authGateway.refresh(confirmData.refreshToken, confirmData.refreshTokenExpiration)
-                    if (tokenResult.isSuccess) {
-                        val tokenData = tokenResult.getOrNull()!!
-                        globalParam.accessToken = tokenData.accessToken
-                        globalParam.accessTokenExpiration = tokenData.accessTokenExpiration
-                        Log.d(TAG, "Access токен получен")
-                        
-                        // Пересоздаем gRPC клиенты с новыми токенами
-                        recreateGrpcClients()
-                        
-                        b.verificationCodeValidationText.text = getString(R.string.register_account_confirmed)
-                        delay(500)
-                        saveCurrentStepData()
-                        currentStep++
-                        loadStep(currentStep)
-                    } else {
-                        Log.e(TAG, "Failed to create access token: ${tokenResult.exceptionOrNull()?.message}")
-                        b.verificationCodeValidationText.text = getString(R.string.register_token_error)
-                        binding.nextButton.isEnabled = true
-                    }
-                } else {
-                    Log.e(TAG, "Confirm account failed: ${confirmResult.exceptionOrNull()?.message}")
-                    b.verificationCodeValidationText.text = getString(
-                        R.string.register_error_detail,
-                        confirmResult.exceptionOrNull()?.message.orEmpty()
-                    )
-                    binding.nextButton.isEnabled = true
-                    otpHelper?.clear()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Confirm account error: ${e.message}", e)
-                b.verificationCodeValidationText.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                binding.nextButton.isEnabled = true
-                otpHelper?.clear()
-            }
-        }
+        b.emailValidationText.text = getString(R.string.register_email_available)
+        b.emailValidationText.visibility = View.VISIBLE
+        saveCurrentStepData()
+        currentStep = 4
+        loadStep(currentStep)
     }
 
     private fun setupStep5() {
         val b = step5Binding ?: return
+        if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
+            // Telegram-only registration has no password step.
+            b.root.visibility = View.GONE
+            beginRegistrationAndProceed()
+            return
+        }
+        setupTextField(b.passwordEditText)
+        setupTextField(b.confirmPasswordEditText)
 
         b.passwordEditText.doAfterTextChanged {
             password = it?.toString() ?: ""
@@ -668,9 +751,9 @@ class RegisterActivity : AppCompatActivity() {
         
         // Проверяем: пароль не пустой, минимальная длина, пароли совпадают
         if (password.length >= MIN_PASSWORD_LENGTH && password == confirmPassword && confirmPassword.isNotEmpty()) {
-            binding.nextButton.isEnabled = true
+            setNextButtonEnabled(true)
         } else {
-            binding.nextButton.isEnabled = false
+            setNextButtonEnabled(false)
         }
     }
 
@@ -799,7 +882,7 @@ class RegisterActivity : AppCompatActivity() {
             step6Binding?.avatarPlaceholder?.visibility = View.GONE
 
             // Включаем кнопку "Далее" теперь, когда аватар выбран
-            binding.nextButton.isEnabled = true
+            setNextButtonEnabled(true)
 
             Toast.makeText(this, R.string.register_photo_selected, Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
@@ -810,6 +893,7 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun setupStep7() {
         val b = step7Binding ?: return
+        setupTextField(b.bioEditText, Gravity.TOP)
 
         b.previewFullName.text = getString(R.string.register_full_name_format, firstName, lastName).trim()
         b.previewUsername.text = getString(R.string.register_username_format, username)
@@ -827,89 +911,67 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupStep8() {
-        val b = step8Binding ?: return
-
-        // Загружаем 2FA код при открытии шага
-        setup2fa()
-
-        b.skip2faButton.setOnClickListener {
-            is2faEnabled = false
-            saveCurrentStepData()
-            currentStep++
-            loadStep(currentStep)
-        }
-
-        b.copyCodeButton.setOnClickListener {
-            val code = b.twoFaSecretCode.text.toString()
-            copyToClipboard(code)
-            Toast.makeText(this, R.string.register_code_copied, Toast.LENGTH_SHORT).show()
-        }
-
-        b.openAuthenticatorButton.setOnClickListener {
-            openGoogleAuthenticator()
-        }
-
-        // Включаем кнопку "Далее" только после ввода 6-значного кода
-        b.otpCodeEditText.doAfterTextChanged {
-            binding.nextButton.isEnabled = (it?.length == 6)
-        }
-    }
-
-    private fun setup2fa() {
-        lifecycleScope.launch {
-            try {
-                val result = userProfileGateway.otpSetup()
-                if (result.isSuccess) {
-                    val otpResult = result.getOrNull()
-                    if (otpResult != null) {
-                        step8Binding?.twoFaSecretCode?.text = otpResult.justCode
-                    }
-                } else {
-                    Log.e(TAG, "Get OTP setup failed: ${result.exceptionOrNull()?.message}")
-                    Toast.makeText(this@RegisterActivity, R.string.register_2fa_setup_error, Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Get OTP setup error: ${e.message}", e)
-                Toast.makeText(this@RegisterActivity, R.string.register_2fa_setup_error, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun setPasswordOnServerAndProceed() {
+    private fun beginRegistrationAndProceed() {
         if (!validateCurrentStep()) return
 
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
-            try {
-                val result = userProfileGateway.password(password)
-                if (result.isSuccess) {
-                    Log.d(TAG, "Пароль установлен")
-                    saveCurrentStepData()
-                    currentStep++
-                    loadStep(currentStep)
-                } else {
-                    Log.e(TAG, "Set password failed: ${result.exceptionOrNull()?.message}")
-                    Toast.makeText(
-                        this@RegisterActivity,
-                        getString(R.string.register_error_detail, result.exceptionOrNull()?.message.orEmpty()),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    binding.nextButton.isEnabled = true
+            val result = AuthenticationChallengeDialog(
+                this@RegisterActivity,
+                authenticationChallengeGateway,
+                authenticationChallengeViewModel.controller,
+            ).run(
+                title = getString(R.string.register_step4_headline),
+            ) {
+                authenticationChallengeGateway.beginRegistration(
+                    RegistrationRequest(
+                        username = username,
+                        password = if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) "" else password,
+                        firstName = firstName,
+                        lastName = lastName,
+                        email = email,
+                        confirmationMethod = confirmationMethod,
+                        loginMode = registrationLoginMode,
+                    ),
+                )
+            }
+            result.onSuccess { completion ->
+                val session = completion.session
+                if (session == null) {
+                    Toast.makeText(this@RegisterActivity, R.string.auth_error, Toast.LENGTH_SHORT).show()
+                    setNextButtonEnabled(true)
+                    return@onSuccess
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Set password error: ${e.message}", e)
-                Toast.makeText(this@RegisterActivity, getString(R.string.register_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                binding.nextButton.isEnabled = true
+                globalParam.accessToken = session.accessToken
+                globalParam.accessTokenExpiration = session.accessTokenExpiration
+                globalParam.refreshToken = session.refreshToken
+                globalParam.refreshTokenExpiration = session.refreshTokenExpiration
+                recreateGrpcClients()
+                if (completion.recoveryCodes.isNotEmpty()) showRecoveryCodes(completion.recoveryCodes)
+                currentStep = 5
+                loadStep(currentStep)
+            }.onFailure { failure ->
+                if (failure !is java.util.concurrent.CancellationException) {
+                    Toast.makeText(this@RegisterActivity, failure.message ?: getString(R.string.auth_error), Toast.LENGTH_SHORT).show()
+                }
+                setNextButtonEnabled(true)
             }
         }
+    }
+
+    private fun showRecoveryCodes(codes: List<String>) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.security_recovery_codes_title)
+            .setMessage(codes.joinToString("\n"))
+            .setPositiveButton(R.string.btn_confirm, null)
+            .show()
     }
 
     private fun uploadAvatarAndProceed() {
         val bytes = avatarBytes ?: return
 
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -933,12 +995,12 @@ class RegisterActivity : AppCompatActivity() {
                         getString(R.string.register_avatar_upload_error, uploadResult.exceptionOrNull()?.message.orEmpty()),
                         Toast.LENGTH_SHORT
                     ).show()
-                    binding.nextButton.isEnabled = true
+                    setNextButtonEnabled(true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Upload avatar error: ${e.message}", e)
                 Toast.makeText(this@RegisterActivity, getString(R.string.register_error_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
-                binding.nextButton.isEnabled = true
+                setNextButtonEnabled(true)
             }
         }
     }
@@ -947,12 +1009,12 @@ class RegisterActivity : AppCompatActivity() {
         saveCurrentStepData()
 
         if (bio.isEmpty()) {
-            currentStep++
+            currentStep = 7
             loadStep(currentStep)
             return
         }
 
-        binding.nextButton.isEnabled = false
+        setNextButtonEnabled(false)
 
         lifecycleScope.launch {
             try {
@@ -962,41 +1024,12 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     Log.e(TAG, "Change bio failed: ${result.exceptionOrNull()?.message}")
                 }
-                currentStep++
+                currentStep = 7
                 loadStep(currentStep)
             } catch (e: Exception) {
                 Log.e(TAG, "Change bio error: ${e.message}", e)
-                currentStep++
+                currentStep = 7
                 loadStep(currentStep)
-            }
-        }
-    }
-
-    private fun verify2faAndProceed() {
-        val code = step8Binding?.otpCodeEditText?.text?.toString() ?: return
-        if (code.length != 6) return
-
-        binding.nextButton.isEnabled = false
-
-        lifecycleScope.launch {
-            try {
-                val result = userProfileGateway.confirmOtpSetup(code)
-                if (result.isSuccess) {
-                    is2faEnabled = true
-                    Toast.makeText(this@RegisterActivity, R.string.register_2fa_configured, Toast.LENGTH_SHORT).show()
-                    saveCurrentStepData()
-                    currentStep++
-                    loadStep(currentStep)
-                } else {
-                    step8Binding?.otpErrorText?.text = getString(R.string.register_invalid_code)
-                    step8Binding?.otpErrorText?.visibility = View.VISIBLE
-                    binding.nextButton.isEnabled = true
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Verify 2FA error: ${e.message}", e)
-                step8Binding?.otpErrorText?.text = getString(R.string.register_error_detail, e.message.orEmpty())
-                step8Binding?.otpErrorText?.visibility = View.VISIBLE
-                binding.nextButton.isEnabled = true
             }
         }
     }
@@ -1007,26 +1040,43 @@ class RegisterActivity : AppCompatActivity() {
         return typedValue.data
     }
 
-    private fun copyToClipboard(text: String) {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("2FA Code", text)
-        clipboard.setPrimaryClip(clip)
+    private fun setupTextField(
+        field: EditText,
+        gravity: Int = Gravity.CENTER_VERTICAL,
+        focusContainer: View? = null
+    ) {
+        field.gravity = gravity
+        field.setPaddingRelative(field.paddingStart, 0, field.paddingEnd, 0)
+        field.setOnFocusChangeListener { _, hasFocus ->
+            focusContainer?.setBackgroundResource(
+                if (hasFocus) R.drawable.bg_register_input_row_focused
+                else R.drawable.bg_register_input_row
+            )
+            if (hasFocus) {
+                field.post { ensureFieldVisible(field) }
+            }
+        }
     }
 
-    private fun openGoogleAuthenticator() {
-        try {
-            val intent = packageManager.getLaunchIntentForPackage("com.google.android.apps.authenticator2")
-            if (intent != null) {
-                startActivity(intent)
-            } else {
-                val playStoreIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("market://details?id=com.google.android.apps.authenticator2")
-                }
-                startActivity(playStoreIntent)
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, R.string.register_authenticator_open_failed, Toast.LENGTH_SHORT).show()
+    private fun ensureFieldVisible(field: View) {
+        val margin = resources.getDimensionPixelSize(R.dimen.register_keyboard_scroll_margin)
+        field.requestRectangleOnScreen(
+            Rect(0, -margin, field.width, field.height + margin),
+            true
+        )
+    }
+
+    private fun focusAndShowKeyboard(field: EditText) {
+        field.requestFocus()
+        field.post {
+            ensureFieldVisible(field)
+            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.showSoftInput(field, InputMethodManager.SHOW_IMPLICIT)
         }
+    }
+
+    private fun isEnterKey(event: KeyEvent?): Boolean {
+        return event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN
     }
 
     private fun setupStep9() {
@@ -1072,19 +1122,33 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
+    private fun validateStep1(): Boolean {
+        val b = step1Binding ?: return false
+        val firstNameValid = validateFirstName()
+        val lastNameValid = validateLastName()
+
+        when {
+            !firstNameValid -> focusAndShowKeyboard(b.firstNameEditText)
+            !lastNameValid -> focusAndShowKeyboard(b.lastNameEditText)
+        }
+
+        return firstNameValid && lastNameValid
+    }
+
     private fun validateCurrentStep(): Boolean {
         return when (currentStep) {
-            1 -> validateFirstName() && validateLastName()
+            1 -> validateStep1()
             2 -> {
                 if (username.isEmpty()) return false
                 val validPattern = Regex("^[a-z0-9_-]+$")
                 username.matches(validPattern) && username.length <= MAX_USERNAME_LENGTH
             }
             3 -> {
-                if (email.isEmpty()) return false
-                android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+                confirmationMethod == AuthenticationFactor.TELEGRAM ||
+                    (email.isNotEmpty() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches())
             }
-            5 -> {
+            4 -> {
+                if (registrationLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) return true
                 // Валидация пароля происходит в setupStep5
                 val confirmPassword = step5Binding?.confirmPasswordEditText?.text?.toString() ?: ""
                 password.length >= MIN_PASSWORD_LENGTH && password == confirmPassword
@@ -1105,10 +1169,10 @@ class RegisterActivity : AppCompatActivity() {
             3 -> {
                 email = step3Binding?.emailEditText?.text?.toString()?.trim()?.lowercase() ?: ""
             }
-            5 -> {
+            4 -> {
                 password = step5Binding?.passwordEditText?.text?.toString() ?: ""
             }
-            7 -> {
+            6 -> {
                 bio = step7Binding?.bioEditText?.text?.toString()?.trim() ?: ""
             }
         }
@@ -1137,12 +1201,9 @@ class RegisterActivity : AppCompatActivity() {
         step1Binding = null
         step2Binding = null
         step3Binding = null
-        step4Binding = null
         step5Binding = null
         step6Binding = null
         step7Binding = null
-        step8Binding = null
         step9Binding = null
-        otpHelper = null
     }
 }

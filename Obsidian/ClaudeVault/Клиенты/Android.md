@@ -59,23 +59,61 @@ Base namespace/package: `com.barkfluff.client` (stable; `dev` и `nightly` ис�
 - Композиция: две распорки `layout_weight=1` отжимают hero-блок от верха и прижимают CTA к низу.
 - Логотип рендерится напрямую как `@drawable/app_icon_vector` (Android-native VectorDrawable из `app_icon_vector.svg`) без `MaterialCardView`, elevation и PNG-маски.
 - Чипы-фичи — стиль `Widget.Barkfluff.Welcome.FeatureChip`; высота через `chipMinHeight`, а не `layout_height` (фиксированная высота сжимает текст с иконкой).
+- Для окон Medium/Expanded шириной от 600dp `contentPanel` ограничивается 600dp и центрируется; на Compact сохраняется full-width композиция телефона. Заголовок Welcome отмечен как accessibility heading для TalkBack, а информационные feature-чипы остаются читаемыми, но не получают лишний keyboard focus.
 - Под CTA находятся ссылки «Соглашение» и «Конфиденциальность» в одной строке; обе открывают соответствующий таб legal-листа в режиме чтения. Кнопки «Узнать больше», «О проекте», «Справка» удалены.
 - «Начать» → модалка согласия (см. ниже) → `SelectServerActivity`.
 
 ### Экран 2 — SelectServer (макет 2d)
 
 - Экран использует динамическую Material-палитру: заголовок в одну строку, подпись секции «Публичные ноды», tonal-карточка без тени с outlineVariant и выразительным скруглением.
-- Карточка ноды (`item_server.xml`): icon-tile 56dp, название/описание, заметный публичный адрес `@handle` сразу под описанием, компактные чипы «Онлайн» / пинг / регион на нейтральном surface-контейнере, CTA «Подключиться» 52dp с 20dp-скруглением внутри карточки.
-- «Своя нода» — кликабельный tonal-контейнер с outlineVariant и ripple вместо пунктирной рамки; текстовый блок выровнен по левому краю и вертикально центрирован между иконкой и шевроном, контейнер разворачивает поле адреса и свою кнопку подключения, шеврон поворачивается на 180°. Свёрнуто по умолчанию.
+- Карточка ноды (`item_server.xml`): tonal icon-tile 48dp на `colorPrimaryContainer` с глифом `colorOnPrimaryContainer` (цвет из каталога ноды не заливает плитку), название/описание, заметный публичный адрес `@handle` сразу под описанием, чипы «Проверка…» / «Онлайн» / «Недоступна», отклик и регион на нейтральном surface-контейнере, CTA «Подключиться» 52dp с 20dp-скруглением внутри карточки.
+- Статус карточки подтверждается отдельным gRPC probe: «Онлайн» показывается только после успешного ответа, «Недоступна» — после ошибки или таймаута; время называется «Отклик», так как это round-trip probe, а не ICMP ping. Неподтверждённая иконка verified удалена.
+- Probe карточек и пользовательское подключение сериализованы общим Beacon-мьютексом, поскольку registry хранит один активный Beacon-клиент; это не позволяет проверке одной ноды перехватить подключение к другой.
+- Пока экран выбора ноды видим, каждая прикреплённая карточка делает probe сразу и планирует следующий старт не чаще одного раза в 2 секунды; значение «Отклик» обновляется после каждого завершённого round-trip. При новом bind или возобновлении после паузы старое значение сбрасывается, а во время обычного быстрого цикла остаётся до прихода нового ответа, чтобы чип не мигал. Опрос отменяется при уходе строки с экрана, остановке Activity и начале подключения, а после возврата к форме возобновляется; кеш успешного отклика не используется.
+- Карточка ноды содержит одно действие — явную кнопку «Подключиться»; сама карточка и информационные чипы не попадают в клавиатурный фокус, а чипы остаются доступны для озвучивания.
+- «Своя нода» — одна tonal-карточка с outlineVariant: кликабельна только её шапка с ripple, поэтому поле и CTA внутри формы не сворачивают её случайно. При раскрытии карточка растёт вниз и содержит поле адреса, кнопку подключения и действие для trusted certificate; шеврон поворачивается на 180° через spatial.fast `SpringAnimation` с damping 0.9. Под полем явно указано: `https://` можно написать или опустить, но порт обязателен (например, `:443`). Свёрнуто по умолчанию.
+- Состояние раскрытия «Своей ноды» передаётся через accessibility state description (`Свернуто` / `Развернуто`).
 - Список публичных нод загружается через Navigator с явным TLS-портом `443` (`https://navigator.barkfluff.com:443`): gRPC-нормализатор не принимает URL без порта.
+- Состояния каталога разделены на loading/content/empty/error: пустой или недоступный Navigator больше не подменяется тестовыми нодами; empty/error показывают локальное сообщение и кнопку «Повторить», ручное подключение остаётся доступным. Загрузка каталога ограничена таймаутом 10 секунд, чтобы не оставлять экран в вечном loading.
+- Для окон Medium/Expanded потоковый контент экрана ограничен 600dp и центрируется; нижняя trust-панель остаётся на всю ширину окна.
+- Ручной адрес валидируется inline в TextInputLayout, ошибка очищается при вводе; подсказка объясняет Beacon-flow и не выглядит как неработающая ссылка.
+- Получение информации при подключении ограничено таймаутом 10 секунд и возвращает управление форме с понятной ошибкой вместо бесконечного spinner.
+- Back сначала сворачивает раскрытую форму своей ноды, затем возвращает на Login (если экран открыт из Login) или закрывает экран; выбор другого сервера возвращает пересозданный Login без старого экрана в back stack.
 - Внизу — отдельная tonal-инфопанель с `ic_info`, предупреждением `node_trust_warning` и подсказкой по настройке ноды.
 
 ### Экран 3 — Login (макет 3c)
 
-- Left-aligned hero без карточки-обёртки: круг за верхним краем, логотип 72dp, заголовок 40sp/800.
-- Мини-лейблы над полями (`TextAppearance.Barkfluff.Register.FieldLabel`), поля FilledBox с `colorSurfaceContainerHighest`.
-- Внизу «Впервые здесь? Создать аккаунт» + ссылка смены ноды.
+- Left-aligned hero без карточки-обёртки: круг за верхним краем, логотип 72dp на динамической `colorSurfaceContainerHighest`-плитке с `colorPrimary` glyph, заголовок 40sp/800.
+- Подзаголовок использует `BodyLarge`; выбранная нода показана рядом с формой в tonal-карточке с названием, адресом и действием «Изменить». После возврата с `SelectServerActivity` карточка перечитывает актуальные данные из `GlobalParam`.
+- Мини-лейблы над полями (`TextAppearance.Barkfluff.Register.FieldLabel`), поля FilledBox с `colorSurfaceContainerHighest`, высота 56dp и скругление 16dp. Текст и курсор центрируются по вертикали; дополнительная нижняя линия при фокусе отключена, а `labelFor`, autofill hints и последовательность IME `Next` → `Done` сохранены.
+- Ошибка подключения Identity предлагает действие «Повторить»; ошибки входа и ошибки отдельных полей очищаются при следующем вводе. При невалидной отправке фокус и клавиатура переходят к первому проблемному полю.
+- Нижний CTA — 56dp; селектор способа входа расположен под ним, а фиксированный ритм 56dp отделяет селектор от «Впервые здесь? Создать аккаунт». На широких окнах поток ограничен 600dp и центрируется.
+- Внизу «Впервые здесь? Создать аккаунт»; смена ноды выполняется из карточки выбранной ноды.
 - Блок ошибки (`errorText`) сам несёт фон `bg_login_error`. Раньше он лежал внутри `errorCard` с `visibility=gone`, которую никто не показывал, — ошибки входа не отображались вообще. Не оборачивать его снова в скрытый контейнер.
+- Identity-вход использует challenge API: пользователь выбирает Password, Telegram Login или Password + second factor согласно `GetAuthCapabilities`. Под основной кнопкой «Войти» расположен подписанный «Способ входа» селектор; Password выбран по умолчанию. Telegram открывается системным `ACTION_VIEW`; токены пишутся в `GlobalParam` только из completed challenge. Recovery code доступен для второго фактора.
+- `AuthenticationChallengeViewModel` хранит reference только в памяти Activity при configuration change. `AuthenticationChallengeDialog` опрашивает Identity раз в 2 секунды лишь в `RESUMED`, refresh'ит challenge при возврате и отменяет его при явном закрытии. Reference и security proof не попадают в Bundle или логи.
+
+### Восстановление пароля (Password Reset)
+
+- `ResetPasswordActivity` запускает `BeginPasswordRecovery`; общий challenge-диалог ведёт Telegram/email-подтверждение, resend и recovery code. После completed challenge его in-memory security proof хранится только в `AuthenticationChallengeViewModel` до единственного `SetRecoveredPassword`, поэтому переживает поворот экрана без Bundle или persistent storage.
+- Если у учётной записи нет настроенного email и сервер не предлагает иной recovery-фактор, ошибка Identity остаётся на первом шаге, без legacy reset endpoint.
+- `LoginActivity` создаёт анонимный Identity-клиент с `DeviceInfoInterceptor`: запросы сброса и подтверждения пароля требуют `x-device-name`, `x-os-name`, `x-app-name` и `x-app-version`, закодированные в Base64, даже до авторизации.
+- Поле идентификации показывает пример `name@example.com`; CTA «Отправить код» отображается без иконки и включается только при непустом вводе, оставаясь отключённой во время запроса.
+- Верхняя плитка шага использует `colorPrimary`, а глиф — `colorOnPrimary`, чтобы иконка оставалась контрастной в динамической Material-палитре.
+
+### Регистрация (RegisterActivity)
+
+- `RegisterActivity` оставляет профильные шаги (имя, username, avatar, bio, completion), но account creation проходит через `BeginRegistration`. Email доступен только если разрешён capability и всегда использует Password; Telegram предлагает Telegram Login либо Password + second factor (default). Telegram-only регистрация не запрашивает пароль. Recovery codes показываются перед переходом к профилю.
+- Старые registration OTP и optional Authenticator layouts удалены; factors настраиваются только в Security через reauthentication proof.
+- Иконки на акцентных контейнерах используют `colorOnPrimary`, а старый `ic_lock_reset` в поясняющем блоке email заменён на стандартный `ic_lock`.
+- Для edge-to-edge регистрация вручную применяет system-bar/display-cutout/IME-инсеты к header и контенту, а CTA-панель позиционируется overlay-слоем над клавиатурой только в активном состоянии; неактивная кнопка скрывает всю панель, чтобы не перекрывать контент. Шаги на `NestedScrollView` получают актуальный нижний запас под кнопку, а фокусируемое поле автоматически доводится до видимой области.
+- На первом шаге правила имени показаны как tonal-плашки с нейтральными иконками; подсказка необязательной фамилии остаётся видимой. Ошибка имени скрыта до взаимодействия, окрашивается семантическим error/success-цветом, а на «Далее» невалидное поле получает фокус и клавиатуру.
+- `GrpcClientRegistry` учитывает конфигурацию interceptor’ов при переиспользовании слота: если Identity-клиент был создан Login/SelectServer без device metadata, регистрация заменяет его каналом с `DeviceInfoInterceptor` и `x-device-name`; interceptor’ы получают `applicationContext`, чтобы singleton не удерживал Activity.
+
+### Security settings
+
+- `SecuritySettingsActivity` читает `GetSecuritySettings`, а каждая мутация предваряется challenge-based reauthentication и одноразовым security proof. Экран связывает/отвязывает Telegram, подтверждает email binding, выбирает login policy, включает Authenticator/Email/Telegram 2FA и регенерирует recovery codes.
+- Telegram FastAuth — desktop-only: Android не показывает switch и всегда возвращает серверное `fastAuthTelegramEnabled` без изменений в `UpdateSecuritySettings`/`UnlinkTelegram`.
 
 ### Терминология
 
@@ -110,7 +148,7 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 
 - `AppBarLayout` + `MaterialToolbar` удалены. Вместо них `headerContainer` (LinearLayout): сворачиваемый блок `headerCollapsible` (заголовок «Чаты» 36sp/44 weight 600 + `headerSubtitle` + аватар пользователя 48dp справа), лента папок `foldersRecyclerView`, строка поиска.
 - `headerSubtitle` — одна строка на два назначения: статус синхронизации (`chats_sync_updating` / `chats_sync_offline` / `connecting`), иначе счётчик непрочитанных (`plurals/chats_unread_summary`, при нуле `chats_unread_none`). Обновляется из `publishMainUnread()`, анимация смены текста — прежняя fade/slide (`updateHeaderSubtitle`).
-- `searchField` — pill-поле (`bg_chats_search_field`, ripple) с иконкой и подписью «Поиск чатов»; тап открывает существующий `SearchActivity`. Инлайн-фильтрации списка нет.
+- `searchField` — pill-поле (`bg_chats_search_field`, ripple) с иконкой и подписью «Поиск чатов»; тап открывает `ChatSearchActivity`. Инлайн-фильтрации списка нет.
 - **Сворачивание по направлению прокрутки** (`ChatsFragment.updateHeaderCollapse` / `setHeaderCollapsed`): прокрутка вниз при offset > 20dp схлопывает `headerCollapsible` (высота → 0 + alpha, 360 мс, `PathInterpolator(0.2,0,0,1)`) и сжимает поле поиска 52→48dp (300 мс); прокрутка вверх возвращает. Порог реакции — 6dp, чтобы состояние не дребезжало. По окончании разворачивания высота возвращается в `WRAP_CONTENT` — иначе блок «залипает» на пиксельном значении при смене контента.
 - `item_chat.xml` — один layout на два состояния, всё различие выставляет `ChatAdapter.applyUnreadStyle(isUnread)`: корневая `MaterialCardView` `chatCard` (радиус 20→28dp, фон transparent→`colorPrimaryContainer`, нижний отступ 0→8dp), паддинг строки 12→16dp, `avatarContainer` 50→58dp, заголовок 16sp/w400→17sp/w600, превью w400→w500, вторичный цвет `colorOnSurfaceVariant`→`colorOnPrimaryContainer`, бейдж непрочитанных 26dp pill. Вес шрифта задаётся `Typeface.create(SANS_SERIF, weight, false)` (API 28+).
 - `item_chat_skeleton.xml` синхронизирован с новой геометрией строки (74dp, аватар 50dp, паддинг 18dp).
@@ -125,7 +163,36 @@ UI говорит **«нода»**, не «сервер» — проект пе�
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
 
-## Экран поиска (`SearchActivity`)
+## Поиск существующих диалогов (`ChatSearchActivity`)
+
+- Отдельный Compose-экран поиска по отображаемому имени собеседника и названию группы, без ограничения в три символа. `ChatSearchViewModel` сохраняет запрос в `SavedStateHandle` и фильтрует общий каталог независимо от выбранной папки.
+- `SearchChatsGateway` сначала отдаёт scoped-кеш, затем ViewModel проходит все страницы `ListChats` из [[Backend/Messages]] по 50 записей, включая страницы после начальных 150 чатов. До завершения прохода показан статус обновления; при ошибке остаются найденные сохранённые/загруженные чаты с явной отметкой неполноты и повтором.
+- Полный серверный снимок заменяет каталог и кеш, чтобы удалённые диалоги исчезали из результатов. Некорректные GUID отбрасываются. Private-диалоги открываются через `privateChatIntent`; локальные secret-метаданные подключаются при включённом флаге через `SecretChatRepository` и открываются через `secretChatIntent`.
+- Поиск пользователей для создания обычного/private-чата остаётся в `SearchActivity`. `username` не входит в контракт каталога чатов: первый этап ищет только по отображаемым названиям.
+- Unit-тесты проверяют совпадение на четвёртой странице, короткий запрос по кешу при offline, восстановление запроса и удаление устаревших кешированных строк после полного обновления.
+
+### Поиск сообщений и фильтры
+
+- В `ChatSearchActivity` две вкладки: «Чаты» и «Сообщения». `MessageSearchViewModel` вызывает новый `SearchMessages` из [[Shared/Proto]] через typed `MessageSearchGateway`; на вкладке чатов RPC поиска сообщений не выполняется.
+- Запрос текста откладывается на 300 мс, смена фильтров выполняется сразу. Предыдущие запросы отменяются; номер запроса защищает выдачу от запоздалой страницы. Выдача дополняется по точному курсору `SentAt` (секунды + наносекунды) / `Id`, совпадения дедуплицируются по ID.
+- Фильтры: автор (локальный ID или federated UUID), диапазон дат, наличие вложений и их типы (фото, видео, GIF, документы, аудио, голосовые, стикеры). Можно искать только по фильтрам. Диапазон включает оба выбранных календарных дня в часовом поясе устройства; верхняя граница API — начало следующего дня. Выбор «Без вложений» очищает типы.
+- Автор выбирается среди себя/авторов выдачи либо через `SearchActivity` в `MODE_PICK_AUTHOR`: выбор возвращает пользователя, не создавая диалог. Удалённый автор из выдачи сохраняет UUID.
+- Текст, вкладка и фильтры сохраняются в `SavedStateHandle`. Старые ноды с `UNIMPLEMENTED` показывают отдельное состояние недоступности. Пустая выдача и ошибка различаются.
+- Поиск серверный, в обычных чатах и группах; private/secret-переписка и содержимое пересланных снимков в него не входят. Карточка показывает чат, автора, время, фрагмент с выделением совпадения и типы вложений. Строки локализованы на RU/EN/DE/ES/ZH; фильтры имеют область касания от 48dp.
+- Unit-тесты покрывают фильтр без текста, debounce, смену фильтра после пагинации, запоздалую страницу, восстановление UUID/дат/вложений, недоступный RPC и календарные дни по 23/25 часов при смене DST.
+
+### Переход к найденному сообщению
+
+- Карточка передаёт `ChatActivity.EXTRA_TARGET_MESSAGE_ID`. `ChatIntent.Initialize` задаёт якорь до загрузки истории; `NavigateToMessage` принимает новое сообщение в уже открытом чате через `onNewIntent`.
+- `MessageNavigator` загружает до 20 сообщений с каждой стороны и целевое сообщение через `ListMessages`. ID запроса и версия загрузки защищают окно от запоздалого кеша, initial load, старой страницы и предыдущего перехода. Границы и флаги пагинации пересчитываются для нового окна.
+- Пока есть `TimelineState.target`, прокрутка к непрочитанным/в конец подавлена. Позиционирование и подсветка выполняются после commit `MessageAdapter.submitList`; Activity подтверждает `MessageNavigationHandled` только когда целевой ID есть в списке адаптера. Pending ID сохраняется для process death и очищается после подтверждения.
+- Подтверждение ждёт commit последнего отправленного списка и его layout; поздние callbacks/обновление хвоста не перезаписывают новый переход. Удаление целевого сообщения через realtime инвалидирует ожидающую загрузку и снимает pending.
+- После перехода страницы идут с сервера (`RegularChatSession.preferCache=false`): scoped-кеш может содержать разрозненные окна, а его локальные границы основаны на ID. Новые live-сообщения кешируются без продвижения границы незавершённого исторического окна; оптимистичное собственное сообщение продолжает согласовываться по operation ID.
+- Версия отложенных live-сообщений сохраняет пагинацию вперёд, если новое сообщение пришло во время загрузки последней страницы или записи в кеш; следующий запрос догружает его с сервера.
+- Отсутствующее сообщение/ошибка загрузки дают локализованное уведомление; уже открытая история сохраняется, при пустой ленте запускается обычная загрузка. Переходы из закрепов используют тот же путь.
+- `MessageNavigatorTest` проверяет окно ±20, ожидание последнего commit, повторный запрос, поздний ответ, удаление цели, стабильный порядок и live-сообщение во время загрузки последней страницы. Compose UI-тесты проверяют карточку, следующую страницу, фильтр и недоступный RPC; для их запуска нужно Android-устройство/эмулятор.
+
+## Поиск пользователей (`SearchActivity`)
 
 Самостоятельный поиск пользователей перенесён на Compose + Material 3 Expressive; Compose подключён только в `:app-v1`, остальные V1-экраны остаются View/XML. `SearchActivity` сохраняется Activity-хостом, помечен `@AndroidEntryPoint` и использует `SearchViewModel` с `StateFlow<SearchUiState>`.
 
@@ -293,9 +360,26 @@ Release-вариант запрещает cleartext (`usesCleartextTraffic=false
 `BarkFluffFirebaseMessagingService.onMessageReceived` диспатчит payload по полю `type`:
 
 - `type = "new_message"` (по умолчанию, если поле не задано) — строит локальную нотификацию через `NotificationHelper.showMessageNotification` с аватаром и BigPictureStyle при наличии превью.
-- `type = "dismiss_chat_notifications"` — вызывает `NotificationHelper.dismissForChat(context, chat_id)`, удаляя нотификацию чата из шторки. Шлётся бекендом ([[Backend/CloudMessaging]] / [[Backend/Updates]]) после прочтения сообщения, чтобы скрыть уведомление на остальных устройствах пользователя. На читавшем устройстве — no-op (нотификации уже нет).
+- `type = "dismiss_chat_notifications"` — передаёт `chat_id` и границу `message_id` в `NotificationHelper.dismissForChat`. Удаляет обычное уведомление, только если его ID сообщения не превышает прочитанный; отложенное прочтение старого сообщения сохраняет более новое уведомление. Payload без границы сохраняет legacy chat-wide dismiss. Шлётся [[Backend/CloudMessaging]] после прочтения в [[Backend/Updates]].
+- `type = "new_private_message"` — metadata-only маркер с `private_chat_id`, `event_id` и `sender_user_id`.
+- `type = "new_secret_message"` — metadata-only маркер с `event_id`, `sender_user_id` и `sender_device_id`; сервер направляет его строго устройству-получателю. Новые маркеры не содержат обычных `chat_id`/`message_id`, поэтому старые клиенты пропускают их.
+- Неизвестные типы пропускаются. FCM и realtime вызывают одинаковые metadata-only callbacks `RealtimeSideEffects`: дешифрование, аватар и содержимое вложений для Private/Secret не запрашиваются.
 
+Обычное уведомление сохраняет `MessagingStyle`/системную беседу и действия «Ответить»/«Прочитано». Reply использует `RemoteInput` и explicit mutable broadcast `PendingIntent`; Mark Read и Hide используют immutable intents. Уникальный `Intent.data` включает scope, kind, thread и ID события, чтобы старое действие не подменялось новым. `NotificationActionReceiver` не экспортируется: в `goAsync()` проверяет текущий scope, обычный kind и непустой текст, затем принимает ответ через durable outbox без Activity. После транзакции закрывает только уведомление исходного сообщения; при ошибке сохранения оставляет его и показывает локализованную ошибку. Перед закрытием обновляет исходное уведомление с `onlyAlertOnce`, подтверждая обработку Direct Reply и снимая удержание SystemUI на API 31 и 36. Затем до 2 секунд повторяет отмену с проверками scope/kind/event; новое сообщение прекращает отмену. Дополнительный локальный guard учитывает уже отправленные в NotificationManager замены, ещё не видимые системе; во время отмены он не вытесняется. Ошибка этого UI-подтверждения не отклоняет уже сохранённый ответ. Обязательное обновление описано в [Android Direct Reply](https://developer.android.com/develop/ui/compose/notifications/create-notification#add-a-direct-reply-action).
 
+Private/Secret показывают только «Новое зашифрованное сообщение» и действие «Скрыть»; Reply, Mark Read и системные предлагаемые ответы отключены. Тап открывает список чатов, включая возврат из профиля/звонков в уже открытой Activity. Они используют отдельные scoped tags; дедупликация FCM/realtime хранит ограниченный набор ключей `(scope, kind, eventId)` в SharedPreferences и переживает завершение процесса. Scope захватывается до асинхронной обработки FCM; маркеры прошлого аккаунта не переходят в новый scope. Уведомления несут scope/kind/message metadata; отмена и границы чтения проверяют системный `NotificationManager.activeNotifications`, а не локальный пул. Открытие чата и явное Hide отменяют уведомление напрямую.
+
+Строки уведомлений, RemoteInput и ошибки сохранения доступны на ru/en/de/es/zh-CN. `NotificationHelper.localizedContext` выбирает ресурсы по сохранённому `appLanguage` через копию `Configuration`: холодный FCM/receiver соблюдает настройку языка без активной AppCompat Activity. Значение `system` сохраняет язык устройства.
+
+Проверки Direct Reply на 01.10.2026:
+
+- Nightly debug APK и androidTest APK собраны; app unit — 82, core unit — 50, без ошибок. `tools/check_android_ui.py` прошёл.
+- Полный instrumentation-прогон на API 31 и 36: `OK (54 tests)` на каждом. Шесть методов `ColdNotificationScenarioTest` в общем прогоне пропускаются по assumption и запускаются отдельными шагами через `-e cold_start_step`; 21 тест очереди/уведомлений/миграции выполняется в общем прогоне.
+- В SystemUI на обоих API проверены Reply и оба Hide при отсутствующем процессе, отсутствие запуска Activity, сохранение отправки и прочтения после перезапуска. Независимый retry чтения проверен ошибкой и последующим успехом fake gateway: запись отправки остаётся единственной и неизменной.
+- На API 36 визуально проверены пять языков уведомлений; проверка выбора языка без Activity входит в instrumentation на обоих API.
+- [[Backend/CloudMessaging]] — 75 тестов, [[Backend/Updates]] — 23 теста; [[Backend/Messages]] собран отдельно без ошибок. Реальная доставка через Firebase в этих проверках не выполнялась.
+
+Instrumentation запускался на изолированных arm64-эмуляторах с русской системной локалью, отключёнными анимациями, разрешением 540×1200 при 210 dpi и тестовым `max_notification_enqueue_rate=100`, чтобы пакетные обновления не отбрасывались системой. Холодные SystemUI-сценарии проходили отдельно при обычном лимите и разрешении 1080×2400. Логи и скриншоты сохраняются в игнорируемой Git папке `Android/build/reports/direct-reply/`.
 
 - `MessageAttachmentType`: Unknown, Image, Video, Gif, Document, Audio(4), Voice, Sticker; **AUDIO=5** (добавлен в shared.proto)
 
@@ -318,28 +402,41 @@ Backend заполняет эти поля при доставке сообще�
 
 ### Durable outbox обычных чатов
 
-`OutgoingMessageQueue` — единственный публичный seam отправки обычных чатов: `enqueue`, `observeChat`, `retry`, `cancel`. До успешного `enqueue` текст/медиа **не** считаются принятыми: все `content://` URI, voice/cache-файлы и edited/sticker `ByteArray` копируются в `noBackupFilesDir/outgoing/<scope>/<operationId>`. Затем SQLCipher Room `offline_chat_cache.db` v4 фиксирует `QUEUED`; после этого process kill, перезапуск устройства и пропажа сети не теряют работу.
+`OutgoingMessageQueue` — единственный публичный seam отправки обычных чатов: `enqueue`, `observeChat`, `retry`, `cancel`. До успешного `enqueue` текст/медиа **не** считаются принятыми: все `content://` URI, voice/cache-файлы и edited/sticker `ByteArray` копируются в `noBackupFilesDir/outgoing/<scope>/<operationId>`. Затем SQLCipher Room `offline_chat_cache.db` v5 фиксирует `QUEUED`; после этого process kill, перезапуск устройства и пропажа сети не теряют работу. Миграция v4→v5 добавляет `pending_message_reads`, сохраняя историю, outbox и черновики.
+
+Ответ из уведомления передаёт в `SendJob.notificationReply` ожидаемый server/account scope и ID входящего сообщения. Финальная Room-транзакция проверяет актуальность scope и атомарно сохраняет `QUEUED` вместе с независимой записью ожидающего прочтения. Успех `enqueue` определяется этой транзакцией; ошибка последующего планирования WorkManager не отклоняет уже принятый ответ. `replyId=0` и `draftGeneration=null` сохраняют черновик открытого чата.
+
+`OutgoingMessageWorker` обрабатывает отправки и журнал прочтений независимо: `MarkAsRead` использует исходный ID, временные ошибки получают собственный backoff, ближайший запуск учитывает обе очереди. Повтор прочтения не повторяет отправку; Cancel и очистка подтверждённых отправок не удаляют прочтение. Logout/очистка кеша удаляют журнал вместе с соответствующим scope. Серверное прочтение и ограничение dismiss по ID описаны в [[Backend/Updates]] и [[Backend/CloudMessaging]].
 
 Принятые preview-вложения обычного чата хранятся отдельно в `noBackupFilesDir/composer/<scope>/<chatId>/`, а их упорядоченные записи — в `composer_attachments`. `ComposerAttachmentStore` публикует preview только после атомарного staging. `draftGeneration` связывает journal черновика с outbox: при crash между `QUEUED` и очисткой UI распознаёт уже переданную generation и удаляет только подтверждённые копии. `remove`, logout, cache clear и orphan cleanup удаляют и записи, и файлы.
 
 - В БД есть scoped (`Beacon-server|userId`) таблицы `outgoing_messages` и упорядоченные `outgoing_attachments`. Сообщение хранит стабильный `operationId`, batch, текст/reply, draft generation, lease, attempts/backoff, безопасную категорию ошибки и ACK; вложение — stable upload operation ID, durable source/prepared path, final file ID и параметры видео.
 - Жизненный цикл: `STAGING → QUEUED → PREPARING → UPLOADING → SENDING → SENT`; `FAILED` блокирует только следующие сообщения того же чата до Retry/Cancel. Истёкший lease после kill возвращается в `QUEUED`. Cancel удаляет запись и staged directory, но не отзывает уже принятый сервером message.
 - `OutgoingMessageWorker` — `CoroutineWorker` с `NetworkType.CONNECTED`; WorkManager только планирует пробуждение. Queue выбирает максимум две chat-head одновременно и строго FIFO внутри каждого chat. На старте, возврате в foreground, login и появлении сети queue пробуждается снова; foreground notification предлагает cooperative Cancel активной операции. Для target SDK 36 worker передаёт `ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC`, а `SystemForegroundService` объявлен в `AndroidManifest.xml` с `android:foregroundServiceType="dataSync"` (и `FOREGROUND_SERVICE_DATA_SYNC` permission), иначе Android 14+ завершает процесс с `InvalidForegroundServiceTypeException`.
-- Временные network/timeout/5xx/429 ошибки повторяются 10s, 30s, 2m, 5m, 15m, затем каждые 30m. Auth/access/validation становятся `FAILED`; перед транспортом вызывается `TokenCoordinator.ensureValid` через `AuthGateway`.
+- Временные network/timeout/5xx/429 ошибки повторяются 10s, 30s, 2m, 5m, 15m, затем каждые 30m. Auth/access/validation становятся `FAILED`; перед транспортом вызывается `TokenCoordinator.validity()`. Недоступный Identity (`UNAVAILABLE`: сеть ещё не поднялась, канал пересоздан reconnect'ом, `shutdownNow`) — это обычный retry с backoff, а не `FAILED`: сразу после возврата сети refresh часто падает, и раньше это превращало отправку в перманентный `AUTH_REQUIRED`, который автоматически уже не ретраился (`readyHeads` берёт только `QUEUED`). `FAILED/AUTH_REQUIRED` остался только для `REJECTED` (нет refresh-токена или Identity ответил `FAILED_PRECONDITION`/`UNAUTHENTICATED`/`PERMISSION_DENIED`). Перманентный отказ пишет в лог категорию и класс исключения. Возврат сети (`onAvailable` в `BarkFluffApplication`) вызывает `retryAfterNetworkReturn()`: он обнуляет `nextAttemptAtMillis` у `QUEUED`-записей, ждущих backoff, и будит очередь, поэтому они повторяются сразу, а не по окончании backoff. Счётчик попыток не сбрасывается, следующий сбой продолжит нарастающий backoff. Старт процесса и выход приложения на передний план по-прежнему только будят очередь (`resume()`) и backoff не трогают.
 - `SendMessageRequest.client_operation_id`, `Message.client_operation_id` и `GetUploadUrlRequest.client_operation_id` обеспечивают идемпотентность. Незавершённый upload повторно запрашивает slot с тем же upload ID и проверяет `/status`; отправка повторяет тот же message ID, поэтому потерянный ACK не создаёт дубль.
 - `ChatRepository.uploadFile(File, ...)` считает hash и пишет multipart из durable file потоком, проверяя coroutine/Cancel между 64-KiB чанками. Видео преобразуется `Transformer` после staging; итоговый MP4 также остаётся в private directory до ACK.
 - `ChatViewModel` накладывает Flow outbox на history/cache: pending bubble, local preview и progress восстанавливаются после Activity/process recreation. ACK/realtime/history сначала сопоставляются по `clientOperationId`, legacy content-match остаётся fallback. `FAILED` показывает Retry/Cancel, остальные pending состояния — Cancel. Draft очищается только если ACK относится к сохранённой generation. После успешной удалённой загрузки списка чатов `contentAvailable` переводится в `true`, чтобы skeleton не оставался поверх полученных данных.
 
 ### Голосовые сообщения
 
-В `ChatActivity` правая кнопка ввода переключается между `ic_send_filled` и `ic_mic`: микрофон показывается только когда текст пустой, нет pending-вложений, reply и edit-режимов. При первом удержании запрашивается `RECORD_AUDIO`; после выдачи разрешения пользователь удерживает кнопку ещё раз.
+Маршрут голосовых поддерживается в обычных чатах. В `ChatActivity` микрофон доступен при пустом тексте, без других вложений и edit-режима; выбранный ответ не мешает записи. Private/Secret требуют отдельного расширения протокола (см. [[Shared/Proto]]).
 
-- Запись: `MediaRecorder` пишет OGG/Opus (`OutputFormat.OGG`, `AudioEncoder.OPUS`) во временный файл `cacheDir`.
-- Индикация записи (`showVoiceRecordingBar` / `hideVoiceRecordingBar`): на время записи `inputBar` уходит в `INVISIBLE` (кросс-фейд 160 мс), а поверх него, по тем же констрейнтам и с тем же фоном `bg_chat_input_bar`, показывается `voiceRecordBar` — мигающая точка `colorError` (`ValueAnimator` alpha 1↔0.25, REVERSE INFINITE), счётчик `M:SS` (корутина с тиком 200 мс) и подсказка отмены. Поле ввода не остаётся видимым, поэтому состояние записи нельзя спутать с обычным вводом.
-- Отправка: отпускание кнопки создаёт `SendJob(AttachmentSpec.Voice)` и сначала durable-stage'ит OGG в outbox; upload идёт как `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Shared/Proto]]).
-- Отмена: при удержании кнопку можно потянуть влево до середины экрана (`width * 0.5`); иконка краснеет, подсказка едет за пальцем (0.35 смещения) и меняет текст на «Отпустите для отмены», при отпускании запись удаляется и сообщение не отправляется.
-- Cleanup: `onStop()` отменяет активную запись и удаляет временный файл. Слишком короткая запись (`<500ms`) не отправляется.
-- Отображение: `MessageAdapter` оставляет обычный `AUDIO` на `SeekBar`, а `VOICE` показывает через `VoiceWaveformView` с палочками-таймлайном; амплитуды берутся из локального файла через `AudioWaveformExtractor` (`MediaExtractor`/`MediaCodec`) и кешируются по `fileId`. Голосовые вложения размером `1..2 МБ` автоматически скачиваются в `FileCache`; более крупные остаются с ручной кнопкой загрузки. Вкладка «Голосовые» в `UserProfileActivity` запрашивает `MessageAttachmentType.VOICE`.
+- `VoiceRecordingController` владеет состояниями удержания, фиксации, паузы и завершения; `AndroidVoiceRecordingDevice` управляет `MediaRecorder` и пишет OGG/Opus, mono 48 кГц, 24 кбит/с во временный файл `cacheDir`. Первый запуск запрашивает `RECORD_AUDIO`; после разрешения нужно снова начать запись.
+- Обычное удержание и отпускание сохраняет быструю отправку. Свайп вверх на 72dp по преобладающей оси фиксирует запись; отпускание продолжает её. Свайп влево на 72dp по преобладающей оси оставляет отмену при отпускании. Фиксация/смена состояния отмены сопровождается виброоткликом, подсказкой и замком. TalkBack action запускает запись сразу с фиксацией.
+- При фиксации доступны удаление, «Пауза»/«Продолжить» и «Стоп». Таймер учитывает только активную запись. «Стоп» открывает локальное предпрослушивание: play/pause, волна с перемоткой, позиция/длительность, скорость, удаление и отправка. Клип короче 500 мс удаляется. При завершении paused OGG рекордер возобновляется только для финализации; отмена освобождает capture без `stop()` и удаляет файл. На IO staging `OggOpusTimeline` исправляет native OGG granule по числу Opus samples, сохраняя packet payload, pre-skip, EOS trim и CRC; paused wall time не попадает в длительность файла.
+- Завершённый клип durable-stage'ится через `ComposerAttachmentStore` как `VOICE` в private directory, вместе с draft generation и reply ID. Scope включает сервер, аккаунт и чат; `ChatDraftRepository` восстанавливает ответ, включая локальный placeholder при недоступном исходном сообщении. Пока текст/ответ и вложения восстанавливаются, запись и отправка заблокированы. Миграция БД не требуется.
+- Отправка сначала копирует файл в durable outbox и принимает `SendJob`; затем очищает preview. Ошибка staging/enqueue оставляет клип для повторной попытки; повторное нажатие во время передачи не создаёт второй job. Ошибка очистки после принятия очередью не превращается в отказ: восстановление сверяет generation с durable handoff. Upload остаётся `MESSAGE_ATTACHMENT_VOICE`, backend возвращает `MessageAttachmentType.VOICE` (см. [[Backend/Messages]], [[Shared/Proto]]).
+- `onStop()` удаляет активную или приостановленную запись; завершённый черновик сохраняется. Предпрослушивание использует локальный ExoPlayer, останавливается при уходе с экрана и не воспроизводится в фоне. Начало записи или предпрослушивания приостанавливает общий аудиоплеер.
+
+`AudioPlayback` — единый observable фасад для чата, закреплённых сообщений, вкладки голоса профиля и сквозного мини-плеера. `PlaybackState` содержит исходный чат/сообщение, отправителя, позицию, длительность, скорость и ошибку; pause сохраняет отображаемую позицию. `VoicePlaybackService : MediaSessionService` владеет ExoPlayer/MediaSession, а фасад использует один MediaController. В manifest объявлены `FOREGROUND_SERVICE_MEDIA_PLAYBACK` и service type `mediaPlayback`; системное уведомление и экран блокировки получают media controls через Media3 ([Android background playback](https://developer.android.com/media/media3/session/background-playback)).
+
+- Выбор 1×/1,5×/2× хранится на устройстве в `voice_playback/speed`, исходно 1×; высота голоса остаётся 1. Изменение синхронизирует preview, строки, профиль и мини-плеер. Для обычного AUDIO скорость остаётся 1×.
+- Воспроизведение отправленного/полученного файла продолжается при смене экрана, блокировке и уходе в другое приложение. Потеря audio focus (в том числе звонок), сигнал отключения наушников и incoming call ставят плеер на паузу без автоматического продолжения. Во время записи или звонка системное/локальное play блокируется. Logout/смена scope и очистка кеша останавливают плеер.
+- `AudioMiniPlayerHost` устанавливается через application lifecycle callbacks: встроенная верхняя полоса резервирует 50dp с 48dp кнопками и учитывает status bar/cutout. Показывает отправителя, прогресс, play/pause, скорость и закрытие. Тап на название и notification content intent передают group/user metadata и `EXTRA_TARGET_MESSAGE_ID` в существующую anchored navigation чата.
+- Строки отписываются от state при recycle/detach; Activities очищают адаптеры при уничтожении. `VoiceWaveformView` поддерживает TalkBack range/set-progress/scroll actions. Новые строки и динамические подписи есть в ru/en/de/es/zh-CN; интерактивные области — не менее 48dp.
+- Волны извлекаются через `AudioWaveformExtractor` и кешируются по `fileId`. Сохраняется общая политика автозагрузки: исходно Wi-Fi и максимум 2 МБ, при запрете — ручная кнопка. Вкладка «Голосовые» профиля запрашивает `MessageAttachmentType.VOICE`.
+- Регрессионные проверки: `VoiceRecordingControllerTest` и `OggOpusTimelineTest` проверяют жесты, таймер и OGG; `VoiceComposerTest`, `VoiceDraftStoreTest` и `VoiceDraftHandoffTest` — native capture, восстановление ответа и передачу outbox; `AudioPlaybackTest` — общий state, скорости, фон/блокировку, системные media controls и прерывания. `VoiceUiLayoutTest` проверяет 48dp, подписи и отсутствие обрезки шапки, preview/мини-плеера при открытой клавиатуре; аргумент `voice_theme=light|dark` используется вместе с narrow/wide window overrides.
 
 ### Вложения в профиле и группе
 
@@ -371,6 +468,20 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
 
 ## Система кеширования
 
+### Политика автозагрузки медиа
+
+`:core` содержит `AutoDownloadSettings`, `AutoDownloadPolicy`, `AutoDownloadNetworkState` и observable `AutoDownloadSettingsStore`. Режимы `Wi-Fi / любая сеть / вручную` хранятся в `GlobalParam` отдельно для IMAGE, GIF, VIDEO, AUDIO, VOICE и DOCUMENT. Исходный режим IMAGE — любая сеть, остальных типов — Wi-Fi; общий лимит — 2 МБ (1 МБ = 1024 × 1024 байт), допустимые значения 1–512 МБ. Неизвестный размер не разрешает автоматический старт. Настройки сохраняются при перезапуске и сбрасываются существующим `clearUserData()` при logout.
+
+В «Данные и кеш» `StorageSettingsActivity` показывает секцию «Автозагрузка» с отдельными строками статичных фото, GIF, видео, аудио, голосовых и документов; single-choice диалог сразу сохраняет выбранный режим. Общий лимит вводится целым числом 1–512 МБ, с пояснением «максимум для одного автоматически скачиваемого файла»; неверное значение оставляет диалог открытым с ошибкой. Подписи и accessibility labels есть в ru/en/de/es/zh-CN. Экран наблюдает настройки через `StateFlow`, включая возврат после background и recreation.
+
+Состояние сети обновляет существующий default-network callback приложения; Wi-Fi определяется по `TRANSPORT_WIFI` без `TRANSPORT_CELLULAR`, в том числе у VPN. Пока capabilities неизвестны или default network потеряна, новые автоматические загрузки запрещены. Проверка публичного интернета не требуется для локальных нод. Связано с [[Архитектура]] и [[Android-ProjectMap]].
+
+`AttachmentAutoDownloadController` и его lifecycle/view bridge используются `MessageAdapter` (чат и закреплённые сообщения) и `AttachmentPreviewAdapter` (галереи пользователя и группы). Только видимые вложения запускают скачивание оригиналов, не более двух запросов на адаптер; повторные потребители одного `fileId` разделяют запрос. Смена сети/настроек проверяет ожидающие видимые строки без полного bind и не отменяет активные запросы. До фактического старта, включая ожидание свободного слота, остаётся доступно действие ручной загрузки. Лимит фиксируется в момент фактического старта; остановка lifecycle и recycling отменяют работу и освобождают отметку загрузки. Задачи галереи, привязанные к строкам, используют `lifecycleScope` владельца и отменяются при его завершении или переработке holder. Явная загрузка, viewer и сохранение обходят автоматические ограничения.
+
+`AttachmentLoader.downloadAuto` → `FileMediaGateway.downloadAuto` → `ChatRepository.downloadFileAuto` пишет HTTP-поток во временный файл через `FileCache.saveAuto`/`BoundedFileDownload`. Проверяются `Content-Length` и прочитанные байты; только полный успешный файл атомарно становится кешем. Ошибка, превышение размера и отмена удаляют временные данные. Ручной `download` сохраняет прежний путь без лимита автозагрузки.
+
+Фото и GIF отображаются из локального оригинала, видео получает локальный кадр через Coil `VideoFrameDecoder` (включая кеш-файлы без расширения). Автоматические строки не запрашивают URL/сетевые превью. Ранее сохранённые изображения доступны через файловый кеш и cache-only чтение обоих Coil loaders; при запрете загрузки остаётся действие ручного открытия/скачивания. Аватары, стикеры и фоны чатов не входят в эту политику.
+
 Четыре слоя кеша:
 1. **Runtime URL-кэш** — `AvatarLoader.urlCache` (`ConcurrentHashMap<fileId, URL>`, in-memory)
 2. **Persistent URL-кэш** — `FileUrlCache` → SharedPreferences `"file_url_cache"` (SHA-256 keys)
@@ -379,7 +490,7 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
 
 Бинарные файлы (аудио/видео/документы):
 - `FileCache` (`utils/FileCache.kt`) — singleton disk cache, путь: `cacheDir/media_files/`
-- `AudioPlayerHelper` (`utils/AudioPlayerHelper.kt`) — MediaPlayer singleton, один аудио за раз
+- `AudioPlayback` / `VoicePlaybackService` (`audio/`) — общий ExoPlayer и MediaSession для аудио/голосовых
 - `ImageGridAdapter` (`adapter/ImageGridAdapter.kt`) — квадратная сетка с `SquareImageView`
 - `SquareImageView` (`views/SquareImageView.kt`) — `onMeasure` устанавливает height=width
 - `AspectRatioImageView` (`views/AspectRatioImageView.kt`) — `onMeasure` устанавливает height=width*3/2 (2:3, для превью фонов)
@@ -392,6 +503,7 @@ Beacon и Navigator отдают `files_media_endpoint` — второй пуб�
 ```
 androidx.media3:media3-exoplayer:1.3.1
 androidx.media3:media3-ui:1.3.1
+androidx.media3:media3-session:1.3.1
 ```
 
 ## Пересылка и ответы (Forward / Reply)
@@ -761,7 +873,7 @@ Android/
 
 ### Состав `:core`
 
-`com.android.library`, namespace `com.barkfluff.client.core`, minSdk 31. Пакеты сохранили имена `com.barkfluff.client.*` (V1-код не правит импорты). Содержит: `grpc/` (`GrpcClientRegistry`, `GrpcApiTransport`, `TokenCoordinator`, `MediaHttpTransport`, interceptors, `RealtimeService`), `domain/` (typed gateways, domain DTO и row/state seams), `data/` (GlobalParam, ClientColors, ServerDataElement, OpenChatManager), `repository/` (Chat/Private/Secret), `crypto/` (BarkFluffSignalStore, PrekeyManager, PrivateChatCrypto), чистые `utils/` (FileCache, ImageCompressor, FileUrlCache, ImageCache, NetworkUtils, AudioPlayerHelper, FileSaveUtils, AppVersionUtil), `proto/` (protobuf-плагин, режим lite). `api(libsignal-android)`, `consumer-rules.pro` с keep-правилами.
+`com.android.library`, namespace `com.barkfluff.client.core`, minSdk 31. Пакеты сохранили имена `com.barkfluff.client.*` (V1-код не правит импорты). Содержит: `grpc/` (`GrpcClientRegistry`, `GrpcApiTransport`, `TokenCoordinator`, `MediaHttpTransport`, interceptors, `RealtimeService`), `domain/` (typed gateways, domain DTO и row/state seams), `data/` (GlobalParam, ClientColors, ServerDataElement, OpenChatManager), `repository/` (Chat/Private/Secret), `crypto/` (BarkFluffSignalStore, PrekeyManager, PrivateChatCrypto), чистые `utils/` (FileCache, ImageCompressor, FileUrlCache, ImageCache, NetworkUtils, FileSaveUtils, AppVersionUtil), `proto/` (protobuf-плагин, режим lite). `api(libsignal-android)`, `consumer-rules.pro` с keep-правилами.
 
 **Развязка границы:** `RealtimeService` не зависит от UI/Notification/Widget — введён интерфейс `RealtimeSideEffects` (onChatChanged / dismissChatNotifications / showMessageNotification). Реализация `RealtimeSideEffectsImpl` живёт в app-слое (пакет `notifications/`, грузит уведомления через NotificationHelper + AvatarLoader/Coil).
 
@@ -788,7 +900,7 @@ Android/
 - \`ChatsFragment\` сначала читает локальный снимок. При его отсутствии показывает 7 skeleton-строк; затем обновляет до трёх серверных страниц и папки. Успешный полный серверный снимок заменяет локальный список и очищает устаревшие строки кэша; записи без GUID отбрасываются до отображения, поэтому удалённый/повреждённый чат не открывается с пустым \`chatId\`. «Обновление…», offline-подсказка и «Соединение…» сменяют имя в одной строке шапки с короткой fade/slide-анимацией; повтор синхронизации остаётся кнопкой рядом. «Соединение…» показывается только при переподключении основного realtime-стрима новых сообщений, а не при первичном подключении или ошибке вспомогательного стрима.
 - \`ChatActivity\` немедленно показывает последние 30 кешированных сообщений, а затем обновляет серверную страницу только для открытого чата. Страницы пагинации и события realtime (new/read/edit/delete) сохраняются обратно в кеш.
 - `ChatDraftRepository` хранит в той же зашифрованной БД scoped-журнал обычных чатов: текст, `replyToMessageId`, server revision, локальное поколение и sync-state. Изменение фиксируется локально сразу, upsert отправляется через 2 секунды бездействия и при уходе с `ChatActivity`; недоставленные upsert/delete повторяются при старте/возврате приложения и восстановлении сети. Tombstone удаляет только известную revision, поэтому поздний ответ или другой клиент не стирает новую правку.
-- При открытии обычного чата несинхронизированный локальный черновик имеет приоритет, иначе запрашивается `GetChatDraft`. Reply восстанавливается из кеша или загружается по ID; у удалённого сообщения остаётся текст без reply. Обычные text/media outbox-записи и staged media также переживают restart; Private/Secret по-прежнему вне этого конвейера. После ACK удаляется только generation отправленного текста/reply.
+- При открытии обычного чата несинхронизированный локальный черновик имеет приоритет, иначе запрашивается `GetChatDraft`. Reply восстанавливается из кеша или загружается по ID; у удалённого сообщения остаётся текст без reply. Обычные text/media outbox-записи и staged media также переживают restart; Private/Secret по-прежнему вне этого конвейера. После ACK удаляется только generation отправленного текста/reply. До ACK журнал хранит отправленный черновик активным, поэтому `ChatViewModel.restoreDraft()` не подставляет его в поле, если `OutgoingMessageQueue.hasDraftHandoff(chatId, generation, text, replyToMessageId)` находит outbox-запись этого же черновика в любом состоянии, кроме `CANCEL_REQUESTED`, включая `SENT` (хранится сутки). Ключ — поколение **вместе с** текстом и reply: поколения журнала не уникальны во времени (после удаления записи счётчик идёт с 1, серверный черновик восстанавливается как поколение 1). После Cancel строка outbox удаляется, и текст возвращается в поле как черновик. В отличие от `hasDurableHandoff` (только вложения, исключает `SENT`) этот запрос пишется отдельным DAO-методом `draftHandoffs`.
 - Настройки хранилища показывают серверные категории и две локальные величины: Coil/bitmap изображения и encrypted Room-кеш чатов с количеством чатов/сообщений. «Очистить кеш» удаляет оба отображаемых источника, включая БД и её ключ. `LogoutHelper` сначала отменяет tagged outbox work и очищает scoped staged media, затем удаляет cache, поэтому данные другого аккаунта не отображаются.
 ## Логирование и приватность (V1)
 

@@ -39,6 +39,8 @@ public static class StepUpActions
     public const string DockerAdminPanelUpdate = "docker.admin-panel.update";
     public const string RemoteServerSave = "remote.server.save";
     public const string RemoteServerDelete = "remote.server.delete";
+    public const string RemoteQuickActionSave = "remote.quick-action.save";
+    public const string RemoteQuickActionDelete = "remote.quick-action.delete";
     public const string RemoteConsole = "remote.console";
     public const string ConfigUpdate = "config.update";
     public const string ConfigRollback = "config.rollback";
@@ -64,6 +66,8 @@ public static class StepUpActions
             [DockerAdminPanelUpdate] = AdminPermissions.DockerDeploy,
             [RemoteServerSave] = AdminPermissions.RemoteServers,
             [RemoteServerDelete] = AdminPermissions.RemoteServers,
+            [RemoteQuickActionSave] = AdminPermissions.RemoteServers,
+            [RemoteQuickActionDelete] = AdminPermissions.RemoteServers,
             [RemoteConsole] = AdminPermissions.RemoteConsole,
             [ConfigUpdate] = AdminPermissions.ConfigWrite,
             [ConfigRollback] = AdminPermissions.ConfigWrite,
@@ -96,6 +100,8 @@ public static class StepUpActions
             DockerAdminPanelUpdate => "Обновление админ-панели",
             RemoteServerSave => "Сохранение SSH-сервера",
             RemoteServerDelete => "Удаление SSH-сервера",
+            RemoteQuickActionSave => "Сохранение SSH-действия",
+            RemoteQuickActionDelete => "Удаление SSH-действия",
             RemoteConsole => "Открытие SSH-консоли",
             ConfigUpdate => "Изменение конфигурации",
             ConfigRollback => "Откат конфигурации",

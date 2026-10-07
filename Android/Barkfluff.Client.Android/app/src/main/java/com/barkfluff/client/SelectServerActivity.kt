@@ -3,9 +3,14 @@ package com.barkfluff.client
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
+import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.ServerAdapter
@@ -27,8 +32,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URI
 import java.text.DateFormat
 import java.util.Date
@@ -44,6 +50,13 @@ class SelectServerActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "SelectServerActivity"
         const val EXTRA_TRUST_REVIEW_ADDRESS = "tls_trust_review_address"
+        const val EXTRA_RETURN_TO_LOGIN = "return_to_login"
+        private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
+        private const val SERVER_LIST_TIMEOUT_MS = 10_000L
+        private const val SERVER_CONNECTION_TIMEOUT_MS = 10_000L
+        private const val SERVER_PROBE_TIMEOUT_MS = 3_000L
+        private const val CHEVRON_SPRING_STIFFNESS = 1_400f
+        private const val CHEVRON_SPRING_DAMPING = 0.9f
     }
 
     private lateinit var binding: ActivitySelectServerBinding
@@ -56,7 +69,9 @@ class SelectServerActivity : AppCompatActivity() {
     private lateinit var certificatePreflight: TlsServerCertificatePreflight
 
     private var isConnecting = false
-    private val pingCache = mutableMapOf<String, Int?>()
+    private val beaconOperationMutex = Mutex()
+    private var customServerChevronAnimation: SpringAnimation? = null
+    private var currentServerListState = ServerListState.LOADING
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -64,6 +79,8 @@ class SelectServerActivity : AppCompatActivity() {
 
         binding = ActivitySelectServerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyAdaptiveContentWidth()
+        updateCustomServerAccessibility(expanded = false)
 
         // Инициализация
         globalParam = GlobalParam(this)
@@ -77,6 +94,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupClickListeners()
+        setupBackNavigation()
         loadServerList()
 
         intent.getStringExtra(EXTRA_TRUST_REVIEW_ADDRESS)
@@ -87,13 +105,24 @@ class SelectServerActivity : AppCompatActivity() {
             }
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (::serverAdapter.isInitialized && !isConnecting) {
+            serverAdapter.setProbingEnabled(true)
+        }
+    }
+
+    override fun onStop() {
+        if (::serverAdapter.isInitialized) {
+            serverAdapter.setProbingEnabled(false)
+        }
+        super.onStop()
+    }
+
     private fun setupRecyclerView() {
         serverAdapter = ServerAdapter(
             coroutineScope = lifecycleScope,
-            measurePing = { ip ->
-                if (pingCache.containsKey(ip)) pingCache[ip]
-                else measureServerPingMs(ip).also { pingCache[ip] = it }
-            },
+            measureResponseMs = ::measureServerResponseMs,
             onServerClick = { server -> onServerSelected(server) }
         )
 
@@ -103,20 +132,34 @@ class SelectServerActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun measureServerPingMs(address: String): Int? = withTimeoutOrNull(3000L) {
-        val start = System.currentTimeMillis()
-        if (serverDiscoveryGateway.probe(address).isFailure) return@withTimeoutOrNull null
-        (System.currentTimeMillis() - start).toInt()
+    private suspend fun measureServerResponseMs(address: String): Int? = beaconOperationMutex.withLock {
+        ServerSelectionPolicy.withTimeout(SERVER_PROBE_TIMEOUT_MS) {
+            val start = System.currentTimeMillis()
+            if (serverDiscoveryGateway.probe(address).isFailure) return@withTimeout null
+            (System.currentTimeMillis() - start).toInt()
+        }
     }
 
     private fun setupClickListeners() {
-        // «Своя нода» разворачивает поле ручного ввода (макет 2c)
-        binding.customServerRow.setOnClickListener { toggleCustomServerPanel() }
+        binding.serverListRetryButton.setOnClickListener { loadServerList() }
+
+        // Шапка «Своей ноды» разворачивает встроенную форму ручного ввода.
+        binding.customServerHeader.setOnClickListener { toggleCustomServerPanel() }
 
         // Кнопка подключения
+        binding.serverAddressEditText.doAfterTextChanged {
+            binding.serverAddressInputLayout.error = null
+        }
         binding.connectButton.setOnClickListener {
+            binding.serverAddressInputLayout.error = null
             val address = binding.serverAddressEditText.text.toString().trim()
-            normalizeServerAddress(address)?.let(::connectToServer)
+            val normalized = normalizeServerAddress(address)
+            if (normalized == null) {
+                binding.serverAddressInputLayout.error = getString(R.string.tls_invalid_endpoint)
+                binding.serverAddressEditText.requestFocus()
+            } else {
+                connectToServer(normalized)
+            }
         }
         binding.forgetTrustedCertificateButton.setOnClickListener {
             val address = binding.serverAddressEditText.text.toString().trim()
@@ -133,73 +176,113 @@ class SelectServerActivity : AppCompatActivity() {
     private fun toggleCustomServerPanel() {
         val expanded = binding.customServerPanel.visibility != View.VISIBLE
         binding.customServerPanel.visibility = if (expanded) View.VISIBLE else View.GONE
-        binding.customServerChevron.animate()
-            .rotation(if (expanded) 180f else 0f)
-            .setDuration(180L)
-            .start()
+        updateCustomServerAccessibility(expanded)
+        customServerChevronAnimation?.cancel()
+        customServerChevronAnimation = SpringAnimation(
+            binding.customServerChevron,
+            SpringAnimation.ROTATION,
+            if (expanded) 180f else 0f,
+        ).apply {
+            spring.stiffness = CHEVRON_SPRING_STIFFNESS
+            spring.dampingRatio = CHEVRON_SPRING_DAMPING
+            start()
+        }
+    }
+
+    private fun updateCustomServerAccessibility(expanded: Boolean) {
+        binding.customServerHeader.stateDescription = getString(
+            if (expanded) {
+                R.string.server_custom_row_expanded
+            } else {
+                R.string.server_custom_row_collapsed
+            }
+        )
+    }
+
+    private fun setupBackNavigation() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (binding.customServerPanel.visibility == View.VISIBLE) {
+                    toggleCustomServerPanel()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+    }
+
+    /** На Medium/Expanded ограничиваем потоковый контент шириной 600dp и центрируем его. */
+    private fun applyAdaptiveContentWidth() {
+        if (resources.configuration.screenWidthDp < MEDIUM_WINDOW_MIN_WIDTH_DP) return
+
+        val sideMarginPx = resources.getDimensionPixelSize(R.dimen.server_medium_window_margin)
+        val maxContentWidthPx = resources.getDimensionPixelSize(R.dimen.server_content_max_width)
+        val availableWidthPx = resources.configuration.screenWidthDp.dpToPx()
+        val contentWidthPx = minOf(maxContentWidthPx, availableWidthPx - sideMarginPx * 2)
+        if (contentWidthPx <= 0) return
+
+        val layoutParams = binding.contentPanel.layoutParams as? FrameLayout.LayoutParams
+            ?: return
+        layoutParams.width = contentWidthPx
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL
+        binding.contentPanel.layoutParams = layoutParams
     }
 
     private fun loadServerList() {
-        showLoading(true)
-        pingCache.clear()
+        renderServerListState(ServerListState.LOADING)
 
         lifecycleScope.launch {
             try {
                 // Создаем Navigator клиент
                 val createResult = serverDiscoveryGateway.createNavigator()
                 if (createResult.isFailure) {
-                    showError(
-                        createResult.exceptionOrNull()?.message
-                            ?: getString(R.string.select_server_navigator_connection_failed)
+                    showServerListError(
+                        "Ошибка подключения к каталогу Navigator",
+                        createResult.exceptionOrNull(),
                     )
                     return@launch
                 }
 
-                // Получаем список серверов
-                val result = serverDiscoveryGateway.listServers()
+                // Получаем список серверов. Каталог не должен оставлять экран в вечном loading.
+                val result = ServerSelectionPolicy.withTimeout(SERVER_LIST_TIMEOUT_MS) {
+                    serverDiscoveryGateway.listServers()
+                }
+                if (result == null) {
+                    showServerListError("Таймаут загрузки списка серверов")
+                    return@launch
+                }
 
-                if (result.isSuccess) {
-                    val servers = result.getOrNull()
-                    if (servers.isNullOrEmpty()) {
-                        // Показываем тестовые данные если список пуст
-                        val testServers = listOf(
-                            ServerDataElement(
-                                ip = "test1.barkfluff.com:64646",
-                                title = "BarkFluff Public Server 1",
-                                description = getString(R.string.select_server_default_description_1),
-                                userCount = "125",
-                                publicName = "barkfluff-public-1",
-                                location = "Москва, RU",
-                                hexColor = "#FF6B35"
-                            ),
-                            ServerDataElement(
-                                ip = "test2.barkfluff.com:64646",
-                                title = "BarkFluff Public Server 2",
-                                description = getString(R.string.select_server_default_description_2),
-                                userCount = "89",
-                                publicName = "barkfluff-public-2",
-                                location = "Санкт-Петербург, RU",
-                                hexColor = "#2196F3"
-                            )
-                        )
-                        serverAdapter.submitList(testServers)
-                    } else {
-                        serverAdapter.submitList(servers)
-                        Log.d(TAG, "Загружено ${servers.size} серверов")
-                    }
+                val state = ServerSelectionPolicy.listState(result)
+                if (state == ServerListState.CONTENT) {
+                    val servers = result.getOrNull().orEmpty()
+                    serverAdapter.submitList(servers)
+                    renderServerListState(state)
+                    Log.d(TAG, "Загружено ${servers.size} серверов")
                 } else {
-                    showError(
-                        result.exceptionOrNull()?.message
-                            ?: getString(R.string.select_server_list_load_failed)
-                    )
-                    Log.e(TAG, "Ошибка загрузки списка серверов", result.exceptionOrNull())
+                    serverAdapter.submitList(emptyList())
+                    renderServerListState(state)
+                    if (state == ServerListState.ERROR) {
+                        Log.e(
+                            TAG,
+                            "Ошибка загрузки списка серверов",
+                            result.exceptionOrNull(),
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
-                Log.e(TAG, "Ошибка загрузки списка серверов", e)
-            } finally {
-                showLoading(false)
+                showServerListError("Ошибка загрузки списка серверов", e)
             }
+        }
+    }
+
+    private fun showServerListError(message: String, error: Throwable? = null) {
+        serverAdapter.submitList(emptyList())
+        renderServerListState(ServerListState.ERROR)
+        if (error == null) {
+            Log.e(TAG, message)
+        } else {
+            Log.e(TAG, message, error)
         }
     }
 
@@ -215,11 +298,13 @@ class SelectServerActivity : AppCompatActivity() {
             return
         }
 
+        cancelVisibleServerProbes()
         isConnecting = true
         binding.connectButton.isEnabled = false
         showLoading(true)
 
         lifecycleScope.launch {
+            beaconOperationMutex.lock()
             try {
                 // Создаем Beacon клиент
                 val createResult = serverDiscoveryGateway.createBeacon(address)
@@ -234,9 +319,19 @@ class SelectServerActivity : AppCompatActivity() {
 
                 // Получаем информацию о сервере. Для self-signed Beacon сперва показываем
                 // fingerprint, а адрес сохраняем только после завершения trust flow.
-                var infoResult = serverDiscoveryGateway.serverInfo()
+                var infoResult = requestServerInfoWithTimeout()
+                if (infoResult == null) {
+                    showError(getString(R.string.select_server_connection_timeout))
+                    resetConnectionState()
+                    return@launch
+                }
                 if (infoResult.isFailure && approveCertificateIfEligible(address)) {
-                    infoResult = serverDiscoveryGateway.serverInfo()
+                    infoResult = requestServerInfoWithTimeout()
+                    if (infoResult == null) {
+                        showError(getString(R.string.select_server_connection_timeout))
+                        resetConnectionState()
+                        return@launch
+                    }
                 }
 
                 if (infoResult.isSuccess) {
@@ -282,6 +377,11 @@ class SelectServerActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка подключения к серверу", e)
                 showError(getString(R.string.settings_error_detail, e.message.orEmpty()))
                 resetConnectionState()
+            } finally {
+                beaconOperationMutex.unlock()
+                if (!isFinishing && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                    serverAdapter.setProbingEnabled(true)
+                }
             }
         }
     }
@@ -292,11 +392,17 @@ class SelectServerActivity : AppCompatActivity() {
         showLoading(false)
     }
 
-    private fun normalizeServerAddress(input: String): String? = runCatching {
-        serverDiscoveryGateway.normalizeEndpoint(input)
-    }.onFailure {
-        showError(getString(R.string.tls_invalid_endpoint))
-    }.getOrNull()
+    private fun cancelVisibleServerProbes() {
+        serverAdapter.setProbingEnabled(false)
+    }
+
+    private fun normalizeServerAddress(input: String): String? =
+        ServerSelectionPolicy.normalizeEndpoint(input, serverDiscoveryGateway::normalizeEndpoint)
+
+    private suspend fun requestServerInfoWithTimeout(): Result<ServerInfo>? =
+        ServerSelectionPolicy.withTimeout(SERVER_CONNECTION_TIMEOUT_MS) {
+            serverDiscoveryGateway.serverInfo()
+        }
 
     private suspend fun preflightServerCertificates(serverInfo: ServerInfo): Boolean {
         while (true) {
@@ -369,12 +475,46 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
 
-    private fun showLoading(isLoading: Boolean) {
-        binding.loadingProgressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
-        if (isLoading) {
-            binding.serverListRecyclerView.visibility = View.GONE
+    private fun renderServerListState(state: ServerListState) {
+        currentServerListState = state
+        binding.loadingProgressBar.visibility = if (state == ServerListState.LOADING) {
+            View.VISIBLE
         } else {
-            binding.serverListRecyclerView.visibility = View.VISIBLE
+            View.GONE
+        }
+        binding.serverListRecyclerView.visibility = if (state == ServerListState.CONTENT) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+
+        val showMessage = state == ServerListState.EMPTY || state == ServerListState.ERROR
+        binding.serverListState.visibility = if (showMessage) View.VISIBLE else View.GONE
+        if (showMessage) {
+            binding.serverListStateTitle.setText(
+                if (state == ServerListState.EMPTY) {
+                    R.string.server_list_empty_title
+                } else {
+                    R.string.server_list_error_title
+                }
+            )
+            binding.serverListStateMessage.setText(
+                if (state == ServerListState.EMPTY) {
+                    R.string.server_list_empty_message
+                } else {
+                    R.string.server_list_error_message
+                }
+            )
+        }
+    }
+
+    private fun showLoading(isLoading: Boolean) {
+        if (isLoading) {
+            binding.loadingProgressBar.visibility = View.VISIBLE
+            binding.serverListRecyclerView.visibility = View.GONE
+            binding.serverListState.visibility = View.GONE
+        } else {
+            renderServerListState(currentServerListState)
         }
     }
 
@@ -389,24 +529,19 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun openMainActivity() {
-        val intent = Intent(this, LoginActivity::class.java)
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            if (getBooleanExtra(EXTRA_RETURN_TO_LOGIN, false)) {
+                // Пересоздаём Login с адресами уже выбранной ноды, не оставляя старый экран в стеке.
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+        }
         startActivity(intent)
         finish()
-    }
-
-    override fun onBackPressed() {
-        // Блокируем возврат на предыдущий экран
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.logout_title)
-            .setMessage(R.string.logout_message)
-            .setPositiveButton(R.string.logout_action) { _, _ ->
-                super.onBackPressed()
-            }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
     }
 
     override fun onDestroy() {
         super.onDestroy()
     }
+
+    private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 }

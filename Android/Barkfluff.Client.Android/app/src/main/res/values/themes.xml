@@ -282,8 +282,6 @@
     <!-- Онбординг: чип-фича на экране приветствия. Высота через chipMinHeight —
          фиксированная layout_height сжимала текст с иконкой. -->
     <style name="Widget.Barkfluff.Welcome.FeatureChip" parent="Widget.Material3.Chip.Assist">
-        <item name="android:clickable">false</item>
-        <item name="android:focusable">false</item>
         <item name="android:textColor">?attr/colorOnPrimaryContainer</item>
         <item name="chipBackgroundColor">?attr/colorPrimaryContainer</item>
         <item name="chipCornerRadius">@dimen/shape_corner_full</item>
@@ -357,5 +355,7 @@
         <item name="android:textStyle">bold</item>
         <item name="android:textSize">18sp</item>
         <item name="iconGravity">textEnd</item>
+        <item name="iconPadding">8dp</item>
+        <item name="iconSize">18dp</item>
     </style>
 </resources>

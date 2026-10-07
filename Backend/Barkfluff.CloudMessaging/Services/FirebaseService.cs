@@ -201,6 +201,64 @@ public class FirebaseService
         }
     }
 
+    public virtual Task SendPrivateMessageBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string privateChatId,
+        long messageId,
+        long senderUserId,
+        CancellationToken cancellationToken = default) =>
+        SendEncryptedDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "new_private_message",
+            ["private_chat_id"] = privateChatId,
+            ["event_id"] = messageId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["sender_user_id"] = senderUserId.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        }, cancellationToken);
+
+    public virtual Task SendSecretMessageBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string messageId,
+        long senderUserId,
+        string senderDeviceId,
+        CancellationToken cancellationToken = default) =>
+        SendEncryptedDataBatchAsync(fcmTokens, new Dictionary<string, string>
+        {
+            ["type"] = "new_secret_message",
+            ["event_id"] = messageId,
+            ["sender_user_id"] = senderUserId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["sender_device_id"] = senderDeviceId
+        }, cancellationToken);
+
+    protected virtual async Task SendEncryptedDataBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        Dictionary<string, string> data,
+        CancellationToken cancellationToken)
+    {
+        if (_messaging == null || fcmTokens.Count == 0)
+            return;
+
+        try
+        {
+            foreach (var tokens in fcmTokens.Chunk(500))
+            {
+                var response = await _messaging.SendEachForMulticastAsync(new MulticastMessage
+                {
+                    Tokens = tokens,
+                    Data = data,
+                    Android = new AndroidConfig { Priority = Priority.High }
+                }, cancellationToken);
+                _metrics?.Add("fcm_pushes_sent", response.SuccessCount);
+                _metrics?.Add("fcm_pushes_failed", response.FailureCount);
+                _logger.LogInformation("Encrypted push {Type}: Success={Success}, Failed={Failed}",
+                    data["type"], response.SuccessCount, response.FailureCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка отправки encrypted push {Type}", data["type"]);
+        }
+    }
+
     /// <summary>
     /// Отправляет web-получателям payload без содержимого сообщения и вложений.
     /// </summary>
@@ -229,7 +287,8 @@ public class FirebaseService
     public virtual async Task SendDismissBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string chatId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        long messageId = 0)
     {
         if (_dismissPushSender == null)
         {
@@ -242,7 +301,7 @@ public class FirebaseService
 
         try
         {
-            var responses = await _dismissPushSender.SendAsync(fcmTokens, chatId, cancellationToken);
+            var responses = await _dismissPushSender.SendAsync(fcmTokens, chatId, cancellationToken, messageId);
             var successCount = responses.Count(response => response.IsSuccess);
             var failureCount = responses.Count - successCount;
 
@@ -507,11 +566,13 @@ public class FirebaseService
     public virtual Task SendWebDismissBatchAsync(
         IReadOnlyList<string> fcmTokens,
         string chatId,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        long messageId = 0) =>
         SendWebDataBatchAsync(fcmTokens, new Dictionary<string, string>
         {
             ["type"] = "dismiss_chat_notifications",
-            ["chat_id"] = chatId
+            ["chat_id"] = chatId,
+            ["message_id"] = messageId.ToString(System.Globalization.CultureInfo.InvariantCulture)
         }, cancellationToken);
 
     /// <summary>

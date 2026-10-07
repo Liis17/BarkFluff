@@ -16,6 +16,7 @@ struct MessageBubbleView: View {
     let currentUserID: Int64
     let groupInfo: MessageGroupInfo
     let showSenderName: Bool
+    let availableWidth: CGFloat
 
     /// Callback для повтора отправки (localID)
     var onRetry: ((String) -> Void)?
@@ -63,8 +64,23 @@ struct MessageBubbleView: View {
         message.senderID == currentUserID
     }
 
-    /// Максимальная ширина пузырька
-    private let maxBubbleWidth: CGFloat = 300
+    /// Ширина пузырька от доступной detail-области.
+    /// В компактном окне сохраняем прежний максимум 300 pt,
+    /// в широком окне разрешаем рост до 560 pt.
+    private var maxBubbleWidth: CGFloat {
+        let contentWidth = max(0, availableWidth - Theme.Spacing.lg * 2)
+        let responsiveWidth = min(560, max(300, contentWidth * 0.72))
+        return min(responsiveWidth, contentWidth)
+    }
+
+    /// Внутренняя ширина медиа с сохранением прежнего размера на iPhone.
+    private var attachmentWidth: CGFloat {
+        let availableMediaWidth = max(0, maxBubbleWidth - Theme.Spacing.lg * 2)
+        if maxBubbleWidth <= 300 {
+            return min(260, availableMediaWidth)
+        }
+        return min(AttachmentLayoutCalculator.maxLayoutWidth, availableMediaWidth)
+    }
 
     private var isSending: Bool {
         if case .sending = message.sendingState { return true }
@@ -331,6 +347,7 @@ struct MessageBubbleView: View {
             AttachmentGridView(
                 attachments: mediaAttachments,
                 isOwn: isOwn,
+                availableWidth: attachmentWidth,
                 onTap: { attachment in
                     onAttachmentTap?(attachment, mediaAttachments)
                 }

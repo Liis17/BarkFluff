@@ -3,6 +3,7 @@ package com.barkfluff.client.send
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
@@ -27,6 +28,7 @@ import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.TokenCoordinator
+import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.ChatRepository.UploadHttpException
 import com.barkfluff.client.utils.ImageCompressor
@@ -95,6 +97,11 @@ class OutgoingMessageQueue(
     suspend fun enqueue(request: SendJob): List<OperationId> {
         require(request.chatId.isNotBlank()) { "Chat id is required" }
         val scope = requireScope()
+        request.notificationReply?.let { reply ->
+            require(reply.expectedScopeId == scope.id && reply.messageId > 0) { "Stale notification" }
+            require(request.text.isNotBlank() && request.attachments.isEmpty() &&
+                request.existingFileIds.isEmpty() && request.replyId == 0L && request.draftGeneration == null)
+        }
         val groups = if (request.sendSeparately && request.attachments.isNotEmpty()) {
             request.attachments.mapIndexed { index, attachment ->
                 SendPart(
@@ -117,9 +124,19 @@ class OutgoingMessageQueue(
             throw e
         }
         request.draftGeneration?.let { generation ->
-            composerAttachmentStore?.clearAfterEnqueue(scope, request.chatId, generation)
+            try {
+                composerAttachmentStore?.clearAfterEnqueue(scope, request.chatId, generation)
+            } catch (error: Exception) {
+                // QUEUED already owns the bytes. Restore reconciles the handoff if cleanup fails.
+                Log.w("OutgoingMessageQueue", "Unable to clear accepted composer preview", error)
+            }
         }
-        wake()
+        // The transaction above is acceptance. Scheduling failures cannot reject a durable send.
+        try {
+            wake()
+        } catch (e: RuntimeException) {
+            Log.e("OutgoingMessageQueue", "Unable to schedule durable outbox: ${e::class.java.simpleName}")
+        }
         return operationIds
     }
 
@@ -135,6 +152,15 @@ class OutgoingMessageQueue(
     suspend fun hasDurableHandoff(chatId: String, generation: Long): Boolean {
         val scope = currentScopeOrNull() ?: return false
         return cache.hasActiveOutgoingHandoff(scope, chatId, generation)
+    }
+
+    /**
+     * True when the outbox already owns this exact draft, in any state up to SENT. Restoring it into
+     * the composer would show the same text twice and allow a duplicate send.
+     */
+    suspend fun hasDraftHandoff(chatId: String, generation: Long, text: String, replyToMessageId: Long): Boolean {
+        val scope = currentScopeOrNull() ?: return false
+        return cache.hasOutgoingDraftHandoff(scope, chatId, generation, text, replyToMessageId)
     }
 
     suspend fun retry(operationId: OperationId) {
@@ -168,6 +194,13 @@ class OutgoingMessageQueue(
         wake()
     }
 
+    /** The network returned: sends waiting out a backoff retry now instead of when it expires. */
+    suspend fun retryAfterNetworkReturn() {
+        val scope = currentScopeOrNull() ?: return
+        cache.clearOutgoingBackoff(scope, System.currentTimeMillis())
+        wake()
+    }
+
     suspend fun cancelAllForCurrentScope() {
         val scope = currentScopeOrNull() ?: return
         val now = System.currentTimeMillis()
@@ -197,9 +230,40 @@ class OutgoingMessageQueue(
 
             val ready = cache.readyOutgoing(scope, now, limit = 2)
             coroutineScope {
+                val reads = async { drainPendingReads(scope, now) }
                 ready.map { record -> async { process(scope, record, onForeground) } }.awaitAll()
+                reads.await()
             }
             scheduleNext(scope)
+        }
+    }
+
+    /** A read failure only updates its own journal; it never re-enters the send state machine. */
+    internal suspend fun drainPendingReads(
+        scope: CacheScope,
+        nowMillis: Long,
+        markRead: suspend (List<Long>) -> Result<Unit> = { ids ->
+            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) chatRepository.markAsRead(ids)
+            else Result.failure(IllegalStateException("Read authorization unavailable"))
+        }
+    ) {
+        for (read in cache.readyPendingReads(scope, nowMillis)) {
+            if (currentScopeOrNull() != scope) return
+            try {
+                markRead(listOf(read.messageId)).getOrThrow()
+                cache.deletePendingRead(scope, read.messageId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                if (currentScopeOrNull() != scope) return
+                if (classifyPermanent(e) != null) {
+                    cache.deletePendingRead(scope, read.messageId)
+                } else {
+                    val attempt = read.attemptCount + 1
+                    cache.retryPendingRead(scope, read.messageId, attempt,
+                        System.currentTimeMillis() + OutgoingRetryPolicy.delayForAttempt(attempt))
+                }
+            }
         }
     }
 
@@ -243,7 +307,8 @@ class OutgoingMessageQueue(
             cache.saveOutgoing(scope, staging.copy(
                 state = OutgoingMessageState.QUEUED,
                 attachments = attachments
-            ))
+            ), notificationReadMessageId = request.notificationReply?.messageId,
+                expectedScopeId = request.notificationReply?.expectedScopeId)
             operationId
         } catch (e: Throwable) {
             cache.deleteOutgoing(scope, operationId)
@@ -270,8 +335,12 @@ class OutgoingMessageQueue(
             cache.saveOutgoing(scope, record)
             onForeground(snapshotOf(record))
 
-            if (!tokenCoordinator.ensureValid()) {
-                throw PermanentOutgoingException(OutgoingFailureCategory.AUTH_REQUIRED, "Token refresh failed")
+            when (tokenCoordinator.validity()) {
+                TokenValidity.VALID -> Unit
+                TokenValidity.REJECTED ->
+                    throw PermanentOutgoingException(OutgoingFailureCategory.AUTH_REQUIRED, "Token refresh rejected")
+                // Identity is often unreachable right after the network returns; that must not end the send.
+                TokenValidity.UNAVAILABLE -> throw RetryOutgoingException(0L)
             }
 
             for (index in record.attachments.indices) {
@@ -373,6 +442,7 @@ class OutgoingMessageQueue(
             val latest = cache.outgoing(scope, initial.operationId) ?: return
             val permanent = classifyPermanent(e)
             if (permanent != null) {
+                Log.w("OutgoingMessageQueue", "Outgoing send failed permanently: $permanent, ${safeDetail(e)}")
                 cache.saveOutgoing(scope, latest.copy(
                     state = OutgoingMessageState.FAILED,
                     failureCategory = permanent,
@@ -621,7 +691,8 @@ class OutgoingMessageQueue(
     }
 
     private suspend fun scheduleNext(scope: CacheScope) {
-        val next = cache.nextOutgoingAttempt(scope) ?: return
+        val next = listOfNotNull(cache.nextOutgoingAttempt(scope), cache.nextPendingReadAttempt(scope))
+            .minOrNull() ?: return
         val delay = (next - System.currentTimeMillis()).coerceAtLeast(0)
         val request = OneTimeWorkRequestBuilder<OutgoingMessageWorker>()
             .setConstraints(networkConstraints())

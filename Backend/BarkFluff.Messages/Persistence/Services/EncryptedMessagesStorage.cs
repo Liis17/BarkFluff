@@ -153,6 +153,33 @@ public class EncryptedMessagesStorage(MessagesContext context)
         return true;
     }
 
+    /// <summary>
+    /// DeleteChat(delete_for_everyone=true) для приватного (E2E) чата: та же очистка,
+    /// что SoftDeleteAsync делает для одного сообщения, применённая ко всем ещё
+    /// неудалённым сообщениям чата одним SaveChanges.
+    /// </summary>
+    public async Task<int> SoftDeleteAllInChatAsync(Guid chatId)
+    {
+        var messages = await context.EncryptedMessages
+            .Where(m => m.ChatId == chatId && !m.IsDeleted)
+            .ToListAsync();
+
+        foreach (var message in messages)
+        {
+            message.IsDeleted = true;
+            message.Ciphertext = Array.Empty<byte>();
+            message.Nonce = Array.Empty<byte>();
+            message.AssociatedData = Array.Empty<byte>();
+        }
+
+        if (messages.Count > 0)
+        {
+            await context.SaveChangesAsync();
+        }
+
+        return messages.Count;
+    }
+
     public async Task<long> MarkReadThroughAsync(Guid chatId, long userId, long requestedMessageId)
     {
         var lastExistingId = await context.EncryptedMessages

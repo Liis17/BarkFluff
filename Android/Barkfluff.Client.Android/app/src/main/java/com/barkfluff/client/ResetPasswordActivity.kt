@@ -3,48 +3,40 @@ package com.barkfluff.client
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
-import android.os.CountDownTimer
-import android.text.Editable
-import android.text.TextUtils
-import android.text.TextWatcher
-import android.view.KeyEvent
+import android.view.Gravity
 import android.view.View
-import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.text.HtmlCompat
+import androidx.activity.viewModels
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
-import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivityResetPasswordBinding
-import com.barkfluff.client.domain.gateway.AccountSecurityGateway
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
  * Экран восстановления/сброса пароля
- * 4 шага: email/логин → код из письма → новый пароль → успех
+ * Challenge confirmation → новый пароль → успех.
  */
 @AndroidEntryPoint
 class ResetPasswordActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityResetPasswordBinding
-    @javax.inject.Inject lateinit var accountSecurityGateway: AccountSecurityGateway
+    private val authenticationChallengeViewModel: AuthenticationChallengeViewModel by viewModels()
+    @javax.inject.Inject lateinit var authenticationChallengeGateway: AuthenticationChallengeGateway
 
-    private var resetId: String? = null
     private var currentStep = 1
     private var isLoading = false
-    private var resendCooldownActive = false
-    private var resendTimer: CountDownTimer? = null
-    private var lastLoginInput: String = ""
 
     companion object {
         private const val TAG = "ResetPasswordActivity"
-        private const val RESEND_COOLDOWN_MS = 60_000L
         private const val CONTENT_TOP_PADDING_DP = 16
         private const val FOOTER_BOTTOM_PADDING_DP = 18
     }
@@ -57,13 +49,6 @@ class ResetPasswordActivity : AppCompatActivity() {
         val contentColor: Int,
         val litSegmentColor: Int
     )
-
-    private val otpBoxes: List<EditText> by lazy {
-        listOf(
-            binding.otpBox1, binding.otpBox2, binding.otpBox3,
-            binding.otpBox4, binding.otpBox5, binding.otpBox6
-        )
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,18 +77,17 @@ class ResetPasswordActivity : AppCompatActivity() {
         }
 
         setupClickListeners()
-        setupOtpBoxes()
+        setupInputFields()
         setupPasswordWatchers()
-        updateProgressUi(1)
-    }
-
-    override fun onDestroy() {
-        resendTimer?.cancel()
-        super.onDestroy()
+        if (authenticationChallengeViewModel.recoveryProof == null) {
+            updateProgressUi(1)
+        } else {
+            goToStep(2)
+        }
     }
 
     private fun setupClickListeners() {
-        // Шаг 1: Отправка кода
+        // Шаг 1: Запуск challenge восстановления
         binding.sendCodeButton.setOnClickListener {
             val input = binding.emailEditText.text?.toString()?.trim() ?: ""
             if (input.isEmpty()) {
@@ -111,42 +95,12 @@ class ResetPasswordActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            lastLoginInput = input
-            val isEmail = input.contains("@")
-            val email = if (isEmail) input else null
-            val username = if (isEmail) null else input
-
-            sendCodeRequest(email, username)
+            beginPasswordRecovery(input)
         }
 
         binding.backToLoginLink.setOnClickListener { navigateToLogin() }
 
-        // Шаг 2: Подтверждение кода
-        binding.confirmCodeButton.setOnClickListener {
-            val otpCode = getOtpCode()
-            if (otpCode.length != 6) {
-                showError(getString(R.string.reset_error_otp_incomplete))
-                return@setOnClickListener
-            }
-
-            confirmCodeRequest(otpCode)
-        }
-
-        // Шаг 2: Повторная отправка кода
-        binding.resendCodeButton.setOnClickListener {
-            if (lastLoginInput.isEmpty()) {
-                showError(getString(R.string.reset_error_empty_login))
-                return@setOnClickListener
-            }
-
-            val isEmail = lastLoginInput.contains("@")
-            val email = if (isEmail) lastLoginInput else null
-            val username = if (isEmail) null else lastLoginInput
-
-            resendCodeRequest(email, username)
-        }
-
-        // Шаг 3: Сохранение нового пароля
+        // Шаг 2: Сохранение нового пароля
         binding.savePasswordButton.setOnClickListener {
             val newPassword = binding.newPasswordEditText.text?.toString() ?: ""
             val confirmPassword = binding.confirmPasswordEditText.text?.toString() ?: ""
@@ -180,63 +134,21 @@ class ResetPasswordActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun setupOtpBoxes() {
-        for (i in otpBoxes.indices) {
-            val box = otpBoxes[i]
-            box.contentDescription = getString(R.string.reset_otp_digit_description, i + 1)
-
-            box.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                override fun afterTextChanged(s: Editable?) {
-                    updateOtpBoxAppearance(i)
-                    if (s != null && s.length == 1 && i < otpBoxes.size - 1) {
-                        otpBoxes[i + 1].requestFocus()
-                    }
-                    // Auto-submit when all 6 digits are filled
-                    if (i == otpBoxes.size - 1 && s != null && s.length == 1) {
-                        val otp = getOtpCode()
-                        if (otp.length == 6) {
-                            confirmCodeRequest(otp)
-                        }
-                    }
-                }
-            })
-
-            box.setOnFocusChangeListener { _, _ -> updateOtpBoxAppearance(i) }
-
-            box.setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEYCODE_DEL && event.action == KeyEvent.ACTION_DOWN) {
-                    if (box.text.isNullOrEmpty() && i > 0) {
-                        otpBoxes[i - 1].apply {
-                            requestFocus()
-                            text?.clear()
-                        }
-                        return@setOnKeyListener true
-                    }
-                }
-                false
-            }
+    private fun setupInputFields() {
+        listOf(
+            binding.emailEditText,
+            binding.newPasswordEditText,
+            binding.confirmPasswordEditText
+        ).forEach { field ->
+            field.gravity = Gravity.CENTER_VERTICAL
+            field.setPaddingRelative(field.paddingStart, 0, field.paddingEnd, 0)
         }
-    }
 
-    private fun updateOtpBoxAppearance(index: Int) {
-        val box = otpBoxes[index]
-        val hasText = !box.text.isNullOrEmpty()
-        when {
-            hasText -> {
-                box.setBackgroundResource(R.drawable.bg_otp_cell_filled)
-                box.setTextColor(MaterialColors.getColor(box, com.google.android.material.R.attr.colorOnPrimary))
-            }
-            box.hasFocus() -> {
-                box.setBackgroundResource(R.drawable.bg_otp_cell_active)
-                box.setTextColor(MaterialColors.getColor(box, com.google.android.material.R.attr.colorOnSurface))
-            }
-            else -> {
-                box.setBackgroundResource(R.drawable.bg_otp_cell_empty)
-                box.setTextColor(MaterialColors.getColor(box, com.google.android.material.R.attr.colorOnSurface))
-            }
+        binding.emailEditText.doAfterTextChanged { input ->
+            binding.sendCodeButton.isEnabled = !isLoading && !input.isNullOrBlank()
         }
+        binding.sendCodeButton.isEnabled =
+            !isLoading && !binding.emailEditText.text.isNullOrBlank()
     }
 
     private fun setupPasswordWatchers() {
@@ -326,125 +238,50 @@ class ResetPasswordActivity : AppCompatActivity() {
             confirmPassword.isNotEmpty() && confirmPassword == newPassword
     }
 
-    private fun getOtpCode(): String {
-        return otpBoxes.joinToString("") { it.text.toString() }
-    }
-
-    private fun maskLoginForDisplay(input: String): String {
-        val atIndex = input.indexOf("@")
-        if (atIndex <= 0) return input
-        val local = input.substring(0, atIndex)
-        val domain = input.substring(atIndex)
-        val visible = local.take(2)
-        return "$visible…$domain"
-    }
-
-    private fun updateCodeSentSubtitle() {
-        val masked = TextUtils.htmlEncode(maskLoginForDisplay(lastLoginInput))
-        val html = getString(R.string.reset_we_sent_code, masked)
-        binding.subtitleText.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
-    }
-
-    private fun startResendCooldown() {
-        resendTimer?.cancel()
-        resendCooldownActive = true
-        binding.resendCodeButton.isEnabled = false
-        resendTimer = object : CountDownTimer(RESEND_COOLDOWN_MS, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                val totalSeconds = (millisUntilFinished / 1000).toInt()
-                binding.resendTimerText.text = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
-            }
-
-            override fun onFinish() {
-                resendCooldownActive = false
-                binding.resendTimerText.text = "0:00"
-                binding.resendCodeButton.isEnabled = !isLoading && currentStep == 2
-            }
-        }.start()
-    }
-
-    private fun sendCodeRequest(email: String?, username: String?) {
+    private fun beginPasswordRecovery(login: String) {
         hideError()
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = accountSecurityGateway.resetPassword(email, username)
+            val result = AuthenticationChallengeDialog(
+                this@ResetPasswordActivity,
+                authenticationChallengeGateway,
+                authenticationChallengeViewModel.controller,
+            ).run(title = getString(R.string.reset_password_title)) {
+                authenticationChallengeGateway.beginPasswordRecovery(login)
+            }
             setLoading(false)
 
-            if (result.isSuccess) {
-                resetId = result.getOrNull()
-                if (resetId != null) {
+            result.onSuccess { completion ->
+                authenticationChallengeViewModel.recoveryProof = completion.securityProof
+                if (authenticationChallengeViewModel.recoveryProof == null) {
+                    showError(getString(R.string.auth_error))
+                } else {
                     goToStep(2)
-                    Toast.makeText(this@ResetPasswordActivity, getString(R.string.reset_toast_code_sent), Toast.LENGTH_LONG).show()
-                } else {
-                    showError(getString(R.string.reset_error_no_reset_id))
                 }
-            } else {
-                showError(getString(R.string.reset_error_generic, result.exceptionOrNull()?.message))
-            }
-        }
-    }
-
-    private fun confirmCodeRequest(otpCode: String) {
-        hideError()
-        setLoading(true)
-
-        lifecycleScope.launch {
-            val result = accountSecurityGateway.confirmResetPassword(resetId!!, otpCode)
-            setLoading(false)
-
-            if (result.isSuccess) {
-                val tokenResult = result.getOrNull()
-                if (tokenResult != null) {
-                    // Сохраняем новые токены
-                    val globalParam = GlobalParam(this@ResetPasswordActivity)
-                    globalParam.accessToken = tokenResult.accessToken
-                    globalParam.accessTokenExpiration = tokenResult.accessTokenExpiration
-                    globalParam.refreshToken = tokenResult.refreshToken
-                    globalParam.refreshTokenExpiration = tokenResult.refreshTokenExpiration
-
-                    goToStep(3)
-                    Toast.makeText(this@ResetPasswordActivity, getString(R.string.reset_toast_code_confirmed), Toast.LENGTH_SHORT).show()
-                } else {
-                    showError(getString(R.string.reset_error_confirm_failed))
+            }.onFailure { failure ->
+                if (failure !is java.util.concurrent.CancellationException) {
+                    showError(failure.message ?: getString(R.string.auth_error))
                 }
-            } else {
-                showError(getString(R.string.reset_error_invalid_otp))
-                // Очищаем OTP боксы
-                otpBoxes.forEach { it.text?.clear() }
-                otpBoxes[0].requestFocus()
-            }
-        }
-    }
-
-    private fun resendCodeRequest(email: String?, username: String?) {
-        hideError()
-        setLoading(true)
-
-        lifecycleScope.launch {
-            val result = accountSecurityGateway.resetPassword(email, username)
-            setLoading(false)
-
-            if (result.isSuccess) {
-                resetId = result.getOrNull()
-                startResendCooldown()
-                Toast.makeText(this@ResetPasswordActivity, getString(R.string.reset_toast_code_resent), Toast.LENGTH_SHORT).show()
-            } else {
-                showError(getString(R.string.reset_error_generic, result.exceptionOrNull()?.message))
             }
         }
     }
 
     private fun saveNewPassword(newPassword: String) {
+        val proof = authenticationChallengeViewModel.recoveryProof ?: run {
+            showError(getString(R.string.auth_challenge_expired))
+            return
+        }
         hideError()
         setLoading(true)
 
         lifecycleScope.launch {
-            val result = accountSecurityGateway.setPasswordAfterReset(newPassword)
+            val result = authenticationChallengeGateway.setRecoveredPassword(proof, newPassword)
             setLoading(false)
 
             if (result.isSuccess) {
-                goToStep(4) // Экран успеха
+                authenticationChallengeViewModel.recoveryProof = null
+                goToStep(3) // Экран успеха
             } else {
                 showError(getString(R.string.reset_error_generic, result.exceptionOrNull()?.message))
             }
@@ -455,29 +292,21 @@ class ResetPasswordActivity : AppCompatActivity() {
         currentStep = step
 
         binding.step1Card.visibility = if (step == 1) View.VISIBLE else View.GONE
-        binding.step2Card.visibility = if (step == 2) View.VISIBLE else View.GONE
-        binding.step3Card.visibility = if (step == 3) View.VISIBLE else View.GONE
-        binding.successContainer.visibility = if (step == 4) View.VISIBLE else View.GONE
+        binding.step3Card.visibility = if (step == 2) View.VISIBLE else View.GONE
+        binding.successContainer.visibility = if (step == 3) View.VISIBLE else View.GONE
 
         binding.footerStep1.visibility = if (step == 1) View.VISIBLE else View.GONE
-        binding.footerStep2.visibility = if (step == 2) View.VISIBLE else View.GONE
-        binding.savePasswordButton.visibility = if (step == 3) View.VISIBLE else View.GONE
-        binding.backToLoginButton.visibility = if (step == 4) View.VISIBLE else View.GONE
+        binding.savePasswordButton.visibility = if (step == 2) View.VISIBLE else View.GONE
+        binding.backToLoginButton.visibility = if (step == 3) View.VISIBLE else View.GONE
 
         when (step) {
             1 -> {
                 binding.subtitleText.text = getString(R.string.reset_password_subtitle)
             }
             2 -> {
-                updateCodeSentSubtitle()
-                startResendCooldown()
-                otpBoxes[0].requestFocus()
-            }
-            3 -> {
                 binding.subtitleText.visibility = View.GONE
             }
-            4 -> {
-                resendTimer?.cancel()
+            3 -> {
                 binding.headerIconCard.visibility = View.GONE
                 binding.progressContainer.visibility = View.GONE
                 binding.segmentBarRow.visibility = View.GONE
@@ -486,7 +315,7 @@ class ResetPasswordActivity : AppCompatActivity() {
             }
         }
 
-        if (step in 1..3) {
+        if (step in 1..2) {
             updateProgressUi(step)
         }
     }
@@ -495,15 +324,20 @@ class ResetPasswordActivity : AppCompatActivity() {
         binding.stepNumberText.text = String.format("%02d", step)
         binding.headerIcon.setImageResource(
             when (step) {
-                1 -> R.drawable.ic_lock_reset
-                2 -> R.drawable.ic_mark_email_read
+                1 -> R.drawable.ic_lock
                 else -> R.drawable.ic_password_dots
             }
+        )
+        binding.headerIcon.imageTintList = ColorStateList.valueOf(
+            MaterialColors.getColor(
+                binding.headerIconCard,
+                com.google.android.material.R.attr.colorOnPrimary
+            )
         )
 
         val activeColor = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
         val trackColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOutlineVariant)
-        val segments = listOf(binding.segment1, binding.segment2, binding.segment3)
+        val segments = listOf(binding.segment1, binding.segment2)
         segments.forEachIndexed { i, segment ->
             segment.backgroundTintList = ColorStateList.valueOf(if (i < step) activeColor else trackColor)
         }
@@ -512,9 +346,8 @@ class ResetPasswordActivity : AppCompatActivity() {
     private fun setLoading(loading: Boolean) {
         isLoading = loading
         binding.loadingProgress.visibility = if (loading) View.VISIBLE else View.GONE
-        binding.sendCodeButton.isEnabled = !loading
-        binding.confirmCodeButton.isEnabled = !loading
-        binding.resendCodeButton.isEnabled = !loading && currentStep == 2 && !resendCooldownActive
+        binding.sendCodeButton.isEnabled =
+            !loading && !binding.emailEditText.text.isNullOrBlank()
         binding.savePasswordButton.isEnabled = !loading
     }
 

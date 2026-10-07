@@ -8,6 +8,9 @@ import com.barkfluff.client.R
 import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.data.OpenChatManager
+import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -19,11 +22,35 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.UUID
+
+internal suspend fun dispatchEncryptedMarker(
+    data: Map<String, String>, effects: RealtimeSideEffects, expectedScopeId: String? = null
+): Boolean {
+    val senderUserId = data["sender_user_id"]?.toLongOrNull()?.takeIf { it > 0 } ?: return false
+    return when (data["type"]) {
+        "new_private_message" -> {
+            val chatId = data["private_chat_id"]?.takeIf(String::isNotBlank) ?: return false
+            val eventId = data["event_id"]?.toLongOrNull()?.takeIf { it > 0 } ?: return false
+            effects.showPrivateMessageNotification(chatId, eventId, senderUserId, expectedScopeId)
+            true
+        }
+        "new_secret_message" -> {
+            val eventId = runCatching { UUID.fromString(data["event_id"]).toString() }.getOrNull() ?: return false
+            val senderDeviceId = runCatching { UUID.fromString(data["sender_device_id"]).toString() }.getOrNull() ?: return false
+            effects.showSecretMessageNotification(eventId, senderUserId, senderDeviceId, expectedScopeId)
+            true
+        }
+        else -> false
+    }
+}
 
 @AndroidEntryPoint
 class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var realtimeSideEffects: RealtimeSideEffects
 
     companion object {
         private const val TAG = "BarkFluffFCM"
@@ -74,6 +101,18 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
                 handlePrivateChatInvite(data)
                 return
             }
+            "new_private_message" -> {
+                val scopeId = CacheScope.from(GlobalParam(applicationContext))?.id ?: return
+                serviceScope.launch { dispatchEncryptedMarker(data, realtimeSideEffects, scopeId) }
+                return
+            }
+            "new_secret_message" -> {
+                val scopeId = CacheScope.from(GlobalParam(applicationContext))?.id ?: return
+                serviceScope.launch { dispatchEncryptedMarker(data, realtimeSideEffects, scopeId) }
+                return
+            }
+            null, "new_message", "dismiss_chat_notifications" -> Unit
+            else -> return
         }
 
         // Команда dismiss: убираем нотификацию чата (после прочтения на другом устройстве)
@@ -84,12 +123,18 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
                 return
             }
             Log.d(TAG, "dismiss_chat_notifications: chatId=$dismissChatId")
-            NotificationHelper.dismissForChat(applicationContext, dismissChatId)
+            val messageId = if ("message_id" in data) {
+                data["message_id"]?.toLongOrNull()?.takeIf { it >= 0 } ?: return
+            } else 0L
+            NotificationHelper.dismissForChat(applicationContext, dismissChatId, messageId)
             return
         }
 
         // Извлекаем данные
         val chatId = data["chat_id"] ?: return
+        val globalParam = GlobalParam(applicationContext)
+        val scopeId = CacheScope.from(globalParam)?.id ?: return
+        if (!globalParam.notificationsEnabled || OpenChatManager.isOpen(chatId)) return
 
         // Guard: чат замьючен пользователем — не показываем локальное уведомление.
         // Сервер уже подавляет push для замьюченных чатов; это защита от гонок кэша токенов.
@@ -99,6 +144,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         val senderId = data["sender_id"]?.toLongOrNull() ?: return
+        if (senderId == globalParam.userId) return
         val senderName = data["sender_name"]?.takeIf { it.isNotBlank() }
             ?: getString(R.string.notification_unknown_sender)
         val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
@@ -171,7 +217,8 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
                         avatarBitmap = avatarBitmap,
                         chatId = chatId,
                         messageId = messageId,
-                        imageBitmap = imageBitmap
+                        imageBitmap = imageBitmap,
+                        expectedScopeId = scopeId
                     )
                 }
 
@@ -188,7 +235,8 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
                         avatarBitmap = null,
                         chatId = chatId,
                         messageId = messageId,
-                        imageBitmap = null
+                        imageBitmap = null,
+                        expectedScopeId = scopeId
                     )
                 }
             }
@@ -242,6 +290,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
 
         serviceScope.launch {
+            withContext(Dispatchers.Main.immediate) { audioPlayback.pause() }
             // Аватар готовим до показа звонка: при убитом приложении процесс поднимает FCM,
             // gRPC-клиентов ещё нет, и звонок успевал показаться только с инициалами.
             val prefetched = withTimeoutOrNull(AVATAR_PREFETCH_TIMEOUT_MS) {

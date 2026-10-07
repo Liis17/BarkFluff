@@ -13,7 +13,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Typeface
-import android.media.MediaRecorder
+import android.os.SystemClock
+import android.view.HapticFeedbackConstants
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
+import com.barkfluff.client.voice.AndroidVoiceRecordingDevice
+import com.barkfluff.client.voice.VoiceRecordingController
+import com.barkfluff.client.voice.VoiceRecordingMode
+import com.barkfluff.client.voice.VoiceRecordingState
+import com.barkfluff.client.voice.VoiceDraftPreview
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -36,6 +43,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.doOnNextLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
@@ -52,6 +60,9 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
+import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
@@ -119,8 +130,13 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class ChatActivity : AppCompatActivity() {
 
+    @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
+    @javax.inject.Inject lateinit var voiceCallEvents: com.barkfluff.client.calls.CallEventsService
     private lateinit var binding: ActivityChatBinding
     private val viewModel: ChatViewModel by viewModels()
+    private var submittedItemsVersion = 0L
+    private var committedItemsVersion = 0L
+    private var scrollToBottomJob: Job? = null
 
     private lateinit var globalParam: GlobalParam
     @Inject lateinit var realtimeService: RealtimeService
@@ -132,6 +148,8 @@ class ChatActivity : AppCompatActivity() {
     @Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
     @Inject lateinit var callGateway: CallGateway
     @Inject lateinit var fileMediaGateway: FileMediaGateway
+    @Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
+    @Inject lateinit var autoDownloadNetwork: AutoDownloadNetworkState
     @Inject lateinit var mediaHttpTransport: MediaHttpTransport
     @Inject lateinit var stickerGateway: StickerGateway
     @Inject lateinit var userProfileGateway: UserProfileGateway
@@ -182,11 +200,16 @@ class ChatActivity : AppCompatActivity() {
 
     // Голосовые сообщения
     private var sendButtonVoiceMode = false
-    private var voiceRecorder: MediaRecorder? = null
-    private var voiceRecordingFile: File? = null
-    private var voiceRecordingStartedAtMs = 0L
+    private val voiceRecording: VoiceRecordingController by lazy {
+        VoiceRecordingController(AndroidVoiceRecordingDevice(applicationContext) {
+            voiceRecording.cancel()
+            audioPlayback.setRecordingActive(false)
+            Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show()
+        }, SystemClock::elapsedRealtime)
+    }
     private var voiceDownRawX = 0f
-    private var voiceCancelPending = false
+    private var voiceDownRawY = 0f
+    private var voicePreview: VoiceDraftPreview? = null
     private var voiceTimerJob: Job? = null
     private var voiceDotAnimator: ValueAnimator? = null
 
@@ -250,16 +273,13 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INVITE_STATE = "invite_state"
         private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
+        const val EXTRA_TARGET_MESSAGE_ID = "target_message_id"
         /** Метка ClipData — техническая, пользователю не показывается. */
         private const val CLIP_LABEL = "BarkFluff message"
         private const val CLIP_LABEL_MULTIPLE = "BarkFluff messages"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
-        private const val MIN_VOICE_RECORDING_MS = 500L
-        private const val VOICE_BAR_FADE_DURATION_MS = 160L
         private const val VOICE_DOT_BLINK_DURATION_MS = 700L
         private const val VOICE_TIMER_TICK_MS = 200L
-        /** Доля смещения пальца, на которую уезжает подсказка отмены. */
-        private const val VOICE_HINT_DRAG_RATIO = 0.35f
         private const val HEADER_MORPH_DURATION_MS = 280L
         private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
         private const val SEND_BUTTON_NARROW_DP = 52f
@@ -275,6 +295,17 @@ class ChatActivity : AppCompatActivity() {
         const val KIND_REGULAR = 0
         const val KIND_PRIVATE = 1
         const val KIND_SECRET = 2
+
+        fun voiceMessageIntent(context: Context, chatId: String, title: String, messageId: Long,
+            isGroupChat: Boolean = false, otherUserId: Long = 0L): Intent =
+            Intent(context, ChatActivity::class.java).apply {
+                putExtra(EXTRA_CHAT_ID, chatId)
+                putExtra(EXTRA_CHAT_TITLE, title)
+                putExtra(EXTRA_TARGET_MESSAGE_ID, messageId)
+                putExtra(EXTRA_IS_GROUP_CHAT, isGroupChat)
+                putExtra(EXTRA_OTHER_USER_ID, otherUserId)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
 
         /** Intent для приватного E2E-чата в общем ChatActivity. inviteState<0 = определить из ListChats. */
         fun privateChatIntent(
@@ -313,6 +344,12 @@ class ChatActivity : AppCompatActivity() {
             setIntent(intent)
             viewModelStore.clear()
             recreate()
+        } else if (newChatId == chatId && intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_REGULAR) {
+            val target = intent.getLongExtra(EXTRA_TARGET_MESSAGE_ID, 0L)
+            if (target > 0L) {
+                setIntent(intent)
+                viewModel.dispatch(ChatIntent.NavigateToMessage(target))
+            }
         }
     }
 
@@ -359,6 +396,7 @@ class ChatActivity : AppCompatActivity() {
             isGroupChat = isGroupChat,
             otherUserId = otherUserId,
             supportsDrafts = supportsDrafts,
+            targetMessageId = intent.getLongExtra(EXTRA_TARGET_MESSAGE_ID, 0L),
         ))
         observeViewModel()
 
@@ -388,6 +426,10 @@ class ChatActivity : AppCompatActivity() {
             var previousPresence: PresenceState? = null
             var observedOnlineUserId = 0L
             viewModel.state.collect { state ->
+                if (state.timeline.target != null) {
+                    scrollToBottomJob?.cancel()
+                    binding.messagesRecyclerView.stopScroll()
+                }
                 // Кэш значений для синхронных читателей (шапка, звонки, меню, forward)
                 chatTitle = state.chatTitle
                 chatAvatarFileId = state.chatAvatarFileId
@@ -428,8 +470,13 @@ class ChatActivity : AppCompatActivity() {
                 val ownAtTail = lastMessage?.senderId == currentUserId
 
                 if (state.items != previousItems) {
+                    val version = ++submittedItemsVersion
                     messageAdapter.submitList(messageRowProjector.project(state.items)) {
-                        if (unreadAppeared) {
+                        if (version != submittedItemsVersion) return@submitList
+                        committedItemsVersion = version
+                        if (applyMessageNavigation(listIsCommitted = true)) {
+                            // A target has priority while its window is loading or committing.
+                        } else if (unreadAppeared) {
                             val idx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.UNREAD_SEPARATOR }
                             if (idx >= 0) {
                                 (binding.messagesRecyclerView.layoutManager as LinearLayoutManager)
@@ -443,6 +490,7 @@ class ChatActivity : AppCompatActivity() {
                     }
                     previousItems = state.items
                 } else {
+                    applyMessageNavigation(listIsCommitted = committedItemsVersion == submittedItemsVersion)
                     updateScrollToBottomButton()
                 }
 
@@ -455,7 +503,12 @@ class ChatActivity : AppCompatActivity() {
                 if (previousState?.pendingEdit != state.pendingEdit) {
                     renderPendingEdit(previousState?.pendingEdit, state.pendingEdit)
                 }
-                if (previousComposerAttachments != state.composer.attachmentPaths) {
+                if (previousComposerAttachments != state.composer.attachmentPaths ||
+                    previousState?.composer?.voiceSourcePath != state.composer.voiceSourcePath ||
+                    previousState?.composer?.isVoiceStaging != state.composer.isVoiceStaging ||
+                    previousState?.composer?.isSending != state.composer.isSending ||
+                    previousState?.composer?.isRestoring != state.composer.isRestoring ||
+                    previousState?.composer?.isRestoringAttachments != state.composer.isRestoringAttachments) {
                     previousComposerAttachments = state.composer.attachmentPaths
                     updateAttachmentPreview()
                 }
@@ -603,6 +656,10 @@ class ChatActivity : AppCompatActivity() {
 
         // Адаптер без вложений и меню действий (все callback'и — дефолтные no-op).
         val e2eAdapter = MessageAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = chatTitle,
+            playbackOtherUserId = otherUserId,
             currentUserId = currentUserId,
             isGroupChat = false,
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
@@ -1115,10 +1172,16 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMessagesRecyclerView() {
+        val attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway)
         messageAdapter = MessageAdapter(
+            playback = audioPlayback,
+            playbackChatId = chatId,
+            playbackChatTitle = chatTitle,
+            playbackOtherUserId = otherUserId,
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
-            attachmentLoader = FileMediaAttachmentLoader(fileMediaGateway),
+            attachmentLoader = attachmentLoader,
+            autoDownloadViews = AttachmentAutoDownloadViews(attachmentLoader, this, autoDownloadSettings, autoDownloadNetwork),
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
             stickerSizeDp = globalParam.chatStickerSizeDp,
             eventSink = object : MessageRowEventSink {
@@ -1401,8 +1464,9 @@ class ChatActivity : AppCompatActivity() {
      * Если расстояние до конца > 500px: рывок на 120dp выше финала → плавное торможение по кривой.
      */
     private fun scrollToLatestMessages() {
-        if (viewModel.state.value.isLoading) return
-        lifecycleScope.launch {
+        if (viewModel.state.value.isLoading || viewModel.state.value.timeline.target != null) return
+        scrollToBottomJob?.cancel()
+        scrollToBottomJob = lifecycleScope.launch {
             val lm = binding.messagesRecyclerView.layoutManager as? LinearLayoutManager
 
             // Сразу запускаем быстрый плавный скролл (скорость в 3x быстрее стандартной)
@@ -1421,10 +1485,10 @@ class ChatActivity : AppCompatActivity() {
             delay(300)
 
             try {
-                viewModel.refreshLatestMessages()
-
                 // Рывок в конец с эффектом плавного торможения если расстояние большое
-                snapToBottom()
+                if (viewModel.refreshLatestMessages()) snapToBottom()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error scrolling to latest messages", e)
                 binding.messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
@@ -1567,6 +1631,7 @@ class ChatActivity : AppCompatActivity() {
             clearPendingEdit()
         }
 
+        setupVoiceUi()
         updateSendButtonMode()
 
         // Обработка вставки изображений из буфера обмена
@@ -1615,20 +1680,24 @@ class ChatActivity : AppCompatActivity() {
 
     private fun hasPendingAttachments(): Boolean =
         pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() ||
-            pendingStickerUris.isNotEmpty() || viewModel.state.value.composer.attachmentPaths.isNotEmpty()
+            pendingStickerUris.isNotEmpty() || viewModel.state.value.composer.attachmentPaths.isNotEmpty() ||
+            viewModel.state.value.composer.voiceSourcePath != null
 
     private fun shouldShowVoiceButton(): Boolean {
         val text = binding.messageEditText.text?.toString().orEmpty()
         val state = viewModel.state.value
         return text.isBlank() &&
             !hasPendingAttachments() &&
-            state.pendingReply == null &&
+            state.composer.voiceSourcePath == null &&
+            !state.composer.isVoiceStaging && !state.composer.isSending && !state.composer.isRestoring && !state.composer.isRestoringAttachments &&
             state.pendingEdit == null
     }
 
     private fun updateSendButtonMode() {
-        if (voiceRecorder != null) return
+        if (voiceRecording.state.value.isActive) return
 
+        val composer = viewModel.state.value.composer
+        binding.sendButton.isEnabled = !composer.isVoiceStaging && !composer.isSending && !composer.isRestoring && !composer.isRestoringAttachments
         sendButtonVoiceMode = shouldShowVoiceButton()
         binding.sendButton.setImageResource(
             if (sendButtonVoiceMode) R.drawable.ic_mic else R.drawable.ic_send_filled
@@ -1636,6 +1705,17 @@ class ChatActivity : AppCompatActivity() {
         binding.sendButton.contentDescription = getString(
             if (sendButtonVoiceMode) R.string.cd_record_voice else R.string.cd_send
         )
+        ViewCompat.replaceAccessibilityAction(binding.sendButton,
+            AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_CLICK,
+            getString(if (sendButtonVoiceMode) R.string.voice_record_start_locked else R.string.cd_send),
+        ) { _, _ ->
+            if (shouldShowVoiceButton()) {
+                if (hasRecordAudioPermission()) startVoiceRecording(locked = true)
+                else recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            } else if (!voiceRecording.state.value.isActive) binding.sendButton.performClick()
+            true
+        }
+        binding.sendButton.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         applySendButtonShape(canSend = !sendButtonVoiceMode)
         tintSendButton(
             if (sendButtonVoiceMode) {
@@ -1707,244 +1787,150 @@ class ChatActivity : AppCompatActivity() {
         if (sendCancel) viewModel.dispatch(ChatIntent.StopTyping)
     }
 
-    private fun handleVoiceButtonTouch(event: MotionEvent): Boolean {
-        if (!sendButtonVoiceMode && voiceRecorder == null) return false
-
-        return when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                if (!shouldShowVoiceButton()) {
-                    updateSendButtonMode()
-                    false
-                } else {
-                    if (!hasRecordAudioPermission()) {
-                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        return true
-                    }
-
-                    voiceDownRawX = event.rawX
-                    voiceCancelPending = false
-                    if (startVoiceRecording()) {
-                        binding.sendButton.animate()
-                            .scaleX(0.95f)
-                            .scaleY(0.95f)
-                            .setDuration(80L)
-                            .start()
-                    }
-                    true
+    private fun setupVoiceUi() {
+        voicePreview = VoiceDraftPreview(binding.voiceDraft, lifecycleScope, audioPlayback,
+            onSend = { sendVoiceDraft() },
+            onDiscard = { viewModel.dispatch(ChatIntent.DiscardVoice) },
+        )
+        binding.voiceRecordDelete.setOnClickListener { voiceRecording.cancel() }
+        binding.voiceRecordStop.setOnClickListener { finishVoiceForPreview() }
+        binding.voiceRecordPause.setOnClickListener {
+            runCatching {
+                if (voiceRecording.state.value.mode == VoiceRecordingMode.PAUSED) voiceRecording.resume()
+                else voiceRecording.pause()
+            }.onFailure {
+                voiceRecording.cancel()
+                Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+        lifecycleScope.launch {
+            voiceCallEvents.currentCall.collect { call ->
+                if (call != null && !call.isTerminal) {
+                    voiceRecording.cancel()
+                    voicePreview?.pause()
                 }
+            }
+        }
+        lifecycleScope.launch {
+            voiceRecording.state.collect { renderVoiceRecording(it) }
+        }
+    }
+
+    private fun handleVoiceButtonTouch(event: MotionEvent): Boolean {
+        if (!sendButtonVoiceMode && !voiceRecording.state.value.isActive) return false
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (voiceRecording.state.value.isActive) return true
+                if (!shouldShowVoiceButton()) return false
+                if (!hasRecordAudioPermission()) {
+                    recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    return true
+                }
+                voiceDownRawX = event.rawX
+                voiceDownRawY = event.rawY
+                startVoiceRecording()
             }
             MotionEvent.ACTION_MOVE -> {
-                if (voiceRecorder == null) return true
-
-                val cancelDistancePx = resources.displayMetrics.widthPixels * 0.5f
-                val dx = (event.rawX - voiceDownRawX).coerceAtMost(0f).coerceAtLeast(-cancelDistancePx)
-                binding.sendButton.translationX = dx
-                binding.voiceRecordHint.translationX = dx * VOICE_HINT_DRAG_RATIO
-
-                val cancelNow = -dx >= cancelDistancePx
-                if (cancelNow != voiceCancelPending) {
-                    voiceCancelPending = cancelNow
-                    updateVoiceRecordHint(cancelNow)
-                    tintSendButton(
-                        if (cancelNow) androidx.appcompat.R.attr.colorError
-                        else com.google.android.material.R.attr.colorOnPrimaryContainer
-                    )
+                val before = voiceRecording.state.value
+                val density = resources.displayMetrics.density
+                voiceRecording.drag((event.rawX - voiceDownRawX) / density, (event.rawY - voiceDownRawY) / density)
+                val after = voiceRecording.state.value
+                if (before.mode != after.mode || before.cancelPending != after.cancelPending) {
+                    binding.sendButton.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                 }
-                true
             }
             MotionEvent.ACTION_UP -> {
-                finishVoiceRecording(shouldSend = !voiceCancelPending)
-                true
+                val before = voiceRecording.state.value
+                if (before.mode == VoiceRecordingMode.HOLDING) {
+                    runCatching { voiceRecording.release() }.onSuccess { clip ->
+                        if (clip != null) viewModel.dispatch(ChatIntent.StageVoice(clip.file, sendImmediately = true))
+                        else if (!before.cancelPending) Toast.makeText(this, R.string.voice_record_too_short, Toast.LENGTH_SHORT).show()
+                    }.onFailure { Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show() }
+                }
             }
             MotionEvent.ACTION_CANCEL -> {
-                finishVoiceRecording(shouldSend = false)
-                true
+                if (voiceRecording.state.value.mode == VoiceRecordingMode.HOLDING) voiceRecording.cancel()
             }
-            else -> true
         }
+        return true
     }
 
     private fun hasRecordAudioPermission(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-    private fun startVoiceRecording(): Boolean {
-        if (voiceRecorder != null) return true
+    private fun startVoiceRecording(locked: Boolean = false) {
+        if (!audioPlayback.playbackAllowed) return
+        voicePreview?.pause()
+        audioPlayback.pause()
+        WindowInsetsControllerCompat(window, binding.root).hide(WindowInsetsCompat.Type.ime())
+        runCatching { voiceRecording.start(locked) }.onSuccess {
+            voiceTimerJob?.cancel()
+            voiceTimerJob = lifecycleScope.launch {
+                while (isActive && voiceRecording.state.value.isActive) {
+                    voiceRecording.refreshDuration()
+                    delay(VOICE_TIMER_TICK_MS)
+                }
+            }
+        }.onFailure {
+            Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
 
-        val file = File.createTempFile("voice_${System.currentTimeMillis()}_", ".ogg", cacheDir)
-        return try {
-            val recorder = MediaRecorder(this).apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.OGG)
-                setAudioEncoder(MediaRecorder.AudioEncoder.OPUS)
-                setAudioChannels(1)
-                setAudioSamplingRate(48_000)
-                setAudioEncodingBitRate(24_000)
-                setOutputFile(file.absolutePath)
-                prepare()
+    private fun finishVoiceForPreview() {
+        runCatching { voiceRecording.stop() }.onSuccess { clip ->
+            if (clip != null) viewModel.dispatch(ChatIntent.StageVoice(clip.file))
+            else Toast.makeText(this, R.string.voice_record_too_short, Toast.LENGTH_SHORT).show()
+        }.onFailure { Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun renderVoiceRecording(state: VoiceRecordingState) {
+        audioPlayback.setRecordingActive(state.isActive)
+        binding.sendButton.importantForAccessibility = if (state.isActive) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        binding.inputBar.visibility = if (state.isActive) View.INVISIBLE else View.VISIBLE
+        binding.voiceRecordBar.visibility = if (state.isActive) View.VISIBLE else View.GONE
+        val locked = state.mode == VoiceRecordingMode.LOCKED || state.mode == VoiceRecordingMode.PAUSED
+        binding.voiceRecordDelete.visibility = if (locked) View.VISIBLE else View.GONE
+        binding.voiceRecordPause.visibility = if (locked) View.VISIBLE else View.GONE
+        binding.voiceRecordStop.visibility = if (locked) View.VISIBLE else View.GONE
+        binding.voiceRecordHint.visibility = if (locked) View.GONE else View.VISIBLE
+        binding.voiceRecordTimer.text = getString(R.string.voice_record_timer_format,
+            state.durationMillis / 60_000L, state.durationMillis / 1_000L % 60)
+        binding.voiceRecordHint.setText(if (state.cancelPending) R.string.voice_record_release_to_cancel else R.string.voice_record_gesture_hint)
+        binding.voiceRecordPause.setImageResource(if (state.mode == VoiceRecordingMode.PAUSED)
+            R.drawable.ic_play_arrow else R.drawable.ic_pause)
+        binding.voiceRecordPause.contentDescription = getString(if (state.mode == VoiceRecordingMode.PAUSED)
+            R.string.voice_record_resume else R.string.voice_record_pause)
+        ViewCompat.setStateDescription(binding.voiceRecordBar, getString(if (state.mode == VoiceRecordingMode.PAUSED)
+            R.string.voice_record_paused else if (locked) R.string.voice_record_locked else R.string.cd_record_voice))
+        binding.clearReplyButton.isEnabled = !state.isActive
+        if (state.isActive) {
+            binding.sendButton.setImageResource(if (locked) R.drawable.ic_voice_lock else R.drawable.ic_mic)
+            tintSendButton(if (state.cancelPending) androidx.appcompat.R.attr.colorError else com.google.android.material.R.attr.colorOnPrimaryContainer)
+        } else {
+            voiceTimerJob?.cancel()
+            updateSendButtonMode()
+        }
+        if (state.isActive && state.mode != VoiceRecordingMode.PAUSED && voiceDotAnimator == null) {
+            voiceDotAnimator = ValueAnimator.ofFloat(1f, 0.25f).apply {
+                duration = VOICE_DOT_BLINK_DURATION_MS
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+                addUpdateListener { binding.voiceRecordDot.alpha = it.animatedValue as Float }
                 start()
             }
-
-            voiceRecorder = recorder
-            voiceRecordingFile = file
-            voiceRecordingStartedAtMs = System.currentTimeMillis()
-            tintSendButton(com.google.android.material.R.attr.colorOnPrimaryContainer)
-            showVoiceRecordingBar()
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start voice recording", e)
-            runCatching { voiceRecorder?.release() }
-            voiceRecorder = null
-            voiceRecordingFile = null
-            runCatching { file.delete() }
-            resetVoiceButtonDrag()
-            Toast.makeText(this, R.string.voice_record_start_failed, Toast.LENGTH_SHORT).show()
-            false
+        } else if (!state.isActive || state.mode == VoiceRecordingMode.PAUSED) {
+            voiceDotAnimator?.cancel()
+            voiceDotAnimator = null
+            binding.voiceRecordDot.alpha = 1f
         }
     }
 
-    private fun finishVoiceRecording(shouldSend: Boolean) {
-        val recorder = voiceRecorder ?: return
-        val file = voiceRecordingFile
-        val elapsedMs = System.currentTimeMillis() - voiceRecordingStartedAtMs
-        val wasCancelledByDrag = !shouldSend && voiceCancelPending
-        var send = shouldSend
-
-        try {
-            recorder.stop()
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to stop voice recording cleanly", e)
-            send = false
-        } finally {
-            runCatching { recorder.release() }
-            voiceRecorder = null
-            voiceRecordingFile = null
-            voiceRecordingStartedAtMs = 0L
-            hideVoiceRecordingBar()
-            resetVoiceButtonDrag()
-        }
-
-        if (!send) {
-            runCatching { file?.delete() }
-            if (wasCancelledByDrag) {
-                Toast.makeText(this, R.string.voice_record_cancelled, Toast.LENGTH_SHORT).show()
-            }
-            return
-        }
-
-        if (file == null || elapsedMs < MIN_VOICE_RECORDING_MS || !file.exists() || file.length() == 0L) {
-            runCatching { file?.delete() }
-            Toast.makeText(this, R.string.voice_record_too_short, Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        sendVoiceMessage(file)
-    }
-
-    /**
-     * На время записи прячет грядку ввода и показывает поверх неё индикатор:
-     * мигающая точка, счётчик длительности и подсказка отмены.
-     */
-    private fun showVoiceRecordingBar() {
-        updateVoiceRecordTimer()
-        updateVoiceRecordHint(cancelPending = false)
-        binding.voiceRecordHint.translationX = 0f
-        binding.voiceRecordDot.alpha = 1f
-
-        binding.voiceRecordBar.alpha = 0f
-        binding.voiceRecordBar.visibility = View.VISIBLE
-        binding.voiceRecordBar.animate()
-            .alpha(1f)
-            .setDuration(VOICE_BAR_FADE_DURATION_MS)
-            .start()
-        binding.inputBar.animate()
-            .alpha(0f)
-            .setDuration(VOICE_BAR_FADE_DURATION_MS)
-            .withEndAction { binding.inputBar.visibility = View.INVISIBLE }
-            .start()
-
-        voiceDotAnimator?.cancel()
-        voiceDotAnimator = ValueAnimator.ofFloat(1f, 0.25f).apply {
-            duration = VOICE_DOT_BLINK_DURATION_MS
-            repeatMode = ValueAnimator.REVERSE
-            repeatCount = ValueAnimator.INFINITE
-            addUpdateListener { binding.voiceRecordDot.alpha = it.animatedValue as Float }
-            start()
-        }
-
-        voiceTimerJob?.cancel()
-        voiceTimerJob = lifecycleScope.launch {
-            while (isActive) {
-                updateVoiceRecordTimer()
-                delay(VOICE_TIMER_TICK_MS)
-            }
-        }
-    }
-
-    private fun hideVoiceRecordingBar() {
-        voiceTimerJob?.cancel()
-        voiceTimerJob = null
-        voiceDotAnimator?.cancel()
-        voiceDotAnimator = null
-
-        if (binding.voiceRecordBar.visibility != View.VISIBLE) return
-
-        binding.voiceRecordBar.animate()
-            .alpha(0f)
-            .setDuration(VOICE_BAR_FADE_DURATION_MS)
-            .withEndAction {
-                binding.voiceRecordBar.visibility = View.GONE
-                binding.voiceRecordHint.translationX = 0f
-            }
-            .start()
-        binding.inputBar.visibility = View.VISIBLE
-        binding.inputBar.animate()
-            .alpha(1f)
-            .setDuration(VOICE_BAR_FADE_DURATION_MS)
-            .start()
-    }
-
-    private fun updateVoiceRecordTimer() {
-        val elapsedSec = ((System.currentTimeMillis() - voiceRecordingStartedAtMs) / 1000L)
-            .coerceAtLeast(0L)
-        binding.voiceRecordTimer.text = getString(
-            R.string.voice_record_timer_format,
-            elapsedSec / 60,
-            elapsedSec % 60
-        )
-    }
-
-    private fun updateVoiceRecordHint(cancelPending: Boolean) {
-        binding.voiceRecordHint.setText(
-            if (cancelPending) R.string.voice_record_release_to_cancel
-            else R.string.voice_record_slide_to_cancel
-        )
-        binding.voiceRecordHint.setTextColor(
-            MaterialColors.getColor(
-                binding.voiceRecordHint,
-                if (cancelPending) androidx.appcompat.R.attr.colorError
-                else com.google.android.material.R.attr.colorOnSurfaceVariant
-            )
-        )
-    }
-
-    private fun resetVoiceButtonDrag() {
-        binding.sendButton.animate()
-            .translationX(0f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(120L)
-            .start()
-        voiceCancelPending = false
-        updateSendButtonMode()
-    }
-
-    private fun sendVoiceMessage(file: File) {
-                viewModel.dispatch(ChatIntent.SendMedia(com.barkfluff.client.send.SendJob(
-            chatId = chatId,
-            chatTitle = chatTitle,
-            text = "",
-            attachments = listOf(com.barkfluff.client.send.AttachmentSpec.Voice(file))
-                )))
+    private fun sendVoiceDraft() {
+        val composer = viewModel.state.value.composer
+        if (composer.isSending || composer.isVoiceStaging || composer.isRestoring || composer.isRestoringAttachments) return
+        val source = composer.voiceSourcePath
+        if (source != null) viewModel.dispatch(ChatIntent.StageVoice(File(source), sendImmediately = true))
+        else viewModel.dispatch(ChatIntent.Send(binding.messageEditText.text?.toString().orEmpty()))
     }
 
     private fun pickImages() {
@@ -2313,12 +2299,19 @@ class ChatActivity : AppCompatActivity() {
     private fun updateAttachmentPreview() {
         val composer = viewModel.state.value.composer
         // Pending URI lists are only staging work; accepted previews come from Room-backed paths.
+        val voiceIndex = composer.attachmentKinds.indexOf(com.barkfluff.client.cache.OutgoingAttachmentKind.VOICE.name)
+        val voicePath = composer.voiceSourcePath ?: composer.attachmentPaths.getOrNull(voiceIndex)
+        binding.clearReplyButton.isEnabled = !voiceRecording.state.value.isActive && !composer.isVoiceStaging && !composer.isSending
+        voicePreview?.bind(voicePath, composer.isVoiceStaging || composer.isSending || composer.isRestoring || composer.isRestoringAttachments)
+        binding.attachmentSummaryRow.visibility = if (voicePath == null) View.VISIBLE else View.GONE
+        binding.attachButton.isEnabled = voicePath == null && !composer.isVoiceStaging && !composer.isSending
+        binding.stickerButton.isEnabled = binding.attachButton.isEnabled
         val filesCount = composer.attachmentKinds.count {
             it == com.barkfluff.client.cache.OutgoingAttachmentKind.DOCUMENT.name
         }
         val photosCount = composer.attachmentPaths.size - filesCount
 
-        if (photosCount == 0 && filesCount == 0) {
+        if (photosCount == 0 && filesCount == 0 && voicePath == null) {
             binding.attachmentPreviewBar.visibility = View.GONE
         } else {
             binding.attachmentPreviewBar.visibility = View.VISIBLE
@@ -2336,6 +2329,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessageWithPendingAttachments() {
         if (pendingAttachmentsAwaitingOutbox) return
+        if (viewModel.state.value.composer.voiceSourcePath != null) { sendVoiceDraft(); return }
         // The ViewModel copies sources asynchronously. Wait until all source URIs have either
         // produced an AttachmentStaged effect or a failure effect before enqueueing.
         if (pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() || pendingDocumentUris.isNotEmpty()) {
@@ -2370,6 +2364,7 @@ class ChatActivity : AppCompatActivity() {
     // ─── Reply / Forward UX ────────────────────────────────────────────────────
 
     private fun setPendingReply(item: MessageItem) {
+        if (voiceRecording.state.value.isActive || viewModel.state.value.composer.isVoiceStaging || viewModel.state.value.composer.isSending) return
         viewModel.dispatch(ChatIntent.SetReply(item))
         binding.messageEditText.requestFocus()
         scheduleDraftSave()
@@ -2954,6 +2949,9 @@ class ChatActivity : AppCompatActivity() {
         binding.pinnedListButton.setOnClickListener {
             val intent = Intent(this, PinnedMessagesActivity::class.java)
                 .putExtra(PinnedMessagesActivity.EXTRA_CHAT_ID, chatId)
+                .putExtra(EXTRA_CHAT_TITLE, chatTitle)
+                .putExtra(EXTRA_IS_GROUP_CHAT, isGroupChat)
+                .putExtra(EXTRA_OTHER_USER_ID, otherUserId)
             pinnedListLauncher.launch(intent)
         }
     }
@@ -2982,23 +2980,32 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun scrollToMessageId(messageId: Long) {
-        val list = messageAdapter.currentList
-        val idx = list.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
-        if (idx >= 0) {
-            binding.messagesRecyclerView.smoothScrollToPosition(idx)
-        } else {
-            // Сообщение не загружено — VM подгружает окно вокруг него.
-            lifecycleScope.launch {
-                if (viewModel.ensureMessageLoaded(messageId)) {
-                    val newIdx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == messageId }
-                    if (newIdx >= 0) binding.messagesRecyclerView.scrollToPosition(newIdx)
-                }
+        viewModel.dispatch(ChatIntent.NavigateToMessage(messageId))
+    }
+
+    /** Returns true while navigation owns scrolling, including a pending adapter diff. */
+    private fun applyMessageNavigation(listIsCommitted: Boolean): Boolean {
+        val target = viewModel.state.value.timeline.target ?: return false
+        val index = viewModel.targetPositionIn(messageAdapter.currentList.map { it.messageId }, listIsCommitted) ?: return true
+        val recycler = binding.messagesRecyclerView
+        val version = committedItemsVersion
+        recycler.stopScroll()
+        (recycler.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(index, recycler.height / 3)
+        recycler.doOnNextLayout {
+            if (version != committedItemsVersion || committedItemsVersion != submittedItemsVersion || viewModel.state.value.timeline.target != target) return@doOnNextLayout
+            val position = messageAdapter.currentList.indexOfFirst { it.type == MessageType.MESSAGE && it.messageId == target.messageId }
+            if (position >= 0) {
+                highlightMessageAt(position)
+                viewModel.dispatch(ChatIntent.MessageNavigationHandled(target.requestId))
+                intent.removeExtra(EXTRA_TARGET_MESSAGE_ID)
             }
         }
+        return true
     }
 
     override fun onStart() {
         super.onStart()
+        voicePreview?.resumeUpdates()
         // При возврате из фона — подгружаем пропущенное и синхронизируем edit/delete
         // (токен, ожидание переподключения стримов и догрузка — в ChatViewModel).
         viewModel.dispatch(ChatIntent.StartCatchUp)
@@ -3033,13 +3040,16 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onStop() {
         scheduleDraftSave(immediate = true)
-        finishVoiceRecording(shouldSend = false)
+        voiceRecording.cancel()
+        audioPlayback.setRecordingActive(false)
+        voicePreview?.pause()
         stopTypingHeartbeat(sendCancel = true)
         if (messageActionsOverlay.isShowing) messageActionsOverlay.dismiss(animate = false)
         super.onStop()
     }
 
     override fun onDestroy() {
+        binding.messagesRecyclerView.adapter = null
         super.onDestroy()
         // Сбрасываем открытый чат
         OpenChatManager.closeChat()
@@ -3049,5 +3059,6 @@ class ChatActivity : AppCompatActivity() {
         sendButtonMorphAnimator?.cancel()
         voiceTimerJob?.cancel()
         voiceDotAnimator?.cancel()
+        voicePreview?.release()
     }
 }

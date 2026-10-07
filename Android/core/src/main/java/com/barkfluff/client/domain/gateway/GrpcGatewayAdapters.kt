@@ -2,6 +2,7 @@ package com.barkfluff.client.domain.gateway
 
 import android.content.Context
 import barkfluff.files.FilesApiOuterClass
+import barkfluff.identity.IdentityApiOuterClass
 import barkfluff.shared.Shared
 import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.data.ServerDataElement
@@ -45,17 +46,13 @@ class GrpcChatDraftGateway(private val repository: ChatRepository) : ChatDraftGa
         repository.deleteChatDraft(chatId, expectedRevision)
 }
 
+class GrpcMessageSearchGateway(private val grpc: GrpcApiTransport) : MessageSearchGateway {
+    override suspend fun search(query: MessageSearchQuery): Result<MessageSearchPage> = grpc.searchMessages(query)
+}
+
 class GrpcAuthGateway(
     private val grpc: GrpcApiTransport,
-    private val context: Context,
 ) : AuthGateway {
-    override suspend fun authenticate(
-        email: String?,
-        username: String?,
-        password: String,
-        otpCode: String?,
-    ): AuthenticationResult = grpc.auth(email, username, password, otpCode, context).toDomain()
-
     override suspend fun ensureValid(forceRefresh: Boolean): Boolean =
         grpc.tokenCoordinator().ensureValid(forceRefresh)
 
@@ -71,31 +68,262 @@ class GrpcAuthGateway(
         grpc.createIdentityClient(address, context, includeDeviceInfo)
 }
 
-class GrpcAccountSecurityGateway(private val grpc: GrpcApiTransport) : AccountSecurityGateway {
-    override suspend fun register(firstName: String, lastName: String, email: String, login: String): Result<String> =
-        grpc.createAccount(firstName, lastName, email, login)
-
-    override suspend fun resetPassword(email: String?, username: String?): Result<String> =
-        grpc.resetPassword(email, username)
-
-    override suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult> =
-        grpc.confirmAccount(codeId, verificationCode).map {
-            ConfirmAccountResult(it.refreshToken, it.refreshTokenExpiration)
-        }
-
-    override suspend fun confirmResetPassword(resetId: String, code: String): Result<ConfirmResetPasswordResult> =
-        grpc.confirmResetPassword(resetId, code).map {
-            ConfirmResetPasswordResult(
-                accessToken = it.accessToken,
-                accessTokenExpiration = it.accessTokenExpiration,
-                refreshToken = it.refreshToken,
-                refreshTokenExpiration = it.refreshTokenExpiration,
+class GrpcAuthenticationChallengeGateway(
+    private val grpc: GrpcApiTransport,
+) : AuthenticationChallengeGateway {
+    override suspend fun capabilities(): Result<AuthenticationCapabilities> =
+        grpc.getAuthCapabilities().map { response ->
+            AuthenticationCapabilities(
+                emailAvailable = response.emailAvailable,
+                telegramAvailable = response.telegramAvailable,
+                telegramBotUsername = response.telegramBotUsername,
             )
         }
 
-    override suspend fun setPasswordAfterReset(newPassword: String): Result<Unit> =
-        grpc.setPasswordAfterReset(newPassword)
+    override suspend fun beginRegistration(request: RegistrationRequest): Result<AuthenticationChallenge> =
+        grpc.beginRegistration(
+            IdentityApiOuterClass.BeginRegistrationRequest.newBuilder()
+                .setUsername(request.username)
+                .setPassword(request.password)
+                .setFirstName(request.firstName)
+                .setLastName(request.lastName)
+                .setEmail(request.email)
+                .setConfirmationMethod(request.confirmationMethod.toProto())
+                .setLoginMode(request.loginMode.toProto())
+                .build(),
+        ).map { it.toDomain() }
+
+    override suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge> =
+        grpc.beginSignIn(
+            IdentityApiOuterClass.BeginSignInRequest.newBuilder()
+                .setLogin(request.login)
+                .setPassword(request.password)
+                .setLoginMode(request.loginMode.toProto())
+                .setFactor(request.factor.toProto())
+                .setUseRecoveryCode(request.useRecoveryCode)
+                .build(),
+        ).map { it.toDomain() }
+
+    override suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> =
+        grpc.getAuthChallenge(reference.toProto()).map { it.toDomain() }
+
+    override suspend fun completeChallenge(
+        reference: AuthenticationChallengeReference,
+        code: String,
+        useRecoveryCode: Boolean,
+    ): Result<AuthenticationCompletion> =
+        grpc.completeAuthChallenge(
+            IdentityApiOuterClass.CompleteAuthChallengeRequest.newBuilder()
+                .setChallenge(reference.toProto())
+                .setCode(code)
+                .setUseRecoveryCode(useRecoveryCode)
+                .build(),
+        ).map { it.toDomain() }
+
+    override suspend fun cancelChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> =
+        grpc.cancelAuthChallenge(reference.toProto()).map { it.toDomain() }
+
+    override suspend fun resendChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> =
+        grpc.resendAuthChallenge(reference.toProto()).map { it.toDomain() }
+
+    override suspend fun securitySettings(): Result<SecuritySettings> =
+        grpc.getSecuritySettings().map { it.toDomain() }
+
+    override suspend fun beginReauthentication(
+        password: String,
+        factor: AuthenticationFactor,
+        useRecoveryCode: Boolean,
+    ): Result<AuthenticationChallenge> =
+        grpc.beginReauthentication(
+            IdentityApiOuterClass.BeginReauthenticationRequest.newBuilder()
+                .setPassword(password)
+                .setFactor(factor.toProto())
+                .setUseRecoveryCode(useRecoveryCode)
+                .build(),
+        ).map { it.toDomain() }
+
+    override suspend fun updateSecuritySettings(
+        securityProof: AuthenticationChallengeReference,
+        update: SecuritySettingsUpdate,
+    ): Result<SecuritySettings> =
+        grpc.updateSecuritySettings(update.toProto(securityProof)).map { it.toDomain() }
+
+    override suspend fun beginTelegramBinding(securityProof: AuthenticationChallengeReference): Result<AuthenticationChallenge> =
+        grpc.beginTelegramBinding(
+            IdentityApiOuterClass.SecurityProofRequest.newBuilder()
+                .setSecurityProof(securityProof.toProto())
+                .build(),
+        ).map { it.toDomain() }
+
+    override suspend fun unlinkTelegram(
+        securityProof: AuthenticationChallengeReference,
+        update: SecuritySettingsUpdate,
+    ): Result<SecuritySettings> =
+        grpc.unlinkTelegram(update.toProto(securityProof)).map { it.toDomain() }
+
+    override suspend fun beginEmailBinding(
+        securityProof: AuthenticationChallengeReference,
+        email: String,
+    ): Result<AuthenticationChallenge> =
+        grpc.beginEmailBinding(
+            IdentityApiOuterClass.BeginEmailBindingRequest.newBuilder()
+                .setSecurityProof(securityProof.toProto())
+                .setEmail(email)
+                .build(),
+        ).map { it.toDomain() }
+
+    override suspend fun generateRecoveryCodes(securityProof: AuthenticationChallengeReference): Result<List<String>> =
+        grpc.generateRecoveryCodes(
+            IdentityApiOuterClass.SecurityProofRequest.newBuilder()
+                .setSecurityProof(securityProof.toProto())
+                .build(),
+        ).map { it.codesList }
+
+    override suspend fun beginPasswordRecovery(login: String): Result<AuthenticationChallenge> =
+        grpc.beginPasswordRecovery(
+            IdentityApiOuterClass.BeginPasswordRecoveryRequest.newBuilder().setLogin(login).build(),
+        ).map { it.toDomain() }
+
+    override suspend fun setRecoveredPassword(
+        securityProof: AuthenticationChallengeReference,
+        password: String,
+    ): Result<Unit> =
+        grpc.setRecoveredPassword(
+            IdentityApiOuterClass.SetRecoveredPasswordRequest.newBuilder()
+                .setSecurityProof(securityProof.toProto())
+                .setPassword(password)
+                .build(),
+        ).map { Unit }
+
+    override suspend fun enableOtpVerification(
+        factor: AuthenticationFactor,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<OtpEnrollment> =
+        grpc.enableOtpVerification(
+            IdentityApiOuterClass.EnableOtpVerificationRequest.newBuilder()
+                .setOtpType(factor.toProto())
+                .setSecurityProof(securityProof.toProto())
+                .build(),
+        ).map { OtpEnrollment(it.otpQr, it.otpCode) }
+
+    override suspend fun confirmOtpVerification(
+        code: String,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<List<String>> =
+        grpc.confirmOtpVerification(
+            IdentityApiOuterClass.ConfirmOtpVerificationRequest.newBuilder()
+                .setOtpCode(code)
+                .setSecurityProof(securityProof.toProto())
+                .build(),
+        ).map { it.recoveryCodesList }
+
+    override suspend fun disableOtpVerification(
+        factor: AuthenticationFactor,
+        securityProof: AuthenticationChallengeReference,
+    ): Result<Unit> =
+        grpc.disableOtpVerificationWithProof(
+            IdentityApiOuterClass.DisableOtpVerificationRequest.newBuilder()
+                .setOtpType(factor.toProto())
+                .setSecurityProof(securityProof.toProto())
+                .build(),
+        ).map { Unit }
 }
+
+private fun AuthenticationChallengeReference.toProto(): IdentityApiOuterClass.AuthChallengeReference =
+    IdentityApiOuterClass.AuthChallengeReference.newBuilder().setId(id).setSecret(secret).build()
+
+private fun AuthenticationFactor.toProto(): IdentityApiOuterClass.OtpTypeId = when (this) {
+    AuthenticationFactor.NONE -> IdentityApiOuterClass.OtpTypeId.Unknown
+    AuthenticationFactor.AUTHENTICATOR -> IdentityApiOuterClass.OtpTypeId.Authenticator
+    AuthenticationFactor.EMAIL -> IdentityApiOuterClass.OtpTypeId.Email
+    AuthenticationFactor.TELEGRAM -> IdentityApiOuterClass.OtpTypeId.Telegram
+}
+
+private fun AuthenticationLoginMode.toProto(): IdentityApiOuterClass.AuthLoginMode = when (this) {
+    AuthenticationLoginMode.PASSWORD -> IdentityApiOuterClass.AuthLoginMode.PASSWORD
+    AuthenticationLoginMode.TELEGRAM_LOGIN -> IdentityApiOuterClass.AuthLoginMode.TELEGRAM_LOGIN
+    AuthenticationLoginMode.PASSWORD_SECOND_FACTOR -> IdentityApiOuterClass.AuthLoginMode.PASSWORD_SECOND_FACTOR
+}
+
+private fun SecuritySettingsUpdate.toProto(
+    securityProof: AuthenticationChallengeReference,
+): IdentityApiOuterClass.UpdateSecuritySettingsRequest =
+    IdentityApiOuterClass.UpdateSecuritySettingsRequest.newBuilder()
+        .setSecurityProof(securityProof.toProto())
+        .setLoginMode(loginMode.toProto())
+        .setPreferredFactor(preferredFactor.toProto())
+        .setTelegramEnabled(telegramEnabled)
+        .setTelegramOtpEnabled(telegramOtpEnabled)
+        .setFastAuthTelegramEnabled(fastAuthTelegramEnabled)
+        .build()
+
+private fun IdentityApiOuterClass.AuthChallengeReference.toDomain(): AuthenticationChallengeReference =
+    AuthenticationChallengeReference(id = id, secret = secret)
+
+private fun IdentityApiOuterClass.OtpTypeId.toDomain(): AuthenticationFactor = when (this) {
+    IdentityApiOuterClass.OtpTypeId.Authenticator -> AuthenticationFactor.AUTHENTICATOR
+    IdentityApiOuterClass.OtpTypeId.Email -> AuthenticationFactor.EMAIL
+    IdentityApiOuterClass.OtpTypeId.Telegram -> AuthenticationFactor.TELEGRAM
+    else -> AuthenticationFactor.NONE
+}
+
+private fun IdentityApiOuterClass.AuthLoginMode.toDomain(): AuthenticationLoginMode = when (this) {
+    IdentityApiOuterClass.AuthLoginMode.TELEGRAM_LOGIN -> AuthenticationLoginMode.TELEGRAM_LOGIN
+    IdentityApiOuterClass.AuthLoginMode.PASSWORD_SECOND_FACTOR -> AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+    else -> AuthenticationLoginMode.PASSWORD
+}
+
+private fun IdentityApiOuterClass.AuthChallengeState.toDomain(): AuthenticationChallengeState = when (this) {
+    IdentityApiOuterClass.AuthChallengeState.APPROVED -> AuthenticationChallengeState.APPROVED
+    IdentityApiOuterClass.AuthChallengeState.REJECTED -> AuthenticationChallengeState.REJECTED
+    IdentityApiOuterClass.AuthChallengeState.EXPIRED -> AuthenticationChallengeState.EXPIRED
+    IdentityApiOuterClass.AuthChallengeState.COMPLETED -> AuthenticationChallengeState.COMPLETED
+    IdentityApiOuterClass.AuthChallengeState.CANCELLED -> AuthenticationChallengeState.CANCELLED
+    else -> AuthenticationChallengeState.WAITING
+}
+
+private fun IdentityApiOuterClass.AuthChallengeResponse.toDomain(): AuthenticationChallenge =
+    AuthenticationChallenge(
+        reference = challenge.toDomain(),
+        state = state.toDomain(),
+        factor = factor.toDomain(),
+        telegramUrl = telegramUrl,
+        expiresAtMillis = expiresAt.seconds * 1_000L + expiresAt.nanos / 1_000_000L,
+        availableFactors = availableFactorsList.map { it.toDomain() },
+        needsCode = needsCode,
+        errorCode = errorCode,
+    )
+
+private fun IdentityApiOuterClass.CompleteAuthChallengeResponse.toDomain(): AuthenticationCompletion =
+    AuthenticationCompletion(
+        state = state.toDomain(),
+        session = session.takeIf { hasSession() && it.accessToken.value.isNotBlank() }?.let {
+            AuthSession(
+                accessToken = it.accessToken.value,
+                accessTokenExpiration = it.accessToken.expirationDate.seconds * 1_000L + it.accessToken.expirationDate.nanos / 1_000_000L,
+                refreshToken = it.refreshToken.value,
+                refreshTokenExpiration = it.refreshToken.expirationDate.seconds * 1_000L + it.refreshToken.expirationDate.nanos / 1_000_000L,
+            )
+        },
+        securityProof = securityProof.takeIf { hasSecurityProof() && it.id.isNotBlank() }?.toDomain(),
+        recoveryCodes = recoveryCodesList,
+        errorCode = errorCode,
+    )
+
+private fun IdentityApiOuterClass.SecuritySettingsResponse.toDomain(): SecuritySettings =
+    SecuritySettings(
+        loginMode = loginMode.toDomain(),
+        preferredFactor = preferredFactor.toDomain(),
+        authenticatorEnabled = authenticatorEnabled,
+        emailEnabled = emailEnabled,
+        telegramLinked = telegramLinked,
+        telegramEnabled = telegramEnabled,
+        telegramOtpEnabled = telegramOtpEnabled,
+        fastAuthTelegramEnabled = fastAuthTelegramEnabled,
+        telegramUsername = telegramUsername,
+        verifiedEmail = verifiedEmail,
+        remainingRecoveryCodes = remainingRecoveryCodes,
+    )
 
 class GrpcUserProfileGateway(private val grpc: GrpcApiTransport) : UserProfileGateway {
     override suspend fun currentUser(): Result<UserProfile> = grpc.getCurrentUserData().map { it.toDomain() }
@@ -114,11 +342,6 @@ class GrpcUserProfileGateway(private val grpc: GrpcApiTransport) : UserProfileGa
     override suspend fun renameDevice(deviceId: String, customName: String): Result<Unit> = grpc.renameDevice(deviceId, customName)
     override suspend fun removeActiveSession(deviceId: String): Result<Unit> = grpc.removeActiveSession(deviceId)
     override suspend fun password(password: String): Result<Unit> = grpc.setPassword(password)
-    override suspend fun otpSetup(): Result<OtpSetupResult> = grpc.getOtpSetup().map { OtpSetupResult(it.qrBase64, it.justCode) }
-    override suspend fun confirmOtpSetup(code: String): Result<Unit> = grpc.confirmOtpSetup(code)
-    override suspend fun otpStatus(): Result<OtpStatus> = grpc.listOtpVerification().map { OtpStatus(it.authenticatorEnabled, it.emailEnabled) }
-    override suspend fun enableOtpEmail(): Result<Unit> = grpc.enableOtpEmail()
-    override suspend fun disableOtp(type: barkfluff.identity.IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit> = grpc.disableOtpVerification(type, code)
     override suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = grpc.changePassword(oldPassword, newPassword)
     override suspend fun storageInfo(): Result<StorageInfo> = grpc.getUserStorageInfo().map(::toDomain)
 }
@@ -285,6 +508,9 @@ class GrpcFileMediaGateway(private val repository: ChatRepository) : FileMediaGa
 
     override suspend fun download(fileId: String, onProgress: (Int) -> Unit): File? =
         repository.downloadFile(fileId, onProgress)
+
+    override suspend fun downloadAuto(fileId: String, maxBytes: Long, onProgress: (Int) -> Unit): File? =
+        repository.downloadFileAuto(fileId, maxBytes, onProgress)
 }
 
 class GrpcStickerGateway(private val grpc: GrpcApiTransport) : StickerGateway {

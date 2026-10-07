@@ -1,6 +1,9 @@
 package com.barkfluff.client.di
 
 import android.content.Context
+import com.barkfluff.client.data.AutoDownloadSettingsStore
+import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.calls.CallEventsService
@@ -15,7 +18,7 @@ import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.grpc.TokenCoordinator
-import com.barkfluff.client.domain.gateway.AccountSecurityGateway
+import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.ChatDraftGateway
@@ -23,7 +26,7 @@ import com.barkfluff.client.domain.gateway.ChatFolderGateway
 import com.barkfluff.client.domain.gateway.CallGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.FastAuthGateway
-import com.barkfluff.client.domain.gateway.GrpcAccountSecurityGateway
+import com.barkfluff.client.domain.gateway.GrpcAuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.GrpcAuthGateway
 import com.barkfluff.client.domain.gateway.GrpcChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.GrpcChatDraftGateway
@@ -41,6 +44,8 @@ import com.barkfluff.client.domain.gateway.GrpcUserDirectoryGateway
 import com.barkfluff.client.domain.gateway.GrpcUserProfileGateway
 import com.barkfluff.client.domain.gateway.GrpcUserSettingsGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.domain.gateway.MessageSearchGateway
+import com.barkfluff.client.domain.gateway.GrpcMessageSearchGateway
 import com.barkfluff.client.domain.gateway.PrekeyGateway
 import com.barkfluff.client.domain.gateway.PrivateChatGateway
 import com.barkfluff.client.domain.gateway.RealtimeGateway
@@ -58,6 +63,8 @@ import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.search.GrpcSearchUsersGateway
 import com.barkfluff.client.search.SearchUsersGateway
+import com.barkfluff.client.search.SearchChatsGateway
+import com.barkfluff.client.search.GrpcSearchChatsGateway
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -72,6 +79,15 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideAutoDownloadSettings(@ApplicationContext context: Context): AutoDownloadSettingsStore =
+        AutoDownloadSettingsStore(GlobalParam(context))
+
+    @Provides
+    @Singleton
+    fun provideAutoDownloadNetworkState(): AutoDownloadNetworkState = AutoDownloadNetworkState()
 
     @Provides
     @Singleton
@@ -99,6 +115,10 @@ object AppModule {
         implementation
 
     @Provides
+    fun provideSearchChatsGateway(implementation: GrpcSearchChatsGateway): SearchChatsGateway =
+        implementation
+
+    @Provides
     @Singleton
     fun provideServerDiscoveryGateway(transport: GrpcApiTransport): ServerDiscoveryGateway =
         GrpcServerDiscoveryGateway(transport)
@@ -107,13 +127,12 @@ object AppModule {
     @Singleton
     fun provideAuthGateway(
         transport: GrpcApiTransport,
-        @ApplicationContext context: Context,
-    ): AuthGateway = GrpcAuthGateway(transport, context)
+    ): AuthGateway = GrpcAuthGateway(transport)
 
     @Provides
     @Singleton
-    fun provideAccountSecurityGateway(transport: GrpcApiTransport): AccountSecurityGateway =
-        GrpcAccountSecurityGateway(transport)
+    fun provideAuthenticationChallengeGateway(transport: GrpcApiTransport): AuthenticationChallengeGateway =
+        GrpcAuthenticationChallengeGateway(transport)
 
     @Provides
     @Singleton
@@ -151,6 +170,11 @@ object AppModule {
         chatRepository: ChatRepository,
         transport: GrpcApiTransport,
     ): MessageGateway = GrpcMessageGateway(chatRepository, transport)
+
+    @Provides
+    @Singleton
+    fun provideMessageSearchGateway(transport: GrpcApiTransport): MessageSearchGateway =
+        GrpcMessageSearchGateway(transport)
 
     @Provides
     @Singleton
@@ -218,7 +242,8 @@ object AppModule {
         @ApplicationContext context: Context,
         userProfileGateway: UserProfileGateway,
         fileMediaGateway: FileMediaGateway,
-    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, userProfileGateway, fileMediaGateway)
+        secretChatRepository: SecretChatRepository,
+    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, userProfileGateway, fileMediaGateway, secretChatRepository)
 
     @Provides
     @Singleton

@@ -4,6 +4,7 @@ using BarkFluff.Messages.Features.AckSecretMessage;
 using BarkFluff.Messages.Features.AddUser;
 using BarkFluff.Messages.Features.CreateGroupChat;
 using BarkFluff.Messages.Features.CreatePrivateChat;
+using BarkFluff.Messages.Features.DeleteChat;
 using BarkFluff.Messages.Features.DeleteChatDraft;
 using BarkFluff.Messages.Features.DeleteMessage;
 using BarkFluff.Messages.Features.DeletePrivateMessage;
@@ -13,6 +14,7 @@ using BarkFluff.Messages.Features.GetChatInfo;
 using BarkFluff.Messages.Features.GetChatDraft;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
+using BarkFluff.Messages.Features.LeaveChat;
 using BarkFluff.Messages.Features.ListChatAttachments;
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
@@ -25,6 +27,8 @@ using BarkFluff.Messages.Features.PinMessage;
 using BarkFluff.Messages.Features.RejectPrivateChat;
 using BarkFluff.Messages.Features.RejectSecretChatInvite;
 using BarkFluff.Messages.Features.SendMessage;
+using BarkFluff.Messages.Features.SearchMessages;
+using BarkFluff.Messages.Persistence.Services.Dtos;
 using BarkFluff.Messages.Features.SendPrivateMessage;
 using BarkFluff.Messages.Features.SendSecretChatInvite;
 using BarkFluff.Messages.Features.SendSecretMessage;
@@ -58,6 +62,66 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
     {
         _mediator = mediator;
     }
+
+    public override Task<SearchMessagesResponse> SearchMessages(SearchMessagesRequest request, ServerCallContext context)
+    {
+        var text = request.Query.Trim();
+        long? authorId = null;
+        Guid? authorUuid = null;
+        switch (request.AuthorCase)
+        {
+            case SearchMessagesRequest.AuthorOneofCase.AuthorUserId:
+                if (request.AuthorUserId <= 0) throw InvalidSearch("Invalid author");
+                authorId = request.AuthorUserId;
+                break;
+            case SearchMessagesRequest.AuthorOneofCase.AuthorUserUuid:
+                if (!Guid.TryParse(request.AuthorUserUuid, out var uuid) || uuid == Guid.Empty)
+                    throw InvalidSearch("Invalid author UUID");
+                authorUuid = uuid;
+                break;
+        }
+        DateTime? sentFrom;
+        DateTime? sentBefore;
+        DateTime? cursorSentAt;
+        try
+        {
+            sentFrom = request.SentFrom?.ToDateTime();
+            sentBefore = request.SentBefore?.ToDateTime();
+            cursorSentAt = request.Cursor?.SentAt?.ToDateTime();
+        }
+        catch (InvalidOperationException)
+        {
+            throw InvalidSearch("Invalid timestamp");
+        }
+        if (text.Length > 256 || request.PageSize < 0 || sentFrom >= sentBefore)
+            throw InvalidSearch("Invalid search limits");
+        if (request.Cursor is not null && (cursorSentAt is null || request.Cursor.MessageId <= 0))
+            throw InvalidSearch("Invalid cursor");
+        bool? hasAttachments = request.AttachmentPresence switch
+        {
+            MessageSearchAttachmentPresence.Any => null,
+            MessageSearchAttachmentPresence.With => true,
+            MessageSearchAttachmentPresence.Without => false,
+            _ => throw InvalidSearch("Invalid attachment presence"),
+        };
+        var types = request.AttachmentTypes.Distinct().Select(type => (Domain.MessageAttachmentType)type).ToArray();
+        if (types.Any(type => type < Domain.MessageAttachmentType.Image || type > Domain.MessageAttachmentType.Sticker)
+            || (hasAttachments == false && types.Length > 0))
+            throw InvalidSearch("Invalid attachment types");
+        if (text.Length == 0 && authorId is null && authorUuid is null && sentFrom is null && sentBefore is null
+            && hasAttachments is null && types.Length == 0)
+            throw InvalidSearch("Specify text or a filter");
+        var filter = new MessageSearchFilter
+        {
+            Text = text, AuthorUserId = authorId, AuthorUserUuid = authorUuid,
+            SentFrom = sentFrom, SentBefore = sentBefore, HasAttachments = hasAttachments, AttachmentTypes = types,
+            CursorSentAt = cursorSentAt, CursorMessageId = request.Cursor?.MessageId ?? 0L,
+            PageSize = request.PageSize == 0 ? 30 : Math.Min(request.PageSize, 50),
+        };
+        return _mediator.Send(new SearchMessagesQuery { Filter = filter }, context.CancellationToken);
+    }
+
+    private static RpcException InvalidSearch(string message) => new(new Status(StatusCode.InvalidArgument, message));
 
     public override async Task<ListChatsResponse> ListChats(ListChatsRequest request, ServerCallContext context)
     {
@@ -220,6 +284,37 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         await _mediator.Send(command);
 
         return new AddUserResponse();
+    }
+
+    public override async Task<DeleteChatResponse> DeleteChat(DeleteChatRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new DeleteChatCommand
+        {
+            ChatId = chatId,
+            DeleteForEveryone = request.DeleteForEveryone
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<LeaveChatResponse> LeaveChat(LeaveChatRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.ChatId, out var chatId))
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new LeaveChatCommand
+        {
+            ChatId = chatId
+        };
+
+        return await _mediator.Send(command);
     }
 
     public override async Task<UpdateGroupChatResponse> UpdateGroupChat(UpdateGroupChatRequest request, ServerCallContext context)

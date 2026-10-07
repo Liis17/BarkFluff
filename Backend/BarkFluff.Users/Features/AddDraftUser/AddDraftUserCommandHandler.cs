@@ -44,6 +44,14 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
         var firstName = request.FirstName?.Trim();
         var lastName = request.LastName?.Trim();
 
+        Guid? registrationId = Guid.TryParse(request.RegistrationId, out var id) ? id : null;
+        if (registrationId.HasValue)
+        {
+            var existing = await _usersStorage.GetByUuid(registrationId.Value);
+            if (existing != null && existing.Username == username)
+                return new AddDraftUserResponse { UserId = existing.Id };
+        }
+
         if (!UsernameFormatValidator.IsValid(username))
         {
             _logger.LogWarning("Username {Username} имеет недопустимый формат", username);
@@ -111,7 +119,7 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
             throw new UsernameExistException();
         }
 
-        var user = await _usersStorage.CreateUser(username, firstName, lastName, email);
+        var user = await _usersStorage.CreateUser(username, firstName, lastName, email, registrationId);
 
         _logger.LogInformation(
             "Черновик пользователя создан. UserId: {UserId}, Username: {Username}, Email: {MaskedEmail}",

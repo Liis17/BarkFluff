@@ -13,8 +13,8 @@ import kotlinx.coroutines.launch
  * Tracks asynchronous attachment work by view. Recycling a row cancels only the work bound to
  * that row, preventing stale progress/images from being written into a reused holder.
  */
-class ViewBoundOperationController {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+class ViewBoundOperationController(ownerScope: CoroutineScope? = null) {
+    private val scope = ownerScope ?: CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val jobs = Collections.synchronizedMap(IdentityHashMap<View, Job>())
 
     fun launch(view: View, block: suspend CoroutineScope.() -> Unit) {

@@ -32,6 +32,20 @@
         }
         var theme = getCookie('bf_theme') || 'light';
         document.documentElement.setAttribute('data-theme', theme);
+
+        // Применяем сохранённую ширину сайдбара синхронно, до первой отрисовки —
+        // иначе после асинхронной загрузки js-бандла будет виден скачок с дефолтных 340px.
+        try {
+            if (localStorage.getItem('bf_sidebar_compact') === '1') {
+                document.documentElement.classList.add('sidebar-compact');
+            } else {
+                var savedWidth = parseInt(localStorage.getItem('bf_sidebar_width'), 10);
+                if (savedWidth) {
+                    document.documentElement.style.setProperty('--sidebar-width', savedWidth + 'px');
+                }
+            }
+        } catch (_) { }
+
         window.__setTheme = function (t) {
             document.documentElement.setAttribute('data-theme', t);
             setCookie('bf_theme', t, 365);
@@ -41,6 +55,7 @@
         };
     })();
     </script>
+    <link rel="stylesheet" href="/css/auth-confirmation.css">
 </head>
 <body>
     <div class="blobs">
@@ -59,7 +74,7 @@
 
             <div class="search-results" id="searchResults"></div>
             <div class="folder-tabs" id="folderTabs"></div>
-            <div class="chat-list" id="chatList"></div>
+            <div class="chat-list" id="chatList" role="listbox" data-i18n-aria-label="a11y.chatList" aria-label="Список чатов"></div>
 
             <button class="newchat-fab" id="newChatFab" data-i18n-title="newchat.fab" data-i18n-aria-label="newchat.fab" title="Новый чат" aria-label="Новый чат">
                 <span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span>
@@ -85,6 +100,8 @@
                 </button>
             </div>
         </div>
+
+        <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Изменить ширину списка чатов"></div>
 
         <div class="connection-banner" id="connectionBanner" role="status" aria-live="polite">
             <span class="connection-banner-icon" aria-hidden="true">&#9888;</span>
@@ -131,9 +148,10 @@
             <div class="loading-messages" id="loadingMessages" data-i18n="common.loading">Загрузка...</div>
             <div class="messages-area-wrap">
                 <div class="messages-area" id="messagesArea">
-                    <div class="messages-inner" id="messagesInner"></div>
+                    <div class="messages-inner" id="messagesInner" role="feed" data-i18n-aria-label="a11y.messages" aria-label="Сообщения"></div>
                 </div>
             </div>
+            <div class="sr-only" id="feedLiveRegion" aria-live="polite" aria-atomic="true"></div>
             <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" data-i18n-title="chat.scrollToLatest" title="К последнему сообщению"><span class="scroll-badge"></span>&#8595;</button>
 
             <div class="input-bar" id="inputBar">
@@ -198,6 +216,22 @@
             <div class="confirm-actions">
                 <button class="btn-confirm-cancel" id="deleteMsgCancel" data-i18n="common.cancel">Отмена</button>
                 <button class="btn-confirm-ok" id="deleteMsgOk" data-i18n="common.delete">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Удаление чата (личный/приватный) или выход из группового чата -->
+    <div class="confirm-overlay" id="deleteChatConfirmOverlay">
+        <div class="confirm-dialog">
+            <h3 id="deleteChatTitle"></h3>
+            <p id="deleteChatText"></p>
+            <label class="private-pass-remember" id="deleteChatForEveryoneRow" style="display:none">
+                <input type="checkbox" id="deleteChatForEveryone">
+                <span id="deleteChatForEveryoneLabel"></span>
+            </label>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" id="deleteChatCancel" data-i18n="common.cancel">Отмена</button>
+                <button class="btn-confirm-ok" id="deleteChatOk" data-i18n="common.delete">Удалить</button>
             </div>
         </div>
     </div>
@@ -542,18 +576,18 @@
     </div>
 
     <!-- Message context menu -->
-    <div class="msg-context-menu" id="msgContextMenu">
-        <button data-act="reply"><span class="cm-icon"><span class="bf-icon" data-bf-icon="reply" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.reply">Ответить</span></button>
-        <button data-act="forward"><span class="cm-icon"><span class="bf-icon" data-bf-icon="forward" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.forward">Переслать</span></button>
-        <button data-act="copy-text"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyText">Копировать текст</span></button>
-        <button data-act="copy-image"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-image" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyImage">Копировать изображение</span></button>
-        <button data-act="pin"><span class="cm-icon"><span class="bf-icon" data-bf-icon="pin" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.pin">Закрепить</span></button>
-        <button data-act="edit"><span class="cm-icon"><span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.edit">Изменить</span></button>
-        <button data-act="delete" class="cm-danger"><span class="cm-icon"><span class="bf-icon" data-bf-icon="delete" aria-hidden="true"></span></span><span class="cm-label" data-i18n="common.delete">Удалить</span></button>
+    <div class="msg-context-menu" id="msgContextMenu" role="menu" data-i18n-aria-label="a11y.messageMenu" aria-label="Действия с сообщением">
+        <button type="button" role="menuitem" tabindex="-1" data-act="reply"><span class="cm-icon"><span class="bf-icon" data-bf-icon="reply" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.reply">Ответить</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="forward"><span class="cm-icon"><span class="bf-icon" data-bf-icon="forward" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.forward">Переслать</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="copy-text"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyText">Копировать текст</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="copy-image"><span class="cm-icon"><span class="bf-icon" data-bf-icon="copy-image" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.copyImage">Копировать изображение</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="pin"><span class="cm-icon"><span class="bf-icon" data-bf-icon="pin" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.pin">Закрепить</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="edit"><span class="cm-icon"><span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span></span><span class="cm-label" data-i18n="menu.edit">Изменить</span></button>
+        <button type="button" role="menuitem" tabindex="-1" data-act="delete" class="cm-danger"><span class="cm-icon"><span class="bf-icon" data-bf-icon="delete" aria-hidden="true"></span></span><span class="cm-label" data-i18n="common.delete">Удалить</span></button>
     </div>
 
     <!-- Chat context menu (PCM на чате в сайдбаре) -->
-    <div class="msg-context-menu chat-context-menu" id="chatContextMenu"></div>
+    <div class="msg-context-menu chat-context-menu" id="chatContextMenu" role="menu" data-i18n-aria-label="a11y.chatMenu" aria-label="Действия с чатом"></div>
 
     <!-- Folder edit/create modal -->
     <div class="overlay folder-edit-overlay" id="folderEditOverlay">

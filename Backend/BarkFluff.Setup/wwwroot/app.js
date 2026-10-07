@@ -107,8 +107,9 @@
             .querySelectorAll("[data-field-id]")
             .forEach((input) => {
                 input.addEventListener("input", () => clearFieldError(input));
-                input.addEventListener("change", () => clearFieldError(input));
+                input.addEventListener("change", () => { clearFieldError(input); updateDependencies(group); });
             });
+        updateDependencies(group);
     }
 
     function renderSteps() {
@@ -144,7 +145,7 @@
     }
 
     function groupTemplate(group, index) {
-        const fields = (group.fields || []).filter((field) => field.applicable);
+        const fields = (group.fields || []);
         return `<article class="group-card">
       <div class="group-heading">
         <span class="group-index">${index + 1}</span>
@@ -156,7 +157,7 @@
     }
 
     function fieldTemplate(field) {
-        const required = field.required
+        const required = field.requirement && field.requirement !== "None"
             ? '<span class="required"> · обязательно</span>'
             : "";
         const configured = field.configured
@@ -168,7 +169,7 @@
                 ? "Оставьте пустым, чтобы сохранить текущее значение"
                 : field.placeholder || "";
         const control = controlTemplate(field, value, placeholder);
-        return `<div class="setup-field${field.error ? " invalid" : ""}">
+        return `<div class="setup-field${field.error ? " invalid" : ""}" data-wrapper-id="${escapeAttr(field.id)}">
       <div class="field-top"><label for="field-${escapeAttr(field.id)}">${escapeHtml(field.label)}${required}</label>${configured}</div>
       <p class="field-description">${escapeHtml(field.description)}</p>
       ${control}
@@ -197,6 +198,21 @@
         }
     }
 
+    function fieldApplicable(field, group) {
+        const section = { EmailEnabled: "Email", TelegramEnabled: "TelegramAuth", FederationEnabled: "Federation" }[field.requirement];
+        if (!section) return field.applicable;
+        const control = group.fields.find((item) => item.section === section && item.key === "Enabled");
+        const input = control && document.querySelector(`[data-field-id="${CSS.escape(control.id)}"]`);
+        return (input?.value ?? control?.value) === "true";
+    }
+
+    function updateDependencies(group) {
+        for (const field of group.fields || []) {
+            const wrapper = document.querySelector(`[data-wrapper-id="${CSS.escape(field.id)}"]`);
+            if (wrapper) wrapper.hidden = !fieldApplicable(field, group);
+        }
+    }
+
     async function saveCurrent(advance) {
         const group = state.groups[state.current];
         const values = {};
@@ -204,12 +220,13 @@
         $("#group-content")
             .querySelectorAll("[data-field-id]")
             .forEach((input) => {
-                values[input.dataset.fieldId] = input.value;
                 const field = group.fields.find(
                     (item) => item.id === input.dataset.fieldId,
                 );
+                if (!field || !fieldApplicable(field, group)) return;
+                values[input.dataset.fieldId] = input.value;
                 if (
-                    field?.required &&
+                    field.requirement !== "None" &&
                     !input.value.trim() &&
                     !(field.sensitive && field.configured)
                 ) {
@@ -224,12 +241,8 @@
                 `/api/setup/groups/${encodeURIComponent(group.id)}`,
                 { method: "PUT", body: { values }, csrf: true },
             );
-            const wasApplicable = group.applicable;
             applyResponse(response);
-            const currentGroup = state.groups[state.current];
-            if (currentGroup && currentGroup.applicable !== wasApplicable) {
-                render();
-            }
+            render();
             setMessage(
                 $("#action-message"),
                 advance && state.current < state.groups.length - 1
@@ -237,7 +250,7 @@
                     : "Изменения сохранены.",
                 "success",
             );
-            if (advance && state.current < state.groups.length - 1) {
+            if (advance && state.groups[state.current]?.complete && state.current < state.groups.length - 1) {
                 state.current++;
                 render();
             }

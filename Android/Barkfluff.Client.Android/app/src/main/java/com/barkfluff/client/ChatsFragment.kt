@@ -196,7 +196,7 @@ class ChatsFragment : Fragment() {
 
     private fun setupSearchButton() {
         binding.searchField.setOnClickListener {
-            val intent = Intent(requireContext(), SearchActivity::class.java)
+            val intent = Intent(requireContext(), ChatSearchActivity::class.java)
             startActivity(intent)
         }
     }

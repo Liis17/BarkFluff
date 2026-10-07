@@ -603,7 +603,9 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
         <LinearLayout
+            android:id="@+id/attachmentSummaryRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -643,6 +645,9 @@
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
+            <include android:id="@+id/voiceDraft" layout="@layout/view_voice_draft" android:visibility="gone" />
+        </LinearLayout>
+
 
     </com.google.android.material.card.MaterialCardView>
 
@@ -711,7 +716,7 @@
     </LinearLayout>
 
     <!-- Индикатор записи голосового: накрывает грядку ввода на время записи
-         (ChatActivity.showVoiceRecordingBar) -->
+         (ChatActivity.renderVoiceRecording) -->
     <LinearLayout
         android:id="@+id/voiceRecordBar"
         android:layout_width="0dp"
@@ -720,8 +725,8 @@
         android:elevation="5dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingEnd="18dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="4dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/inputBar"
         app:layout_constraintEnd_toEndOf="@id/inputBar"
@@ -753,10 +758,20 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:gravity="end|center_vertical"
-            android:maxLines="1"
-            android:text="@string/voice_record_slide_to_cancel"
+            android:maxLines="2"
+            android:text="@string/voice_record_gesture_hint"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="13sp" />
+
+        <ImageButton android:id="@+id/voiceRecordDelete" android:layout_width="48dp" android:layout_height="48dp"
+            android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
+            android:contentDescription="@string/cd_voice_discard" android:src="@drawable/ic_delete" app:tint="?attr/colorOnSurfaceVariant" />
+        <ImageButton android:id="@+id/voiceRecordPause" android:layout_width="48dp" android:layout_height="48dp"
+            android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
+            android:contentDescription="@string/voice_record_pause" android:src="@drawable/ic_pause" app:tint="?attr/colorPrimary" />
+        <ImageButton android:id="@+id/voiceRecordStop" android:layout_width="48dp" android:layout_height="48dp"
+            android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
+            android:contentDescription="@string/voice_record_stop" android:src="@drawable/ic_voice_stop" app:tint="?attr/colorPrimary" />
 
     </LinearLayout>
 

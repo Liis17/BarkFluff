@@ -1,7 +1,6 @@
 package com.barkfluff.client.grpc
 
 import android.content.Context
-import android.util.Base64
 import android.util.Log
 import barkfluff.beacon.BeaconApiGrpcKt
 import barkfluff.beacon.BeaconApiOuterClass
@@ -25,6 +24,15 @@ import barkfluff.shared.Shared
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
+import com.barkfluff.client.domain.model.MessageSearchAuthor
+import com.barkfluff.client.domain.model.MessageSearchCursor
+import com.barkfluff.client.domain.model.MessageSearchHit
+import com.barkfluff.client.domain.model.MessageSearchPage
+import com.barkfluff.client.domain.model.MessageSearchQuery
+import com.barkfluff.client.domain.model.MessageSearchUnavailableException
+import com.barkfluff.client.domain.model.SearchAttachmentPresence
+import com.google.protobuf.Timestamp
+import kotlinx.coroutines.CancellationException
 import com.barkfluff.client.security.TlsTransportFactory
 import io.grpc.*
 import kotlinx.coroutines.Dispatchers
@@ -44,9 +52,6 @@ class GrpcApiTransport(context: Context) {
         const val DEFAULT_NAVIGATOR_URL = "https://navigator.barkfluff.com:443"
 
         // Error codes from x-error-code trailer
-        const val ERROR_OTP_CODE_NEEDED = "C1576884-12D8-4722-A7EE-9F9789AD1265"
-        const val ERROR_NOT_VALID_OTP_CODE = "803B632C-4457-4B05-9435-9C3DD0F41E00"
-        const val ERROR_INVALID_LOGIN_OR_PASSWORD = "21BFB9B5-C377-45D1-9B15-6B7F3432B397"
         const val ERROR_INVALID_OLD_PASSWORD = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
         const val ERROR_USERNAME_INVALID_FORMAT = "E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47"
 
@@ -190,108 +195,114 @@ class GrpcApiTransport(context: Context) {
         )
     }
 
-    /**
-     * Авторизация пользователя
-     * @param email email (nullable, if username is used)
-     * @param username username (nullable, if email is used)
-     * @param password пароль
-     * @param otpCode код 2FA (nullable)
-     * @param context контекст для получения метаданных устройства
-     */
-    suspend fun auth(
-        email: String?,
-        username: String?,
-        password: String,
-        otpCode: String?,
-        context: Context
-    ): AuthResult = withContext(Dispatchers.IO) {
+    private suspend fun <T> identityCall(
+        operation: String,
+        call: suspend (IdentityApiGrpcKt.IdentityApiCoroutineStub) -> T,
+    ): Result<T> = withContext(Dispatchers.IO) {
+        val client = identityClient
+            ?: return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
         try {
-            if (identityClient == null) {
-                return@withContext AuthResult.Error("Identity клиент не создан")
-            }
-
-            val requestBuilder = IdentityApiOuterClass.AuthRequest.newBuilder()
-                .setPassword(password)
-
-            if (!email.isNullOrBlank()) {
-                requestBuilder.email = email
-            } else if (!username.isNullOrBlank()) {
-                requestBuilder.username = username
-            }
-
-            if (!otpCode.isNullOrBlank()) {
-                requestBuilder.otpCode = otpCode
-            }
-
-            val request = requestBuilder.build()
-
-            // Add device metadata headers via interceptor
-            val globalParam = GlobalParam(context)
-            val headerInterceptor = object : ClientInterceptor {
-                override fun <ReqT, RespT> interceptCall(
-                    method: MethodDescriptor<ReqT, RespT>,
-                    callOptions: CallOptions,
-                    next: Channel
-                ): ClientCall<ReqT, RespT> {
-                    return object : ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
-                        next.newCall(method, callOptions)
-                    ) {
-                        override fun start(responseListener: Listener<RespT>, headers: Metadata) {
-                            headers.put(key("x-device-id"), toBase64(globalParam.deviceId))
-                            headers.put(key("x-device-name"), toBase64(GlobalParam.getDeviceName()))
-                            headers.put(key("x-os-name"), toBase64(GlobalParam.getOsVersion()))
-                            headers.put(key("x-app-name"), toBase64(GlobalParam.getAppName()))
-                            headers.put(key("x-app-version"), toBase64(GlobalParam.getAppVersion(context)))
-                            headers.put(key("x-ip-address"), toBase64(globalParam.ipAddress))
-                            super.start(responseListener, headers)
-                        }
-                    }
-                }
-            }
-
-            val interceptedChannel = ClientInterceptors.intercept(identityChannel!!, headerInterceptor)
-            val stub = IdentityApiGrpcKt.IdentityApiCoroutineStub(interceptedChannel)
-            val response = stub.auth(request)
-
-            AuthResult.Success(
-                accessToken = response.accessToken.value,
-                accessTokenExpiration = response.accessToken.expirationDate.seconds * 1000,
-                refreshToken = response.refreshToken.value,
-                refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
-            )
-        } catch (e: StatusException) {
-            handleAuthError(e)
-        } catch (e: StatusRuntimeException) {
-            handleAuthRuntimeError(e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка авторизации", e)
-            AuthResult.Error("Ошибка подключения: ${e.message}")
+            Result.success(call(client))
+        } catch (error: Exception) {
+            Log.e(TAG, "Identity $operation failed", error)
+            Result.failure(error)
         }
     }
 
-    private fun handleAuthError(e: StatusException): AuthResult {
-        val errorCode = e.trailers?.get(ERROR_CODE_KEY)?.uppercase()
-        Log.d(TAG, "Auth error: status=${e.status}, errorCode=$errorCode")
-
-        return when (errorCode) {
-            ERROR_OTP_CODE_NEEDED -> AuthResult.OtpRequired
-            ERROR_NOT_VALID_OTP_CODE -> AuthResult.Error("Неверный код 2FA")
-            ERROR_INVALID_LOGIN_OR_PASSWORD -> AuthResult.Error("Неверный логин или пароль")
-            else -> AuthResult.Error(e.status.description ?: "Ошибка авторизации")
+    suspend fun getAuthCapabilities(): Result<IdentityApiOuterClass.GetAuthCapabilitiesResponse> =
+        identityCall("GetAuthCapabilities") { client ->
+            client.getAuthCapabilities(IdentityApiOuterClass.GetAuthCapabilitiesRequest.getDefaultInstance())
         }
-    }
 
-    private fun handleAuthRuntimeError(e: StatusRuntimeException): AuthResult {
-        val errorCode = e.trailers?.get(ERROR_CODE_KEY)?.uppercase()
-        Log.d(TAG, "Auth runtime error: status=${e.status}, errorCode=$errorCode")
+    suspend fun beginRegistration(
+        request: IdentityApiOuterClass.BeginRegistrationRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginRegistration") { client -> client.beginRegistration(request) }
 
-        return when (errorCode) {
-            ERROR_OTP_CODE_NEEDED -> AuthResult.OtpRequired
-            ERROR_NOT_VALID_OTP_CODE -> AuthResult.Error("Неверный код 2FA")
-            ERROR_INVALID_LOGIN_OR_PASSWORD -> AuthResult.Error("Неверный логин или пароль")
-            else -> AuthResult.Error(e.status.description ?: "Ошибка авторизации")
+    suspend fun beginSignIn(
+        request: IdentityApiOuterClass.BeginSignInRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginSignIn") { client -> client.beginSignIn(request) }
+
+    suspend fun getAuthChallenge(
+        reference: IdentityApiOuterClass.AuthChallengeReference,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("GetAuthChallenge") { client -> client.getAuthChallenge(reference) }
+
+    suspend fun completeAuthChallenge(
+        request: IdentityApiOuterClass.CompleteAuthChallengeRequest,
+    ): Result<IdentityApiOuterClass.CompleteAuthChallengeResponse> =
+        identityCall("CompleteAuthChallenge") { client -> client.completeAuthChallenge(request) }
+
+    suspend fun cancelAuthChallenge(
+        reference: IdentityApiOuterClass.AuthChallengeReference,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("CancelAuthChallenge") { client -> client.cancelAuthChallenge(reference) }
+
+    suspend fun resendAuthChallenge(
+        reference: IdentityApiOuterClass.AuthChallengeReference,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("ResendAuthChallenge") { client -> client.resendAuthChallenge(reference) }
+
+    suspend fun getSecuritySettings(): Result<IdentityApiOuterClass.SecuritySettingsResponse> =
+        identityCall("GetSecuritySettings") { client ->
+            client.getSecuritySettings(IdentityApiOuterClass.GetSecuritySettingsRequest.getDefaultInstance())
         }
-    }
+
+    suspend fun beginReauthentication(
+        request: IdentityApiOuterClass.BeginReauthenticationRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginReauthentication") { client -> client.beginReauthentication(request) }
+
+    suspend fun updateSecuritySettings(
+        request: IdentityApiOuterClass.UpdateSecuritySettingsRequest,
+    ): Result<IdentityApiOuterClass.SecuritySettingsResponse> =
+        identityCall("UpdateSecuritySettings") { client -> client.updateSecuritySettings(request) }
+
+    suspend fun beginTelegramBinding(
+        request: IdentityApiOuterClass.SecurityProofRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginTelegramBinding") { client -> client.beginTelegramBinding(request) }
+
+    suspend fun unlinkTelegram(
+        request: IdentityApiOuterClass.UpdateSecuritySettingsRequest,
+    ): Result<IdentityApiOuterClass.SecuritySettingsResponse> =
+        identityCall("UnlinkTelegram") { client -> client.unlinkTelegram(request) }
+
+    suspend fun beginEmailBinding(
+        request: IdentityApiOuterClass.BeginEmailBindingRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginEmailBinding") { client -> client.beginEmailBinding(request) }
+
+    suspend fun generateRecoveryCodes(
+        request: IdentityApiOuterClass.SecurityProofRequest,
+    ): Result<IdentityApiOuterClass.RecoveryCodesResponse> =
+        identityCall("GenerateRecoveryCodes") { client -> client.generateRecoveryCodes(request) }
+
+    suspend fun beginPasswordRecovery(
+        request: IdentityApiOuterClass.BeginPasswordRecoveryRequest,
+    ): Result<IdentityApiOuterClass.AuthChallengeResponse> =
+        identityCall("BeginPasswordRecovery") { client -> client.beginPasswordRecovery(request) }
+
+    suspend fun setRecoveredPassword(
+        request: IdentityApiOuterClass.SetRecoveredPasswordRequest,
+    ): Result<IdentityApiOuterClass.SetPasswordResponse> =
+        identityCall("SetRecoveredPassword") { client -> client.setRecoveredPassword(request) }
+
+    suspend fun enableOtpVerification(
+        request: IdentityApiOuterClass.EnableOtpVerificationRequest,
+    ): Result<IdentityApiOuterClass.EnableOtpVerificationResponse> =
+        identityCall("EnableOtpVerification") { client -> client.enableOtpVerification(request) }
+
+    suspend fun confirmOtpVerification(
+        request: IdentityApiOuterClass.ConfirmOtpVerificationRequest,
+    ): Result<IdentityApiOuterClass.ConfirmOtpVerificationResponse> =
+        identityCall("ConfirmOtpVerification") { client -> client.confirmOtpVerification(request) }
+
+    suspend fun disableOtpVerificationWithProof(
+        request: IdentityApiOuterClass.DisableOtpVerificationRequest,
+    ): Result<IdentityApiOuterClass.DisableOtpVerificationResponse> =
+        identityCall("DisableOtpVerification") { client -> client.disableOtpVerification(request) }
 
     /**
      * Обновляет access токен используя refresh токен
@@ -320,7 +331,7 @@ class GrpcApiTransport(context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка обновления токена", e)
-            Result.failure(Exception("Ошибка обновления токена: ${e.message}"))
+            Result.failure(Exception("Ошибка обновления токена: ${e.message}", e))
         }
     }
 
@@ -689,14 +700,6 @@ class GrpcApiTransport(context: Context) {
         mediaTransport.configure(connection)
     }
 
-    private fun toBase64(value: String): String {
-        return Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-    }
-
-    private fun key(name: String): Metadata.Key<String> {
-        return Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER)
-    }
-
     /**
      * Пересоздаёт все каналы принудительно.
      * Вызывается при возврате из фона, когда старые каналы могли сломаться (DNS resolution failure).
@@ -1046,10 +1049,51 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
-    /**
-     * Поиск пользователей по запросу
-     * Аналог SearchUser в WebApiSearchManager
-     */
+    /** Search accessible regular chats; preserve nanoseconds in the pagination cursor. */
+    suspend fun searchMessages(query: MessageSearchQuery): Result<MessageSearchPage> = withContext(Dispatchers.IO) {
+        try {
+            val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages client unavailable"))
+            val builder = MessagesApiOuterClass.SearchMessagesRequest.newBuilder()
+                .setQuery(query.text)
+                .setPageSize(query.pageSize)
+                .setAttachmentPresence(when (query.attachmentPresence) {
+                    SearchAttachmentPresence.Any -> MessagesApiOuterClass.MessageSearchAttachmentPresence.MESSAGE_SEARCH_ATTACHMENT_PRESENCE_ANY
+                    SearchAttachmentPresence.With -> MessagesApiOuterClass.MessageSearchAttachmentPresence.MESSAGE_SEARCH_ATTACHMENT_PRESENCE_WITH
+                    SearchAttachmentPresence.Without -> MessagesApiOuterClass.MessageSearchAttachmentPresence.MESSAGE_SEARCH_ATTACHMENT_PRESENCE_WITHOUT
+                })
+                .addAllAttachmentTypes(query.attachmentTypes)
+            query.author?.let { author ->
+                if (author.userId > 0L) builder.authorUserId = author.userId else builder.authorUserUuid = author.userUuid
+            }
+            query.sentFromSeconds?.let { builder.sentFrom = Timestamp.newBuilder().setSeconds(it).build() }
+            query.sentBeforeSeconds?.let { builder.sentBefore = Timestamp.newBuilder().setSeconds(it).build() }
+            query.cursor?.let { cursor ->
+                builder.cursor = MessagesApiOuterClass.MessageSearchCursor.newBuilder()
+                    .setMessageId(cursor.messageId)
+                    .setSentAt(Timestamp.newBuilder().setSeconds(cursor.sentAtSeconds).setNanos(cursor.sentAtNanos)).build()
+            }
+            val response = client.searchMessages(builder.build())
+            Result.success(MessageSearchPage(
+                hits = response.hitsList.map { hit ->
+                    MessageSearchHit(
+                        hit.messageId, hit.chatId, hit.chatTitle, hit.isGroupChat, hit.chatPictureFileId, hit.otherUserId,
+                        MessageSearchAuthor(hit.author.userId, hit.author.userUuid, hit.author.displayName),
+                        hit.sentAt.seconds * 1000L + hit.sentAt.nanos / 1_000_000,
+                        hit.text, hit.attachmentTypesList.toSet(),
+                    )
+                },
+                nextCursor = if (response.hasNextCursor()) response.nextCursor.let {
+                    MessageSearchCursor(it.sentAt.seconds, it.sentAt.nanos, it.messageId)
+                } else null,
+            ))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(if (Status.fromThrowable(error).code == Status.Code.UNIMPLEMENTED) MessageSearchUnavailableException() else error)
+        }
+    }
+
+    /** Поиск пользователей по запросу, аналог SearchUser в WebApiSearchManager. */
     suspend fun searchUsers(query: String, offset: Int = 0, size: Int = 50): Result<List<UserData>> = withContext(Dispatchers.IO) {
         try {
             if (usersClient == null) {
@@ -1223,69 +1267,6 @@ class GrpcApiTransport(context: Context) {
     }
 
     /**
-     * Создает аккаунт (первый этап регистрации)
-     * Аналог CreateAccount в WebApiRegistrationManager
-     */
-    suspend fun createAccount(firstName: String, lastName: String, email: String, login: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.CreateAccountRequest.newBuilder()
-                .setFirstName(firstName)
-                .setLastName(lastName)
-                .setUsername(login.lowercase())
-                .setEmail(email.lowercase())
-                .build()
-
-            val response = identityClient!!.createAccount(request)
-            Result.success(response.codeId)
-        } catch (e: StatusRuntimeException) {
-            val errorCode = e.trailers?.get(ERROR_CODE_KEY)
-            if (errorCode == ERROR_USERNAME_INVALID_FORMAT) {
-                Log.w(TAG, "Недопустимый формат имени пользователя")
-                Result.failure(Exception("Имя пользователя имеет недопустимый формат: латинские буквы, цифры и подчёркивание, 3–32 символа"))
-            } else {
-                Log.e(TAG, "Ошибка создания аккаунта", e)
-                Result.failure(Exception("Ошибка создания аккаунта: ${e.message}"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка создания аккаунта", e)
-            Result.failure(Exception("Ошибка создания аккаунта: ${e.message}"))
-        }
-    }
-
-    /**
-     * Подтверждает аккаунт кодом с почты
-     * Аналог ConfirmAccount в WebApiRegistrationManager
-     */
-    suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ConfirmAccountRequest.newBuilder()
-                .setCodeId(codeId)
-                .setCodeValue(verificationCode)
-                .build()
-
-            val response = identityClient!!.confirmAccount(request)
-
-            Result.success(
-                ConfirmAccountResult(
-                    refreshToken = response.refreshToken.value,
-                    refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подтверждения аккаунта", e)
-            Result.failure(Exception("Ошибка подтверждения аккаунта: ${e.message}"))
-        }
-    }
-
-    /**
      * Устанавливает аватар пользователя из file_id
      * Аналог SetProfilePicture в WebApiUserManager
      */
@@ -1437,56 +1418,6 @@ class GrpcApiTransport(context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка установки пароля", e)
             Result.failure(Exception("Ошибка установки пароля: ${e.message}"))
-        }
-    }
-
-    /**
-     * Запрашивает QR-код для настройки 2FA
-     * Аналог OtpReceipt в WebApiAuthManager
-     */
-    suspend fun getOtpSetup(): Result<OtpSetupResult> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.EnableOtpVerificationRequest.newBuilder()
-                .setOtpType(IdentityApiOuterClass.OtpTypeId.Authenticator)
-                .build()
-
-            val response = identityClient!!.enableOtpVerification(request)
-
-            Result.success(
-                OtpSetupResult(
-                    qrBase64 = response.otpQr,
-                    justCode = response.otpCode
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка получения 2FA setup", e)
-            Result.failure(Exception("Ошибка получения 2FA setup: ${e.message}"))
-        }
-    }
-
-    /**
-     * Подтверждает настройку 2FA
-     * Аналог OtpAccept в WebApiAuthManager
-     */
-    suspend fun confirmOtpSetup(code: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ConfirmOtpVerificationRequest.newBuilder()
-                .setOtpCode(code)
-                .build()
-
-            identityClient!!.confirmOtpVerification(request)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подтверждения 2FA", e)
-            Result.failure(Exception("Ошибка подтверждения 2FA: ${e.message}"))
         }
     }
 
@@ -1647,73 +1578,6 @@ class GrpcApiTransport(context: Context) {
     }
 
     /**
-     * Получает статус 2FA
-     */
-    suspend fun listOtpVerification(): Result<OtpStatus> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ListOtpVerificationRequest.newBuilder().build()
-            val response = identityClient!!.listOtpVerification(request)
-
-            Result.success(
-                OtpStatus(
-                    authenticatorEnabled = response.authenticatorEnabled,
-                    emailEnabled = response.emailEnabled
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка получения статуса 2FA", e)
-            Result.failure(Exception("Ошибка получения статуса 2FA: ${e.message}"))
-        }
-    }
-
-    /**
-     * Включает 2FA по email
-     */
-    suspend fun enableOtpEmail(): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.EnableOtpVerificationRequest.newBuilder()
-                .setOtpType(IdentityApiOuterClass.OtpTypeId.Email)
-                .build()
-
-            identityClient!!.enableOtpVerification(request)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка включения 2FA по email", e)
-            Result.failure(Exception("Ошибка включения 2FA по email: ${e.message}"))
-        }
-    }
-
-    /**
-     * Отключает 2FA
-     */
-    suspend fun disableOtpVerification(type: IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.DisableOtpVerificationRequest.newBuilder()
-                .setOtpType(type)
-                .setOtpCode(code)
-                .build()
-
-            identityClient!!.disableOtpVerification(request)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка отключения 2FA", e)
-            Result.failure(Exception("Ошибка отключения 2FA: ${e.message}"))
-        }
-    }
-
-    /**
      * Изменяет пароль с проверкой старого
      */
     suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
@@ -1792,19 +1656,9 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
-    data class ConfirmAccountResult(
-        val refreshToken: String,
-        val refreshTokenExpiration: Long
-    )
-
     data class UploadUrlResult(
         val url: String,
         val fileId: String
-    )
-
-    data class OtpSetupResult(
-        val qrBase64: String,
-        val justCode: String
     )
 
     data class UserData(
@@ -1903,18 +1757,6 @@ class GrpcApiTransport(context: Context) {
         return urlOrGuid
     }
 
-    sealed class AuthResult {
-        data class Success(
-            val accessToken: String,
-            val accessTokenExpiration: Long,
-            val refreshToken: String,
-            val refreshTokenExpiration: Long
-        ) : AuthResult()
-
-        data object OtpRequired : AuthResult()
-        data class Error(val message: String) : AuthResult()
-    }
-
     data class SessionData(
         val id: Long,
         val createdAt: Long,
@@ -1927,121 +1769,13 @@ class GrpcApiTransport(context: Context) {
         val location: String
     )
 
-    data class OtpStatus(
-        val authenticatorEnabled: Boolean,
-        val emailEnabled: Boolean
-    )
-
     data class StorageInfo(
         val totalUsed: Long,
         val limit: Long,
         val byType: Map<String, Long>
     )
 
-    data class ConfirmResetPasswordResult(
-        val accessToken: String,
-        val accessTokenExpiration: Long,
-        val refreshToken: String,
-        val refreshTokenExpiration: Long
-    )
-
     class InvalidOldPasswordException : Exception("Неверный старый пароль")
-
-    /**
-     * Запрашивает сброс пароля через код на email.
-     * @param email Email пользователя (если username null)
-     * @param username Username пользователя (если email null)
-     * @return resetId для подтверждения сброса
-     */
-    suspend fun resetPassword(email: String? = null, username: String? = null): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            if (email.isNullOrBlank() && username.isNullOrBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("Email или username должны быть указаны"))
-            }
-
-            val requestBuilder = IdentityApiOuterClass.ResetPasswordRequest.newBuilder()
-                .setOtpType(IdentityApiOuterClass.OtpTypeId.Email)
-
-            if (!email.isNullOrBlank()) {
-                requestBuilder.email = email
-            } else if (!username.isNullOrBlank()) {
-                requestBuilder.username = username
-            }
-
-            val request = requestBuilder.build()
-            val response = identityClient!!.resetPassword(request)
-
-            Log.d(TAG, "resetPassword: resetId=${response.resetId}")
-            Result.success(response.resetId)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка запроса сброса пароля", e)
-            Result.failure(Exception("Ошибка запроса сброса пароля: ${e.message}"))
-        }
-    }
-
-    /**
-     * Подтверждает сброс пароля кодом с почты.
-     * После успешного подтверждения хеш пароля очищается и возвращаются новые токены.
-     * @param resetId ID запроса сброса пароля
-     * @param otpCode 6-значный код подтверждения
-     * @return Новые токены (access и refresh)
-     */
-    suspend fun confirmResetPassword(resetId: String, otpCode: String): Result<ConfirmResetPasswordResult> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            val request = IdentityApiOuterClass.ConfirmResetPasswordRequest.newBuilder()
-                .setResetId(resetId)
-                .setOtpCode(otpCode)
-                .build()
-
-            val response = identityClient!!.confirmResetPassword(request)
-
-            Log.d(TAG, "confirmResetPassword: Токены получены успешно")
-            Result.success(
-                ConfirmResetPasswordResult(
-                    accessToken = response.accessToken.value,
-                    accessTokenExpiration = response.accessToken.expirationDate.seconds * 1000,
-                    refreshToken = response.refreshToken.value,
-                    refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подтверждения сброса пароля", e)
-            Result.failure(Exception("Ошибка подтверждения сброса пароля: ${e.message}"))
-        }
-    }
-
-    /**
-     * Устанавливает новый пароль после сброса (без требования старого пароля).
-     * Используется после успешного подтверждения кода сброса.
-     * @param newPassword Новый пароль
-     */
-    suspend fun setPasswordAfterReset(newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (identityClient == null) {
-                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
-            }
-
-            // После сброса пароля хеш очищен, поэтому old_password не требуется
-            val request = IdentityApiOuterClass.SetPasswordRequest.newBuilder()
-                .setPassword(newPassword)
-                .build()
-
-            identityClient!!.setPassword(request)
-            Log.d(TAG, "setPasswordAfterReset: Пароль успешно установлен")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка установки пароля после сброса", e)
-            Result.failure(Exception("Ошибка установки пароля: ${e.message}"))
-        }
-    }
 
     // --- Стикеры ---
 

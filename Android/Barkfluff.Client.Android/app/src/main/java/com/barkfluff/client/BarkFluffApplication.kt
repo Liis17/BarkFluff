@@ -5,6 +5,7 @@ import android.app.DownloadManager
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -21,6 +22,7 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
@@ -77,17 +79,34 @@ class BarkFluffApplication : Application() {
 
     @Inject lateinit var callRepository: CallRepository
 
+    @Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
+
     @Inject lateinit var callEventsService: CallEventsService
+
+    @Inject lateinit var autoDownloadNetworkState: AutoDownloadNetworkState
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var callEventsUiJob: Job? = null
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            autoDownloadNetworkState.available(network)
             applicationScope.launch(Dispatchers.IO) {
                 chatDraftRepository.flushAll()
-                outgoingMessageQueue.resume()
+                outgoingMessageQueue.retryAfterNetworkReturn()
             }
+        }
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            autoDownloadNetworkState.capabilities(
+                network,
+                wifi = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI),
+                cellular = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR),
+            )
+        }
+
+        override fun onLost(network: Network) {
+            autoDownloadNetworkState.lost(network)
         }
     }
 
@@ -123,6 +142,7 @@ class BarkFluffApplication : Application() {
         cleanupPendingUpdate()
         // Apply Material You dynamic colors system-wide (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
+        registerActivityLifecycleCallbacks(com.barkfluff.client.audio.AudioMiniPlayerHost(audioPlayback))
         NotificationHelper.createChannels(this)
         CallTelecomManager.registerPhoneAccount(this)
         connectivityManager = getSystemService(ConnectivityManager::class.java)
@@ -169,6 +189,7 @@ class BarkFluffApplication : Application() {
     }
 
     override fun onTerminate() {
+        audioPlayback.stop()
         connectivityManager.unregisterNetworkCallback(networkCallback)
         realtimeService.shutdown()
         stopCallEventsUiBridge()
@@ -203,6 +224,7 @@ class BarkFluffApplication : Application() {
     }
 
     private fun presentIncomingCall(event: CallsApiOuterClass.IncomingCallEvent) {
+        audioPlayback.pause()
         if (event.callId.isBlank() || presentedIncomingCallId == event.callId || CallTelecomRegistry.isAnsweringOrActive(event.callId)) return
         presentedIncomingCallId = event.callId
 

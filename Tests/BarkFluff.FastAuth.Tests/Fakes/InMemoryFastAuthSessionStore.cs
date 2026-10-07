@@ -32,12 +32,15 @@ public sealed class InMemoryFastAuthSessionStore : IFastAuthSessionStore
     }
 
     public Task<FastAuthSessionState> CreateAsync(string deviceName, string operationSystem,
-        string appName, string appVersion, string ipAddress, CancellationToken ct = default)
+        string appName, string appVersion, string ipAddress, string? clientDeviceId = null,
+        CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
+        var id = Guid.NewGuid().ToString();
         var session = new FastAuthSessionState
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = id,
+            ClientDeviceId = Guid.TryParse(clientDeviceId, out var parsedDeviceId) ? parsedDeviceId.ToString() : id,
             CreatedAt = now,
             ExpiresAt = now + FastAuthSessionTiming.SessionTtl,
             DeviceName = deviceName,
@@ -88,6 +91,21 @@ public sealed class InMemoryFastAuthSessionStore : IFastAuthSessionStore
         }
     }
 
+    public Task<FastAuthTransition> TryWaitForTelegramAsync(string id, string confirmationCode, long userId,
+        CancellationToken ct = default)
+    {
+        lock (_gate)
+        {
+            if (!_sessions.TryGetValue(id, out var session)) return Task.FromResult(FastAuthTransition.NotFound);
+            if (IsExpired(session)) { MarkExpired(session); return Task.FromResult(FastAuthTransition.Expired); }
+            if (session.Status is not (FastAuthStatus.Scanned or FastAuthStatus.TelegramPending) ||
+                session.ConfirmationCode != confirmationCode || session.UserId != userId)
+                return Task.FromResult(FastAuthTransition.InvalidState);
+            _sessions[id] = session with { Status = FastAuthStatus.TelegramPending };
+            return Task.FromResult(FastAuthTransition.Ok);
+        }
+    }
+
     public Task<FastAuthTransition> TryAcceptAsync(string id, string confirmationCode, long userId,
         FastAuthSessionResult result, CancellationToken ct = default)
     {
@@ -101,7 +119,7 @@ public sealed class InMemoryFastAuthSessionStore : IFastAuthSessionStore
                 return Task.FromResult(FastAuthTransition.Expired);
             }
 
-            if (session.Status != FastAuthStatus.Scanned
+            if (session.Status is not (FastAuthStatus.Scanned or FastAuthStatus.TelegramPending)
                 || session.ConfirmationCode != confirmationCode
                 || session.UserId != userId)
             {
@@ -131,7 +149,7 @@ public sealed class InMemoryFastAuthSessionStore : IFastAuthSessionStore
                 return Task.FromResult(FastAuthTransition.Expired);
             }
 
-            if (session.Status != FastAuthStatus.Scanned
+            if (session.Status is not (FastAuthStatus.Scanned or FastAuthStatus.TelegramPending)
                 || session.ConfirmationCode != confirmationCode
                 || session.UserId != userId)
             {

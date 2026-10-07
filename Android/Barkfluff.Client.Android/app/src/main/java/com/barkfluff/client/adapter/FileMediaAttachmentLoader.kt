@@ -11,6 +11,8 @@ class FileMediaAttachmentLoader(
     override suspend fun url(fileId: String): String? = mediaGateway.downloadUrl(fileId).getOrNull()
     override suspend fun download(fileId: String, onProgress: (Int) -> Unit): File? =
         mediaGateway.download(fileId, onProgress)
+    override suspend fun downloadAuto(fileId: String, maxBytes: Long, onProgress: (Int) -> Unit): File? =
+        mediaGateway.downloadAuto(fileId, maxBytes, onProgress)
     override fun cached(fileId: String): File? = FileCache.getFile(fileId)
     override fun hasCached(fileId: String): Boolean = FileCache.hasFile(fileId)
     override fun deleteCached(fileId: String) {
