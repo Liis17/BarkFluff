@@ -30,6 +30,7 @@
     <None Remove="html\legal\TERMS_OF_SERVICE.md" />
     <None Remove="html\UniqueUsers\paws.page.html" />
     <None Remove="html\selfhosted.html" />
+    <None Remove="html\about.html" />
     <None Remove="html\userpage.html" />
   </ItemGroup>
 
@@ -53,6 +54,18 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="files\cookie-notice.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\domain-notice.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\domain-notice.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\site-theme.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="html\about.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\barkfluff.html">

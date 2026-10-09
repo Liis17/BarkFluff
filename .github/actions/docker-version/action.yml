@@ -1,5 +1,5 @@
 name: "Docker semver version"
-description: "Запрашивает у реестра последний semver-тег образа, инкрементирует patch и формирует теги для push"
+description: "Повышает nightly-версию или переносит версию nightly → dev → master и формирует теги для push"
 
 inputs:
   image:
@@ -33,35 +33,4 @@ runs:
         IMAGE: ${{ inputs.image }}
         REG_USER: ${{ inputs.registry-username }}
         REG_PASS: ${{ inputs.registry-password }}
-      run: |
-        REGISTRY="docker.barkfluff.com"
-
-        case "$GITHUB_REF_NAME" in
-          dev)
-            REPO="${IMAGE}-dev"
-            ;;
-          nightly)
-            REPO="${IMAGE}-nightly"
-            ;;
-          master|*)
-            REPO="$IMAGE"
-            ;;
-        esac
-
-        # -k: самоподписанный сертификат; 404 (репозитория ещё нет) не валит шаг
-        RESP=$(curl -sk -u "$REG_USER:$REG_PASS" "https://$REGISTRY/v2/$REPO/tags/list" || true)
-
-        # || true: grep без совпадений даёт exit 1 — под set -e -o pipefail это валит шаг
-        LAST=$(echo "$RESP" | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | tr -d '"' | sort -V | tail -n1 || true)
-
-        if [ -z "$LAST" ]; then
-          VERSION="1.0.0"
-        else
-          VERSION="${LAST%.*}.$(( ${LAST##*.} + 1 ))"
-        fi
-
-        echo "Последний тег в реестре: ${LAST:-<нет>}, новая версия: $VERSION"
-
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "tags=$REGISTRY/$REPO:$VERSION,$REGISTRY/$REPO:latest" >> "$GITHUB_OUTPUT"
-        echo "tag_version=$REGISTRY/$REPO:$VERSION" >> "$GITHUB_OUTPUT"
+      run: bash "${{ github.action_path }}/compute-version.sh"

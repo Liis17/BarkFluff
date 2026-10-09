@@ -5,45 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-ru="Удаление аккаунта — Barkfluff" data-en="Account Deletion — Barkfluff">Удаление аккаунта — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <style>
-    :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
-    * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; opacity:0; transition:opacity .4s ease; }
-    body.lang-ready { opacity:1; }
-    main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
-    header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
-    a { color:var(--brand); text-decoration:none; }
-    nav { margin:24px 0; padding:8px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); }
-    nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
-    nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
-    article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
-    article[data-lang] { display:none; }
-    h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
-    h2 { margin-top:32px; font-size:22px; }
-    p, li, td { color:var(--muted); }
-    code { color:#ffd0a0; background:rgba(0,0,0,.35); border:1px solid var(--line); border-radius:6px; padding:1px 5px; }
-    table { width:100%; border-collapse:collapse; margin:16px 0; }
-    th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
-    th { color:var(--text); background:rgba(255,122,41,.08); }
-    footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
-    .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
-    .lang-btn:hover { color:var(--text); }
-    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
-    .callout p { margin:0; }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-theme.css">
   <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
-<body>
+<body class="document-page legal-page">
   <main>
-    <header>
-      <a href="/"><strong>barkfluff</strong></a>
-      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
-      <button class="lang-btn" id="langToggle" type="button">EN</button>
+    <header class="site-header">
+      <a href="/" class="brand-mark"><img src="/favicon.ico" width="28" height="28" alt=""><span>barkfluff</span></a>
+      <div class="site-links">
+        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <a href="/selfhosted">Self-hosted</a>
+        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+        <button class="lang-btn" id="langToggle" type="button">EN</button>
+      </div>
     </header>
-    <nav>
+    <nav class="document-nav">
       <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
       <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
-      <a href="/legal/account-deletion" class="active" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+      <a href="/legal/account-deletion" class="active" aria-current="page" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
       <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
     <article data-lang="ru">
@@ -69,7 +53,7 @@
       <p>Срок ответа на ноде barkfluff.com — до 7 рабочих дней.</p>
 
       <h2>3. Какие данные относятся к аккаунту</h2>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Категория</th><th>Примеры</th><th>Сервис</th></tr></thead>
         <tbody>
           <tr><td>Профиль</td><td>username, email, имя, фамилия, био, аватар, постер, настройки приватности</td><td>Users, Files</td></tr>
@@ -79,7 +63,7 @@
           <tr><td>Файлы</td><td>аватары, постеры, вложения, превью</td><td>Files / Minio</td></tr>
           <tr><td>Онлайн-статус</td><td>статус «в сети», last seen</td><td>Onliner</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>Всё перечисленное хранится на вашей ноде. Резервные копии, срок их хранения и порядок удаления из них определяет администратор ноды.</p>
 
       <h2>4. Что происходит с сообщениями</h2>
@@ -151,7 +135,7 @@
       <p>Response time on the barkfluff.com node: up to 7 business days.</p>
 
       <h2>3. What data belongs to the account</h2>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Category</th><th>Examples</th><th>Service</th></tr></thead>
         <tbody>
           <tr><td>Profile</td><td>username, email, first name, last name, bio, avatar, poster, privacy settings</td><td>Users, Files</td></tr>
@@ -161,7 +145,7 @@
           <tr><td>Files</td><td>avatars, posters, attachments, previews</td><td>Files / Minio</td></tr>
           <tr><td>Online status</td><td>“online” status, last seen</td><td>Onliner</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>All of the above is stored on your node. Backups, their retention period and the procedure for removing data from them are determined by the node administrator.</p>
 
       <h2>4. What happens to messages</h2>
@@ -210,7 +194,14 @@
       </ul>
       <p>An account on another node — only its administrator. The software developer does not process data deletion requests.</p>
     </article>
-    <footer>2026 Barkfluff</footer>
+    <footer>
+      <span>2026 Barkfluff</span>
+      <div class="footer-links">
+        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
+      </div>
+    </footer>
   </main>
   <script>
     (function () {

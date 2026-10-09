@@ -8,11 +8,24 @@ on:
       - nightly
     paths:
       - 'Backend/BarkFluff.Bots/**'
+      - '.github/actions/docker-version/**'
       - 'Backend/rebuild.trigger'
+      - '.github/workflows/build-backend-bots.yml'
+      - '.github/scripts/send-telegram.sh'
+      - '.github/scripts/push-docker-image.sh'
+      - 'global.json'
+      - '.dockerignore'
+      - 'Shared/**'
+      - 'Backend/BarkFluff.GrpcServer/**'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -22,10 +35,10 @@ jobs:
     name: "🐳 Сборка и публикация BarkFluff.Bots"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up .NET SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -37,15 +50,9 @@ jobs:
             /p:UseAppHost=false
           mkdir -p ./publish/logs
 
-      - name: Login to Private Registry
-        uses: docker/login-action@v2
-        with:
-          registry: docker.barkfluff.com
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v4
 
       - name: Compute version
         id: vars
@@ -55,16 +62,19 @@ jobs:
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Build and Push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Backend/BarkFluff.Bots/Dockerfile.slim
-          push: true
-          tags: ${{ steps.vars.outputs.tags }}
+      - name: "📤 Сборка образа и отправка в реестр (пауза 45 с, 3 повтора)"
+        env:
+          PUSH_DELAY: 45
+          DOCKERFILE: ./Backend/BarkFluff.Bots/Dockerfile.slim
+          VERSION: ${{ steps.vars.outputs.version }}
+          TAGS: ${{ steps.vars.outputs.tags }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: bash .github/scripts/push-docker-image.sh
 
       - name: "✅ Уведомление об успехе"
         if: success()
+        continue-on-error: true
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -82,6 +92,7 @@ jobs:
 
       - name: "❌ Уведомление об ошибке"
         if: failure()
+        continue-on-error: true
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}

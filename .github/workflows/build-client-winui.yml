@@ -21,18 +21,19 @@ permissions:
   contents: read
 
 concurrency:
-  group: winui-${{ github.ref }}
+  group: client-winui
   cancel-in-progress: false
+  queue: max
 
 jobs:
   build:
     name: "🪟 Сборка WinUI Client"
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Настройка .NET SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -41,7 +42,11 @@ jobs:
         shell: pwsh
         env:
           BRANCH_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
+          if ($env:REF_TYPE -ne 'branch') {
+            throw 'Сборка клиента разрешена только для веток'
+          }
           switch ($env:BRANCH_NAME) {
             'master' {
               $channel = 'release'
@@ -162,7 +167,7 @@ jobs:
             param([string]$Url)
 
             try {
-              $jsonText = & curl.exe --fail --silent --show-error $Url
+              $jsonText = & curl.exe --fail --silent --show-error --connect-timeout 10 --max-time 30 $Url
               $curlExitCode = $LASTEXITCODE
               if ($curlExitCode -ne 0) {
                 $global:LASTEXITCODE = 0
@@ -181,17 +186,11 @@ jobs:
           [xml]$sourceManifest = [System.IO.File]::ReadAllText($manifestPath)
           $sourceIdentity = $sourceManifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
           $sourceManifestVersion = [string]$sourceIdentity.Version
-          $baselineVersion = Convert-ToStorageVersion $sourceManifestVersion
 
-          $storageVersion = Get-StorageVersion 'https://storage.barkfluff.com/get/barkfluffwinui/nightly/version'
+          $versionChannel = if ($env:CHANNEL -eq 'release') { 'dev' } else { 'nightly' }
+          $storageVersion = Get-StorageVersion "https://storage.barkfluff.com/get/barkfluffwinui/$versionChannel/version"
           if ($null -eq $storageVersion) {
-            $storageVersion = Get-StorageVersion 'https://storage.barkfluff.com/get/barkfluffwinui/beta/version'
-          }
-          if ($null -eq $storageVersion) {
-            $storageVersion = $baselineVersion
-          }
-          if ($null -eq $storageVersion) {
-            throw 'Не удалось определить базовую версию WinUI'
+            throw "Не удалось получить корректную WinUI-версию канала $versionChannel"
           }
 
           $packageVersion = $storageVersion
@@ -244,8 +243,8 @@ jobs:
           $preparedApplicationManifest = $sourceApplicationManifest.Replace(
             'version="1.0.0.0"',
             "version=`"$manifestVersion`"")
-          if ($preparedApplicationManifest -eq $sourceApplicationManifest) {
-            throw 'Версия app.manifest не заменена'
+          if (-not $preparedApplicationManifest.Contains("version=`"$manifestVersion`"")) {
+            throw 'Версия app.manifest не соответствует вычисленной'
           }
 
           [System.IO.File]::WriteAllText(
