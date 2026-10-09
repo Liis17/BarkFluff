@@ -9,14 +9,14 @@
 
 | Файл | Маршрут(ы) | Описание |
 |------|-----------|----------|
-| `Controllers/HomeController.cs` | `GET /` | Главная страница — читает и отдаёт `html/barkfluff.html` |
+| `Controllers/HomeController.cs` | `GET /`, `GET /about` | Читает и отдаёт главную `html/barkfluff.html` и страницу «О проекте» `html/about.html` |
 | `Controllers/FallbackController.cs` | `GET /{**catchAll}` | Перехватывает все необработанные пути: `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService; ничего не подошло → `html/404.html` с кодом 404 |
 | `Controllers/UserApiController.cs` | `GET /api/user/{username}` | REST API публичного профиля пользователя (делегирует в UserProfileService) |
 | `Controllers/SupportChatController.cs` | `POST /api/support/send`, `GET /api/support/messages/{chatId}` | Чат поддержки: отправка сообщений и получение истории |
 | `Controllers/VersionApiController.cs` | `GET /api/versions` | Возвращает версии Android, WinUI и macOS по каналам `release`, `beta`, `dev`, `nightly` |
 | `Controllers/InstallController.cs` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Legacy-скрипты установки, оставлены для совместимости; на главной не показываются |
 | `Controllers/DownloadController.cs` | `GET /download/installer` | Отдаёт `Barkfluff.Updater.CLI.exe` — инсталлятор Windows |
-| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт ассеты по whitelist `_allowedFiles`: изображения (png/jpg/webp для магазинов, превью и фоновых тем) и `cookie-notice.js` |
+| `Controllers/AssetsController.cs` | `GET /assets/{filename}` | Раздаёт ассеты по whitelist `_allowedFiles`: изображения (png/jpg/webp для магазинов, превью и фоновых тем), `cookie-notice.js`, `domain-notice.js` и `domain-notice.css` |
 | `Controllers/FaviconController.cs` | `GET /favicon.ico` | Отдаёт `files/favicon.ico` |
 
 ---
@@ -50,7 +50,8 @@
 
 | Файл/Папка | Описание |
 |-----------|----------|
-| `html/barkfluff.html` | Главная страница сайта: переключатель Nightly/Dev/Release (по умолчанию Release), отдельный Web-клиент с векторным browser-глифом, группы Desktop/Mobile |
+| `html/barkfluff.html` | Главная: лендинг в стиле t3.codes (светлый Release, тёмные Dev/Nightly), центрированный hero и полноширинное превью Windows/Android/Web с кнопками; возможности после hero; переключатель Nightly/Dev/Release (по умолчанию Release), постоянный заголовок раздела загрузок, две цельные панели компьютера и телефона с разделителями строк платформ и нейтральными кнопками скачивания, независимый Web-клиент над каналами; нижний `#developers` с proto, GitHub и `/selfhosted` |
+| `html/about.html` | RU/EN страница «О проекте»: история с первым коммитом, команда, MIT, GitHub, контакты и постоянное пояснение `/about#domain-history` |
 | `html/404.html` | Страница «не найдено» (отдаётся `FallbackController` с кодом 404) |
 | `html/userpage.html` | Шаблон публичной страницы пользователя (`%%username%%`) |
 | `html/UniqueUsers/paws.page.html` | Специальная страница для пользователя `li_is` с анимированными лапками-следами (SVG + CSS keyframes) |
@@ -72,8 +73,11 @@
 | `files/install.sh` | Скрипт установки Linux (release) |
 | `files/installbeta.sh` | Скрипт установки Linux (beta) |
 | `files/favicon.ico` | Иконка сайта |
+| `files/site-theme.css` | Общая светлая палитра Release главной и оформление self-hosted/legal: шрифты, фон, навигация, карточки, таблицы и код |
 | `files/linkpreview.png` | OG-изображение для превью ссылок |
 | `files/cookie-notice.js` | Баннер об использовании cookie, подключается во все страницы `html/` |
+| `files/domain-notice.js` | Закрываемая RU/EN плашка о прежнем использовании домена на главной и `/about`; общий ключ `bf_domain_notice_v1` |
+| `files/domain-notice.css` | Стили плашки об истории домена; в потоке страницы, цвета через CSS-переменные |
 | `files/barkfluff.windows.png` | Скриншот Windows-клиента |
 | `files/barkfluff.web.png` | Скриншот Web-клиента |
 | `files/barkfluff.android.jpg` | Скриншот Android-клиента |

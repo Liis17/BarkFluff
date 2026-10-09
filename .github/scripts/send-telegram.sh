@@ -7,7 +7,12 @@ set -euo pipefail
 : "${TG_ACTION_URL:?TG_ACTION_URL is required}"
 
 tmp_dir=$(mktemp -d)
-trap 'rm -rf "$tmp_dir"' EXIT
+cleanup() {
+  local exit_status=$?
+  rm -rf "$tmp_dir"
+  exit "$exit_status"
+}
+trap cleanup EXIT
 
 message_file="$tmp_dir/message.txt"
 reply_markup_file="$tmp_dir/reply_markup.json"
@@ -36,15 +41,27 @@ printf '{"inline_keyboard":[[{"text":"%s","url":"%s"}]]}' \
 
 curl_message_file="$message_file"
 curl_reply_markup_file="$reply_markup_file"
-curl_ssl_options=()
+set --
 if command -v cygpath >/dev/null 2>&1; then
   curl_message_file=$(cygpath -w "$message_file")
   curl_reply_markup_file=$(cygpath -w "$reply_markup_file")
-  curl_ssl_options+=(--ssl-revoke-best-effort)
+  set -- --ssl-revoke-best-effort
 fi
 
-curl "${curl_ssl_options[@]}" -sS -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+response=$(curl "$@" --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+  -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
   --data-urlencode "chat_id=${TG_CHAT}" \
   --data-urlencode "parse_mode=Markdown" \
   --data-urlencode "text@${curl_message_file}" \
-  --data-urlencode "reply_markup@${curl_reply_markup_file}"
+  --data-urlencode "reply_markup@${curl_reply_markup_file}")
+
+python_command=$(command -v python3 || command -v python)
+printf '%s' "$response" | "$python_command" -c '
+import json, sys
+try:
+    response = json.load(sys.stdin)
+    if not isinstance(response, dict) or response.get("ok") is not True:
+        raise ValueError("Telegram API не подтвердил отправку")
+except (ValueError, TypeError) as error:
+    sys.exit(f"Уведомление не отправлено: {error}")
+'
