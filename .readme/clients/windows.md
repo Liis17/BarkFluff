@@ -40,4 +40,4 @@ start BarkFluff.sln
 
 The solution also includes the legacy WPF client, the DB editor, and the updater CLI. The command above builds the supported primary client only.
 
-For internal structure and runtime behaviour, see [Windows WinUI in the knowledge base](../../Obsidian/ClaudeVault/Клиенты/Windows-WinUI.md). The legacy [Windows WPF client](../../Obsidian/ClaudeVault/Клиенты/Windows-WPF.md) is retained as a predecessor reference.
+For internal structure and runtime behaviour, see [Windows WinUI in the knowledge base](../../Obsidian/ClaudeVault/Clients/Windows-WinUI.md). The legacy [Windows WPF client](../../Obsidian/ClaudeVault/Clients/Windows-WPF.md) is retained as a predecessor reference.

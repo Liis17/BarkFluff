@@ -52,4 +52,4 @@ The generated bundles are committed under `wwwroot/js/proto/` and `wwwroot/js/ve
 dotnet build Backend/BarkFluff.Web/BarkFluff.Web.csproj
 ```
 
-For details on the browser architecture, auth metadata, and real-time updates, see [Web in the knowledge base](../../Obsidian/ClaudeVault/Клиенты/Web.md).
+For details on the browser architecture, auth metadata, and real-time updates, see [Web in the knowledge base](../../Obsidian/ClaudeVault/Clients/Web.md).
