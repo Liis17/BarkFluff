@@ -12,11 +12,17 @@ on:
       - 'Shared/BarkFluff.Proto/**'
       - 'Shared/BarkFluff.Shared.Exceptions/**'
       - 'Tests/BarkFluff.Developers.Tests/**'
+      - '.github/actions/docker-version/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -98,6 +104,7 @@ jobs:
           file: ./Backend/Barkfluff.Developers/Dockerfile.slim
           push: true
           tags: ${{ steps.vars.outputs.tags }}
+          labels: org.opencontainers.image.version=${{ steps.vars.outputs.version }}
 
       - name: "\u2705 Уведомление об успехе"
         if: success()
