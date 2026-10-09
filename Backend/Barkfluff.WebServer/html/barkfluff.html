@@ -8,6 +8,7 @@
   <link rel="canonical" href="https://barkfluff.com/">
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="/assets/domain-notice.css">
+  <link rel="stylesheet" href="/assets/site-theme.css">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://barkfluff.com/">
@@ -24,705 +25,326 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 
   <style>
-    /* ===== LANG FADE-IN (скрываем до применения локализации) ===== */
-    body { opacity: 0; transition: opacity .45s ease; }
-    body.lang-ready { opacity: 1; }
-
-    /* ===== BASE (styles.css) ===== */
     :root {
-      --bg-0: #050820;
-      --bg-1: #080c28;
-      --bg-2: #0e1538;
-      --bg-3: #172052;
-      --line: rgba(190, 205, 255, 0.10);
-      --line-strong: rgba(190, 205, 255, 0.18);
-      --ink: #f2f4ff;
-      --ink-dim: #b4bcdf;
-      --ink-mute: #98a3d0;
-      --brand: #8f9cff;
-      --brand-2: #6a78ee;
-      --brand-deep: #3a45a8;
-      --brand-glow: rgba(143, 156, 255, 0.35);
-      --brand-soft: #c3cbff;
-      --button-top: #a3adff;
-      --button-end: #6f7df0;
-      --button-ink: #060a24;
-      --surface-card: linear-gradient(180deg, rgba(22,32,82,0.72), rgba(8,12,38,0.72));
-      --surface-panel: rgba(5,8,30,0.62);
-      --grid-line: rgba(170,190,255,0.03);
-      --radius-sm: 10px;
-      --radius: 16px;
-      --radius-lg: 24px;
-      --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
-      --shadow-brand: 0 12px 30px -8px var(--brand-glow);
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; }
-
-    body {
-      background: var(--bg-1);
-      color: var(--ink);
-      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-      font-feature-settings: "ss01", "cv11";
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-      transition: background-color .45s ease, color .35s ease;
-    }
-
-    .eyebrow {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--ink-mute);
-    }
-
-    .bg-mesh {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        linear-gradient(180deg, rgba(3,5,18,0.2), rgba(3,5,18,0.42)),
-        url('/assets/channel-nightly.webp') center / cover #050820;
-      transition: opacity .45s ease;
-    }
-    .bg-mesh::after {
-      content: "";
-      position: absolute; inset: 0;
-      background: linear-gradient(180deg, rgba(20,7,10,0.74), rgba(20,7,10,0.92)),
-        url('/assets/channel-nightly.webp') center / cover;
-      opacity: 0;
-      transition: opacity .45s ease;
-    }
-    body[data-channel="dev"] {
-      --bg-0: #061326;
-      --bg-1: #081a32;
-      --bg-2: #0c2442;
-      --bg-3: #123457;
-      --line: rgba(180, 224, 255, 0.12);
-      --line-strong: rgba(180, 224, 255, 0.22);
-      --ink: #eff8ff;
-      --ink-dim: #a9c8df;
-      --ink-mute: #7092b0;
-      --brand: #50bfff;
-      --brand-2: #208bd0;
-      --brand-deep: #105184;
-      --brand-glow: rgba(80, 191, 255, 0.32);
-      --brand-soft: #9bdcff;
-      --button-top: #54c9ff;
-      --button-end: #2388d0;
-      --button-ink: #04121f;
-      --surface-card: linear-gradient(180deg, rgba(13,43,75,0.84), rgba(5,21,42,0.82));
-      --surface-panel: rgba(4, 19, 38, 0.72);
-      --grid-line: rgba(124, 198, 255, 0.11);
-    }
-    body[data-channel="dev"] .bg-mesh::after {
-      background: linear-gradient(180deg, rgba(5,18,39,0.72), rgba(5,18,39,0.9)),
-        url('/assets/channel-dev.webp') center / cover;
-      opacity: 1;
+      --font-heading: 'Montserrat', 'Manrope', system-ui, sans-serif;
+      --bg-0: #09090b; --bg-1: #0b0b0d; --bg-2: #141416; --bg-3: #1d1d20;
+      --line: #ffffff12; --line-strong: #ffffff24;
+      --ink: #f5f5f6; --ink-dim: #a1a1aa; --ink-mute: #777780;
+      --brand: #d98965; --brand-2: #b96948; --brand-deep: #8b4e36;
+      --brand-soft: #e4aa8f; --brand-glow: #d989651a;
+      --button-top: #f5f5f6; --button-end: #f5f5f6; --button-ink: #121214;
+      --surface-card: linear-gradient(145deg, #ffffff03, #ffffff01);
+      --surface-panel: #121214; --grid-line: #ffffff05;
+      --shadow-card: 0 20px 60px #0006; --shadow-brand: none;
+      --surface-subtle: #ffffff02; --surface-soft: #ffffff05;
+      --surface-hover: #ffffff08; --surface-input: #ffffff04;
+      --preview-label: #121214e8; --orbit-surface: linear-gradient(145deg, #242426, #151517);
+      --platform-windows: #72b8e4; --platform-android: #98c7a7;
+      --success: #86c59a; --warning: #e2bb77;
     }
     body[data-channel="release"] {
-      --bg-0: #edf3f6;
-      --bg-1: #f6f9fb;
-      --bg-2: #e7eef2;
-      --bg-3: #d9e5eb;
-      --line: rgba(23, 48, 66, 0.12);
-      --line-strong: rgba(23, 48, 66, 0.2);
-      --ink: #173042;
-      --ink-dim: #526b7b;
-      --ink-mute: #587080;
-      --brand: #c75f31;
-      --brand-2: #a84822;
-      --brand-deep: #7d351b;
-      --brand-glow: rgba(199, 95, 49, 0.25);
-      --brand-soft: #b6532a;
-      --button-top: #b95229;
-      --button-end: #a84822;
-      --button-ink: #fff;
-      --surface-card: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(239,245,247,0.86));
-      --surface-panel: rgba(255,255,255,0.7);
-      --grid-line: rgba(23,48,66,0.045);
+      --surface-subtle: rgba(23,48,66,.025); --surface-soft: rgba(23,48,66,.055);
+      --surface-hover: rgba(23,48,66,.075); --surface-input: rgba(23,48,66,.04);
+      --preview-label: #fffffff0; --orbit-surface: linear-gradient(145deg, #fff, #edf3f6);
+      --platform-windows: #3994de; --platform-android: #329b68;
+      --success: #15803d; --warning: #b45309;
+      --shadow-card: 0 20px 60px #17304220;
     }
-    body[data-channel="release"] .bg-mesh::after {
-      background: linear-gradient(180deg, rgba(246,249,251,0.68), rgba(230,239,243,0.86)),
-        url('/assets/channel-release.webp') center / cover;
-      opacity: 1;
+    body[data-channel="release"] .bg-mesh {
+      display: block; position: fixed; inset: 0; pointer-events: none;
+      background: linear-gradient(180deg, #f6f9fbcc, #e6eff3e6), url('/assets/channel-release.webp') center / cover;
     }
-    .bg-grain {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      opacity: 0.22; mix-blend-mode: overlay;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    body[data-channel="nightly"] { --brand: #b0a3ef; --brand-soft: #c4b9f5; --brand-glow: #b0a3ef1a; }
+    body[data-channel="dev"] { --brand: #72b8e4; --brand-soft: #99ccec; --brand-glow: #72b8e41a; }
+    *, *::before, *::after { box-sizing: border-box; }
+    * { margin: 0; padding: 0; }
+    html { scroll-padding-top: 32px; }
+    body {
+      color-scheme: dark; background: var(--bg-1); color: var(--ink);
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased; font-feature-settings: "ss01", "cv11";
+      opacity: 0; transition: opacity 180ms ease;
     }
+    body.lang-ready { opacity: 1; }
+    button, input { font: inherit; }
+    a { text-underline-offset: 4px; }
+    :is(a, button, input, [tabindex]):focus-visible { outline: 2px solid var(--brand); outline-offset: 5px; }
+    .bg-mesh, .bg-grain { display: none; }
     .grid-overlay {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background-image:
-        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-      background-size: 80px 80px;
-      mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
-      -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+      position: absolute; inset: 0 0 auto; height: 1150px; pointer-events: none;
+      background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(transparent, #000 12%, #000 60%, transparent);
     }
-    body[data-channel="dev"] .grid-overlay { background-size: 48px 48px; }
-    body[data-channel="release"] .grid-overlay { background-size: 120px 120px; }
-    body[data-channel="release"] .bg-grain { opacity: .08; mix-blend-mode: multiply; }
-
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-      padding: 14px 20px; border: 1px solid transparent; border-radius: 14px;
-      font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: 0.01em;
-      cursor: pointer; text-decoration: none; color: inherit;
-      transition: transform .18s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease;
-      white-space: nowrap;
-    }
-    .btn:active { transform: translateY(1px); }
-    .btn-primary {
-      background: linear-gradient(180deg, var(--button-top) 0%, var(--button-end) 100%);
-      color: var(--button-ink);
-      box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255,255,255,0.25);
-    }
-    .btn-primary:hover {
-      box-shadow: 0 16px 40px -8px var(--brand-glow), inset 0 1px 0 rgba(255,255,255,0.3);
-      transform: translateY(-1px);
-    }
-    .btn-ghost {
-      background: color-mix(in srgb, var(--ink) 4%, transparent); border-color: var(--line-strong); color: var(--ink);
-    }
-    .btn-ghost:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); border-color: var(--line-strong); }
-    .btn-soft {
-      background: color-mix(in srgb, var(--brand) 12%, transparent); border-color: color-mix(in srgb, var(--brand) 30%, transparent); color: var(--brand-soft);
-    }
-    .btn-soft:hover { background: color-mix(in srgb, var(--brand) 18%, transparent); border-color: color-mix(in srgb, var(--brand) 45%, transparent); color: var(--ink); }
-    .btn svg { width: 16px; height: 16px; }
-
-    .brand-mark {
-      display: inline-flex; align-items: center; gap: 10px;
-      font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
-      color: var(--ink); text-decoration: none;
-    }
-    .brand-mark .glyph {
-      width: 28px; height: 28px; border-radius: 8px;
-      background: linear-gradient(135deg, var(--button-top), var(--brand-deep));
-      display: grid; place-items: center;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px var(--brand-glow);
-      position: relative;
-    }
-    .brand-mark .glyph::before {
-      content: ""; position: absolute; inset: 0; border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.18);
-    }
-    .brand-mark .glyph svg { width: 16px; height: 16px; fill: #fff; }
-
-    .page { position: relative; z-index: 2; min-height: 100vh; }
-
-    /* ===== HOME (home.css) ===== */
-    .home-page {
-      max-width: 1200px; margin: 0 auto;
-      padding: 80px 48px 60px; position: relative;
-    }
-
+    .page { position: relative; }
+    .home-page { max-width: 1280px; margin: auto; padding: 0 48px; }
+    .eyebrow { font: 10px 'JetBrains Mono', monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-mute); }
     .home-nav {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 72px;
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+      min-height: 76px; border-bottom: 1px solid var(--line);
     }
-    .home-nav-right { display: flex; align-items: center; gap: 20px; }
-    .home-nav { flex-wrap: wrap; gap: 20px; }
-    .home-nav-right, .home-footer-links { flex-wrap: wrap; }
-    .home-nav-link {
-      font-size: 13px; font-weight: 600; color: var(--ink-dim); text-decoration: none; transition: color 0.2s;
+    .brand-mark { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--ink); text-decoration: none; }
+    .brand-mark .glyph { display: grid; place-items: center; width: 28px; height: 28px; }
+    .brand-mark .glyph img { width: 100%; height: 100%; border-radius: 7px; }
+    .home-nav-right { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; }
+    .home-nav-link { font-size: 13px; color: var(--ink-dim); text-decoration: none; }
+    .lang-btn { border: 0; background: none; padding: 6px; color: var(--ink-dim); font-size: 10px; font-weight: 700; cursor: pointer; }
+    .domain-notice { margin: 20px 0 0; padding: 12px 16px; border-radius: 8px; font-size: 11px; background: var(--surface-subtle); }
+    .domain-notice a { color: var(--ink-dim); }
+    .domain-notice button { flex-basis: 28px; min-height: 28px; font-size: 18px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      border: 1px solid var(--line-strong); border-radius: 9px; padding: 13px 20px;
+      color: var(--ink); background: transparent; text-decoration: none;
+      font: 600 13px 'Manrope', sans-serif; cursor: pointer; white-space: nowrap;
+      transition: transform 140ms cubic-bezier(.23,1,.32,1), background-color 180ms ease, border-color 180ms ease;
     }
-    .home-nav-link:hover { color: var(--ink); }
-
-    .hero {
-      display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.2fr);
-      gap: 64px; align-items: center; margin-bottom: 80px;
-    }
-    .hero-text { display: flex; flex-direction: column; gap: 20px; }
-    .hero-eyebrow {
-      display: inline-flex; align-items: center; gap: 10px; align-self: flex-start;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--brand-soft); padding: 6px 12px; border-radius: 999px;
-      background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
-    }
-    .hero-eyebrow .pulse {
-      width: 6px; height: 6px; border-radius: 50%; background: var(--brand);
-      box-shadow: 0 0 8px var(--brand); animation: pulseDot 1.6s ease-in-out infinite;
-    }
-    @keyframes pulseDot {
-      0%, 100% { opacity: 0.5; transform: scale(0.9); }
-      50% { opacity: 1; transform: scale(1.15); }
-    }
-
-    .hero-title {
-      font-size: clamp(48px, 6.5vw, 88px); font-weight: 800;
-      line-height: 0.95; letter-spacing: -0.04em; color: var(--ink);
-    }
-    .hero-title .accent {
-      background: linear-gradient(120deg, var(--brand-soft) 10%, var(--brand) 50%, var(--brand-deep) 95%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .hero-title em {
-      font-style: normal; display: inline-block; position: relative; padding: 0 4px;
-    }
-    .hero-title em::after {
-      content: ""; position: absolute; left: 0; right: 0; bottom: 6px;
-      height: 14%; background: color-mix(in srgb, var(--brand) 28%, transparent); border-radius: 4px; z-index: -1;
-    }
-
-    .hero-sub { font-size: 17px; line-height: 1.55; color: var(--ink-dim); max-width: 460px; }
-    .project-intro { font-size: 13px; line-height: 1.6; color: var(--ink-dim); max-width: 460px; }
-    .hero-sub s { color: var(--ink-mute); text-decoration-color: color-mix(in srgb, var(--brand) 50%, transparent); text-decoration-thickness: 2px; }
-
-    .hero-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-top: 4px; }
-    .hero-cta-btn { padding: 15px 24px; font-size: 15px; }
-    .hero-cta-btn.is-pending { opacity: .7; }
-    .hero-cta-note { color: var(--ink-mute); font: 11px 'JetBrains Mono', monospace; }
+    .btn svg { width: 15px; height: 15px; }
+    .btn-primary { background: var(--button-top); color: var(--button-ink); border-color: var(--button-top); }
+    .btn-soft, .btn-ghost { background: var(--surface-subtle); }
+    .btn:active, button:active { transform: scale(.97); }
+    .hero { display: flex; flex-direction: column; align-items: center; gap: 64px; padding: 92px 0 0; }
+    .hero-text { position: relative; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; width: 100%; }
+    .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-dim); font: 10px 'JetBrains Mono', monospace; letter-spacing: .08em; }
+    .hero-eyebrow .pulse { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
+    .hero-title { font-family: var(--font-heading); font-size: clamp(48px, 6.7vw, 96px); line-height: 1.04; letter-spacing: -.045em; font-weight: 900; text-transform: uppercase; }
+    .hero-title em { display: inline-block; margin-top: .08em; padding: .16em .12em .1em; font-style: normal; color: var(--bg-0); background: var(--brand); }
+    .hero-sub { max-width: 700px; font-size: 17px; line-height: 1.8; color: var(--ink-dim); }
+    .hero-sub span { color: var(--ink-dim) !important; }
+    .hero-sub s { color: var(--ink-mute); }
+    .project-intro { max-width: 570px; font-size: 13px; line-height: 1.8; color: var(--ink-mute); }
+    .hero-cta { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 6px; }
+    .hero-cta-btn { min-height: 50px; padding: 14px 25px; font-size: 14px; }
+    .hero-cta-note { font: 10px 'JetBrains Mono', monospace; color: var(--ink-mute); }
     .hero-cta-note:empty { display: none; }
-
-    .hero-meta {
-      display: flex; align-items: center; gap: 18px; margin-top: 8px;
-      font-size: 12px; color: var(--ink-mute); font-weight: 500;
+    .hero-meta { display: flex; justify-content: center; flex-wrap: wrap; align-items: center; gap: 14px; color: var(--ink-mute); font-size: 11px; }
+    .hero-meta b { color: var(--ink-dim); font-weight: 500; }
+    .hero-meta .divider { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-mute); }
+    .hero-orbit { position: absolute; inset: 0; pointer-events: none; }
+    .orbit-tile {
+      position: absolute; display: grid; place-items: center; width: 68px; height: 68px;
+      border: 1px solid var(--line-strong); border-radius: 17px; background: var(--orbit-surface);
+      box-shadow: inset 0 1px 0 #ffffff08, 0 10px 30px #0002; color: var(--ink-dim);
     }
-    .hero-meta b { color: var(--ink-dim); font-weight: 700; }
-    .hero-meta .divider { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-mute); opacity: 0.5; }
-
-    /* Preview stack */
-    .preview-stack {
-      position: relative; aspect-ratio: 1 / 0.75;
-      max-width: 620px; justify-self: end; width: 100%;
-    }
-    .preview-frame {
-      position: absolute; inset: 0; border-radius: 20px; overflow: hidden;
-      border: 1px solid var(--line-strong); background: var(--bg-0);
-      box-shadow: 0 40px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px color-mix(in srgb, var(--brand) 10%, transparent), inset 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent);
-      transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease;
-    }
-    .preview-frame.is-active { opacity: 1; transform: translate(0,0) rotate(0); z-index: 3; }
-    .preview-frame.peek-left  { opacity: 0.4; transform: translate(-8%, 4%) rotate(-4deg) scale(0.86); z-index: 1; }
-    .preview-frame.peek-right { opacity: 0.4; transform: translate(8%, -4%) rotate(4deg) scale(0.86); z-index: 2; }
-    .preview-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
-
-    .device-tag {
-      position: absolute; top: 14px; left: 14px; z-index: 5;
-      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
-      border-radius: 8px; background: var(--surface-panel); backdrop-filter: blur(10px);
-      border: 1px solid var(--line-strong); font-size: 11px; font-weight: 600;
-      color: var(--ink-dim); letter-spacing: 0.04em;
-    }
-    .device-tag svg { width: 11px; height: 11px; fill: currentColor; }
-
-    .preview-caption {
-      position: absolute; bottom: -18px; right: -12px; z-index: 5;
-      padding: 10px 14px; background: var(--surface-panel); backdrop-filter: blur(16px);
-      border: 1px solid var(--line-strong); border-radius: 14px;
-      font-size: 11px; line-height: 1.3; color: var(--ink-dim); max-width: 180px;
-      box-shadow: 0 12px 28px -8px rgba(0,0,0,0.6);
-    }
-    .preview-caption .kbd {
-      display: inline-block; padding: 1px 6px; border-radius: 4px;
-      background: color-mix(in srgb, var(--ink) 8%, transparent); border: 1px solid var(--line-strong);
-      color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; margin: 0 1px;
-    }
-
-    /* ===== CLIENT CHANNELS ===== */
-    .client-hub { margin-bottom: 48px; }
-    .channel-head {
-      display: flex; align-items: flex-end; justify-content: space-between; gap: 28px;
-      margin-bottom: 22px;
-    }
-    .channel-head-copy { max-width: 580px; }
-    .channel-head .eyebrow { color: var(--brand-soft); }
-    .channel-title {
-      margin-top: 8px; font-size: clamp(28px, 4vw, 44px); line-height: 1.05;
-      letter-spacing: -0.04em; font-weight: 800; color: var(--ink);
-    }
-    .channel-description { margin-top: 10px; color: var(--ink-dim); font-size: 14px; line-height: 1.55; }
-    .channel-switcher {
-      display: grid; grid-template-columns: repeat(3, minmax(104px, 1fr)); gap: 5px;
-      padding: 5px; min-width: 350px; border: 1px solid var(--line-strong); border-radius: 16px;
-      background: var(--surface-panel); box-shadow: 0 16px 38px -24px rgba(0,0,0,.55);
-    }
-    .channel-tab {
-      appearance: none; border: 1px solid transparent; border-radius: 11px; padding: 11px 12px;
-      background: transparent; color: var(--ink-mute); font: inherit; text-align: left; cursor: pointer;
-      transition: transform .18s ease, background-color .25s ease, border-color .25s ease, color .2s ease, box-shadow .25s ease;
-    }
-    .channel-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-    .channel-tab:active { transform: scale(.97); }
-    .channel-tab.is-active {
-      color: var(--ink); background: color-mix(in srgb, var(--brand) 15%, transparent);
-      border-color: color-mix(in srgb, var(--brand) 42%, transparent); box-shadow: 0 8px 20px -15px var(--brand-glow);
-    }
-    .channel-tab-top { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; }
-    .channel-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .6; }
-    .channel-tab.is-active .channel-tab-dot { opacity: 1; box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 15%, transparent); }
-    .channel-tab-branch {
-      display: block; margin-top: 4px; padding-left: 14px; color: var(--ink-mute);
-      font: 10px 'JetBrains Mono', monospace; letter-spacing: .02em;
-    }
-    .channel-tab.is-active .channel-tab-branch { color: var(--brand-soft); }
-    .channel-status {
-      display: inline-flex; align-items: center; gap: 7px; margin-top: 16px; padding: 7px 10px;
-      border: 1px solid var(--line); border-radius: 999px; color: var(--ink-mute); font-size: 11px;
-      background: color-mix(in srgb, var(--surface-panel) 75%, transparent);
-    }
-    .channel-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,.55); }
-    .channel-status.is-error .channel-status-dot { background: #fbbf24; box-shadow: 0 0 10px rgba(251,191,36,.55); }
-    .channel-status-retry { padding: 0; border: 0; background: none; color: var(--brand-soft); font: inherit; text-decoration: underline; cursor: pointer; }
-    .channel-status-retry[hidden] { display: none; }
-
+    .orbit-tile svg { width: 29px; height: 29px; fill: currentColor; }
+    .orbit-tile:nth-child(1) { left: 5%; top: 74px; transform: rotate(-12deg); color: var(--platform-windows); }
+    .orbit-tile:nth-child(2) { right: 5%; top: 74px; transform: rotate(12deg); color: var(--platform-android); }
+    .orbit-tile:nth-child(3) { left: 13%; bottom: 52px; transform: rotate(-6deg); font: 15px 'JetBrains Mono', monospace; color: var(--brand-soft); }
+    .orbit-tile:nth-child(4) { right: 13%; bottom: 52px; transform: rotate(6deg); }
+    .preview-stack { position: relative; width: 100%; height: clamp(280px, 55vw, 680px); border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-0); overflow: hidden; box-shadow: 0 25px 70px #0003; }
+    .preview-frame { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 220ms ease; }
+    .preview-stack.is-instant .preview-frame { transition: none; }
+    .preview-frame.is-active { opacity: 1; visibility: visible; }
+    .preview-frame img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+    .device-tag { position: absolute; top: 16px; left: 16px; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--preview-label); color: var(--ink-dim); font-size: 10px; }
+    .device-tag svg { width: 12px; height: 12px; fill: currentColor; }
+    .preview-caption { position: absolute; bottom: 14px; right: 14px; z-index: 3; padding: 8px 10px; border-radius: 6px; background: var(--preview-label); color: var(--ink-dim); font-size: 10px; }
+    .preview-caption .kbd { font-family: 'JetBrains Mono', monospace; }
+    .preview-controls { display: flex; justify-content: center; gap: 5px; margin: 18px 0 0; }
+    .preview-control { padding: 8px 14px; border: 1px solid transparent; border-radius: 6px; color: var(--ink-mute); background: none; font-size: 11px; cursor: pointer; }
+    .preview-control[aria-pressed="true"] { border-color: var(--line-strong); background: var(--surface-soft); color: var(--ink); }
+    .features-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 72px 0 80px; border-bottom: 1px solid var(--line); }
+    .feature { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 0 26px; border-right: 1px solid var(--line); }
+    .feature:first-child { padding-left: 0; }
+    .feature:last-child { padding-right: 0; border: 0; }
+    .f-icon { color: var(--brand-soft); margin-bottom: 6px; }
+    .f-icon svg { width: 20px; height: 20px; fill: currentColor; }
+    .f-title { font-size: 13px; font-weight: 600; }
+    .f-body { font-size: 13px; line-height: 1.8; color: var(--ink-dim); }
+    .web-client-section { margin: 80px 0 0; }
     .web-client-section {
-      position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: center;
-      overflow: hidden; margin-bottom: 28px; padding: 28px; border: 1px solid var(--line-strong); border-radius: 22px;
-      background: var(--surface-card); box-shadow: var(--shadow-card);
-      transition: transform .28s ease, border-color .28s ease, background-color .35s ease, box-shadow .3s ease;
+      --platform-color: var(--ink-dim); display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-rows: auto auto;
+      align-content: center; gap: 6px 16px; min-height: 120px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-card);
     }
-    .web-client-section::before {
-      content: ""; position: absolute; inset: 0; pointer-events: none;
-      background: radial-gradient(500px 220px at 100% 50%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%);
-    }
-    .web-client-copy, .web-client-preview { position: relative; z-index: 1; }
-    .web-client-copy { min-width: 0; }
-    .web-client-copy .eyebrow { color: var(--brand-soft); }
-    .web-client-title { margin-top: 8px; font-size: clamp(22px, 3vw, 32px); letter-spacing: -.035em; font-weight: 800; }
-    .web-client-description { max-width: 520px; margin-top: 9px; color: var(--ink-dim); font-size: 13px; line-height: 1.55; }
-    .web-client-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; color: var(--ink-mute); font-size: 11px; }
-    .web-client-meta span { padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; }
-    .web-client-action { margin-top: 20px; }
-    .web-client-preview {
-      justify-self: end; width: 100%; max-width: 280px; aspect-ratio: 16 / 10; overflow: hidden;
-      border: 1px solid var(--line-strong); border-radius: 15px; background: var(--bg-0);
-      box-shadow: 0 18px 30px -20px rgba(0,0,0,.8);
-    }
-    .browser-glyph {
-      display: grid; place-items: center; width: 100%; height: 100%; padding: 12px;
-      color: var(--brand-soft);
-    }
-    .browser-glyph svg { display: block; width: 100%; height: 100%; overflow: visible; }
-
-    .client-groups { display: grid; gap: 24px; }
-    .client-group {
-      padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: color-mix(in srgb, var(--surface-panel) 78%, transparent);
-      transition: border-color .3s ease, background-color .35s ease;
-    }
-    .client-group-header { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-    .client-group-kicker { color: var(--brand-soft); font: 10px 'JetBrains Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
-    .client-group-title { margin-top: 6px; font-size: 20px; letter-spacing: -.025em; font-weight: 800; }
-    .client-group-description { margin-top: 5px; color: var(--ink-mute); font-size: 12px; line-height: 1.45; }
-    .client-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-    .mobile-group .client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .client-card {
-      position: relative; display: flex; min-height: 224px; flex-direction: column; gap: 17px; overflow: hidden;
-      padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-card);
-      color: var(--ink); text-align: left; cursor: pointer;
-      transition: transform .24s ease, border-color .24s ease, background-color .32s ease, box-shadow .28s ease, opacity .25s ease;
-    }
-    .client-card::before {
-      content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 2px; border-radius: 0 0 4px 4px;
-      background: linear-gradient(90deg, transparent, var(--brand), transparent); opacity: 0;
-      transition: opacity .24s ease;
-    }
-    .client-card.is-active { border-color: color-mix(in srgb, var(--brand) 48%, transparent); box-shadow: 0 18px 34px -28px var(--brand-glow); }
-    .client-card.is-active::before { opacity: 1; }
-    .client-card.disabled { opacity: .52; cursor: not-allowed; }
-    .client-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .client-icon {
-      width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0;
-      background: color-mix(in srgb, var(--brand) 13%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
-      color: var(--brand-soft);
-    }
-    .client-icon svg { width: 21px; height: 21px; fill: currentColor; }
-    .client-card-state { display: inline-flex; align-items: center; gap: 5px; padding-top: 5px; color: #4ade80; font: 10px 'JetBrains Mono', monospace; white-space: nowrap; }
-    .client-card-state .state-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-    .client-card.is-pending .client-card-state { color: #fbbf24; }
-    .client-card.is-pending .state-dot { box-shadow: 0 0 8px rgba(251,191,36,.55); }
-    .client-card.is-unknown .client-card-state { color: var(--ink-mute); }
-    body[data-channel="release"] .client-card:not(.disabled) .client-card-state { color: #15803d; }
-    body[data-channel="release"] .client-card.is-pending .client-card-state { color: #b45309; }
-    body[data-channel="release"] .client-card.is-unknown .client-card-state { color: var(--ink-mute); }
-    .client-card-title { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
-    .client-card-subtitle { margin-top: 5px; color: var(--ink-mute); font-size: 12px; line-height: 1.45; }
-    .client-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; }
-    .client-version { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--brand-soft); font: 11px 'JetBrains Mono', monospace; }
-    .client-version svg { flex-shrink: 0; }
+    .web-client-section { padding: 30px; }
+    .client-card[data-platform="windows"] { --platform-color: var(--platform-windows); }
+    .client-card[data-platform="android"] { --platform-color: var(--platform-android); }
+    .client-card { --platform-color: var(--ink); display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-content: center; gap: 7px 18px; min-height: 136px; padding: 26px; position: relative; }
+    .client-card + .client-card { border-top: 1px solid var(--line); }
+    .client-card.is-active { background: var(--surface-subtle); }
+    .client-card.is-active::before { content: ''; position: absolute; left: 0; top: 28px; bottom: 28px; width: 2px; background: var(--brand); }
+    .client-card.disabled { --platform-color: var(--ink-mute); }
+    .client-card.disabled .client-card-title { color: var(--ink-dim); }
+    .client-card-top { display: contents; }
+    .client-icon { grid-column: 1; grid-row: 1 / 3; align-self: center; display: grid; place-items: center; width: 44px; height: 44px; color: var(--platform-color); }
+    .client-icon svg { width: 25px; height: 25px; fill: currentColor; }
+    .client-card .client-icon { width: 48px; height: 48px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-soft); }
+    .client-card .client-icon svg { width: 26px; height: 26px; }
+    .client-card[data-platform="linux"] .client-icon svg, .web-client-section .client-icon svg { fill: none; stroke: currentColor; }
+    .client-card-copy, .web-client-copy { grid-column: 2; grid-row: 1; min-width: 0; }
+    .client-card-title { font-family: var(--font-heading); font-size: 19px; font-weight: 800; line-height: 1.3; letter-spacing: -.035em; }
+    .client-card-subtitle, .web-client-description { font-size: 12px; line-height: 1.6; color: var(--ink-dim); margin-top: 6px; }
+    .web-client-title { font-family: var(--font-heading); font-size: 22px; font-weight: 900; line-height: 1.2; letter-spacing: -.025em; text-transform: uppercase; }
+    .web-client-description { font-size: 13px; }
+    .client-card-state, .web-client-meta { grid-column: 2; grid-row: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font: 9px 'JetBrains Mono', monospace; color: var(--success); }
+    .client-card-state { font-size: 10px; }
+    .client-card.is-pending .client-card-state { color: var(--warning); }
+    .client-card.is-unknown .client-card-state, .client-card.disabled .client-card-state, .web-client-meta { color: var(--ink-mute); }
+    .web-client-meta { gap: 12px; }
+    .state-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+    .client-card-footer { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: center; gap: 9px; }
+    .client-version { display: inline-flex; gap: 5px; align-items: center; max-width: 110px; font: 10px 'JetBrains Mono', monospace; color: var(--ink-mute); }
+    .client-version svg { display: none; }
     .client-version-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .client-version-value.is-skeleton {
-      display: inline-block; width: 56px; height: 10px; border-radius: 5px;
-      background: linear-gradient(90deg, var(--line) 25%, var(--line-strong) 50%, var(--line) 75%); background-size: 200% 100%;
-      animation: skeletonShimmer 1.2s linear infinite;
-    }
-    @keyframes skeletonShimmer { to { background-position: -200% 0; } }
-    .client-card-action { flex-shrink: 0; padding: 10px 13px; font-size: 12px; border-radius: 10px; }
-    .client-card-action.is-pending { opacity: .7; }
+    .client-version-value.is-skeleton { display: inline-block; width: 56px; height: 9px; border-radius: 4px; background: var(--line-strong); }
+    .client-card .client-card-action { padding: 10px 13px; font-size: 12px; border-radius: 8px; background: var(--ink); border-color: var(--ink); color: var(--bg-1); }
     .client-card-action svg { width: 14px; height: 14px; }
-    .client-card .coming-soon-badge { color: var(--ink-mute); background: color-mix(in srgb, var(--ink-mute) 12%, transparent); border-color: var(--line); }
-
-    @media (hover: hover) {
-      .channel-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--brand) 9%, transparent); }
-      .client-card:not(.disabled):hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--brand) 35%, transparent); box-shadow: 0 18px 34px -26px var(--brand-glow); }
-      .client-card:not(.disabled):hover::before { opacity: .7; }
-    }
-
-    /* Dev block */
-    .dev-block {
-      display: flex; align-items: center; gap: 18px; padding: 18px 22px;
-      border-radius: 16px; border: 1px solid var(--line); background: var(--surface-panel);
-      margin-bottom: 36px; position: relative;
-    }
-    .dev-block::before {
-      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-      background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 30%, transparent), transparent 40%, transparent 60%, color-mix(in srgb, var(--brand) 14%, transparent));
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
-    }
-    .dev-block-icon {
-      width: 38px; height: 38px; border-radius: 10px;
-      background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
-      color: var(--brand-soft); display: grid; place-items: center; flex-shrink: 0;
-    }
-    .dev-block-text { flex: 1; min-width: 0; }
-    .dev-block-title {
-      font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
-      margin-bottom: 3px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-    }
-    .dev-block-title .eyebrow-mini {
-      font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-soft); opacity: 0.85;
-    }
-    .dev-block-sub { font-size: 12.5px; color: var(--ink-mute); line-height: 1.45; }
-    .dev-block-btn { flex-shrink: 0; padding: 9px 14px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
-    .dev-block-btn svg { margin-left: 2px; }
-
-    /* Features */
-    .features-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 40px; }
-    .feature {
-      padding: 18px; border-radius: 14px; border: 1px solid var(--line);
-      background: color-mix(in srgb, var(--surface-panel) 55%, transparent); display: flex; flex-direction: column; gap: 8px;
-    }
-    .feature .f-icon { width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--brand-soft); display: grid; place-items: center; }
-    .feature .f-icon svg { width: 14px; height: 14px; fill: currentColor; }
-    .feature .f-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
-    .feature .f-body { font-size: 12px; line-height: 1.45; color: var(--ink-mute); }
-
-    /* Footer */
-    .home-footer {
-      display: flex; align-items: center; justify-content: space-between;
-      padding-top: 24px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-mute);
-    }
-    .home-footer .home-footer-links { display: flex; gap: 20px; }
-    .home-footer a {
-      color: var(--ink-dim); text-decoration: none; font-weight: 500; transition: color 0.2s;
-      display: inline-flex; align-items: center; gap: 6px;
-    }
-    .home-footer a:hover { color: var(--ink); }
-    .home-footer a svg { width: 13px; height: 13px; fill: currentColor; }
-
-    /* ===== CHAT WIDGET ===== */
-    .chat-support-btn {
-      position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px;
-      border-radius: 50%; background: linear-gradient(135deg, var(--button-top), var(--button-end));
-      border: none; cursor: pointer; box-shadow: var(--shadow-brand);
-      display: flex; align-items: center; justify-content: center;
-      transition: transform 0.2s, box-shadow 0.2s; z-index: 1000; animation: chatPulse 3s infinite;
-    }
-    .chat-support-btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 12px 30px color-mix(in srgb, var(--brand) 60%, transparent); }
-    .chat-support-btn.chat-btn-active { animation: none; background: linear-gradient(135deg, var(--brand-2), var(--brand-deep)); }
-    .chat-support-btn svg { width: 24px; height: 24px; fill: var(--button-ink); }
-    .chat-support-btn.chat-btn-active svg { fill: #fff; }
-    @keyframes chatPulse {
-      0%   { box-shadow: var(--shadow-brand); }
-      50%  { box-shadow: var(--shadow-brand), 0 0 0 10px color-mix(in srgb, var(--brand) 8%, transparent); }
-      100% { box-shadow: var(--shadow-brand); }
-    }
-
-    .chat-dialog {
-      position: fixed; bottom: 96px; right: 24px; width: 370px; max-height: 500px;
-      background: color-mix(in srgb, var(--bg-2) 96%, transparent); backdrop-filter: blur(24px);
-      border: 1px solid var(--line-strong); border-radius: 20px; box-shadow: var(--shadow-card);
-      z-index: 1000; display: none; flex-direction: column; overflow: hidden;
-      animation: chatSlideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
+    .is-pending { opacity: .7; }
+    .client-card.disabled .client-card-footer { display: none; }
+    .client-hub { padding: 80px 0 96px; }
+    .channel-head { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-bottom: 48px; }
+    .channel-head-copy { max-width: 600px; }
+    .channel-title, .developer-title { margin-top: 14px; font-family: var(--font-heading); font-size: clamp(28px, 3.2vw, 42px); line-height: 1.02; letter-spacing: -.038em; font-weight: 900; text-transform: uppercase; }
+    .channel-description { margin-top: 16px; min-height: 2lh; font-size: 14px; line-height: 1.7; color: var(--ink-dim); }
+    .channel-switcher { flex: 0 0 306px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 4px; gap: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-subtle); }
+    .channel-tab { border: 1px solid transparent; border-radius: 6px; background: none; padding: 10px 12px; color: var(--ink-mute); text-align: left; cursor: pointer; }
+    .channel-tab.is-active { border-color: color-mix(in srgb, var(--brand) 30%, transparent); background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--ink); }
+    .channel-tab-top { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
+    .channel-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .channel-tab.is-active .channel-tab-dot { background: var(--brand); }
+    .channel-tab-branch { display: block; margin-top: 5px; padding-left: 11px; font: 9px 'JetBrains Mono', monospace; color: var(--ink-mute); }
+    .channel-status { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 14px; color: var(--ink-mute); font-size: 10px; }
+    .channel-status-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--success); }
+    .channel-status.is-error .channel-status-dot { background: var(--warning); }
+    .channel-status-retry { border: 0; background: none; color: var(--ink-dim); font-size: inherit; text-decoration: underline; cursor: pointer; }
+    .channel-status-retry[hidden] { display: none; }
+    .client-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; }
+    .client-group { border: 1px solid var(--line-strong); border-radius: 18px; background: var(--surface-panel); overflow: hidden; }
+    .client-group-header { padding: 28px 26px 26px; border-bottom: 1px solid var(--line); }
+    .client-group-kicker { font: 10px 'JetBrains Mono', monospace; letter-spacing: .1em; color: var(--ink-mute); }
+    .client-group-title { margin-top: 12px; font-family: var(--font-heading); font-size: 22px; font-weight: 900; line-height: 1.2; letter-spacing: -.035em; text-transform: uppercase; }
+    .client-group-description { margin-top: 9px; color: var(--ink-dim); font-size: 12px; line-height: 1.7; }
+    .client-grid { display: grid; }
+    .developer-hub { padding: 90px 0 96px; border-top: 1px solid var(--line); }
+    .developer-heading { max-width: 760px; margin: 0 auto 48px; text-align: center; }
+    .developer-description { margin: 18px auto 0; max-width: 600px; font-size: 14px; line-height: 1.8; color: var(--ink-dim); }
+    .developer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .developer-card { display: flex; flex-direction: column; padding: 32px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-card); }
+    .developer-card-head { display: flex; align-items: center; gap: 13px; margin-bottom: 20px; }
+    .developer-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; color: var(--brand-soft); }
+    .developer-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .developer-card h3, .selfhost-copy h3 { font-family: var(--font-heading); font-size: 16px; font-weight: 900; line-height: 1.25; letter-spacing: -.02em; text-transform: uppercase; }
+    .developer-card p, .selfhost-copy p { color: var(--ink-dim); font-size: 14px; line-height: 1.8; }
+    .resource-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 28px; }
+    .resource-tags span, .resource-tags code { border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; color: var(--ink-mute); font: 9px 'JetBrains Mono', monospace; }
+    .developer-links { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; margin-top: auto; }
+    .developer-links .btn { font-size: 11px; padding: 11px 14px; }
+    .resource-link { font-size: 11px; color: var(--ink-dim); text-decoration: none; }
+    .selfhost-block { display: flex; align-items: center; gap: 20px; margin-top: 20px; padding: 32px; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(110deg, var(--surface-subtle), var(--brand-glow)); }
+    .selfhost-copy { flex: 1; }
+    .selfhost-copy p { margin-top: 8px; max-width: 710px; }
+    .selfhost-block .btn { flex-shrink: 0; font-size: 11px; }
+    .home-footer { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 30px 0 40px; border-top: 1px solid var(--line); color: var(--ink-mute); font-size: 12px; }
+    .home-footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+    .home-footer a { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-mute); text-decoration: none; }
+    .home-footer a svg { width: 12px; height: 12px; fill: currentColor; }
+    .chat-support-btn { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--bg-3); color: var(--ink); cursor: pointer; box-shadow: 0 5px 20px #0004; }
+    .chat-support-btn svg { width: 21px; height: 21px; fill: currentColor; }
+    .chat-dialog { position: fixed; bottom: 84px; right: 24px; z-index: 1000; display: none; flex-direction: column; width: 370px; max-height: 500px; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--surface-panel); box-shadow: var(--shadow-card); overflow: hidden; }
     .chat-dialog.chat-visible { display: flex; }
-    @keyframes chatSlideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--line); }
+    .chat-header-title { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .chat-header-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); }
+    .chat-close-btn { border: 0; border-radius: 6px; width: 30px; height: 30px; background: none; color: var(--ink-dim); font-size: 22px; cursor: pointer; }
+    .chat-messages { display: flex; flex-direction: column; gap: 8px; min-height: 180px; max-height: 340px; overflow-y: auto; padding: 16px; }
+    .chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+    .chat-msg-user { align-self: flex-end; background: var(--ink); color: var(--button-ink); }
+    .chat-msg-admin { align-self: flex-start; background: var(--bg-3); }
+    .chat-msg-system { align-self: center; max-width: 100%; text-align: center; color: var(--ink-mute); }
+    .chat-input-area { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+    .chat-input-area input { width: 0; flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-input); color: var(--ink); font-size: 12px; }
+    .chat-send-btn { flex: 0 0 38px; display: grid; place-items: center; border: 0; border-radius: 7px; background: var(--ink); color: var(--button-ink); cursor: pointer; }
+    .chat-send-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+    @media (hover: hover) and (pointer: fine) {
+      :is(.home-nav-link, .home-footer a, .resource-link, .lang-btn):hover { color: var(--ink); }
+      .btn-primary:hover { background: #dcdce0; border-color: #dcdce0; }
+      body[data-channel="release"] .btn-primary:hover { background: var(--button-end); border-color: var(--button-end); }
+      :is(.btn-soft, .btn-ghost, .preview-control, .channel-tab):hover { background: var(--surface-hover); }
+      .client-card:not(.disabled):hover { background: var(--surface-soft); }
+      .client-card .client-card-action:hover { background: var(--ink-dim); border-color: var(--ink-dim); }
     }
-    .chat-header {
-      padding: 16px 20px; border-bottom: 1px solid var(--line);
-      display: flex; justify-content: space-between; align-items: center;
+    @media (max-width: 1000px) {
+      .home-page { padding: 0 28px; }
+      .home-nav-right { gap: 16px; }
+      .orbit-tile { width: 52px; height: 52px; border-radius: 13px; }
+      .orbit-tile:nth-child(1) { left: 0; } .orbit-tile:nth-child(2) { right: 0; }
+      .orbit-tile:nth-child(3) { left: 3%; } .orbit-tile:nth-child(4) { right: 3%; }
+      .channel-head { align-items: flex-start; flex-direction: column; }
+      .channel-switcher { flex-basis: auto; width: 306px; }
+      .client-groups { grid-template-columns: 1fr; }
+      .home-footer { flex-direction: column; align-items: flex-start; }
     }
-    .chat-header-title { display: flex; align-items: center; gap: 10px; }
-    .chat-header-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
-    .chat-header-title span { font-weight: 600; font-size: 15px; color: var(--ink); }
-    .chat-close-btn {
-      background: none; border: none; color: var(--ink-mute); font-size: 22px; cursor: pointer;
-      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-      border-radius: 8px; transition: background-color .2s ease, color .2s ease; line-height: 1;
-    }
-    .chat-close-btn:hover { background: rgba(255,255,255,0.1); color: var(--ink); }
-    .chat-messages {
-      flex: 1; overflow-y: auto; padding: 16px; max-height: 340px; min-height: 180px;
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .chat-messages::-webkit-scrollbar { width: 4px; }
-    .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-    .chat-msg { padding: 10px 14px; border-radius: 14px; max-width: 80%; font-size: 13px; line-height: 1.5; word-wrap: break-word; }
-    .chat-msg-user { background: linear-gradient(135deg, var(--button-top), var(--button-end)); color: var(--button-ink); align-self: flex-end; border-bottom-right-radius: 4px; }
-    .chat-msg-admin { background: rgba(255,255,255,0.08); color: var(--ink); align-self: flex-start; border-bottom-left-radius: 4px; }
-    .chat-msg-system { background: transparent; color: var(--ink-mute); align-self: center; font-size: 12px; text-align: center; padding: 8px; }
-    .chat-input-area { padding: 12px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
-    .chat-input-area input {
-      flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--line);
-      border-radius: 12px; padding: 10px 14px; color: var(--ink); font-size: 13px;
-      font-family: inherit; outline: none; transition: border-color 0.2s;
-    }
-    .chat-input-area input:focus { border-color: var(--brand); }
-    .chat-input-area input::placeholder { color: var(--ink-mute); }
-    .chat-send-btn {
-      width: 40px; height: 40px; border-radius: 12px;
-      background: linear-gradient(135deg, var(--button-top), var(--button-end));
-      border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-      color: var(--button-ink); transition: transform 0.2s, box-shadow 0.2s; flex-shrink: 0;
-    }
-    .chat-send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px color-mix(in srgb, var(--brand) 40%, transparent); }
-    .chat-send-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--button-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 900px) {
-      .home-page { padding: 70px 22px 40px; }
-      .hero { grid-template-columns: 1fr; gap: 40px; margin-bottom: 48px; }
-      .preview-stack { max-width: 100%; justify-self: stretch; }
-      .features-strip { grid-template-columns: repeat(2, 1fr); }
-      .home-nav { margin-bottom: 40px; }
-      .hero-title { font-size: clamp(40px, 10vw, 64px); }
-      .channel-head { align-items: stretch; flex-direction: column; gap: 18px; }
-      .channel-switcher { min-width: 0; width: 100%; }
-      .web-client-section { grid-template-columns: minmax(0, 1fr) 220px; }
-      .client-grid, .mobile-group .client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 700px) {
-      .dev-block { flex-direction: column; align-items: flex-start; gap: 14px; }
-      .dev-block-btn { align-self: stretch; justify-content: center; }
-      .home-footer { flex-direction: column; gap: 16px; text-align: center; }
-    }
-    @media (max-width: 420px) {
-      .chat-dialog { width: calc(100vw - 16px); right: 8px; bottom: 88px; max-height: 70vh; }
-      .chat-support-btn { bottom: 16px; right: 16px; }
-    }
-
-    /* ===== MOBILE ENHANCEMENTS (≤700px) ===== */
-    @media (max-width: 700px) {
-      .home-page { padding: 28px 16px 32px; }
-
-      /* Nav: prioritize logo + telegram CTA */
-      .home-nav { margin-bottom: 28px; gap: 10px; }
-      .home-nav-right { gap: 10px; }
-      .home-nav-right .home-nav-link { display: none; }
-      .home-nav-right #navAbout, .home-nav-right #navGitHub { display: inline; }
-      .brand-mark { font-size: 15px; }
-      .brand-mark .glyph { width: 26px; height: 26px; }
-
-      /* Hero */
-      .hero { gap: 28px; margin-bottom: 36px; }
-      .hero-text { gap: 16px; }
-      .hero-title { font-size: clamp(36px, 11.5vw, 56px); line-height: 0.98; }
-      .hero-sub { font-size: 15px; line-height: 1.55; max-width: 100%; }
-      .hero-sub br { display: none; }
-      .hero-eyebrow { font-size: 10px; padding: 5px 10px; letter-spacing: 0.16em; }
-
-      /* Hero meta — wrap as chips */
-      .hero-meta { flex-wrap: wrap; gap: 8px 12px; font-size: 11px; }
+    @media (max-width: 760px) {
+      .home-page { padding: 0 20px; }
+      .home-nav { min-height: 70px; flex-wrap: wrap; padding: 18px 0; gap: 18px; }
+      .home-nav-right { gap: 16px; }
+      .home-nav-right .btn { padding: 7px 10px !important; font-size: 11px !important; }
+      .hero { padding-top: 64px; gap: 42px; }
+      .hero-title { font-size: clamp(42px, 7.5vw, 58px); }
+      .hero-orbit { display: none; }
+      .hero-text { gap: 20px; }
+      .hero-sub { font-size: 14px; }
+      .project-intro { font-size: 11px; }
+      .hero-meta { gap: 8px 12px; font-size: 10px; }
       .hero-meta .divider { display: none; }
-      .hero-meta > span {
-        padding: 5px 10px; border-radius: 999px;
-        background: color-mix(in srgb, var(--ink) 4%, transparent);
-        border: 1px solid var(--line);
-      }
-
-      /* Preview stack */
-      .preview-stack { aspect-ratio: 1 / 0.78; }
-      .preview-frame.peek-left  { transform: translate(-6%, 4%) rotate(-3deg) scale(0.88); }
-      .preview-frame.peek-right { transform: translate(6%, -4%) rotate(3deg) scale(0.88); }
-      .device-tag { top: 10px; left: 10px; padding: 5px 8px; font-size: 10px; }
+      .preview-stack { height: auto; aspect-ratio: 1.6; }
       .preview-caption { display: none; }
-
-      /* Client groups */
-      .client-hub { margin-bottom: 32px; }
-      .channel-title { font-size: clamp(27px, 8vw, 36px); }
+      .device-tag { top: 8px; left: 8px; font-size: 9px; padding: 4px 7px; }
+      .features-strip { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 32px 24px; padding: 48px 0; }
+      .feature, .feature:first-child, .feature:last-child { padding: 0; border: 0; }
+      .f-body { font-size: 11px; }
+      .web-client-section { margin-top: 48px; padding: 22px; }
+      .web-client-title { font-size: 19px; }
+      .client-hub { padding: 56px 0 64px; }
+      .channel-head { gap: 20px; margin-bottom: 32px; }
       .channel-description { font-size: 13px; }
-      .channel-switcher { border-radius: 14px; }
-      .channel-tab { padding: 10px 9px; }
-      .web-client-section { grid-template-columns: 1fr; padding: 20px; border-radius: 17px; }
-      .web-client-preview { display: none; }
-      .client-group { padding: 18px; border-radius: 17px; }
-      .client-group-header { align-items: flex-start; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-      .client-grid, .mobile-group .client-grid { grid-template-columns: 1fr; gap: 12px; }
-      .client-card { min-height: 190px; padding: 17px; border-radius: 15px; gap: 14px; }
-      .client-card-title { font-size: 17px; }
-      .client-card-subtitle { font-size: 11.5px; }
-      .client-icon { width: 37px; height: 37px; border-radius: 11px; }
-      .client-icon svg { width: 19px; height: 19px; }
-      .client-card-action { padding: 9px 11px; font-size: 11.5px; }
-
-      /* Dev block */
-      .dev-block { padding: 16px; border-radius: 14px; }
-      .dev-block-icon { width: 34px; height: 34px; }
-      .dev-block-title { font-size: 13.5px; }
-      .dev-block-sub { font-size: 12px; }
-
-      /* Features */
-      .features-strip { gap: 10px; margin-bottom: 32px; }
-      .feature { padding: 14px; border-radius: 12px; }
-      .feature .f-title { font-size: 12.5px; }
-      .feature .f-body { font-size: 11.5px; }
-
-      /* Footer */
-      .home-footer { font-size: 11.5px; padding-top: 20px; }
-      .home-footer .home-footer-links { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
+      .client-groups, .developer-grid { grid-template-columns: 1fr; gap: 30px; }
+      .developer-hub { padding: 64px 0; }
+      .developer-heading { margin-bottom: 32px; }
+      .developer-description { font-size: 13px; }
+      .developer-card { padding: 24px; }
+      .selfhost-block { flex-wrap: wrap; padding: 24px; gap: 12px; }
+      .selfhost-block .developer-icon { display: none; }
+      .selfhost-copy { flex-basis: 100%; }
+      .home-footer { gap: 18px; padding-bottom: 84px; }
+      .home-footer-links { gap: 14px 18px; }
     }
-
-    /* ===== VERY SMALL PHONES (≤480px) ===== */
     @media (max-width: 480px) {
-      .features-strip { grid-template-columns: 1fr; }
-      .hero-title { font-size: clamp(34px, 12.5vw, 50px); }
-      .hero-meta { font-size: 10.5px; }
-      .hero-cta-btn { width: 100%; }
-      .channel-tab { padding: 9px 7px; }
-      .channel-tab-top { font-size: 11px; }
-      .channel-tab-branch { font-size: 9px; padding-left: 12px; }
-      .client-card-footer { align-items: flex-start; flex-direction: column; gap: 10px; }
-      .client-card-action { width: 100%; }
+      .home-nav-right { width: 100%; gap: 12px 16px; }
+      .home-nav-link { font-size: 11px; }
+      .home-nav-right .btn { margin-left: auto; }
+      .hero-title { font-size: clamp(30px, 9vw, 42px); }
+      .preview-controls { gap: 0; }
+      .preview-control { padding: 8px 12px; }
+      .channel-switcher { width: 100%; }
+      .channel-title, .developer-title { font-size: 28px; }
+      .client-card, .web-client-section { grid-template-columns: 32px minmax(0,1fr); gap: 7px 12px; padding: 18px; }
+      .client-icon { width: 32px; height: 32px; align-self: start; }
+      .client-icon svg { width: 22px; height: 22px; }
+      .client-group { border-radius: 14px; }
+      .client-group-header { padding: 24px 20px; }
+      .client-group-title { font-size: 20px; }
+      .client-card { grid-template-columns: 40px minmax(0,1fr); gap: 7px 14px; padding: 22px 20px; }
+      .client-card .client-icon { width: 40px; height: 40px; border-radius: 11px; }
+      .client-card .client-icon svg { width: 23px; height: 23px; }
+      .client-card-title { font-size: 18px; }
+      .client-card-subtitle { font-size: 11px; }
+      .client-card-footer { grid-column: 2; grid-row: 3; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 8px; }
+      .web-client-meta { line-height: 1.7; }
+      .chat-support-btn { right: 16px; bottom: 16px; width: 40px; height: 40px; }
+      .chat-dialog { width: calc(100vw - 32px); right: 16px; bottom: 76px; max-height: 70vh; }
     }
-
-    /* iOS safe-area for notched devices */
     @supports (padding: max(0px)) {
-      @media (max-width: 700px) {
-        .home-page {
-          padding-left: max(16px, env(safe-area-inset-left));
-          padding-right: max(16px, env(safe-area-inset-right));
-          padding-bottom: max(32px, env(safe-area-inset-bottom));
-        }
-        .chat-support-btn {
-          right: max(16px, env(safe-area-inset-right));
-          bottom: max(16px, env(safe-area-inset-bottom));
-        }
+      @media (max-width: 760px) {
+        .home-page { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+        .chat-support-btn { right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); }
       }
     }
-
-    /* ===== LANG TOGGLE ===== */
-    .lang-btn {
-      all: unset; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
-      color: var(--ink-mute); cursor: pointer; transition: color 0.2s;
-      text-transform: uppercase;
-    }
-    .lang-btn:hover { color: var(--ink); }
-
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-        scroll-behavior: auto !important;
-        transition-duration: .01ms !important;
-      }
+      *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
     }
   </style>
   <noscript><style>body { opacity: 1 !important; }</style></noscript>
@@ -736,16 +358,11 @@
   <div class="page">
     <div class="home-page">
 
-      <aside class="domain-notice" id="domainNotice">
-        <p><span id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</span> <a href="/about#domain-history" id="domainNoticeLink">Подробнее о проекте и истории домена →</a></p>
-        <button type="button" id="domainNoticeClose" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
-      </aside>
-
       <header class="home-nav">
         <div style="display:flex;align-items:center;gap:14px;">
           <a href="/" class="brand-mark">
             <span class="glyph">
-              <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+              <img src="/favicon.ico" width="28" height="28" alt="">
             </span>
             <span>barkfluff</span>
           </a>
@@ -754,7 +371,7 @@
         <div class="home-nav-right">
           <a href="/about" class="home-nav-link" id="navAbout">О проекте</a>
           <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link" id="navGitHub">GitHub</a>
-          <span class="home-nav-link" style="opacity:0.35;cursor:default;">Self-hosted</span>
+          <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
           <a href="https://developers.barkfluff.com" target="_blank" class="home-nav-link" id="navDev">Разработчикам</a>
           <a href="https://t.me/barkfluff?direct" target="_blank" class="btn btn-ghost" style="padding: 10px 16px; font-size: 13px;">
             Telegram
@@ -763,8 +380,19 @@
         </div>
       </header>
 
+      <aside class="domain-notice" id="domainNotice">
+        <p><span id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</span> <a href="/about#domain-history" id="domainNoticeLink">Подробнее о проекте и истории домена →</a></p>
+        <button type="button" id="domainNoticeClose" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
+      </aside>
+
       <div class="hero">
         <div class="hero-text">
+          <div class="hero-orbit" aria-hidden="true">
+            <span class="orbit-tile"><svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg></span>
+            <span class="orbit-tile"><svg viewBox="2 4 20 14"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg></span>
+            <span class="orbit-tile">gRPC</span>
+            <span class="orbit-tile"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg></span>
+          </div>
           <span class="hero-eyebrow"><span class="pulse"></span> <span id="heroEyebrowText">Стабильный релиз</span></span>
           <h1 class="hero-title">
             <span id="heroTitle1">Лёгкий.</span><br>
@@ -793,7 +421,7 @@
         <div class="preview-stack" id="previewStack">
           <div class="preview-frame peek-left" data-platform="android">
             <div class="device-tag">
-              <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
+              <svg viewBox="2 4 20 14"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
               Android
             </div>
             <img src="/assets/barkfluff.android.jpg" alt="Android" />
@@ -818,175 +446,10 @@
         </div>
       </div>
 
-      <section class="client-hub" id="clientHub" aria-labelledby="clientTitle">
-        <section class="web-client-section" data-platform="web" aria-labelledby="webTitle">
-          <div class="web-client-copy">
-            <span class="eyebrow" id="webEyebrow">Веб-клиент</span>
-            <h2 class="web-client-title" id="webTitle">Barkfluff в браузере</h2>
-            <p class="web-client-description" id="webDescription">Открывается сразу в браузере по единой ссылке.</p>
-            <div class="web-client-meta">
-              <span id="webSubtitle">Любой современный браузер</span>
-              <span id="webFixedLabel">Всегда nightly</span>
-            </div>
-            <a href="https://web.barkfluff.com" target="_blank" rel="noopener" class="btn btn-primary web-client-action" id="webOpenBtn"><span id="webOpenLabel">Открыть</span><span aria-hidden="true">→</span></a>
-          </div>
-          <div class="web-client-preview">
-            <div class="browser-glyph" aria-hidden="true">
-              <svg viewBox="0 0 320 200" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="18" y="18" width="284" height="164" rx="18" />
-                <path d="M18 58h284" />
-                <circle cx="40" cy="38" r="4" fill="currentColor" stroke="none" />
-                <circle cx="54" cy="38" r="4" fill="currentColor" stroke="none" />
-                <circle cx="68" cy="38" r="4" fill="currentColor" stroke="none" />
-                <rect x="92" y="30" width="150" height="16" rx="8" />
-                <path d="M44 88h120M44 108h200M44 128h96" opacity=".6" />
-                <rect x="44" y="144" width="72" height="22" rx="11" />
-              </svg>
-            </div>
-          </div>
-        </section>
-
-        <div class="channel-head">
-          <div class="channel-head-copy">
-            <span class="eyebrow" id="clientEyebrow">Канал сборки</span>
-            <h2 class="channel-title" id="clientTitle">Проверенный релиз</h2>
-            <p class="channel-description" id="clientDescription">Рекомендуемые стабильные версии из ветки master.</p>
-            <div class="channel-status" id="channelStatus" role="status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span><button type="button" class="channel-status-retry" id="channelStatusRetry" hidden>Повторить</button></div>
-          </div>
-          <div class="channel-switcher" role="tablist" aria-label="Канал сборки">
-            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="nightly">
-              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Nightly</span></span>
-              <span class="channel-tab-branch">nightly</span>
-            </button>
-            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="dev">
-              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Dev</span></span>
-              <span class="channel-tab-branch">dev</span>
-            </button>
-            <button class="channel-tab is-active" type="button" role="tab" aria-selected="true" data-channel="release">
-              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Release</span></span>
-              <span class="channel-tab-branch">master</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="client-groups">
-          <section class="client-group" data-client-group="desktop" aria-labelledby="desktopTitle">
-            <div class="client-group-header">
-              <div>
-                <span class="client-group-kicker" id="desktopKicker">01 / Desktop</span>
-                <h3 class="client-group-title" id="desktopTitle">Настольные приложения</h3>
-                <p class="client-group-description" id="desktopDescription">Нативные сборки для компьютера.</p>
-              </div>
-            </div>
-            <div class="client-grid">
-              <article class="client-card is-active" data-platform="windows" data-client="windows" tabindex="0">
-                <div class="client-card-top">
-                  <div class="client-icon">
-                    <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-                  </div>
-                  <span class="client-card-state" id="winBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
-                </div>
-                <div>
-                  <h4 class="client-card-title" id="winTitle">Windows WinUI</h4>
-                  <p class="client-card-subtitle" id="winSubtitle">WinUI 3 · x64 · Windows 10+</p>
-                </div>
-                <div class="client-card-footer">
-                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeWin">—</span></span>
-                  <a href="https://storage.barkfluff.com/get/barkfluffwinui/release" class="btn btn-primary client-card-action" id="winDownloadBtn"><span id="winDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
-                </div>
-              </article>
-
-              <article class="client-card" data-platform="macos" data-client="macos" tabindex="0">
-                <div class="client-card-top">
-                  <div class="client-icon">
-                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                  </div>
-                  <span class="client-card-state" id="macosBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
-                </div>
-                <div>
-                  <h4 class="client-card-title" id="macosTitle">macOS</h4>
-                  <p class="client-card-subtitle" id="macosSubtitle">macOS 12+ · Intel &amp; Apple Silicon</p>
-                </div>
-                <div class="client-card-footer">
-                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeMac">—</span></span>
-                  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release" class="btn btn-primary client-card-action" id="macosDownloadBtn"><span id="macosDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
-                </div>
-              </article>
-
-              <article class="client-card disabled" data-platform="linux" aria-disabled="true">
-                <div class="client-card-top">
-                  <div class="client-icon">
-                    <svg viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.117.779.567 1.563 1.182 2.083.267.222.557.393.882.507.154-.789.132-1.81.069-2.508-.063-.697-.051-1.133.062-1.518.13-.427.477-.862.722-1.174.255-.325.463-.622.569-.934.109-.325.07-.624-.048-.89-.192-.43-.57-.671-.943-.895-.416-.246-.832-.476-.972-.924-.195-.607.207-1.282.64-1.862.386-.516.826-.997 1.293-1.47 1.048-1.047 2.153-2.13 2.668-3.826.233-.778.176-1.57.021-2.292A10.028 10.028 0 0 0 12.504 0zm4.682 3.18c.277.025.57.086.85.22.538.254.993.733 1.25 1.35.256.609.31 1.304.25 2.007-.137 1.597-.9 3.116-1.648 4.378-.52.876-1.068 1.74-1.46 2.657-.373.875-.54 1.79-.35 2.713.142.694.49 1.368 1.054 1.89.277.256.585.455.9.614-.177-1.162-.187-2.412-.1-3.576.088-1.178.296-2.293.536-3.313.25-1.043.53-2.016.793-2.995.256-.955.494-1.916.588-2.898.1-1.023-.017-2.057-.42-2.951-.192-.437-.45-.826-.768-1.09a2.32 2.32 0 0 0-.475-.006zm-6.97 6.77c.137.097.268.213.39.354.437.498.684 1.215.684 2.035 0 .655-.152 1.361-.462 2.018-.297.626-.71 1.197-1.177 1.632l-.018.018a6.36 6.36 0 0 0-.51.562c-.21.278-.375.573-.45.877-.085.346-.06.714.017 1.147.094.526.243 1.11.273 1.742.039.84-.073 1.732-.486 2.554C7.39 23.623 6.432 24 5.42 24a3.48 3.48 0 0 1-1.54-.36c-.473-.234-.91-.575-1.24-1-.33-.427-.55-.923-.612-1.45-.063-.527.018-1.083.255-1.605.233-.515.6-.993 1.046-1.397.44-.4.957-.72 1.475-.965.519-.244 1.04-.413 1.517-.527.48-.115.917-.174 1.26-.208.345-.034.598-.037.738-.042.28.083.514.232.703.408-.178.062-.395.121-.627.183-.476.13-.995.285-1.468.475-.48.19-.915.424-1.249.69-.335.266-.568.561-.663.861-.095.3-.044.613.093.892.137.278.378.52.679.699.303.18.666.295 1.056.315.397.02.815-.057 1.188-.225.367-.167.683-.428.889-.767.208-.342.31-.77.225-1.206a4.45 4.45 0 0 0-.273-.892c-.145-.36-.322-.724-.457-1.101-.139-.39-.224-.797-.183-1.218.04-.416.202-.84.481-1.216.278-.375.659-.7 1.092-.94.214-.12.434-.214.659-.278z"/></svg>
-                  </div>
-                  <span class="client-card-state coming-soon-badge" id="linuxBuildStatus">Скоро</span>
-                </div>
-                <div>
-                  <h4 class="client-card-title" id="linuxTitle">Linux</h4>
-                  <p class="client-card-subtitle" id="linuxSubtitle">В разработке</p>
-                </div>
-                <div class="client-card-footer"><span class="client-version">—</span><span class="btn btn-ghost client-card-action" id="linuxUnavail">Недоступно</span></div>
-              </article>
-            </div>
-          </section>
-
-          <section class="client-group mobile-group" data-client-group="mobile" aria-labelledby="mobileTitle">
-            <div class="client-group-header">
-              <div>
-                <span class="client-group-kicker" id="mobileKicker">02 / Mobile</span>
-                <h3 class="client-group-title" id="mobileTitle">Мобильные приложения</h3>
-                <p class="client-group-description" id="mobileDescription">Сборки для телефона и планшета.</p>
-              </div>
-            </div>
-            <div class="client-grid">
-              <article class="client-card" data-platform="android" data-client="android" tabindex="0">
-                <div class="client-card-top">
-                  <div class="client-icon">
-                    <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
-                  </div>
-                  <span class="client-card-state" id="andBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
-                </div>
-                <div>
-                  <h4 class="client-card-title" id="andTitle">Android</h4>
-                  <p class="client-card-subtitle" id="andSubtitle">Android 12+ · arm64-v8a</p>
-                </div>
-                <div class="client-card-footer">
-                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeAnd">—</span></span>
-                  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-primary client-card-action" id="andDownloadBtn"><span id="andDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
-                </div>
-              </article>
-
-              <article class="client-card disabled" data-platform="ios" aria-disabled="true">
-                <div class="client-card-top">
-                  <div class="client-icon">
-                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                  </div>
-                  <span class="client-card-state coming-soon-badge" id="iosBuildStatus">Скоро</span>
-                </div>
-                <div>
-                  <h4 class="client-card-title" id="iosTitle">iOS</h4>
-                  <p class="client-card-subtitle" id="iosSubtitle">В разработке</p>
-                </div>
-                <div class="client-card-footer"><span class="client-version">—</span><span class="btn btn-ghost client-card-action" id="iosUnavail">Недоступно</span></div>
-              </article>
-            </div>
-          </section>
-        </div>
-      </section>
-      <div class="dev-block">
-        <div class="dev-block-icon">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
-        </div>
-        <div class="dev-block-text">
-          <div class="dev-block-title">
-            <span class="eyebrow-mini" id="devLabel">Для разработчиков</span>
-            <span id="devTitle">Создай свой клиент Barkfluff</span>
-          </div>
-          <div class="dev-block-sub" id="devSub">Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.</div>
-        </div>
-        <a href="https://developers.barkfluff.com" target="_blank" class="btn btn-soft dev-block-btn" id="devBtn">
-          Разработчикам
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M10 17l5-5-5-5v10z"/></svg>
-        </a>
+      <div class="preview-controls">
+        <button type="button" class="preview-control" data-preview="windows" aria-pressed="true">Windows</button>
+        <button type="button" class="preview-control" data-preview="android" aria-pressed="false">Android</button>
+        <button type="button" class="preview-control" data-preview="web" aria-pressed="false">Web</button>
       </div>
 
       <div class="features-strip">
@@ -1011,6 +474,188 @@
           <div class="f-body" id="f4body">Никакой телеметрии, никаких баннеров. Просто переписка.</div>
         </div>
       </div>
+
+      <section class="web-client-section" data-platform="web" aria-labelledby="webTitle">
+        <div class="client-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 9h20M6 6.5h.01M9 6.5h.01M6 13h6M6 16h10"/></svg>
+        </div>
+        <div class="web-client-copy">
+          <h2 class="web-client-title" id="webTitle">Веб-клиент</h2>
+          <p class="web-client-description" id="webDescription">Переписка в любом современном браузере.</p>
+        </div>
+        <div class="web-client-meta"><span id="webSubtitle">Без установки</span><span id="webFixedLabel">Не зависит от канала сборки</span></div>
+        <div class="client-card-footer">
+          <a href="https://web.barkfluff.com" target="_blank" rel="noopener" class="btn btn-soft web-client-action" id="webOpenBtn"><span id="webOpenLabel">Открыть</span><span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+
+      <section class="client-hub" id="clientHub" aria-labelledby="clientTitle">
+        <div class="channel-head">
+          <div class="channel-head-copy">
+            <span class="eyebrow" id="clientEyebrow">Канал сборки</span>
+            <h2 class="channel-title" id="clientTitle">BarkFluff на ваших устройствах</h2>
+            <p class="channel-description" id="clientDescription">Рекомендуемые стабильные версии из ветки master.</p>
+            <div class="channel-status" id="channelStatus" role="status"><span class="channel-status-dot"></span><span id="channelStatusText">Версии обновляются автоматически</span><button type="button" class="channel-status-retry" id="channelStatusRetry" hidden>Повторить</button></div>
+          </div>
+          <div class="channel-switcher" role="tablist" aria-label="Канал сборки">
+            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="nightly">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Nightly</span></span>
+              <span class="channel-tab-branch">nightly</span>
+            </button>
+            <button class="channel-tab" type="button" role="tab" aria-selected="false" data-channel="dev">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Dev</span></span>
+              <span class="channel-tab-branch">dev</span>
+            </button>
+            <button class="channel-tab is-active" type="button" role="tab" aria-selected="true" data-channel="release">
+              <span class="channel-tab-top"><span class="channel-tab-dot"></span><span>Release</span></span>
+              <span class="channel-tab-branch">master</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="client-groups">
+          <section class="client-group" data-client-group="desktop" aria-labelledby="desktopTitle">
+            <div class="client-group-header">
+              <div>
+                <span class="client-group-kicker" id="desktopKicker">01 / Desktop</span>
+                <h3 class="client-group-title" id="desktopTitle">На компьютере</h3>
+                <p class="client-group-description" id="desktopDescription">Нативные сборки для компьютера.</p>
+              </div>
+            </div>
+            <div class="client-grid">
+              <article class="client-card is-active" data-platform="windows" data-client="windows" tabindex="0">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                  </div>
+                  <span class="client-card-state" id="winBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
+                </div>
+                <div class="client-card-copy">
+                  <h4 class="client-card-title" id="winTitle">Windows WinUI</h4>
+                  <p class="client-card-subtitle" id="winSubtitle">WinUI 3 · x64 · Windows 10+</p>
+                </div>
+                <div class="client-card-footer">
+                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeWin">—</span></span>
+                  <a href="https://storage.barkfluff.com/get/barkfluffwinui/release" class="btn btn-ghost client-card-action" id="winDownloadBtn"><span id="winDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
+                </div>
+              </article>
+
+              <article class="client-card" data-platform="macos" data-client="macos" tabindex="0">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  </div>
+                  <span class="client-card-state" id="macosBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
+                </div>
+                <div class="client-card-copy">
+                  <h4 class="client-card-title" id="macosTitle">macOS</h4>
+                  <p class="client-card-subtitle" id="macosSubtitle">macOS 12+ · Intel &amp; Apple Silicon</p>
+                </div>
+                <div class="client-card-footer">
+                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeMac">—</span></span>
+                  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release" class="btn btn-ghost client-card-action" id="macosDownloadBtn"><span id="macosDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
+                </div>
+              </article>
+
+              <article class="client-card disabled" data-platform="linux" aria-disabled="true">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m6 9 3 3-3 3m6 0h5"/></svg>
+                  </div>
+                  <span class="client-card-state coming-soon-badge" id="linuxBuildStatus">Скоро</span>
+                </div>
+                <div class="client-card-copy">
+                  <h4 class="client-card-title" id="linuxTitle">Linux</h4>
+                  <p class="client-card-subtitle" id="linuxSubtitle">В разработке</p>
+                </div>
+                <div class="client-card-footer"><span class="client-version">—</span><span class="btn btn-ghost client-card-action" id="linuxUnavail">Недоступно</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="client-group mobile-group" data-client-group="mobile" aria-labelledby="mobileTitle">
+            <div class="client-group-header">
+              <div>
+                <span class="client-group-kicker" id="mobileKicker">02 / Mobile</span>
+                <h3 class="client-group-title" id="mobileTitle">На телефоне</h3>
+                <p class="client-group-description" id="mobileDescription">Нативные приложения для мобильных устройств.</p>
+              </div>
+            </div>
+            <div class="client-grid">
+              <article class="client-card" data-platform="android" data-client="android" tabindex="0">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="2 4 20 14"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
+                  </div>
+                  <span class="client-card-state" id="andBuildStatus"><span class="state-dot"></span><span>Проверяем</span></span>
+                </div>
+                <div class="client-card-copy">
+                  <h4 class="client-card-title" id="andTitle">Android</h4>
+                  <p class="client-card-subtitle" id="andSubtitle">Android 12+ · arm64-v8a</p>
+                </div>
+                <div class="client-card-footer">
+                  <span class="client-version"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg><span class="client-version-value" id="vBadgeAnd">—</span></span>
+                  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-ghost client-card-action" id="andDownloadBtn"><span id="andDownloadLabel">Скачать</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14m0 0 5-5m-5 5-5-5M5 20h14"/></svg></a>
+                </div>
+              </article>
+
+              <article class="client-card disabled" data-platform="ios" aria-disabled="true">
+                <div class="client-card-top">
+                  <div class="client-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  </div>
+                  <span class="client-card-state coming-soon-badge" id="iosBuildStatus">Скоро</span>
+                </div>
+                <div class="client-card-copy">
+                  <h4 class="client-card-title" id="iosTitle">iOS</h4>
+                  <p class="client-card-subtitle" id="iosSubtitle">В разработке</p>
+                </div>
+                <div class="client-card-footer"><span class="client-version">—</span><span class="btn btn-ghost client-card-action" id="iosUnavail">Недоступно</span></div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+      <section class="developer-hub" id="developers" aria-labelledby="devTitle">
+        <div class="developer-heading">
+          <span class="eyebrow" id="devLabel">Для разработчиков</span>
+          <h2 class="developer-title" id="devTitle">Создайте свой клиент или ноду</h2>
+          <p class="developer-description" id="devSub">Создайте свой клиент, изучите исходники или разверните собственную ноду BarkFluff.</p>
+        </div>
+        <div class="developer-grid">
+          <article class="developer-card">
+            <div class="developer-card-head">
+              <div class="developer-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></svg></div>
+              <h3 id="protoTitle">Протокол для вашего клиента</h3>
+            </div>
+            <p id="protoDescription">Открытые .proto-файлы описывают gRPC API BarkFluff. Сгенерируйте клиент для своего языка и создайте собственное приложение.</p>
+            <div class="resource-tags"><code>users_api.proto</code><code>messages_api.proto</code><code>shared.proto</code></div>
+            <div class="developer-links">
+              <a href="https://github.com/Liis17/BarkFluff/tree/master/Shared/BarkFluff.Proto" target="_blank" rel="noopener" class="btn btn-soft"><span id="protoLink">Открыть .proto-файлы</span><span aria-hidden="true">↗</span></a>
+              <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="resource-link" id="devBtn">Документация</a>
+            </div>
+          </article>
+          <article class="developer-card">
+            <div class="developer-card-head">
+              <div class="developer-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="19" r="2.5"/><path d="M6 7.5v9M18 8.5v1a5 5 0 0 1-5 5H6"/></svg></div>
+              <h3 id="repoTitle">BarkFluff на GitHub</h3>
+            </div>
+            <p id="repoDescription">Серверная платформа, приложения и история разработки в одном репозитории. Изучайте код и участвуйте в развитии проекта.</p>
+            <div class="resource-tags"><span>MIT</span><span>.NET 10</span><span>gRPC</span><span id="repoTag">Открытый код</span></div>
+            <div class="developer-links">
+              <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="btn btn-soft"><span id="repoLink">Открыть репозиторий</span><span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+        </div>
+        <div class="selfhost-block">
+          <div class="developer-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01M11 6.5h6M11 17.5h6"/></svg></div>
+          <div class="selfhost-copy">
+            <h3 id="selfhostTitle">BarkFluff на вашем сервере</h3>
+            <p id="selfhostDescription">Разверните BarkFluff на своём сервере. Инструкция по Docker и настройке инфраструктуры — в руководстве self-hosted.</p>
+          </div>
+          <a href="/selfhosted" class="btn btn-ghost"><span id="selfhostLink">Развернуть ноду</span><span aria-hidden="true">→</span></a>
+        </div>
+      </section>
 
       <footer class="home-footer">
         <div id="footerCopy">2026 Barkfluff</div>
@@ -1058,9 +703,13 @@
     const previewOrder = ['windows', 'android', 'web'];
     let currentPlatform = 'windows';
 
-    function selectPlatform(platform) {
-      currentPlatform = platform;
+    function selectPlatform(platform, keyboard = false) {
+      document.getElementById('previewStack').classList.toggle('is-instant', keyboard);
       const idx = previewOrder.indexOf(platform);
+      if (idx !== -1) currentPlatform = platform;
+      document.querySelectorAll('[data-preview]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.preview === currentPlatform));
+      });
 
       if (idx !== -1) {
         const leftIdx  = (idx - 1 + previewOrder.length) % previewOrder.length;
@@ -1080,15 +729,20 @@
       });
     }
 
+    document.querySelectorAll('[data-preview]').forEach(button => {
+      button.addEventListener('click', event => selectPlatform(button.dataset.preview, event.detail === 0));
+    });
+
     document.querySelectorAll('.client-card:not(.disabled)').forEach(card => {
       card.addEventListener('click', e => {
         if (e.target.closest('a')) return;
         selectPlatform(card.dataset.platform);
       });
       card.addEventListener('keydown', e => {
+        if (e.target !== card) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          selectPlatform(card.dataset.platform);
+          selectPlatform(card.dataset.platform, true);
         }
       });
     });
@@ -1096,8 +750,8 @@
     document.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       const idx = previewOrder.indexOf(currentPlatform);
-      if (e.key === 'ArrowLeft')  selectPlatform(previewOrder[(idx - 1 + previewOrder.length) % previewOrder.length]);
-      if (e.key === 'ArrowRight') selectPlatform(previewOrder[(idx + 1) % previewOrder.length]);
+      if (e.key === 'ArrowLeft')  selectPlatform(previewOrder[(idx - 1 + previewOrder.length) % previewOrder.length], true);
+      if (e.key === 'ArrowRight') selectPlatform(previewOrder[(idx + 1) % previewOrder.length], true);
     });
 
   </script>
@@ -1197,9 +851,9 @@
       let currentChannel = 'release';
 
       const channelConfig = {
-        nightly: { eyebrow: 'nightlyEyebrow', title: 'nightlyTitle', description: 'nightlyDescription' },
-        dev: { eyebrow: 'devEyebrow', title: 'devChannelTitle', description: 'devChannelDescription' },
-        release: { eyebrow: 'releaseEyebrow', title: 'releaseTitle', description: 'releaseDescription' }
+        nightly: { eyebrow: 'nightlyEyebrow', description: 'nightlyDescription' },
+        dev: { eyebrow: 'devEyebrow', description: 'devChannelDescription' },
+        release: { eyebrow: 'releaseEyebrow', description: 'releaseDescription' }
       };
 
       const clientConfig = {
@@ -1225,30 +879,27 @@
           ctaWeb:         'Открыть в браузере',
           prevCaption:    'Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке',
           clientEyebrow:  'Канал сборки',
+          clientTitle:    'BarkFluff на ваших устройствах',
           clientDescription: 'Переключай ветку — ссылки, версии и визуальный режим страницы меняются вместе с каналом.',
           nightlyEyebrow: 'Ночная сборка',
-          nightlyTitle:  'Свежее каждую ночь',
           nightlyDescription: 'Самое новое из ветки nightly, возможны ошибки.',
           devEyebrow:    'Dev-сборка',
-          devChannelTitle: 'Ветка разработки',
           devChannelDescription: 'Актуальный dev-код: раньше релиза, без гарантий.',
           releaseEyebrow: 'Релизная сборка',
-          releaseTitle:   'Проверенный релиз',
           releaseDescription: 'Рекомендуемые стабильные версии из ветки master.',
           channelStatus: 'Версии обновляются автоматически',
           channelStatusError: 'Не удалось загрузить версии',
           channelRetry: 'Повторить',
           desktopKicker: '01 / Desktop',
-          desktopTitle: 'Настольные приложения',
+          desktopTitle: 'На компьютере',
           desktopDescription: 'Нативные сборки для компьютера.',
           mobileKicker: '02 / Mobile',
-          mobileTitle: 'Мобильные приложения',
-          mobileDescription: 'Сборки для телефона и планшета.',
-          webEyebrow:   'Веб-клиент',
-          webTitle:     'Barkfluff в браузере',
-          webDescription: 'Открывается сразу в браузере по единой ссылке.',
-          webSub:       'Любой современный браузер',
-          webFixed:     'Всегда nightly',
+          mobileTitle: 'На телефоне',
+          mobileDescription: 'Нативные приложения для мобильных устройств.',
+          webTitle:     'Веб-клиент',
+          webDescription: 'Переписка в любом современном браузере.',
+          webSub:       'Без установки',
+          webFixed:     'Не зависит от канала сборки',
           webOpen:      'Открыть',
           winTitle:     'Windows WinUI',
           winSub:       'WinUI 3 · x64 · Windows 10+',
@@ -1268,9 +919,19 @@
           linuxSub:     'В разработке',
           unavailable:  'Недоступно',
           devLabel:     'Для разработчиков',
-          devTitle:     'Создай свой клиент Barkfluff',
-          devSub:       'Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.',
-          devBtn:       'Разработчикам',
+          devTitle:     'Создайте свой клиент или ноду',
+          devSub:       'Создайте свой клиент, изучите исходники или разверните собственную ноду BarkFluff.',
+          devBtn:       'Документация',
+          protoTitle:   'Протокол для вашего клиента',
+          protoDescription: 'Открытые .proto-файлы описывают gRPC API BarkFluff. Сгенерируйте клиент для своего языка и создайте собственное приложение.',
+          protoLink:    'Открыть .proto-файлы',
+          repoTitle:    'BarkFluff на GitHub',
+          repoDescription: 'Серверная платформа, приложения и история разработки в одном репозитории. Изучайте код и участвуйте в развитии проекта.',
+          repoTag:      'Открытый код',
+          repoLink:     'Открыть репозиторий',
+          selfhostTitle: 'BarkFluff на вашем сервере',
+          selfhostDescription: 'Разверните BarkFluff на своём сервере. Инструкция по Docker и настройке инфраструктуры — в руководстве self-hosted.',
+          selfhostLink: 'Развернуть ноду',
           f1title:      'gRPC + TLS',
           f1body:       'Современный транспорт, шифрование на уровне соединения.',
           f2title:       'Светлая и тёмная',
@@ -1303,30 +964,27 @@
           ctaWeb:         'Open in browser',
           prevCaption:    'Switch platform — press <span class="kbd">←</span> <span class="kbd">→</span> or click a card',
           clientEyebrow:  'Build channel',
+          clientTitle:    'BarkFluff on your devices',
           clientDescription: 'Switch branches to update the links, versions and visual mode together.',
           nightlyEyebrow: 'Nightly build',
-          nightlyTitle:  'Fresh every night',
           nightlyDescription: 'The newest from nightly, bugs are possible.',
           devEyebrow:    'Dev build',
-          devChannelTitle: 'Work in progress',
           devChannelDescription: 'Current dev code: ahead of release, no guarantees.',
           releaseEyebrow: 'Release build',
-          releaseTitle:   'Verified release',
           releaseDescription: 'Recommended stable versions from master.',
           channelStatus: 'Versions update automatically',
           channelStatusError: 'Couldn\'t load versions',
           channelRetry: 'Retry',
           desktopKicker: '01 / Desktop',
-          desktopTitle: 'Desktop apps',
+          desktopTitle: 'On your computer',
           desktopDescription: 'Native builds for your computer.',
           mobileKicker: '02 / Mobile',
-          mobileTitle: 'Mobile apps',
-          mobileDescription: 'Builds for phones and tablets.',
-          webEyebrow:   'Web client',
-          webTitle:     'Barkfluff in your browser',
-          webDescription: 'Opens instantly in a browser from a single link.',
-          webSub:       'Any modern browser',
-          webFixed:     'Always nightly',
+          mobileTitle: 'On your phone',
+          mobileDescription: 'Native apps for mobile devices.',
+          webTitle:     'Web client',
+          webDescription: 'Messaging in any modern browser.',
+          webSub:       'No installation',
+          webFixed:     'Independent of build channel',
           webOpen:      'Open',
           winTitle:     'Windows WinUI',
           winSub:       'WinUI 3 · x64 · Windows 10+',
@@ -1346,9 +1004,19 @@
           linuxSub:     'In development',
           unavailable:  'Unavailable',
           devLabel:     'For developers',
-          devTitle:     'Build your own Barkfluff client',
-          devSub:       'Open .proto files, gRPC skeletons and integration examples.',
-          devBtn:       'Developers',
+          devTitle:     'Build your own client or node',
+          devSub:       'Build your own client, explore the source code or run your own BarkFluff node.',
+          devBtn:       'Documentation',
+          protoTitle:   'The protocol for your client',
+          protoDescription: 'Open .proto files describe the BarkFluff gRPC API. Generate a client for your language and build your own application.',
+          protoLink:    'Explore .proto files',
+          repoTitle:    'BarkFluff on GitHub',
+          repoDescription: 'The server platform, apps and development history in one repository. Explore the code and help shape the project.',
+          repoTag:      'Open source',
+          repoLink:     'Open the repository',
+          selfhostTitle: 'BarkFluff on your server',
+          selfhostDescription: 'Run BarkFluff on your own server. Find Docker and infrastructure setup instructions in the self-hosting guide.',
+          selfhostLink: 'Deploy a node',
           f1title:      'gRPC + TLS',
           f1body:       'Modern transport, connection-level encryption.',
           f2title:      'Light & dark',
@@ -1518,7 +1186,6 @@
         txt('clientEyebrow', 'clientEyebrow');
         const channelSwitcher = document.querySelector('.channel-switcher');
         if (channelSwitcher) channelSwitcher.setAttribute('aria-label', S[window.__lang].clientEyebrow);
-        txt('clientTitle', meta.title);
         txt('clientDescription', meta.description);
         applyVersions();
       }
@@ -1540,6 +1207,17 @@
         $e('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
 
         const textMap = {
+          clientTitle: 'clientTitle',
+          protoTitle: 'protoTitle',
+          protoDescription: 'protoDescription',
+          protoLink: 'protoLink',
+          repoTitle: 'repoTitle',
+          repoDescription: 'repoDescription',
+          repoTag: 'repoTag',
+          repoLink: 'repoLink',
+          selfhostTitle: 'selfhostTitle',
+          selfhostDescription: 'selfhostDescription',
+          selfhostLink: 'selfhostLink',
           navAbout: 'about',
           footerAbout: 'about',
           projectIntro: 'projectIntro',
@@ -1553,7 +1231,6 @@
           andTitle: 'andTitle',
           andSubtitle: 'andSub',
           andDownloadLabel: 'download',
-          webEyebrow: 'webEyebrow',
           webTitle: 'webTitle',
           webDescription: 'webDescription',
           webSubtitle: 'webSub',

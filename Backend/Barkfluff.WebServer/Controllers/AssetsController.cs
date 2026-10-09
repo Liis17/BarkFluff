@@ -17,6 +17,7 @@ namespace Barkfluff.WebServer.Controllers
             { "cookie-notice.js", "text/javascript" },
             { "domain-notice.js", "text/javascript" },
             { "domain-notice.css", "text/css" },
+            { "site-theme.css", "text/css" },
         };
 
         [HttpGet("/assets/{filename}")]
