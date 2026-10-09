@@ -434,3 +434,7 @@ docker/**/.env
 docker/**/admindata/
 docker/**/data/
 docker/**/backups/
+/.idea
+/.config
+/.codex
+/.claude
