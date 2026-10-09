@@ -22,10 +22,16 @@ on:
       - 'Android/gradlew'
       - 'Android/gradlew.bat'
       - 'Android/tools/**'
+      - '.github/scripts/client-version.sh'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: client-android
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -94,51 +100,13 @@ jobs:
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "Ветка ${{ github.ref_name }} → flavor $FLAVOR, канал $CHANNEL"
 
-      - name: Автоподнятие версии
+      - name: Определение версии
         id: version
+        env:
+          CLIENT_APP: barkfluffkotlin
+          CA_FILE: cloudflare-origin-ca-bundle.pem
         run: |
-          # Ночная сборка увеличивает patch. Берём максимум опубликованных каналов,
-          # чтобы повреждённое/устаревшее значение nightly не откатило нумерацию.
-          version_for_channel() {
-            local channel="$1"
-            local response
-            response=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem \
-              "https://storage.barkfluff.com/get/barkfluffkotlin/${channel}/version" || true)
-            printf '%s\n' "$response" | grep -oP '"version"\s*:\s*"\K\d+\.\d+\.\d+' | head -1 || true
-          }
-
-          VERSIONS=()
-          for channel in nightly dev release beta; do
-            CHANNEL_VERSION=$(version_for_channel "$channel")
-            if [ -n "$CHANNEL_VERSION" ]; then
-              echo "$channel version: $CHANNEL_VERSION"
-              VERSIONS+=("$CHANNEL_VERSION")
-            else
-              echo "$channel version: <not found>"
-            fi
-          done
-
-          if [ "${#VERSIONS[@]}" -eq 0 ]; then
-            echo "Не удалось получить ни одной опубликованной Android-версии из ClientStorage" >&2
-            exit 1
-          fi
-
-          SERVER_VERSION=$(printf '%s\n' "${VERSIONS[@]}" | sort -V | tail -1)
-
-          echo "Server version: $SERVER_VERSION"
-
-          if [ "${{ github.ref_name }}" = "nightly" ]; then
-            MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
-            MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
-            PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
-            PATCH=$((PATCH + 1))
-            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          else
-            NEW_VERSION="$SERVER_VERSION"
-          fi
-
-          echo "New version: $NEW_VERSION"
-          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          bash "$GITHUB_WORKSPACE/.github/scripts/client-version.sh"
 
       - name: Восстановление keystore из секрета
         env:
