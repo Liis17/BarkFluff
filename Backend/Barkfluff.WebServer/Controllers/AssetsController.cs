@@ -15,6 +15,8 @@ namespace Barkfluff.WebServer.Controllers
             { "channel-release.webp", "image/webp" },
             { "linkpreview.png", "image/png" },
             { "cookie-notice.js", "text/javascript" },
+            { "domain-notice.js", "text/javascript" },
+            { "domain-notice.css", "text/css" },
         };
 
         [HttpGet("/assets/{filename}")]
