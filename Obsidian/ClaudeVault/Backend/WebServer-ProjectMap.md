@@ -73,7 +73,7 @@
 | `files/install.sh` | Скрипт установки Linux (release) |
 | `files/installbeta.sh` | Скрипт установки Linux (beta) |
 | `files/favicon.ico` | Иконка сайта |
-| `files/site-theme.css` | Светлая палитра канала Release главной |
+| `files/site-theme.css` | Общая светлая палитра Release главной и оформление self-hosted/legal: шрифты, фон, навигация, карточки, таблицы и код |
 | `files/linkpreview.png` | OG-изображение для превью ссылок |
 | `files/cookie-notice.js` | Баннер об использовании cookie, подключается во все страницы `html/` |
 | `files/domain-notice.js` | Закрываемая RU/EN плашка о прежнем использовании домена на главной и `/about`; общий ключ `bf_domain_notice_v1` |

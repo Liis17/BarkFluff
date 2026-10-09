@@ -26,6 +26,10 @@ npm run dev       # → http://localhost:5173
 
 ## Архитектура
 
+### Логотип
+
+Шапка (`Header`) и форма входа (`LoginPage`) используют `/favicon.ico` вместо лапки. Файл `public/favicon.ico` — копия значка из `Backend/Barkfluff.WebServer/files/favicon.ico`; при замене оригинала обновляется и копия. Vite включает его в `dist/`, а `index.html` использует тот же файл как favicon. Главная [[Backend/WebServer]] также отображает свой favicon в шапке.
+
 ### Авторизация
 
 - `LoginPage` — форма логина + 2FA (OTP)
