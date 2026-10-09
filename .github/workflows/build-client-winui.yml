@@ -183,7 +183,11 @@ jobs:
           $sourceManifestVersion = [string]$sourceIdentity.Version
           $baselineVersion = Convert-ToStorageVersion $sourceManifestVersion
 
-          $storageVersion = Get-StorageVersion 'https://storage.barkfluff.com/get/barkfluffwinui/nightly/version'
+          $versionChannel = if ($env:CHANNEL -eq 'release') { 'dev' } else { 'nightly' }
+          $storageVersion = Get-StorageVersion "https://storage.barkfluff.com/get/barkfluffwinui/$versionChannel/version"
+          if ($null -eq $storageVersion -and $env:CHANNEL -eq 'release') {
+            throw 'Не удалось получить корректную WinUI-версию канала dev для release'
+          }
           if ($null -eq $storageVersion) {
             $storageVersion = Get-StorageVersion 'https://storage.barkfluff.com/get/barkfluffwinui/beta/version'
           }
