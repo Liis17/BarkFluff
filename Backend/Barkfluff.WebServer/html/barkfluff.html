@@ -3,20 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Barkfluff — Мессенджер</title>
+  <title>BarkFluff — Мессенджер с открытым исходным кодом</title>
+  <meta name="description" content="Независимый некоммерческий мессенджер с открытым исходным кодом. Разрабатывается с апреля 2025 года.">
+  <link rel="canonical" href="https://barkfluff.com/">
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="/assets/domain-notice.css">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://barkfluff.com/">
-  <meta property="og:title" content="BarkFluff — Кросcплатформенный мессенджер">
-  <meta property="og:description" content="BarkFluff — быстрый и безопасный кросcплатформенный мессенджер">
+  <meta property="og:title" content="BarkFluff — Мессенджер с открытым исходным кодом">
+  <meta property="og:description" content="Независимый некоммерческий мессенджер с открытым исходным кодом. Разрабатывается с апреля 2025 года.">
   <meta property="og:image" content="https://barkfluff.com/assets/linkpreview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="720">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://barkfluff.com/">
-  <meta name="twitter:title" content="BarkFluff — Кросcплатформенный мессенджер">
-  <meta name="twitter:description" content="BarkFluff — быстрый и безопасный кросcплатформенный мессенджер">
+  <meta name="twitter:title" content="BarkFluff — Мессенджер с открытым исходным кодом">
+  <meta name="twitter:description" content="Независимый некоммерческий мессенджер с открытым исходным кодом. Разрабатывается с апреля 2025 года.">
   <meta name="twitter:image" content="https://barkfluff.com/assets/linkpreview.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -223,6 +226,8 @@
       display: flex; align-items: center; justify-content: space-between; margin-bottom: 72px;
     }
     .home-nav-right { display: flex; align-items: center; gap: 20px; }
+    .home-nav { flex-wrap: wrap; gap: 20px; }
+    .home-nav-right, .home-footer-links { flex-wrap: wrap; }
     .home-nav-link {
       font-size: 13px; font-weight: 600; color: var(--ink-dim); text-decoration: none; transition: color 0.2s;
     }
@@ -265,6 +270,7 @@
     }
 
     .hero-sub { font-size: 17px; line-height: 1.55; color: var(--ink-dim); max-width: 460px; }
+    .project-intro { font-size: 13px; line-height: 1.6; color: var(--ink-dim); max-width: 460px; }
     .hero-sub s { color: var(--ink-mute); text-decoration-color: color-mix(in srgb, var(--brand) 50%, transparent); text-decoration-thickness: 2px; }
 
     .hero-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-top: 4px; }
@@ -611,6 +617,7 @@
       .home-nav { margin-bottom: 28px; gap: 10px; }
       .home-nav-right { gap: 10px; }
       .home-nav-right .home-nav-link { display: none; }
+      .home-nav-right #navAbout, .home-nav-right #navGitHub { display: inline; }
       .brand-mark { font-size: 15px; }
       .brand-mark .glyph { width: 26px; height: 26px; }
 
@@ -729,6 +736,11 @@
   <div class="page">
     <div class="home-page">
 
+      <aside class="domain-notice" id="domainNotice">
+        <p><span id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</span> <a href="/about#domain-history" id="domainNoticeLink">Подробнее о проекте и истории домена →</a></p>
+        <button type="button" id="domainNoticeClose" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
+      </aside>
+
       <header class="home-nav">
         <div style="display:flex;align-items:center;gap:14px;">
           <a href="/" class="brand-mark">
@@ -740,6 +752,8 @@
           <button class="lang-btn" id="langToggle" onclick="toggleLanguage()">EN</button>
         </div>
         <div class="home-nav-right">
+          <a href="/about" class="home-nav-link" id="navAbout">О проекте</a>
+          <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link" id="navGitHub">GitHub</a>
           <span class="home-nav-link" style="opacity:0.35;cursor:default;">Self-hosted</span>
           <a href="https://developers.barkfluff.com" target="_blank" class="home-nav-link" id="navDev">Разработчикам</a>
           <a href="https://t.me/barkfluff?direct" target="_blank" class="btn btn-ghost" style="padding: 10px 16px; font-size: 13px;">
@@ -762,6 +776,7 @@
             <span style="color: var(--brand-soft);">Без рекламы, без трекинга</span>, без лишнего шума.<br>
             Просто <span style="color: var(--brand-soft);">отправляй сообщения</span> — друзьям, себе, кому угодно.
           </p>
+          <p class="project-intro" id="projectIntro">Независимый некоммерческий мессенджер с открытым исходным кодом. Разрабатывается с апреля 2025 года.</p>
           <div class="hero-cta">
             <a href="#clientHub" class="btn btn-primary hero-cta-btn" id="heroCtaBtn"><span id="heroCtaLabel">Скачать</span><span id="heroCtaArrow" aria-hidden="true">↓</span></a>
             <span class="hero-cta-note" id="heroCtaNote"></span>
@@ -1000,6 +1015,8 @@
       <footer class="home-footer">
         <div id="footerCopy">2026 Barkfluff</div>
         <div class="home-footer-links">
+          <a href="/about" id="footerAbout">О проекте</a>
+          <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
           <a href="https://t.me/barkfluff?direct" target="_blank" id="footerSupport">
             <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 11.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
             Поддержка
@@ -1193,6 +1210,9 @@
 
       const S = {
         ru: {
+          pageTitle:      'BarkFluff — Мессенджер с открытым исходным кодом',
+          projectIntro:   'Независимый некоммерческий мессенджер с открытым исходным кодом. Разрабатывается с апреля 2025 года.',
+          about:          'О проекте',
           eyebrow:        'Ночная сборка',
           title1:         'Лёгкий.',
           title2:         'Быстрый.',
@@ -1268,6 +1288,9 @@
           navDev:        'Разработчикам'
         },
         en: {
+          pageTitle:      'BarkFluff — Open-source messenger',
+          projectIntro:   'An independent, noncommercial, open-source messenger. In development since April 2025.',
+          about:          'About the project',
           eyebrow:        'Nightly build',
           title1:         'Lightweight.',
           title2:         'Fast.',
@@ -1510,10 +1533,16 @@
         window.__lang = lang;
         document.documentElement.lang = lang;
         localStorage.setItem('bf_lang', lang);
+        document.title = S[lang].pageTitle;
+        document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]').forEach(el => { el.content = S[lang].pageTitle; });
+        document.querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]').forEach(el => { el.content = S[lang].projectIntro; });
         txt('langToggle', 'langToggle');
         $e('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
 
         const textMap = {
+          navAbout: 'about',
+          footerAbout: 'about',
+          projectIntro: 'projectIntro',
           navDev: 'navDev',
           heroTitle1: 'title1',
           heroTitle2: 'title2',
@@ -1600,6 +1629,7 @@
     })();
   </script>
 
+  <script src="/assets/domain-notice.js" defer></script>
   <script src="/assets/cookie-notice.js" defer></script>
 
 </body>

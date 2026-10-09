@@ -18,7 +18,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 | Controller | Маршрут | Описание |
 |------------|---------|----------|
-| `HomeController` | `GET /` | Отдаёт `html/barkfluff.html` |
+| `HomeController` | `GET /`, `GET /about` | Отдаёт `html/barkfluff.html` и `html/about.html` |
 | `InstallController` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Legacy-скрипты установки, оставлены для совместимости; на главной больше не показываются |
 | `DownloadController` | `GET /download/installer` | `Barkfluff.Updater.CLI.exe` |
 | `FallbackController` | `GET /{**catchAll}` | `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService; пусто в ответе → `html/404.html` с кодом 404 |
@@ -54,6 +54,16 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 Native-клиенты сгруппированы как `Desktop` (Windows WinUI, macOS, Linux — скоро) и `Mobile` (Android, iOS — скоро). Рабочие ссылки строятся как `/get/barkfluffwinui/{channel}`, `/get/barkfluffkotlin/{channel}` и `/get/barkfluffmacos/{channel}`. Если версия выбранного канала ещё не опубликована, карточка показывает состояние ожидания.
 
+## Информация о проекте и история домена (2026-10-09)
+
+Главная содержит описание независимого некоммерческого мессенджера с открытым исходным кодом и ссылки на GitHub и `/about` в навигации и подвале, включая мобильную версию. Главная и страница «О проекте» имеют description, canonical и Open Graph/Twitter metadata.
+
+`GET /about` — публичная статическая страница, специфичный маршрут `HomeController` имеет приоритет над профилями `FallbackController`. Тексты RU/EN находятся непосредственно в HTML; язык следует общему `localStorage.bf_lang`, по умолчанию определяется по языку браузера. Содержимое: назначение и стадия проекта, история, команда, MIT, ссылки на исходники и контакт поддержки. Датой начала считается первый коммит `ce2090cd9877c2a4ad73ce51f5a8025c22bf7f92` от 5 апреля 2025 года. Передача домена примерно в мае 2025 года указана как информация нынешнего владельца. Некоммерческий характер проекта не ограничивает права по MIT.
+
+Команда: `li_is` — главный разработчик (`li_is@barkfluff.com`), `fooxboy` — backend и [[Клиенты/iOS]] (`fooxboy@barkfluff.com`), `kotumbus` — [[Клиенты/Linux]] (`kotumbus@barkfluff.com`).
+
+Вверху обеих страниц — закрываемая плашка о том, что проект не связан с прежним магазином товаров для животных. Общие `files/domain-notice.js` и `files/domain-notice.css` раздаются через whitelist `AssetsController` и включены в публикацию. Закрытие сохраняется на origin сайта как `localStorage.bf_domain_notice_v1 = dismissed` и действует на обе страницы. Скрипт следит за изменением `html.lang` для RU/EN. При недоступном localStorage закрытие действует только на текущей странице. Постоянное пояснение об использовании домена магазином в 2022 году остаётся в `/about#domain-history`.
+
 ## REST API — `/api/user/{username}`
 
 Возвращает публичный профиль пользователя:
@@ -81,6 +91,7 @@ Native-клиенты сгруппированы как `Desktop` (Windows WinUI
 ## Статика
 
 - `html/barkfluff.html` — главная страница
+- `html/about.html` — публичная страница «О проекте», RU/EN, история, команда, исходники и пояснение о домене
 - `html/404.html` — страница «не найдено» (палитра главной, RU/EN по `localStorage.bf_lang`, шрифт не грузится извне — только системный fallback)
 - `html/userpage.html` — шаблон страницы пользователя
 - `html/UniqueUsers/paws.page.html` — **специальная** страница для пользователя `li_is`: как userpage, но с анимированными полупрозрачными лапками-следами (SVG, CSS keyframes) на заднем плане
@@ -88,6 +99,7 @@ Native-клиенты сгруппированы как `Desktop` (Windows WinUI
 - `html/legal/*.html` — юридические страницы **для сайта** (RU+EN в одном файле через `<article data-lang>`, переключатель на клиенте)
 - `html/legal/*.md` — те же документы **для клиентов**, см. ниже
 - `files/cookie-notice.js` — баннер об использовании cookie, см. ниже
+- `files/domain-notice.js`, `files/domain-notice.css` — общая плашка об истории домена на главной и `/about`
 - `html/new/` — **WIP** редизайн главной страницы (Barkfluff Redesign.html, profile.html, стили)
 - `files/install.ps1`, `files/installbeta.ps1` — скрипты установки Windows
 - `files/install.sh`, `files/installbeta.sh` — скрипты установки Linux
@@ -100,7 +112,7 @@ Native-клиенты сгруппированы как `Desktop` (Windows WinUI
 
 Общего layout у `html/` не существует — каждая страница самостоятельна. Поэтому баннер сделан **одним внешним файлом** и подключается строкой `<script src="/assets/cookie-notice.js" defer></script>` перед `</body>`. Раздаётся через whitelist `AssetsController._allowedFiles` (там же прописан `text/javascript`), в `.csproj` добавлен `<Content Include="files\cookie-notice.js">`.
 
-⚠️ Новая страница сайта → добавить эту строку вручную. Сейчас подключено в 9 файлах: `barkfluff.html`, `404.html`, `userpage.html`, `selfhosted.html`, `UniqueUsers/paws.page.html`, все четыре `legal/*.html`. Каталог `html/new/` (WIP-редизайн) не подключён.
+⚠️ Новая страница сайта → добавить эту строку вручную. Сейчас подключено в 10 файлах: `barkfluff.html`, `about.html`, `404.html`, `userpage.html`, `selfhosted.html`, `UniqueUsers/paws.page.html`, все четыре `legal/*.html`. Каталог `html/new/` (WIP-редизайн) не подключён.
 
 - Локализация RU/EN — собственный словарь `S` внутри скрипта, язык берётся из `document.documentElement.lang` / `localStorage.bf_lang` (та же схема, что у `barkfluff.html` и `legal/*.html`). Свой обработчик на `#langToggle`, потому что `applyLang` главной страницы работает по фиксированному списку id.
 - Стили инжектит сам скрипт, цвета через `var(--panel, var(--bg-2, …))` и т.п. — наборы CSS-переменных у главной страницы и legal-страниц разные.
