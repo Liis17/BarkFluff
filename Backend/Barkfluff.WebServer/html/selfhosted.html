@@ -3,57 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Своя нода — Barkfluff</title>
+  <title data-ru="Своя нода — Barkfluff" data-en="Your own node — Barkfluff">Своя нода — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site-theme.css">
+  <link rel="stylesheet" href="/assets/site-header.css">
+  <script>
+    try {
+      var savedLang = localStorage.getItem('bf_lang');
+      document.documentElement.lang = savedLang === 'ru' || savedLang === 'en' ? savedLang : ((navigator.language || '').startsWith('ru') ? 'ru' : 'en');
+    } catch (_) { }
+  </script>
 </head>
 <body class="document-page selfhosted-page">
-  <main>
-    <header class="site-header">
-      <a href="/" class="brand-mark"><img src="/favicon.ico" width="28" height="28" alt=""><span>barkfluff</span></a>
-      <div class="site-links">
-        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
-        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
-        <a href="/selfhosted">Self-hosted</a>
-        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+  <div class="home-page">
+    <header class="home-nav">
+      <div class="home-nav-left">
+        <a href="/" class="brand-mark">
+          <span class="glyph"><img src="/favicon.ico" width="28" height="28" alt=""></span>
+          <span>barkfluff</span>
+        </a>
+        <button class="lang-btn" id="langToggle" type="button">EN</button>
+      </div>
+      <div class="home-nav-right">
+        <a href="/about" class="home-nav-link" data-ru="О проекте" data-en="About the project">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link">GitHub</a>
+        <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
+        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="home-nav-link" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+        <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener" class="btn btn-ghost">
+          Telegram
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
+        </a>
       </div>
     </header>
-
+  </div>
+  <main>
     <div class="hero">
       <span class="eyebrow">Self-hosted</span>
-      <h1>Своя нода Barkfluff</h1>
-      <p>Barkfluff — федеративная сеть независимых серверов. Каждый может поднять свою ноду: аккаунты, сообщения и файлы остаются на вашем железе, а с пользователями других нод ваши пользователи общаются через межсерверный протокол.</p>
+      <h1><span lang="ru">Своя нода Barkfluff</span><span lang="en">Run your own Barkfluff node</span></h1>
+      <p lang="ru">Barkfluff — федеративная сеть независимых серверов. Каждый может поднять свою ноду: аккаунты, сообщения и файлы остаются на вашем железе, а с пользователями других нод ваши пользователи общаются через межсерверный протокол.</p>
+      <p lang="en">Barkfluff is a federated network of independent servers. Anyone can run their own node: accounts, messages and files stay on your hardware, while your users talk to users of other nodes through the server-to-server protocol.</p>
     </div>
 
-    <nav class="toc document-nav" aria-label="Разделы руководства">
-      <a href="#otvetstvennost">Ответственность</a>
-      <a href="#trebovaniya">Требования</a>
-      <a href="#dns">DNS и TLS</a>
+    <nav class="toc document-nav" aria-label="Разделы руководства" data-ru="Разделы руководства" data-en="Guide sections" data-i18n-attr="aria-label">
+      <a href="#otvetstvennost"><span lang="ru">Ответственность</span><span lang="en">Responsibility</span></a>
+      <a href="#trebovaniya"><span lang="ru">Требования</span><span lang="en">Requirements</span></a>
+      <a href="#dns"><span lang="ru">DNS и TLS</span><span lang="en">DNS and TLS</span></a>
       <a href="#compose">docker-compose.yml</a>
       <a href="#env">.env</a>
-      <a href="#zapusk">Первый запуск</a>
-      <a href="#settings">Заполнить в Settings</a>
-      <a href="#federaciya">Федерация</a>
-      <a href="#obsluzhivanie">Обслуживание</a>
+      <a href="#zapusk"><span lang="ru">Первый запуск</span><span lang="en">First run</span></a>
+      <a href="#settings"><span lang="ru">Заполнить в Settings</span><span lang="en">Fill in Settings</span></a>
+      <a href="#federaciya"><span lang="ru">Федерация</span><span lang="en">Federation</span></a>
+      <a href="#obsluzhivanie"><span lang="ru">Обслуживание</span><span lang="en">Maintenance</span></a>
     </nav>
 
     <section id="otvetstvennost">
-      <h2><span class="num">0</span>Что вы на себя берёте</h2>
+      <h2><span class="num">0</span><span lang="ru">Что вы на себя берёте</span><span lang="en">What you are taking on</span></h2>
       <div class="callout warn">
-        <span class="tag">Прочитайте до установки</span>
-        <p>Развернув ноду, вы становитесь её <strong>администратором и оператором персональных данных</strong> ваших пользователей. У вас будет технический доступ к базе данных, файловому хранилищу, резервным копиям и логам — то есть к содержимому обычных переписок. Вы отвечаете за хранение, выдачу и удаление этих данных, за модерацию и за соблюдение применимого к вам законодательства.</p>
-        <p>Разработчики Barkfluff публикуют программное обеспечение и протокол. Они не размещают вашу ноду, не имеют доступа к её данным и не отвечают за то, как вы их обрабатываете.</p>
+        <div lang="ru">
+          <span class="tag">Прочитайте до установки</span>
+          <p>Развернув ноду, вы становитесь её <strong>администратором и оператором персональных данных</strong> ваших пользователей. У вас будет технический доступ к базе данных, файловому хранилищу, резервным копиям и логам — то есть к содержимому обычных переписок. Вы отвечаете за хранение, выдачу и удаление этих данных, за модерацию и за соблюдение применимого к вам законодательства.</p>
+          <p>Разработчики Barkfluff публикуют программное обеспечение и протокол. Они не размещают вашу ноду, не имеют доступа к её данным и не отвечают за то, как вы их обрабатываете.</p>
+        </div>
+        <div lang="en">
+          <span class="tag">Read before installing</span>
+          <p>By running a node you become its <strong>administrator and the controller of your users' personal data</strong>. You will have technical access to the database, file storage, backups and logs — that is, to the contents of ordinary conversations. You are responsible for storing, providing and deleting that data, for moderation, and for complying with the laws that apply to you.</p>
+          <p>The Barkfluff developers publish the software and the protocol. They do not host your node, have no access to its data and are not responsible for how you process it.</p>
+        </div>
       </div>
-      <p>Опубликуйте на своей ноде собственные <a href="/legal/privacy-policy">политику конфиденциальности</a>, <a href="/legal/terms-of-service">условия использования</a> и <a href="/legal/account-deletion">порядок удаления аккаунта</a> — документы barkfluff.com можно взять за основу, но контакты и юрисдикция в них должны быть ваши. Что именно уходит на чужие ноды при федеративной переписке, описано на странице <a href="/legal/encryption">о шифровании</a>.</p>
+      <p lang="ru">Опубликуйте на своей ноде собственные <a href="/legal/privacy-policy">политику конфиденциальности</a>, <a href="/legal/terms-of-service">условия использования</a> и <a href="/legal/account-deletion">порядок удаления аккаунта</a> — документы barkfluff.com можно взять за основу, но контакты и юрисдикция в них должны быть ваши. Что именно уходит на чужие ноды при федеративной переписке, описано на странице <a href="/legal/encryption">о шифровании</a>.</p>
+      <p lang="en">Publish your own <a href="/legal/privacy-policy">privacy policy</a>, <a href="/legal/terms-of-service">terms of service</a> and <a href="/legal/account-deletion">account deletion procedure</a> on your node — the barkfluff.com documents can be used as a starting point, but the contacts and jurisdiction in them must be yours. What exactly is sent to other nodes during federated conversations is described on the <a href="/legal/encryption">encryption</a> page.</p>
     </section>
 
     <section id="trebovaniya">
-      <h2><span class="num">1</span>Требования</h2>
-      <ul>
+      <h2><span class="num">1</span><span lang="ru">Требования</span><span lang="en">Requirements</span></h2>
+      <ul lang="ru">
         <li><strong>Linux-хост</strong> с Docker и Docker Compose v2.</li>
         <li><strong>4 ГБ ОЗУ минимум</strong>, 8 ГБ комфортно: стек — это ~16 контейнеров, PostgreSQL, RabbitMQ, Redis и Seq.</li>
         <li><strong>2 ядра CPU</strong> (параметры PostgreSQL в примере ниже подогнаны под 2 ядра / 8 ГБ).</li>
@@ -63,49 +89,68 @@
         <li><strong>nginx</strong> перед стеком: сервисы слушают только внутри Docker-сети, TLS терминируется на nginx. Готовые конфиги лежат в репозитории в <code>docker/nginx/</code>.</li>
         <li><strong>Доступ к реестру образов</strong> <code>docker.barkfluff.com</code>.</li>
       </ul>
+      <ul lang="en">
+        <li><strong>A Linux host</strong> with Docker and Docker Compose v2.</li>
+        <li><strong>4 GB of RAM minimum</strong>, 8 GB for comfort: the stack is ~16 containers plus PostgreSQL, RabbitMQ, Redis and Seq.</li>
+        <li><strong>2 CPU cores</strong> (the PostgreSQL parameters in the example below are tuned for 2 cores / 8 GB).</li>
+        <li><strong>Disk</strong> — 20 GB or more; it grows with users' files.</li>
+        <li><strong>A domain</strong> and a wildcard record for the service subdomains.</li>
+        <li><strong>A TLS certificate</strong> for the apex and subdomains — Let's Encrypt works.</li>
+        <li><strong>nginx</strong> in front of the stack: services listen only inside the Docker network, and TLS terminates at nginx. Ready-made configs are in the repository under <code>docker/nginx/</code>.</li>
+        <li><strong>Access to the image registry</strong> <code>docker.barkfluff.com</code>.</li>
+      </ul>
       <div class="callout">
+        <div lang="ru">
         <p>Barkfluff в активной разработке. Ломающие изменения схемы БД случаются между релизами — держите бэкапы и не обновляйте продовую ноду без проверки на тестовой.</p>
+        </div>
+        <div lang="en">
+        <p>Barkfluff is under active development. Breaking database schema changes happen between releases — keep backups and don't update a production node without trying it on a test one first.</p>
+        </div>
       </div>
     </section>
 
     <section id="dns">
-      <h2><span class="num">2</span>DNS и TLS</h2>
-      <p>Каждый сервис публикуется отдельным субдоменом — так устроены конфиги nginx в репозитории. Заведите A-записи (или один wildcard <code>*.example.com</code>) на IP вашей ноды:</p>
+      <h2><span class="num">2</span><span lang="ru">DNS и TLS</span><span lang="en">DNS and TLS</span></h2>
+      <p lang="ru">Каждый сервис публикуется отдельным субдоменом — так устроены конфиги nginx в репозитории. Заведите A-записи (или один wildcard <code>*.example.com</code>) на IP вашей ноды:</p>
+      <p lang="en">Each service is published on its own subdomain — that is how the nginx configs in the repository are laid out. Create A records (or a single wildcard <code>*.example.com</code>) pointing at your node's IP:</p>
       <div class="scroll-x">
       <table>
-        <thead><tr><th>Субдомен</th><th>Куда проксируется</th><th>Зачем</th></tr></thead>
+        <thead><tr><th><span lang="ru">Субдомен</span><span lang="en">Subdomain</span></th><th><span lang="ru">Куда проксируется</span><span lang="en">Proxied to</span></th><th><span lang="ru">Зачем</span><span lang="en">Purpose</span></th></tr></thead>
         <tbody>
-          <tr><td><code>example.com</code></td><td>web-сервер + <code>federation:7031</code></td><td>Сайт и <code>/.well-known/barkfluff</code> — точка знакомства других нод</td></tr>
-          <tr><td><code>identity.</code></td><td><code>identity:7000</code></td><td>Регистрация, вход, 2FA, сессии</td></tr>
-          <tr><td><code>users.</code></td><td><code>users:7001</code></td><td>Профили, устройства, приватность</td></tr>
-          <tr><td><code>beacon.</code></td><td><code>beacon:7002</code></td><td>Публикация ноды и её адресов клиентам</td></tr>
-          <tr><td><code>files.</code></td><td><code>files:7005</code></td><td>Загрузка и раздача файлов</td></tr>
-          <tr><td><code>messages.</code></td><td><code>messages:7007</code></td><td>Чаты и сообщения</td></tr>
-          <tr><td><code>fast-auth.</code></td><td><code>fast-auth:7008</code></td><td>Вход по QR-коду</td></tr>
-          <tr><td><code>onliner.</code></td><td><code>onliner:7009</code></td><td>Онлайн-статусы</td></tr>
-          <tr><td><code>updates.</code></td><td><code>updates:7015</code></td><td>Realtime-поток обновлений</td></tr>
-          <tr><td><code>calls.</code>, <code>livekit.</code></td><td><code>calls:7025</code>, <code>livekit:7880</code></td><td>Звонки и SFU</td></tr>
-          <tr><td><code>bots.</code></td><td><code>bots:7027</code></td><td>Bot API</td></tr>
-          <tr><td><code>federation.</code></td><td><code>federation:7030</code></td><td>Межсерверный канал (нужен, только если включаете федерацию)</td></tr>
-          <tr><td><code>web.</code>, <code>panel.</code></td><td><code>web:7016</code>, admin-panel</td><td>Веб-клиент и панель администратора</td></tr>
+          <tr><td><code>example.com</code></td><td><span lang="ru">web-сервер + <code>federation:7031</code></span><span lang="en">web server + <code>federation:7031</code></span></td><td><span lang="ru">Сайт и <code>/.well-known/barkfluff</code> — точка знакомства других нод</span><span lang="en">The website and <code>/.well-known/barkfluff</code> — the introduction point for other nodes</span></td></tr>
+          <tr><td><code>identity.</code></td><td><code>identity:7000</code></td><td><span lang="ru">Регистрация, вход, 2FA, сессии</span><span lang="en">Sign-up, login, 2FA, sessions</span></td></tr>
+          <tr><td><code>users.</code></td><td><code>users:7001</code></td><td><span lang="ru">Профили, устройства, приватность</span><span lang="en">Profiles, devices, privacy</span></td></tr>
+          <tr><td><code>beacon.</code></td><td><code>beacon:7002</code></td><td><span lang="ru">Публикация ноды и её адресов клиентам</span><span lang="en">Publishes the node and its addresses to clients</span></td></tr>
+          <tr><td><code>files.</code></td><td><code>files:7005</code></td><td><span lang="ru">Загрузка и раздача файлов</span><span lang="en">File upload and delivery</span></td></tr>
+          <tr><td><code>messages.</code></td><td><code>messages:7007</code></td><td><span lang="ru">Чаты и сообщения</span><span lang="en">Chats and messages</span></td></tr>
+          <tr><td><code>fast-auth.</code></td><td><code>fast-auth:7008</code></td><td><span lang="ru">Вход по QR-коду</span><span lang="en">QR-code login</span></td></tr>
+          <tr><td><code>onliner.</code></td><td><code>onliner:7009</code></td><td><span lang="ru">Онлайн-статусы</span><span lang="en">Online statuses</span></td></tr>
+          <tr><td><code>updates.</code></td><td><code>updates:7015</code></td><td><span lang="ru">Realtime-поток обновлений</span><span lang="en">Realtime update stream</span></td></tr>
+          <tr><td><code>calls.</code>, <code>livekit.</code></td><td><code>calls:7025</code>, <code>livekit:7880</code></td><td><span lang="ru">Звонки и SFU</span><span lang="en">Calls and SFU</span></td></tr>
+          <tr><td><code>bots.</code></td><td><code>bots:7027</code></td><td><span lang="ru">Bot API</span><span lang="en">Bot API</span></td></tr>
+          <tr><td><code>federation.</code></td><td><code>federation:7030</code></td><td><span lang="ru">Межсерверный канал (нужен, только если включаете федерацию)</span><span lang="en">Server-to-server channel (needed only if you enable federation)</span></td></tr>
+          <tr><td><code>web.</code>, <code>panel.</code></td><td><span lang="ru"><code>web:7016</code>, admin-panel</span><span lang="en"><code>web:7016</code>, admin-panel</span></td><td><span lang="ru">Веб-клиент и панель администратора</span><span lang="en">Web client and admin panel</span></td></tr>
         </tbody>
       </table>
       </div>
-      <p>Для <code>federation.</code> допустим самоподписанный сертификат: чужие ноды сверяют отпечаток открытого ключа (SPKI), а не цепочку удостоверяющего центра. А вот на apex-домене сертификат обязан быть валидным для обычных браузеров — по <code>https://example.com/.well-known/barkfluff</code> с вами знакомятся ноды, которые вас ещё не знают.</p>
+      <p lang="ru">Для <code>federation.</code> допустим самоподписанный сертификат: чужие ноды сверяют отпечаток открытого ключа (SPKI), а не цепочку удостоверяющего центра. А вот на apex-домене сертификат обязан быть валидным для обычных браузеров — по <code>https://example.com/.well-known/barkfluff</code> с вами знакомятся ноды, которые вас ещё не знают.</p>
+      <p lang="en">A self-signed certificate is acceptable for <code>federation.</code>: other nodes check the fingerprint of the public key (SPKI), not the certificate authority chain. The certificate on the apex domain, however, must be valid for ordinary browsers — nodes that don't know you yet get introduced to you through <code>https://example.com/.well-known/barkfluff</code>.</p>
     </section>
 
     <section id="compose">
       <h2><span class="num">3</span>docker-compose.yml</h2>
-      <p>Релизный стек. Отличия от dev-варианта из репозитория: образы без суффикса <code>-dev</code> и порты инфраструктуры не выставлены на хост — наружу смотрит только nginx.</p>
+      <p lang="ru">Релизный стек. Отличия от dev-варианта из репозитория: образы без суффикса <code>-dev</code> и порты инфраструктуры не выставлены на хост — наружу смотрит только nginx.</p>
+      <p lang="en">The release stack. Differences from the dev variant in the repository: images without the <code>-dev</code> suffix, and the infrastructure ports are not exposed to the host — only nginx faces outward.</p>
       <figure class="code tall">
-        <figcaption><b>docker-compose.yml</b><button class="copy" type="button">Копировать</button></figcaption>
+        <figcaption><b>docker-compose.yml</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>x-common-variables: &amp;common-variables
   SETTINGS_SERVICE_URL: "${SETTINGS_SERVICE_URL}"
   ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
 
 services:
-  # === Основные микросервисы ===
-
+<span lang="ru">  # === Основные микросервисы ===
+</span><span lang="en">  # === Core microservices ===
+</span>
   settings:
     image: docker.barkfluff.com/barkfluff-settings:latest
     container_name: settings
@@ -304,8 +349,9 @@ services:
       - updates
       - onliner
 
-  # === Панель администрирования ===
-
+<span lang="ru">  # === Панель администрирования ===
+</span><span lang="en">  # === Administration panel ===
+</span>
   admin-panel:
     image: docker.barkfluff.com/barkfluff-admin-panel:latest
     container_name: admin-panel
@@ -327,8 +373,9 @@ services:
       BotsService__Host: "${BOTS_SERVICE_HOST:-http://bots:7027}"
       BotsService__Token: "${BOTS_SERVICE_TOKEN:-}"
     volumes:
-      # Панель показывает состояние контейнеров и умеет их перезапускать.
-      - /var/run/docker.sock:/var/run/docker.sock
+<span lang="ru">      # Панель показывает состояние контейнеров и умеет их перезапускать.
+</span><span lang="en">      # The panel shows container state and can restart them.
+</span>      - /var/run/docker.sock:/var/run/docker.sock
       - admin_panel_data:/app/db
       - ./docker-compose.yml:/docker-compose.yml:ro
       - ./.env:/.env:ro
@@ -338,14 +385,16 @@ services:
       - settings
       - seq
 
-  # === Инфраструктура ===
-
+<span lang="ru">  # === Инфраструктура ===
+</span><span lang="en">  # === Infrastructure ===
+</span>
   postgres:
     image: postgres:18
     container_name: postgres_barkfluff
     restart: always
-    # Тюнинг под 2 ядра / 8 ГБ: БД делит машину с остальными сервисами.
-    command:
+<span lang="ru">    # Тюнинг под 2 ядра / 8 ГБ: БД делит машину с остальными сервисами.
+</span><span lang="en">    # Tuned for 2 cores / 8 GB: the DB shares the machine with the other services.
+</span>    command:
       - "postgres"
       - "-c"
       - "max_connections=150"
@@ -379,9 +428,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
       - backup_volume:/backup
-    # Порт наружу не публикуется: доступ к БД — только изнутри Docker-сети.
+<span lang="ru">    # Порт наружу не публикуется: доступ к БД — только изнутри Docker-сети.
     # Для ручных подключений используйте SSH-туннель.
-    healthcheck:
+</span><span lang="en">    # The port is not published: the DB is reachable only from inside the Docker network.
+    # For manual connections use an SSH tunnel.
+</span>    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"]
       interval: 5s
       timeout: 5s
@@ -464,13 +515,17 @@ services:
     restart: always
     command: --config /etc/livekit/livekit.yaml
     volumes:
-      # Монтируется папка целиком, а не один файл: bind-mount одиночного файла,
+<span lang="ru">      # Монтируется папка целиком, а не один файл: bind-mount одиночного файла,
       # которого ещё нет на хосте, Docker молча подменяет каталогом.
-      - ./livekit:/etc/livekit:ro
+</span><span lang="en">      # The whole folder is mounted, not a single file: Docker silently replaces
+      # a bind-mounted single file that does not exist on the host yet with a directory.
+</span>      - ./livekit:/etc/livekit:ro
     ports:
-      # 7880 (сигнализация) фронтит nginx по WSS и наружу не публикуется.
+<span lang="ru">      # 7880 (сигнализация) фронтит nginx по WSS и наружу не публикуется.
       # WebRTC-медиа nginx проксировать не может — эти порты всегда прямые:
-      - "7881:7881"                     # ICE/TCP fallback
+</span><span lang="en">      # 7880 (signalling) is fronted by nginx over WSS and is not published externally.
+      # nginx cannot proxy WebRTC media — these ports are always direct:
+</span>      - "7881:7881"                     # ICE/TCP fallback
       - "50000-50200:50000-50200/udp"   # RTC media (UDP)
     networks:
       - barkfluff-network
@@ -489,265 +544,372 @@ volumes:
   admin_panel_data:</code></pre>
       </figure>
       <div class="callout">
+        <div lang="ru">
         <p><code>seq</code> (логи) и <code>minio</code> (консоль) веб-интерфейсы наружу не публикуются. Нужен доступ — заводите отдельный субдомен в nginx с авторизацией или ходите через SSH-туннель.</p>
+        </div>
+        <div lang="en">
+        <p>The <code>seq</code> (logs) and <code>minio</code> (console) web interfaces are not published externally. If you need access, add a separate nginx subdomain with authentication or go through an SSH tunnel.</p>
+        </div>
       </div>
     </section>
 
     <section id="env">
       <h2><span class="num">4</span>.env</h2>
-      <p>Файл лежит рядом с <code>docker-compose.yml</code>. Здесь только то, без чего стек не поднимется: остальная конфигурация живёт в базе Settings (шаг 6).</p>
+      <p lang="ru">Файл лежит рядом с <code>docker-compose.yml</code>. Здесь только то, без чего стек не поднимется: остальная конфигурация живёт в базе Settings (шаг 6).</p>
+      <p lang="en">The file sits next to <code>docker-compose.yml</code>. It holds only what the stack cannot start without: the rest of the configuration lives in the Settings database (step 6).</p>
       <figure class="code tall">
-        <figcaption><b>.env</b><button class="copy" type="button">Копировать</button></figcaption>
-        <pre><code># Имя инстанса в служебных заголовках и логах. Обычно — имя хоста.
-HOSTNAME=node-1
+        <figcaption><b>.env</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <pre><code><span lang="ru"># Имя инстанса в служебных заголовках и логах. Обычно — имя хоста.
+</span><span lang="en"># Instance name in service headers and logs. Usually the host name.
+</span>HOSTNAME=node-1
 
-# Адрес Settings для остальных сервисов. Они идут к нему при старте
+<span lang="ru"># Адрес Settings для остальных сервисов. Они идут к нему при старте
 # за своей конфигурацией, поэтому адрес внутренний и порт совпадает
 # с SETTINGS_PORT ниже.
-SETTINGS_SERVICE_URL=http://settings:7003
+</span><span lang="en"># Settings address for the other services. They contact it at startup
+# to fetch their configuration, so the address is internal and the port
+# matches SETTINGS_PORT below.
+</span>SETTINGS_SERVICE_URL=http://settings:7003
 
-# Production включает боевые уровни логирования и отключает dev-заглушки.
-ASPNETCORE_ENVIRONMENT=Production
+<span lang="ru"># Production включает боевые уровни логирования и отключает dev-заглушки.
+</span><span lang="en"># Production enables production log levels and disables dev stubs.
+</span>ASPNETCORE_ENVIRONMENT=Production
 
 # --- PostgreSQL ---
-# Учётка суперпользователя. При первом старте создаются только отсутствующие
+<span lang="ru"># Учётка суперпользователя. При первом старте создаются только отсутствующие
 # базы сервисов; существующие базы и их данные не пересоздаются.
-POSTGRES_USER=barkfluff
-POSTGRES_PASSWORD=смените-меня
+</span><span lang="en"># Superuser account. On first start only the missing service databases are
+# created; existing databases and their data are not recreated.
+</span>POSTGRES_USER=barkfluff
+POSTGRES_PASSWORD=<span lang="ru">смените-меня</span><span lang="en">change-me</span>
 POSTGRES_DB=postgres
 POSTGRES_PORT=5432
 
-# --- База самого Settings ---
+<span lang="ru"># --- База самого Settings ---
 # Единственный сервис, которому строку подключения нельзя взять из Settings.
-SETTINGS_HOST=postgres_barkfluff
+</span><span lang="en"># --- Settings' own database ---
+# The only service whose connection string cannot be taken from Settings.
+</span>SETTINGS_HOST=postgres_barkfluff
 SETTINGS_DBPORT=5432
 SETTINGS_DATABASE=settings
 SETTINGS_USERNAME=barkfluff
-SETTINGS_PASSWORD=смените-меня
+SETTINGS_PASSWORD=<span lang="ru">смените-меня</span><span lang="en">change-me</span>
 
-# --- RabbitMQ (шина событий между сервисами) ---
-RABBITMQ_DEFAULT_USER=barkfluff
-RABBITMQ_DEFAULT_PASS=смените-меня
+<span lang="ru"># --- RabbitMQ (шина событий между сервисами) ---
+</span><span lang="en"># --- RabbitMQ (event bus between services) ---
+</span>RABBITMQ_DEFAULT_USER=barkfluff
+RABBITMQ_DEFAULT_PASS=<span lang="ru">смените-меня</span><span lang="en">change-me</span>
 
-# --- MinIO (S3-совместимое хранилище файлов) ---
+<span lang="ru"># --- MinIO (S3-совместимое хранилище файлов) ---
 # Те же значения после Setup UI пойдут в S3Buckets:*:AccessKey / SecretKey в Settings.
-MINIO_ROOT_USER=смените-меня
-MINIO_ROOT_PASSWORD=смените-меня
+</span><span lang="en"># --- MinIO (S3-compatible file storage) ---
+# After Setup UI the same values go to S3Buckets:*:AccessKey / SecretKey in Settings.
+</span>MINIO_ROOT_USER=<span lang="ru">смените-меня</span><span lang="en">change-me</span>
+MINIO_ROOT_PASSWORD=<span lang="ru">смените-меня</span><span lang="en">change-me</span>
 
-# --- Порты сервисов ---
+<span lang="ru"># --- Порты сервисов ---
 # Читаются только теми сервисами, что берут порт из окружения;
 # остальные получают его из Settings.
-SETTINGS_PORT=7003
+</span><span lang="en"># --- Service ports ---
+# Read only by the services that take their port from the environment;
+# the rest get it from Settings.
+</span>SETTINGS_PORT=7003
 SETUP_PORT=7032
 BEACON_PORT=7002
 FASTAUTH_PORT=7008
 
-# --- Seq (агрегатор логов) ---
-SEQ_ADMIN_PASSWORD=смените-меня
+<span lang="ru"># --- Seq (агрегатор логов) ---
+</span><span lang="en"># --- Seq (log aggregator) ---
+</span>SEQ_ADMIN_PASSWORD=<span lang="ru">смените-меня</span><span lang="en">change-me</span>
 SEQ_API_KEY=
 
 # --- Admin Panel ---
-# Вход в панель — через Telegram-бота: создайте бота у @BotFather и укажите
+<span lang="ru"># Вход в панель — через Telegram-бота: создайте бота у @BotFather и укажите
 # свой Telegram ID. Кто не в списке — в панель не попадёт.
-TELEGRAM_BOT_TOKEN=токен-вашего-бота
-TELEGRAM_ADMINS=123456789:вашusername
+</span><span lang="en"># Panel login goes through a Telegram bot: create a bot with @BotFather and enter
+# your Telegram ID. Anyone not on the list cannot get into the panel.
+</span>TELEGRAM_BOT_TOKEN=<span lang="ru">токен-вашего-бота</span><span lang="en">your-bot-token</span>
+TELEGRAM_ADMINS=123456789:<span lang="ru">вашusername</span><span lang="en">yourusername</span>
 
-# Хосты сервисов для панели (внутренние адреса Docker-сети).
-SETTINGS_SERVICE_HOST=http://settings:7003
+<span lang="ru"># Хосты сервисов для панели (внутренние адреса Docker-сети).
+</span><span lang="en"># Service hosts for the panel (internal Docker network addresses).
+</span>SETTINGS_SERVICE_HOST=http://settings:7003
 USERS_SERVICE_HOST=http://users:7001
 FILES_SERVICE_HOST=http://files:7005
 IDENTITY_SERVICE_HOST=http://identity:7000
 BOTS_SERVICE_HOST=http://bots:7027
 
-# Сервисные токены для панели. Settings генерирует их сам при первом
+<span lang="ru"># Сервисные токены для панели. Settings генерирует их сам при первом
 # старте — после шага 5 скопируйте значения из панели или из БД сюда
 # и перезапустите admin-panel.
-USERS_SERVICE_TOKEN=
+</span><span lang="en"># Service tokens for the panel. Settings generates them itself on the first
+# start — after step 5 copy the values from the panel or from the DB here
+# and restart admin-panel.
+</span>USERS_SERVICE_TOKEN=
 FILES_SERVICE_TOKEN=
 IDENTITY_SERVICE_TOKEN=
 BOTS_SERVICE_TOKEN=
 
-# --- Firebase (push-уведомления на Android) ---
+<span lang="ru"># --- Firebase (push-уведомления на Android) ---
 # Из JSON сервисного аккаунта firebase-adminsdk. Не нужны — оставьте пустыми,
 # push просто не будет отправляться.
-FIREBASE_PROJECT_ID=
+</span><span lang="en"># --- Firebase (push notifications on Android) ---
+# From the firebase-adminsdk service account JSON. If not needed, leave them empty —
+# push notifications simply will not be sent.
+</span>FIREBASE_PROJECT_ID=
 FIREBASE_PRIVATE_KEY_ID=
 FIREBASE_PRIVATE_KEY=""
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_CLIENT_ID=</code></pre>
       </figure>
       <div class="callout warn">
-        <span class="tag">Пароли</span>
-        <p>Все значения <code>смените-меня</code> — обязательны к замене до первого запуска. Пароль PostgreSQL после старта менять больно: он уже записан в строки подключения внутри базы Settings.</p>
+        <div lang="ru">
+          <span class="tag">Пароли</span>
+          <p>Все значения <code>смените-меня</code> — обязательны к замене до первого запуска. Пароль PostgreSQL после старта менять больно: он уже записан в строки подключения внутри базы Settings.</p>
+        </div>
+        <div lang="en">
+          <span class="tag">Passwords</span>
+          <p>Every <code>change-me</code> value must be replaced before the first launch. Changing the PostgreSQL password after startup is painful: it is already written into the connection strings inside the Settings database.</p>
+        </div>
       </div>
     </section>
 
     <section id="zapusk">
-      <h2><span class="num">5</span>Первый запуск</h2>
-      <p>Сначала поднимите bootstrap-compose с PostgreSQL, Settings в режиме настройки и Setup UI. Остальные сервисы запускаются только после завершения формы.</p>
+      <h2><span class="num">5</span><span lang="ru">Первый запуск</span><span lang="en">First run</span></h2>
+      <p lang="ru">Сначала поднимите bootstrap-compose с PostgreSQL, Settings в режиме настройки и Setup UI. Остальные сервисы запускаются только после завершения формы.</p>
+      <p lang="en">First bring up the bootstrap compose with PostgreSQL, Settings in setup mode and Setup UI. The remaining services start only after the form is completed.</p>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>docker login docker.barkfluff.com
 docker compose pull
 
-# 1. Поднимаем только Settings и Setup UI
-docker compose -f docker-compose.setup.yml up -d
+<span lang="ru"># 1. Поднимаем только Settings и Setup UI
+</span><span lang="en"># 1. Bring up only Settings and Setup UI
+</span>docker compose -f docker-compose.setup.yml up -d
 open http://127.0.0.1:7032
 
-# 2. После заполнения формы запускаем основной стек
-docker compose -f docker-compose.setup.yml down
+<span lang="ru"># 2. После заполнения формы запускаем основной стек
+</span><span lang="en"># 2. After filling in the form, start the main stack
+</span>docker compose -f docker-compose.setup.yml down
 docker compose -f docker-compose.yml up -d
 docker compose ps</code></pre>
       </figure>
-        <p>Bootstrap создаёт только отсутствующие базы. Settings применяет миграции к выбранной базе и добавляет только отсутствующие ключи каталога; существующие значения не перезаписываются. После завершения форма блокируется отпечатком каталога полей.</p>
+      <p lang="ru">Bootstrap создаёт только отсутствующие базы. Settings применяет миграции к выбранной базе и добавляет только отсутствующие ключи каталога; существующие значения не перезаписываются. После завершения форма блокируется отпечатком каталога полей.</p>
+      <p lang="en">Bootstrap creates only the missing databases. Settings applies migrations to the selected database and adds only the missing catalog keys; existing values are not overwritten. Once finished, the form is locked by the field catalog fingerprint.</p>
     </section>
 
     <section id="settings">
-      <h2><span class="num">6</span>Что заполнить в Settings</h2>
-      <p>Setup UI последовательно показывает группы полей Settings и поясняет назначение каждого значения. Сохранение группы валидирует поля на сервере, а ошибки отображаются рядом с конкретным вводом.</p>
+      <h2><span class="num">6</span><span lang="ru">Что заполнить в Settings</span><span lang="en">What to fill in Settings</span></h2>
+      <p lang="ru">Setup UI последовательно показывает группы полей Settings и поясняет назначение каждого значения. Сохранение группы валидирует поля на сервере, а ошибки отображаются рядом с конкретным вводом.</p>
+      <p lang="en">Setup UI shows the Settings field groups one after another and explains the purpose of each value. Saving a group validates the fields on the server, and errors are displayed next to the specific input.</p>
 
-      <h3>Обязательно: остаются пустыми после установки</h3>
-      <p>Setup UI отмечает эти поля как обязательные — без них сервисы работать не будут.</p>
+      <h3 lang="ru">Обязательно: остаются пустыми после установки</h3>
+      <h3 lang="en">Required: left empty after installation</h3>
+      <p lang="ru">Setup UI отмечает эти поля как обязательные — без них сервисы работать не будут.</p>
+      <p lang="en">Setup UI marks these fields as required — the services will not work without them.</p>
       <div class="scroll-x">
       <table>
-        <thead><tr><th>Section</th><th>Key</th><th>Сервис</th><th>Что вписать</th></tr></thead>
+        <thead><tr><th>Section</th><th>Key</th><th><span lang="ru">Сервис</span><span lang="en">Service</span></th><th><span lang="ru">Что вписать</span><span lang="en">What to enter</span></th></tr></thead>
         <tbody>
-          <tr><td><code>Email</code></td><td><code>Host</code>, <code>Port</code>, <code>SenderEmail</code>, <code>SenderPassword</code></td><td>Notification</td><td>SMTP-сервер и учётка отправителя. Без этого не уйдут коды подтверждения регистрации, восстановления пароля и 2FA — новые пользователи не зарегистрируются</td></tr>
-          <tr><td><code>ServerProps</code></td><td><code>Name</code>, <code>PublicName</code>, <code>Description</code>, <code>Location</code></td><td>Beacon</td><td>Как нода называется и подписана в списке серверов у клиентов</td></tr>
-          <tr><td><code>ServerColor</code></td><td><code>Lite</code>, <code>Main</code>, <code>Hard</code></td><td>Beacon</td><td>Три hex-цвета оформления ноды в клиентах</td></tr>
+          <tr><td><code>Email</code></td><td><code>Host</code>, <code>Port</code>, <code>SenderEmail</code>, <code>SenderPassword</code></td><td>Notification</td><td><span lang="ru">SMTP-сервер и учётка отправителя. Без этого не уйдут коды подтверждения регистрации, восстановления пароля и 2FA — новые пользователи не зарегистрируются</span><span lang="en">SMTP server and sender account. Without this, the confirmation codes for registration, password recovery and 2FA will not be sent — new users will not be able to register</span></td></tr>
+          <tr><td><code>ServerProps</code></td><td><code>Name</code>, <code>PublicName</code>, <code>Description</code>, <code>Location</code></td><td>Beacon</td><td><span lang="ru">Как нода называется и подписана в списке серверов у клиентов</span><span lang="en">How the node is named and labelled in the server list in clients</span></td></tr>
+          <tr><td><code>ServerColor</code></td><td><code>Lite</code>, <code>Main</code>, <code>Hard</code></td><td>Beacon</td><td><span lang="ru">Три hex-цвета оформления ноды в клиентах</span><span lang="en">Three hex colours for the node's styling in clients</span></td></tr>
         </tbody>
       </table>
       </div>
 
-      <h3>Поля с безопасными значениями по умолчанию</h3>
-      <p>Проверьте значения в Setup UI: адреса из примера нужно заменить на домены вашей ноды, а секреты MinIO и LiveKit — на собственные. Ключи S3 и LiveKit намеренно остаются пустыми до первичной настройки.</p>
+      <h3 lang="ru">Поля с безопасными значениями по умолчанию</h3>
+      <h3 lang="en">Fields with safe defaults</h3>
+      <p lang="ru">Проверьте значения в Setup UI: адреса из примера нужно заменить на домены вашей ноды, а секреты MinIO и LiveKit — на собственные. Ключи S3 и LiveKit намеренно остаются пустыми до первичной настройки.</p>
+      <p lang="en">Check the values in Setup UI: the example addresses must be replaced with your node's domains, and the MinIO and LiveKit secrets with your own. The S3 and LiveKit keys are intentionally left empty until the initial setup.</p>
       <div class="scroll-x">
       <table>
-        <thead><tr><th>Section</th><th>Key</th><th>Стоит по умолчанию</th><th>Что вписать</th></tr></thead>
+        <thead><tr><th>Section</th><th>Key</th><th><span lang="ru">Стоит по умолчанию</span><span lang="en">Default</span></th><th><span lang="ru">Что вписать</span><span lang="en">What to enter</span></th></tr></thead>
         <tbody>
-          <tr><td><code>ExternalEndpoint</code></td><td><code>Host</code></td><td><code>https://identity.example.com</code> и т.д.</td><td>Ваши субдомены — по записи на каждый сервис из таблицы в шаге 2. Отсюда клиенты узнают, куда ходить</td></tr>
-          <tr><td><code>S3Buckets:*</code></td><td><code>AccessKey</code>, <code>SecretKey</code></td><td>пусто до Setup</td><td><code>MINIO_ROOT_USER</code> и <code>MINIO_ROOT_PASSWORD</code> из <code>.env</code>. Ключи прописываются отдельно для каждого из восьми бакетов</td></tr>
-          <tr><td><code>S3Buckets:*</code></td><td><code>ServiceUrl</code></td><td><code>http://minio:9000</code></td><td>Оставить, если MinIO из этого же compose; заменить на адрес внешнего S3, если хранилище своё</td></tr>
-          <tr><td><code>LiveKit</code></td><td><code>ApiKey</code>, <code>ApiSecret</code></td><td>пусто до Setup</td><td>Свою пару — она же прописывается в <code>keys</code> в <code>livekit/livekit.yaml</code>. Иначе звонки сможет инициировать посторонний</td></tr>
-          <tr><td><code>LiveKit</code></td><td><code>PublicUrl</code></td><td><code>wss://calls.example.com</code></td><td>Ваш субдомен LiveKit — по нему клиенты подключаются к медиасерверу</td></tr>
-          <tr><td><code>NavigatorUrl</code></td><td>—</td><td><code>http://navigator:7010</code></td><td>Адрес каталога нод. Свой Navigator в compose не входит: укажите <code>https://navigator.barkfluff.com</code>, чтобы попасть в общий список, или свой каталог</td></tr>
+          <tr><td><code>ExternalEndpoint</code></td><td><code>Host</code></td><td><span lang="ru"><code>https://identity.example.com</code> и т.д.</span><span lang="en"><code>https://identity.example.com</code> etc.</span></td><td><span lang="ru">Ваши субдомены — по записи на каждый сервис из таблицы в шаге 2. Отсюда клиенты узнают, куда ходить</span><span lang="en">Your subdomains — one record per service from the table in step 2. This is how clients learn where to connect</span></td></tr>
+          <tr><td><code>S3Buckets:*</code></td><td><code>AccessKey</code>, <code>SecretKey</code></td><td><span lang="ru">пусто до Setup</span><span lang="en">empty until Setup</span></td><td><span lang="ru"><code>MINIO_ROOT_USER</code> и <code>MINIO_ROOT_PASSWORD</code> из <code>.env</code>. Ключи прописываются отдельно для каждого из восьми бакетов</span><span lang="en"><code>MINIO_ROOT_USER</code> and <code>MINIO_ROOT_PASSWORD</code> from <code>.env</code>. The keys are set separately for each of the eight buckets</span></td></tr>
+          <tr><td><code>S3Buckets:*</code></td><td><code>ServiceUrl</code></td><td><code>http://minio:9000</code></td><td><span lang="ru">Оставить, если MinIO из этого же compose; заменить на адрес внешнего S3, если хранилище своё</span><span lang="en">Keep it if MinIO comes from this same compose; replace it with the address of an external S3 if you use your own storage</span></td></tr>
+          <tr><td><code>LiveKit</code></td><td><code>ApiKey</code>, <code>ApiSecret</code></td><td><span lang="ru">пусто до Setup</span><span lang="en">empty until Setup</span></td><td><span lang="ru">Свою пару — она же прописывается в <code>keys</code> в <code>livekit/livekit.yaml</code>. Иначе звонки сможет инициировать посторонний</span><span lang="en">Your own pair — it is also written to <code>keys</code> in <code>livekit/livekit.yaml</code>. Otherwise an outsider could initiate calls</span></td></tr>
+          <tr><td><code>LiveKit</code></td><td><code>PublicUrl</code></td><td><code>wss://calls.example.com</code></td><td><span lang="ru">Ваш субдомен LiveKit — по нему клиенты подключаются к медиасерверу</span><span lang="en">Your LiveKit subdomain — clients use it to connect to the media server</span></td></tr>
+          <tr><td><code>NavigatorUrl</code></td><td>—</td><td><code>http://navigator:7010</code></td><td><span lang="ru">Адрес каталога нод. Свой Navigator в compose не входит: укажите <code>https://navigator.barkfluff.com</code>, чтобы попасть в общий список, или свой каталог</span><span lang="en">Address of the node directory. Your own Navigator is not part of the compose: specify <code>https://navigator.barkfluff.com</code> to get into the shared list, or your own directory</span></td></tr>
         </tbody>
       </table>
       </div>
 
-      <h3>Settings заполняет автоматически</h3>
-      <ul>
+      <h3 lang="ru">Settings заполняет автоматически</h3>
+      <h3 lang="en">Settings fills in automatically</h3>
+      <ul lang="ru">
         <li><code>JwtSettings:SecretKey</code>, <code>Issuer</code>, <code>Audience</code>, <code>ExpiryMinutes</code> — ключ генерируется при первом старте. Смена ключа разлогинит всех.</li>
         <li><code>UsersService</code>, <code>FilesService</code>, <code>MessagesService</code>, <code>IdentityService</code>, <code>OnlinerService</code>, <code>BotsService</code>, <code>FederationService</code> — внутренние адреса и токены межсервисного доступа.</li>
         <li><code>IdentityDb</code>, <code>UsersDb</code>, <code>MessagesDb</code>, <code>FilesDb</code>, <code>OnlinerDb</code>, <code>CallsDb</code>, <code>BotsDb</code>, <code>FederationDb</code> — строки подключения, собранные из <code>POSTGRES_*</code>.</li>
         <li><code>RabbitMQ</code>, <code>Redis</code>, <code>Seq</code>, <code>RunSettings:Port</code>, <code>TempFiles:ExpiresAt</code> — внутренние адреса и порты.</li>
       </ul>
+      <ul lang="en">
+        <li><code>JwtSettings:SecretKey</code>, <code>Issuer</code>, <code>Audience</code>, <code>ExpiryMinutes</code> — the key is generated on the first start. Changing the key logs everyone out.</li>
+        <li><code>UsersService</code>, <code>FilesService</code>, <code>MessagesService</code>, <code>IdentityService</code>, <code>OnlinerService</code>, <code>BotsService</code>, <code>FederationService</code> — internal addresses and inter-service access tokens.</li>
+        <li><code>IdentityDb</code>, <code>UsersDb</code>, <code>MessagesDb</code>, <code>FilesDb</code>, <code>OnlinerDb</code>, <code>CallsDb</code>, <code>BotsDb</code>, <code>FederationDb</code> — connection strings assembled from <code>POSTGRES_*</code>.</li>
+        <li><code>RabbitMQ</code>, <code>Redis</code>, <code>Seq</code>, <code>RunSettings:Port</code>, <code>TempFiles:ExpiresAt</code> — internal addresses and ports.</li>
+      </ul>
       <div class="callout">
+        <div lang="ru">
         <p>Токены из <code>*Service:Token</code> Settings выдаёт сервисам автоматически. После изменения операторских значений перезапустите затронутый контейнер.</p>
+        </div>
+        <div lang="en">
+        <p>Settings issues the tokens from <code>*Service:Token</code> to the services automatically. After changing operator values, restart the affected container.</p>
+        </div>
       </div>
     </section>
 
     <section id="federaciya">
-      <h2><span class="num">7</span>Федерация (по желанию)</h2>
-      <p>По умолчанию федерация выключена: нода работает сама по себе, пользователи общаются только внутри неё. Чтобы связать её с остальной сетью, заполните ключи сервиса Federation:</p>
+      <h2><span class="num">7</span><span lang="ru">Федерация (по желанию)</span><span lang="en">Federation (optional)</span></h2>
+      <p lang="ru">По умолчанию федерация выключена: нода работает сама по себе, пользователи общаются только внутри неё. Чтобы связать её с остальной сетью, заполните ключи сервиса Federation:</p>
+      <p lang="en">Federation is off by default: the node works on its own, and users talk only within it. To connect it to the rest of the network, fill in the keys of the Federation service:</p>
       <div class="scroll-x">
       <table>
-        <thead><tr><th>Section</th><th>Key</th><th>Что вписать</th></tr></thead>
+        <thead><tr><th>Section</th><th>Key</th><th><span lang="ru">Что вписать</span><span lang="en">What to enter</span></th></tr></thead>
         <tbody>
-          <tr><td><code>Federation</code></td><td><code>ServerName</code></td><td>DNS-имя ноды — то, что будет после <code>@</code> в адресе пользователя. Менять потом нельзя: имя вшито в подписи событий</td></tr>
-          <tr><td><code>Federation</code></td><td><code>ExternalEndpoint</code></td><td>Публичный адрес межсерверного канала, например <code>https://federation.example.com</code></td></tr>
-          <tr><td><code>Federation</code></td><td><code>TlsSpkiSha256</code></td><td>SHA-256 отпечатки открытого ключа TLS-сертификата (через запятую). По ним чужие ноды пинят ваше соединение. Пусто — и они откажутся с вами соединяться</td></tr>
+          <tr><td><code>Federation</code></td><td><code>ServerName</code></td><td><span lang="ru">DNS-имя ноды — то, что будет после <code>@</code> в адресе пользователя. Менять потом нельзя: имя вшито в подписи событий</span><span lang="en">The node's DNS name — what comes after <code>@</code> in a user address. It cannot be changed later: the name is baked into event signatures</span></td></tr>
+          <tr><td><code>Federation</code></td><td><code>ExternalEndpoint</code></td><td><span lang="ru">Публичный адрес межсерверного канала, например <code>https://federation.example.com</code></span><span lang="en">The public address of the server-to-server channel, for example <code>https://federation.example.com</code></span></td></tr>
+          <tr><td><code>Federation</code></td><td><code>TlsSpkiSha256</code></td><td><span lang="ru">SHA-256 отпечатки открытого ключа TLS-сертификата (через запятую). По ним чужие ноды пинят ваше соединение. Пусто — и они откажутся с вами соединяться</span><span lang="en">SHA-256 fingerprints of the TLS certificate's public key (comma-separated). Other nodes pin your connection by them. If empty, they will refuse to connect to you</span></td></tr>
           <tr><td><code>Federation</code></td><td><code>Enabled</code></td><td><code>true</code></td></tr>
         </tbody>
       </table>
       </div>
-      <p>Отпечаток снимается с вашего сертификата:</p>
+      <p lang="ru">Отпечаток снимается с вашего сертификата:</p>
+      <p lang="en">The fingerprint is taken from your certificate:</p>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>openssl x509 -in fullchain.pem -pubkey -noout \
   | openssl pkey -pubin -outform der \
   | openssl dgst -sha256 -binary \
   | base64</code></pre>
       </figure>
-      <p>Проверить, что нода видна снаружи: <code>curl https://example.com/.well-known/barkfluff</code> должен вернуть подписанный документ с именем ноды, её адресом и ключами. Если вместо него <code>503</code> — не заполнены <code>ServerName</code> или <code>ExternalEndpoint</code>.</p>
+      <p lang="ru">Проверить, что нода видна снаружи: <code>curl https://example.com/.well-known/barkfluff</code> должен вернуть подписанный документ с именем ноды, её адресом и ключами. Если вместо него <code>503</code> — не заполнены <code>ServerName</code> или <code>ExternalEndpoint</code>.</p>
+      <p lang="en">To check that the node is visible from outside: <code>curl https://example.com/.well-known/barkfluff</code> should return a signed document with the node's name, address and keys. If you get <code>503</code> instead, <code>ServerName</code> or <code>ExternalEndpoint</code> is not filled in.</p>
       <div class="callout warn">
-        <span class="tag">Что федерация означает для ваших пользователей</span>
-        <p>Федеративная переписка <strong>не</strong> сквозная: содержимое сообщений и файлы видит и ваша нода, и нода собеседника. Удаление аккаунта у вас не удаляет копии на чужих нодах. Федеративными пока бывают только личные чаты — групповых нет. Предупредите об этом своих пользователей в собственной политике конфиденциальности; отказаться от входящих федеративных чатов пользователь может в настройках приватности.</p>
+        <div lang="ru">
+          <span class="tag">Что федерация означает для ваших пользователей</span>
+          <p>Федеративная переписка <strong>не</strong> сквозная: содержимое сообщений и файлы видит и ваша нода, и нода собеседника. Удаление аккаунта у вас не удаляет копии на чужих нодах. Федеративными пока бывают только личные чаты — групповых нет. Предупредите об этом своих пользователей в собственной политике конфиденциальности; отказаться от входящих федеративных чатов пользователь может в настройках приватности.</p>
+        </div>
+        <div lang="en">
+          <span class="tag">What federation means for your users</span>
+          <p>Federated conversation is <strong>not</strong> end-to-end encrypted: both your node and the other party's node can see the message contents and files. Deleting an account on your node does not delete the copies on other nodes. For now only direct chats can be federated — there are no group chats. Warn your users about this in your own privacy policy; a user can opt out of incoming federated chats in the privacy settings.</p>
+        </div>
       </div>
     </section>
 
     <section id="obsluzhivanie">
-      <h2><span class="num">8</span>Обслуживание</h2>
+      <h2><span class="num">8</span><span lang="ru">Обслуживание</span><span lang="en">Maintenance</span></h2>
 
-      <h3>Логи</h3>
+      <h3 lang="ru">Логи</h3>
+      <h3 lang="en">Logs</h3>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
-        <pre><code>docker compose logs -f messages          # один сервис
-docker compose logs -f --tail=200        # всё сразу</code></pre>
+        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <pre><code>docker compose logs -f messages          <span lang="ru"># один сервис</span><span lang="en"># one service</span>
+docker compose logs -f --tail=200        <span lang="ru"># всё сразу</span><span lang="en"># everything at once</span></code></pre>
       </figure>
-      <p>Структурированные логи со всех сервисов собирает Seq — искать в нём удобнее, чем в выводе Docker.</p>
+      <p lang="ru">Структурированные логи со всех сервисов собирает Seq — искать в нём удобнее, чем в выводе Docker.</p>
+      <p lang="en">Seq collects structured logs from all the services — searching there is more convenient than in the Docker output.</p>
 
-      <h3>Резервные копии</h3>
+      <h3 lang="ru">Резервные копии</h3>
+      <h3 lang="en">Backups</h3>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
-        <pre><code># Все базы разом
-docker compose exec postgres pg_dumpall -U barkfluff &gt; backup-$(date +%F).sql
+        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <pre><code><span lang="ru"># Все базы разом
+</span><span lang="en"># All databases at once
+</span>docker compose exec postgres pg_dumpall -U barkfluff &gt; backup-$(date +%F).sql
 
-# Файлы пользователей
-docker run --rm -v barkfluff_minio_data:/data -v "$PWD":/out alpine \
+<span lang="ru"># Файлы пользователей
+</span><span lang="en"># User files
+</span>docker run --rm -v barkfluff_minio_data:/data -v "$PWD":/out alpine \
   tar czf /out/minio-$(date +%F).tar.gz -C /data .</code></pre>
       </figure>
-      <p>Бэкапить надо и базы, и хранилище: без файлов дамп базы восстановит переписку с битыми вложениями. Проверьте, что копия разворачивается, — непроверенного бэкапа не существует.</p>
+      <p lang="ru">Бэкапить надо и базы, и хранилище: без файлов дамп базы восстановит переписку с битыми вложениями. Проверьте, что копия разворачивается, — непроверенного бэкапа не существует.</p>
+      <p lang="en">Back up both the databases and the storage: without the files, a database dump restores conversations with broken attachments. Check that the backup can be restored — an untested backup does not exist.</p>
 
-      <h3>Обновление</h3>
+      <h3 lang="ru">Обновление</h3>
+      <h3 lang="en">Updating</h3>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>docker compose pull
 docker compose up -d</code></pre>
       </figure>
-      <p>Миграции базы сервисы накатывают сами при старте. Сначала снимите бэкап. Не используйте <code>docker compose down -v</code>: эта команда удаляет именованные volumes с данными.</p>
+      <p lang="ru">Миграции базы сервисы накатывают сами при старте. Сначала снимите бэкап. Не используйте <code>docker compose down -v</code>: эта команда удаляет именованные volumes с данными.</p>
+      <p lang="en">Services apply database migrations themselves at startup. Take a backup first. Do not use <code>docker compose down -v</code>: this command deletes the named volumes that hold the data.</p>
 
-      <h3>Безопасность</h3>
-      <ul>
+      <h3 lang="ru">Безопасность</h3>
+      <h3 lang="en">Security</h3>
+      <ul lang="ru">
         <li>Наружу открыты только 80, 443 и медиапорты LiveKit — остальное закройте фаерволом.</li>
         <li>Пароли из <code>.env</code> и секреты Settings — это доступ ко всем перепискам ноды. Файл <code>.env</code> держите с правами <code>600</code> и вне репозитория.</li>
         <li>Смена <code>JwtSettings:SecretKey</code> инвалидирует все сессии и межсервисные токены разом — годится как аварийная мера при утечке.</li>
         <li>Доступ к сокету Docker есть у панели администратора: кто получил панель, тот получил хост.</li>
       </ul>
+      <ul lang="en">
+        <li>Only 80, 443 and the LiveKit media ports should be open to the outside — close everything else with a firewall.</li>
+        <li>The passwords from <code>.env</code> and the Settings secrets are access to all the node's conversations. Keep the <code>.env</code> file with <code>600</code> permissions and outside the repository.</li>
+        <li>Changing <code>JwtSettings:SecretKey</code> invalidates all sessions and inter-service tokens at once — suitable as an emergency measure after a leak.</li>
+        <li>The admin panel has access to the Docker socket: whoever gets the panel gets the host.</li>
+      </ul>
     </section>
 
     <section id="podderzhka">
-      <h2><span class="num">9</span>Если что-то не поднялось</h2>
-      <ul>
+      <h2><span class="num">9</span><span lang="ru">Если что-то не поднялось</span><span lang="en">If something did not start</span></h2>
+      <ul lang="ru">
         <li>Сервис перезапускается в цикле — смотрите его логи первым делом: чаще всего он не смог достучаться до Settings либо не нашёл свою запись в конфигурации.</li>
         <li>Клиенты не видят ноду — проверьте <code>ExternalEndpoint:Host</code> и то, что nginx проксирует gRPC, а не обычный HTTP.</li>
         <li>Исходники и сборочные конфиги: <a href="https://github.com/Liis17/BarkFluff">github.com/Liis17/BarkFluff</a>, вопросы по коду — <a href="https://github.com/Liis17/BarkFluff/issues">issues</a>.</li>
         <li>Уязвимости в коде и протоколе — security@barkfluff.com. Данные пользователей вашей ноды разработчики не видят и запросы по ним не обрабатывают.</li>
+      </ul>
+      <ul lang="en">
+        <li>A service restarts in a loop — look at its logs first: most often it could not reach Settings or did not find its entry in the configuration.</li>
+        <li>Clients do not see the node — check <code>ExternalEndpoint:Host</code> and that nginx proxies gRPC, not plain HTTP.</li>
+        <li>Sources and build configs: <a href="https://github.com/Liis17/BarkFluff">github.com/Liis17/BarkFluff</a>; for questions about the code, use <a href="https://github.com/Liis17/BarkFluff/issues">issues</a>.</li>
+        <li>Vulnerabilities in the code and protocol — security@barkfluff.com. The developers cannot see the data of your node's users and do not handle requests about it.</li>
       </ul>
     </section>
 
     <footer>
       <span>2026 Barkfluff</span>
       <span class="footer-links">
-        <a href="/">Главная</a>
-        <a href="/legal/privacy-policy">Конфиденциальность</a>
-        <a href="/legal/terms-of-service">Условия</a>
-        <a href="/legal/encryption">Шифрование</a>
+        <a href="/" data-ru="Главная" data-en="Home">Главная</a>
+        <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+        <a href="/legal/terms-of-service" data-ru="Условия" data-en="Terms">Условия</a>
+        <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
       </span>
     </footer>
   </main>
 
   <script>
-    document.querySelectorAll('.copy').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var code = btn.closest('figure').querySelector('code');
-        navigator.clipboard.writeText(code.textContent).then(function () {
-          var old = btn.textContent;
-          btn.textContent = 'Скопировано';
-          setTimeout(function () { btn.textContent = old; }, 1500);
+    (function () {
+      var toggle = document.getElementById('langToggle');
+      var copied = { ru: 'Скопировано', en: 'Copied' };
+      function applyLang(lang) {
+        document.documentElement.lang = lang;
+        try { localStorage.setItem('bf_lang', lang); } catch (_) { }
+        document.querySelectorAll('[data-ru]').forEach(function (el) {
+          var value = el.getAttribute('data-' + lang);
+          if (el.dataset.i18nAttr) el.setAttribute(el.dataset.i18nAttr, value);
+          else el.textContent = value;
+        });
+        toggle.textContent = lang === 'ru' ? 'EN' : 'RU';
+      }
+      toggle.addEventListener('click', function () {
+        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
+      });
+      applyLang(document.documentElement.lang === 'ru' ? 'ru' : 'en');
+
+      document.querySelectorAll('.copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var code = btn.closest('figure').querySelector('code');
+          navigator.clipboard.writeText(code.innerText).then(function () {
+            var lang = document.documentElement.lang;
+            btn.textContent = copied[lang];
+            setTimeout(function () { btn.textContent = btn.getAttribute('data-' + document.documentElement.lang); }, 1500);
+          });
         });
       });
-    });
+    })();
   </script>
   <script src="/assets/cookie-notice.js" defer></script>
 </body>

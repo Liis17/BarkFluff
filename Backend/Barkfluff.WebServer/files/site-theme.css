@@ -44,15 +44,9 @@ body[data-channel="release"], body.document-page {
   background-size: 120px 120px;
   mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
 }
-.document-page main { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 80px 48px 60px; }
+.document-page main { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 48px 60px; }
 .document-page a { color: var(--brand-soft); text-decoration: none; text-underline-offset: 4px; }
 .document-page :is(a, button, .scroll-x):focus-visible { outline: 2px solid var(--brand-soft); outline-offset: 4px; }
-.document-page .site-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
-.document-page .brand-mark { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
-.document-page .brand-mark img { display: block; width: 28px; height: 28px; border-radius: 8px; box-shadow: 0 4px 12px -4px var(--brand-glow); }
-.document-page .site-links { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; }
-.document-page .site-links a { color: var(--ink-dim); font-size: 13px; font-weight: 600; }
-.document-page .lang-btn { border: 0; background: none; padding: 6px 0; color: var(--ink-mute); font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .12em; cursor: pointer; }
 .document-page .eyebrow { display: block; margin-bottom: 12px; color: var(--brand-soft); font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
 .document-page h1 { margin: 0 0 18px; font-size: clamp(30px, 4vw, 48px); line-height: 1.12; letter-spacing: -.04em; font-weight: 800; overflow-wrap: anywhere; }
 .document-page h2 { margin: 36px 0 14px; color: var(--ink); font-size: 23px; line-height: 1.3; letter-spacing: -.025em; }
@@ -67,6 +61,7 @@ body[data-channel="release"], body.document-page {
 .document-page .document-nav a { padding: 9px 12px; border: 1px solid transparent; border-radius: 10px; color: var(--ink-dim); font-size: 12px; font-weight: 600; }
 .document-page .document-nav a.active { color: var(--brand-deep); border-color: color-mix(in srgb, var(--brand) 35%, transparent); background: color-mix(in srgb, var(--brand) 12%, transparent); }
 .document-page article, .selfhosted-page main > section { max-width: 920px; margin: 0 auto; padding: 32px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface-card); }
+html[lang="ru"] [lang="en"], html[lang="en"] [lang="ru"] { display: none; }
 .legal-page { opacity: 0; }
 .legal-page.lang-ready { opacity: 1; }
 .legal-page article[data-lang] { display: none; }
@@ -101,15 +96,13 @@ body[data-channel="release"], body.document-page {
 body[data-channel="release"] #bfCookieNoticeOk, .document-page #bfCookieNoticeOk { background: linear-gradient(135deg, var(--button-top), var(--button-end)); color: var(--button-ink); }
 @media (hover: hover) and (pointer: fine) {
   .document-page a:hover { text-decoration: underline; }
-  .document-page .brand-mark:hover, .document-page .document-nav a:hover { text-decoration: none; }
-  .document-page .site-links a:hover, .document-page .lang-btn:hover, .document-page .copy:hover { color: var(--ink); }
+  .document-page .document-nav a:hover { text-decoration: none; }
+  .document-page .copy:hover { color: var(--ink); }
   .document-page .document-nav a:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
 }
-@media (max-width: 900px) { .document-page main { padding: 70px 22px 48px; } }
+@media (max-width: 900px) { .document-page main { padding: 0 22px 48px; } }
 @media (max-width: 640px) {
-  .document-page main { padding: 32px 16px 40px; }
-  .document-page .site-links { gap: 12px 16px; }
-  .document-page .site-links a { font-size: 12px; }
+  .document-page main { padding: 0 16px 40px; }
   .document-page .document-nav { margin-top: 32px; }
   .document-page .document-nav a { padding: 8px 10px; font-size: 11px; }
   .document-page article, .selfhosted-page main > section { padding: 22px 18px; border-radius: 18px; }
