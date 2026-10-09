@@ -243,8 +243,8 @@ jobs:
           $preparedApplicationManifest = $sourceApplicationManifest.Replace(
             'version="1.0.0.0"',
             "version=`"$manifestVersion`"")
-          if ($preparedApplicationManifest -eq $sourceApplicationManifest) {
-            throw 'Версия app.manifest не заменена'
+          if (-not $preparedApplicationManifest.Contains("version=`"$manifestVersion`"")) {
+            throw 'Версия app.manifest не соответствует вычисленной'
           }
 
           [System.IO.File]::WriteAllText(

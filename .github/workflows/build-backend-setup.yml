@@ -60,3 +60,38 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
           labels: org.opencontainers.image.version=${{ steps.vars.outputs.version }}
+
+      - name: "\u2705 Уведомление об успехе"
+        if: success()
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            🐳 *BarkFluff.Setup*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Тег: `${{ steps.vars.outputs.tag_version }}`
+        run: |
+          bash .github/scripts/send-telegram.sh
+
+      - name: "\u274C Уведомление об ошибке"
+        if: failure()
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            🐳 *BarkFluff.Setup*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          bash .github/scripts/send-telegram.sh

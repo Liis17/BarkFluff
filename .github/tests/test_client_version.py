@@ -141,6 +141,11 @@ function curl.exe {
         self.assertEqual(output, '')
         self.assertTrue(unchanged)
 
+    def test_valid_version_equal_to_original_application_manifest(self):
+        result, output, _, _ = self.run_variant('dev', '{"version":"1.0.0"}')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('manifest_version=1.0.0.0\n', output)
+
 
 if __name__ == '__main__':
     unittest.main()
