@@ -8,8 +8,8 @@ iOS-приложение получает тот же федеративный �
 
 ## Контекст
 
-- Контракт — `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` (5.1). **Референс реализации — macOS (5.4)**: смотри, как ровно те же сценарии сделаны в `Mac/Barkfluff/Barkfluff/Features/**`, и повторяй логику, адаптируя вёрстку под iOS. Это действующее правило проекта для iOS (`Obsidian/ClaudeVault/Клиенты/iOS.md`).
-- Карты — `Клиенты/iOS.md`, `iOS-ProjectMap.md`; дизайн — `Клиенты/DesignDocument.md`.
+- Контракт — `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` (5.1). **Референс реализации — macOS (5.4)**: смотри, как ровно те же сценарии сделаны в `Mac/Barkfluff/Barkfluff/Features/**`, и повторяй логику, адаптируя вёрстку под iOS. Это действующее правило проекта для iOS (`Obsidian/ClaudeVault/Clients/iOS.md`).
+- Карты — `Clients/iOS.md`, `iOS-ProjectMap.md`; дизайн — `Clients/DesignDocument.md`.
 
 Точки интеграции:
 
@@ -49,7 +49,7 @@ iOS-приложение получает тот же федеративный �
 ## Изменение 5 — локализация и документация
 
 - Новые строки — в `iOS/.../Localizable.xcstrings`, все пять языков (строки, живущие в `BFCore`, уже переведены в 5.4 — не дублировать).
-- `Obsidian/ClaudeVault/Клиенты/iOS.md` — раздел «Федерация» + ссылка на `[[Клиенты/Federation-ClientGuide]]`; `iOS-ProjectMap.md` — новые файлы, если появились.
+- `Obsidian/ClaudeVault/Clients/iOS.md` — раздел «Федерация» + ссылка на `[[Клиенты/Federation-ClientGuide]]`; `iOS-ProjectMap.md` — новые файлы, если появились.
 
 ## Чего НЕ делать
 
