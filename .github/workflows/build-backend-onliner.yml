@@ -8,11 +8,17 @@ on:
       - nightly
     paths:
       - 'Backend/BarkFluff.Onliner/**'
+      - '.github/actions/docker-version/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -62,6 +68,7 @@ jobs:
           file: ./Backend/BarkFluff.Onliner/Dockerfile.slim
           push: true
           tags: ${{ steps.vars.outputs.tags }}
+          labels: org.opencontainers.image.version=${{ steps.vars.outputs.version }}
 
       - name: "\u2705 Уведомление об успехе"
         if: success()
