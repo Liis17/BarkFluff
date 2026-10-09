@@ -14,4 +14,6 @@ UsersServerApi client вручную прикладывает plain x-auth-token
 
 LegalPageService отдаёт существующие HTML-файлы из html/legal; Markdown языковые файлы в этой папке напрямую этим маршрутом не читаются. Cookie notice находится в files/cookie-notice.js. Статические страницы и юридические тексты лежат в html/.
 
+/about, /selfhosted и /legal/* используют шапку главной (.home-nav) из files/site-header.css, подключаемого после files/site-theme.css; оба CSS входят в whitelist AssetsController и публикацию csproj. /selfhosted двуязычна: фрагменты продублированы элементами lang="ru"/lang="en", лишний язык скрывает site-theme.css, выбор берётся из bf_lang; при правке текста меняются обе версии.
+
 Сборка: dotnet build Backend/Barkfluff.WebServer/Barkfluff.WebServer.csproj.
