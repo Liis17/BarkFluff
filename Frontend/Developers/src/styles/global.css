@@ -60,7 +60,7 @@ body {
   content:""; position:absolute; inset:0; border-radius:8px;
   border:1px solid rgba(255,255,255,0.18);
 }
-.brand-mark .glyph svg { width:16px; height:16px; fill:#fff; }
+.brand-mark .glyph img { display:block; width:100%; height:100%; border-radius:inherit; }
 .header-badge {
   font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
   color: var(--ink-mute); padding:3px 8px; border-radius:6px;
@@ -413,7 +413,7 @@ pre.impl-code {
   display: grid; place-items: center;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.25),0 4px 12px -4px rgba(255,122,41,0.5);
 }
-.login-logo .glyph svg { width: 20px; height: 20px; fill: #fff; }
+.login-logo .glyph img { display: block; width: 100%; height: 100%; border-radius: inherit; }
 .login-logo .brand-text {
   font-weight: 800; font-size: 20px; color: var(--ink);
 }

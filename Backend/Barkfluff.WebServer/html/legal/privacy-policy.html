@@ -5,44 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-ru="Политика конфиденциальности — Barkfluff" data-en="Privacy Policy — Barkfluff">Политика конфиденциальности — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <style>
-    :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
-    * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; opacity:0; transition:opacity .4s ease; }
-    body.lang-ready { opacity:1; }
-    main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
-    header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
-    a { color:var(--brand); text-decoration:none; }
-    nav { margin:24px 0; padding:8px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); }
-    nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
-    nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
-    article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
-    article[data-lang] { display:none; }
-    h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
-    h2 { margin-top:32px; font-size:22px; }
-    h3 { margin-top:22px; font-size:17px; }
-    p, li, td { color:var(--muted); }
-    code { color:#ffd0a0; background:rgba(0,0,0,.35); border:1px solid var(--line); border-radius:6px; padding:1px 5px; }
-    table { width:100%; border-collapse:collapse; margin:16px 0; }
-    th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
-    th { color:var(--text); background:rgba(255,122,41,.08); }
-    footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
-    .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
-    .lang-btn:hover { color:var(--text); }
-    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
-    .callout p { margin:0; }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-theme.css">
   <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
-<body>
+<body class="document-page legal-page">
   <main>
-    <header>
-      <a href="/"><strong>barkfluff</strong></a>
-      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
-      <button class="lang-btn" id="langToggle" type="button">EN</button>
+    <header class="site-header">
+      <a href="/" class="brand-mark"><img src="/favicon.ico" width="28" height="28" alt=""><span>barkfluff</span></a>
+      <div class="site-links">
+        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <a href="/selfhosted">Self-hosted</a>
+        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+        <button class="lang-btn" id="langToggle" type="button">EN</button>
+      </div>
     </header>
-    <nav>
-      <a href="/legal/privacy-policy" class="active" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+    <nav class="document-nav">
+      <a href="/legal/privacy-policy" class="active" aria-current="page" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
       <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
       <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
       <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
@@ -69,7 +52,7 @@
 
       <h2>3. Какие данные обрабатываются</h2>
       <h3>3.1 Учетная запись и профиль</h3>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Данные</th><th>Где используются</th><th>Хранение</th></tr></thead>
         <tbody>
           <tr><td>Email</td><td>Регистрация, вход, подтверждения, восстановление доступа, уведомления</td><td>Users / Identity</td></tr>
@@ -79,10 +62,10 @@
           <tr><td>Аватар и постер профиля</td><td>Оформление профиля и публичной страницы</td><td>Files / Minio + метаданные Users</td></tr>
           <tr><td>Настройки приватности и персонализации</td><td>Отображение данных профиля, внешний вид клиента, разрешение федеративных чатов</td><td>Users</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3>3.2 Устройства и сессии</h3>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Данные</th><th>Где используются</th><th>Хранение</th></tr></thead>
         <tbody>
           <tr><td>Device ID</td><td>Привязка refresh-токена, список активных сессий, отзыв сессии</td><td>Identity.RefreshTokens, Users.UserDevices</td></tr>
@@ -92,11 +75,11 @@
           <tr><td>Firebase token</td><td>Push-уведомления через Firebase Cloud Messaging</td><td>Users.UserDevices</td></tr>
           <tr><td>Refresh token</td><td>Продление сессии и выход с устройства</td><td>Identity.RefreshTokens</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>IP-адрес передается в служебных metadata-заголовках gRPC и используется для обработки текущих запросов. Эти данные не покидают вашу ноду и на другие ноды не передаются.</p>
 
       <h3>3.3 Сообщения, чаты и файлы</h3>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Данные</th><th>Где используются</th><th>Хранение</th></tr></thead>
         <tbody>
           <tr><td>Обычные сообщения</td><td>Личные и групповые чаты, синхронизация, read receipts, редактирование и удаление</td><td>Messages / PostgreSQL</td></tr>
@@ -105,7 +88,7 @@
           <tr><td>Вложения и превью</td><td>Передача файлов, изображений, видео, документов, аудио и аватаров</td><td>Files / Minio + метаданные PostgreSQL</td></tr>
           <tr><td>Статусы прочтения</td><td>Отображение прочитанных сообщений</td><td>Messages</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3>3.4 Онлайн-статусы и обновления</h3>
       <p>Onliner хранит и отдает онлайн-статус и время последней активности. Updates передает realtime-события клиентам через gRPC streaming.</p>
@@ -116,7 +99,7 @@
 
       <h2>4. Федеративный обмен данными</h2>
       <p>Федерация выключена по умолчанию (<code>Federation:Enabled = false</code>) — включает ее администратор ноды. Когда она включена и вы переписываетесь с пользователем другой ноды, часть данных пересекает границу вашей ноды.</p>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Что уходит на другую ноду</th><th>Когда</th><th>Как</th></tr></thead>
         <tbody>
           <tr><td>Идентификатор, username, имя и аватар профиля</td><td>Когда пользователь другой ноды находит вас или открывает вашу карточку</td><td>Запрос профиля между нодами с учетом ваших настроек приватности</td></tr>
@@ -125,7 +108,7 @@
           <tr><td>Онлайн-статус и время последней активности</td><td>Пока активен федеративный чат</td><td>Живой поток между нодами; применяются ваши настройки приватности</td></tr>
           <tr><td>«Печатает…»</td><td>Во время набора сообщения</td><td>Разовое уведомление без сохранения</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>Что важно понимать:</p>
       <ul>
         <li>Федеративные чаты — только личные 1-к-1. Групповые чаты между нодами не поддерживаются.</li>
@@ -256,7 +239,7 @@
 
       <h2>3. What data is processed</h2>
       <h3>3.1 Account and profile</h3>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
         <tbody>
           <tr><td>Email</td><td>Registration, login, confirmations, access recovery, notifications</td><td>Users / Identity</td></tr>
@@ -266,10 +249,10 @@
           <tr><td>Avatar and profile poster</td><td>Profile and public page styling</td><td>Files / Minio + Users metadata</td></tr>
           <tr><td>Privacy and personalization settings</td><td>Display of profile data, client appearance, permission for federated chats</td><td>Users</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3>3.2 Devices and sessions</h3>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
         <tbody>
           <tr><td>Device ID</td><td>Refresh token binding, active sessions list, session revocation</td><td>Identity.RefreshTokens, Users.UserDevices</td></tr>
@@ -279,11 +262,11 @@
           <tr><td>Firebase token</td><td>Push notifications via Firebase Cloud Messaging</td><td>Users.UserDevices</td></tr>
           <tr><td>Refresh token</td><td>Session renewal and sign-out from device</td><td>Identity.RefreshTokens</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>The IP address is passed in gRPC service metadata headers and is used to process current requests. This data does not leave your node and is not sent to other nodes.</p>
 
       <h3>3.3 Messages, chats and files</h3>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
         <tbody>
           <tr><td>Regular messages</td><td>Private and group chats, sync, read receipts, editing and deletion</td><td>Messages / PostgreSQL</td></tr>
@@ -292,7 +275,7 @@
           <tr><td>Attachments and previews</td><td>Transfer of files, images, video, documents, audio and avatars</td><td>Files / Minio + PostgreSQL metadata</td></tr>
           <tr><td>Read statuses</td><td>Display of read messages</td><td>Messages</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3>3.4 Online statuses and updates</h3>
       <p>Onliner stores and serves the online status and last activity time. Updates delivers realtime events to clients via gRPC streaming.</p>
@@ -303,7 +286,7 @@
 
       <h2>4. Federated data exchange</h2>
       <p>Federation is disabled by default (<code>Federation:Enabled = false</code>) — the node administrator turns it on. When it is enabled and you chat with a user of another node, some data crosses your node's boundary.</p>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>What leaves for another node</th><th>When</th><th>How</th></tr></thead>
         <tbody>
           <tr><td>Identifier, username, name and profile avatar</td><td>When a user of another node finds you or opens your profile card</td><td>Inter-node profile request, subject to your privacy settings</td></tr>
@@ -312,7 +295,7 @@
           <tr><td>Online status and last activity time</td><td>While a federated chat is active</td><td>Live inter-node stream; your privacy settings apply</td></tr>
           <tr><td>“Typing…”</td><td>While you are typing a message</td><td>A one-off notification that is not stored</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>What matters here:</p>
       <ul>
         <li>Federated chats are 1-to-1 only. Group chats between nodes are not supported.</li>
@@ -421,7 +404,14 @@
       </ul>
       <p>The developer has no access to data on other nodes and cannot process a request to delete or disclose it. If your account was created on another node, look for its administrator's contacts on that node's website.</p>
     </article>
-    <footer>2026 Barkfluff</footer>
+    <footer>
+      <span>2026 Barkfluff</span>
+      <div class="footer-links">
+        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
+      </div>
+    </footer>
   </main>
   <script>
     (function () {

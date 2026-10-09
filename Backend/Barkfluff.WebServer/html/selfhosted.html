@@ -5,79 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Своя нода — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <style>
-    :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff7a29; --brand-soft:#ff9a4c; --code:#0d0507; }
-    * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; }
-    main { width:min(960px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
-    header, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
-    a { color:var(--brand-soft); text-decoration:none; }
-    a:hover { text-decoration:underline; }
-
-    .hero { margin:28px 0 8px; padding:32px 28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
-    .hero h1 { margin:0 0 10px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
-    .hero p { margin:0; color:var(--muted); max-width:66ch; }
-
-    nav.toc { margin:20px 0 8px; padding:8px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); display:flex; flex-wrap:wrap; gap:4px; }
-    nav.toc a { padding:7px 11px; color:var(--muted); border-radius:8px; font-size:14px; }
-    nav.toc a:hover { color:var(--text); background:rgba(255,122,41,.14); text-decoration:none; }
-
-    section { margin-top:40px; scroll-margin-top:16px; }
-    h2 { margin:0 0 14px; font-size:24px; display:flex; align-items:baseline; gap:12px; }
-    h2 .num { font-size:14px; font-weight:600; color:var(--brand); border:1px solid rgba(255,122,41,.4); border-radius:999px; padding:2px 10px; flex:none; }
-    h3 { margin:26px 0 10px; font-size:17px; }
-    p, li, td { color:var(--muted); }
-    ul, ol { padding-left:22px; }
-    li { margin:5px 0; }
-    strong { color:var(--text); }
-
-    code { color:#ffd0a0; background:rgba(0,0,0,.35); border:1px solid var(--line); border-radius:6px; padding:1px 5px; font-size:13px; }
-
-    table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; }
-    th, td { border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top; }
-    th { color:var(--text); background:rgba(255,122,41,.08); font-weight:600; }
-    td code { white-space:nowrap; }
-    .scroll-x { overflow-x:auto; }
-
-    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
-    .callout p { margin:0; }
-    .callout p + p { margin-top:8px; }
-    .callout.warn { border-left-color:#e0533b; background:rgba(224,83,59,.07); }
-    .callout .tag { display:block; margin-bottom:6px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--brand); font-weight:700; }
-    .callout.warn .tag { color:#ff8a72; }
-
-    figure.code { margin:16px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--code); }
-    figure.code figcaption { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; background:rgba(255,240,220,.05); border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); }
-    figure.code figcaption b { color:var(--text); font-weight:600; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; }
-    figure.code pre { margin:0; padding:14px 16px; overflow:auto; font-size:12.5px; line-height:1.55; }
-    figure.code pre code { background:none; border:none; padding:0; color:#e8d6c4; white-space:pre; }
-    figure.code.tall pre { max-height:520px; }
-    .copy { background:none; border:1px solid var(--line); color:var(--muted); padding:4px 10px; border-radius:7px; cursor:pointer; font:inherit; font-size:12px; flex:none; }
-    .copy:hover { color:var(--text); border-color:var(--brand); }
-
-    footer { margin-top:48px; padding-top:20px; border-top:1px solid var(--line); color:#8a6a5b; font-size:13px; }
-    footer a { color:#8a6a5b; }
-
-    @media (max-width:640px) {
-      .hero { padding:22px 18px; }
-      h2 { font-size:20px; }
-      figure.code pre { font-size:11.5px; }
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-theme.css">
 </head>
-<body>
+<body class="document-page selfhosted-page">
   <main>
-    <header>
-      <a href="/"><strong>barkfluff</strong></a>
-      <a href="/">На главную</a>
+    <header class="site-header">
+      <a href="/" class="brand-mark"><img src="/favicon.ico" width="28" height="28" alt=""><span>barkfluff</span></a>
+      <div class="site-links">
+        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <a href="/selfhosted">Self-hosted</a>
+        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+      </div>
     </header>
 
     <div class="hero">
+      <span class="eyebrow">Self-hosted</span>
       <h1>Своя нода Barkfluff</h1>
       <p>Barkfluff — федеративная сеть независимых серверов. Каждый может поднять свою ноду: аккаунты, сообщения и файлы остаются на вашем железе, а с пользователями других нод ваши пользователи общаются через межсерверный протокол.</p>
     </div>
 
-    <nav class="toc">
+    <nav class="toc document-nav" aria-label="Разделы руководства">
       <a href="#otvetstvennost">Ответственность</a>
       <a href="#trebovaniya">Требования</a>
       <a href="#dns">DNS и TLS</a>
@@ -776,10 +728,10 @@ docker compose up -d</code></pre>
 
     <footer>
       <span>2026 Barkfluff</span>
-      <span>
-        <a href="/">Главная</a> ·
-        <a href="/legal/privacy-policy">Конфиденциальность</a> ·
-        <a href="/legal/terms-of-service">Условия</a> ·
+      <span class="footer-links">
+        <a href="/">Главная</a>
+        <a href="/legal/privacy-policy">Конфиденциальность</a>
+        <a href="/legal/terms-of-service">Условия</a>
         <a href="/legal/encryption">Шифрование</a>
       </span>
     </footer>
