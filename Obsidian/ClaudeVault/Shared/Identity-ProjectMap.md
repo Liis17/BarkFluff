@@ -1,98 +1,32 @@
-# BarkFluff.Shared.Identity — Карта проекта
+# BarkFluff.Shared.Identity — карта проекта
 
-Расположение: `Shared/BarkFluff.Shared.Identity/`
-Target framework: `net10.0`
-Зависимости: нет (zero-dependency библиотека)
+Исходники: `Shared/BarkFluff.Shared.Identity/`; `net10.0`, без внешних NuGet-зависимостей. Числа `ServiceId` и строковые claim names — стабильные контракты; новые IDs добавлять в конец.
 
----
+## ServiceId
 
-## Назначение библиотеки
+| Enum | ID | Сервис |
+|---|---:|---|
+| Unknown | 0 | не задан |
+| Identity | 1 | аутентификация |
+| Users | 2 | профили и устройства |
+| Beacon | 3 | информация о ноде |
+| Notifications | 4 | email worker |
+| Files | 5 | файлы |
+| Messages | 6 | чаты и сообщения |
+| FastAuth | 7 | вход нового устройства |
+| Updates | 8 | real-time события |
+| Onliner | 9 | presence |
+| CloudMessaging | 10 | push |
+| Web | 11 | gRPC-Web proxy |
+| Developers | 12 | документация API |
+| Calls | 13 | звонки |
+| Bots | 14 | bot API |
+| Federation | 15 | межсерверная федерация |
 
-Разделяемая библиотека с минимальным набором типов идентификации и аутентификации, используемая **всеми** микросервисами платформы BarkFluff. Не имеет внешних NuGet-зависимостей — только базовые примитивы .NET.
+## TokenType и claims
 
----
+`TokenType`: `Unknown=0`, `User=1`, `Service=2`, `Bot=3`.
 
-## Файлы проекта
+`IdentityClaims`: `UserId=x-user-id`, `TokenType=x-token-type`, `ServiceId=x-service-id`, `DeviceId=x-device-id`, `BotTokenId=x-bot-token-id`.
 
-### `BarkFluff.Shared.Identity.csproj`
-Файл проекта. net10.0, Nullable enable, ImplicitUsings enable. Никаких NuGet-зависимостей.
-
----
-
-### `ServiceId.cs`
-**Enum `ServiceId`** — числовые идентификаторы всех микросервисов платформы.
-
-| Значение | ID | Назначение |
-|----------|----|------------|
-| `Unknown` | 0 | Значение по умолчанию / не определён |
-| `Identity` | 1 | Сервис аутентификации и JWT |
-| `Users` | 2 | Профили и устройства пользователей |
-| `Beacon` | 3 | Точка входа клиентов |
-| `Notifications` | 4 | Email-уведомления (RabbitMQ consumer) |
-| `Files` | 5 | Файлы, S3, стикеры |
-| `Messages` | 6 | Чаты и сообщения |
-| `FastAuth` | 7 | QR-авторизация устройств |
-| `Updates` | 8 | Real-time стриминг событий |
-| `Onliner` | 9 | Онлайн-статусы |
-| `CloudMessaging` | 10 | Push-уведомления (Firebase) |
-| `Web` | 11 | gRPC-Web прокси |
-| `Developers` | 12 | Портал документации |
-| `Calls` | 13 | Звонки (аудио/видео на LiveKit SFU) |
-
-> При добавлении нового сервиса — добавить значение сюда, затем зарегистрировать в каталоге [[Backend/Settings]].
-
----
-
-### `TokenType.cs`
-**Enum `TokenType`** — тип JWT-токена, передаётся в claim `x-token-type`.
-
-| Значение | ID | Назначение |
-|----------|----|------------|
-| `Unknown` | 0 | Значение по умолчанию |
-| `User` | 1 | Токен обычного пользователя |
-| `Service` | 2 | Межсервисный токен (XAuth) |
-| `Bot` | 3 | Долгоживущий bot-JWT внешнего Bot API ([[Backend/Bots]]) |
-
-> Используется в [[Backend/GrpcServer]] при проверке политик XAuth.
-
----
-
-### `IdentityClaims.cs`
-**Класс `IdentityClaims`** — строковые константы имён JWT claims и gRPC metadata-заголовков.
-
-| Константа | Значение | Назначение |
-|-----------|----------|------------|
-| `UserId` | `"x-user-id"` | ID пользователя |
-| `TokenType` | `"x-token-type"` | Тип токена (`User` / `Service` / `Bot`) |
-| `ServiceId` | `"x-service-id"` | ID сервиса-эмитента токена |
-| `DeviceId` | `"x-device-id"` | ID устройства пользователя |
-| `BotTokenId` | `"x-bot-token-id"` | ID выпуска bot-JWT (сверка для отзыва в [[Backend/Bots]]) |
-
-> Все поля прописываются [[Backend/Identity]] при генерации JWT и читаются [[Backend/GrpcServer]] при авторизации входящих запросов.
-
----
-
-## Схема использования
-
-```
-Identity (генерирует JWT)
-    → IdentityClaims.* (имена claims)
-    → TokenType (User / Service)
-    → ServiceId (источник токена)
-
-GrpcServer (проверяет JWT)
-    → IdentityClaims.* (читает из metadata)
-    → TokenType (XAuth политики)
-
-Все сервисы (загрузка конфигурации)
-    → ServiceId.XxxName → builder.LoadConfiguration(ServiceId.XxxName)
-```
-
----
-
-## Связанные файлы Obsidian
-
-- [[Shared/Identity]] — краткое описание библиотеки
-- [[Backend/Identity]] — сервис аутентификации
-- [[Backend/GrpcServer]] — использует TokenType и IdentityClaims для XAuth
-- [[Backend/Settings]] — хранит конфигурацию по ServiceId
+Использование: [[Backend/GrpcServer]] валидирует токены и строит XAuth policies; [[Backend/Identity]] выпускает JWT; Settings каталогизирует значения `ServiceId`. Краткое описание: [[Shared/Identity]].
