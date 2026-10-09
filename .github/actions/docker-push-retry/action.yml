@@ -1,0 +1,69 @@
+name: "Docker build & push с ретраями"
+description: "docker/build-push-action: 1 попытка + 3 ретрая. Повторы идут в том же buildx-билдере, поэтому слои берутся из кэша и перепушиваются только к реестру"
+
+inputs:
+  file:
+    description: "Путь к Dockerfile"
+    required: true
+  tags:
+    description: "Строка тегов для push"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build and Push Docker image (попытка 1/4)
+      id: push1
+      continue-on-error: true
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ${{ inputs.file }}
+        push: true
+        tags: ${{ inputs.tags }}
+
+    - name: Пауза перед повтором
+      if: steps.push1.outcome == 'failure'
+      shell: bash
+      run: sleep 30
+
+    - name: Build and Push Docker image (попытка 2/4)
+      id: push2
+      if: steps.push1.outcome == 'failure'
+      continue-on-error: true
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ${{ inputs.file }}
+        push: true
+        tags: ${{ inputs.tags }}
+
+    - name: Пауза перед повтором
+      if: steps.push2.outcome == 'failure'
+      shell: bash
+      run: sleep 60
+
+    - name: Build and Push Docker image (попытка 3/4)
+      id: push3
+      if: steps.push2.outcome == 'failure'
+      continue-on-error: true
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ${{ inputs.file }}
+        push: true
+        tags: ${{ inputs.tags }}
+
+    - name: Пауза перед повтором
+      if: steps.push3.outcome == 'failure'
+      shell: bash
+      run: sleep 90
+
+    - name: Build and Push Docker image (попытка 4/4)
+      if: steps.push3.outcome == 'failure'
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ${{ inputs.file }}
+        push: true
+        tags: ${{ inputs.tags }}

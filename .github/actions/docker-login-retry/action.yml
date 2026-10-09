@@ -1,0 +1,29 @@
+name: "Docker login с ретраями"
+description: "Логин в docker-реестр: 1 попытка + 3 ретрая с нарастающей паузой (реестр за Cloudflare иногда отвечает 5xx/524)"
+
+inputs:
+  registry-username:
+    description: "Логин к docker-реестру"
+    required: true
+  registry-password:
+    description: "Пароль к docker-реестру"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Docker login (до 4 попыток)
+      shell: bash
+      env:
+        REGISTRY: docker.barkfluff.com
+        REG_USER: ${{ inputs.registry-username }}
+        REG_PASS: ${{ inputs.registry-password }}
+      run: |
+        for i in 1 2 3 4; do
+          if echo "$REG_PASS" | docker login "$REGISTRY" -u "$REG_USER" --password-stdin; then
+            exit 0
+          fi
+          echo "docker login не удался (попытка $i/4)"
+          [ "$i" -lt 4 ] && sleep $(( i * 15 ))
+        done
+        exit 1

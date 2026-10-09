@@ -48,8 +48,23 @@ runs:
             ;;
         esac
 
-        # -k: самоподписанный сертификат; 404 (репозитория ещё нет) не валит шаг
-        RESP=$(curl -sk -u "$REG_USER:$REG_PASS" "https://$REGISTRY/v2/$REPO/tags/list" || true)
+        # -k: самоподписанный сертификат; 404 (репозитория ещё нет) не валит шаг.
+        # Ответ реестра, отличный от 200/404 (5xx/524 от Cloudflare, таймаут), повторяем до 4 попыток,
+        # иначе пустой ответ дал бы версию 1.0.0 и перезаписал latest.
+        TAGS_FILE=$(mktemp)
+        OK=0
+        for i in 1 2 3 4; do
+          CODE=$(curl -sk --max-time 30 -u "$REG_USER:$REG_PASS" -o "$TAGS_FILE" -w '%{http_code}' \
+            "https://$REGISTRY/v2/$REPO/tags/list" || true)
+          case "$CODE" in 200|404) OK=1; break ;; esac
+          echo "Реестр ответил '$CODE' (попытка $i/4)"
+          [ "$i" -lt 4 ] && sleep $(( i * 15 ))
+        done
+        if [ "$OK" -ne 1 ]; then
+          echo "::error::Реестр недоступен, версию вычислить не удалось"
+          exit 1
+        fi
+        RESP=$(cat "$TAGS_FILE")
 
         # || true: grep без совпадений даёт exit 1 — под set -e -o pipefail это валит шаг
         LAST=$(echo "$RESP" | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | tr -d '"' | sort -V | tail -n1 || true)
