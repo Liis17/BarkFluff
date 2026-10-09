@@ -9,6 +9,8 @@ on:
     paths:
       - 'Mac/Barkfluff/**'
       - 'Mac/macos-rebuild.trigger'
+      - '.github/workflows/build-client-macos.yml'
+      - '.github/scripts/send-telegram.sh'
   workflow_dispatch:
 
 permissions:
@@ -62,7 +64,7 @@ jobs:
       run:
         working-directory: Mac/Barkfluff
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Выбор Xcode (Swift 6.2)
         uses: maxim-lobanov/setup-xcode@v1
