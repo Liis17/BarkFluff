@@ -33,7 +33,7 @@ trap 'status=$?; rm -f "$RESPONSE_FILE" "$HEADERS_FILE"; exit "$status"' EXIT
 
 manifest_digest() {
   local tag="$1" status digest
-  if ! status=$(curl -skS --connect-timeout 10 --max-time 30 -u "$REG_USER:$REG_PASS" \
+  if ! status=$(curl -skS --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 5 --retry-connrefused -u "$REG_USER:$REG_PASS" \
     --head -D "$HEADERS_FILE" -o /dev/null -w '%{http_code}' \
     -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json' \
     "https://$REGISTRY/v2/$SOURCE_REPO/manifests/$tag"); then
@@ -63,7 +63,7 @@ while [ -n "$TAGS_URL" ]; do
     exit 1
   fi
   SEEN_URLS="${SEEN_URLS}|${TAGS_URL}|"
-  if ! HTTP_STATUS=$(curl -skS --connect-timeout 10 --max-time 30 -u "$REG_USER:$REG_PASS" \
+  if ! HTTP_STATUS=$(curl -skS --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 5 --retry-connrefused -u "$REG_USER:$REG_PASS" \
     -D "$HEADERS_FILE" -o "$RESPONSE_FILE" -w '%{http_code}' "$TAGS_URL"); then
     echo "Не удалось получить теги $SOURCE_REPO из реестра" >&2
     exit 1
