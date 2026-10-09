@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Отправляет локально собранные образы в реестр: сначала пауза (чтобы одновременно
-# запущенные сборки не грузили реестр и Cloudflare разом), затем вход и push
-# с 3 дополнительными попытками при сбоях соединения.
+# Собирает образ и отправляет его в реестр: сначала пауза (чтобы одновременно
+# запущенные сборки не грузили реестр и Cloudflare разом), затем вход и
+# `docker buildx build --push` с 3 дополнительными попытками при сбоях соединения.
+# Пуш выполняет buildkit: push через dockerd реестр отклоняет с 401.
 #
-# Вход (env): PUSH_DELAY — пауза в секундах, TAGS — теги через запятую,
-#             REGISTRY_USERNAME, REGISTRY_PASSWORD.
+# Вход (env): PUSH_DELAY — пауза в секундах, DOCKERFILE, TAGS — теги через запятую,
+#             VERSION, REGISTRY_USERNAME, REGISTRY_PASSWORD.
 set -euo pipefail
 
 REGISTRY="docker.barkfluff.com"
@@ -34,6 +35,10 @@ sleep "$PUSH_DELAY"
 retry registry_login
 
 IFS=',' read -ra TAG_LIST <<< "$TAGS"
+TAG_ARGS=()
 for tag in "${TAG_LIST[@]}"; do
-  retry docker push "$tag"
+  TAG_ARGS+=(-t "$tag")
 done
+
+retry docker buildx build --push -f "$DOCKERFILE" "${TAG_ARGS[@]}" \
+  --label "org.opencontainers.image.version=$VERSION" .
