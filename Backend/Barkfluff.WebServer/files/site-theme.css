@@ -1,0 +1,26 @@
+/* Light palette for the homepage Release channel. */
+body[data-channel="release"] {
+  color-scheme: light;
+  --bg-0: #edf3f6;
+  --bg-1: #f6f9fb;
+  --bg-2: #e7eef2;
+  --bg-3: #d9e5eb;
+  --line: rgba(23, 48, 66, 0.12);
+  --line-strong: rgba(23, 48, 66, 0.2);
+  --ink: #173042;
+  --ink-dim: #526b7b;
+  --ink-mute: #587080;
+  --brand: #c75f31;
+  --brand-2: #a84822;
+  --brand-deep: #7d351b;
+  --brand-glow: rgba(199, 95, 49, 0.25);
+  --brand-soft: #b6532a;
+  --button-top: #b95229;
+  --button-end: #a84822;
+  --button-ink: #fff;
+  --surface-card: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(239,245,247,0.86));
+  --surface-panel: rgba(255,255,255,0.7);
+  --grid-line: rgba(23,48,66,0.045);
+}
+
+body[data-channel="release"] #bfCookieNoticeOk { background: linear-gradient(135deg, var(--button-top), var(--button-end)); color: var(--button-ink); }

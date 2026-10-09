@@ -50,7 +50,7 @@
 
 | Файл/Папка | Описание |
 |-----------|----------|
-| `html/barkfluff.html` | Главная страница сайта: переключатель Nightly/Dev/Release (по умолчанию Release), отдельный Web-клиент с векторным browser-глифом, группы Desktop/Mobile |
+| `html/barkfluff.html` | Главная: лендинг в стиле t3.codes (светлый Release, тёмные Dev/Nightly), центрированный hero и полноширинное превью Windows/Android/Web с кнопками; возможности после hero; переключатель Nightly/Dev/Release (по умолчанию Release), постоянный заголовок раздела загрузок, две цельные панели компьютера и телефона с разделителями строк платформ и нейтральными кнопками скачивания, независимый Web-клиент над каналами; нижний `#developers` с proto, GitHub и `/selfhosted` |
 | `html/about.html` | RU/EN страница «О проекте»: история с первым коммитом, команда, MIT, GitHub, контакты и постоянное пояснение `/about#domain-history` |
 | `html/404.html` | Страница «не найдено» (отдаётся `FallbackController` с кодом 404) |
 | `html/userpage.html` | Шаблон публичной страницы пользователя (`%%username%%`) |
@@ -73,6 +73,7 @@
 | `files/install.sh` | Скрипт установки Linux (release) |
 | `files/installbeta.sh` | Скрипт установки Linux (beta) |
 | `files/favicon.ico` | Иконка сайта |
+| `files/site-theme.css` | Светлая палитра канала Release главной |
 | `files/linkpreview.png` | OG-изображение для превью ссылок |
 | `files/cookie-notice.js` | Баннер об использовании cookie, подключается во все страницы `html/` |
 | `files/domain-notice.js` | Закрываемая RU/EN плашка о прежнем использовании домена на главной и `/about`; общий ключ `bf_domain_notice_v1` |
