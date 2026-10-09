@@ -19,5 +19,19 @@ namespace Barkfluff.WebServer.Controllers
             var htmlContent = System.IO.File.ReadAllText(htmlPath);
             return Content(htmlContent, "text/html");
         }
+
+        [HttpGet("/about")]
+        public IActionResult About()
+        {
+            var htmlPath = Path.Combine(AppContext.BaseDirectory, "html", "about.html");
+
+            if (!System.IO.File.Exists(htmlPath))
+            {
+                return NotFound("About page not found");
+            }
+
+            var htmlContent = System.IO.File.ReadAllText(htmlPath);
+            return Content(htmlContent, "text/html");
+        }
     }
 }

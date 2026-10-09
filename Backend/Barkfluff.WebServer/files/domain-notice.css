@@ -1,0 +1,17 @@
+.domain-notice {
+  display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px;
+  padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface-panel, var(--bg-2)); color: var(--ink-dim);
+  font-size: 13px; line-height: 1.6;
+}
+.domain-notice[hidden], .domain-notice button[hidden] { display: none; }
+.domain-notice p { margin: 0; }
+.domain-notice a { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+.domain-notice button {
+  flex: 0 0 36px; min-height: 36px; margin-left: auto; padding: 0;
+  border: 1px solid var(--line); border-radius: 8px; background: transparent;
+  color: var(--ink); font: inherit; font-size: 22px; cursor: pointer;
+}
+.domain-notice a:focus-visible, .domain-notice button:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 4px;
+}

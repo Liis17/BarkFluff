@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-ru="О проекте — BarkFluff" data-en="About the project — BarkFluff">О проекте — BarkFluff</title>
+  <meta name="description" content="История открытого некоммерческого мессенджера BarkFluff: начало 5 апреля 2025 года, команда, исходный код, MIT и история домена barkfluff.com." data-ru="История открытого некоммерческого мессенджера BarkFluff: начало 5 апреля 2025 года, команда, исходный код, MIT и история домена barkfluff.com." data-en="The story of BarkFluff, a noncommercial open-source messenger: started April 5, 2025, its team, source code, MIT license and barkfluff.com domain history.">
+  <link rel="canonical" href="https://barkfluff.com/about">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/assets/domain-notice.css">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://barkfluff.com/about">
+  <meta property="og:title" content="О проекте — BarkFluff" data-ru="О проекте — BarkFluff" data-en="About the project — BarkFluff">
+  <meta property="og:description" content="Независимый некоммерческий проект с открытым исходным кодом. История, команда и пояснение о прежнем использовании домена." data-ru="Независимый некоммерческий проект с открытым исходным кодом. История, команда и пояснение о прежнем использовании домена." data-en="An independent, noncommercial open-source project. Its history, team and an explanation of the domain's previous use.">
+  <meta property="og:image" content="https://barkfluff.com/assets/linkpreview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://barkfluff.com/about">
+  <meta name="twitter:title" content="О проекте — BarkFluff" data-ru="О проекте — BarkFluff" data-en="About the project — BarkFluff">
+  <meta name="twitter:description" content="Независимый некоммерческий проект с открытым исходным кодом. История, команда и пояснение о прежнем использовании домена." data-ru="Независимый некоммерческий проект с открытым исходным кодом. История, команда и пояснение о прежнем использовании домена." data-en="An independent, noncommercial open-source project. Its history, team and an explanation of the domain's previous use.">
+  <meta name="twitter:image" content="https://barkfluff.com/assets/linkpreview.png">
+  <style>
+    :root {
+      color-scheme: light; --bg:#f6f9fb; --bg-2:#e7eef2; --panel:#fff;
+      --ink:#173042; --ink-dim:#526b7b; --brand:#a84822; --line:rgba(23,48,66,.15);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,Segoe UI,sans-serif; line-height:1.65; }
+    .page { width:min(1080px, calc(100% - 40px)); margin:0 auto; padding:40px 0 48px; }
+    header, nav, footer { display:flex; flex-wrap:wrap; align-items:center; gap:16px; }
+    header { justify-content:space-between; margin-bottom:48px; }
+    .brand { color:var(--ink); font-size:22px; font-weight:800; letter-spacing:-.04em; text-decoration:none; }
+    a { color:var(--brand); text-underline-offset:4px; }
+    nav a, footer a { font-size:14px; }
+    a:focus-visible, button:focus-visible { outline:2px solid var(--brand); outline-offset:4px; }
+    .lang-btn { padding:7px 12px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--ink); font:inherit; font-size:13px; cursor:pointer; }
+    .eyebrow { margin:0 0 12px; color:var(--brand); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:0 0 20px; font-size:clamp(36px,6vw,64px); line-height:1.1; letter-spacing:-.04em; }
+    .intro { max-width:760px; font-size:19px; }
+    p { color:var(--ink-dim); }
+    .facts { display:flex; flex-wrap:wrap; gap:10px; padding:0; margin:24px 0 40px; list-style:none; }
+    .facts li { padding:6px 12px; border:1px solid var(--line); border-radius:999px; font-size:13px; }
+    .section { padding:28px 0; border-top:1px solid var(--line); scroll-margin-top:24px; }
+    h2 { margin:0 0 16px; font-size:26px; line-height:1.25; letter-spacing:-.02em; }
+    .section > p, .timeline { max-width:800px; }
+    .timeline { padding-left:22px; }
+    .timeline li { padding:0 0 12px 8px; color:var(--ink-dim); }
+    strong { color:var(--ink); }
+    .team { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .person { padding:22px; background:var(--panel); border:1px solid var(--line); border-radius:16px; }
+    .person h3 { margin:0; font-size:20px; }
+    .person p { margin:6px 0 16px; font-size:14px; }
+    .person a { font-size:14px; overflow-wrap:anywhere; }
+    .source-links { display:flex; flex-wrap:wrap; gap:12px 24px; padding:0; list-style:none; }
+    .domain-history { padding:28px; border:1px solid var(--line); border-radius:16px; background:var(--bg-2); margin:12px 0 28px; }
+    .domain-history p:last-child { margin-bottom:0; }
+    footer { padding-top:24px; border-top:1px solid var(--line); color:var(--ink-dim); font-size:13px; }
+    @media (max-width:700px) {
+      .page { width:calc(100% - 32px); padding-top:24px; }
+      header { margin-bottom:32px; }
+      nav { gap:12px; }
+      .team { grid-template-columns:1fr; }
+      .intro { font-size:17px; }
+      .domain-history { padding:20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="domain-notice" id="domainNotice">
+      <p><span id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</span> <a href="/about#domain-history" id="domainNoticeLink">Подробнее о проекте и истории домена →</a></p>
+      <button type="button" id="domainNoticeClose" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
+    </aside>
+    <header>
+      <a href="/" class="brand">barkfluff</a>
+      <nav aria-label="Навигация" data-ru="Навигация" data-en="Navigation" data-i18n-attr="aria-label">
+        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <button class="lang-btn" id="langToggle" type="button" hidden>EN</button>
+      </nav>
+    </header>
+    <main>
+      <p class="eyebrow" data-ru="Независимый открытый проект" data-en="An independent open-source project">Независимый открытый проект</p>
+      <h1 data-ru="О проекте BarkFluff" data-en="About BarkFluff">О проекте BarkFluff</h1>
+      <p class="intro" data-ru="BarkFluff — некоммерческий проект распределённого мессенджера с открытым исходным кодом. Мы создаём приложения для общения и возможность развернуть собственный сервер." data-en="BarkFluff is a noncommercial, open-source distributed messenger project. We build apps for communication and make it possible to run your own server.">BarkFluff — некоммерческий проект распределённого мессенджера с открытым исходным кодом. Мы создаём приложения для общения и возможность развернуть собственный сервер.</p>
+      <ul class="facts">
+        <li data-ru="С 5 апреля 2025 года" data-en="Since April 5, 2025">С 5 апреля 2025 года</li>
+        <li data-ru="Открытый исходный код · MIT" data-en="Open source · MIT">Открытый исходный код · MIT</li>
+        <li data-ru="Собственные серверы" data-en="Self-hosted servers">Собственные серверы</li>
+      </ul>
+
+      <section class="section" aria-labelledby="purposeTitle">
+        <h2 id="purposeTitle" data-ru="Что мы разрабатываем" data-en="What we are building">Что мы разрабатываем</h2>
+        <p data-ru="BarkFluff объединяет серверную платформу обмена сообщениями, нативные приложения и веб-клиент. Администраторы могут разворачивать свои ноды — серверы BarkFluff — и управлять их инфраструктурой." data-en="BarkFluff brings together a messaging server platform, native apps and a web client. Administrators can deploy their own nodes — BarkFluff servers — and manage their infrastructure.">BarkFluff объединяет серверную платформу обмена сообщениями, нативные приложения и веб-клиент. Администраторы могут разворачивать свои ноды — серверы BarkFluff — и управлять их инфраструктурой.</p>
+        <p data-ru="Проект активно развивается. На главной доступны сборки для Windows, macOS и Android, а также ссылка на веб-клиент. Клиенты для iOS и Linux находятся в разработке. Актуальные версии публикуются на главной, изменения — в GitHub." data-en="The project is in active development. The home page offers Windows, macOS and Android builds, plus a link to the web client. The iOS and Linux clients are in development. Current versions are listed on the home page, and changes are tracked on GitHub.">Проект активно развивается. На главной доступны сборки для Windows, macOS и Android, а также ссылка на веб-клиент. Клиенты для iOS и Linux находятся в разработке. Актуальные версии публикуются на главной, изменения — в GitHub.</p>
+      </section>
+
+      <section class="section" aria-labelledby="historyTitle">
+        <h2 id="historyTitle" data-ru="История проекта" data-en="Project history">История проекта</h2>
+        <ol class="timeline">
+          <li><strong data-ru="5 апреля 2025 года — начало BarkFluff." data-en="April 5, 2025 — BarkFluff begins.">5 апреля 2025 года — начало BarkFluff.</strong> <span data-ru="Датой начала проекта считаем первый коммит в репозитории." data-en="We consider the first repository commit to be the start of the project.">Датой начала проекта считаем первый коммит в репозитории.</span> <a href="https://github.com/Liis17/BarkFluff/commit/ce2090cd9877c2a4ad73ce51f5a8025c22bf7f92" target="_blank" rel="noopener" data-ru="Посмотреть первый коммит" data-en="View the first commit">Посмотреть первый коммит</a>.</li>
+          <li><strong data-ru="Примерно май 2025 года — домен barkfluff.com." data-en="Around May 2025 — the barkfluff.com domain.">Примерно май 2025 года — домен barkfluff.com.</strong> <span data-ru="По информации нынешнего владельца, домен перешёл к нему примерно в этот период и используется для проекта мессенджера." data-en="According to the current owner, the domain was acquired around this time and is used for the messenger project.">По информации нынешнего владельца, домен перешёл к нему примерно в этот период и используется для проекта мессенджера.</span></li>
+          <li><strong data-ru="Сейчас — открытая разработка." data-en="Today — open development.">Сейчас — открытая разработка.</strong> <span data-ru="Исходники и история изменений доступны в публичном репозитории." data-en="The source code and change history are available in the public repository.">Исходники и история изменений доступны в публичном репозитории.</span></li>
+        </ol>
+      </section>
+
+      <section class="section" aria-labelledby="teamTitle">
+        <h2 id="teamTitle" data-ru="Команда" data-en="The team">Команда</h2>
+        <div class="team">
+          <article class="person">
+            <h3>li_is</h3>
+            <p data-ru="Главный разработчик" data-en="Lead developer">Главный разработчик</p>
+            <a href="mailto:li_is@barkfluff.com">li_is@barkfluff.com</a>
+          </article>
+          <article class="person">
+            <h3>fooxboy</h3>
+            <p data-ru="Backend и iOS-клиент" data-en="Backend and iOS client">Backend и iOS-клиент</p>
+            <a href="mailto:fooxboy@barkfluff.com">fooxboy@barkfluff.com</a>
+          </article>
+          <article class="person">
+            <h3>kotumbus</h3>
+            <p data-ru="Linux-клиент" data-en="Linux client">Linux-клиент</p>
+            <a href="mailto:kotumbus@barkfluff.com">kotumbus@barkfluff.com</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="sourceTitle">
+        <h2 id="sourceTitle" data-ru="Исходный код и лицензия" data-en="Source code and license">Исходный код и лицензия</h2>
+        <p data-ru="BarkFluff развивается как независимый некоммерческий проект. Это описание характера проекта, а не ограничение на использование кода. Код распространяется по лицензии MIT, которая допускает в том числе коммерческое использование при соблюдении её условий." data-en="BarkFluff is developed as an independent, noncommercial project. This describes the nature of the project, not a restriction on using the code. The code is distributed under the MIT license, which also permits commercial use subject to its terms.">BarkFluff развивается как независимый некоммерческий проект. Это описание характера проекта, а не ограничение на использование кода. Код распространяется по лицензии MIT, которая допускает в том числе коммерческое использование при соблюдении её условий.</p>
+        <ul class="source-links">
+          <li><a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" data-ru="Репозиторий GitHub" data-en="GitHub repository">Репозиторий GitHub</a></li>
+          <li><a href="https://github.com/Liis17/BarkFluff/commits" target="_blank" rel="noopener" data-ru="История коммитов" data-en="Commit history">История коммитов</a></li>
+          <li><a href="https://github.com/Liis17/BarkFluff#readme" target="_blank" rel="noopener">README</a></li>
+          <li><a href="https://github.com/Liis17/BarkFluff/blob/master/LICENSE" target="_blank" rel="noopener" data-ru="Лицензия MIT" data-en="MIT license">Лицензия MIT</a></li>
+          <li><a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Портал разработчиков" data-en="Developer portal">Портал разработчиков</a></li>
+        </ul>
+      </section>
+
+      <section class="section domain-history" id="domain-history" aria-labelledby="domainTitle">
+        <h2 id="domainTitle" data-ru="О прежнем использовании barkfluff.com" data-en="About the previous use of barkfluff.com">О прежнем использовании barkfluff.com</h2>
+        <p data-ru="В 2022 году этот домен использовал другой магазин товаров для животных. Нынешний проект BarkFluff и его команда не связаны с тем магазином, его владельцами, заказами или платежами." data-en="In 2022, this domain was used by an unrelated pet-products store. The current BarkFluff project and its team are not affiliated with that store, its owners, orders or payments.">В 2022 году этот домен использовал другой магазин товаров для животных. Нынешний проект BarkFluff и его команда не связаны с тем магазином, его владельцами, заказами или платежами.</p>
+        <p data-ru="Совпадение доменного имени не означает преемственности. Сегодня barkfluff.com — сайт некоммерческого проекта мессенджера с открытым исходным кодом. Старые публикации о магазине относятся к прежнему использованию домена." data-en="Sharing the domain name does not imply continuity. Today, barkfluff.com is the website of a noncommercial, open-source messenger project. Old publications about the store concern the domain's previous use.">Совпадение доменного имени не означает преемственности. Сегодня barkfluff.com — сайт некоммерческого проекта мессенджера с открытым исходным кодом. Старые публикации о магазине относятся к прежнему использованию домена.</p>
+      </section>
+
+      <section class="section" aria-labelledby="contactTitle">
+        <h2 id="contactTitle" data-ru="Связаться с нами" data-en="Contact us">Связаться с нами</h2>
+        <p><span data-ru="По вопросам проекта и для уточнения информации:" data-en="For project questions or to clarify information:">По вопросам проекта и для уточнения информации:</span> <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>.</p>
+      </section>
+    </main>
+    <footer>
+      <span>2026 BarkFluff</span>
+      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+      <a href="/about" aria-current="page" data-ru="О проекте" data-en="About the project">О проекте</a>
+      <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+      <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+    </footer>
+  </div>
+  <script>
+    (function () {
+      const toggle = document.getElementById('langToggle');
+      function applyLang(lang) {
+        document.documentElement.lang = lang;
+        try { localStorage.setItem('bf_lang', lang); } catch (_) { }
+        document.querySelectorAll('[data-ru]').forEach(function (el) {
+          const value = el.getAttribute('data-' + lang);
+          if (el.tagName === 'META') el.content = value;
+          else if (el.dataset.i18nAttr) el.setAttribute(el.dataset.i18nAttr, value);
+          else el.textContent = value;
+        });
+        toggle.textContent = lang === 'ru' ? 'EN' : 'RU';
+      }
+      let saved;
+      try { saved = localStorage.getItem('bf_lang'); } catch (_) { }
+      const detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
+      toggle.hidden = false;
+      toggle.addEventListener('click', function () {
+        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
+      });
+      applyLang(saved === 'ru' || saved === 'en' ? saved : detected);
+    })();
+  </script>
+  <script src="/assets/domain-notice.js" defer></script>
+  <script src="/assets/cookie-notice.js" defer></script>
+</body>
+</html>

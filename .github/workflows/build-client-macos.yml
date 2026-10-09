@@ -9,60 +9,31 @@ on:
     paths:
       - 'Mac/Barkfluff/**'
       - 'Mac/macos-rebuild.trigger'
+      - '.github/workflows/build-client-macos.yml'
+      - '.github/scripts/send-telegram.sh'
+      - '.github/scripts/client-version.sh'
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: write
+
+concurrency:
+  group: client-macos
+  cancel-in-progress: false
+  queue: max
 
 jobs:
-  # ═══════════════════════════════════════════════════════════════
-  #  Запрос подтверждения сборки через Telegram
-  # ═══════════════════════════════════════════════════════════════
-  request-approval:
-    name: "📲 Запрос подтверждения"
-    runs-on: macos-latest
-    outputs:
-      approved: ${{ steps.result.outputs.approved }}
-    steps:
-      - name: "📲 Собрать macOS Client?"
-        id: approval
-        if: github.ref_name != 'dev' && github.ref_name != 'nightly'
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку macOS Client?"
-          APPROVAL_BUTTON: "\u2705 Собрать"
-          REJECT_BUTTON: "\u274C Отменить"
-          APPROVED_TEXT: "\u2705 Сборка macOS Client одобрена"
-          REJECTED_TEXT: "\u274C Сборка macOS Client отклонена"
-          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
-      - name: Результат
-        id: result
-        run: |
-          if [ "${{ github.ref_name }}" = "dev" ] || [ "${{ github.ref_name }}" = "nightly" ] || [ "${{ steps.approval.outcome }}" = "success" ]; then
-            echo "approved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "approved=false" >> "$GITHUB_OUTPUT"
-          fi
-
   # ═══════════════════════════════════════════════════════════════
   #  Сборка DMG без подписи + загрузка на сервер
   # ═══════════════════════════════════════════════════════════════
   build:
     name: "🍎 macOS Client"
-    needs: request-approval
-    if: needs.request-approval.outputs.approved == 'true'
     runs-on: macos-latest
     defaults:
       run:
         working-directory: Mac/Barkfluff
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Выбор Xcode (Swift 6.2)
         uses: maxim-lobanov/setup-xcode@v1
@@ -87,58 +58,25 @@ jobs:
         id: target
         run: |
           case "${{ github.ref_name }}" in
-            master)  CHANNEL="release"; VERSION_CHANNEL="release" ;;
-            dev)     CHANNEL="dev";     VERSION_CHANNEL="nightly" ;;
-            nightly) CHANNEL="nightly"; VERSION_CHANNEL="nightly" ;;
+            master)  CHANNEL="release" ;;
+            dev)     CHANNEL="dev" ;;
+            nightly) CHANNEL="nightly" ;;
             *)
               echo "Ветка ${{ github.ref_name }} не привязана к каналу обновлений" >&2
               exit 1
               ;;
           esac
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "version_channel=$VERSION_CHANNEL" >> "$GITHUB_OUTPUT"
           echo "Ветка ${{ github.ref_name }} → канал $CHANNEL"
 
-      - name: Автоподнятие версии
+      - name: Определение версии
+        id: version
+        env:
+          CLIENT_APP: barkfluffmacos
+          CA_FILE: cloudflare-origin-ca-bundle.pem
         run: |
-          RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/${{ steps.target.outputs.version_channel }}/version" || echo "")
-
-          if [ -z "$RESPONSE" ] && [ "${{ steps.target.outputs.version_channel }}" = "nightly" ]; then
-            echo "Канал nightly пуст, пробуем beta"
-            RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
-          fi
-
-          if [ -n "$RESPONSE" ]; then
-            SERVER_VERSION=$(echo "$RESPONSE" | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
-          fi
-
-          if [ -z "$SERVER_VERSION" ]; then
-            SERVER_VERSION=$(grep -E '^[[:space:]]*MARKETING_VERSION' Barkfluff.xcodeproj/project.pbxproj | head -1 | sed -E 's/.*= ([^;]+);.*/\1/')
-          fi
-
-          # Стрипаем любой нечисловой суффикс (например " beta")
-          SERVER_VERSION=$(echo "$SERVER_VERSION" | grep -oE '^[0-9]+(\.[0-9]+){0,2}' | head -1)
-          [ -z "$SERVER_VERSION" ] && SERVER_VERSION="0.0.0"
-
-          # Нормализация до трёх частей (MARKETING_VERSION в pbxproj может быть "1.0")
-          DOTS=$(echo "$SERVER_VERSION" | tr -cd '.' | wc -c | tr -d ' ')
-          if [ "$DOTS" = "0" ]; then SERVER_VERSION="${SERVER_VERSION}.0.0"; fi
-          if [ "$DOTS" = "1" ]; then SERVER_VERSION="${SERVER_VERSION}.0"; fi
-
-          echo "Server version: $SERVER_VERSION"
-
-          if [ "${{ github.ref_name }}" = "nightly" ]; then
-            MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
-            MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
-            PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
-            PATCH=$((PATCH + 1))
-            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          else
-            NEW_VERSION="$SERVER_VERSION"
-          fi
-
-          echo "New version: $NEW_VERSION"
-
+          bash "$GITHUB_WORKSPACE/.github/scripts/client-version.sh"
+          NEW_VERSION=$(sed -n 's/^version=//p' "$GITHUB_OUTPUT")
           sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${NEW_VERSION};/g" Barkfluff.xcodeproj/project.pbxproj
 
       - name: Archive (без подписи)
@@ -169,7 +107,11 @@ jobs:
         id: meta
         run: |
           VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
-            build/export/Barkfluff.app/Contents/Info.plist 2>/dev/null || echo "0.0.0")
+            build/export/Barkfluff.app/Contents/Info.plist)
+          if [ "$VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "Версия .app не совпадает с вычисленной версией" >&2
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
@@ -287,6 +229,7 @@ jobs:
 
       - name: "✅ Уведомление об успехе"
         if: success()
+        continue-on-error: true
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -304,6 +247,7 @@ jobs:
 
       - name: "❌ Уведомление об ошибке"
         if: failure()
+        continue-on-error: true
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
