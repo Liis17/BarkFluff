@@ -13,6 +13,7 @@ on:
       - 'Backend/rebuild.trigger'
       - '.github/workflows/build-backend-admin-panel.yml'
       - '.github/scripts/send-telegram.sh'
+      - '.github/scripts/push-docker-image.sh'
       - 'global.json'
       - '.dockerignore'
       - 'Shared/**'
@@ -46,12 +47,6 @@ jobs:
             -o ./publish \
             /p:UseAppHost=false
 
-      - name: Login to Private Registry
-        uses: docker/login-action@v4
-        with:
-          registry: docker.barkfluff.com
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -64,14 +59,21 @@ jobs:
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Build and Push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Backend/Barkfluff.AdminPanel/Dockerfile.slim
-          push: true
+          load: true
           tags: ${{ steps.vars.outputs.tags }}
           labels: org.opencontainers.image.version=${{ steps.vars.outputs.version }}
+      - name: "📤 Отправка в реестр (пауза 15 с, 3 повтора)"
+        env:
+          PUSH_DELAY: 15
+          TAGS: ${{ steps.vars.outputs.tags }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: bash .github/scripts/push-docker-image.sh
 
       - name: "✅ Уведомление об успехе"
         if: success()
