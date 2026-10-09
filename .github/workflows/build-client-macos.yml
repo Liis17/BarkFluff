@@ -87,7 +87,7 @@ jobs:
         id: target
         run: |
           case "${{ github.ref_name }}" in
-            master)  CHANNEL="release"; VERSION_CHANNEL="release" ;;
+            master)  CHANNEL="release"; VERSION_CHANNEL="dev" ;;
             dev)     CHANNEL="dev";     VERSION_CHANNEL="nightly" ;;
             nightly) CHANNEL="nightly"; VERSION_CHANNEL="nightly" ;;
             *)
@@ -108,8 +108,14 @@ jobs:
             RESPONSE=$(curl -sf --cacert cloudflare-origin-ca-bundle.pem "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
           fi
 
+          SERVER_VERSION=""
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
+          fi
+
+          if [ "${{ github.ref_name }}" = "master" ] && ! [[ "$SERVER_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+            echo "Не удалось получить корректную macOS-версию канала dev для release" >&2
+            exit 1
           fi
 
           if [ -z "$SERVER_VERSION" ]; then
