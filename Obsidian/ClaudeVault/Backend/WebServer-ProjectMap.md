@@ -55,7 +55,7 @@
 | `html/404.html` | Страница «не найдено» (отдаётся `FallbackController` с кодом 404) |
 | `html/userpage.html` | Шаблон публичной страницы пользователя (`%%username%%`) |
 | `html/UniqueUsers/paws.page.html` | Специальная страница для пользователя `li_is` с анимированными лапками-следами (SVG + CSS keyframes) |
-| `html/selfhosted.html` | Страница для self-hosted режима |
+| `html/selfhosted.html` | Руководство по self-hosted ноде, RU/EN (элементы `lang="ru"`/`lang="en"`) |
 | `html/legal/privacy-policy.html` | Политика конфиденциальности |
 | `html/legal/terms-of-service.html` | Условия использования |
 | `html/legal/account-deletion.html` | Удаление аккаунта |
@@ -74,6 +74,7 @@
 | `files/installbeta.sh` | Скрипт установки Linux (beta) |
 | `files/favicon.ico` | Иконка сайта |
 | `files/site-theme.css` | Общая светлая палитра Release главной и оформление self-hosted/legal: шрифты, фон, навигация, карточки, таблицы и код |
+| `files/site-header.css` | Общая шапка `.home-nav` (как на главной) для `/about`, `/selfhosted` и `/legal/*`; подключается после `site-theme.css` |
 | `files/linkpreview.png` | OG-изображение для превью ссылок |
 | `files/cookie-notice.js` | Баннер об использовании cookie, подключается во все страницы `html/` |
 | `files/domain-notice.js` | Закрываемая RU/EN плашка о прежнем использовании домена на главной и `/about`; общий ключ `bf_domain_notice_v1` |

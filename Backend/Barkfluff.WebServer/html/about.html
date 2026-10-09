@@ -8,6 +8,10 @@
   <link rel="canonical" href="https://barkfluff.com/about">
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="/assets/domain-notice.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-header.css">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://barkfluff.com/about">
   <meta property="og:title" content="О проекте — BarkFluff" data-ru="О проекте — BarkFluff" data-en="About the project — BarkFluff">
@@ -25,14 +29,11 @@
     }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,Segoe UI,sans-serif; line-height:1.65; }
-    .page { width:min(1080px, calc(100% - 40px)); margin:0 auto; padding:40px 0 48px; }
-    header, nav, footer { display:flex; flex-wrap:wrap; align-items:center; gap:16px; }
-    header { justify-content:space-between; margin-bottom:48px; }
-    .brand { color:var(--ink); font-size:22px; font-weight:800; letter-spacing:-.04em; text-decoration:none; }
+    .page { width:min(1080px, calc(100% - 40px)); margin:0 auto; padding:28px 0 48px; }
+    footer { display:flex; flex-wrap:wrap; align-items:center; gap:16px; }
     a { color:var(--brand); text-underline-offset:4px; }
-    nav a, footer a { font-size:14px; }
+    footer a { font-size:14px; }
     a:focus-visible, button:focus-visible { outline:2px solid var(--brand); outline-offset:4px; }
-    .lang-btn { padding:7px 12px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--ink); font:inherit; font-size:13px; cursor:pointer; }
     .eyebrow { margin:0 0 12px; color:var(--brand); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
     h1 { margin:0 0 20px; font-size:clamp(36px,6vw,64px); line-height:1.1; letter-spacing:-.04em; }
     .intro { max-width:760px; font-size:19px; }
@@ -55,9 +56,7 @@
     .domain-history p:last-child { margin-bottom:0; }
     footer { padding-top:24px; border-top:1px solid var(--line); color:var(--ink-dim); font-size:13px; }
     @media (max-width:700px) {
-      .page { width:calc(100% - 32px); padding-top:24px; }
-      header { margin-bottom:32px; }
-      nav { gap:12px; }
+      .page { width:calc(100% - 32px); }
       .team { grid-template-columns:1fr; }
       .intro { font-size:17px; }
       .domain-history { padding:20px; }
@@ -65,19 +64,32 @@
   </style>
 </head>
 <body>
+  <div class="home-page">
+    <header class="home-nav">
+      <div class="home-nav-left">
+        <a href="/" class="brand-mark">
+          <span class="glyph"><img src="/favicon.ico" width="28" height="28" alt=""></span>
+          <span>barkfluff</span>
+        </a>
+        <button class="lang-btn" id="langToggle" type="button" hidden>EN</button>
+      </div>
+      <div class="home-nav-right">
+        <a href="/about" class="home-nav-link" data-ru="О проекте" data-en="About the project">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link">GitHub</a>
+        <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
+        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="home-nav-link" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+        <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener" class="btn btn-ghost">
+          Telegram
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
+        </a>
+      </div>
+    </header>
+  </div>
   <div class="page">
     <aside class="domain-notice" id="domainNotice">
       <p><span id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</span> <a href="/about#domain-history" id="domainNoticeLink">Подробнее о проекте и истории домена →</a></p>
       <button type="button" id="domainNoticeClose" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
     </aside>
-    <header>
-      <a href="/" class="brand">barkfluff</a>
-      <nav aria-label="Навигация" data-ru="Навигация" data-en="Navigation" data-i18n-attr="aria-label">
-        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
-        <button class="lang-btn" id="langToggle" type="button" hidden>EN</button>
-      </nav>
-    </header>
     <main>
       <p class="eyebrow" data-ru="Независимый открытый проект" data-en="An independent open-source project">Независимый открытый проект</p>
       <h1 data-ru="О проекте BarkFluff" data-en="About BarkFluff">О проекте BarkFluff</h1>
