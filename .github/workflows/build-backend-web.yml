@@ -11,6 +11,12 @@ on:
       - 'Icons/**'
       - '.github/actions/docker-version/**'
       - 'Backend/rebuild.trigger'
+      - '.github/workflows/build-backend-web.yml'
+      - '.github/scripts/send-telegram.sh'
+      - 'global.json'
+      - '.dockerignore'
+      - 'Shared/**'
+      - 'Backend/BarkFluff.GrpcServer/**'
   workflow_dispatch:
 
 permissions:
@@ -29,15 +35,15 @@ jobs:
     name: "🐋 Сборка и публикация BarkFluff.Web"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - name: Set up .NET SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -55,14 +61,14 @@ jobs:
             /p:UseAppHost=false
 
       - name: Login to Private Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v4
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v4
 
       - name: Compute version
         id: vars
@@ -73,7 +79,7 @@ jobs:
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Build and Push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Backend/BarkFluff.Web/Dockerfile.slim
