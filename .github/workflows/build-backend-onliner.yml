@@ -62,17 +62,11 @@ jobs:
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Backend/BarkFluff.Onliner/Dockerfile.slim
-          load: true
-          tags: ${{ steps.vars.outputs.tags }}
-          labels: org.opencontainers.image.version=${{ steps.vars.outputs.version }}
-      - name: "📤 Отправка в реестр (пауза 225 с, 3 повтора)"
+      - name: "📤 Сборка образа и отправка в реестр (пауза 225 с, 3 повтора)"
         env:
           PUSH_DELAY: 225
+          DOCKERFILE: ./Backend/BarkFluff.Onliner/Dockerfile.slim
+          VERSION: ${{ steps.vars.outputs.version }}
           TAGS: ${{ steps.vars.outputs.tags }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
