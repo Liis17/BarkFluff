@@ -5,47 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-ru="Шифрование — Barkfluff" data-en="Encryption — Barkfluff">Шифрование — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <style>
-    :root { color-scheme: dark; --bg:#14070a; --panel:#241310; --line:rgba(255,240,220,.14); --text:#fef6ea; --muted:#c9a893; --brand:#ff9a4c; }
-    * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height:1.65; opacity:0; transition:opacity .4s ease; }
-    body.lang-ready { opacity:1; }
-    main { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
-    header, nav, footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
-    a { color:var(--brand); text-decoration:none; }
-    nav { margin:24px 0; padding:8px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); }
-    nav a { padding:8px 10px; color:var(--muted); border-radius:8px; }
-    nav a.active { color:var(--text); background:rgba(255,122,41,.16); }
-    article { padding:28px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg, rgba(45,25,20,.9), rgba(22,11,9,.9)); }
-    article[data-lang] { display:none; }
-    h1 { margin:0 0 8px; font-size:clamp(28px,4vw,40px); line-height:1.1; }
-    h2 { margin-top:32px; font-size:22px; }
-    h3 { margin-top:22px; font-size:17px; }
-    p, li, td { color:var(--muted); }
-    code { color:#ffd0a0; background:rgba(0,0,0,.35); border:1px solid var(--line); border-radius:6px; padding:1px 5px; }
-    table { width:100%; border-collapse:collapse; margin:16px 0; }
-    th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
-    th { color:var(--text); background:rgba(255,122,41,.08); }
-    footer { margin-top:24px; color:#8a6a5b; font-size:13px; }
-    .lang-btn { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; }
-    .lang-btn:hover { color:var(--text); }
-    .callout { margin:16px 0; padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:10px; background:rgba(255,122,41,.06); }
-    .callout p { margin:0; }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-theme.css">
   <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
-<body>
+<body class="document-page legal-page">
   <main>
-    <header>
-      <a href="/"><strong>barkfluff</strong></a>
-      <a href="/" data-ru="На главную" data-en="Home">На главную</a>
-      <button class="lang-btn" id="langToggle" type="button">EN</button>
+    <header class="site-header">
+      <a href="/" class="brand-mark"><img src="/favicon.ico" width="28" height="28" alt=""><span>barkfluff</span></a>
+      <div class="site-links">
+        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
+        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <a href="/selfhosted">Self-hosted</a>
+        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+        <button class="lang-btn" id="langToggle" type="button">EN</button>
+      </div>
     </header>
-    <nav>
+    <nav class="document-nav">
       <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
       <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
       <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
-      <a href="/legal/encryption" class="active" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
+      <a href="/legal/encryption" class="active" aria-current="page" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
     <article data-lang="ru">
       <h1>Техническое описание шифрования</h1>
@@ -55,7 +38,7 @@
       <p>Эта страница описывает только те механизмы защиты и шифрования, которые присутствуют в текущей архитектуре Barkfluff. Она относится к программному обеспечению; конкретную конфигурацию — какие функции включены, какие ключи используются, как хранятся резервные копии — определяет администратор ноды, на которой создан ваш аккаунт.</p>
 
       <h2>2. Кто что видит: краткая сводка</h2>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Тип переписки</th><th>Видит ваша нода</th><th>Видит нода собеседника</th></tr></thead>
         <tbody>
           <tr><td>Обычный чат внутри ноды</td><td>Содержимое сообщений и файлы</td><td>—</td></tr>
@@ -63,7 +46,7 @@
           <tr><td>Secret-чат (устройство-устройство)</td><td>Только opaque envelope, временно</td><td>—</td></tr>
           <tr><td>Федеративный чат 1-к-1</td><td>Содержимое сообщений и файлы</td><td>Содержимое сообщений и файлы</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <div class="callout">
         <p><strong>Сквозного шифрования в федеративных чатах нет.</strong> Private- и secret-чаты работают только между пользователями одной ноды. Если вам нужно, чтобы содержимое не было доступно серверу вообще, — используйте private- или secret-чат внутри своей ноды.</p>
       </div>
@@ -130,7 +113,7 @@
       <p>В федеративном чате файлы не копируются на чужую ноду заранее: нода собеседника запрашивает их у вашей в момент открытия, и ваша нода перед выдачей проверяет, что запрашивающая нода действительно участвует в чате с этим вложением. Для аватаров вместо проверки чата применяются настройки приватности владельца.</p>
 
       <h2>10. Локальное хранение клиентов</h2>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Клиент</th><th>Что используется</th></tr></thead>
         <tbody>
           <tr><td>Windows WPF</td><td><code>GlobalParam.json</code>, PIN-защита, локальные настройки клиента</td></tr>
@@ -138,7 +121,7 @@
           <tr><td>macOS</td><td>Keychain для токенов и локальные настройки приложения</td></tr>
           <tr><td>Web</td><td>gRPC-Web, cookies только для технических сценариев web-клиента и перехода с публичной страницы профиля</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2>11. Push-уведомления</h2>
       <p>CloudMessaging получает события из RabbitMQ и отправляет push-уведомления через Firebase Cloud Messaging, если администратор ноды включил эту функцию. Для secret-сообщений push не содержит текст сообщения.</p>
@@ -157,7 +140,7 @@
       <p>This page describes only those protection and encryption mechanisms that exist in the current Barkfluff architecture. It concerns the software; the specific configuration — which features are enabled, which keys are used, how backups are kept — is decided by the administrator of the node where your account was created.</p>
 
       <h2>2. Who sees what: a short summary</h2>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Type of conversation</th><th>Your node sees</th><th>The other node sees</th></tr></thead>
         <tbody>
           <tr><td>Regular chat within a node</td><td>Message content and files</td><td>—</td></tr>
@@ -165,7 +148,7 @@
           <tr><td>Secret chat (device to device)</td><td>An opaque envelope only, temporarily</td><td>—</td></tr>
           <tr><td>Federated 1-to-1 chat</td><td>Message content and files</td><td>Message content and files</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <div class="callout">
         <p><strong>There is no end-to-end encryption in federated chats.</strong> Private and secret chats work only between users of the same node. If you need the content to be unavailable to the server at all, use a private or secret chat within your own node.</p>
       </div>
@@ -232,7 +215,7 @@
       <p>In a federated chat, files are not copied to the other node in advance: your correspondent's node requests them from yours at the moment they are opened, and your node first verifies that the requesting node really participates in a chat containing that attachment. For avatars, the owner's privacy settings apply instead of the chat check.</p>
 
       <h2>10. Client local storage</h2>
-      <table>
+      <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Client</th><th>What is used</th></tr></thead>
         <tbody>
           <tr><td>Windows WPF</td><td><code>GlobalParam.json</code>, PIN protection, local client settings</td></tr>
@@ -240,7 +223,7 @@
           <tr><td>macOS</td><td>Keychain for tokens and local app settings</td></tr>
           <tr><td>Web</td><td>gRPC-Web, cookies only for technical web client scenarios and the transition from a public profile page</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2>11. Push notifications</h2>
       <p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging, if the node administrator has enabled this feature. For secret messages the push does not contain the message text.</p>
@@ -251,7 +234,14 @@
         <li>Your node's configuration and data: that node's administrator; for barkfluff.com — <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
       </ul>
     </article>
-    <footer>2026 Barkfluff</footer>
+    <footer>
+      <span>2026 Barkfluff</span>
+      <div class="footer-links">
+        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+        <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
+      </div>
+    </footer>
   </main>
   <script>
     (function () {
