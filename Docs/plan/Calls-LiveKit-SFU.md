@@ -224,7 +224,7 @@ service CallsApi {
 11. LiveKit SDK + экран звонка + incoming-overlay + мини-карточка: Android (`io.livekit:livekit-android`), iOS/macOS (`LiveKitClient` Swift), WPF (нативный модуль/WebView2 — см. риск), Linux/Qt — позже. → проверка: реальный аудио+видео звонок между двумя платформами.
 
 **Фаза 5 — Документация**
-12. Обновить `Obsidian/ClaudeVault/`: новый `Backend/Calls.md`, ссылка в `Index.md`, отметка в `Идеи/01-Calls.md`, расширения в `Updates.md`/`CloudMessaging.md`/`Beacon.md`.
+12. Обновить `Obsidian/ClaudeVault/`: новый `Backend/Calls.md`, ссылка в `Index.md`, отметка в `Ideas/01-Calls.md`, расширения в `Updates.md`/`CloudMessaging.md`/`Beacon.md`.
 
 ---
 

@@ -1,163 +1,18 @@
-# BarkFluff.Messages — реестр метрик
+# BarkFluff.Messages — метрики
 
-> ↩ Назад: [[Backend/Messages]] · [[Backend/GrpcServer]] (общий механизм) · [[Backend/Beacon-Metrics]] (тот же механизм для Beacon)
+Messages регистрирует общий `MetricsCollector` в режиме `BufferAll`; `MetricsReporterService` экспортирует накопленные счётчики пакетами раз в 10 секунд, gauges сохраняют последнее значение. Пути к коду Messages ниже отсчитываются от `Backend/BarkFluff.Messages/`; общая реализация метрик — `Backend/BarkFluff.GrpcServer/Metrics/` от корня репозитория.
 
-## Как работает сбор метрик
+## Операции MediatR
 
-Тот же механизм, что и в [[Beacon-Metrics]]:
+`Program.cs` добавляет `MetricsBehavior<TRequest,TResponse>`. `Infrastructure/Behaviors/MetricsBehavior.cs` строит snake_case имя по типу запроса и записывает `<operation>_requests`, `<operation>_success` или `<operation>_errors`, а также `<operation>_duration_ms_total`. Это относится к обработчикам через MediatR; прямые host/stream методы могут иметь отдельные метрики.
 
-1. `MetricsCollector.Increment / Add / Set` (in-memory, потокобезопасно).
-2. `MetricsReporterService` каждые 5 секунд пишет лог `LogInformation("ServiceMetrics {@Metrics}", ...)`.
-3. Serilog → Seq.
-4. `Barkfluff.AdminPanel/Services/MetricsCollectorService` раз в час забирает **последний** снапшот часа из Seq по фильтру `@Message like 'ServiceMetrics%'` и пишет в LiteDB.
+## Явные бизнес-метрики
 
-> ⚠️ AdminPanel хранит только последний снапшот часа — counters отражают активность за последние ~5 секунд. Используй `*_total` для трендов и кумулятивных оценок.
+Имена задаются рядом с операцией. Основные группы:
 
-## Особенность Messages: автоматические метрики через MediatR
+- Действия с сообщениями/чатами: отправка, правка/удаление, прочтение, членство, исходы private/secret приглашений.
+- Outbox: gauge `message_outbox_pending`; counters доставок, повторов/ошибок, reclaimed и dead-letter.
+- Федерация: импорт сообщений и применённые/устаревшие/отклонённые edit/delete/read события.
+- Secret envelopes: отправка/приглашения/принятие и общий размер envelope в байтах.
 
-В сервисе зарегистрирован `MetricsBehavior<TRequest, TResponse>` (`Backend/BarkFluff.Messages/Infrastructure/Behaviors/MetricsBehavior.cs`), который для **каждой** MediatR-команды/запроса автоматически записывает 4 счётчика:
-
-- `{op}_requests` — все вызовы handler'а
-- `{op}_success` — успешные
-- `{op}_errors` — упавшие с исключением
-- `{op}_duration_ms_total` — сумма длительности
-
-Имя `{op}` = имя класса Command/Query без суффикса `Command`/`Query`/`Handler`, в snake_case. Например, `SendMessageCommand` → `send_message`.
-
-Регистрация:
-
-```csharp
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssemblyContaining<Program>();
-    cfg.AddOpenBehavior(typeof(MetricsBehavior<,>));
-});
-```
-
-## Реестр метрик Messages
-
-### Auto-counters (MediatR pipeline) — сбрасываются каждые 5 секунд
-
-Все операции (каждая MediatR-команда/запрос) получают одинаковую четвёрку `{op}_requests / _success / _errors / _duration_ms_total`:
-
-| Операция                  | Что делает handler                                                       |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `send_message`            | Отправка сообщения (текст / вложения / форвард / создание DM по ходу)    |
-| `edit_message`            | Редактирование своего сообщения (текст и/или список вложений)            |
-| `delete_message`          | Soft-delete своего сообщения                                             |
-| `list_chats`              | Список чатов пользователя                                                |
-| `list_messages`           | Список сообщений чата с двунаправленной пагинацией                       |
-| `mark_as_read`            | Отметка набора сообщений прочитанными                                    |
-| `mark_private_messages_as_read` | Отметка приватных (E2E) сообщений прочитанными → `PrivateMessagesReadEvent` |
-| `create_group_chat`       | Создание группового чата + системное сообщение                           |
-| `add_user`                | Добавление участника в групповой чат                                     |
-| `update_group_chat`       | Смена названия/аватара группового чата                                   |
-| `kick_user`               | Исключение участника из группового чата                                  |
-| `get_person_chat_id`      | Получение/создание личного (DM) чата                                     |
-| `get_chat_info`           | Информация о чате (название, аватар, непрочитанные)                      |
-| `list_chat_members`       | Список участников чата                                                   |
-| `list_chat_attachments`   | Список вложений чата (галерея/документы)                                 |
-| `get_user_all_messages`   | GDPR-экспорт всей истории пользователя                                   |
-| `check_chat_membership`   | Service-only батч-проверка членства (для Onliner/typing)                 |
-| `get_chat_member_ids`     | Service-only список участников чата (для ринга группового звонка)        |
-| `post_call_system_message`| Service-only системное сообщение об итоге звонка                        |
-| `pin_message`             | Закрепление сообщения в чате                                             |
-| `unpin_message`           | Открепление сообщения в чате                                             |
-| `list_pinned_messages`    | Список закреплённых сообщений в чате                                     |
-| `unpin_all`               | Открепление всех сообщений в чате                                        |
-| `create_private_chat` / `accept_private_chat` / `reject_private_chat` | Создание/принятие/отклонение приватного (E2E) чата |
-| `send_private_message` / `list_private_messages` / `edit_private_message` / `delete_private_message` | CRUD шифрованных сообщений приватного чата |
-| `send_secret_chat_invite` / `accept_secret_chat_invite` / `reject_secret_chat_invite` | Инвайты секретного чата (Signal Double Ratchet) |
-| `send_secret_message` / `ack_secret_message` | Отправка/подтверждение доставки секретного сообщения |
-
-### Доменные счётчики — сбрасываются каждые 5 секунд
-
-| Метрика                                | Где                                                                       | Что считаем                                                                |
-| -------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `messages_sent`                        | `Features/SendMessage/SendMessageCommandHandler.cs` (в самом конце успеха)| Реально отправленные сообщения (после публикации в очередь)                |
-| `messages_sent_with_text`              | `SendMessageCommandHandler.cs`                                            | Из `messages_sent` — те, что содержат текст                                |
-| `messages_sent_with_attachments`       | `SendMessageCommandHandler.cs`                                            | Из `messages_sent` — те, что содержат вложения                             |
-| `attachments_total`                    | `SendMessageCommandHandler.cs` (`Add(count)`)                             | Суммарное количество прикреплённых файлов за окно                          |
-| `messages_forwarded`                   | `SendMessageCommandHandler.cs` (на каждое успешное добавление пересылки)  | Количество форвардов внутри сообщений                                      |
-| `messages_marked_as_read`              | `Features/MarkAsRead/MarkAsReadCommandHandler.cs` (`Add(messages.Count)`) | Сколько сообщений реально отмечено (а не количество вызовов)               |
-| `chats_created_person`                 | `SendMessageCommandHandler.cs` + `Features/GetPersonChatId/...Handler.cs` | Новые личные (DM) чаты                                                     |
-| `chats_created_group`                  | `Features/CreateGroupChat/CreateGroupChatCommandHandler.cs`               | Новые групповые чаты                                                       |
-| `chats_created_group_members_total`    | `CreateGroupChatCommandHandler.cs` (`Add(UserIds.Count)`)                 | Сумма размеров создаваемых групп. Среднее = `_total / chats_created_group` |
-| `users_kicked`                         | `Features/KickUser/KickUserCommandHandler.cs` (после публикации)          | Успешные кики                                                              |
-| `messages_edited`                      | `Features/EditMessage/EditMessageCommandHandler.cs` (после публикации)    | Успешные правки сообщений                                                  |
-| `messages_edited_with_text`            | `EditMessageCommandHandler.cs`                                            | Из `messages_edited` — те, у которых остался текст                         |
-| `messages_edited_with_attachments`     | `EditMessageCommandHandler.cs`                                            | Из `messages_edited` — те, у которых остались/добавлены не-forwarded файлы |
-| `messages_deleted`                     | `Features/DeleteMessage/DeleteMessageCommandHandler.cs` (после публикации)| Успешные soft-delete                                                       |
-| `messages_delete_noop`                 | `DeleteMessageCommandHandler.cs`                                          | Повторное удаление уже удалённого сообщения (idempotent)                   |
-| `messages_pinned`                      | `Features/PinMessage/PinMessageCommandHandler.cs` (после публикации)      | Успешные закрепления сообщений                                             |
-| `messages_unpinned`                    | `Features/UnpinMessage/UnpinMessageCommandHandler.cs` (после публикации)  | Успешные открепления сообщений                                             |
-| `messages_unpin_noop`                  | `UnpinMessageCommandHandler.cs`                                           | Откреп несуществующего закрепа (idempotent)                                |
-| `messages_unpinned_all`                | `Features/UnpinAll/UnpinAllCommandHandler.cs` (после публикации)          | Массовый откреп всех закрепов в чате                                       |
-| `users_added`                          | `Features/AddUser/AddUserCommandHandler.cs` (после публикации)            | Успешные добавления участника в группу                                     |
-| `group_chats_updated`                  | `Features/UpdateGroupChat/UpdateGroupChatCommandHandler.cs`               | Успешные смены названия/аватара группы                                     |
-| `private_chats_created`                | `Features/CreatePrivateChat/CreatePrivateChatCommandHandler.cs`           | Созданные приватные (E2E) чаты                                             |
-| `private_chats_accepted`               | `Features/AcceptPrivateChat/AcceptPrivateChatCommandHandler.cs`           | Принятые инвайты приватного чата                                           |
-| `private_chats_rejected`               | `Features/RejectPrivateChat/RejectPrivateChatCommandHandler.cs`           | Отклонённые инвайты приватного чата                                        |
-| `private_messages_sent`                | `Features/SendPrivateMessage/SendPrivateMessageCommandHandler.cs`         | Отправленные шифрованные сообщения приватного чата                        |
-| `private_messages_ciphertext_bytes`    | `SendPrivateMessageCommandHandler.cs` (`Add(Ciphertext.Length)`)          | Суммарный объём шифротекста за окно                                        |
-| `private_messages_edited`              | `Features/EditPrivateMessage/EditPrivateMessageCommandHandler.cs`         | Правки шифрованных сообщений                                               |
-| `private_messages_deleted`             | `Features/DeletePrivateMessage/DeletePrivateMessageCommandHandler.cs`     | Soft-delete шифрованных сообщений                                          |
-| `secret_chat_invites_sent`             | `Features/SendSecretChatInvite/SendSecretChatInviteCommandHandler.cs`     | Отправленные инвайты секретного чата                                       |
-| `secret_chat_invites_accepted`         | `Features/AcceptSecretChatInvite/AcceptSecretChatInviteCommandHandler.cs` | Принятые инвайты секретного чата                                           |
-| `secret_chat_invites_rejected`         | `Features/RejectSecretChatInvite/RejectSecretChatInviteCommandHandler.cs` | Отклонённые инвайты секретного чата                                        |
-| `secret_messages_sent`                 | `Features/SendSecretMessage/SendSecretMessageCommandHandler.cs`           | Отправленные секретные сообщения (Signal envelope)                        |
-| `secret_messages_envelope_bytes`       | `SendSecretMessageCommandHandler.cs` (`Add(Envelope.Length)`)             | Суммарный объём envelope за окно                                           |
-| `secret_messages_acked`                | `Features/AckSecretMessage/AckSecretMessageCommandHandler.cs`             | Подтверждённые доставки секретных сообщений                               |
-
-### RabbitMQ-консьюмеры
-
-| Метрика                                | Consumer                                                                 |
-| -------------------------------------- | ------------------------------------------------------------------------ |
-| `rabbitmq_avatar_consumed`             | `Consumers/UserChangedAvatarConsumer.cs`                                 |
-| `rabbitmq_avatar_errors`               | catch в `UserChangedAvatarConsumer`                                      |
-| `rabbitmq_name_consumed`               | `Consumers/UserChangedNameConsumer.cs`                                   |
-| `rabbitmq_name_errors`                 | catch в `UserChangedNameConsumer`                                        |
-| `rabbitmq_session_revoked_consumed`    | `Consumers/SessionRevokedConsumer.cs`                                    |
-
-> ⚠️ Старая объединённая метрика `rabbitmq_events_consumed` удалена — расщеплена на три именованных, чтобы можно было видеть в админке тренды по типам событий.
-
-### Gauges — последнее значение, не сбрасываются
-
-| Метрика                       | Где                                          | Значение                                                |
-| ----------------------------- | -------------------------------------------- | ------------------------------------------------------- |
-| `service_started_unix`        | `Program.cs` после `app.Build()`             | Unix-timestamp старта сервиса (для расчёта uptime)      |
-| `last_message_sent_unix`      | `SendMessageCommandHandler.cs` (на успехе)   | Unix-timestamp последней успешной `SendMessage`         |
-
-## Производные значения (примеры формул для AdminPanel)
-
-- **Success rate** `send_message`: `send_message_success / send_message_requests`
-- **Avg latency** `send_message` (мс): `send_message_duration_ms_total / (send_message_success + send_message_errors)`
-- **Среднее число вложений на сообщение с вложениями**: `attachments_total / messages_sent_with_attachments`
-- **Средний размер новой группы**: `chats_created_group_members_total / chats_created_group`
-- **Uptime сервиса (сек)**: `now_unix - service_started_unix`
-- **Минут с последней отправки**: `(now_unix - last_message_sent_unix) / 60`
-
-## Где менять/добавлять метрики
-
-| Что добавляем                            | Куда                                                                        |
-| ---------------------------------------- | --------------------------------------------------------------------------- |
-| Новая команда/запрос MediatR             | Auto-метрики появятся бесплатно через `MetricsBehavior`                     |
-| Доменное событие (новый тип сообщения)   | В handler **после** валидации/публикации, не в gRPC-фасаде                  |
-| Новый RabbitMQ-consumer                  | `rabbitmq_{event}_consumed` + `rabbitmq_{event}_errors` (catch)             |
-| Длительность операции вне MediatR        | `Stopwatch` + `Add("{op}_duration_ms_total", sw.ElapsedMilliseconds)`       |
-
-## Соглашения именования
-
-- snake_case
-- `_errors` — пара к `_success`
-- `_total` — кумулятивная сумма (мс / число элементов)
-- `_unix` — Unix-timestamp
-- `_healthy` — бинарный 0/1
-
-## Связанные файлы
-
-- `Backend/BarkFluff.Messages/Infrastructure/Behaviors/MetricsBehavior.cs` — MediatR pipeline behavior
-- `Backend/BarkFluff.Messages/Program.cs` — регистрация behavior + стартовый gauge
-- `Backend/BarkFluff.GrpcServer/Metrics/MetricsCollector.cs` — общий сборщик
-- `Backend/BarkFluff.GrpcServer/Metrics/MetricsReporterService.cs` — публикация в Seq
-- `Backend/Barkfluff.AdminPanel/Services/MetricsCollectorService.cs` — потребитель в AdminPanel
+Точные действующие ключи находятся в вызовах `MetricsCollector` в `Program.cs`, behavior, `BackgroundServices/MessageOutboxDispatcher.cs`, `Features/` и `Consumers/`. `MetricsCollector.Set` задаёт gauge; его значение сохраняется между flush.

@@ -1,7 +1,6 @@
 # BarkFluff.Shared.Auth
 
-gRPC client interceptors для добавления обязательных metadata-заголовков к каждому межсервисному вызову.
-Используется всеми клиентами (backend-сервисы, WPF, Android) при регистрации gRPC-клиентов.
+gRPC client interceptors для добавления client metadata к вызовам.
 
 Расположение: `Shared/BarkFluff.Shared.Auth/`
 
@@ -15,7 +14,7 @@ gRPC client interceptors для добавления обязательных me
 - **`XOsClientInterceptor`** — добавляет `x-os-name` (Base64)
 - **`XAppClientInterceptor`** — добавляет `x-app-name` и `x-app-version` (оба Base64)
 
-Все interceptors переопределяют только `AsyncUnaryCall`. Кодирование: `Convert.ToBase64String(Encoding.UTF8.GetBytes(...))`.
+`JwtClientInterceptor` добавляет plain JWT во все типы gRPC-вызовов (unary и streaming). Остальные interceptors работают только с async unary вызовами; значения кодируются как Base64 от UTF-8. Это transport encoding, не шифрование.
 
 ## Паттерн использования
 

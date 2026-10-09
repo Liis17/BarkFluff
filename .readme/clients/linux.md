@@ -46,4 +46,4 @@ cmake --build build --parallel
 
 `Linux/CMakeLists.txt` currently expects the protobuf contracts at `../BarkFluffBackend/Shared/BarkFluff.Proto`. In this repository they are at `../Shared/BarkFluff.Proto`; align `PROTO_DIR` locally before configuring if your checkout does not provide the expected sibling directory.
 
-For design and architecture notes, see [Linux Qt in the knowledge base](../../Obsidian/ClaudeVault/Клиенты/Linux-Qt.md).
+For design and architecture notes, see [Linux Qt in the knowledge base](../../Obsidian/ClaudeVault/Clients/Linux-Qt.md).

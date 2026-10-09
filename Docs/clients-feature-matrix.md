@@ -11,15 +11,15 @@
 
 | Клиент | Расположение | Документация |
 |---|---|---|
-| Android V1 | `Android/Barkfluff.Client.Android` (`:app-v1` + `:core`) | `Obsidian/ClaudeVault/Клиенты/Android.md` |
-| iOS | `iOS/Barkfluff` | `Клиенты/iOS.md` |
-| macOS | `Mac/Barkfluff` | `Клиенты/macOS.md` |
-| Web | `Backend/BarkFluff.Web/wwwroot` (vanilla JS) | `Клиенты/Web.md` |
-| WPF V1 | `Windows/BarkFluff.Client.WPF` | `Клиенты/Windows-WPF.md` |
-| **WPF V2** | `Windows/BarkFluff.ClientV2.WPF` | `Клиенты/Windows-WPF-V2.md` |
-| Linux Qt | `Linux/` | `Клиенты/Linux-Qt.md` |
+| Android V1 | `Android/Barkfluff.Client.Android` (`:app-v1` + `:core`) | `Obsidian/ClaudeVault/Clients/Android.md` |
+| iOS | `iOS/Barkfluff` | `Clients/iOS.md` |
+| macOS | `Mac/Barkfluff` | `Clients/macOS.md` |
+| Web | `Backend/BarkFluff.Web/wwwroot` (vanilla JS) | `Clients/Web.md` |
+| WPF V1 | `Windows/BarkFluff.Client.WPF` | `Clients/Windows-WPF.md` |
+| **WPF V2** | `Windows/BarkFluff.ClientV2.WPF` | `Clients/Windows-WPF-V2.md` |
+| Linux Qt | `Linux/` | `Clients/Linux-Qt.md` |
 
-Общий gRPC-слой Windows — `Windows/BarkFluff.WebApi.Core` (`Клиенты/Windows-WebApiCore.md`).
+Общий gRPC-слой Windows — `Windows/BarkFluff.WebApi.Core` (`Clients/Windows-WebApiCore.md`).
 
 ## Статус клиентов
 
@@ -208,7 +208,7 @@
 
 ## Что уже реализовано в `BarkFluff.ClientV2.WPF`
 
-Текущее состояние (см. `Клиенты/Windows-WPF-V2.md` и `Windows-WPF-V2-ProjectMap.md`):
+Текущее состояние (см. `Clients/Windows-WPF-V2.md` и `Windows-WPF-V2-ProjectMap.md`):
 
 **Инфраструктура**
 - WPF .NET 10 (`net10.0-windows10.0.26100.0`), MVVM (CommunityToolkit.Mvvm), DI-контейнер, WPF UI (Fluent).
@@ -365,9 +365,9 @@
 
 ## Связанные документы
 
-- `Obsidian/ClaudeVault/Клиенты/DesignDocument.md` (источник `docs/dd.md`) — UI/UX спецификация всех экранов
+- `Obsidian/ClaudeVault/Clients/DesignDocument.md` (источник `docs/dd.md`) — UI/UX спецификация всех экранов
 - `Obsidian/ClaudeVault/Backend/Messages-PinnedMessages-ClientGuide.md` — контракт закреплённых сообщений
 - `Obsidian/ClaudeVault/Backend/Users-ChatFolders-ClientGuide.md` — контракт папок чатов
-- `Obsidian/ClaudeVault/Архитектура.md` — tech stack, порты, XAuth, gRPC-клиент
+- `Obsidian/ClaudeVault/Architecture.md` — tech stack, порты, XAuth, gRPC-клиент
 - `docs/Android-iOS-feature-comparison.md` — сравнение Android и iOS (2026-07-05)
 - `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md` — правила разработки V2

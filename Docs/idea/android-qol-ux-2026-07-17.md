@@ -4,7 +4,7 @@
 
 ## Контекст
 
-Проверено по `Obsidian/ClaudeVault/Клиенты/Android.md` и коду
+Проверено по `Obsidian/ClaudeVault/Clients/Android.md` и коду
 `Android/Barkfluff.Client.Android/app/src/main/java/com/barkfluff/client/`.
 Есть более ранний обзор [`docs/android-v1-qol-and-features.md`](../android-v1-qol-and-features.md)
 (2026-07-10, 20 идей) — часть его пунктов к текущему моменту уже реализована
@@ -64,7 +64,7 @@ Read receipts на уровне участников (`read_by` в `shared.proto
 
 ## Основания анализа
 
-- `Obsidian/ClaudeVault/Клиенты/Android.md` — актуальное описание
+- `Obsidian/ClaudeVault/Clients/Android.md` — актуальное описание
   реализованных возможностей Android-клиента на dev.
 - Точечный код-поиск (subagent `Explore`) по 12 типичным мессенджер-фичам в
   `Android/Barkfluff.Client.Android/app/src/main/java/com/barkfluff/client/`

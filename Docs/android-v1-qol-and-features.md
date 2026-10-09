@@ -131,7 +131,7 @@
 
 ## Основания анализа
 
-- `Obsidian/ClaudeVault/Клиенты/Android.md` — реализованные возможности Android v1 и
+- `Obsidian/ClaudeVault/Clients/Android.md` — реализованные возможности Android v1 и
   явная точка роста: баннер подключения к активному групповому звонку.
 - `docs/Android-iOS-feature-comparison.md` — у Android нет сопоставимого с iOS
   offline-first локального кэша; shared media/documents реализованы лишь частично.

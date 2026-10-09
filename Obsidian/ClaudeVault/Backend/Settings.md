@@ -1,80 +1,19 @@
 # BarkFluff.Settings
 
-## Необязательная почта и бот Telegram
+Централизованный каталог допустимых конфигурационных ключей для сервисов BarkFluff. Сохраняет wire-compatible имена из configuration_api.proto, package ConfigurationApi и номера полей; отдельный SettingsSetupApi обслуживает initial setup. Runtime port по умолчанию 7003. Код: Backend/BarkFluff.Settings/.
 
-Каталог содержит глобальный `Email:Enabled=true` (сохраняет поведение существующих нод) и Identity `TelegramAuth:Enabled=false`, `TelegramAuth:BotToken`, `TelegramAuth:NodeName`. BotToken чувствительный и маскируется. При включении Telegram токен и имя ноды обязательны; выключенная почта снимает требования к четырём SMTP-полям. `SaveSetupGroup`, snapshot, `CompleteSetup` и readiness используют одинаковые условия, включая переключатель в сохраняемой группе. Для регистрации должен быть включён хотя бы один канал. Новые ключи добавляются insert-only seeder без изменения имеющихся значений; после изменений runtime нужны перезапуски потребителей. См. [[Backend/Setup]], [[Backend/Identity]], [[Backend/Notification]].
+## Хранение и обновление
 
-Сервис настроек, который является единственным источником runtime-конфигурации. Для
-совместимости сохраняет wire-имена `configuration_api.proto`/`ConfigurationApi`, но
-рабочее хранилище — только `Settings`. Внутренний listener — `settings:7003`; setup
-API защищён отдельным токеном.
+PostgreSQL SettingsContext маппит 16 конфигурационных таблиц (GlobalSettings и по таблице на каждый ServiceId), с Key как PK; дополнительно есть SettingsHistory, ReservedNames и SetupState. Поэтому в базе 19 mapped tables, не 16 всего.
 
-Расположение: `Backend/BarkFluff.Settings/`.
+SettingsCatalog разрешает только известные ServiceId/Section/Key и переводит legacy names в StorageKey. Неизвестный ключ отклоняется. Setup metadata скрывает значение sensitive-поля, но возвращает его признак и `Configured`; runtime ConfigurationApi отдаёт реальные значения потребляющим сервисам. Defaults добавляются только для отсутствующих строк. Изменения хранят ChangedBy/ChangedFrom и revision; rollback создаёт новую ревизию, а не удаляет историю.
 
-## Совместимость
-
-Settings использует без изменений `Shared/BarkFluff.Proto/configuration_api.proto`: package, `ConfigurationApi`, RPC, сообщения и номера полей сохранены. Клиенты, собранные со старым generated-контрактом, могут переключиться без перекомпиляции через:
-
-```env
-CONFIGURATION_SERVICE_URL=http://settings:7003
-```
-
-`ServiceId` существует только на границе compatibility API и в статическом каталоге маршрутизации. В базе колонки `ServiceId` нет. `GetConfiguration` объединяет глобальную и сервисную таблицы; сервисное значение перекрывает глобальное с тем же IConfiguration-путём. Live reload не реализован: после изменения потребитель требуется перезапустить.
-
-## Persistence
-
-PostgreSQL БД по умолчанию — `settings`. Docker `postgres-bootstrap` до запуска
-Settings идемпотентно создаёт отсутствующие базы, включая `settings`; существующие
-базы не удаляет и не пересоздаёт. Сам startup initializer делает до пяти попыток
-подключения, применяет EF migrations, дополняет каталог и проверяет инварианты.
-Если Settings запущен вне этого bootstrap и БД отсутствует, запуск останавливается
-без создания новой БД.
-Записи конфигурации, история и setup-операции с явной транзакцией выполняются через EF execution strategy, чтобы совместить `EnableRetryOnFailure` с блокировкой строк и атомарным commit.
-
-16 таблиц (`GlobalSettings`, `IdentitySettings`, …, `FederationSettings`) используют один shared CLR-тип `SettingRow`. В каждой только `Key` (полный IConfiguration-путь, PK), `Value`, `EditedBy`, `EditedAt`. Section-only параметры хранятся одним ключом (`Redis`, `DevelopersDb`, `NavigatorUrl`), вложенные — полным путём (`S3Buckets:message-audio:SecretKey`). Для каждого S3-бакета seed добавляет `S3Buckets:{bucket}:Region` со значением `auto`, подходящим для Cloudflare R2; оператор может изменить его через AdminPanel.
-`SettingsSeeder` работает только в режиме insert-only: при старте он добавляет отсутствующие строки каталога и не изменяет уже сохранённые значения. Изменения существующих значений выполняются только явными операциями AdminPanel (update/setup/rollback).
-
-`SettingsHistory` бессрочно хранит old/new value, автора, источник, вид изменения и optional self-reference `SourceRevisionId` для rollback. Индекс: `(SettingsTable, Key, ChangedAt DESC, Id DESC)`. `EditedFrom` в рабочих строках отсутствует и для compatibility-ответа берётся из последней revision. Seed не создаёт историю.
-
-`ReservedNames` нормализована: одно lowercase-имя на строку, имя является primary key. Compatibility CRUD RPC сохранены.
-
-## Строгий каталог и readiness
-
-`SettingsCatalog` — единственный разрешённый список параметров и обратимое соответствие legacy `ServiceId + Section + Key` → `SettingsTable + storage Key`. Произвольные ключи отклоняются; новый параметр добавляется кодом и тестом. При старте вставляются только отсутствующие строки, существующие значения не перезаписываются. JWT secret и service-токены создаются один раз.
-
-Поля без безопасного default создаются пустыми. `SettingsReadinessContributor` возвращает `degraded` и отсортированный список незаполненных или невалидных полей. Основные setup-поля: Beacon `ServerProps`/`ServerColor`, SMTP `Email`, Files `ExternalEndpoint:MediaHost`, S3/MinIO credentials, LiveKit credentials и federation domain/TLS/window parameters. Каталог setup содержит 37 полей: 36 обязательных manual-полей и переключатель федерации; federation-поля становятся обязательными только при `Federation:Enabled=true`.
+Program.cs применяет EF migrations при старте. PostgreSQL database должен уже существовать (compose создаёт её отдельно). Настройки читаются клиентами из Settings при старте; автоматического push/live reload нет, поэтому изменение обычно требует перезапуска потребляющих процессов.
 
 ## Первичная настройка
 
-[[Backend/Setup]] поднимается отдельным Compose только вместе с PostgreSQL и
-`Settings`. `SettingsSetupApi` предоставляет `GetSetupState`, `SaveSetupGroup` и
-`CompleteSetup`; значения валидируются на сервере и чувствительные поля маскируются.
-После завершения в `SetupState` сохраняется fingerprint каталога и время операции.
-Наличие записи `SetupState` означает необратимую блокировку setup API; fingerprint
-остаётся для аудита и диагностики и не открывает setup повторно при добавлении новых
-полей. Дальнейшие изменения выполняются AdminPanel. Bootstrap создаёт только отсутствующие
-сервисные БД, старые данные Configuration не импортируются.
+SettingsSetupApi защищён x-settings-setup-token и доступен только при SETTINGS_SETUP_MODE=true. Секрет задаётся SETTINGS_SETUP_SECRET_FILE либо SETTINGS_SETUP_TOKEN. SaveSetupGroup валидирует поля и зависимости из SettingsCatalog; CompleteSetup проверяет обязательные значения и фиксирует SetupState/fingerprint. При завершении setup блокируется повторная первичная запись.
 
-## Переменные окружения
+Отключение Email снимает обязательность SMTP-полей; включённый Telegram требует BotToken и NodeName. Хотя бы один канал должен быть доступен для регистрации. Эти правила используются snapshot, сохранением и completion. Setup UI: [[Backend/Setup]]; admin editor: [[Backend/AdminPanel]].
 
-- `SETTINGS_HOST`, `SETTINGS_DBPORT`, `SETTINGS_DATABASE`, `SETTINGS_USERNAME`, `SETTINGS_PASSWORD`
-- `SETTINGS_PORT` (по умолчанию `7003`)
-- `CONFIGURATION_SERVICE_URL` поддерживается только как runtime-fallback для старых образов; новые deployment-конфигурации используют `SETTINGS_SERVICE_URL`
-- `SETTINGS_SETUP_MODE`, `SETTINGS_SETUP_SECRET_FILE`/`SETTINGS_SETUP_TOKEN` — включение и секрет setup gRPC API
-- `SETTINGS_SERVICE_URL` — адрес Settings, который используют потребители
-
-## Deployment
-
-Bootstrap-compose (`Docker/{dev,nightly,master}/barkfluff/docker-compose.setup.yml`)
-поднимает только PostgreSQL, Settings и [[Backend/Setup]]. После заполнения формы
-оператор останавливает bootstrap-compose и запускает основной compose. Основной стек
-использует Settings напрямую; отдельной базы или контейнера Configuration больше нет.
-
-## Проверка
-
-```bash
-dotnet build Backend/BarkFluff.Settings/BarkFluff.Settings.csproj
-dotnet test Tests/BarkFluff.Settings.Tests/BarkFluff.Settings.Tests.csproj
-```
-
-InMemory-тесты покрывают каталог, idempotent seed, precedence, историю/rollback, reserved names, readiness, proto snapshot и вызов нового сервера старым generated gRPC client. Создание БД и физическую PostgreSQL-схему перед cutover обязательно проверить на staging.
+Сборка: dotnet build Backend/BarkFluff.Settings/BarkFluff.Settings.csproj. Текущая таблица портов и deployment config: [[Backend/Nginx]].
