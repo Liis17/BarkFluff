@@ -1,115 +1,33 @@
 # BarkFluff.Proto
 
-## Telegram и политика входа
+Protobuf wire contracts лежат в `Shared/BarkFluff.Proto/`. .NET 10 stubs генерируются `Grpc.Tools` в service projects; прямой `BarkFluff.Proto.csproj` включает генерацию для federation contracts. Карта актуальных файлов, namespaces и RPC: [[Shared/Proto-ProjectMap]].
 
-`identity_api.proto` добавляет `OtpTypeId.Telegram=3`, `AuthLoginMode`, `AuthChallengeState`, операции подтверждений и защищённых настроек. Существующие номера сохранены. `AuthChallengeReference` содержит ID и секрет инициатора; его нельзя заменять данными ссылки/кнопки бота. `AuthChallengeResponse.error_code=8` возвращает `login_mode_disabled`, если пароль уже проверен, но выбранный парольный режим не совпадает с политикой аккаунта; challenge при этом не создаётся. Для безпарольного Telegram-входа сохраняется нейтральный challenge без раскрытия режима по одному логину. `CompleteAuthChallenge` выдаёт сессию только для входа/регистрации, а для повторной проверки/восстановления — ограниченный proof. Коды восстановления возвращаются только в ответе выпуска, включая настройку защищённого режима. См. [[Backend/Identity]] и [[Клиенты/Web]].
+Контрактный инвариант: не менять уже опубликованные field numbers, типы и семантику; новые поля добавлять с новыми номерами. Авторизация определяется кодом конкретного host/service, а не именами `Api` и `ServerApi`; см. [[Backend/GrpcServer]].
 
-`users_api.proto`: `AddDraftUserRequest.registration_id=5` для идемпотентного создания и `UsersServerApi.SetVerifiedEmail` для подтверждённой почты, см. [[Backend/Users]].
+## Identity и Settings
 
-Единый проект со всеми `.proto`-контрактами платформы. Только proto-файлы + `.csproj`, без рукописного C#.
+`identity_api.proto` содержит legacy Auth/OTP/password/session RPC и challenge-based потоки одновременно. `OtpTypeId.Telegram=3` добавлен без перенумерации `Authenticator=1` и `Email=2`. `AuthRequest` и `FindByLoginRequest` задают username ИЛИ email через `oneof login`. `CreateTokenResponse.access_token` — field 2. `AuthChallengeReference` состоит из `id` и secret capability; не подменять её Telegram deep-link данными. `AuthChallengeResponse.error_code=8` может вернуть `login_mode_disabled`; для неизвестного/недоступного Telegram login возвращается одинаковый ожидающий challenge. `CompleteAuthChallengeResponse` выдаёт session для sign-in/registration и scoped `security_proof` для reauthentication/password recovery; коды восстановления появляются только в ответах, где они выпускаются/заменяются.
 
-Расположение: `Shared/BarkFluff.Proto/`
+`configuration_api.proto` сохраняет API Settings, включая историю значений и rollback: rollback восстанавливает выбранный `previous_value` как новую запись истории. Setup идёт через `settings_setup_api.proto`: только в `SETTINGS_SETUP_MODE=true`, каждый вызов содержит `x-settings-setup-token`; secret field values в snapshot не возвращаются.
 
-→ [[Shared/Proto-ProjectMap]] — детальная карта всех файлов и RPC
+## Users, Messages и Files
 
-## Сборка
+`users_api.proto`: `AddDraftUserRequest.registration_id=5` — idempotency key регистрации; `User.is_bot=12`, `User.uuid=13`; `PrivacySettings.deny_federated_dm=7` — флаг запрета входящих федеративных DM. Публичный профиль имеет `profile_poster_url=7`, `is_bot=8`, `id=9`. Firebase token включает `PushPlatform` (Android/Web), чтобы consumers строили разные payload. Prekey-bundle RPC принадлежат Users и конкретному устройству.
 
-```bash
-dotnet build BarkFluff.Proto.csproj
-```
+`shared.Message` сохраняет поля `federated_id=9`, `sender_uuid=10`, `federated_read_by=11`, `reply_to=12`, `client_operation_id=13`. `SendMessageRequest.source_id` — `oneof chat_id/user_id`; `client_operation_id=5` связывает retry с одной отправкой, а `shared.Message.client_operation_id=13` возвращает её ID в ответах/history. Файловый `GetUploadUrlRequest.client_operation_id=2` идемпотентен для резерва слота. `ListMessagesRequest.count` устарел; для пагинации используйте `offset_before/offset_after`.
 
-Код генерируется `Grpc.Tools` при сборке. Проект сам по себе не подключал ни один `.proto` (только AWSSDK.Core, вестигиальная зависимость) — сборка ничего не валидировала. С Фазой 0 rearch добавлены `Google.Protobuf`/`Grpc.AspNetCore.Server`/`Grpc.Tools` + `<Protobuf Include="federation_api.proto"/>`/`federation_internal_api.proto` именно для того, чтобы `dotnet build` этого проекта валидировал синтаксис/импорты черновых федеративных контрактов, пока их не подключил ни один реальный сервис.
+В `OutgoingMessage` старое `forwarded_message_id=3` оставлено для совместимости как forward; новые поля — `reply_to_message_id=4` и `forwarded_message_ids=5` (до 20, порядок сохраняется). Не смешивать старое поле с 4/5: сервер возвращает InvalidArgument. Reply `Message.reply_to=12` разрешается из живого оригинала при каждой выдаче; forward в `MessageAttachment.forwarded_message=10` — снимок. `FORWARDED_MESSAGE=8` исключается из списка медиа-вложений при пустом фильтре.
 
-## Proto Files
+`SearchMessages` ищет обычные сообщения по тексту, автору (локальный ID или UUID), полуоткрытому диапазону времени `[sent_from, sent_before)`, вложениям и cursor `(sent_at,message_id)`; последний ответ не содержит `next_cursor`. `MessageAttachmentType` определён в `shared.proto`; `UploadFileType` — отдельный enum. Вложение несёт размеры картинки `image_width=8`/`image_height=9`; forwarded snapshot — field 10, `origin_server=11`. `UploadFileInfo` хранит размеры как fields 12/13.
 
-| Файл | C# namespace | Назначение |
-|------|-------------|------------|
-| `shared.proto` | `BarkFluff.Proto.Shared` | `Message`, `MessageContent`, `MessageAttachment`, `MessageAttachmentType`, `PageRequest`, `ChatType`, `EncryptedMessage`, `SecretEnvelope` |
-| `identity_api.proto` | `BarkFluff.Proto.Identity` | Auth, 2FA, сессии, сброс/смена пароля; `IdentityServerApi.CreateBotTokenServer` и `GetBotTokenServer` — выпуск bot-JWT для [[Backend/Bots]] |
-| `users_api.proto` | `BarkFluff.Proto.Users` | Профили, устройства, бейджи, поиск |
-| `messages_api.proto` | `BarkFluff.Proto.Messages` | Чаты, сообщения, вложения |
-| `files_api.proto` | `BarkFluff.Proto.Files` | Upload/download URL, стикеры, бейджи |
-| `updates_api.proto` | `BarkFluff.Proto.Updates` | Real-time стримы: новые сообщения, прочтения |
-| `onliner_api.proto` | `BarkFluff.Proto.Onliner` | Онлайн-статусы |
-| `fast_auth_api.proto` | `BarkFluff.Proto.FastAuth` | QR/текстовая авторизация |
-| `beacon_api.proto` | `BarkFluff.Proto.Beacon` | Описание сервера и адреса микросервисов |
-| `navigator_api.proto` | `BarkFluff.Proto.Navigator` | Глобальный реестр серверов |
-| `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Wire-compatible API Settings: чтение/update, история ревизий и rollback; Reserved Names |
-| `settings_setup_api.proto` | `BarkFluff.Proto.SettingsSetup` | Первичная настройка Settings: состояние, сохранение групп, завершение и блокировка |
-| `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
-| `calls_api.proto` | `BarkFluff.Proto.Calls` | Звонки (1-на-1 и групповые) поверх LiveKit SFU: инициация, подписка на события, история, качество голоса |
-| `bots_api.proto` | `BarkFluff.Proto.Bots` | Bot API: `BotsServerApi` (AdminPanel — создание/список/профиль/аватары через Users+Files/удаление/токены) + `BotsExternalApi` (внешние программы, bot-JWT в `x-auth-token`, политика `TokenType.Bot`) |
-| `federation_api.proto` | `BarkFluff.Proto.Federation` | **Фаза 0 rearch — только контракт, RPC не реализованы.** S2S API `FederationS2SApi` (нода↔нода, авторизация — Ed25519-подпись запросов, НЕ XAuth): Ping, GetServerKeys, GetUserProfile, DeliverEvents/FetchChatHistory (события чатов, `FederationEvent` с `origin_signature`/`origin_key_id`), FetchFile (стрим), SubscribePresence/DeliverTyping |
-| `federation_internal_api.proto` | `BarkFluff.Proto.FederationInternal` | **Фаза 0 — только контракт.** Внутренний API Federation-сервиса (XAuth, TokenType.Service): `FederationInternalApi` — ResolveRemoteUser, FetchRemoteFile/FetchRemoteChatHistory (мост для Files/Messages), управление пирами для AdminPanel (GetKnownServers/UpsertManualPeer/SetServerBlocked/GetFederationStatus). Импортирует `federation_api.proto` |
+## Чаты, события и данные узла
 
-## Service Pairs Pattern
+`ChatType`: regular=0, private=1, secret=2. Private chat передаёт `kdf_salt=10` и `passphrase_verifier=11`; `last_activity_at=14`, `private_invite_state=15`, а `CreatePrivateChatResponse.created=2` различает создание и возврат существующей пары. `EncryptedMessage` хранится отдельно от обычных сообщений и сервер не имеет ключа для расшифровки. `SecretEnvelope` — opaque: Messages буферизует его в Redis до 24 часов, не сохраняет в БД; Updates маршрутизирует secret events по устройству, private events — пользователю.
 
-Большинство файлов определяют два сервиса:
-- `XxxApi` — публичный, клиенты (JWT user token)
-- `XxxServerApi` — внутренний, только микросервисы (service token)
+`updates_api.proto` включает обычные message/read/edit/delete/pin, скрытие чата, private-chat updates и secret-device events; в очередном `MessageReadEvent` `NewReadBy` — полный снимок, `NewReaders` — delta. `calls_api.proto.SubscribeCallEvents` также адресуется устройству.
 
-Исключения (один сервис): `UpdatesApi`, `OnlinerApi`, `NavigatorApi`, `BeaconApi`, `ConfigurationApi`, `CallsApi`.
+Поля `beacon_api.proto.GetServerInfoResponse`: `livekit_url=13`, `calls=14`, `bots=15`, `server_name=16`, `federation_enabled=17`, `files_media_endpoint=18`. В `navigator_api.proto.ServerInfo` адрес Web gateway — field 13, отдельный media origin — field 14.
 
-## Важные детали
+## Federation и боты
 
-- `MessagesApi.SearchMessages`: аддитивный RPC глобального поиска обычной переписки. `SearchMessagesRequest` содержит текст, oneof автора (local ID/UUID), `[sent_from, sent_before)`, presence/типы вложений, `MessageSearchCursor` и размер страницы. `MessageSearchHit` возвращает ID чата/сообщения, название и тип чата, автора, точный Timestamp, текст и типы прямых вложений; `next_cursor` отсутствует на последней странице. Контракт добавлен также в `Android/core/src/main/proto`; Android `shared.Message` синхронизирован по федеративным полям 9–11. Реализация — [[Backend/Messages]], клиент — [[Клиенты/Android]].
-
-- `shared.proto` импортируется в `messages_api.proto`, `updates_api.proto`, `users_api.proto` — общие типы сюда
-- `MessageAttachmentType` enum — в `shared.proto` (не в `messages_api.proto`), т.к. используется и в `files_api.proto`
-- `CreateTokenResponse.access_token` имеет **field_number=2** (не 1) — важно при ручной десериализации
-- `ConfigurationApi.GetConfigurationHistory` возвращает переходы `previous_value → new_value`; `RollbackConfiguration` восстанавливает `previous_value` выбранной ревизии и записывает новый rollback-переход. Контракт аддитивный, существующие field numbers не менялись; реализация API находится в Settings.
-- `SettingsSetupApi` используется только [[Backend/Setup]] и [[Backend/Settings]]: `GetSetupState`, `SaveSetupGroup`, `CompleteSetup`; gRPC вызовы требуют `x-settings-setup-token`.
-- `AuthRequest` и `FindByLoginRequest` используют `oneof login` (username ИЛИ email)
-- `SendMessageRequest` использует `oneof source_id` (chat_id ИЛИ user_id); `client_operation_id` (field 5, UUID) даёт [[Backend/Messages]] идемпотентную корреляцию ручного retry
-- `Message.client_operation_id` (field 13) возвращает тот же UUID в ACK, realtime и history; пустая строка у legacy-сообщений
-- `GetUploadUrlRequest.client_operation_id` (field 2, UUID) делает резервирование слота [[Backend/Files]] идемпотентным для одного user/type
-- `ListMessagesRequest`: поле `count` устарело, использовать `offset_before`/`offset_after`
-- `MessageReadEvent.new_read_by` — **полный** список прочитавших, не только новых
-- `UploadFileType` — отдельный enum от `MessageAttachmentType`, маппировать при отправке сообщений
-- `GetUserByUsernameResponse.profile_poster_url` (field 7) — URL постера профиля (пусто если не задан); заполняется в Users через Files gRPC
-- `MessageAttachment.forwarded_message` (field 10) — `ForwardedMessageAttachment`: `author_name`, `original_message_id`, `text`, `repeated attachments` (без FORWARDED_MESSAGE), плюс `original_chat_id` (5), `original_sender_id` (6), `original_sent_at` (7), `order` (8). Заполняется только при `type = FORWARDED_MESSAGE`; поля 5–8 пусты у снапшотов, созданных до разделения reply/forward
-- `Message.reply_to` (field 12) — `ReplyInfo`: `message_id`, `sender_id`, `sender_name`, `text_preview` (≤200 символов), `first_attachment_type`, `is_deleted`, `federated_message_id`. Заполнено => сообщение является ответом. **Не снапшот**: сервер резолвит его из живого оригинала при каждой выдаче
-- `OutgoingMessage.reply_to_message_id` (field 4) — ответ; только на сообщение того же чата
-- `OutgoingMessage.forwarded_message_ids` (field 5) — пересылка до 20 сообщений, порядок сохраняется
-- `OutgoingMessage.forwarded_message_id` (field 3) — **DEPRECATED**: до разделения reply/forward им отправлялись оба действия. Оставлено рабочим для необновлённых клиентов (iOS, macOS, ClientV2.WPF, Linux) и трактуется как пересылка. Смешивать с полями 4/5 нельзя → InvalidArgument
-- `MessageAttachmentType.FORWARDED_MESSAGE = 8` — пересланное сообщение; исключается из медиа-галереи `ListChatAttachments` при пустом фильтре
-- `MessageAttachment.image_width` (field 8) и `image_height` (field 9) — размеры изображения в пикселях; 0 если вложение не является изображением. Используются Android-клиентом для вычисления соотношения сторон ячейки **до** загрузки картинки, чтобы облачко сообщения не меняло размер.
-- `UploadFileInfo.image_width` (field 12) и `image_height` (field 13) — аналогичные поля в данных о загруженном файле (в `files_api.proto`).
-- `ChatType` enum (`shared.proto`): `CHAT_TYPE_REGULAR=0` (default), `CHAT_TYPE_PRIVATE=1` (E2E через passphrase, шифротекст в БД сервера), `CHAT_TYPE_SECRET=2` (Signal Double Ratchet, **НЕ** хранится на сервере — клиент держит чат в локальном хранилище, не возвращается через `ListChats`). `PrivateChatInviteState` описывает pending/accepted/rejected без раскрытия содержимого.
-- `Chat.kdf_salt` (field 10) и `Chat.passphrase_verifier` (field 11) — заполнены только для `CHAT_TYPE_PRIVATE`. Verifier позволяет клиенту проверить корректность passphrase до Accept без передачи на сервер.
-- `Chat.last_activity_at` (field 14) и `private_invite_state` (field 15) позволяют сортировать и отображать приватные чаты без plaintext-превью. `CreatePrivateChatResponse.created` отличает новый чат от идемпотентно возвращённого существующего.
-- `EncryptedMessage` хранится в отдельной таблице `EncryptedMessages` (планируется), отдельной от `Messages` — серверный код не должен делать join/мержить эти потоки. `EncryptedMessage.id` — отдельная последовательность от `Message.id`.
-- `SecretEnvelope` сервер обращается как с opaque blob: только релэит указанному `recipient_device_id` и буферизует в Redis на 24ч (TTL). После `AckSecretMessage` удаляется. В БД секретные сообщения и чаты **не сохраняются** вообще.
-- Подписки на секретные события в `updates_api.proto` — **device-scoped** (только устройство, на которое пришло сообщение). Подписки на приватные события — **user-scoped** (все устройства пользователя получают шифротекст; расшифровать сможет только устройство со знанием passphrase).
-- `MarkPrivateMessagesAsRead` хранит только высокий watermark шифрованных сообщений. `SubscribePrivateMessagesRead` рассылает этот watermark всем устройствам участников для синхронизации счётчиков непрочитанных.
-- Prekey-bundle (X3DH): RPC расположены в `users_api.proto` (`UsersApi`), не в `identity_api.proto`. Bundle принадлежит устройству, `device_id` берётся из JWT текущей сессии.
-- Групповые чаты (V1): `AddUser`/`UpdateGroupChat` в `MessagesApi`; `GetChatMemberIds` (для ринга групповых звонков) и `PostCallSystemMessage` (системное сообщение об итоге звонка — `CallSystemResult`: ENDED/MISSED/REJECTED) в `MessagesServerApi`.
-- Звонки: `calls_api.proto` описывает `CallsApi` (1-на-1 через `callee_user_id` или групповой через `chat_id`, `oneof target`). `SubscribeCallEvents` — device-scoped стрим, как `SubscribeSecretMessages` в Updates. `beacon_api.proto` содержит `livekit_url` (field 13) и `Service calls` (field 14) в `GetServerInfoResponse`.
-- Боты: `User.is_bot` (field 12), `GetUserByUsernameResponse.is_bot` (8) + `id` (9); `UsersServerApi.CreateBotUser`/`DeleteBotUser`/`ListByIds`/`UpdateProfileServer`/профильные изображения; `MessagesServerApi.SendMessageServer(sender_user_id, oneof chat_id/user_id, allow_chat_creation)`; `FilesServerApi.UploadFileServer`/`UploadAvatarServer`/`UploadPosterServer`; `beacon_api.proto` — `Service bots` (field 15). `BotsExternalApi` аутентифицируется штатным XAuth: bot-JWT (`TokenType.Bot`) в заголовке `x-auth-token` (gRPC и HTTP), выпуск — `IdentityServerApi.CreateBotTokenServer` или повторная выдача через `GetBotTokenServer` с тем же `token_id`.
-- Отдельный файловый адрес ноды: `beacon_api.proto` `GetServerInfoResponse.files_media_endpoint` (field 18) и `navigator_api.proto` `ServerInfo.files_media_endpoint` (field 14) — absolute origin файлового HTTP мимо CDN ([[Backend/Nginx]] `files2.barkfluff.com`). Пустая строка = адреса нет, клиент качает по ссылкам [[Backend/Files]] как раньше. Копии контракта у Swift- и Android-клиентов (`Mac/Barkfluff/Protos/`, `Android/core/src/main/proto/`) неполные — там нет полей 15-17, но номера совпадают с исходным контрактом.
-
-### Федерация (Фаза 0 rearch) — расширения существующих proto
-
-Только поля/RPC-заглушки (`Unimplemented` до реализации в соответствующей фазе), обратная совместимость не нарушена — только добавления.
-
-- `shared.proto` `Message`: `federated_id` (9, uuid, пусто для локальных), `sender_uuid` (10)
-- `users_api.proto`: `User.uuid` (13, из этапа 0.2); `UsersApi.ResolveFederatedUser` (Фаза 2) + `ResolveFederatedUserRequest/Response`; `PrivacySettings.deny_federated_dm` (7, default false = разрешено — именно deny, не allow)
-- `messages_api.proto`: `SendMessageRequest.source_id` oneof + `user_uuid` (4); `GetPersonChatIdRequest.user_uuid` (2); `ChatMember.user_uuid` (5) + `server_name` (6); `MessagesServerApi` — 7 новых RPC федеративного импорта/экспорта (Фаза 2: ImportFederatedChat/Message, ApplyFederatedEdit/Delete/Read, ExportChatEvents, CheckFileFederationAccess) с плоскими DTO (`FederatedFileRefFlat`, `FederatedChatEvent`) — файл **не импортирует** `federation_api.proto`, поля продублированы плоско
-- `onliner_api.proto`: `user_uuids`/`user_uuid` в Subscribe/Change/Status/Typing-сообщениях; новый сервис `OnlinerServerApi` (Фаза 4) — UpsertRemoteStatus/InjectRemoteTyping
-- `navigator_api.proto`: `ServerInfo` +5 полей (server_name, federation_endpoint, signing_keys, tls_spki_sha256, federation_protocol_versions) + `NavigatorSigningKey`; `NavigatorApi.GetServerByName` (Фаза 1)
-- `beacon_api.proto`: `GetServerInfoResponse.server_name` (16), `federation_enabled` (17) — **реализовано** (не заглушка): Beacon читает `Federation:ServerName`/`Federation:Enabled` из Settings, см. [[Backend/Beacon]]
-- `users_api.proto`: `PushPlatform` (`ANDROID`, `WEB`) в `SetFirebaseTokenRequest` и `DeviceFirebaseToken`; `UsersApi.ClearFirebaseToken` очищает FCM-привязку текущего устройства. Это позволяет [[Backend/CloudMessaging]] отправлять Android и PWA разные, privacy-safe payload.
-- `federation_api.proto`/`federation_internal_api.proto` пока **не подключены** ни в один сервисный `.csproj` (Federation-сервиса ещё нет, Фаза 1) — только в `BarkFluff.Proto.csproj` (см. ниже), чтобы codegen валидировал синтаксис при сборке
-
-## Подключение в .csproj
-
-```xml
-<!-- Серверная сторона -->
-<Protobuf Include="..\..\Shared\BarkFluff.Proto\xxx_api.proto" GrpcServices="Server" />
-
-<!-- Клиентская сторона -->
-<Protobuf Include="..\..\Shared\BarkFluff.Proto\xxx_api.proto" GrpcServices="Client" />
-
-<!-- Только типы -->
-<Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
-```
+Federation contracts активны. `FederationS2SApi` подписывает межнодовые запросы Ed25519, а не XAuth; `FederationInternalApi` — service-to-service API. Internal methods обслуживают Federation, AdminPanel, Files, Users и Onliner. Federation DTO в `messages_api.proto` плоские и не импортируют `federation_api.proto`, сохраняя границу Messages/Federation. `BotsExternalApi` принимает bot JWT через `x-auth-token`; `IdentityServerApi.CreateBotTokenServer/GetBotTokenServer` выпускают token с идентификатором для отзыва.

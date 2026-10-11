@@ -1,68 +1,13 @@
 # BarkFluff.Notification
 
-`Email:Enabled` (по умолчанию true) из [[Backend/Settings]] управляет отправкой. При false уведомления погашаются без SMTP и учитываются как `emails_skipped`; пустой адрес у зарегистрированных через Telegram аккаунтов также пропускается. Пустой SMTP port при отключённой почте не мешает запуску. См. [[Backend/Identity]], [[Backend/Setup]].
+RabbitMQ worker email notifications. Не публикует gRPC API; в Program.cs есть ASP.NET HTTP listener с /ping, /health/live и /health/ready. `SetRunningAddress` явно настраивает Kestrel из `RunSettings:Port` (appsettings default 7004); launchSettings объявляет 5017/7034, но не задаёт фактические listeners. Карта: [[Backend/Notification-ProjectMap]].
 
-Фоновый потребитель RabbitMQ, отправляющий email-уведомления. Уведомления о входах (`SuccessfulLogin`, `FailedLogin`) идут через этот сервис, когда аккаунт выбрал Email. При выборе Telegram Identity отправляет эти два типа напрямую в Telegram-бот ноды через `LoginNotificationService`; очередь и этот сервис не задействуются. Порт: **7004**.
-**Нет gRPC API** — только обработка очереди.
+Consumer notifications-email-handler принимает EmailNotification. Если Email:Enabled=false или Address пуст, письмо пропускается; Disabled почта допускает пустой SMTP port. Email:Enabled default true. SMTP-поля поступают из [[Backend/Settings]], письма собираются из Templates/ и отправляются через EmailSender.
 
-Расположение: `Backend/BarkFluff.Notification/`
-Карта файлов: [[Backend/Notification-ProjectMap]]
+Identity отправляет SuccessfulLogin/FailedLogin через этот сервис только если выбран Email канал; при Telegram настройке эти login notices идут напрямую из Identity node bot. Другие email события также используют очередь.
 
-## Сборка
+Важное текущее ограничение: EmailSender задаёт ServicePointManager.ServerCertificateValidationCallback, принимающий любой сертификат. В коде причина и ограничение на self-signed certificates не заданы, поэтому не считайте SMTP TLS проверенным.
 
-```bash
-dotnet build Backend/BarkFluff.Notification/BarkFluff.Notification.csproj
-```
+Метрики: rabbitmq_events_consumed, emails_skipped, emails_sent, emails_failed. Ошибка SMTP пробрасывается обратно MassTransit для retry.
 
-## Архитектура
-
-Stateless фоновый воркер без БД. Поток обработки:
-
-```
-RabbitMQ: notifications-email-handler
-  → EmailQueueConsumer (IConsumer<EmailNotification>)
-      → HtmlEmailTemplateParser  (Templates/*.html, заменяет переменные)
-      → EmailSender              (System.Net.Mail.SmtpClient)
-```
-
-## Ключевые компоненты
-
-- **`EmailQueueConsumer`** — единственный entrypoint. При ошибке перебрасывает исключение (MassTransit retry). Email-адрес в логах маскируется через `EmailMasker.Mask()` (PII).
-- **`EmailSender`** — SMTP с SSL. Отключает проверку TLS-сертификата через `ServicePointManager.ServerCertificateValidationCallback` (намеренно, для self-signed). Email-адрес в логах маскируется через `EmailMasker.Mask()`.
-- **`HtmlEmailTemplateParser`** — загружает HTML из `Templates/` по `NotificationType`, одним проходом регулярки `ꟿꟿꟿ(\w+)ꟿꟿꟿ` заменяет плейсхолдеры. Значения `payload` обрабатываются через `WebUtility.HtmlEncode` (защита от HTML/XSS-инъекций). Спецплейсхолдер `ꟿꟿꟿcurrentyearꟿꟿꟿ` — автоматически.
-- **`EmailMasker`** (`Helpers/`) — статический хелпер маскирования email в логах: `***@domain`.
-
-## Шаблоны и типы уведомлений
-
-| NotificationType | Файл шаблона |
-|-----------------|--------------|
-| ConfirmationRegistration | `confirmation_account.html` |
-| ConfirmationOtpEmail | `confirmation_otp_email.html` |
-| ConfirmationAuth | `confirmation_auth.html` |
-| ResetPassword | `reset_password.html` |
-| FailedLogin | `failed_login.html` |
-| SuccessfulRegistration | `successful_registration.html` |
-| SuccessfulLogin | `successful_login.html` |
-| PasswordChanged | `password_changed.html` |
-| PasswordChangedByAdmin | `password_changed_by_admin.html` |
-| TwoFactorMethodChanged | `two_factor_method_changed.html` |
-
-## Добавление нового типа уведомления
-
-1. Добавить значение в `NotificationType` в [[Shared/Queue]]
-2. Создать HTML-шаблон в `Templates/` с плейсхолдерами `ꟿꟿꟿnameꟿꟿꟿ`
-3. Добавить маппинг в `_templatesMap` в `HtmlEmailTemplateParser.cs`
-4. Добавить `<None Include="Templates\new_template.html"><CopyToOutputDirectory>Always</CopyToOutputDirectory></None>` в `.csproj`
-
-## Метрики
-
-- `rabbitmq_events_consumed` — получение сообщения
-- `emails_sent` — успешная отправка
-- `emails_failed` — ошибка
-
-## Конфигурация
-
-| Ключ | Описание |
-|------|----------|
-| `Email:Host/Port/SenderEmail/SenderPassword` | SMTP |
-| `RabbitMQ:Host/Username/Password` | RabbitMQ |
+Сборка: dotnet build Backend/BarkFluff.Notification/BarkFluff.Notification.csproj.

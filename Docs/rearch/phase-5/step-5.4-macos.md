@@ -9,7 +9,7 @@
 ## Контекст
 
 - Контракт и правила отображения — `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` (этап 5.1). **Прочитать целиком до начала.**
-- Карты клиента — `Obsidian/ClaudeVault/Клиенты/macOS.md`, `macOS-ProjectMap.md`; дизайн-спецификация — `Клиенты/DesignDocument.md`.
+- Карты клиента — `Obsidian/ClaudeVault/Clients/macOS.md`, `macOS-ProjectMap.md`; дизайн-спецификация — `Clients/DesignDocument.md`.
 
 Структура (проверено при планировании): iOS и macOS подключают **одни и те же** локальные пакеты из `Mac/Barkfluff/Packages/` (в `iOS/.../project.pbxproj` — `XCLocalSwiftPackageReference` с `relativePath = ../../Mac/Barkfluff/Packages/BFxxx`). Дублируются между платформами только `Features/**` (Views + ViewModels), бизнес-логика — общая.
 
@@ -69,5 +69,5 @@
 3. При `federation_enabled = false` поведение приложения не отличается от текущего (поиск, чаты, вложения, настройки).
 4. Новые строки — во всех пяти языках обоих каталогов (`app` и `BFCore`).
 5. **[делает разработчик]** E2E на стенде: найти `@user:node2` → написать → ответ; бейдж ноды/FID; статус и typing remote-собеседника; скачивание вложения с чужой ноды; остановленная нода 2 → placeholder, приложение не зависает; тумблер приватности блокирует новый fed-чат.
-6. Obsidian: `Клиенты/macOS.md` (раздел «Федерация», ссылка на гайд), `macOS-ProjectMap.md` — новые файлы, если появились.
+6. Obsidian: `Clients/macOS.md` (раздел «Федерация», ссылка на гайд), `macOS-ProjectMap.md` — новые файлы, если появились.
 7. Коммит: `feat(rearch-phase5): 5.4 — федерация в macOS-клиенте и общих Swift-пакетах`.

@@ -60,5 +60,5 @@ location = /.well-known/barkfluff {
 3. `curl https://<стендовый apex или nginx-node2>/.well-known/barkfluff -k` — документ отдаётся через nginx.
 4. Rate-limit: цикл частых запросов на well-known location получает 429/503 (какой код у зоны — сверь с существующими).
 5. `nginx -t` на полном наборе конфигов — успех.
-6. Obsidian: `Backend/Federation.md` дополнен (nginx, порты, стенд с TLS); при необходимости пометка в `Архитектура.md` (новый субдомен в схеме портов/доменов).
+6. Obsidian: `Backend/Federation.md` дополнен (nginx, порты, стенд с TLS); при необходимости пометка в `Architecture.md` (новый субдомен в схеме портов/доменов).
 7. Коммит: `feat(rearch-phase1): 1.6 — nginx federation-субдомен + well-known + rate-limit`.
