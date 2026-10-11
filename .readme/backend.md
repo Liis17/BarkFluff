@@ -76,4 +76,4 @@ The solution also contains Windows projects, so a complete build is best run on 
 - [Ports and environment variables](../Backend/PORTS_CONFIGURATION.md)
 - [Docker setup reference](../Backend/DOCKER_SETUP.md)
 - [.NET SDK requirements](../Backend/DOTNET_SDK_REQUIREMENTS.md)
-- [Architecture knowledge base](../Obsidian/ClaudeVault/Архитектура.md)
+- [Architecture knowledge base](../Obsidian/ClaudeVault/Architecture.md)

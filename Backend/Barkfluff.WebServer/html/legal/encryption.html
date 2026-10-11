@@ -9,21 +9,32 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site-theme.css">
+  <link rel="stylesheet" href="/assets/site-header.css">
   <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
 </head>
 <body class="document-page legal-page">
-  <main>
-    <header class="site-header">
-      <a href="/" class="brand-mark"><img src="/favicon.ico" width="28" height="28" alt=""><span>barkfluff</span></a>
-      <div class="site-links">
-        <a href="/" data-ru="На главную" data-en="Home">На главную</a>
-        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
-        <a href="/selfhosted">Self-hosted</a>
-        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+  <div class="home-page">
+    <header class="home-nav">
+      <div class="home-nav-left">
+        <a href="/" class="brand-mark">
+          <span class="glyph"><img src="/favicon.ico" width="28" height="28" alt=""></span>
+          <span>barkfluff</span>
+        </a>
         <button class="lang-btn" id="langToggle" type="button">EN</button>
       </div>
+      <div class="home-nav-right">
+        <a href="/about" class="home-nav-link" data-ru="О проекте" data-en="About the project">О проекте</a>
+        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link">GitHub</a>
+        <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
+        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="home-nav-link" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+        <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener" class="btn btn-ghost">
+          Telegram
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
+        </a>
+      </div>
     </header>
+  </div>
+  <main>
     <nav class="document-nav">
       <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
       <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>

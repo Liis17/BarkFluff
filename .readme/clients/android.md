@@ -48,4 +48,4 @@ cd Android
 ## Notes
 
 - V1 targets Android API 36 and has a minimum SDK of 31.
-- See the [Android knowledge-base page](../../Obsidian/ClaudeVault/Клиенты/Android.md) for architecture details.
+- See the [Android knowledge-base page](../../Obsidian/ClaudeVault/Clients/Android.md) for architecture details.

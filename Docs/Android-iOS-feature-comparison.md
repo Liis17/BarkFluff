@@ -59,8 +59,8 @@ iOS сильнее в архитектуре, локальном GRDB-кеше, 
 
 ## Основные точки проверки
 
-- `Obsidian/ClaudeVault/Клиенты/Android.md`
-- `Obsidian/ClaudeVault/Клиенты/iOS.md`
+- `Obsidian/ClaudeVault/Clients/Android.md`
+- `Obsidian/ClaudeVault/Clients/iOS.md`
 - `Android/Barkfluff.Client.Android/app/src/main/java/com/barkfluff/client/ChatActivity.kt`
 - `Android/Barkfluff.Client.Android/app/src/main/java/com/barkfluff/client/MainActivity.kt`
 - `iOS/Barkfluff/Barkfluff/Navigation/RootView.swift`

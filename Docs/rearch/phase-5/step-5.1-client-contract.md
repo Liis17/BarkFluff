@@ -103,6 +103,6 @@
 
 1. `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` существует и содержит все восемь разделов; каждое утверждение о proto сверено с файлами в `Shared/BarkFluff.Proto/` (имена RPC, названия и номера полей, строки `error_code`).
 2. Таблица ошибок сверена с реальными классами исключений (`Shared/BarkFluff.Shared.Exceptions`) — кодов, которых нет в коде, в таблице быть не должно.
-3. Ссылка на гайд добавлена в `Index.md`; из `Клиенты/Android.md`, `Клиенты/Web.md`, `Клиенты/macOS.md`, `Клиенты/iOS.md` проставлены `[[Клиенты/Federation-ClientGuide]]` (одна строка «федерация — см. гайд», без дублирования содержимого).
+3. Ссылка на гайд добавлена в `Index.md`; из `Clients/Android.md`, `Clients/Web.md`, `Clients/macOS.md`, `Clients/iOS.md` проставлены `[[Клиенты/Federation-ClientGuide]]` (одна строка «федерация — см. гайд», без дублирования содержимого).
 4. [../10-roadmap.md](../10-roadmap.md) сверен с составом фазы (Изменение 3).
 5. Коммит: `docs(rearch-phase5): 5.1 — клиентский контракт федерации`.

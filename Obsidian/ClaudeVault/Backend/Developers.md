@@ -1,128 +1,15 @@
 # Barkfluff.Developers
 
-Портал документации для разработчиков-клиентов BarkFluff. Содержит секции документации, метаданные proto-файлов и коды ошибок.
-API/gRPC-Web слушает **7020**, статика SPA — **7021**.
+Портал документации, protobuf-метаданных и error codes. Исходники: Backend/Barkfluff.Developers/. Сборка: dotnet build Backend/Barkfluff.Developers/Barkfluff.Developers.csproj.
 
-Расположение: `Backend/Barkfluff.Developers/`
+## Listener и контракт
 
-gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Development`; в Production, Nightly и Master endpoint не публикуется.
+- gRPC/gRPC-Web API слушает RunSettings:Port (default 7020), статика SPA — отдельный HTTP/1 listener RunSettings:Http1Port (default 7021). appsettings содержит оба значения.
+- DevelopersApi предоставляет GetDocumentationSections, GetDocumentationSection, GetProtoFiles, GetProtoFileContent и GetErrorCodes (Shared/BarkFluff.Proto/developers_api.proto).
+- Каждый RPC требует User JWT по DevelopersReader policy. Service token не подходит. gRPC Reflection включается только в Development.
+- Proto-файлы отдаются через явный allowlist из PublishedProtoManifest.cs: shared, beacon, identity, users, messages, files, updates, onliner, fast_auth, navigator. Internal/configuration и прочие proto не входят.
+- CORS разрешает настроенные origins и только POST/OPTIONS для gRPC-Web.
 
-## Сборка
+Developers использует PostgreSQL. На старте применяет миграции, добавляет отсутствующие записи документации/metadata/error codes и останавливает запуск, если published proto или metadata отсутствуют. SeedData, manifest и initializer — источники начального содержимого и проверок.
 
-```bash
-dotnet build Barkfluff.Developers.csproj
-```
-
-Миграции применяются автоматически при старте.
-
-## Особенности
-
-- Принимает **gRPC-Web** напрямую (не через [[Backend/Web]] YARP-прокси)
-- Kestrel: API-порт `HttpProtocols.Http1AndHttp2`, static-порт `HttpProtocols.Http1`
-- Статика раздаётся самим сервисом с `7021`; API на `7020` доступен через `developers.conf`
-- Все методы защищены отдельной policy `DevelopersReader`, которая принимает только User JWT;
-  Service-токены к пользовательскому read API не допускаются
-- Фронтенд: React + Vite + TypeScript (`Frontend/Developers/`) — см. [[Клиенты/Developers-Web]]
-
-## Архитектура
-
-### gRPC-сервис
-
-- `DevelopersApiService` — единое клиентское API, все методы требуют User JWT
-
-### Слои
-
-- `Domain/` — `DocumentationSection`, `ProtoMetadata`, `ErrorCodeEntry`
-- `Features/` — MediatR команды/запросы (CQRS). Каждый request и его `*Handler`
-  находятся в отдельных файлах, как в [[Backend/Identity]]:
-  - **Exposed via gRPC** (5 методов): `GetSections`, `GetSectionByKey`, `GetProtoFiles`, `GetProtoFileContent`, `GetErrorCodes`
-  - **Внутренние** (используются только `SeedData`/админ-флоу, не в proto): `CreateSection`, `UpdateSection`, `DeleteSection`
-- `Host/` — `DevelopersApiService` (gRPC)
-- `Persistence/` — `DevelopersContext` (PostgreSQL), `DocumentationStorage`, `ProtoMetadataStorage`
-- `Infrastructure/` — `DevelopersStartupInitializer`, `DevelopersReader` policy,
-  `PublishedProtoCatalog`, `ErrorCodeSeeder`, `ProtoFileProvider`, `SeedData`
-
-### Ключевые паттерны
-
-**Асинхронная инициализация при старте**: `DevelopersStartupInitializer` выполняет
-`MigrateAsync`, затем в одной транзакции добавляет отсутствующие defaults из `SeedData` и
-проверяет инварианты. Для реляционной БД этот блок выполняется через
-`Database.CreateExecutionStrategy()`, поэтому ручная транзакция совместима с
-`NpgsqlRetryingExecutionStrategy`. Seed аддитивный и идемпотентный: ключ документации — `Key`, proto —
-`FileName`, ошибка — `Code`; существующие значения не обновляются и не удаляются. В PostgreSQL
-вставки используют `ON CONFLICT DO NOTHING`, поэтому параллельный старт реплик не создаёт
-дубликаты. При нарушении инварианта (битый JSON, duplicate error code, отсутствие
-parameterless-конструктора exception или физического опубликованного proto) сервис не стартует.
-
-**ErrorCodeSeeder**: читает все наследники `BaseGrpcException` из `BarkFluff.Shared.Exceptions` через reflection (`Activator.CreateInstance`), достаёт `ErrorCode` и `ErrorMessage`.
-
-**PublishedProtoCatalog**: единственный read seam для proto. Allowlist содержит ровно:
-`shared.proto`, `beacon_api.proto`, `identity_api.proto`, `users_api.proto`,
-`messages_api.proto`, `files_api.proto`, `updates_api.proto`, `onliner_api.proto`,
-`fast_auth_api.proto`, `navigator_api.proto`. `configuration_api.proto`,
-`federation_internal_api.proto` и неизвестные имена не выдаются даже при прямом запросе.
-`ProtoFileProvider` читает только эти файлы из `output/Proto/`; csproj также копирует только их.
-
-### База данных (PostgreSQL)
-
-| Таблица | Описание |
-|---------|----------|
-| `DocumentationSections` | Секции документации (`key`, `title`, `type`, `order`, `content`) |
-| `ProtoMetadata` | Метаданные опубликованных proto (`file_name`, `display_name`, `slug`, `order`, `rpc_descriptions`) |
-| `ErrorCodes` | Коды ошибок (`code`, `exception_name`, `description`, `domain`) |
-
-## gRPC-методы
-
-| Метод | Описание |
-|-------|----------|
-| `GetDocumentationSections` | Список всех секций |
-| `GetDocumentationSection` | Одна секция по slug/ключу |
-| `GetProtoFiles` | Список proto-файлов с метаданными |
-| `GetProtoFileContent` | Содержимое .proto файла по имени |
-| `GetErrorCodes` | Все коды ошибок |
-
-## Конфигурация
-
-| Ключ | Описание |
-|------|---------|
-| `DevelopersDb` | PostgreSQL connection string |
-| `IdentityService:Host` | gRPC-клиент Identity (для валидации JWT) |
-| `RunSettings:Port` | API/gRPC-порт, по умолчанию `7020` |
-| `RunSettings:Http1Port` | HTTP-порт статики, по умолчанию `7021` |
-| `Developers:AllowedOrigins` | Разрешённые CORS origins; production — `https://developers.barkfluff.com`, в Development дополнительно `http://localhost:5173` |
-| `ExternalEndpoint:Host` | внешний адрес портала, по умолчанию `https://developers.example.com` |
-
-Для чистого deployment миграция `AddDevelopersConfiguration` идемпотентно создаёт
-строки `RunSettings`, `DevelopersDb` и `ExternalEndpoint` для `ServiceId=12`.
-Каталог Settings заполняет пустые значения: БД `developers`, API `7020`
-и SPA `7021`; заранее заданные оператором значения сохраняются.
-
-## Proto
-
-- `developers_api.proto` — Server
-- `identity_api.proto` — Client (JWT-валидация)
-- Канонический источник опубликованных файлов — `Shared/BarkFluff.Proto/`; backend output
-  собирается явным списком из 10 файлов. Изменения в proto и `Shared.Exceptions` запускают
-  Developers CI вместе с backend-тестами; frontend build автоматически синхронизирует proto
-  snapshot и генерирует TypeScript-контракты из канонических файлов.
-
-## Docker
-
-```bash
-docker build -t barkfluff-developers .
-```
-
-CI собирает сервис из `Dockerfile.slim`, как и [[Backend/Users]]. Dockerfile собирает
-`Frontend/Developers` через Node/Vite и копирует `dist/` в `/app/wwwroot` образа.
-API- и static-порты задаются в Settings через `RunSettings:Port` и
-`RunSettings:Http1Port`.
-
-## Связанные файлы
-
-- [[Клиенты/Developers-Web]] — React-фронтенд портала
-- [[Shared/Proto]] — `developers_api.proto`
-- [[Shared/Exceptions]] — коды ошибок через reflection
-- [[Shared/Identity]] — `ServiceId.Developers = 12`
-# Метрики
-
-Сервис подключён к [[Backend/GrpcServer]] metrics reporter. В [[Backend/AdminPanel]] доступны агрегированные gRPC-запросы и ошибки портала; детализация отдельных document/proto RPC намеренно не выводится.
+Общие health routes маппятся отдельно от защищённого API.
