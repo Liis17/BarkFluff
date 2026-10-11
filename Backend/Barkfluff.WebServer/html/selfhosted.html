@@ -8,14 +8,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site-theme.css">
-  <link rel="stylesheet" href="/assets/site-header.css">
   <script>
     try {
       var savedLang = localStorage.getItem('bf_lang');
       document.documentElement.lang = savedLang === 'ru' || savedLang === 'en' ? savedLang : ((navigator.language || '').startsWith('ru') ? 'ru' : 'en');
     } catch (_) { }
   </script>
+  <link rel="stylesheet" href="/assets/site-theme.css">
+  <link rel="stylesheet" href="/assets/site-header.css">
+  <style>
+    html[lang="ru"] .selfhosted-page [lang="en"],
+    html[lang="en"] .selfhosted-page [lang="ru"] { display: none; }
+  </style>
 </head>
 <body class="document-page selfhosted-page">
   <div class="home-page">
