@@ -41,14 +41,14 @@
       --shadow-card: 0 20px 60px #0006; --shadow-brand: none;
       --surface-subtle: #ffffff02; --surface-soft: #ffffff05;
       --surface-hover: #ffffff08; --surface-input: #ffffff04;
-      --orbit-surface: linear-gradient(145deg, #242426, #151517);
+      --preview-label: #121214e8; --orbit-surface: linear-gradient(145deg, #242426, #151517);
       --platform-windows: #72b8e4; --platform-android: #98c7a7;
       --success: #86c59a; --warning: #e2bb77;
     }
     body[data-channel="release"] {
       --surface-subtle: rgba(23,48,66,.025); --surface-soft: rgba(23,48,66,.055);
       --surface-hover: rgba(23,48,66,.075); --surface-input: rgba(23,48,66,.04);
-      --orbit-surface: linear-gradient(145deg, #fff, #edf3f6);
+      --preview-label: #fffffff0; --orbit-surface: linear-gradient(145deg, #fff, #edf3f6);
       --platform-windows: #3994de; --platform-android: #329b68;
       --success: #15803d; --warning: #b45309;
       --shadow-card: 0 20px 60px #17304220;
@@ -134,6 +134,18 @@
     .orbit-tile:nth-child(2) { right: 5%; top: 74px; transform: rotate(12deg); color: var(--platform-android); }
     .orbit-tile:nth-child(3) { left: 13%; bottom: 52px; transform: rotate(-6deg); font: 15px 'JetBrains Mono', monospace; color: var(--brand-soft); }
     .orbit-tile:nth-child(4) { right: 13%; bottom: 52px; transform: rotate(6deg); }
+    .preview-stack { position: relative; width: 100%; height: clamp(280px, 55vw, 680px); border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-0); overflow: hidden; box-shadow: 0 25px 70px #0003; }
+    .preview-frame { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 220ms ease; }
+    .preview-stack.is-instant .preview-frame { transition: none; }
+    .preview-frame.is-active { opacity: 1; visibility: visible; }
+    .preview-frame img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+    .device-tag { position: absolute; top: 16px; left: 16px; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--preview-label); color: var(--ink-dim); font-size: 10px; }
+    .device-tag svg { width: 12px; height: 12px; fill: currentColor; }
+    .preview-caption { position: absolute; bottom: 14px; right: 14px; z-index: 3; padding: 8px 10px; border-radius: 6px; background: var(--preview-label); color: var(--ink-dim); font-size: 10px; }
+    .preview-caption .kbd { font-family: 'JetBrains Mono', monospace; }
+    .preview-controls { display: flex; justify-content: center; gap: 5px; margin: 18px 0 0; }
+    .preview-control { padding: 8px 14px; border: 1px solid transparent; border-radius: 6px; color: var(--ink-mute); background: none; font-size: 11px; cursor: pointer; }
+    .preview-control[aria-pressed="true"] { border-color: var(--line-strong); background: var(--surface-soft); color: var(--ink); }
     .features-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 72px 0 80px; border-bottom: 1px solid var(--line); }
     .feature { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 0 26px; border-right: 1px solid var(--line); }
     .feature:first-child { padding-left: 0; }
@@ -250,7 +262,7 @@
       :is(.home-nav-link, .home-footer a, .resource-link, .lang-btn):hover { color: var(--ink); }
       .btn-primary:hover { background: #dcdce0; border-color: #dcdce0; }
       body[data-channel="release"] .btn-primary:hover { background: var(--button-end); border-color: var(--button-end); }
-      :is(.btn-soft, .btn-ghost, .channel-tab):hover { background: var(--surface-hover); }
+      :is(.btn-soft, .btn-ghost, .preview-control, .channel-tab):hover { background: var(--surface-hover); }
       .client-card:not(.disabled):hover { background: var(--surface-soft); }
       .client-card .client-card-action:hover { background: var(--ink-dim); border-color: var(--ink-dim); }
     }
@@ -278,6 +290,9 @@
       .project-intro { font-size: 11px; }
       .hero-meta { gap: 8px 12px; font-size: 10px; }
       .hero-meta .divider { display: none; }
+      .preview-stack { height: auto; aspect-ratio: 1.6; }
+      .preview-caption { display: none; }
+      .device-tag { top: 8px; left: 8px; font-size: 9px; padding: 4px 7px; }
       .features-strip { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 32px 24px; padding: 48px 0; }
       .feature, .feature:first-child, .feature:last-child { padding: 0; border: 0; }
       .f-body { font-size: 11px; }
@@ -302,6 +317,8 @@
       .home-nav-link { font-size: 11px; }
       .home-nav-right .btn { margin-left: auto; }
       .hero-title { font-size: clamp(30px, 9vw, 42px); }
+      .preview-controls { gap: 0; }
+      .preview-control { padding: 8px 12px; }
       .channel-switcher { width: 100%; }
       .channel-title, .developer-title { font-size: 28px; }
       .client-card, .web-client-section { grid-template-columns: 32px minmax(0,1fr); gap: 7px 12px; padding: 18px; }
@@ -400,6 +417,39 @@
             <span id="heroMeta3"><b>Мультиплатформенность</b></span>
           </div>
         </div>
+
+        <div class="preview-stack" id="previewStack">
+          <div class="preview-frame peek-left" data-platform="android">
+            <div class="device-tag">
+              <svg viewBox="2 4 20 14"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
+              Android
+            </div>
+            <img src="/assets/barkfluff.android.jpg" alt="Android" />
+          </div>
+          <div class="preview-frame peek-right" data-platform="web">
+            <div class="device-tag">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm7.93 10h-3.93a13.21 13.21 0 0 0 0-2h3.93c.046.329.07.66.07.997V12zm-5.93-2h-4a11.21 11.21 0 0 1 0 2h4a11.21 11.21 0 0 1 0-2zm-6 0H4.07A8.1 8.1 0 0 0 4 12c0 .337.024.668.07.997V12h3.93a13.21 13.21 0 0 0 0-2zM12 4c.586 0 1.128.19 1.536.542.456.618.86 1.281 1.19 1.974.07.147.133.297.19.447A9.961 9.961 0 0 0 12 6.5a9.961 9.961 0 0 0-2.916.463c.057-.15.12-.3.19-.447.33-.693.734-1.356 1.19-1.974C10.872 4.19 11.414 4 12 4z"/></svg>
+              Веб
+            </div>
+            <img src="/assets/barkfluff.web.png" alt="Web" />
+          </div>
+          <div class="preview-frame is-active" data-platform="windows">
+            <div class="device-tag">
+              <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              Windows
+            </div>
+            <img src="/assets/barkfluff.windows.png" alt="Windows" />
+          </div>
+          <div class="preview-caption" id="previewCaption">
+            Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-controls">
+        <button type="button" class="preview-control" data-preview="windows" aria-pressed="true">Windows</button>
+        <button type="button" class="preview-control" data-preview="android" aria-pressed="false">Android</button>
+        <button type="button" class="preview-control" data-preview="web" aria-pressed="false">Web</button>
       </div>
 
       <div class="features-strip">
@@ -649,6 +699,64 @@
   </div>
 
   <script>
+    /* Platform preview switcher */
+    const previewOrder = ['windows', 'android', 'web'];
+    let currentPlatform = 'windows';
+
+    function selectPlatform(platform, keyboard = false) {
+      document.getElementById('previewStack').classList.toggle('is-instant', keyboard);
+      const idx = previewOrder.indexOf(platform);
+      if (idx !== -1) currentPlatform = platform;
+      document.querySelectorAll('[data-preview]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.preview === currentPlatform));
+      });
+
+      if (idx !== -1) {
+        const leftIdx  = (idx - 1 + previewOrder.length) % previewOrder.length;
+        const rightIdx = (idx + 1) % previewOrder.length;
+
+        document.querySelectorAll('#previewStack .preview-frame').forEach(f => {
+          const p = f.dataset.platform;
+          f.classList.remove('is-active', 'peek-left', 'peek-right');
+          if (p === platform)                    f.classList.add('is-active');
+          else if (p === previewOrder[leftIdx])  f.classList.add('peek-left');
+          else if (p === previewOrder[rightIdx]) f.classList.add('peek-right');
+        });
+      }
+
+      document.querySelectorAll('.client-card').forEach(c => {
+        c.classList.toggle('is-active', c.dataset.platform === platform);
+      });
+    }
+
+    document.querySelectorAll('[data-preview]').forEach(button => {
+      button.addEventListener('click', event => selectPlatform(button.dataset.preview, event.detail === 0));
+    });
+
+    document.querySelectorAll('.client-card:not(.disabled)').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('a')) return;
+        selectPlatform(card.dataset.platform);
+      });
+      card.addEventListener('keydown', e => {
+        if (e.target !== card) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectPlatform(card.dataset.platform, true);
+        }
+      });
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const idx = previewOrder.indexOf(currentPlatform);
+      if (e.key === 'ArrowLeft')  selectPlatform(previewOrder[(idx - 1 + previewOrder.length) % previewOrder.length], true);
+      if (e.key === 'ArrowRight') selectPlatform(previewOrder[(idx + 1) % previewOrder.length], true);
+    });
+
+  </script>
+
+  <script>
     /* Support Chat */
     (function () {
       let chatId = getChatCookie();
@@ -769,6 +877,7 @@
           meta3:          '<b>Мультиплатформенность</b>',
           ctaDownload:    'Скачать для',
           ctaWeb:         'Открыть в браузере',
+          prevCaption:    'Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке',
           clientEyebrow:  'Канал сборки',
           clientTitle:    'BarkFluff на ваших устройствах',
           clientDescription: 'Переключай ветку — ссылки, версии и визуальный режим страницы меняются вместе с каналом.',
@@ -853,6 +962,7 @@
           meta3:          '<b>Cross-platform</b>',
           ctaDownload:    'Download for',
           ctaWeb:         'Open in browser',
+          prevCaption:    'Switch platform — press <span class="kbd">←</span> <span class="kbd">→</span> or click a card',
           clientEyebrow:  'Build channel',
           clientTitle:    'BarkFluff on your devices',
           clientDescription: 'Switch branches to update the links, versions and visual mode together.',
@@ -1155,6 +1265,7 @@
         htm('heroMeta1', 'meta1');
         htm('heroMeta2', 'meta2');
         htm('heroMeta3', 'meta3');
+        htm('previewCaption', 'prevCaption');
         txt('desktopKicker', 'desktopKicker');
         txt('desktopTitle', 'desktopTitle');
         txt('desktopDescription', 'desktopDescription');
@@ -1184,11 +1295,13 @@
       loadVersions();
       setTimeout(loadVersions, 2000);
 
-      (function highlightPlatformCard() {
+      (function autoSelect() {
         const platform = detectPlatform();
-        document.querySelectorAll('.client-card').forEach(c => {
-          c.classList.toggle('is-active', c.dataset.platform === platform);
-        });
+        if (platform === 'windows' || platform === 'android' || platform === 'macos') {
+          selectPlatform(platform);
+        } else {
+          selectPlatform('web');
+        }
       })();
     })();
   </script>

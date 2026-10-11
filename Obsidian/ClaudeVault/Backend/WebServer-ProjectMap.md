@@ -50,7 +50,7 @@
 
 | Файл/Папка | Описание |
 |-----------|----------|
-| `html/barkfluff.html` | Главная: лендинг в стиле t3.codes (светлый Release, тёмные Dev/Nightly), центрированный hero с адаптивной кнопкой «Скачать» (без скриншотов); возможности после hero; переключатель Nightly/Dev/Release (по умолчанию Release), постоянный заголовок раздела загрузок, две цельные панели компьютера и телефона с разделителями строк платформ и нейтральными кнопками скачивания, независимый Web-клиент над каналами; нижний `#developers` с proto, GitHub и `/selfhosted` |
+| `html/barkfluff.html` | Главная: лендинг в стиле t3.codes (светлый Release, тёмные Dev/Nightly), центрированный hero и полноширинное превью Windows/Android/Web с кнопками; возможности после hero; переключатель Nightly/Dev/Release (по умолчанию Release), постоянный заголовок раздела загрузок, две цельные панели компьютера и телефона с разделителями строк платформ и нейтральными кнопками скачивания, независимый Web-клиент над каналами; нижний `#developers` с proto, GitHub и `/selfhosted` |
 | `html/about.html` | RU/EN страница «О проекте»: история с первым коммитом, команда, MIT, GitHub, контакты и постоянное пояснение `/about#domain-history` |
 | `html/404.html` | Страница «не найдено» (отдаётся `FallbackController` с кодом 404) |
 | `html/userpage.html` | Шаблон публичной страницы пользователя (`%%username%%`) |
@@ -78,6 +78,9 @@
 | `files/cookie-notice.js` | Баннер об использовании cookie, подключается во все страницы `html/` |
 | `files/domain-notice.js` | Закрываемая RU/EN плашка о прежнем использовании домена на главной и `/about`; общий ключ `bf_domain_notice_v1` |
 | `files/domain-notice.css` | Стили плашки об истории домена; в потоке страницы, цвета через CSS-переменные |
+| `files/barkfluff.windows.png` | Скриншот Windows-клиента |
+| `files/barkfluff.web.png` | Скриншот Web-клиента |
+| `files/barkfluff.android.jpg` | Скриншот Android-клиента |
 | `files/channel-nightly.webp` | Ночное небо для темы Nightly, производная `Mac/Barkfluff/Packaging/dmg-background.png` без Finder-зон |
 | `files/channel-dev.webp` | Плотный blueprint для темы Dev, производная `Mac/Barkfluff/Packaging/dmg-background-dev.png` без Finder-зон |
 | `files/channel-release.webp` | Светлый градиент для темы Release, производная `Mac/Barkfluff/Packaging/dmg-background-master.png` |
