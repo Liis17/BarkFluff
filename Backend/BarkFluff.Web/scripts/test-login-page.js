@@ -99,9 +99,10 @@ function responseMode(mode, error) {
     return { getLoginMode: () => mode, getErrorCode: () => error || '' };
 }
 
-function makeHarness() {
+function makeHarness(options) {
+    options = options || {};
     const ids = [
-        'loginForm', 'loginInput', 'loginError', 'passwordGroup', 'passwordInput', 'passwordError',
+        'loginUpgrade', 'loginUpgradeMessage', 'loginUpgradeBtn', 'loginForm', 'loginInput', 'loginError', 'passwordGroup', 'passwordInput', 'passwordError',
         'signInBtn', 'changeLoginBtn', 'factorGroup', 'loginFactor', 'recoveryGroup', 'loginRecovery',
         'challengeGroup', 'challengeStatus', 'codeGroup', 'confirmationCode', 'confirmationCodeLabel',
         'confirmationError', 'confirmCodeBtn', 'challengeRetryBtn', 'challengeResendBtn', 'tempLoginCheck',
@@ -164,6 +165,7 @@ function makeHarness() {
             if (this.started && generation === this.generation) this.shown++;
         }
     };
+    const timeouts = new Map();
     const intervals = new Map();
     let nextInterval = 0;
     const windowListeners = {};
@@ -184,11 +186,16 @@ function makeHarness() {
         localStorage: { getItem: () => null },
         setInterval(callback, delay) { const id = ++nextInterval; intervals.set(id, { callback, delay }); return id; },
         clearInterval(id) { intervals.delete(id); },
+        setTimeout(callback) { const id = ++nextInterval; timeouts.set(id, callback); return id; },
+        clearTimeout(id) { timeouts.delete(id); },
         window: {
-            location: { href: '' },
+            location: { href: '', reloadCount: 0, reload() { this.reloadCount++; } },
+            navigator: { serviceWorker: options.serviceWorker },
+            barkfluff: { IdentityApiClient: function () {} },
+            proto: { barkfluff: { identity: { ResolveSignInRequest: function () {}, BeginSignInRequest: function () {} } } },
             addEventListener(type, callback) { (windowListeners[type] ||= []).push(callback); },
             BF: {
-                i18n: { t: (key) => key, ready: Promise.resolve() },
+                i18n: { t: (key) => key === 'loginFlow.continue' && !options.oldLocale ? 'Continue' : key, ready: Promise.resolve() },
                 node: {
                     origin: () => origin,
                     pinned: () => true,
@@ -257,6 +264,10 @@ function makeHarness() {
             }
         }
     };
+    context.window.barkfluff.IdentityApiClient.prototype.resolveSignIn = function () {};
+    context.window.proto.barkfluff.identity.BeginSignInRequest.prototype.setReportLoginModeMismatch = function () {};
+    if (options.staleContract) delete context.window.barkfluff.IdentityApiClient.prototype.resolveSignIn;
+    if (options.missingSetter) delete context.window.proto.barkfluff.identity.BeginSignInRequest.prototype.setReportLoginModeMismatch;
     context.BF = context.window.BF;
     context.window.BF.nodePicker.openCount = 0;
     vm.createContext(context);
@@ -274,6 +285,8 @@ function makeHarness() {
         tokens,
         fastAuth,
         intervals,
+        timeouts,
+        dispatchWindow(type) { for (const callback of windowListeners[type] || []) callback(); },
         get origin() { return origin; },
         setOrigin(value) { origin = value; },
         ready: async () => { await Promise.resolve(); await new Promise(setImmediate); await new Promise(setImmediate); },
@@ -591,7 +604,147 @@ async function testCancellationAndTokenGate() {
     assert.equal(node.tokens.saved.length, 0);
 }
 
+function eventTarget(values) {
+    const listeners = new Map();
+    return Object.assign({
+        addEventListener(type, callback) { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(callback); },
+        removeEventListener(type, callback) { listeners.get(type)?.delete(callback); },
+        emit(type) { for (const callback of [...(listeners.get(type) || [])]) callback(); },
+        listenerCount() { return [...listeners.values()].reduce((sum, callbacks) => sum + callbacks.size, 0); }
+    }, values);
+}
+
+async function testStaleRuntimeUpgrade() {
+    for (const options of [{ staleContract: true }, { missingSetter: true }, { oldLocale: true }]) {
+        const h = makeHarness(options);
+        await h.ready();
+        assert.equal(h.elements.loginForm.hidden, true);
+        assert.equal(h.elements.fastAuthCard.hidden, true);
+        assert.equal(h.elements.loginUpgradeMessage.textContent, 'pwa.updateAvailable');
+        h.elements.loginInput.value = 'user';
+        h.elements.passwordInput.value = 'must-not-send';
+        submit(h);
+        await settle(h);
+        assert.equal(h.calls.length, 0);
+        assert.equal(h.attempts.length, 0);
+        assert.equal(h.fastAuth.starts, 0);
+        assert.equal(h.tokens.saved.length, 0);
+    }
+    const waiting = { sent: [], postMessage(message) { this.sent.push(message); } };
+    const registration = eventTarget({ waiting, updateCount: 0, update() { this.updateCount++; return Promise.resolve(); } });
+    const sw = eventTarget({ controller: {}, getRegistration: async () => registration });
+    const h = makeHarness({ staleContract: true, oldLocale: true, serviceWorker: sw });
+    await h.ready();
+    h.elements.loginUpgradeBtn.click();
+    h.elements.loginUpgradeBtn.click();
+    await settle(h);
+    assert.equal(waiting.sent.length, 1);
+    assert.equal(waiting.sent[0].type, 'SKIP_WAITING');
+    assert.equal(registration.updateCount, 0);
+    assert.equal(h.context.window.location.reloadCount, 0);
+    sw.emit('controllerchange');
+    assert.equal(h.context.window.location.reloadCount, 0, 'same controller does not trigger reload');
+    sw.controller = {};
+    sw.emit('controllerchange');
+    sw.emit('controllerchange');
+    assert.equal(h.context.window.location.reloadCount, 1);
+    assert.equal(sw.listenerCount(), 0);
+    assert.equal(registration.listenerCount(), 0);
+    assert.equal(h.timeouts.size, 0);
+}
+
+async function testInstallingUpgradeAndFailures() {
+    const installing = eventTarget({ state: 'installing' });
+    const registration = eventTarget({ installing, waiting: null, update: async () => {} });
+    const sw = eventTarget({ controller: {}, getRegistration: async () => registration });
+    const h = makeHarness({ staleContract: true, serviceWorker: sw });
+    await h.ready();
+    h.elements.loginUpgradeBtn.click();
+    await settle(h);
+    let messages = 0;
+    registration.waiting = { postMessage() { messages++; } };
+    installing.state = 'installed';
+    installing.emit('statechange');
+    installing.emit('statechange');
+    assert.equal(messages, 1);
+    h.dispatchWindow('pagehide');
+    sw.controller = {};
+    sw.emit('controllerchange');
+    assert.equal(h.context.window.location.reloadCount, 0, 'pagehide cancels the generation');
+    assert.equal(installing.listenerCount(), 0);
+    assert.equal(sw.listenerCount(), 0);
+    assert.equal(h.timeouts.size, 0);
+
+    const discovered = eventTarget({ waiting: null, installing: null, update: async () => {} });
+    const service = eventTarget({ controller: {}, getRegistration: async () => discovered });
+    const found = makeHarness({ oldLocale: true, serviceWorker: service });
+    await found.ready();
+    found.elements.loginUpgradeBtn.click();
+    await settle(found);
+    discovered.installing = eventTarget({ state: 'installing' });
+    discovered.emit('updatefound');
+    let activated = false;
+    discovered.waiting = { postMessage() { activated = true; } };
+    discovered.installing.state = 'installed';
+    discovered.installing.emit('statechange');
+    assert.equal(activated, true, 'updatefound discovers workers installed by update()');
+    service.controller = {};
+    service.emit('controllerchange');
+    assert.equal(found.context.window.location.reloadCount, 1);
+    assert.equal(discovered.installing.listenerCount(), 0);
+
+    const activatedService = eventTarget({ controller: {}, getRegistration() { throw new Error('already active'); } });
+    const alreadyActive = makeHarness({ staleContract: true, serviceWorker: activatedService });
+    await alreadyActive.ready();
+    activatedService.controller = {};
+    alreadyActive.elements.loginUpgradeBtn.click();
+    alreadyActive.elements.loginUpgradeBtn.click();
+    assert.equal(alreadyActive.context.window.location.reloadCount, 1, 'a shell activated by another tab can be loaded on explicit click');
+    assert.equal(alreadyActive.timeouts.size, 0);
+
+    const noWorker = makeHarness({ staleContract: true });
+    await noWorker.ready();
+    noWorker.elements.loginUpgradeBtn.click();
+    assert.equal(noWorker.elements.loginUpgradeMessage.textContent, 'auth.error.network');
+    assert.equal(noWorker.timeouts.size, 0);
+
+    for (const kind of ['offline', 'no-update', 'missing-registration', 'redundant']) {
+        const worker = eventTarget({ state: 'installing' });
+        let updates = 0;
+        const reg = eventTarget({ installing: worker, waiting: null, update() {
+            updates++;
+            return kind === 'offline' ? Promise.reject(new Error('offline')) : Promise.resolve();
+        } });
+        const serviceWorker = eventTarget({ controller: {}, getRegistration: async () => kind === 'missing-registration' ? null : reg });
+        const failed = makeHarness({ staleContract: true, serviceWorker });
+        await failed.ready();
+        failed.elements.loginUpgradeBtn.click();
+        await settle(failed);
+        if (kind === 'no-update') for (const callback of [...failed.timeouts.values()]) callback();
+        if (kind === 'redundant') { worker.state = 'redundant'; worker.emit('statechange'); }
+        assert.equal(failed.elements.loginUpgradeBtn.disabled, false, kind);
+        assert.equal(failed.elements.loginUpgradeMessage.textContent, 'auth.error.network', kind);
+        assert.equal(failed.context.window.location.reloadCount, 0);
+        assert.equal(failed.calls.length, 0);
+        assert.equal(serviceWorker.listenerCount(), 0);
+        assert.equal(reg.listenerCount(), 0);
+        assert.equal(worker.listenerCount(), 0);
+        assert.equal(failed.timeouts.size, 0);
+        await settle(failed);
+        assert.ok(updates <= 1, 'no automatic retry');
+        failed.elements.loginUpgradeBtn.click();
+        await settle(failed);
+        if (kind === 'no-update') for (const callback of [...failed.timeouts.values()]) callback();
+        if (kind === 'redundant') worker.emit('statechange');
+        assert.ok(updates <= 2, 'retry requires another click');
+        failed.dispatchWindow('pagehide');
+    }
+}
+
 async function main() {
+    await testStaleRuntimeUpgrade();
+    await testInstallingUpgradeAndFailures();
+    console.log('PASS: stale installed login shells block auth, activate updates on explicit action, reload once, and bound failed updates with cleanup');
     await testPasswordFlow();
     await testTelegramFlowAndQrRace();
     await testUnknownAccountAndOldServer();
