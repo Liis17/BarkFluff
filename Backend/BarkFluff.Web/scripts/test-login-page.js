@@ -407,10 +407,16 @@ async function testPasswordCodeRetryAndSinglePoll() {
     assert.equal(h.attempts[0].beginCalls[1].fields.factor, 0, 'server preferred factor is requested first');
     assert.equal(h.tokens.saved.length, 0, 'a pending second factor never saves tokens');
 
+    const factorOptions = h.getElement('loginFactor').children.slice();
+    h.getElement('loginFactor').value = '2';
     h.getElement('confirmationCode').value = '123456';
     h.attempts[0].pollCalls[0].onState(challenge({ state: 1, factor: 1, needsCode: true, available: [1, 2, 3] }));
     await settle(h);
     assert.equal(h.getElement('confirmationCode').value, '123456', 'a polling update preserves a code being entered');
+    factorOptions.forEach((option, index) => {
+        assert.strictEqual(h.getElement('loginFactor').children[index], option, 'unchanged factors preserve their option nodes');
+    });
+    assert.equal(h.getElement('loginFactor').value, '2', 'an unchanged poll preserves current factor selection interaction');
     assert.equal(h.attempts[0].pollCalls.length, 1, 'poll updates do not start another polling loop');
 
     h.completeQueue.push(Promise.resolve(completed({ error: 'invalid_code', state: 1, session: false })));
@@ -470,6 +476,61 @@ async function testModeDriftRequiresUserAction() {
     await settle(h);
     assert.equal(h.getElement('passwordGroup').hidden, false);
     assert.equal(h.attempts[0].beginCalls.length, 1);
+}
+
+async function testTransientPollErrorKeepsTheApprovalChallenge() {
+    const h = makeHarness();
+    await h.ready();
+    h.resolve(2);
+    h.beginQueue.push(Promise.resolve(challenge({ state: 1, factor: 3, available: [3] })));
+    h.getElement('loginInput').value = 'telegram-user';
+    submit(h);
+    await settle(h);
+
+    const attempt = h.attempts[0];
+    const unavailable = new Error('temporarily unavailable');
+    unavailable.code = 14;
+    unavailable.retryable = true;
+    attempt.pollCalls[0].onError(unavailable);
+    await settle(h);
+    assert.equal(attempt.cancelCalls, 0, 'a retryable poll error keeps the server approval alive');
+    assert.equal(h.getElement('challengeRetryBtn').hidden, true, 'automatic polling remains active without a new-challenge retry');
+    assert.equal(attempt.beginCalls.length, 1, 'a transient poll error does not send another begin request');
+    assert.equal(attempt.pollCalls.length, 1, 'the same poll subscription remains responsible for the challenge');
+    assert.equal(h.getElement('challengeStatus').textContent, 'auth.error.network', 'the transient failure is shown inline');
+
+    attempt.pollCalls[0].onState(challenge({ state: 2, factor: 3, available: [3] }));
+    await settle(h);
+    assert.equal(attempt.completeCalls.length, 1, 'the same approved challenge completes once');
+    assert.equal(h.tokens.saved.length, 1);
+    assert.equal(h.context.window.location.href, '/messenger');
+}
+
+async function testNonRetryablePollErrorOffersManagedRetry() {
+    const h = makeHarness();
+    await h.ready();
+    h.resolve(2);
+    h.beginQueue.push(Promise.resolve(challenge({ state: 1, factor: 3, available: [3] })));
+    h.getElement('loginInput').value = 'telegram-user';
+    submit(h);
+    await settle(h);
+
+    const attempt = h.attempts[0];
+    const rejected = new Error('challenge rejected');
+    rejected.code = 7;
+    rejected.retryable = false;
+    attempt.pollCalls[0].onError(rejected);
+    await settle(h);
+    assert.ok(attempt.cancelCalls > 0, 'a non-retryable poll error cancels the failed challenge');
+    assert.equal(h.getElement('challengeRetryBtn').hidden, false, 'the user can retry after a non-retryable error');
+    assert.equal(attempt.beginCalls.length, 1, 'the failed challenge does not restart automatically');
+
+    h.beginQueue.push(Promise.resolve(challenge({ state: 2, factor: 3, available: [3] })));
+    h.getElement('challengeRetryBtn').click();
+    await settle(h);
+    assert.equal(attempt.beginCalls.length, 2, 'the explicit retry begins one new challenge');
+    assert.equal(attempt.completeCalls.length, 1);
+    assert.equal(h.tokens.saved.length, 1);
 }
 
 async function testCancellationAndTokenGate() {
@@ -535,6 +596,8 @@ async function main() {
     await testTelegramFlowAndQrRace();
     await testUnknownAccountAndOldServer();
     await testPasswordCodeRetryAndSinglePoll();
+    await testTransientPollErrorKeepsTheApprovalChallenge();
+    await testNonRetryablePollErrorOffersManagedRetry();
     await testModeDriftRequiresUserAction();
     await testCancellationAndTokenGate();
     console.log('PASS: email-first login resolves modes, handles challenges, retries, rejects stale work, and saves tokens only on completion');

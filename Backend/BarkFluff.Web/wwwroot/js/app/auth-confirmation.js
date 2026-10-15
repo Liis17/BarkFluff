@@ -578,9 +578,9 @@
                 if (description) el('small', description, text);
                 return { label: label, input: input };
             }
-            function actionButton(parent, label, enabled, work) {
+            function actionButton(parent, label, enabled, work, preserveDraft) {
                 var value = button(parent, t(label), function () {
-                    perform(work);
+                    perform(work, preserveDraft);
                 });
                 buttons.push({ element: value, enabled: enabled });
                 return value;
@@ -690,7 +690,7 @@
                     return data.telegramLinked && !unlinkReason();
                 }, async function () {
                     await save(true);
-                });
+                }, false);
                 el('p', t('security.unlinkImpact'), telegramSection).className = 'auth-hint';
                 var unlinkStatus = el('p', '', telegramSection);
                 unlinkStatus.className = 'auth-security-status';
@@ -810,7 +810,7 @@
                     (draft.telegramEnabled || canReceiveEmailAlerts());
             }, async function () {
                 await save(false);
-            });
+            }, false);
 
             function refreshPreferred() {
                 var choices = availableFactors(draft, false);
@@ -884,14 +884,21 @@
                 root.setAttribute('aria-busy', busy ? 'true' : 'false');
             }
             syncCurrent = sync;
-            async function perform(work) {
+            async function perform(work, preserveDraft) {
                 if (busy || controller.signal.aborted) return;
+                var draftOverlay = preserveDraft === false ? null : {};
+                if (draftOverlay) {
+                    ['loginMode', 'preferredFactor', 'telegramEnabled', 'telegramOtpEnabled', 'fastAuthTelegramEnabled']
+                        .forEach(function (key) {
+                            if (draft[key] !== data[key]) draftOverlay[key] = draft[key];
+                        });
+                }
                 busy = true;
                 error.textContent = '';
                 sync();
                 try {
                     await work();
-                    if (!controller.signal.aborted) await load();
+                    if (!controller.signal.aborted) await load(draftOverlay);
                 } catch (err) {
                     if (!controller.signal.aborted && err?.name !== 'AbortError')
                         error.textContent = errorText(err);
@@ -936,7 +943,7 @@
             sync();
         }
 
-        async function load() {
+        async function load(draftOverlay) {
             var generation = ++renderGeneration;
             try {
                 var results = await Promise.all([
@@ -963,6 +970,7 @@
                     telegramOtpEnabled: data.telegramOtpEnabled,
                     fastAuthTelegramEnabled: data.fastAuthTelegramEnabled
                 };
+                if (draftOverlay) Object.assign(draft, draftOverlay);
                 createForm();
             } catch (err) {
                 if (!controller.signal.aborted && generation === renderGeneration) {
