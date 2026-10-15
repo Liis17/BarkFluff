@@ -2,15 +2,16 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-221387d2';
+const CACHE_NAME = 'barkfluff-shell-5bc7c6fc';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',
     '/js/vendor/firebase-messaging-compat.bundle.js',
     '/js/i18n/ru.json', '/js/i18n/en.json', '/js/i18n/es.json', '/js/i18n/de.json', '/js/i18n/zh-Hans.json',
-    '/css/icons.css', '/css/messenger.css',
+    '/css/icons.css', '/css/messenger.css', '/css/auth-confirmation.css', '/css/login-flow.css',
     '/js/app/i18n.js',
     '/js/app/app-loader.js',
+    '/js/app/login-page.js', '/js/app/auth-confirmation.js',
     '/icons/pwa-icon-192.png', '/icons/pwa-icon-512.png'
 ];
 
