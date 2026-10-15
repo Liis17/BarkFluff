@@ -120,7 +120,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve));
 }
 
-function createFixture(overrides = {}, capabilityOverrides = {}) {
+function createFixture(overrides = {}, capabilityOverrides = {}, translationOverrides = {}) {
     let current = {
         loginMode: 1,
         preferredFactor: 1,
@@ -162,7 +162,8 @@ function createFixture(overrides = {}, capabilityOverrides = {}) {
             BF: {
                 i18n: {
                     t(key, params) {
-                        return String(key).replace(/\{(\w+)\}/g, (_match, name) => params?.[name] ?? `{${name}}`);
+                        const template = translationOverrides[key] ?? String(key);
+                        return template.replace(/\{(\w+)\}/g, (_match, name) => params?.[name] ?? `{${name}}`);
                     }
                 },
                 node: { origin: () => 'https://node.example.test' },
@@ -281,6 +282,26 @@ function challenge(factor, state) {
         getAvailableFactorsList: () => [1, 2, 3],
         getTelegramUrl: () => ''
     };
+}
+
+async function testSecuritySettingsInterpolatesTranslatedValues() {
+    const fixture = createFixture({}, {}, {
+        'security.telegramAccount': 'Telegram account: {account}',
+        'security.emailVerified': 'Verified email: {email}',
+        'security.recoveryRemaining': 'Recovery codes remaining: {count}'
+    });
+    await flush();
+
+    const infoText = descendants(byClass(fixture.container, 'auth-security'))
+        .filter((item) => item.className === 'auth-security-info')
+        .map((item) => item.textContent);
+    assert.deepEqual(infoText, [
+        'Telegram account: @fluff_bot_user',
+        'Verified email: person@example.test',
+        'Recovery codes remaining: 5'
+    ]);
+    infoText.forEach((text) => assert.doesNotMatch(text, /\{\w+\}/, 'translated security values should be interpolated'));
+    console.log('PASS: security settings interpolate Telegram, email, and recovery values into translated DOM text');
 }
 
 function openReauthenticationDialog(fixture) {
@@ -681,6 +702,7 @@ async function testCancelledSettingsLoadDoesNotRenderStaleResponse() {
 }
 
 async function main() {
+    await testSecuritySettingsInterpolatesTranslatedValues();
     await testConditionalFactorAvailability();
     await testInvalidModeNeedsSetup();
     await testSaveUsesPersistedProofAndDraftSnapshot();
