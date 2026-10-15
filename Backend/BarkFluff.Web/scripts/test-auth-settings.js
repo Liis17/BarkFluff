@@ -143,6 +143,9 @@ function createFixture(overrides = {}, capabilityOverrides = {}) {
     const calls = [];
     const updateRequests = [];
     const reauthenticationBegins = [];
+    let pendingOtpType = 0;
+    let pendingTelegramBinding = false;
+    let canonicalizeSavedSettings = null;
     const body = new FakeElement('body');
     const context = {
         AbortController,
@@ -178,6 +181,8 @@ function createFixture(overrides = {}, capabilityOverrides = {}) {
                                 telegramOtpEnabled: request.telegramOtpEnabled,
                                 fastAuthTelegramEnabled: request.fastAuthTelegramEnabled
                             };
+                            if (canonicalizeSavedSettings)
+                                current = { ...current, ...canonicalizeSavedSettings(request, current) };
                             return { getRecoveryCodesList: () => [] };
                         }
                         if (method === 'unlinkTelegram') {
@@ -193,12 +198,29 @@ function createFixture(overrides = {}, capabilityOverrides = {}) {
                             };
                             return { getRecoveryCodesList: () => [] };
                         }
+                        if (method === 'enableOtpVerification') {
+                            pendingOtpType = request.otpType;
+                            return { getOtpQr: () => '', getOtpCode: () => '' };
+                        }
+                        if (method === 'confirmOtpVerification') {
+                            if (pendingOtpType === 1) current.authenticatorEnabled = true;
+                            if (pendingOtpType === 2) current.emailEnabled = true;
+                            if (!current.preferredFactor) current.preferredFactor = pendingOtpType;
+                            return { getRecoveryCodesList: () => [] };
+                        }
+                        if (method === 'disableOtpVerification') {
+                            updateRequests.push({ method, ...request });
+                            if (request.otpType === 1) current.authenticatorEnabled = false;
+                            if (request.otpType === 2) current.emailEnabled = false;
+                            return {};
+                        }
                         if (method === 'generateRecoveryCodes') return { getCodesList: () => [] };
                         return {};
                     },
                     create() {
                         return {
                             begin(_method, _type, fields) {
+                                if (_method === 'beginTelegramBinding') pendingTelegramBinding = true;
                                 reauthenticationBegins.push({ ...fields });
                                 return Promise.resolve(challenge(fields.factor, 1));
                             },
@@ -207,6 +229,14 @@ function createFixture(overrides = {}, capabilityOverrides = {}) {
                                 update(challenge(1, 2));
                             },
                             async complete() {
+                                if (pendingTelegramBinding) {
+                                    current.telegramLinked = true;
+                                    current.telegramEnabled = true;
+                                    current.telegramOtpEnabled = true;
+                                    current.fastAuthTelegramEnabled = true;
+                                    current.telegramUsername = 'new_fluff_bot_user';
+                                    pendingTelegramBinding = false;
+                                }
                                 return {
                                     getErrorCode: () => '',
                                     getState: () => 5,
@@ -237,6 +267,7 @@ function createFixture(overrides = {}, capabilityOverrides = {}) {
         container,
         reauthenticationBegins,
         updateRequests,
+        setCanonicalizeSavedSettings(value) { canonicalizeSavedSettings = value; },
         current: () => current
     };
 }
@@ -350,6 +381,142 @@ async function testSaveUsesPersistedProofAndDraftSnapshot() {
     console.log('PASS: security updates prove the persisted mode and atomically submit the current draft snapshot');
 }
 
+async function testSideActionsPreserveDirtyFieldsAndAdoptFreshDefaults() {
+    const setup = createFixture({
+        loginMode: 1,
+        preferredFactor: 0,
+        authenticatorEnabled: false,
+        emailEnabled: false,
+        telegramLinked: false,
+        telegramEnabled: false,
+        telegramOtpEnabled: false,
+        fastAuthTelegramEnabled: false
+    });
+    await flush();
+    let root = byClass(setup.container, 'auth-security');
+    chooseMode(root, 3);
+    buttonByText(root, 'security.setupAuthenticator').click();
+    await flush();
+    await confirmReauthentication(setup);
+    await flush();
+
+    const setupDialog = setup.body.children.find(
+        (item) => item.tagName === 'dialog' && item.open && descendants(item).some((child) => child.textContent === 'settings.twofa')
+    );
+    assert.ok(setupDialog, 'authenticator setup opens after its security proof');
+    const setupCode = descendants(setupDialog).find((item) => item.tagName === 'input' && item.type === 'text');
+    assert.ok(setupCode, 'authenticator setup requests the verification code');
+    setupCode.value = '123456';
+    buttonByText(setupDialog, 'common.confirm').click();
+    await flush();
+    await flush();
+
+    root = byClass(setup.container, 'auth-security');
+    assert.equal(modeRadio(root, 3).checked, true, 'the user-selected mode survives factor setup');
+    const preferred = descendants(byClass(root, 'auth-security-preferred')).find((item) => item.tagName === 'select');
+    assert.equal(preferred.value, '1', 'an untouched preferred factor adopts the fresh server default');
+    assert.equal(buttonByText(root, 'common.save').disabled, false, 'the preserved mode becomes saveable with the new factor');
+
+    const disable = createFixture({ loginMode: 1, preferredFactor: 1 });
+    await flush();
+    root = byClass(disable.container, 'auth-security');
+    chooseMode(root, 3);
+    const disableButtons = descendants(root).filter(
+        (item) => item.tagName === 'button' && item.textContent === 'common.disable'
+    );
+    assert.equal(disableButtons.length, 2);
+    disableButtons[1].click();
+    await flush();
+    await confirmReauthentication(disable);
+    await flush();
+    root = byClass(disable.container, 'auth-security');
+    assert.equal(disable.current().emailEnabled, false, 'the requested email factor was disabled');
+    assert.equal(modeRadio(root, 3).checked, true, 'the unsaved mode selection survives a factor change');
+    assert.equal(buttonByText(root, 'common.save').disabled, false, 'the preserved mode stays valid with its remaining factor');
+
+    const unavailable = createFixture({ loginMode: 1, preferredFactor: 1 });
+    await flush();
+    root = byClass(unavailable.container, 'auth-security');
+    chooseMode(root, 3);
+    const unavailablePreferred = descendants(byClass(root, 'auth-security-preferred')).find((item) => item.tagName === 'select');
+    unavailablePreferred.value = '2';
+    unavailablePreferred.dispatchEvent({ type: 'change' });
+    chooseMode(root, 1);
+    const unavailableDisableButtons = descendants(root).filter(
+        (item) => item.tagName === 'button' && item.textContent === 'common.disable'
+    );
+    unavailableDisableButtons[1].click();
+    await flush();
+    await confirmReauthentication(unavailable);
+    await flush();
+    root = byClass(unavailable.container, 'auth-security');
+    chooseMode(root, 3);
+    assert.equal(
+        descendants(byClass(root, 'auth-security-preferred')).find((item) => item.tagName === 'select').value,
+        '',
+        'an unavailable dirty preference remains invalid instead of being replaced'
+    );
+    assert.ok(descendants(root).some((item) => item.textContent === 'security.prerequisite.chooseFactor'));
+    assert.equal(buttonByText(root, 'common.save').disabled, true);
+    console.log('PASS: successful factor actions preserve dirty settings and adopt fresh untouched defaults');
+}
+
+async function testTelegramBindingAdoptsFreshServerFlags() {
+    const fixture = createFixture({
+        loginMode: 1,
+        preferredFactor: 1,
+        telegramLinked: false,
+        telegramEnabled: false,
+        telegramOtpEnabled: false,
+        fastAuthTelegramEnabled: false
+    });
+    await flush();
+    const root = byClass(fixture.container, 'auth-security');
+    chooseMode(root, 3);
+    const preferred = descendants(byClass(root, 'auth-security-preferred')).find((item) => item.tagName === 'select');
+    preferred.value = '2';
+    preferred.dispatchEvent({ type: 'change' });
+    buttonByText(root, 'security.linkTelegram').click();
+    await flush();
+    await confirmReauthentication(fixture);
+    await flush();
+
+    const refreshed = byClass(fixture.container, 'auth-security');
+    assert.equal(fixture.current().telegramLinked, true);
+    assert.equal(modeRadio(refreshed, 3).checked, true, 'Telegram binding preserves the unsaved mode');
+    assert.equal(
+        descendants(byClass(refreshed, 'auth-security-preferred')).find((item) => item.tagName === 'select').value,
+        '2',
+        'Telegram binding preserves the valid preferred email factor'
+    );
+    assert.equal(toggleByLabel(refreshed, 'security.telegramEnabled').checked, true);
+    assert.equal(toggleByLabel(refreshed, 'security.telegramFactor').checked, true);
+    assert.equal(toggleByLabel(refreshed, 'security.fastAuthTelegram').checked, true);
+    console.log('PASS: Telegram binding preserves valid draft choices and adopts fresh binding defaults');
+}
+
+async function testSaveUsesCanonicalServerState() {
+    const fixture = createFixture({ loginMode: 1, preferredFactor: 1 });
+    fixture.setCanonicalizeSavedSettings(() => ({ preferredFactor: 1 }));
+    await flush();
+    const root = byClass(fixture.container, 'auth-security');
+    chooseMode(root, 3);
+    const preferred = descendants(byClass(root, 'auth-security-preferred')).find((item) => item.tagName === 'select');
+    preferred.value = '2';
+    preferred.dispatchEvent({ type: 'change' });
+    buttonByText(root, 'common.save').click();
+    await flush();
+    await confirmReauthentication(fixture);
+    await flush();
+
+    const refreshed = byClass(fixture.container, 'auth-security');
+    const refreshedPreferred = descendants(byClass(refreshed, 'auth-security-preferred')).find((item) => item.tagName === 'select');
+    assert.equal(fixture.updateRequests[0].preferredFactor, 2, 'the save submits the user-selected factor');
+    assert.equal(refreshedPreferred.value, '1', 'the refreshed form reflects the canonical server value');
+    assert.equal(buttonByText(refreshed, 'common.save').disabled, true, 'the canonical state leaves no stale draft to resave');
+    console.log('PASS: explicit save replaces the draft with canonical server settings');
+}
+
 async function testCancelledProofPreservesDraft() {
     const fixture = createFixture({ loginMode: 1 });
     await flush();
@@ -445,13 +612,25 @@ async function testUnlinkRequiresSafeRemainingMode() {
         verifiedEmail: 'person@example.test'
     });
     await flush();
-    const root = byClass(fixture.container, 'auth-security');
+    let root = byClass(fixture.container, 'auth-security');
     const unlink = buttonByText(root, 'security.unlinkTelegram');
     assert.equal(unlink.disabled, true, 'passwordless Telegram mode cannot remain after unlinking');
     assert.ok(descendants(root).some((item) => item.textContent === 'security.prerequisite.unlinkMode'));
     chooseMode(root, 1);
     assert.equal(unlink.disabled, false, 'unlink becomes available after selecting a safe remaining sign-in method');
     assert.equal(fixture.updateRequests.length, 0, 'choosing a residual mode does not implicitly save it');
+    unlink.click();
+    await flush();
+    await confirmReauthentication(fixture);
+    await flush();
+    root = byClass(fixture.container, 'auth-security');
+    assert.equal(fixture.current().telegramLinked, false);
+    assert.equal(fixture.current().telegramEnabled, false);
+    assert.equal(fixture.current().telegramOtpEnabled, false);
+    assert.equal(fixture.current().fastAuthTelegramEnabled, false);
+    assert.equal(modeRadio(root, 1).checked, true, 'unlink leaves the canonical safe sign-in mode selected');
+    assert.equal(toggleByLabel(root, 'security.telegramEnabled'), undefined, 'unlink removes linked-account controls');
+    assert.ok(descendants(root).some((item) => item.textContent === 'security.notLinked'));
     console.log('PASS: Telegram unlink is gated until an explicit safe remaining sign-in method is selected');
 }
 
@@ -505,6 +684,9 @@ async function main() {
     await testConditionalFactorAvailability();
     await testInvalidModeNeedsSetup();
     await testSaveUsesPersistedProofAndDraftSnapshot();
+    await testSideActionsPreserveDirtyFieldsAndAdoptFreshDefaults();
+    await testTelegramBindingAdoptsFreshServerFlags();
+    await testSaveUsesCanonicalServerState();
     await testCancelledProofPreservesDraft();
     await testPersistedLastFactorCannotBeDisabledEarly();
     await testPersistedPreferredFactorCannotBeDisabledBeforePreferenceSave();

@@ -61,6 +61,9 @@
         resendTimer: null,
         pendingSession: null
     };
+    var renderedFactors = null;
+    var renderedFactor = null;
+    var renderedFactorOperation = -1;
 
     function t(key) { return BF.i18n.t(key); }
 
@@ -172,18 +175,27 @@
     }
 
     function renderFactors() {
-        while (factorInput.firstChild) factorInput.removeChild(factorInput.firstChild);
         var values = flow.availableFactors.filter(function (value, index, list) {
             return Number(value) > 0 && list.indexOf(value) === index;
         });
-        values.forEach(function (value) {
-            var option = document.createElement('option');
-            option.value = String(value);
-            option.textContent = factorLabel(Number(value));
-            factorInput.appendChild(option);
-        });
-        if (values.indexOf(flow.factor) !== -1) factorInput.value = String(flow.factor);
-        else if (values.length) factorInput.value = String(values[0]);
+        var optionsChanged = !renderedFactors || values.length !== renderedFactors.length ||
+            values.some(function (value, index) { return value !== renderedFactors[index]; });
+        if (optionsChanged) {
+            while (factorInput.firstChild) factorInput.removeChild(factorInput.firstChild);
+            values.forEach(function (value) {
+                var option = document.createElement('option');
+                option.value = String(value);
+                option.textContent = factorLabel(Number(value));
+                factorInput.appendChild(option);
+            });
+            renderedFactors = values.slice();
+        }
+        if (optionsChanged || flow.factor !== renderedFactor || flow.operation !== renderedFactorOperation) {
+            if (values.indexOf(flow.factor) !== -1) factorInput.value = String(flow.factor);
+            else if (values.length) factorInput.value = String(values[0]);
+            renderedFactor = flow.factor;
+            renderedFactorOperation = flow.operation;
+        }
         factorGroup.hidden = flow.stage !== 'challenge' || flow.mode !== 3 || values.length < 2 || flow.recovery;
     }
 
@@ -299,6 +311,13 @@
         if (error && (error.kind === 'timeout' || error.kind === 'transport' || error.code === 4 || error.code === 14))
             return t('auth.error.network');
         return BF.authUI.errorText(error);
+    }
+
+    function isRetryablePollError(error) {
+        return Boolean(error && (
+            error.retryable === true || error.kind === 'timeout' || error.kind === 'transport' ||
+            error.code === 4 || error.code === 14
+        ));
     }
 
     function showResolveError(error) {
@@ -544,8 +563,14 @@
                     handleChallengeResponse(state, generation, operation, origin, true);
                 },
                 function (error) {
-                    if (!currentOperation(generation, operation, origin) || error.name === 'AbortError') return;
+                    if (!currentOperation(generation, operation, origin) || error?.name === 'AbortError') return;
+                    if (isRetryablePollError(error)) {
+                        setChallengeMessage(networkMessage(error), true);
+                        syncUi();
+                        return;
+                    }
                     flow.attempt.cancel();
+                    clearResendTimer();
                     setChallengeRetry('begin');
                     setChallengeMessage(networkMessage(error), true);
                     syncUi();
