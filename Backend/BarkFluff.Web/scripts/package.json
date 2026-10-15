@@ -10,6 +10,8 @@
     "test:network": "node test-network.js",
     "test:auth-challenge": "node test-auth-challenge.js",
     "test:auth-confirmation": "node test-auth-confirmation.js",
+    "test:login-page": "node test-login-page.js",
+    "test:auth-settings": "node test-auth-settings.js",
     "test:refresh-session": "node test-refresh-session.js",
     "test:legal-network": "node test-legal-network.js",
     "test:drafts": "node test-drafts.js",

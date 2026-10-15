@@ -8,6 +8,7 @@ namespace BarkFluff.Identity.Host;
 public partial class IdentityApiService
 {
     public override Task<GetAuthCapabilitiesResponse> GetAuthCapabilities(GetAuthCapabilitiesRequest request, ServerCallContext context) => _authentication!.Capabilities(context.CancellationToken);
+    public override Task<ResolveSignInResponse> ResolveSignIn(ResolveSignInRequest request, ServerCallContext context) => _authentication!.ResolveSignIn(request, context.CancellationToken);
     public override Task<AuthChallengeResponse> BeginRegistration(BeginRegistrationRequest request, ServerCallContext context) => _authentication!.BeginRegistration(request, context.CancellationToken);
     public override Task<AuthChallengeResponse> BeginSignIn(BeginSignInRequest request, ServerCallContext context) => _authentication!.BeginSignIn(request, context.CancellationToken);
     public override Task<AuthChallengeResponse> GetAuthChallenge(AuthChallengeReference request, ServerCallContext context) => _authentication!.Status(request, context.CancellationToken);
