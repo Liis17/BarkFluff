@@ -34,6 +34,97 @@
     var nodeBarName = $('#nodeBarName');
     var nodeChangeBtn = $('#nodeChangeBtn');
 
+    var upgrade = $('#loginUpgrade');
+    var upgradeMessage = $('#loginUpgradeMessage');
+    var upgradeBtn = $('#loginUpgradeBtn');
+    var upgradeRequired = !hasLoginContract();
+    var runtimeReady = false;
+    var runtimeController = window.navigator && window.navigator.serviceWorker && window.navigator.serviceWorker.controller;
+    var cancelUpgrade = null;
+    var reloading = false;
+
+    // Old installed shells cache the proto and dictionaries independently of this page.
+    function hasLoginContract() {
+        var identity = window.proto && window.proto.barkfluff && window.proto.barkfluff.identity;
+        var client = window.barkfluff && window.barkfluff.IdentityApiClient;
+        return !!(client && typeof client.prototype.resolveSignIn === 'function' && identity &&
+            typeof identity.ResolveSignInRequest === 'function' && identity.BeginSignInRequest &&
+            typeof identity.BeginSignInRequest.prototype.setReportLoginModeMismatch === 'function');
+    }
+
+    function showUpgrade() {
+        upgradeRequired = true;
+        resetFlow(false);
+        upgradeMessage.textContent = t('pwa.updateAvailable');
+        upgradeBtn.textContent = t('common.apply');
+    }
+
+    function applyUpgrade() {
+        if (cancelUpgrade || reloading) return;
+        var sw = window.navigator && window.navigator.serviceWorker;
+        var generation = flow.generation;
+        var originalController = sw && sw.controller;
+        var cleanups = [];
+        var stopped = false;
+        var sent = null;
+        upgradeBtn.disabled = true;
+        upgradeMessage.textContent = t('common.loadingShort');
+        function listen(target, event, callback) {
+            target.addEventListener(event, callback);
+            cleanups.push(function () { target.removeEventListener(event, callback); });
+        }
+        function finish(failed) {
+            if (stopped) return;
+            stopped = true;
+            cleanups.forEach(function (cleanup) { cleanup(); });
+            cancelUpgrade = null;
+            upgradeBtn.disabled = false;
+            if (!failed && !reloading) upgradeMessage.textContent = t('pwa.updateAvailable');
+            if (failed) {
+                upgradeMessage.textContent = t('auth.error.network');
+                upgradeBtn.textContent = t('connection.retry');
+            }
+        }
+        cancelUpgrade = function () { finish(false); };
+        var timeout = setTimeout(function () { finish(true); }, 15000);
+        cleanups.push(function () { clearTimeout(timeout); });
+        if (!sw || !originalController) { finish(true); return; }
+        // Another tab or a timed-out update may already have activated the new shell.
+        if (runtimeController && originalController !== runtimeController) {
+            reloading = true;
+            finish(false);
+            window.location.reload();
+            return;
+        }
+        listen(sw, 'controllerchange', function () {
+            if (stopped || generation !== flow.generation || !sw.controller || sw.controller === originalController) return;
+            reloading = true;
+            finish(false);
+            window.location.reload();
+        });
+        Promise.resolve().then(function () { return sw.getRegistration(); }).then(function (registration) {
+            if (stopped) return;
+            if (!registration) { finish(true); return; }
+            function activateWaiting() {
+                if (stopped || !registration.waiting || sent === registration.waiting) return;
+                sent = registration.waiting;
+                try { sent.postMessage({ type: 'SKIP_WAITING' }); }
+                catch { finish(true); }
+            }
+            function watchInstalling() {
+                var worker = registration.installing;
+                if (worker) listen(worker, 'statechange', function () {
+                    if (worker.state === 'redundant') finish(true);
+                    else activateWaiting();
+                });
+                activateWaiting();
+            }
+            listen(registration, 'updatefound', watchInstalling);
+            watchInstalling();
+            if (!sent) return registration.update();
+        }).catch(function () { finish(true); });
+    }
+
     var flow = {
         generation: 0,
         operation: 0,
@@ -79,7 +170,7 @@
     }
 
     function startFastAuth() {
-        if (flow.stage === 'identifier' && !flow.busy && legalAccepted() && BF.node.origin() && BF.fastAuth)
+        if (runtimeReady && !upgradeRequired && flow.stage === 'identifier' && !flow.busy && legalAccepted() && BF.node.origin() && BF.fastAuth)
             BF.fastAuth.start();
     }
 
@@ -96,6 +187,7 @@
     }
 
     function resumeOrShowLogin() {
+        if (!runtimeReady || upgradeRequired) return;
         if (!BF.tokens.get()) { startFastAuth(); return; }
         document.body.style.visibility = 'hidden';
         BF.auth.getValidAccessToken().then(function (token) {
@@ -200,6 +292,10 @@
     }
 
     function syncUi() {
+        loginForm.hidden = upgradeRequired || !runtimeReady;
+        upgrade.hidden = !upgradeRequired;
+        if (fastAuthCard) fastAuthCard.hidden = upgradeRequired || !runtimeReady;
+        if (!runtimeReady || upgradeRequired) return;
         var legal = legalAccepted();
         var identifierStage = flow.stage === 'identifier';
         var passwordStage = flow.stage === 'password';
@@ -259,6 +355,7 @@
     }
 
     function resetFlow(restartQr) {
+        if (cancelUpgrade) cancelUpgrade();
         var login = loginInput.value.trim();
         flow.generation++;
         if (flow.resolveController) {
@@ -380,6 +477,7 @@
     }
 
     function resolveSignIn() {
+        if (!runtimeReady || upgradeRequired) return;
         if (flow.busy) return;
         if (!legalAccepted()) { legalRow.classList.add('nudge'); return; }
         var login = loginInput.value.trim();
@@ -817,6 +915,7 @@
 
     loginForm.addEventListener('submit', function (event) {
         event.preventDefault();
+        if (upgradeRequired) return;
         if (flow.stage === 'identifier') resolveSignIn();
         else if (flow.stage === 'password') submitPassword();
     });
@@ -870,11 +969,15 @@
 
     window.addEventListener('pagehide', function () { resetFlow(false); });
 
+    upgradeBtn.addEventListener('click', applyUpgrade);
+    if (upgradeRequired) showUpgrade();
     legalCheck.checked = BF.legal.isAccepted();
     syncUi();
     applyGate();
 
     BF.i18n.ready.then(function () {
+        runtimeReady = true;
+        if (upgradeRequired || t('loginFlow.continue') === 'loginFlow.continue') showUpgrade();
         return BF.legal.init();
     }).then(function () {
         legalCheck.checked = BF.legal.isAccepted();

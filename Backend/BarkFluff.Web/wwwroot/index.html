@@ -342,6 +342,7 @@
 
         /* Документы не приняты — QR-сессия не запрашивается, карточка приглушена. */
         .qr-card.gated { opacity: 0.45; }
+        .qr-card[hidden] { display: none !important; }
 
         .qr-title {
             font-size: 18px;
@@ -1494,6 +1495,10 @@
 
             <!-- LOGIN SECTION -->
             <div id="loginSection" class="section" role="region" data-i18n-aria-label="auth.section.login" aria-label="Вход">
+                <div id="loginUpgrade" hidden role="status" aria-live="polite">
+                    <p id="loginUpgradeMessage" class="card-subtitle"></p>
+                    <button type="button" id="loginUpgradeBtn" class="btn-primary"></button>
+                </div>
                 <form id="loginForm" novalidate>
                     <div class="form-group login-flow__identifier">
                         <div class="login-flow__identifier-heading">
