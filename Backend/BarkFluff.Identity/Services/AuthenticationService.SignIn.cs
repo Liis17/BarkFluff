@@ -17,9 +17,10 @@ public sealed partial class AuthenticationService
 {
     private async Task<User?> FindUser(string login, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(login) || login.Length > 254) throw Invalid("Login is required");
+        login = login?.Trim() ?? "";
+        if (string.IsNullOrEmpty(login) || login.Length > 254) throw Invalid("Login is required");
         var query = new FindByLoginRequest();
-        if (login.Contains('@')) query.Email = login.Trim(); else query.Username = login.Trim();
+        if (login.Contains('@')) query.Email = login; else query.Username = login;
         try
         {
             var response = await users.FindByLoginAsync(query, cancellationToken: ct);
@@ -83,6 +84,12 @@ public sealed partial class AuthenticationService
         return await store.ForUser(user?.Id ?? 0, async () =>
         {
             var settings = user == null ? null : await Settings(user.Id, ct);
+            if (input.ReportLoginModeMismatch)
+            {
+                if (user == null) return new AuthChallengeResponse { ErrorCode = "account_not_found" };
+                if (input.LoginMode != AuthenticationPolicy.Mode(settings))
+                    return new AuthChallengeResponse { ErrorCode = "login_mode_disabled" };
+            }
             if (input.LoginMode != AuthLoginMode.TelegramLogin)
                 await VerifyPassword(user?.Id ?? 0, input.Login, input.Password, ct,
                     notifyFailure: true, username: user?.Username ?? input.Login);
@@ -106,6 +113,19 @@ public sealed partial class AuthenticationService
             db.AuthenticationChallenges.Add(c);
             return await Describe(c, challengeReference, ct);
         }, ct);
+    }
+
+    public async Task<ResolveSignInResponse> ResolveSignIn(ResolveSignInRequest input, CancellationToken ct)
+    {
+        DeviceId();
+        var login = input.Login?.Trim() ?? "";
+        await GuardRequest(login, false, ct);
+        var user = await FindUser(login, ct);
+        if (user == null)
+            return new ResolveSignInResponse { LoginMode = AuthLoginMode.LoginModeUnspecified, ErrorCode = "account_not_found" };
+
+        var settings = await Settings(user.Id, ct);
+        return new ResolveSignInResponse { LoginMode = AuthenticationPolicy.Mode(settings) };
     }
 
     private async Task PrepareSignIn(AuthenticationChallenge c, AuthUserProperty? settings, OtpTypeId requestedFactor, bool recovery, CancellationToken ct)

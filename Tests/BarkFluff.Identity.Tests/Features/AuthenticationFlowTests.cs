@@ -171,6 +171,200 @@ public class AuthenticationFlowTests
     }
 
     [Fact]
+    public async Task ResolveSignIn_ReturnsEffectiveModesAndDoesNotCreateSideEffects()
+    {
+        using var h = new Harness(emailEnabled: true);
+        await h.Register(AuthLoginMode.Password);
+        var challengeCount = await h.Db.AuthenticationChallenges.CountAsync();
+        var telegramCount = h.Bot.Messages.Count;
+        var emailCount = h.Emails.Count;
+        var guardCalls = h.AbuseGuard.RequestAllowedCalls;
+
+        var password = await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "  newuser  " }, default);
+        Assert.Equal(AuthLoginMode.Password, password.LoginMode);
+        Assert.Equal("newuser", h.LastFindByLogin!.Username);
+        Assert.Equal(AuthLoginMode.Password,
+            (await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "  owner@example.com  " }, default)).LoginMode);
+        Assert.Equal("owner@example.com", h.LastFindByLogin!.Email);
+
+        var settings = await h.Db.AuthUserProperties.SingleAsync(x => x.UserId == 42);
+        settings.LoginMode = AuthLoginMode.TelegramLogin;
+        await h.Db.SaveChangesAsync();
+        Assert.Equal(AuthLoginMode.TelegramLogin,
+            (await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "newuser" }, default)).LoginMode);
+
+        settings.LoginMode = AuthLoginMode.PasswordSecondFactor;
+        settings.OtpEnabled = true;
+        await h.Db.SaveChangesAsync();
+        Assert.Equal(AuthLoginMode.PasswordSecondFactor,
+            (await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "newuser" }, default)).LoginMode);
+
+        settings.LoginMode = AuthLoginMode.LoginModeUnspecified;
+        settings.OtpEnabled = true;
+        settings.EmailOtpEnabled = false;
+        await h.Db.SaveChangesAsync();
+        Assert.Equal(AuthLoginMode.PasswordSecondFactor,
+            (await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "newuser" }, default)).LoginMode);
+
+        settings.OtpEnabled = false;
+        settings.EmailOtpEnabled = true;
+        await h.Db.SaveChangesAsync();
+        Assert.Equal(AuthLoginMode.PasswordSecondFactor,
+            (await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "newuser" }, default)).LoginMode);
+
+        Assert.Equal(challengeCount, await h.Db.AuthenticationChallenges.CountAsync());
+        Assert.Equal(telegramCount, h.Bot.Messages.Count);
+        Assert.Equal(emailCount, h.Emails.Count);
+        Assert.Equal(guardCalls + 6, h.AbuseGuard.RequestAllowedCalls);
+        Assert.Equal("newuser", h.AbuseGuard.LastSubject);
+        Assert.False(h.AbuseGuard.LastCountSubject);
+        Assert.Equal(0, h.AbuseGuard.LoginFailureCalls);
+        Assert.Equal(0, h.AbuseGuard.SubjectRequestCalls);
+    }
+
+    [Fact]
+    public async Task ResolveSignIn_UnknownDraftAndBotReturnUnspecifiedMode()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var challengeCount = await h.Db.AuthenticationChallenges.CountAsync();
+        var telegramCount = h.Bot.Messages.Count;
+        h.SetLoginNotFound(true); // Users returns UserNotFound for both absent and draft users.
+
+        var missing = await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "unknown" }, default);
+        Assert.Equal("account_not_found", missing.ErrorCode);
+        Assert.Equal(AuthLoginMode.LoginModeUnspecified, missing.LoginMode);
+
+        h.SetLoginNotFound(false);
+        h.SetLoginUser(new User { Id = 43, Username = "helper", IsBot = true });
+        var bot = await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "helper" }, default);
+        Assert.Equal("account_not_found", bot.ErrorCode);
+        Assert.Equal(AuthLoginMode.LoginModeUnspecified, bot.LoginMode);
+        Assert.Equal(challengeCount, await h.Db.AuthenticationChallenges.CountAsync());
+        Assert.Equal(telegramCount, h.Bot.Messages.Count);
+        Assert.Equal(0, h.AbuseGuard.LoginFailureCalls);
+        Assert.False(h.AbuseGuard.LastCountSubject);
+    }
+
+    [Fact]
+    public async Task ResolveSignIn_RateGuardDenialStopsAccountLookup()
+    {
+        using var h = new Harness();
+        var guard = new Mock<IIdentityAbuseGuard>();
+        guard.Setup(x => x.EnsureRequestAllowedAsync(IdentityAbuseOperation.Auth, "127.0.0.1", "newuser", false,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IdentityLockoutException());
+        var service = h.CreateServiceWithGuard(h.Db, guard.Object);
+
+        await Assert.ThrowsAsync<IdentityLockoutException>(() => service.ResolveSignIn(
+            new ResolveSignInRequest { Login = "  newuser  " }, default));
+
+        guard.Verify(x => x.EnsureRequestAllowedAsync(IdentityAbuseOperation.Auth, "127.0.0.1", "newuser", false,
+            It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Null(h.LastFindByLogin);
+        Assert.Empty(h.Bot.Messages);
+    }
+
+    [Fact]
+    public async Task ResolveSignIn_RejectsBlankAndOverlongLogin()
+    {
+        using var h = new Harness();
+
+        foreach (var login in new[] { "", "   ", new string('a', 255) })
+        {
+            var error = await Assert.ThrowsAsync<RpcException>(() => h.Service.ResolveSignIn(
+                new ResolveSignInRequest { Login = login }, default));
+            Assert.Equal(StatusCode.InvalidArgument, error.StatusCode);
+        }
+
+        Assert.Null(h.LastFindByLogin);
+        Assert.Equal(3, h.AbuseGuard.RequestAllowedCalls);
+        Assert.False(h.AbuseGuard.LastCountSubject);
+    }
+
+    [Fact]
+    public async Task BeginSignIn_OptInReportsModeChangesWithoutPasswordChecksOrChallenges()
+    {
+        using var h = new Harness();
+        await h.Register(AuthLoginMode.TelegramLogin);
+        var resolved = await h.Service.ResolveSignIn(new ResolveSignInRequest { Login = "newuser" }, default);
+        Assert.Equal(AuthLoginMode.TelegramLogin, resolved.LoginMode);
+
+        var challengeCount = await h.Db.AuthenticationChallenges.CountAsync();
+        var telegramCount = h.Bot.Messages.Count;
+        var settings = await h.Db.AuthUserProperties.SingleAsync(x => x.UserId == 42);
+        settings.LoginMode = AuthLoginMode.Password;
+        await h.Db.SaveChangesAsync();
+
+        var oldTelegramSelection = new BeginSignInRequest
+        {
+            Login = "newuser", LoginMode = AuthLoginMode.TelegramLogin, ReportLoginModeMismatch = true
+        };
+        Assert.Equal("login_mode_disabled", (await h.Service.BeginSignIn(oldTelegramSelection, default)).ErrorCode);
+
+        settings.LoginMode = AuthLoginMode.TelegramLogin;
+        await h.Db.SaveChangesAsync();
+        var oldPasswordSelection = new BeginSignInRequest
+        {
+            Login = "newuser", Password = "incorrect", LoginMode = AuthLoginMode.Password,
+            ReportLoginModeMismatch = true
+        };
+        Assert.Equal("login_mode_disabled", (await h.Service.BeginSignIn(oldPasswordSelection, default)).ErrorCode);
+
+        Assert.Equal(challengeCount, await h.Db.AuthenticationChallenges.CountAsync());
+        Assert.Equal(telegramCount, h.Bot.Messages.Count);
+        Assert.Equal(0, h.AbuseGuard.LoginFailureCalls);
+    }
+
+    [Fact]
+    public async Task BeginSignIn_OptInUnknownAccountDoesNotCreateTelegramDecoy()
+    {
+        using var h = new Harness();
+        h.SetLoginNotFound(true);
+        var response = await h.Service.BeginSignIn(new BeginSignInRequest
+        {
+            Login = "unknown", LoginMode = AuthLoginMode.TelegramLogin, ReportLoginModeMismatch = true
+        }, default);
+
+        Assert.Equal("account_not_found", response.ErrorCode);
+        Assert.Equal(0, await h.Db.AuthenticationChallenges.CountAsync());
+        Assert.Empty(h.Bot.Messages);
+        Assert.Equal(0, h.AbuseGuard.LoginFailureCalls);
+    }
+
+    [Fact]
+    public async Task BeginSignIn_OptInStillRequiresPasswordBeforeRecoveryCode()
+    {
+        using var h = new Harness();
+        var registration = await h.Register();
+        var input = h.SignIn();
+        input.UseRecoveryCode = true;
+        input.ReportLoginModeMismatch = true;
+
+        var pending = await h.Service.BeginSignIn(input, default);
+        Assert.NotNull((await h.Complete(pending, registration.RecoveryCodes[0], recovery: true)).Session);
+
+        input.Password = "";
+        await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => h.Service.BeginSignIn(input, default));
+    }
+
+    [Fact]
+    public async Task BeginSignIn_OptInWrongPasswordDoesNotSendSecondFactorCode()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var before = h.Bot.Messages.Count;
+        var request = h.SignIn(password: "incorrect");
+        request.ReportLoginModeMismatch = true;
+
+        await Assert.ThrowsAsync<InvalidLoginOrPasswordException>(() => h.Service.BeginSignIn(request, default));
+
+        var newMessages = h.Bot.Messages.Skip(before).ToArray();
+        Assert.Contains(newMessages, x => x.Text.Contains("Неудачная попытка входа"));
+        Assert.DoesNotContain(newMessages, x => x.Text.Contains("Действует 5 минут"));
+    }
+
+    [Fact]
     public async Task CorrectPasswordWithDisabledSignInMode_ReturnsTypedErrorWithoutCreatingChallenge()
     {
         using var h = new Harness();
@@ -609,14 +803,19 @@ public class AuthenticationFlowTests
         public DbContextOptions<IdentityContext> Options { get; }
         public IdentityContext Db { get; }
         public Func<IdentityContext, AuthenticationService> CreateService { get; private set; } = null!;
+        public Func<IdentityContext, IIdentityAbuseGuard, AuthenticationService> CreateServiceWithGuard { get; private set; } = null!;
         public FakeClock Clock { get; } = new();
         public FakeBot Bot { get; } = new();
         public List<EmailNotification> Emails { get; } = [];
         public AuthenticationService Service { get; }
         public AddDraftUserRequest? LastDraft { get; private set; }
         public int RegisteredDevices { get; private set; }
+        public TestHelper.TestIdentityAbuseGuard AbuseGuard { get; } = TestHelper.CreateAbuseGuard();
+        public FindByLoginRequest? LastFindByLogin { get; private set; }
         private readonly Mock<UsersServerApi.UsersServerApiClient> _users = new();
         private bool _registered;
+        private User? _loginUser;
+        private bool _loginUserNotFound;
 
         public Harness(bool emailEnabled = false)
         {
@@ -631,6 +830,7 @@ public class AuthenticationFlowTests
             Options = builder.Options; Db = new IdentityContext(Options);
             if (Db.Database.IsNpgsql()) Db.Database.Migrate();
             var user = new BarkFluff.Proto.Users.User { Id = 42, Username = "newuser" };
+            _loginUser = user;
             _users.Setup(x => x.CheckExistUsernameAsync(It.IsAny<CheckExistUsernameRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Returns(() => Unary(new CheckExistResponse { Exist = _registered }));
             _users.Setup(x => x.AddDraftUserAsync(It.IsAny<AddDraftUserRequest>(), null, null, It.IsAny<CancellationToken>()))
@@ -639,7 +839,10 @@ public class AuthenticationFlowTests
             _users.Setup(x => x.ConfirmUserAsync(It.IsAny<ConfirmUserRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Callback(() => _registered = true).Returns(() => Unary(new ConfirmUserResponse()));
             _users.Setup(x => x.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, It.IsAny<CancellationToken>()))
-                .Returns(() => Unary(new FindByLoginResponse { User = user }));
+                .Callback<FindByLoginRequest, Metadata, DateTime?, CancellationToken>((r, _, _, _) => LastFindByLogin = r.Clone())
+                .Returns(() => _loginUserNotFound
+                    ? throw new UserNotFoundException()
+                    : Unary(new FindByLoginResponse { User = _loginUser }));
             _users.Setup(x => x.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Returns(() => Unary(new GetByIdResponse { User = user }));
             _users.Setup(x => x.RegisterDeviceAsync(It.IsAny<RegisterDeviceRequest>(), null, null, It.IsAny<CancellationToken>()))
@@ -654,15 +857,16 @@ public class AuthenticationFlowTests
             var notificationQueue = new NotificationQueueSender(publish.Object);
             var telegramOptions = new TelegramAuthOptions { Enabled = true, BotToken = "test-only-token" };
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Email:Enabled"] = emailEnabled.ToString() }).Build();
-            CreateService = context =>
+            CreateServiceWithGuard = (context, abuseGuard) =>
             {
                 var loginNotifications = new LoginNotificationService(new AuthPropertiesStorage(context), _users.Object,
                     notificationQueue, Bot, telegramOptions, configuration, NullLogger<LoginNotificationService>.Instance);
                 return new AuthenticationService(context, new AuthenticationStore(context),
                     new AuthenticationSecrets(new JwtSettings { SecretKey = "test-auth-secret" }), _users.Object, TestHelper.CreateJwtService(),
                     new PasswordsStorage(context), notificationQueue, loginNotifications, Bot, telegramOptions, configuration,
-                    request, TestHelper.CreateUserContext(42, deviceId), TestHelper.CreateAbuseGuard(), Clock);
+                    request, TestHelper.CreateUserContext(42, deviceId), abuseGuard, Clock);
             };
+            CreateService = context => CreateServiceWithGuard(context, AbuseGuard);
             Service = CreateService(Db);
         }
 
@@ -670,6 +874,8 @@ public class AuthenticationFlowTests
         { Username = "newuser", Password = "password123", FirstName = "New", LastName = "User", ConfirmationMethod = OtpTypeId.Telegram, LoginMode = mode };
         public BeginSignInRequest SignIn(string password = "password123") => new()
         { Login = "newuser", Password = password, LoginMode = AuthLoginMode.PasswordSecondFactor, Factor = OtpTypeId.Telegram };
+        public void SetLoginUser(User? user) => _loginUser = user;
+        public void SetLoginNotFound(bool notFound) => _loginUserNotFound = notFound;
         public async Task<CompleteAuthChallengeResponse> Register(AuthLoginMode mode = AuthLoginMode.PasswordSecondFactor)
         {
             var pending = await Service.BeginRegistration(Registration(mode), default);
