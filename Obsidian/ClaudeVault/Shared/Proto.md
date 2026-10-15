@@ -8,6 +8,8 @@ Protobuf wire contracts лежат в `Shared/BarkFluff.Proto/`. .NET 10 stubs �
 
 `identity_api.proto` содержит legacy Auth/OTP/password/session RPC и challenge-based потоки одновременно. `OtpTypeId.Telegram=3` добавлен без перенумерации `Authenticator=1` и `Email=2`. `AuthRequest` и `FindByLoginRequest` задают username ИЛИ email через `oneof login`. `CreateTokenResponse.access_token` — field 2. `AuthChallengeReference` состоит из `id` и secret capability; не подменять её Telegram deep-link данными. `AuthChallengeResponse.error_code=8` может вернуть `login_mode_disabled`; для неизвестного/недоступного Telegram login возвращается одинаковый ожидающий challenge. `CompleteAuthChallengeResponse` выдаёт session для sign-in/registration и scoped `security_proof` для reauthentication/password recovery; коды восстановления появляются только в ответах, где они выпускаются/заменяются.
 
+`IdentityApi.ResolveSignIn` возвращает только `login_mode` и `error_code`; неизвестные, draft и bot аккаунты имеют `account_not_found` и `LOGIN_MODE_UNSPECIFIED`. `BeginSignInRequest.report_login_mode_mismatch=6` по умолчанию `false`; при `true` сервер сообщает об отсутствующем аккаунте или сменившемся режиме до проверки пароля, а дальнейшая аутентификация всё равно требует пароль и выбранный фактор. При rollout сначала обновить backend, затем Web-клиент.
+
 `configuration_api.proto` сохраняет API Settings, включая историю значений и rollback: rollback восстанавливает выбранный `previous_value` как новую запись истории. Setup идёт через `settings_setup_api.proto`: только в `SETTINGS_SETUP_MODE=true`, каждый вызов содержит `x-settings-setup-token`; secret field values в snapshot не возвращаются.
 
 ## Users, Messages и Files

@@ -6,6 +6,8 @@
 
 IdentityApi содержит как legacy RPC Auth/CreateToken/CreateAccount/ConfirmAccount, пароль/OTP/reset и сессии, так и challenge API: GetAuthCapabilities, BeginRegistration/BeginSignIn, GetAuthChallenge, Complete/Cancel/ResendAuthChallenge, reauthentication, password recovery, recovery codes, email/Telegram binding и настройки уведомлений. Это сосуществующие контрактные потоки; не считать challenge API простой заменой имён legacy RPC.
 
+`ResolveSignIn` возвращает только действующий `AuthenticationPolicy.Mode` для известного аккаунта; неизвестный, draft и bot дают `account_not_found` и `LOGIN_MODE_UNSPECIFIED`. Вызов требует metadata устройства и проходит abuse guard с `sending=false`; он читает пользователя и настройки, не создавая challenge и не отправляя код/уведомление. Результат служит подсказкой интерфейсу, а не доказательством входа. `BeginSignIn.report_login_mode_mismatch=true` позволяет вернуть `account_not_found` или `login_mode_disabled` до проверки пароля при неизвестном аккаунте или устаревшем выборе. При совпадении режима все обычные проверки пароля и второго фактора остаются обязательными; поле по умолчанию `false` сохраняет прежнее поведение. Развёртывать backend до обновления Web-клиента.
+
 IdentityServerApi — отдельный service-to-service API и class-level Service policy. Клиентские RPC требуют policy выборочно: наличие XAuth на host не означает, что каждый метод принимает только User или что все методы защищены одинаково. См. атрибуты Host/IdentityApiService*.cs.
 
 JWT и client metadata передаются по правилам [[Backend/GrpcServer]]. Redis используется для распределённого abuse guard и Telegram lease; PostgreSQL — для учётных данных, OTP, refresh tokens и challenges. Миграции запускаются при старте.
