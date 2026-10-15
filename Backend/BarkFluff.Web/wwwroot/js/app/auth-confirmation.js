@@ -6,8 +6,8 @@
     function ensureActive(signal) {
         if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
     }
-    var t = function (key) {
-        return BF.i18n.t(key);
+    var t = function (key, params) {
+        return BF.i18n.t(key, params);
     };
     function el(tag, text, parent) {
         var node = document.createElement(tag);
