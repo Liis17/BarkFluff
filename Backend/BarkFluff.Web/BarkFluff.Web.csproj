@@ -25,7 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
+    <PackageReference Include="AWSSDK.Core" Version="4.0.102.9" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 
@@ -45,10 +46,7 @@
 
   <!-- Общий пакет иконок платформы используется веб-клиентом напрямую из /icons. -->
   <ItemGroup>
-    <Content Include="..\..\Icons\**\*.svg"
-             Link="wwwroot\icons\%(RecursiveDir)%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Icons\**\*.svg" Link="wwwroot\icons\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- wwwroot\legal наполняется таргетом ниже, поэтому убираем каталог из дефолтных
@@ -66,9 +64,7 @@
       <LegalDoc Include="..\Barkfluff.WebServer\html\legal\TERMS_OF_SERVICE.*.md" />
       <LegalDoc Include="..\Barkfluff.WebServer\html\legal\PRIVACY_POLICY.*.md" />
     </ItemGroup>
-    <Copy SourceFiles="@(LegalDoc)"
-          DestinationFolder="$(MSBuildProjectDirectory)\wwwroot\legal"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(LegalDoc)" DestinationFolder="$(MSBuildProjectDirectory)\wwwroot\legal" SkipUnchangedFiles="true" />
     <ItemGroup>
       <Content Include="wwwroot\legal\*.md" CopyToOutputDirectory="Always" />
     </ItemGroup>
@@ -76,26 +72,18 @@
 
   <!-- App bundle is fingerprinted and ignored by Git. Keep ordinary dotnet run/publish
        usable from a clean checkout without requiring a separate manual npm command. -->
-  <Target Name="RestoreWebTooling"
-          BeforeTargets="Build;Publish"
-          Condition="'$(DesignTimeBuild)' != 'true' And !Exists('scripts/node_modules/esbuild/package.json')">
+  <Target Name="RestoreWebTooling" BeforeTargets="Build;Publish" Condition="'$(DesignTimeBuild)' != 'true' And !Exists('scripts/node_modules/esbuild/package.json')">
     <Exec Command="npm --prefix scripts install --no-package-lock --ignore-scripts" />
   </Target>
 
-  <Target Name="BuildMessengerApp"
-          BeforeTargets="Build;Publish"
-          DependsOnTargets="RestoreWebTooling"
-          Condition="'$(DesignTimeBuild)' != 'true'">
+  <Target Name="BuildMessengerApp" BeforeTargets="Build;Publish" DependsOnTargets="RestoreWebTooling" Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec Command="npm --prefix scripts run build:app" />
   </Target>
 
   <!-- Бампит CACHE_NAME в service-worker.js хешем от файлов APP_SHELL, чтобы
        любое изменение шелл-ассетов автоматически инвалидировало SW-кэш.
        Идемпотентен: при отсутствии изменений файл не переписывается. -->
-  <Target Name="BuildShellVersion"
-          BeforeTargets="Build;Publish"
-          DependsOnTargets="RestoreWebTooling"
-          Condition="'$(DesignTimeBuild)' != 'true'">
+  <Target Name="BuildShellVersion" BeforeTargets="Build;Publish" DependsOnTargets="RestoreWebTooling" Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec Command="npm --prefix scripts run build:shell-version" />
   </Target>
 

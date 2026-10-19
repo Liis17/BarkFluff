@@ -1,83 +1,21 @@
 # BarkFluff.Setup
 
-## Telegram и отключение SMTP
+Временная web-консоль первичной настройки [[Backend/Settings]]. Не имеет своей БД и хранит сессии только в памяти процесса. Использует HTTP/1, default port 7032, Settings gRPC по SETTINGS_URL (default http://settings:7003). Код: Backend/BarkFluff.Setup/.
 
-В группе почты доступен `Email:Enabled`, затем отдельная группа Telegram с включением, секретом бота и названием ноды. Форма обновляет видимость и обязательность зависимых полей при переключении. Требования `EmailEnabled`/`TelegramEnabled` приходят из [[Backend/Settings]]; сервер повторно проверяет их при сохранении, завершении настройки и readiness. Нода с Telegram может завершить setup без SMTP. Хотя бы один канал подтверждения регистрации обязателен.
+## Поток и защита
 
-Отдельная web-консоль для первичного заполнения `Settings` на новом сервере.
-Сервис не хранит собственную базу: он использует только in-memory сессии и gRPC
-`SettingsSetupApi` к [[Backend/Settings]].
+- Docker secret передаётся через SETUP_SECRET_FILE; при необходимости можно использовать SETUP_TOKEN. Сравнение setup token — constant-time.
+- Успешный вход создаёт HttpOnly, SameSite=Strict cookie barkfluff_setup_session и CSRF token; session lifetime по умолчанию 2 часа и продлевается при обращении.
+- Мутации требуют X-CSRF-Token. Если клиент прислал Origin, он должен совпадать с SETUP_PUBLIC_ORIGIN либо текущим origin.
+- Ограничение входа — максимум 5 попыток на IP за 5 минут, а не только неудачных попыток.
+- SetupEndpoints предоставляет /api/session, /api/setup/state, PUT /api/setup/groups/{groupId}, /api/setup/complete и DELETE /api/session. Completion проверяется Settings backend и после фиксации SetupState повторно не проходит.
 
-## Контракт и поток
+Группы и их обязательность динамически приходят из Settings; UI повторно проверяет зависимости на сервере. Email может быть отключён без SMTP, Telegram требует bot token и node name, и должен оставаться хотя бы один канал регистрации.
 
-- HTTP-порт по умолчанию: `7032`; в production публикуется только через внешний
-  Nginx, Compose привязывает его к `127.0.0.1:7032`.
-- Вход: setup-токен из Docker secret (`SETUP_SECRET_FILE`), cookie-сессия с
-  `HttpOnly`/`SameSite=Strict`, CSRF-токен в заголовке `X-CSRF-Token`.
-- Пять неудачных попыток входа с одного адреса за пять минут блокируют новые
-  попытки до окончания окна.
-- Внутренний gRPC вызов передаёт токен в `x-settings-setup-token`; режим принимает
-  вызовы только при `SETTINGS_SETUP_MODE=true`.
-- После `CompleteSetup` запись `SetupState` блокирует изменения через setup API.
-  Блокировка постоянная даже при изменении fingerprint каталога; исправления после
-  этого выполняются только через AdminPanel.
+## Deployment
 
-## Группы
+Docker/nightly/barkfluff/docker-compose.setup.yml публикует SETUP_PORT (default 7032) только на 127.0.0.1, включает Settings setup mode и передаёт общий Docker secret в Setup и Settings. После настройки обычный Docker/nightly/barkfluff/docker-compose.yml выключает SETTINGS_SETUP_MODE.
 
-UI последовательно показывает группы из каталога `SettingsSetupMetadata`:
+Docker/setup/settings-setup.nginx.conf — шаблон внешнего HTTPS reverse proxy; перед установкой нужно задать домен/сертификат и проксировать на localhost:7032. Setup имеет собственный GET /health/live; общий readiness из GrpcServer не используется.
 
-1. Сведения о сервере — имя, описание, публичное имя, расположение и цвета Beacon.
-2. Почтовая доставка — SMTP host/port, email и пароль отправителя.
-3. Публичный адрес медиа — HTTPS-origin Files.
-4. Объектное хранилище — access/secret ключи для восьми S3/MinIO-бакетов.
-5. Звонки — ключ и секрет LiveKit для токенов и webhook.
-6. Федерация — переключатель и параметры S2S. При выключенной федерации домен,
-   endpoint, SPKI и окна подписи не требуются.
-
-Каждая запись имеет тип ввода, объяснение, placeholder и серверный validator.
-Чувствительные значения не возвращаются клиенту; UI показывает только признак
-`configured`. Все изменения записываются в `SettingsHistory` с `ChangeKind=Setup`.
-
-## Bootstrap Compose
-
-Файлы:
-
-- `Docker/dev/barkfluff/docker-compose.setup.yml`
-- `Docker/nightly/barkfluff/docker-compose.setup.yml`
-- `Docker/master/barkfluff/docker-compose.setup.yml`
-
-Каждый файл поднимает ровно `setup`, `settings` и `postgres`. Сеть и имена
-`settings`/`postgres_barkfluff` совпадают с основным Compose, а bind-путь
-`./data/postgres` сохраняет БД для последующего запуска основного стека. На
-bootstrap initializer создаёт только БД `settings`; бизнес-сервисы создают свои
-БД при собственном запуске. Импорт данных от удалённого источника конфигурации не предусмотрен:
-поддерживается только новый чистый сервер.
-
-Перед запуском нужно создать общую сеть и secret-файл:
-
-```bash
-docker network create barkfluff-network 2>/dev/null || true
-mkdir -p secrets data/postgres
-openssl rand -base64 32 > secrets/setup_token
-docker compose -f docker-compose.setup.yml up -d
-```
-
-После заполнения и нажатия «Завершить настройку» сохранить каталог `data/postgres`,
-остановить setup Compose и запустить основной Compose. Secret setup больше не нужен
-основным сервисам и должен быть удалён/заменён по правилам эксплуатации.
-
-## Внешний Nginx
-
-Готовый отдельный шаблон для копирования на host-Nginx находится в
-`Docker/setup/settings-setup.nginx.conf`. В нём нужно заменить
-`setup.example.com` и пути сертификатов, затем выполнить `nginx -t` и reload.
-Шаблон проксирует на `127.0.0.1:7032` и передаёт `X-Forwarded-*`, поэтому в
-Compose рекомендуется задать `SETUP_PUBLIC_ORIGIN=https://<ваш-host>`.
-
-## Проверка
-
-```bash
-dotnet build Backend/BarkFluff.Setup/BarkFluff.Setup.csproj
-dotnet test Tests/BarkFluff.Setup.Tests/BarkFluff.Setup.Tests.csproj
-dotnet test Tests/BarkFluff.Settings.Tests/BarkFluff.Settings.Tests.csproj
-```
+Сборка: dotnet build Backend/BarkFluff.Setup/BarkFluff.Setup.csproj.

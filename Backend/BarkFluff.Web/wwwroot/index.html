@@ -9,6 +9,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/css/icons.css?v=shared-icons-1">
     <link rel="stylesheet" href="/css/auth-confirmation.css">
+    <link rel="stylesheet" href="/css/login-flow.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -341,6 +342,7 @@
 
         /* Документы не приняты — QR-сессия не запрашивается, карточка приглушена. */
         .qr-card.gated { opacity: 0.45; }
+        .qr-card[hidden] { display: none !important; }
 
         .qr-title {
             font-size: 18px;
@@ -1493,47 +1495,59 @@
 
             <!-- LOGIN SECTION -->
             <div id="loginSection" class="section" role="region" data-i18n-aria-label="auth.section.login" aria-label="Вход">
+                <div id="loginUpgrade" hidden role="status" aria-live="polite">
+                    <p id="loginUpgradeMessage" class="card-subtitle"></p>
+                    <button type="button" id="loginUpgradeBtn" class="btn-primary"></button>
+                </div>
                 <form id="loginForm" novalidate>
-                    <div class="form-group">
-                        <label class="form-label" for="loginMode" data-i18n="security.mode">Способ входа</label>
-                        <select class="form-input" id="loginMode">
-                            <option value="1" data-i18n="security.mode.password">Логин и пароль</option>
-                            <option value="2" data-i18n="security.mode.telegram">Логин и подтверждение Telegram</option>
-                            <option value="3" data-i18n="security.mode.factor">Пароль и второй фактор</option>
-                        </select>
-                    </div>
-                    <div class="form-group" hidden>
-                        <label class="form-label" for="loginFactor" data-i18n="security.factor">Второй фактор</label>
-                        <select class="form-input" id="loginFactor">
-                            <option value="0" data-i18n="security.preferred">Предпочтительный способ</option>
-                            <option value="3">Telegram</option>
-                            <option value="2">Email</option>
-                            <option value="1" data-i18n="security.factor.app">Приложение кодов</option>
-                        </select>
-                    </div>
-                    <div class="checkbox-group" hidden>
-                        <input type="checkbox" id="loginRecovery">
-                        <label for="loginRecovery" data-i18n="security.useRecoveryCode">Использовать резервный код</label>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="loginInput" data-i18n="auth.loginField">Почта или имя пользователя</label>
+                    <div class="form-group login-flow__identifier">
+                        <div class="login-flow__identifier-heading">
+                            <label class="form-label" for="loginInput" data-i18n="loginFlow.identifierLabel">Имя пользователя или email</label>
+                            <button type="button" class="login-flow__text-button" id="changeLoginBtn" data-i18n="loginFlow.changeIdentifier" hidden>Изменить</button>
+                        </div>
                         <div class="input-wrap">
                             <input type="text" class="form-input" id="loginInput"
-                                   placeholder="user@example.com"
-                                   maxlength="50" autocomplete="username">
+                                   placeholder="user@example.com" maxlength="254" autocomplete="username"
+                                   aria-describedby="loginError">
                         </div>
-                        <div class="form-error" id="loginError" role="alert"></div>
+                        <div class="form-error" id="loginError" role="alert" aria-live="polite"></div>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" id="passwordGroup" hidden>
                         <label class="form-label" for="passwordInput" data-i18n="common.password">Пароль</label>
                         <div class="input-wrap">
                             <input type="password" class="form-input" id="passwordInput"
                                    data-i18n-placeholder="auth.password.placeholder" placeholder="Введите пароль"
-                                   autocomplete="current-password">
+                                   autocomplete="current-password" aria-describedby="passwordError" disabled>
                             <button type="button" class="pw-toggle" id="pwToggle" data-i18n-aria-label="auth.showPassword" aria-label="Показать пароль" tabindex="-1">👁</button>
                         </div>
-                        <div class="form-error" id="passwordError" role="alert"></div>
+                        <div class="form-error" id="passwordError" role="alert" aria-live="polite"></div>
+                    </div>
+
+                    <div class="form-group" id="factorGroup" hidden>
+                        <label class="form-label" for="loginFactor" data-i18n="loginFlow.otherMethod">Другой способ входа</label>
+                        <select class="form-input" id="loginFactor" disabled></select>
+                    </div>
+
+                    <div class="checkbox-group" id="recoveryGroup" hidden>
+                        <input type="checkbox" id="loginRecovery" disabled>
+                        <label for="loginRecovery" data-i18n="security.useRecoveryCode">Использовать резервный код</label>
+                    </div>
+
+                    <div class="login-flow__challenge" id="challengeGroup" hidden aria-live="polite">
+                        <p class="login-flow__status" id="challengeStatus" role="status" aria-live="polite"></p>
+                        <div class="form-group" id="codeGroup" hidden>
+                            <label class="form-label" for="confirmationCode" id="confirmationCodeLabel" data-i18n="twofa.confirmationCode">Код подтверждения</label>
+                            <input type="text" class="form-input" id="confirmationCode" maxlength="64"
+                                   autocomplete="one-time-code" aria-describedby="confirmationError" disabled>
+                            <div class="form-error" id="confirmationError" role="alert" aria-live="polite"></div>
+                        </div>
+                        <button type="button" class="btn-primary" id="confirmCodeBtn" hidden disabled>
+                            <span class="btn-label" data-i18n="common.confirm">Подтвердить</span>
+                            <span class="btn-spinner"></span>
+                        </button>
+                        <button type="button" class="btn-secondary login-flow__action" id="challengeRetryBtn" data-i18n="loginFlow.retry" hidden disabled>Повторить</button>
+                        <button type="button" class="btn-secondary login-flow__action" id="challengeResendBtn" hidden disabled></button>
                     </div>
 
                     <div class="checkbox-group">
@@ -1552,7 +1566,7 @@
                     </div>
 
                     <button type="submit" class="btn-primary" id="signInBtn">
-                        <span class="btn-label" data-i18n="auth.signIn">Войти</span>
+                        <span class="btn-label" data-i18n="loginFlow.continue">Продолжить</span>
                         <span class="btn-arrow">→</span>
                         <div class="btn-spinner"></div>
                     </button>

@@ -55,7 +55,7 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 
 **Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WinUI, SwiftUI, Qt, and web technologies.
 
-Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) for ports, authentication, event delivery, and service conventions.
+Read the [architecture guide](Obsidian/ClaudeVault/Architecture.md) for ports, authentication, event delivery, and service conventions.
 
 ## Clients
 
@@ -97,7 +97,7 @@ Read the [architecture guide](Obsidian/ClaudeVault/Архитектура.md) fo
 > [Bot API guide](.readme/bots.md) — capabilities, authentication, and REST endpoints for external bots.
 
 > ### 📚 Learn the system
-> [Documentation hub](.readme/README.md) · [Architecture](Obsidian/ClaudeVault/Архитектура.md) · [Project knowledge base](Obsidian/ClaudeVault/Index.md)
+> [Documentation hub](.readme/README.md) · [Architecture](Obsidian/ClaudeVault/Architecture.md) · [Project knowledge base](Obsidian/ClaudeVault/Index.md)
 
 > ### ⚖️ License
 > [MIT License](LICENSE)
