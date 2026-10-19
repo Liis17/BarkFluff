@@ -1,12 +1,14 @@
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.GrpcServer.Tracing;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Serilog;
 using Serilog.Events;
-using Serilog.Sinks.Http;
 
 using Microsoft.Extensions.Configuration;
 
@@ -23,6 +25,7 @@ public static class SerilogExtensions
     public static WebApplicationBuilder AddBarkFluffSerilog(this WebApplicationBuilder builder, string serviceName)
     {
         ValidateLogBackend(builder.Configuration);
+        builder.Services.AddBarkFluffTracing();
         var isDevelopment = builder.Environment.IsDevelopment();
 
         const string consoleTemplate =
@@ -60,11 +63,17 @@ public static class SerilogExtensions
         return builder;
     }
 
+    public static IServiceCollection AddBarkFluffTracing(this IServiceCollection services)
+    {
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IStartupFilter, RequestTraceStartupFilter>());
+        services.AddHostedService<TraceDiagnostics>();
+        return services;
+    }
+
     public static LoggerConfiguration WriteToBarkFluffBackend(
         this LoggerConfiguration loggerConfig,
         IConfiguration configuration,
-        string bufferDirectory = "logs",
-        IHttpClient? lognaraHttpClient = null)
+        string bufferDirectory = "logs")
     {
         ValidateLogBackend(configuration);
         if (string.Equals(configuration["Logging:Backend"], "Lognara", StringComparison.OrdinalIgnoreCase))
@@ -78,8 +87,7 @@ public static class SerilogExtensions
                 logEventsInBatchLimit: 100,
                 batchSizeLimitBytes: 1536 * 1024,
                 period: TimeSpan.FromSeconds(2),
-                textFormatter: new LognaraJsonFormatter(),
-                httpClient: lognaraHttpClient);
+                textFormatter: new LognaraJsonFormatter());
         }
 
         return loggerConfig.WriteTo.Seq(configuration["Seq:ServerUrl"] ?? "http://seq:5341",

@@ -1,16 +1,17 @@
 using System.Diagnostics;
-using System.Net;
 using System.Text.Json;
 
 using BarkFluff.GrpcServer;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 
 using Serilog;
 using Serilog.Context;
 using Serilog.Core;
 using Serilog.Events;
-using Serilog.Sinks.Http;
 
 namespace BarkFluff.GrpcServer.Tests;
 
@@ -58,29 +59,88 @@ public class LognaraLoggingTests
     public async Task SelectedLognaraSink_SendsCanonicalJsonArrayAndNeverCreatesSeqBuffer()
     {
         var directory = Path.Combine(Path.GetTempPath(), "barkfluff-logging-tests", Guid.NewGuid().ToString("N"));
-        var client = new CaptureHttpClient();
+        var received = new TaskCompletionSource<(string Path, string? ContentType, string Body)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var agent = builder.Build();
+        agent.MapPost("/v1/logs", async context =>
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            var body = await reader.ReadToEndAsync();
+            received.TrySetResult((context.Request.Path, context.Request.ContentType, body));
+            context.Response.StatusCode = StatusCodes.Status202Accepted;
+        });
+        await agent.StartAsync();
         try
         {
             var config = Configuration(new Dictionary<string, string?>
             {
                 ["Logging:Backend"] = "Lognara",
-                ["Lognara:AgentUrl"] = "http://localhost:7400/v1/logs",
+                ["Lognara:AgentUrl"] = agent.Urls.Single() + "/v1/logs",
             });
-            using (var logger = new LoggerConfiguration().WriteToBarkFluffBackend(config, directory, client).CreateLogger())
+            using (var logger = new LoggerConfiguration().WriteToBarkFluffBackend(config, directory).CreateLogger())
             using (var activity = new Activity("send").SetIdFormat(ActivityIdFormat.W3C).Start())
             {
                 logger.Information("Delivery test");
-                var body = await client.Body.Task.WaitAsync(TimeSpan.FromSeconds(15));
-                using var json = JsonDocument.Parse(body);
+                var receivedEvent = await received.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                using var json = JsonDocument.Parse(receivedEvent.Body);
                 Assert.Equal(JsonValueKind.Array, json.RootElement.ValueKind);
                 Assert.Equal("Delivery test", json.RootElement[0].GetProperty("message").GetString());
                 Assert.Equal(activity.TraceId.ToHexString(), json.RootElement[0].GetProperty("trace_id").GetString());
-                Assert.Equal("http://localhost:7400/v1/logs", client.RequestUri);
+                Assert.Equal("/v1/logs", receivedEvent.Path);
+                Assert.StartsWith("application/json", receivedEvent.ContentType);
                 Assert.Empty(Directory.GetFiles(directory, "seq-buffer*"));
             }
         }
         finally
         {
+            await agent.StopAsync();
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Seq")]
+    public async Task DefaultAndExplicitSeq_SendQueryableTraceProperties(string? backend)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "barkfluff-logging-tests", Guid.NewGuid().ToString("N"));
+        var received = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var seq = builder.Build();
+        seq.MapPost("/api/events/raw", async context =>
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            received.TrySetResult(await reader.ReadToEndAsync());
+            context.Response.StatusCode = StatusCodes.Status200OK;
+        });
+        await seq.StartAsync();
+        try
+        {
+            var config = Configuration(new Dictionary<string, string?>
+            {
+                ["Logging:Backend"] = backend,
+                ["Seq:ServerUrl"] = seq.Urls.Single(),
+            });
+            using (var logger = new LoggerConfiguration().Enrich.With<ActivityLogEnricher>()
+                       .WriteToBarkFluffBackend(config, directory).CreateLogger())
+            using (var activity = new Activity("send").SetIdFormat(ActivityIdFormat.W3C).Start())
+            {
+                logger.ForContext("RequestId", "request").Information("Delivery test");
+                var body = await received.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                using var json = JsonDocument.Parse(body.Split('\n', StringSplitOptions.RemoveEmptyEntries)[0]);
+                Assert.Equal(activity.TraceId.ToHexString(), json.RootElement.GetProperty("@tr").GetString());
+                Assert.Equal(activity.TraceId.ToHexString(), json.RootElement.GetProperty("TraceId").GetString());
+                Assert.Equal(activity.SpanId.ToHexString(), json.RootElement.GetProperty("SpanId").GetString());
+                Assert.Equal("request", json.RootElement.GetProperty("RequestId").GetString());
+                Assert.Empty(Directory.GetFiles(directory, "lognara-buffer*"));
+            }
+        }
+        finally
+        {
+            await seq.StopAsync();
             if (Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
         }
@@ -108,18 +168,4 @@ public class LognaraLoggingTests
         public void Emit(LogEvent logEvent) => Event = logEvent;
     }
 
-    private sealed class CaptureHttpClient : IHttpClient
-    {
-        public TaskCompletionSource<string> Body { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public string? RequestUri { get; private set; }
-        public void Configure(IConfiguration configuration) { }
-        public async Task<HttpResponseMessage> PostAsync(string requestUri, Stream contentStream, CancellationToken cancellationToken)
-        {
-            RequestUri = requestUri;
-            using var reader = new StreamReader(contentStream);
-            Body.TrySetResult(await reader.ReadToEndAsync(cancellationToken));
-            return new HttpResponseMessage(HttpStatusCode.Accepted);
-        }
-        public void Dispose() { }
-    }
 }

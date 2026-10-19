@@ -366,6 +366,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CorrelationId")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -387,6 +390,12 @@ namespace BarkFluff.Messages.Persistence.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TraceParent")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TraceState")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

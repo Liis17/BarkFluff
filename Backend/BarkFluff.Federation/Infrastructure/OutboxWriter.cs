@@ -3,6 +3,8 @@ using BarkFluff.Federation.Domain.Enums;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.GrpcServer.Tracing;
+using System.Diagnostics;
 using BarkFluff.Proto.Federation;
 
 using Google.Protobuf;
@@ -66,6 +68,9 @@ public class OutboxWriter
                 EventId = Guid.Parse(evt.EventId),
                 EventType = eventType,
                 PayloadBytes = payloadBytes,
+                TraceParent = Activity.Current?.Id,
+                TraceState = Activity.Current?.TraceStateString,
+                CorrelationId = TraceContext.CorrelationId,
                 CreatedAt = now,
                 Attempts = 0,
                 NextAttemptAt = now,

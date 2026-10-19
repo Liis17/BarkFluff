@@ -5,6 +5,7 @@ using BarkFluff.Federation.Domain.Enums;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.GrpcServer.Tracing;
 using BarkFluff.Proto.Federation;
 using BarkFluff.Shared.Queue.Federation;
 
@@ -216,9 +217,31 @@ public class OutboxDispatcher : BackgroundService
         if (tx is not null)
             await tx.CommitAsync(ct);
 
+        // A transport call has one parent context. Keep unrelated events in separate calls.
+        Task<KnownServer?>? peerResolution = null;
+        foreach (var group in selected.GroupBy(row => new { row.TraceParent, row.TraceState, row.CorrelationId }))
+        {
+            using var trace = TraceContext.StartDispatch("Federation.Outbox.Dispatch",
+                group.Key.TraceParent, group.Key.TraceState, group.Key.CorrelationId);
+            peerResolution ??= resolver.ResolveAsync(destination, ct);
+            await DeliverBatchAsync(context, (await peerResolution) is not null, channelFactory, publishEndpoint,
+                destination, group.ToList(), now, maxAttempts, ct);
+        }
+    }
+
+    private async Task DeliverBatchAsync(
+        FederationContext context,
+        bool peerResolved,
+        S2SChannelFactory channelFactory,
+        IPublishEndpoint publishEndpoint,
+        string destination,
+        List<FederationOutbox> selected,
+        DateTime now,
+        int maxAttempts,
+        CancellationToken ct)
+    {
         // Проверим: пир доступен?
-        var server = await resolver.ResolveAsync(destination, ct);
-        if (server is null)
+        if (!peerResolved)
         {
             await ApplyTransportFailureAsync(context, selected, "peer_unresolved", now, maxAttempts, ct);
             return;

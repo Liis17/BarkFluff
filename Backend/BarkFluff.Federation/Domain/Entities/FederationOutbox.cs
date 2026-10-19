@@ -24,6 +24,12 @@ public class FederationOutbox
 
     public byte[] PayloadBytes { get; set; } = Array.Empty<byte>();
 
+    public string? TraceParent { get; set; }
+
+    public string? TraceState { get; set; }
+
+    public string? CorrelationId { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public int Attempts { get; set; }
