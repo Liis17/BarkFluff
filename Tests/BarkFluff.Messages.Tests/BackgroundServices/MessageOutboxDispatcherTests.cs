@@ -1,4 +1,7 @@
 using System.Text.Json;
+using System.Diagnostics;
+
+using BarkFluff.GrpcServer.Tracing;
 
 using BarkFluff.Messages.BackgroundServices;
 using BarkFluff.Messages.Domain;
@@ -15,6 +18,53 @@ namespace BarkFluff.Messages.Tests.BackgroundServices;
 
 public class MessageOutboxDispatcherTests
 {
+    [Fact]
+    public async Task DispatchOnceAsync_RetryRestoresPersistedTraceWithFreshSpan()
+    {
+        var observed = new List<(ActivityContext Context, string? Correlation)>();
+        var publisher = new Mock<IPublishEndpoint>();
+        publisher.Setup(endpoint => endpoint.Publish(It.IsAny<NewMessageEvent>(), It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                observed.Add((Activity.Current!.Context, TraceContext.CorrelationId));
+                return observed.Count == 1
+                    ? Task.FromException(new InvalidOperationException("transient failure"))
+                    : Task.CompletedTask;
+            });
+        await using var provider = CreateProvider(publisher.Object);
+        var rowId = await SeedOutboxAsync(provider, Guid.NewGuid(), MessageOutboxStatus.Pending, DateTime.UtcNow);
+        ActivityContext origin;
+        using (var activity = new Activity("request").SetIdFormat(ActivityIdFormat.W3C).Start())
+        {
+            origin = activity.Context;
+            await using var scope = provider.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<MessagesContext>();
+            var row = await context.MessageOutbox.SingleAsync(entry => entry.Id == rowId);
+            row.TraceParent = activity.Id;
+            row.TraceState = "vendor=value";
+            row.CorrelationId = "business";
+            await context.SaveChangesAsync();
+        }
+
+        await CreateDispatcher(provider).DispatchOnceAsync(CancellationToken.None);
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<MessagesContext>();
+            var row = await context.MessageOutbox.SingleAsync(entry => entry.Id == rowId);
+            row.NextAttemptAt = DateTime.UtcNow.AddSeconds(-1);
+            await context.SaveChangesAsync();
+        }
+        // A new dispatcher/scope must recover the persisted context after the request has ended.
+        await CreateDispatcher(provider).DispatchOnceAsync(CancellationToken.None);
+
+        observed.Should().HaveCount(2);
+        observed.Should().OnlyContain(value => value.Context.TraceId == origin.TraceId &&
+            value.Context.SpanId != origin.SpanId && value.Correlation == "business" &&
+            value.Context.TraceState == "vendor=value");
+        observed[0].Context.SpanId.Should().NotBe(observed[1].Context.SpanId);
+        TraceContext.CorrelationId.Should().BeNull();
+    }
+
     [Fact]
     public async Task DispatchOnceAsync_PublishesWithStableEventIdAndMarksDelivered()
     {

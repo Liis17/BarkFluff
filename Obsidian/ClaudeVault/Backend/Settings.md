@@ -31,3 +31,7 @@ SettingsSetupApi защищён x-settings-setup-token и доступен то�
 Отключение Email снимает обязательность SMTP-полей; включённый Telegram требует BotToken и NodeName. Хотя бы один канал должен быть доступен для регистрации. Эти правила используются snapshot, сохранением и completion. Setup UI: [[Backend/Setup]]; admin editor: [[Backend/AdminPanel]].
 
 Сборка: dotnet build Backend/BarkFluff.Settings/BarkFluff.Settings.csproj. Текущая таблица портов и deployment config: [[Backend/Nginx]].
+
+## Backend логирования
+
+Глобальные параметры `Logging:Backend` (`Seq` по умолчанию, либо `Lognara`) и `Lognara:AgentUrl` (по умолчанию `http://127.0.0.1:7400/v1/logs`) задают backend сервисного логирования из [[Backend/GrpcServer]]. Seeder добавляет новые ключи без перезаписи текущих значений. Настройка агента Lognara выполняется отдельно; Seq-поиск и кеш метрик AdminPanel остаются зависимыми от Seq.
