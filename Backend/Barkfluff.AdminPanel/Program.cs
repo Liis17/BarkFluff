@@ -35,7 +35,7 @@ public class Program
         builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 25 * 1024 * 1024);
 
         // Загружаем параметры из Settings service
-        builder.LoadConfiguration(ServiceId.Unknown);
+        builder.LoadConfiguration(ServiceId.Unknown, requireValidSettings: false);
 
         // Env-переменные контейнера должны иметь приоритет над Settings service
         builder.Configuration.AddEnvironmentVariables();
