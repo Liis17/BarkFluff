@@ -59,6 +59,10 @@ public static class WebApplicationBuilderExtensions
     }
 
     public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId)
+        => builder.LoadConfiguration(serviceId, requireValidSettings: true);
+
+    public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId,
+        bool requireValidSettings)
     {
         var configurationServiceAddress = Environment.GetEnvironmentVariable("SETTINGS_SERVICE_URL")
                                           ?? Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL")
@@ -71,7 +75,16 @@ public static class WebApplicationBuilderExtensions
         using var channel = GrpcChannel.ForAddress(configurationServiceAddress);
         var configurationApiClient = new ConfigurationApi.ConfigurationApiClient(channel);
 
-        var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest { ServiceId = (int)serviceId });
+        using var readinessClient = new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false })
+        {
+            BaseAddress = new Uri(configurationServiceAddress.TrimEnd('/') + "/"),
+            Timeout = TimeSpan.FromSeconds(5)
+        };
+        var config = ConfigurationStartupLoader.LoadAsync(readinessClient,
+            () => configurationApiClient.GetConfigurationAsync(
+                new GetConfigurationRequest { ServiceId = (int)serviceId },
+                deadline: DateTime.UtcNow.AddSeconds(5)).ResponseAsync,
+            requireValidSettings).GetAwaiter().GetResult();
 
         var configurationDictionary = new Dictionary<string, string>();
 
