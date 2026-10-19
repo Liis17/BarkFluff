@@ -44,4 +44,4 @@ If `iPhone 17` is not available locally, choose an installed simulator in Xcode 
 open iOS/Barkfluff/Barkfluff.xcodeproj
 ```
 
-See [iOS in the knowledge base](../../Obsidian/ClaudeVault/Клиенты/iOS.md) for features, architecture, and platform-specific behaviour.
+See [iOS in the knowledge base](../../Obsidian/ClaudeVault/Clients/iOS.md) for features, architecture, and platform-specific behaviour.

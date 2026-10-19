@@ -134,7 +134,7 @@ message CreateBotTokenServerResponse { string token = 1; string token_id = 2; }
 ### Фаза 4 — Документация + AdminPanel
 
 - **AdminPanel — без правок кода**: контракт `BotsServerApi` сохранён (`CreateSystemBot`/`RegenerateToken` возвращают `token`-строку), токен показывается один раз в модалке `Pages/v2/bots.html` — визуально проверить, что длинный JWT влезает в `.token-box`.
-- Obsidian: `Backend/Bots.md` (архитектура, формат токена, схема БД, авторизация внешнего API), `Backend/Identity.md` (новый server-RPC), `Shared/Identity.md` (TokenType.Bot, новый claim), `Shared/Proto.md` (identity_api), при необходимости `Архитектура.md` (политика Bot в XAuth).
+- Obsidian: `Backend/Bots.md` (архитектура, формат токена, схема БД, авторизация внешнего API), `Backend/Identity.md` (новый server-RPC), `Shared/Identity.md` (TokenType.Bot, новый claim), `Shared/Proto.md` (identity_api), при необходимости `Architecture.md` (политика Bot в XAuth).
 - Финальный grep `x-bot-token|TokenHash|BotTokenService` — должны остаться только исторические упоминания в `docs/plan/Bot-API.md`.
 
 ---

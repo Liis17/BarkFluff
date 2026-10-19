@@ -54,6 +54,7 @@ service IdentityApi {
   rpc Logout(LogoutRequest) returns(LogoutResponse);
 
   rpc GetAuthCapabilities(GetAuthCapabilitiesRequest) returns(GetAuthCapabilitiesResponse);
+  rpc ResolveSignIn(ResolveSignInRequest) returns(ResolveSignInResponse);
   rpc BeginRegistration(BeginRegistrationRequest) returns(AuthChallengeResponse);
   rpc BeginSignIn(BeginSignInRequest) returns(AuthChallengeResponse);
   rpc GetAuthChallenge(AuthChallengeReference) returns(AuthChallengeResponse);
@@ -362,6 +363,11 @@ message GetAuthCapabilitiesResponse {
   bool telegram_available = 2;
   string telegram_bot_username = 3;
 }
+message ResolveSignInRequest { string login = 1; }
+message ResolveSignInResponse {
+  AuthLoginMode login_mode = 1;
+  string error_code = 2;
+}
 message AuthChallengeReference {
   string id = 1;
   string secret = 2;
@@ -391,6 +397,7 @@ message BeginSignInRequest {
   AuthLoginMode login_mode = 3;
   OtpTypeId factor = 4;
   bool use_recovery_code = 5;
+  bool report_login_mode_mismatch = 6;
 }
 message CompleteAuthChallengeRequest {
   AuthChallengeReference challenge = 1;

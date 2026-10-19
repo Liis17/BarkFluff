@@ -1,74 +1,52 @@
 # BarkFluff.GrpcServer
 
-Shared-библиотека (.NET 10.0), подключаемая всеми backend-микросервисами. Предоставляет единую инфраструктуру: аутентификацию (XAuth/JWT), gRPC interceptors, Serilog-логирование, метрики и загрузку параметров из Settings.
+Общая ASP.NET/gRPC инфраструктура. Подключение компонентов задаётся каждым host Program.cs; наличие библиотеки само по себе не включает XAuth или health routes. Карта модулей: [[Backend/GrpcServer-ProjectMap]].
 
-Расположение: `Backend/BarkFluff.GrpcServer/`
+## XAuth и request context
 
-→ [[Backend/GrpcServer-ProjectMap|Карта проекта — все файлы и их назначение]]
+XAuth читает JWT из plaintext metadata x-auth-token, проверяет подпись, issuer, audience и lifetime без ClockSkew; User-токены также сверяются с кэшем отозванных device sessions. Политики: Service принимает только Service, User принимает User и Service, Bot принимает только Bot. Endpoints должны явно требовать нужную policy.
 
-## Liveness / Readiness endpoints
+Текущие host apps с UseXAuth: Bots, Calls, FastAuth, Federation, Files, Identity, Messages, Navigator, Onliner, Updates, Users и Developers. Это не означает, что каждый RPC защищён одинаково.
 
-`MapPingEndpoint()` регистрирует анонимный `GET /ping` на listener(ах) сервиса. При доступном процессе возвращает `200 text/plain` с телом `pong`. Endpoint проверяет только доступность listener и не является readiness-проверкой зависимостей.
+Client metadata: x-device-name, x-os-name, x-app-name, x-app-version, x-ip-address и x-device-id содержат Base64 от UTF-8. XAuth token не Base64. RequestContextInterceptor разбирает эти значения. IpAddress может включать присланный клиентом x-ip-address; TrustedIpAddress берёт proxy headers/socket peer, без клиентского metadata. Используйте trusted value для security decisions.
 
-`MapHealthEndpoints()` = `/ping` + `/health/live` + `/health/ready` (пара к `builder.Services.AddBarkFluffHealth()`). Live отвечает `{status:"alive", instanceId}`. Ready отдаёт кэш фонового `ReadinessMonitorService` (цикл 15 c, без сетевых вызовов на запрос): `{status: healthy|degraded|down|starting, checkedAtUtc, checks:[{name, status, latencyMs, error}], instanceId}`; HTTP 503 только при `down`. Зависимости обнаруживаются из DI автоматически: EF Core DbContext'и (по загруженным сборкам — `AddDbContext` регистрирует только конкретный тип), `IBusControl` (RabbitMQ), `IConnectionMultiplexer` (Redis), `IAmazonS3`, а сервисы могут добавить проверки через optional `IBarkFluffReadinessContributor`. `degraded` = есть деградировавшая/частично недоступная зависимость, `down` = все проверки вернули down. Подключён всем сервисам с HTTP listener ([[Backend/CloudMessaging]] — worker без listener, мониторится [[Backend/AdminPanel]] по docker-state и Seq). См. [[Backend/AdminPanel]] — health-обзор панели и [[Backend/Settings]] — проверка manual-полей.
+## Health
 
-## Startup-конвейер (порядок вызовов в Program.cs)
+AddBarkFluffHealth() и MapHealthEndpoints() — opt-in пара. Сейчас её используют Beacon, Bots, Calls, FastAuth, Federation, Files, Identity, Messages, Navigator, Notification, Onliner, Settings, Updates, Users, Web и Developers. Она отображает GET /ping, анонимные /health/live и /health/ready.
 
-```csharp
-builder.LoadConfiguration(ServiceId.Xxx);            // 1. Загрузка параметров из Settings service
-builder.SetRunningAddress(builder.Configuration);    // 2. Настройка Kestrel (порт, TLS, HTTP/2)
-builder.AddBarkFluffSerilog("ServiceName");          // 3. Serilog + Seq (ПОСЛЕ LoadConfiguration)
-builder.Services.AddBarkFluffMetrics("ServiceName"); // 4. Метрики
-builder.Services.AddBarkFluffGrpc();                 // 5. gRPC + interceptors
-builder.Services.AddXAuth(builder.Configuration);    // 6. JWT-аутентификация
-app.UseXAuth();                                       // 7. Middleware auth
-```
+ReadinessMonitorService обновляет кэш раз в 15 секунд, проверяет найденные в DI EF DbContext, RabbitMQ, Redis, S3 и IBarkFluffReadinessContributor. Запрос /health/ready не запускает сетевую пробу: healthy/degraded/starting/unknown возвращают 200, down — 503. Сборщик AdminPanel — отдельный механизм. Setup также имеет самостоятельный /health/live.
 
-### gRPC Reflection
+## Метрики, ошибки, конфигурация
 
-Во всех активных .NET gRPC-сервисах `AddGrpcReflection()` и `MapGrpcReflectionService()`
-вызываются только при `Environment.IsDevelopment()`. В Production, Nightly и Master
-endpoint reflection не публикуется.
+MetricsCollector публикует counters и gauges в структурированный лог ServiceMetrics со SchemaVersion=2. Профили сервисов задают немедленную отправку бизнес-событий либо буферизацию; buffered counters и изменённые gauges flush не чаще раза в 10 секунд. Idle snapshots не отправляются.
 
-## XAuth (`XAuth/`)
+AddBarkFluffGrpc() регистрирует ServerExceptionInterceptor и RequestContextInterceptor. LoadConfiguration(ServiceId) получает строки из Settings при запуске, SetRunningAddress() настраивает listener по RunSettings/TLS; не предполагайте live reload. gRPC Reflection по правилам хоста включается только в Development.
 
-JWT-аутентификация через заголовок `x-auth-token` (не стандартный Authorization). Две политики:
-- `TokenType.User` — принимает User и Service токены
-- `TokenType.Service` — только Service токены
+Источники: Backend/BarkFluff.GrpcServer/XAuth/, Tracker/, Metrics/, HealthEndpointExtensions.cs, HealthServiceCollectionExtensions.cs, WebApplicationBuilderExtensions.cs.
 
-`UserContext` — scoped-сервис, извлекает `UserId`, `TokenType` и `DeviceId` из ClaimsPrincipal. Свойство `IsAuthenticated` = true если `UserId != 0` и `TokenType != Unknown`.
+## Ожидание конфигурации при запуске
 
-### Отзыв сессий (TokenRevocationCache)
+`LoadConfiguration(ServiceId)` перед загрузкой конфигурации проверяет внутреннюю готовность [[Backend/Settings]].
+Адрес выбирается по `SETTINGS_SERVICE_URL`, `CONFIGURATION_SERVICE_URL`, `SettingsServiceAddr`,
+`ConfigurationServiceAddr`, затем `http://localhost:7003`. Результат добавляется в `IConfiguration`.
 
-`TokenRevocationCache` — singleton in-memory кэш отозванных сессий. При валидации токена (тип `User`) проверяет, не отозвана ли сессия по ключу `{userId}:{deviceId}`. `TokenRevocationCleanupService` — фоновый сервис, каждые 5 минут очищает истёкшие записи.
+`ConfigurationStartupLoader` выполняет до пяти HTTP/2-проверок: первая сразу, четыре паузы по 5 секунд,
+таймаут запроса 5 секунд. HTTP 200 разрешает загрузку; сетевые ошибки, таймауты и HTTP 5xx повторяются;
+прочие ответы и исчерпание попыток останавливают запуск. Ожидание занимает до примерно 45 секунд.
+Логи попыток не содержат конфигурации или текста исключений.
 
-## Interceptors (через `AddBarkFluffGrpc()`)
+`LoadConfiguration(ServiceId, requireValidSettings: false)` используется только [[Backend/AdminPanel]]
+для ожидания доступности данных без проверки ручных значений. Остальные 15 startup-потребителей требуют
+полной валидности. Navigator, ClientStorage, Setup и Web Shell/Proxy не используют этот загрузчик.
 
-- **ServerExceptionInterceptor** — ловит `BaseGrpcException` и необработанные исключения → `RpcException` с trailer `x-error-code`. Уже сформированные `RpcException` сохраняют исходный status/trailers: ожидаемые клиентские статусы (`FailedPrecondition`, `Cancelled`, `InvalidArgument`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Unauthenticated`, `OutOfRange`) логируются как Warning, инфраструктурные gRPC-статусы — как Error без маркировки «критическая ошибка». Бизнес-ошибки → их доменный `StatusCode`, неизвестные исключения → `StatusCode.Unknown` с фиксированным `BaseGrpcException.ErrorMessage` без передачи `ex.Message` клиенту. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`.
-- **RequestContextInterceptor** — извлекает клиентские metadata-заголовки (`x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`) в scoped `RequestContext`. Значения Base64-декодируются. `IpAddress` для legacy-логики резолвится с учётом `x-ip-address`, а `TrustedIpAddress` для security-ключей — только из `X-Real-IP`, `X-Forwarded-For` или `RemoteIpAddress` TCP-соединения; клиентский `x-ip-address` в trusted-адрес не попадает.
+После успешной проверки `GetConfiguration` имеет deadline 5 секунд; его ошибка завершает запуск без
+повторения readiness. Legacy Proto и общий `/health/ready` сохраняются. Settings с новым endpoint
+должен быть развёрнут до обновлённых потребителей.
 
-## Конфигурация (`WebApplicationBuilderExtensions`)
-
-- `LoadConfiguration(ServiceId)` — wire-compatible gRPC-вызов к Settings service (адрес из `SETTINGS_SERVICE_URL` env или `SettingsServiceAddr`). Результат в `IConfiguration` как in-memory collection.
-- `SetRunningAddress()` — настраивает Kestrel из `RunSettings` (порт, опциональный HTTP/1 порт, TLS).
-- `AddSettings<T>(configuration, sectionName)` — регистрирует `IOptions<T>` и `T` как singleton.
-
-## Метрики (`Metrics/`)
-
-- `MetricsCollector` — thread-safe counters/gauges (`ConcurrentDictionary`) с профилем экспорта. Низкочастотные бизнес-события уходят отдельной дельтой сразу; counters высоконагруженных сервисов и все байтовые показатели копятся атомарно. `SetMany()` обновляет связанную группу gauges под одной блокировкой, а exporter забирает её тем же критическим участком — снимок не смешивает стадии разных операций (используется [[Backend/Files|Files]] для длительностей upload).
-- `MetricsReporterService` — экспортирует `ServiceMetrics` **schema v2**: `Counters` — дельты, `Gauges` — состояние. Буфер flush-ится раз в 10 секунд только при ненулевых counters или изменившихся gauges; в простое событий Seq нет. Профили high-throughput заданы для сообщений, файлов, realtime/fan-out, трафика, HTTP/gRPC и S2S.
-
-## Логирование
+## Логирование и trace-контекст
 
 `AddBarkFluffSerilog(serviceName)` — Serilog → Console + выбранный backend: `Logging:Backend=Seq` (по умолчанию) либо `Lognara`. Enrichers: MachineName, EnvironmentName, ThreadId, Application и `ActivityLogEnricher`. При наличии текущего W3C `Activity` каждый event получает `TraceId`, `SpanId`, доступный `ParentSpanId` и fallback `CorrelationId`; явно заданный бизнес-correlation ID не затирается. Console показывает trace/span ID. Microsoft/EF Core/HttpClient логи подавлены до Warning.
 
 Seq сохраняет прежние структурированные свойства и дисковый буфер `logs/seq-buffer` (100 MiB, batch 100 событий, flush 2 секунды). Lognara получает JSON-массивы через HTTP в `Lognara:AgentUrl` (по умолчанию локальный агент `http://127.0.0.1:7400/v1/logs`), с буфером `logs/lognara-buffer` (10 файлов примерно по 10 MiB). `LognaraJsonFormatter` переносит захваченные ID события в канонические `trace_id`/`span_id`/`parent_span_id`/`request_id`; остальные свойства сохраняет в `attributes`, включая `Metrics` schema v2. Exception сохраняется как `exception.type`/`exception.stacktrace` в attributes. Lognara-agent настраивается отдельно; `LOGNARA_SERVICE`, `LOGNARA_SERVER`, `LOGNARA_BACKEND` задают источник. При выборе Lognara-only Seq-страницы логов и агрегация метрик в [[Backend/AdminPanel]] не получают новые сервисные события.
 
 `AddBarkFluffSerilog` также регистрирует `AddBarkFluffTracing`: `RequestTraceStartupFilter` охватывает весь HTTP-конвейер, в том числе все формы gRPC и логи exception interceptors, добавляя `RequestId` и входящий `X-Correlation-ID`. Существующий ASP.NET Activity сохраняется; fallback создаётся только при его отсутствии. `TraceDiagnostics` включает Activities ASP.NET Core, HttpClient, gRPC client и MassTransit с sampling `PropagationData`, без exporter и сбора span payload. Так штатные .NET и MassTransit механизмы переносят контекст исходящих вызовов и очередей. `Tracing/TraceContext` восстанавливает parent/tracestate и business correlation для outbox; каждая попытка получает новый SpanId при прежнем TraceId, старые строки без контекста получают отдельную корневую Activity. Стартап и периодические сводки метрик не получают выдуманный request trace. Инструкция включения и ограничения: `Docs/Logging.md`.
-
-## Зависимости
-
-- [[Shared/Exceptions]] — `BaseGrpcException`
-- [[Shared/Auth]] — `MetadataKeys`
-- [[Shared/Identity]] — `ServiceId`, `TokenType`, `IdentityClaims`
-- `configuration_api.proto` — wire-compatible gRPC-клиент для Settings service

@@ -807,7 +807,7 @@
     // --- Login mode, factors and verified contacts ---
     var securityCleanup = null;
     function renderTwoFA() {
-        titleEl.textContent = BF.i18n.t('settings.twofa');
+        titleEl.textContent = BF.i18n.t('security.settingsTitle');
         body.replaceChildren();
         securityCleanup = BF.authUI.renderSecurity(body);
     }

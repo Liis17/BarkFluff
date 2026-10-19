@@ -1,126 +1,68 @@
-# BarkFluff — База знаний
+# BarkFluff — память проекта
 
-Распределённая платформа обмена сообщениями в реальном времени.
-**Backend**: .NET 10, gRPC, RabbitMQ, PostgreSQL, Redis, Minio.
+Распределённый мессенджер: самостоятельные ноды, backend-сервисы и клиенты. Память описывает текущее устройство; предложения находятся отдельно. Пути исходников отсчитываются от корня репозитория.
 
----
+- [[Architecture|Архитектура]] — стек, порты, потоки, auth, deployment и CI.
+- [[Testing|Тестирование]] — test entry points, провайдеры БД и ограничения проверок.
 
-## Навигация
+## Backend
 
-### Архитектура и паттерны
-- [[Архитектура]] — tech stack, таблица сервисов с портами, XAuth, CQRS, gRPC-клиент, RabbitMQ, Proto
-- [[Тестирование]] — состояние unit-тестов бэкенда, паттерны (SQLite vs InMemory, размокивание Redis), известные ограничения
+| Компонент | Назначение | Дополнительные заметки |
+|-----------|------------|------------------------|
+| [[Backend/Settings]] | Централизованные настройки и setup API | — |
+| [[Backend/Setup]] | Первичная настройка Settings | — |
+| [[Backend/Beacon]] | Адреса сервисов и метаданные ноды | [[Backend/Beacon-Metrics|Метрики]], [[Backend/Beacon-ProjectMap|Карта]] |
+| [[Backend/Navigator]] | Каталог нод | — |
+| [[Backend/GrpcServer]] | Общая backend-инфраструктура, XAuth, health и метрики | [[Backend/GrpcServer-ProjectMap|Карта]] |
+| [[Backend/Identity]] | JWT, challenge auth, OTP и сессии | [[Backend/Identity-Metrics|Метрики]], [[Backend/Identity-ProjectMap|Карта]] |
+| [[Backend/Users]] | Профили, устройства, prekeys и папки чатов | [[Backend/Users-ChatFolders-ClientGuide|ChatFolders-ClientGuide]], [[Backend/Users-Metrics|Метрики]], [[Backend/Users-ProjectMap|Карта]] |
+| [[Backend/Messages]] | Чаты, сообщения, поиск и federation operations | [[Backend/Messages-Metrics|Метрики]], [[Backend/Messages-PinnedMessages-ClientGuide|PinnedMessages-ClientGuide]], [[Backend/Messages-ProjectMap|Карта]] |
+| [[Backend/Files]] | S3, upload/download, превью и стикеры | [[Backend/Files-ProjectMap|Карта]] |
+| [[Backend/Updates]] | Потоки событий и push-routing | [[Backend/Updates-Metrics|Метрики]], [[Backend/Updates-ProjectMap|Карта]] |
+| [[Backend/Onliner]] | Presence и typing/recording | [[Backend/Onliner-Metrics|Метрики]], [[Backend/Onliner-ProjectMap|Карта]] |
+| [[Backend/Notification]] | RabbitMQ → SMTP, HTTP health | [[Backend/Notification-ProjectMap|Карта]] |
+| [[Backend/FastAuth]] | QR-авторизация устройств | [[Backend/FastAuth-ProjectMap|Карта]] |
+| [[Backend/AdminPanel]] | Администрирование, health/Seq, Docker и SSH | [[Backend/AdminPanel-Files|Файлы]], [[Backend/AdminPanel-ProjectMap|Карта]] |
+| [[Backend/CloudMessaging]] | Firebase worker | [[Backend/CloudMessaging-ProjectMap|Карта]] |
+| [[Backend/Web]] | gRPC-Web gateway и статика | [[Backend/Web-ProjectMap|Карта]] |
+| [[Backend/WebServer]] | Публичный сайт/HTTP | [[Backend/WebServer-ProjectMap|Карта]] |
+| [[Backend/ClientStorage]] | Дистрибутивы клиентов | [[Backend/ClientStorage-ProjectMap|Карта]] |
+| [[Backend/Developers]] | Backend портала разработчиков | — |
+| [[Backend/Calls]] | Управление звонками и LiveKit | — |
+| [[Backend/Bots]] | Bot API, BotFather и встроенные боты | — |
+| [[Backend/Federation]] | Межсерверная доставка и XFed | — |
+| [[Backend/Nginx]] | TLS/subdomains и reverse proxy | — |
 
-### Backend — микросервисы
+## Shared
 
-| Файл | Сервис | Порт |
-|------|--------|------|
-| [[Backend/Settings]] | Хранилище настроек и setup gRPC API | 7003 |
-| [[Backend/Setup]] | Первичная настройка Settings через web-консоль | 7032 |
-| [[Backend/Beacon]] | Точка входа клиентов | 7002 |
-| [[Backend/Beacon-ProjectMap]] | Карта всех файлов и классов Beacon | — |
-| [[Backend/Beacon-Metrics]] | Реестр метрик Beacon (через ServiceMetrics-логи в Seq) | — |
-| [[Backend/Navigator]] | Реестр серверов BarkFluff | 7010 |
-| [[Backend/GrpcServer]] | Shared-библиотека инфраструктуры | — |
-| [[Backend/GrpcServer-ProjectMap]] | Карта всех файлов и классов GrpcServer | — |
-| [[Backend/Identity]] | Auth, JWT, 2FA, сессии | 7000 |
-| [[Backend/Identity-ProjectMap]] | Карта всех файлов и классов Identity | — |
-| [[Backend/Identity-Metrics]] | Реестр метрик Identity (auth/OTP/sessions/password/geolocation) | — |
-| [[Backend/Users]] | Профили, устройства, бейджи | 7001 |
-| [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
-| [[Backend/Users-Metrics]] | Реестр метрик Users (через ServiceMetrics-логи в Seq) | — |
-| [[Backend/Users-ChatFolders-ClientGuide]] | Клиентский гайд: папки чатов (UsersApi, XAuth) | — |
-| [[Backend/Messages]] | Чаты, сообщения, вложения | 7007 |
-| [[Backend/Messages-ProjectMap]] | Карта всех файлов и классов Messages | — |
-| [[Backend/Messages-Metrics]] | Реестр метрик Messages (auto MediatR + доменные + consumer-метрики) | — |
-| [[Backend/Messages-PinnedMessages-ClientGuide]] | Клиентский гайд: закреплённые сообщения (proto + события Updates) | — |
-| [[Backend/Files]] | Файлы, S3, стикеры | 7005 |
-| [[Backend/Files-ProjectMap]] | Карта всех файлов и классов BarkFluff.Files | — |
-| [[Backend/Updates]] | Real-time стриминг событий | 7015 |
-| [[Backend/Updates-ProjectMap]] | Карта всех файлов и классов Updates | — |
-| [[Backend/Updates-Metrics]] | Реестр метрик Updates (подписки, broadcast, push) | — |
-| [[Backend/Onliner]] | Онлайн-статусы | 7009 |
-| [[Backend/Onliner-ProjectMap]] | Карта всех файлов и классов Onliner | — |
-| [[Backend/Onliner-Metrics]] | Реестр метрик Onliner (gRPC, typing, подписки/storage gauges) | — |
-| [[Backend/Notification]] | Email-уведомления (RabbitMQ consumer) | 7004 |
-| [[Backend/Notification-ProjectMap]] | Карта всех файлов и классов Notification | — |
-| [[Backend/FastAuth]] | QR-авторизация устройств | 7008 |
-| [[Backend/FastAuth-ProjectMap]] | Карта всех файлов и классов FastAuth | — |
-| [[Backend/AdminPanel]] | Веб-дашборд администратора | 51888 |
-| [[Backend/AdminPanel-ProjectMap]] | Карта всех файлов и классов AdminPanel | — |
-| [[Backend/AdminPanel-Files]] | Краткое описание каждого файла AdminPanel | — |
-| [[Backend/CloudMessaging]] | Push-уведомления (Firebase) | — |
-| [[Backend/CloudMessaging-ProjectMap]] | Карта всех файлов и классов CloudMessaging | — |
-| [[Backend/Web]] | gRPC-Web прокси + статика | 7016 |
-| [[Backend/Web-ProjectMap]] | Карта всех файлов и классов BarkFluff.Web | — |
-| [[Backend/WebServer]] | Публичный HTTP-сервер | 64641 |
-| [[Backend/WebServer-ProjectMap]] | Карта всех файлов и классов WebServer | — |
-| [[Backend/ClientStorage]] | Хранилище клиентских приложений | — |
-| [[Backend/ClientStorage-ProjectMap]] | Карта всех файлов и классов ClientStorage | — |
-| [[Backend/Developers]] | Портал документации для разработчиков | 7020 |
-| [[Backend/Calls]] | Звонки (аудио/видео, 1-на-1 + группы) на LiveKit SFU | 7025 |
-| [[Backend/Bots]] | Bot API: боты, BotFather, login-notifier, HTTP REST | 7027 |
-| [[Backend/Federation]] | Межсерверная федерация (S2S): ключи, XFed, discovery | 7030 |
-| [[Backend/Nginx]] | Nginx reverse proxy — TLS, субдомены, gRPC/HTTP маршрутизация | — |
+| Компонент | Назначение | Дополнительные заметки |
+|-----------|------------|------------------------|
+| [[Shared/Proto]] | Wire schemas и RPC платформы | [[Shared/Proto-ProjectMap|Карта]] |
+| [[Shared/Auth]] | JWT/device client interceptors | [[Shared/Auth-ProjectMap|Карта]] |
+| [[Shared/Exceptions]] | ErrorCode, server exceptions и client mapping | [[Shared/Exceptions-ProjectMap|Карта]] |
+| [[Shared/Identity]] | ServiceId, TokenType и claims | [[Shared/Identity-ProjectMap|Карта]] |
+| [[Shared/Queue]] | MassTransit события | — |
+| [[Shared/SecurityUtilities]] | Password strength utility | [[Shared/SecurityUtilities-ProjectMap|Карта]] |
 
-### Shared-библиотеки
+## Clients
 
-| Файл | Описание |
-|------|----------|
-| [[Shared/Proto]] | Все .proto контракты платформы |
-| [[Shared/Proto-ProjectMap]] | Карта всех файлов и RPC Proto |
-| [[Shared/Auth]] | gRPC client interceptors (JWT, device metadata) |
-| [[Shared/Auth-ProjectMap]] | Карта всех файлов и классов Auth |
-| [[Shared/Exceptions]] | BaseGrpcException, ErrorCode, ExceptionClientInterceptor |
-| [[Shared/Exceptions-ProjectMap]] | Карта всех файлов и классов Exceptions |
-| [[Shared/Identity]] | ServiceId enum, TokenType enum, IdentityClaims |
-| [[Shared/Identity-ProjectMap]] | Карта всех файлов и классов Identity |
-| [[Shared/Queue]] | RabbitMQ события (MassTransit POCO) |
-| [[Shared/SecurityUtilities]] | Утилиты оценки силы пароля |
-| [[Shared/SecurityUtilities-ProjectMap]] | Карта всех файлов и классов SecurityUtilities |
+| Компонент | Назначение | Дополнительные заметки |
+|-----------|------------|------------------------|
+| [[Clients/DesignDocument]] | Продуктовый UI/UX ориентир из dd.md | — |
+| [[Clients/Android]] | V1 UI, gateways, SQLCipher drafts/outbox и TLS | [[Clients/Android-FileIndex|Исходники]], [[Clients/Android-ProjectMap|Карта]] |
+| [[Clients/Windows-WPF]] | Legacy WPF клиент | [[Clients/Windows-WPF-ProjectMap|Карта]] |
+| [[Clients/Windows-WPF-V2]] | WPF V2, MVVM/DI и SQLite | [[Clients/Windows-WPF-V2-ProjectMap|Карта]] |
+| [[Clients/Windows-WinUI]] | WinUI 3 клиент | — |
+| [[Clients/Windows-WebApiCore]] | Общий Windows транспорт/менеджеры | [[Clients/Windows-WebApiCore-ProjectMap|Карта]] |
+| [[Clients/Windows-UpdaterCLI]] | Отдельный legacy инсталлятор/апдейтер | — |
+| [[Clients/Linux-Qt]] | Qt 6/C++ клиент | — |
+| [[Clients/macOS]] | SwiftUI клиент и общие Swift-пакеты | [[Clients/macOS-ProjectMap|Карта]] |
+| [[Clients/iOS]] | SwiftUI мобильный клиент | [[Clients/iOS-ProjectMap|Карта]] |
+| [[Clients/Developers-Web]] | React/Vite портал разработчиков | — |
+| [[Clients/Web]] | Vanilla-JS браузерный мессенджер | [[Clients/Web-Network-Reliability|Сеть]] |
 
-### Клиенты
+## Предложения
 
-| Файл | Платформа |
-|------|-----------|
-| [[Клиенты/DesignDocument]] | **UI/UX дизайн-документ** — экраны, сценарии, вложения (источник: `dd.md`) |
-| [[Клиенты/Android]] | Kotlin + gRPC-OkHttp, Activity-based |
-| [[Клиенты/Android-ProjectMap]] | Карта всех файлов и классов Android-клиента |
-| [[Клиенты/Android-FileIndex]] | Индекс файлов Android-клиента с кратким описанием каждого |
-| [[Клиенты/Windows-WPF]] | WPF .NET 10, Code-behind + Reactive |
-| [[Клиенты/Windows-WPF-ProjectMap]] | Карта всех файлов и классов WPF-клиента |
-| [[Клиенты/Windows-WinUI]] | **Целевой Windows-клиент** — WinUI 3 / Windows App SDK, MSIX, порт V2 |
-| [[Клиенты/Windows-WPF-V2]] | Предшественник WinUI-клиента — WPF UI, MVVM + DI, SQLite, выбор ноды |
-| [[Клиенты/Windows-WPF-V2-ProjectMap]] | Карта классов и ресурсов WPF-клиента V2 |
-| [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
-| [[Клиенты/Windows-WebApiCore-ProjectMap]] | Карта всех файлов и менеджеров WebApi.Core |
-| [[Клиенты/Windows-UpdaterCLI]] | Консольный инсталлятор/апдейтер WPF-клиента (.NET 8, отдельный от основного приложения) |
-| [[Клиенты/Linux-Qt]] | Qt 6 / C++20 — авторизация, мессенджер, настройки, PIN-защита и восстановление сессии |
-| [[Клиенты/macOS]] | SwiftUI + gRPC-Swift (macOS 26) |
-| [[Клиенты/macOS-ProjectMap]] | Карта всех файлов и классов macOS-клиента |
-| [[Клиенты/iOS]] | SwiftUI + gRPC-Swift (iOS 26, на базе macOS-клиента) |
-| [[Клиенты/iOS-ProjectMap]] | Карта всех файлов iOS-клиента с описанием |
-| [[Клиенты/Developers-Web]] | React + Vite + TS, портал документации |
-| [[Клиенты/Web]] | **Веб-мессенджер** — vanilla-JS SPA (без фреймворка и бандлера). Статика с глобального `web.barkfluff.com`, подключение к выбранной ноде напрямую. React-переписывание было откачено, актуальность не путать с [[Клиенты/Developers-Web]] |
+- [[Ideas/Index|Идеи]] — отдельные продуктовые предложения с границами уже реализованного.
 
-### Идеи и бэклог
-
-- [[Идеи/Index]] — предложения фич и черновики (звонки, эфемерные сообщения, боты, E2E, реакции, каналы, истории, опросы и др.)
-
----
-
-## Правила обновления базы знаний
-
-При работе с проектом **всегда обновляй** соответствующий файл в этом хранилище, если:
-- Изменилась архитектура сервиса или его API
-- Добавлены новые эндпоинты, команды, или RabbitMQ-события
-- Изменились ключи конфигурации или зависимости
-- Добавлен новый сервис или библиотека
-
-**Структура новых файлов:**
-- Новый Backend-сервис → `Backend/{Название}.md`
-- Новая Shared-библиотека → `Shared/{Название}.md`
-- Новый клиент → `Клиенты/{Платформа}.md`
-- Добавь ссылку в этот Index.md
-
-**Wikilinks:** используй `[[Файл]]` или `[[Папка/Файл]]` для связей между заметками.
+Правила чтения и обновления памяти закреплены в корневом `AGENTS.md`.
