@@ -72,7 +72,7 @@
     <string name="server_status_checking">Проверка…</string>
     <string name="server_status_online">Онлайн</string>
     <string name="server_status_unavailable">Недоступна</string>
-    <string name="server_response_ms">Отклик %1$d мс</string>
+    <string name="server_response_ms">%1$d мс</string>
     <string name="server_custom_row_title">Своя нода</string>
     <string name="server_custom_row_subtitle">Ввести адрес вручную</string>
     <string name="server_custom_address_helper">Можно с https:// или без него. Порт обязателен, например :443.</string>

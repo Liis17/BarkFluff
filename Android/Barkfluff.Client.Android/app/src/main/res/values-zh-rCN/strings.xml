@@ -76,7 +76,7 @@
     <string name="server_status_checking">正在检查…</string>
     <string name="server_status_online">在线</string>
     <string name="server_status_unavailable">不可用</string>
-    <string name="server_response_ms">响应 %1$d 毫秒</string>
+    <string name="server_response_ms">%1$d 毫秒</string>
     <string name="self_hosted_title">你自己的服务器</string>
     <string name="self_hosted_description">部署你自己的 BarkFluff 服务器</string>
     <string name="btn_learn_more_server">了解更多</string>
