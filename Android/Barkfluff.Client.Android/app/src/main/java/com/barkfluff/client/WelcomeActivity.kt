@@ -1,16 +1,22 @@
 package com.barkfluff.client
 
 import android.Manifest
+import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.RotateDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,14 +25,21 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.dynamicanimation.animation.FloatValueHolder
+import androidx.dynamicanimation.animation.SpringAnimation
+import androidx.dynamicanimation.animation.SpringForce
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityWelcomeBinding
 import com.barkfluff.client.utils.LegalDocsRepository
 import com.google.android.material.color.DynamicColors
+import kotlin.math.abs
 
 class WelcomeActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityWelcomeBinding
+    private var legalExpanded = false
+    private var legalAnimation: SpringAnimation? = null
+    private var legalVelocityTracker: VelocityTracker? = null
 
     // Permission launcher for normal permissions
     private val permissionLauncher = registerForActivityResult(
@@ -77,6 +90,123 @@ class WelcomeActivity : AppCompatActivity() {
         }
 
         setupClickListeners()
+        setupLegalDisclosure(savedInstanceState?.getBoolean("legalExpanded") == true)
+    }
+
+    @SuppressLint("ClickableViewAccessibility") // Taps still call performClick; keyboard/TalkBack use the same listener.
+    private fun setupLegalDisclosure(initiallyExpanded: Boolean) {
+        legalExpanded = initiallyExpanded
+        var progress = if (initiallyExpanded) 1f else 0f
+        val travel = 48.dpToPx().toFloat()
+        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
+        var downY = 0f
+        var downX = 0f
+        var downProgress = progress
+        var dragging = false
+        val chevron = RotateDrawable().apply {
+            drawable = binding.legalToggle.drawable
+            fromDegrees = 0f
+            toDegrees = 180f
+        }
+        binding.legalToggle.setImageDrawable(chevron)
+
+        fun render(value: Float) {
+            progress = value.coerceIn(0f, 1f)
+            chevron.level = (10_000 * progress).toInt()
+            binding.legalLinks.apply {
+                visibility = if (progress > 0f) View.VISIBLE else View.INVISIBLE
+                alpha = progress
+                translationY = travel * (1f - progress)
+                importantForAccessibility = if (progress == 1f) {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+                } else {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                }
+            }
+            binding.termsLink.isEnabled = progress == 1f
+            binding.privacyLink.isEnabled = progress == 1f
+        }
+
+        val spring = SpringAnimation(FloatValueHolder(progress)).apply {
+            setMinValue(0f)
+            setMaxValue(1f)
+            setMinimumVisibleChange(0.001f)
+            spring = SpringForce(progress).apply {
+                stiffness = 1400f
+                dampingRatio = 1f
+            }
+            addUpdateListener { _, value, _ -> render(value) }
+        }
+        legalAnimation = spring
+
+        fun settle(expanded: Boolean, velocity: Float = 0f) {
+            legalExpanded = expanded
+            binding.legalToggle.contentDescription = getString(
+                if (expanded) R.string.welcome_hide_legal else R.string.welcome_show_legal
+            )
+            spring.cancel()
+            val target = if (expanded) 1f else 0f
+            if (ValueAnimator.areAnimatorsEnabled()) {
+                spring.setStartValue(progress).setStartVelocity(velocity)
+                spring.animateToFinalPosition(target)
+            } else {
+                render(target)
+            }
+        }
+
+        render(progress)
+        binding.legalToggle.contentDescription = getString(
+            if (initiallyExpanded) R.string.welcome_hide_legal else R.string.welcome_show_legal
+        )
+        binding.legalToggle.setOnClickListener { settle(!legalExpanded) }
+        binding.legalToggle.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    spring.cancel()
+                    downY = event.rawY
+                    downX = event.rawX
+                    downProgress = progress
+                    dragging = false
+                    legalVelocityTracker?.recycle()
+                    legalVelocityTracker = VelocityTracker.obtain()
+                    legalVelocityTracker?.addMovement(event)
+                    view.parent.requestDisallowInterceptTouchEvent(true)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    legalVelocityTracker?.addMovement(event)
+                    val dy = event.rawY - downY
+                    if (abs(dy) > touchSlop && abs(dy) > abs(event.rawX - downX)) dragging = true
+                    if (dragging) render(downProgress - dy / travel)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    legalVelocityTracker?.addMovement(event)
+                    legalVelocityTracker?.computeCurrentVelocity(1000)
+                    val velocity = -(legalVelocityTracker?.yVelocity ?: 0f) / travel
+                    if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                        settle(legalExpanded)
+                    } else if (dragging) {
+                        settle(progress + velocity * 0.12f > 0.5f, velocity)
+                    } else {
+                        view.performClick()
+                    }
+                    legalVelocityTracker?.recycle()
+                    legalVelocityTracker = null
+                    view.parent.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+            true
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("legalExpanded", legalExpanded)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onDestroy() {
+        legalAnimation?.cancel()
+        legalVelocityTracker?.recycle()
+        super.onDestroy()
     }
 
     /**
