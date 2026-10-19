@@ -35,3 +35,7 @@ PostgreSQL-модель находится в `Persistence/MessagesContext.cs` �
 Основной код: `Host/MessagesApiService.cs`, `Host/MessagesServerApiService.cs`, `Features/SendMessage/SendMessageCommandHandler.cs`, `Persistence/Services/MessagesStorage.cs`, `BackgroundServices/MessageOutboxDispatcher.cs`, `Persistence/Services/ChatsStorage.cs`.
 
 Связанные заметки: [[Backend/Updates]], [[Backend/Users]], [[Backend/Files]], [[Backend/Federation]], [[Backend/Calls]]. Тесты: `Tests/BarkFluff.Messages.Tests`.
+
+## Trace-контекст outbox
+
+Внутренние nullable-поля `TraceParent`, `TraceState`, `CorrelationId` в `MessageOutboxEntry` сохраняют контекст операции отдельно от event payload. Dispatcher восстанавливает его через `BarkFluff.GrpcServer.Tracing.TraceContext`: повторные попытки сохраняют TraceId, получая новый SpanId. Строки без контекста по-прежнему доставляются. Миграция `20261019211114_AddOutboxTraceContext` добавляет только nullable text-колонки.

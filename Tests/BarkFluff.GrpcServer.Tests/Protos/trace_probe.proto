@@ -1,0 +1,13 @@
+syntax = "proto3";
+option csharp_namespace = "BarkFluff.GrpcServer.Tests.Proto";
+package barkfluff.tests;
+
+service TraceProbeApi {
+  rpc Unary(ProbeRequest) returns (ProbeReply);
+  rpc ServerStream(ProbeRequest) returns (stream ProbeReply);
+  rpc ClientStream(stream ProbeRequest) returns (ProbeReply);
+  rpc Duplex(stream ProbeRequest) returns (stream ProbeReply);
+}
+
+message ProbeRequest { bool fail = 1; bool wait_for_cancellation = 2; }
+message ProbeReply { string trace_id = 1; }

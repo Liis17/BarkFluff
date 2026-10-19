@@ -41,3 +41,7 @@ Users разрешает и хранит ссылки на удалённых п
 Основные файлы: `Host/FederationS2SApiService.cs`, `Host/FederationInternalApiService.cs`, `Infrastructure/OutboxWriter.cs`, `BackgroundServices/OutboxDispatcher.cs`, `Services/EventSigner.cs`, `Host/XFedServerInterceptor.cs`, `Services/ServerResolver.cs`.
 
 Тесты: `Tests/BarkFluff.Federation.Tests`; двухузловой стенд: `Backend/dev-federation-testbed/`. Связанные заметки: [[Backend/Messages]], [[Backend/Users]], [[Backend/Onliner]], [[Backend/Files]].
+
+## Trace-контекст outbox
+
+`OutboxWriter` сохраняет nullable `TraceParent`/`TraceState`/`CorrelationId` в `FederationOutbox`, отдельно от подписанного `PayloadBytes`. Миграция `20261019211114_AddOutboxTraceContext` добавляет эти text-колонки; signed payload и публичный S2S-контракт не меняются. Dispatcher группирует выбранные строки по полному контексту перед отправкой: один RPC имеет одного родителя, поэтому смешанные trace дают несколько RPC в пределах прежнего лимита выбранных строк/байтов. `Tracing.TraceContext` восстанавливает исходный TraceId с новым SpanId на каждую попытку; legacy-строки без контекста остаются доставляемыми. Claim, lease, per-chat порядок и retry-классификация сохраняются.

@@ -87,7 +87,7 @@ SendMessage в Messages сохраняет сообщение и `NewMessageEven
 
 В Node gateway `/ping/{service}` направляется на внутренний `/ping`. Navigator health использует `NavigatorService:HealthHost`, поскольку публичный host может быть gRPC-only; значение задаёт конфигурация окружения.
 
-Serilog/Seq принимает межсервисные TraceId/SpanId/CorrelationId и RequestId; stdout уровень зависит от окружения. `MetricsCollector` накапливает counters/gauges; `MetricsReporterService` сбрасывает буферизованные изменения в ServiceMetrics не чаще раза в 10 секунд, без пустых idle snapshots. Это не Prometheus endpoint. Auto-MediatR метрики подключаются по сервису, а не подразумеваются для всех handlers; реестры — компонентные `*-Metrics` заметки.
+`AddBarkFluffSerilog` отправляет события в Console и один backend по `Logging:Backend`: Seq (по умолчанию) либо Lognara через HTTP-агент. Middleware охватывает HTTP и все формы gRPC; listener включает штатную передачу W3C-контекста .NET/MassTransit без exporter. Outbox Messages/Federation сохраняет parent context отдельно от payload и восстанавливает его на каждой попытке. Форматы и конфигурация — [[Backend/GrpcServer]], включение — `Docs/Logging.md`. Собственные логи [[Backend/AdminPanel]] используют общий logger, но поиск/сжатие логов и кеш метрик панели остаются Seq-интеграцией; для Lognara-only используется Dock. `MetricsCollector` накапливает counters/gauges; `MetricsReporterService` сбрасывает буферизованные изменения в ServiceMetrics не чаще раза в 10 секунд, без пустых idle snapshots. Это не Prometheus endpoint. Auto-MediatR метрики подключаются по сервису, а не подразумеваются для всех handlers; реестры — компонентные `*-Metrics` заметки.
 
 ## Клиентские границы
 

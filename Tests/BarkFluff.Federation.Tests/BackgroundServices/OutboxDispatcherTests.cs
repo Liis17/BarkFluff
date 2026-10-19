@@ -6,6 +6,9 @@ using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.Proto.Federation;
 using BarkFluff.Shared.Queue.Federation;
+using BarkFluff.GrpcServer.Tracing;
+using System.Diagnostics;
+using System.Collections.Concurrent;
 
 using Google.Protobuf;
 
@@ -21,6 +24,63 @@ namespace BarkFluff.Federation.Tests.BackgroundServices;
 
 public class OutboxDispatcherTests
 {
+    [Fact]
+    public async Task Dispatch_MixedTraces_UsesSeparateCallsWithOriginalParents()
+    {
+        using var diagnostics = new TraceDiagnostics();
+        await diagnostics.StartAsync(CancellationToken.None);
+        var observed = new ConcurrentDictionary<Guid, ActivityContext>();
+        var calls = 0;
+        var stub = new StubS2SApi
+        {
+            ObserveDelivery = (request, context) =>
+            {
+                Interlocked.Increment(ref calls);
+                var header = context.RequestHeaders.FirstOrDefault(value => value.Key == "traceparent")?.Value;
+                ActivityContext.TryParse(header, null, out var parent);
+                foreach (var evt in request.Events)
+                    observed[Guid.Parse(evt.EventId)] = parent;
+            },
+            OnDeliverEvents = request =>
+            {
+                var response = new DeliverEventsResponse();
+                response.Results.AddRange(request.Events.Select(evt => new EventResult { EventId = evt.EventId, Status = EventStatus.Ok }));
+                return response;
+            },
+        };
+        await using var server = await LoopbackS2SServer.StartAsync(stub);
+        var (db, provider, dispatcher) = await CreateDispatcherAsync();
+        using (provider)
+        {
+            await SeedManualPeerAsync(db, server.HostName, server.Endpoint);
+            var first = await SeedRowAsync(db, server.HostName);
+            var second = await SeedRowAsync(db, server.HostName);
+            var expected = new Dictionary<Guid, ActivityContext>();
+            foreach (var row in new[] { first, second })
+            {
+                using var origin = new Activity("origin").SetIdFormat(ActivityIdFormat.W3C).Start();
+                expected[row.EventId] = origin.Context;
+                await using var context = TestHelpers.CreateContext(db);
+                var stored = await context.Outbox.SingleAsync(value => value.Id == row.Id);
+                stored.TraceParent = origin.Id;
+                await context.SaveChangesAsync();
+            }
+
+            await dispatcher.StartAsync(CancellationToken.None);
+            await TestHelpers.WaitUntilAsync(async () =>
+                (await ReloadAsync(db, first.Id)).Status == OutboxStatus.Delivered &&
+                (await ReloadAsync(db, second.Id)).Status == OutboxStatus.Delivered, "both traces should be delivered");
+            await dispatcher.StopAsync(CancellationToken.None);
+
+            calls.Should().Be(2);
+            foreach (var (eventId, parent) in expected)
+            {
+                observed[eventId].TraceId.Should().Be(parent.TraceId);
+                observed[eventId].SpanId.Should().NotBe(parent.SpanId);
+            }
+        }
+    }
+
     private static async Task<(TestHelpers.TestDatabase Db, ServiceProvider Provider, OutboxDispatcher Dispatcher)> CreateDispatcherAsync(
         IDictionary<string, string?>? configOverrides = null,
         IPublishEndpoint? publishEndpoint = null)

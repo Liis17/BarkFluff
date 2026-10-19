@@ -4,15 +4,31 @@ using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
 using BarkFluff.Federation.Tests.Infrastructure;
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.GrpcServer.Tracing;
+using System.Diagnostics;
 using BarkFluff.Proto.Federation;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 
 namespace BarkFluff.Federation.Tests.Infrastructure;
 
 public class OutboxWriterTests
 {
+    [Fact]
+    public void TraceMigration_MatchesModelAndGeneratesAdditiveSqlWithoutConnecting()
+    {
+        using var context = new FederationContext(new DbContextOptionsBuilder<FederationContext>()
+            .UseNpgsql("Host=127.0.0.1;Database=trace_migration_validation;Username=unused;Password=unused").Options);
+        context.Database.HasPendingModelChanges().Should().BeFalse();
+        var sql = context.GetService<IMigrator>().GenerateScript("20260718050000_AddFederationOutbox",
+            "20261019211114_AddOutboxTraceContext");
+        sql.Should().Contain("ADD \"TraceParent\" text").And.Contain("ADD \"TraceState\" text")
+            .And.Contain("ADD \"CorrelationId\" text").And.NotContain("DROP TABLE");
+    }
+
     private static (FederationContext Context, OutboxWriter Writer) CreateWriter(IConfiguration? configuration = null)
     {
         var context = TestHelpers.CreateContext();
@@ -57,7 +73,14 @@ public class OutboxWriterTests
         var chatId = Guid.NewGuid();
         var evt = NewMessageEvent();
 
-        await writer.EnqueueSignedAsync(evt, chatId, ["peer-a.test", "peer-b.test", TestHelpers.OwnServerName, "peer-a.test"]);
+        string? parent;
+        using (var activity = new Activity("consume").SetIdFormat(ActivityIdFormat.W3C).Start())
+        using (TraceContext.PushCorrelationId("business"))
+        {
+            activity.TraceStateString = "vendor=value";
+            parent = activity.Id;
+            await writer.EnqueueSignedAsync(evt, chatId, ["peer-a.test", "peer-b.test", TestHelpers.OwnServerName, "peer-a.test"]);
+        }
 
         var rows = await context.Outbox.OrderBy(r => r.Destination).ToListAsync();
         rows.Should().HaveCount(2); // own-нода и дубликат отфильтрованы
@@ -69,6 +92,9 @@ public class OutboxWriterTests
             row.EventId.Should().Be(Guid.Parse(evt.EventId));
             row.EventType.Should().Be(nameof(FederationEvent.PayloadOneofCase.NewMessage));
             row.Status.Should().Be(OutboxStatus.Pending);
+            row.TraceParent.Should().Be(parent);
+            row.TraceState.Should().Be("vendor=value");
+            row.CorrelationId.Should().Be("business");
             row.Attempts.Should().Be(0);
             row.NextAttemptAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
 
