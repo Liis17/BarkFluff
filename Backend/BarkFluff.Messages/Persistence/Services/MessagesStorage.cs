@@ -1,4 +1,5 @@
 using BarkFluff.Messages.Domain;
+using BarkFluff.GrpcServer.Tracing;
 using BarkFluff.Messages.Persistence.Exceptions;
 using BarkFluff.Messages.Persistence.Services.Dtos;
 using BarkFluff.Shared.Queue.Messages;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace BarkFluff.Messages.Persistence.Services;
 
@@ -270,6 +272,9 @@ public class MessagesStorage
             EventId = queueEvent.EventId,
             MessageId = message.Id,
             Payload = JsonSerializer.SerializeToUtf8Bytes(queueEvent),
+            TraceParent = Activity.Current?.Id,
+            TraceState = Activity.Current?.TraceStateString,
+            CorrelationId = TraceContext.CorrelationId,
             CreatedAt = now,
             NextAttemptAt = now,
             Status = MessageOutboxStatus.Pending,

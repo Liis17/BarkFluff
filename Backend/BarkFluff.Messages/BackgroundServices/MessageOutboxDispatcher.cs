@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.GrpcServer.Tracing;
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence;
@@ -87,6 +88,8 @@ public class MessageOutboxDispatcher : BackgroundService
         var batch = await ClaimBatchAsync(context, now, cancellationToken);
         foreach (var entry in batch)
         {
+            using var trace = TraceContext.StartDispatch("Messages.Outbox.Dispatch",
+                entry.TraceParent, entry.TraceState, entry.CorrelationId);
             try
             {
                 var queueEvent = JsonSerializer.Deserialize<NewMessageEvent>(entry.Payload)

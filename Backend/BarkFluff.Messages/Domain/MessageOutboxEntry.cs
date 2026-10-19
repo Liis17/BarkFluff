@@ -14,6 +14,12 @@ public class MessageOutboxEntry
 
     public byte[] Payload { get; set; } = [];
 
+    public string? TraceParent { get; set; }
+
+    public string? TraceState { get; set; }
+
+    public string? CorrelationId { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public int Attempts { get; set; }

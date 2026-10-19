@@ -39,6 +39,7 @@ public class Program
 
         // Env-переменные контейнера должны иметь приоритет над Settings service
         builder.Configuration.AddEnvironmentVariables();
+        builder.AddBarkFluffSerilog("BarkFluff.AdminPanel");
 
         // Configure Settings
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
