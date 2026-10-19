@@ -31,16 +31,17 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
-      <PackageReference Include="Grpc.Tools" Version="2.80.0">
+      <PackageReference Include="AWSSDK.Core" Version="4.0.102.9" />
+      <PackageReference Include="Grpc.Tools" Version="2.84.0">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.8">
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.8" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+      <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     </ItemGroup>
 
 </Project>

@@ -6,8 +6,8 @@
     function ensureActive(signal) {
         if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
     }
-    var t = function (key) {
-        return BF.i18n.t(key);
+    var t = function (key, params) {
+        return BF.i18n.t(key, params);
     };
     function el(tag, text, parent) {
         var node = document.createElement(tag);
@@ -452,198 +452,535 @@
     }
     function renderSecurity(container) {
         var controller = new AbortController(),
-            origin = BF.node.origin();
-        var options = { auth: true, signal: controller.signal, origin: origin };
+            origin = BF.node.origin(),
+            options = { auth: true, signal: controller.signal, origin: origin },
+            renderGeneration = 0,
+            root,
+            data,
+            capabilities,
+            draft,
+            busy = false,
+            syncCurrent;
         var cleanup = function () {
             controller.abort();
             active.delete(cleanup);
         };
         active.add(cleanup);
-        async function render() {
-            try {
-                var response = await BF.confirmations.call(
-                    'getSecuritySettings',
-                    'GetSecuritySettingsRequest',
-                    {},
-                    Object.assign({ read: true }, options)
+
+        function telegramConfigured() {
+            return capabilities.getTelegramAvailable();
+        }
+        function emailConfigured() {
+            return capabilities.getEmailAvailable();
+        }
+        function hasVerifiedEmail() {
+            return Boolean(data.verifiedEmail && data.verifiedEmail.trim());
+        }
+        function canReceiveEmailAlerts() {
+            return emailConfigured() && hasVerifiedEmail();
+        }
+        function telegramLoginAvailable(value) {
+            return Boolean(data.telegramLinked && value.telegramEnabled && telegramConfigured());
+        }
+        function availableFactors(value, withoutTelegram) {
+            var available = [];
+            if (data.authenticatorEnabled) available.push(1);
+            if (data.emailEnabled && emailConfigured() && hasVerifiedEmail()) available.push(2);
+            if (
+                !withoutTelegram &&
+                data.telegramLinked &&
+                value.telegramEnabled &&
+                value.telegramOtpEnabled &&
+                telegramConfigured()
+            )
+                available.push(3);
+            return available;
+        }
+        function modeIsValid(value, withoutTelegram) {
+            if (value.loginMode === 1) return true;
+            if (value.loginMode === 2) return !withoutTelegram && telegramLoginAvailable(value);
+            var choices = availableFactors(value, withoutTelegram);
+            return value.loginMode === 3 && choices.includes(Number(value.preferredFactor));
+        }
+        function changed() {
+            return (
+                draft.loginMode !== data.loginMode ||
+                draft.preferredFactor !== data.preferredFactor ||
+                draft.telegramEnabled !== data.telegramEnabled ||
+                draft.telegramOtpEnabled !== data.telegramOtpEnabled ||
+                draft.fastAuthTelegramEnabled !== data.fastAuthTelegramEnabled
+            );
+        }
+        function unlinkReason() {
+            if (!canReceiveEmailAlerts()) return t('security.prerequisite.emailForTelegram');
+            if (!modeIsValid(draft, true)) {
+                if (draft.loginMode === 2) return t('security.prerequisite.unlinkMode');
+                return t('security.prerequisite.unlinkFactor');
+            }
+            return '';
+        }
+        function modePrerequisite() {
+            if (draft.loginMode === 3) {
+                var available = availableFactors(draft, false);
+                if (!available.length) return t('security.prerequisite.secondFactor');
+                if (!available.includes(Number(draft.preferredFactor)))
+                    return t('security.prerequisite.chooseFactor');
+            }
+            if (!draft.telegramEnabled && !canReceiveEmailAlerts())
+                return t('security.prerequisite.emailForTelegram');
+            return '';
+        }
+        function factorRemovalReason(factor) {
+            if (data.loginMode === 3) {
+                var persistedFactors = availableFactors(
+                    {
+                        telegramEnabled: data.telegramEnabled,
+                        telegramOtpEnabled: data.telegramOtpEnabled
+                    },
+                    false
                 );
-                var capabilities = await BF.confirmations.call(
-                    'getAuthCapabilities',
-                    'GetAuthCapabilitiesRequest',
-                    {},
-                    Object.assign({ read: true }, options)
-                );
-                if (controller.signal.aborted) return;
-                var data = response.toObject();
-                container.replaceChildren();
-                var root = el('div', '', container);
-                root.className = 'auth-security';
-                var error = el('p', '', root);
-                error.setAttribute('role', 'alert');
-                var mode = select(root, t('security.mode'), modes(), data.loginMode);
-                Array.from(mode.options).forEach(function (option) {
-                    if (option.value === '2')
-                        option.disabled = !data.telegramLinked || !capabilities.getTelegramAvailable();
-                    if (option.value === '3')
-                        option.disabled =
-                            !data.authenticatorEnabled &&
-                            !(data.emailEnabled && capabilities.getEmailAvailable()) &&
-                            !(
-                                data.telegramLinked &&
-                                data.telegramEnabled &&
-                                data.telegramOtpEnabled &&
-                                capabilities.getTelegramAvailable()
-                            );
+                if (persistedFactors.includes(factor) && persistedFactors.length === 1)
+                    return 'security.prerequisite.onlyFactorDisable';
+                if (Number(data.preferredFactor) === factor)
+                    return 'security.prerequisite.switchPreferredBeforeDisable';
+            }
+            if (draft.loginMode === 3 && Number(draft.preferredFactor) === factor)
+                return 'security.prerequisite.switchPreferredBeforeDisable';
+            return '';
+        }
+        function createForm() {
+            container.replaceChildren();
+            root = el('div', '', container);
+            root.className = 'auth-security';
+            root.setAttribute('aria-busy', 'false');
+            var error = el('p', '', root);
+            error.setAttribute('role', 'alert');
+            error.setAttribute('aria-live', 'assertive');
+            var controls = [];
+            var buttons = [];
+            function register(element, enabled) {
+                controls.push({ element: element, enabled: enabled });
+                return element;
+            }
+            function group(key) {
+                var section = el('section', '', root);
+                section.className = 'auth-security-section';
+                el('h3', t(key), section);
+                return section;
+            }
+            function rowLabel(parent, title, description) {
+                var label = el('label', '', parent);
+                label.className = 'auth-security-toggle';
+                var input = el('input', '', label);
+                input.type = 'checkbox';
+                var text = el('span', '', label);
+                el('span', title, text).className = 'auth-security-label';
+                if (description) el('small', description, text);
+                return { label: label, input: input };
+            }
+            function actionButton(parent, label, enabled, work, preserveDraft) {
+                var value = button(parent, t(label), function () {
+                    perform(work, preserveDraft);
                 });
-                var preferred = select(
-                    root,
-                    t('security.factor'),
-                    factors()
-                        .slice(1)
-                        .filter(function (f) {
-                            return (
-                                (f[0] === 1 && data.authenticatorEnabled) ||
-                                (f[0] === 2 && data.emailEnabled && capabilities.getEmailAvailable()) ||
-                                (f[0] === 3 &&
-                                    data.telegramLinked &&
-                                    data.telegramEnabled &&
-                                    data.telegramOtpEnabled &&
-                                    capabilities.getTelegramAvailable())
-                            );
-                        }),
-                    data.preferredFactor
-                );
-                el(
-                    'p',
-                    data.telegramLinked
-                        ? 'Telegram: ' + (data.telegramUsername ? '@' + data.telegramUsername : t('security.linked'))
-                        : t('security.notLinked'),
-                    root
-                );
-                var telegram = field(root, t('security.telegramEnabled'), 'checkbox');
-                telegram.checked = data.telegramEnabled;
-                telegram.disabled = !data.telegramLinked;
-                var otp = field(root, t('security.telegramFactor'), 'checkbox');
-                otp.checked = data.telegramOtpEnabled;
-                var fast = field(root, t('security.fastAuthTelegram'), 'checkbox');
-                fast.checked = data.fastAuthTelegramEnabled;
-                otp.disabled = fast.disabled = !data.telegramLinked;
-                async function action(work) {
-                    error.textContent = '';
-                    root.querySelectorAll('button').forEach(function (btn) {
-                        btn.disabled = true;
-                    });
-                    try {
-                        await work();
-                        if (!controller.signal.aborted) await render();
-                    } catch (err) {
-                        if (!controller.signal.aborted) {
-                            error.textContent = errorText(err);
-                            root.querySelectorAll('button').forEach(function (btn) {
-                                btn.disabled = false;
-                            });
-                        }
-                    }
-                }
-                async function save(unlink) {
+                buttons.push({ element: value, enabled: enabled });
+                return value;
+            }
+            function addModeCard(parent, value, labelKey, descriptionKey) {
+                var card = el('label', '', parent);
+                card.className = 'auth-mode-card';
+                var radio = el('input', '', card);
+                radio.type = 'radio';
+                radio.name = 'auth-security-mode-' + renderGeneration;
+                radio.value = String(value);
+                radio.checked = draft.loginMode === value;
+                var text = el('span', '', card);
+                el('strong', t(labelKey), text);
+                el('small', t(descriptionKey), text);
+                radio.addEventListener('change', function () {
+                    if (radio.checked) draft.loginMode = value;
+                    sync();
+                });
+                register(radio, function () {
+                    return value !== 2 || telegramLoginAvailable(draft);
+                });
+                return radio;
+            }
+
+            var modeSection = group('security.mode');
+            var modePassword = addModeCard(
+                modeSection,
+                1,
+                'security.mode.password',
+                'security.mode.description.password'
+            );
+            var modeTelegram = addModeCard(
+                modeSection,
+                2,
+                'security.mode.telegram',
+                'security.mode.description.telegram'
+            );
+            var modeTelegramStatus = el('p', '', modeSection);
+            modeTelegramStatus.className = 'auth-hint';
+            modeTelegramStatus.setAttribute('role', 'status');
+            modeTelegramStatus.setAttribute('aria-live', 'polite');
+            var modeFactor = addModeCard(
+                modeSection,
+                3,
+                'security.mode.factor',
+                'security.mode.description.factor'
+            );
+
+            var preferredLabel = el('label', t('security.preferred'), modeSection);
+            preferredLabel.className = 'auth-security-preferred';
+            var preferred = el('select', '', preferredLabel);
+            register(preferred, function () {
+                return draft.loginMode === 3 && availableFactors(draft, false).length > 0;
+            });
+            preferred.addEventListener('change', function () {
+                if (preferred.value) draft.preferredFactor = Number(preferred.value);
+                sync();
+            });
+            var modeStatus = el('p', '', modeSection);
+            modeStatus.className = 'auth-hint';
+            modeStatus.setAttribute('role', 'status');
+            modeStatus.setAttribute('aria-live', 'polite');
+            var setupFactorAction = actionButton(modeSection, 'security.setupAuthenticator', function () {
+                return !data.authenticatorEnabled;
+            }, async function () {
+                await setupFactor(1);
+            });
+
+            var telegramSection = group('security.telegramSection');
+            var telegramStatus = el('p', '', telegramSection);
+            telegramStatus.className = 'auth-security-info';
+            telegramStatus.setAttribute('role', 'status');
+            telegramStatus.setAttribute('aria-live', 'polite');
+            var telegramLinkAction = null;
+            if (data.telegramLinked) {
+                var master = rowLabel(telegramSection, t('security.telegramEnabled'), t('security.telegramEnabledHint'));
+                master.input.checked = draft.telegramEnabled;
+                master.input.addEventListener('change', function () {
+                    draft.telegramEnabled = master.input.checked;
+                    sync();
+                });
+                register(master.input, function () {
+                    return data.telegramLinked && (draft.telegramEnabled || telegramConfigured());
+                });
+
+                var otp = rowLabel(telegramSection, t('security.telegramFactor'), t('security.telegramFactorHint'));
+                otp.input.checked = draft.telegramOtpEnabled;
+                otp.input.addEventListener('change', function () {
+                    draft.telegramOtpEnabled = otp.input.checked;
+                    sync();
+                });
+                register(otp.input, function () {
+                    return data.telegramLinked && draft.telegramEnabled && telegramConfigured();
+                });
+
+                var fast = rowLabel(telegramSection, t('security.fastAuthTelegram'), t('security.fastAuthTelegramHint'));
+                fast.input.checked = draft.fastAuthTelegramEnabled;
+                fast.input.addEventListener('change', function () {
+                    draft.fastAuthTelegramEnabled = fast.input.checked;
+                    sync();
+                });
+                register(fast.input, function () {
+                    return data.telegramLinked && draft.telegramEnabled && telegramConfigured();
+                });
+                actionButton(telegramSection, 'security.unlinkTelegram', function () {
+                    return data.telegramLinked && !unlinkReason();
+                }, async function () {
+                    await save(true);
+                }, false);
+                el('p', t('security.unlinkImpact'), telegramSection).className = 'auth-hint';
+                var unlinkStatus = el('p', '', telegramSection);
+                unlinkStatus.className = 'auth-security-status';
+                unlinkStatus.setAttribute('role', 'status');
+                unlinkStatus.setAttribute('aria-live', 'polite');
+                telegramLinkAction = { unlinkStatus: unlinkStatus };
+            } else if (telegramConfigured()) {
+                actionButton(telegramSection, 'security.linkTelegram', function () {
+                    return !data.telegramLinked;
+                }, async function () {
                     var proof = await reauthenticate(data);
-                    var saved = await BF.confirmations.call(
-                        unlink ? 'unlinkTelegram' : 'updateSecuritySettings',
-                        'UpdateSecuritySettingsRequest',
-                        {
-                            securityProof: proof,
-                            loginMode: Number(mode.value),
-                            preferredFactor: Number(preferred.value),
-                            telegramEnabled: !unlink && telegram.checked,
-                            telegramOtpEnabled: !unlink && otp.checked,
-                            fastAuthTelegramEnabled: !unlink && fast.checked
-                        },
+                    await run(
+                        'beginTelegramBinding',
+                        'SecurityProofRequest',
+                        { securityProof: proof },
+                        { auth: true }
+                    );
+                });
+            } else {
+                el('p', t('security.prerequisite.telegramUnavailable'), telegramSection).className = 'auth-hint';
+            }
+            el('p', t('security.telegramDisabledNote'), telegramSection).className = 'auth-hint';
+
+            var emailSection = group('security.emailSection');
+            var emailStatus = el('p', '', emailSection);
+            emailStatus.className = 'auth-security-info';
+            emailStatus.setAttribute('role', 'status');
+            emailStatus.setAttribute('aria-live', 'polite');
+            var emailRow = el('div', '', emailSection);
+            emailRow.className = 'auth-security-email';
+            var email = field(emailRow, t('security.emailAddress'), 'email');
+            email.value = data.verifiedEmail || '';
+            email.addEventListener('input', sync);
+            register(email, function () {
+                return emailConfigured();
+            });
+            actionButton(emailSection, 'security.verifyEmail', function () {
+                return emailConfigured() && Boolean(email.value.trim());
+            }, async function () {
+                var proof = await reauthenticate(data);
+                await run(
+                    'beginEmailBinding',
+                    'BeginEmailBindingRequest',
+                    { securityProof: proof, email: email.value.trim() },
+                    { auth: true }
+                );
+            });
+            if (!emailConfigured())
+                el('p', t('security.prerequisite.emailUnavailable'), emailSection).className = 'auth-hint';
+
+            var factorsSection = group('security.factorSection');
+            function factorRow(factor, titleKey, enabled, canEnable) {
+                var row = el('div', '', factorsSection);
+                row.className = 'auth-security-factor';
+                var description = el('div', '', row);
+                description.className = 'auth-security-factor-copy';
+                el('strong', t(titleKey), description);
+                var state = el('span', t(enabled ? 'twofa.enabled' : 'twofa.disabled'), description);
+                state.className = 'auth-security-factor-state';
+                var help = el('small', '', description);
+                help.className = 'auth-hint';
+                var toggle = actionButton(row, enabled ? 'common.disable' : 'common.enable', function () {
+                    if (busy) return false;
+                    if (enabled) return !factorRemovalReason(factor);
+                    return canEnable();
+                }, async function () {
+                    if (!enabled) {
+                        await setupFactor(factor);
+                        return;
+                    }
+                    var proof = await reauthenticate(data);
+                    await BF.confirmations.call(
+                        'disableOtpVerification',
+                        'DisableOtpVerificationRequest',
+                        { otpType: factor, securityProof: proof },
                         options
                     );
-                    await codes(saved.getRecoveryCodesList());
+                });
+                return {
+                    enabled: enabled,
+                    help: help,
+                    setHelp: function (key) {
+                        help.textContent = key ? t(key) : '';
+                        toggle.disabled = busy || !(enabled ? !factorRemovalReason(factor) : canEnable());
+                    }
+                };
+            }
+            var authenticator = factorRow(1, 'security.factor.app', data.authenticatorEnabled, function () {
+                return true;
+            });
+            var emailFactor = factorRow(2, 'twofa.email', data.emailEnabled, function () {
+                return emailConfigured() && hasVerifiedEmail();
+            });
+            var emailFactorHelp = el('p', '', factorsSection);
+            emailFactorHelp.className = 'auth-hint';
+            emailFactorHelp.setAttribute('role', 'status');
+            emailFactorHelp.setAttribute('aria-live', 'polite');
+
+            var recoverySection = group('security.recoveryCodes');
+            var recoveryStatus = el('p', '', recoverySection);
+            recoveryStatus.className = 'auth-security-info';
+            actionButton(recoverySection, 'security.regenerateCodes', function () {
+                return true;
+            }, async function () {
+                var proof = await reauthenticate(data);
+                var value = await BF.confirmations.call(
+                    'generateRecoveryCodes',
+                    'SecurityProofRequest',
+                    { securityProof: proof },
+                    options
+                );
+                await codes(value.getCodesList());
+            });
+
+            var saveButton = actionButton(root, 'common.save', function () {
+                return changed() && modeIsValid(draft, false) &&
+                    (draft.telegramEnabled || canReceiveEmailAlerts());
+            }, async function () {
+                await save(false);
+            }, false);
+
+            function refreshPreferred() {
+                var choices = availableFactors(draft, false);
+                preferred.replaceChildren();
+                var placeholder = el('option', t('security.chooseFactor'), preferred);
+                placeholder.value = '';
+                placeholder.disabled = true;
+                choices.forEach(function (factor) {
+                    var factorInfo = factors().find(function (item) {
+                        return item[0] === factor;
+                    });
+                    var option = el('option', factorInfo ? factorInfo[1] : '', preferred);
+                    option.value = String(factor);
+                });
+                preferred.value = choices.includes(Number(draft.preferredFactor))
+                    ? String(draft.preferredFactor)
+                    : '';
+            }
+            function sync() {
+                if (controller.signal.aborted) return;
+                modePassword.checked = draft.loginMode === 1;
+                modeTelegram.checked = draft.loginMode === 2;
+                modeFactor.checked = draft.loginMode === 3;
+                var telegramMessage = telegramLoginAvailable(draft)
+                    ? ''
+                    : t('security.prerequisite.telegramLogin');
+                modeTelegramStatus.textContent = telegramMessage;
+                modeTelegramStatus.hidden = !telegramMessage;
+                preferredLabel.hidden = draft.loginMode !== 3;
+                setupFactorAction.hidden =
+                    draft.loginMode !== 3 || availableFactors(draft, false).length > 0 || data.authenticatorEnabled;
+                refreshPreferred();
+                telegramStatus.textContent = data.telegramLinked
+                    ? t('security.telegramAccount', {
+                          account: data.telegramUsername ? '@' + data.telegramUsername : t('security.linked')
+                      })
+                    : t('security.notLinked');
+                emailStatus.textContent = hasVerifiedEmail()
+                    ? t('security.emailVerified', { email: data.verifiedEmail })
+                    : t('security.emailNotVerified');
+                var message = modePrerequisite();
+                modeStatus.textContent = message;
+                modeStatus.hidden = !message;
+                if (!draft.telegramEnabled && (draft.telegramOtpEnabled || draft.fastAuthTelegramEnabled)) {
+                    telegramStatus.textContent += ' ' + t('security.telegramDisabledPending');
                 }
-                button(root, t('common.save'), function () {
-                    action(function () {
-                        return save(false);
-                    });
+                if (telegramLinkAction) {
+                    var reason = unlinkReason();
+                    telegramLinkAction.unlinkStatus.textContent = reason;
+                    telegramLinkAction.unlinkStatus.hidden = !reason;
+                }
+                recoveryStatus.textContent = t('security.recoveryRemaining', {
+                    count: data.remainingRecoveryCodes
                 });
-                if (data.telegramLinked)
-                    button(root, t('security.unlinkTelegram'), function () {
-                        action(function () {
-                            return save(true);
-                        });
-                    });
-                else if (capabilities.getTelegramAvailable())
-                    button(root, t('security.linkTelegram'), function () {
-                        action(async function () {
-                            var proof = await reauthenticate(data);
-                            await run(
-                                'beginTelegramBinding',
-                                'SecurityProofRequest',
-                                { securityProof: proof },
-                                { auth: true }
-                            );
-                        });
-                    });
-                el('p', t('security.disableHint'), root).className = 'auth-hint';
-                var email = field(root, t('twofa.email'), 'email');
-                email.value = data.verifiedEmail || '';
-                if (capabilities.getEmailAvailable())
-                    button(root, t('security.verifyEmail'), function () {
-                        action(async function () {
-                            var proof = await reauthenticate(data);
-                            await run(
-                                'beginEmailBinding',
-                                'BeginEmailBindingRequest',
-                                {
-                                    securityProof: proof,
-                                    email: email.value.trim()
-                                },
-                                { auth: true }
-                            );
-                        });
-                    });
-                [
-                    [1, t('security.factor.app'), data.authenticatorEnabled],
-                    [2, t('twofa.email'), data.emailEnabled]
-                ].forEach(function (item) {
-                    var row = el('div', '', root);
-                    row.className = 'auth-factor';
-                    el('span', item[1] + ' · ' + t(item[2] ? 'twofa.enabled' : 'twofa.disabled'), row);
-                    button(row, t(item[2] ? 'common.disable' : 'common.enable'), function () {
-                        action(async function () {
-                            if (!item[2]) {
-                                await setupFactor(item[0]);
-                                return;
-                            }
-                            var proof = await reauthenticate(data);
-                            await BF.confirmations.call(
-                                'disableOtpVerification',
-                                'DisableOtpVerificationRequest',
-                                { otpType: item[0], securityProof: proof },
-                                options
-                            );
-                        });
-                    });
+                authenticator.setHelp(data.authenticatorEnabled ? factorRemovalReason(1) : '');
+                emailFactor.setHelp(data.emailEnabled ? factorRemovalReason(2) : '');
+                emailFactorHelp.textContent = !emailConfigured()
+                    ? t('security.prerequisite.emailUnavailable')
+                    : !hasVerifiedEmail()
+                      ? t('security.prerequisite.emailBindForFactor')
+                      : '';
+                emailFactorHelp.hidden = !emailFactorHelp.textContent;
+                controls.forEach(function (control) {
+                    control.element.disabled = busy || !control.enabled();
                 });
-                el('p', t('security.recoveryCodes') + ': ' + data.remainingRecoveryCodes, root);
-                button(root, t('security.regenerateCodes'), function () {
-                    action(async function () {
-                        var proof = await reauthenticate(data);
-                        var value = await BF.confirmations.call(
-                            'generateRecoveryCodes',
-                            'SecurityProofRequest',
-                            { securityProof: proof },
-                            options
-                        );
-                        await codes(value.getCodesList());
-                    });
+                buttons.forEach(function (item) {
+                    item.element.disabled = busy || !item.enabled();
                 });
-            } catch (error) {
-                if (!controller.signal.aborted) container.textContent = errorText(error);
+                saveButton.disabled = busy || !changed() || !modeIsValid(draft, false) ||
+                    (!draft.telegramEnabled && !canReceiveEmailAlerts());
+                root.setAttribute('aria-busy', busy ? 'true' : 'false');
+            }
+            syncCurrent = sync;
+            async function perform(work, preserveDraft) {
+                if (busy || controller.signal.aborted) return;
+                var draftOverlay = preserveDraft === false ? null : {};
+                if (draftOverlay) {
+                    ['loginMode', 'preferredFactor', 'telegramEnabled', 'telegramOtpEnabled', 'fastAuthTelegramEnabled']
+                        .forEach(function (key) {
+                            if (draft[key] !== data[key]) draftOverlay[key] = draft[key];
+                        });
+                }
+                busy = true;
+                error.textContent = '';
+                sync();
+                try {
+                    await work();
+                    if (!controller.signal.aborted) await load(draftOverlay);
+                } catch (err) {
+                    if (!controller.signal.aborted && err?.name !== 'AbortError')
+                        error.textContent = errorText(err);
+                } finally {
+                    if (!controller.signal.aborted) {
+                        busy = false;
+                        if (syncCurrent) syncCurrent();
+                    }
+                }
+            }
+            async function save(unlink) {
+                var snapshot = {
+                    loginMode: draft.loginMode,
+                    preferredFactor: draft.preferredFactor,
+                    telegramEnabled: unlink ? false : draft.telegramEnabled,
+                    telegramOtpEnabled: unlink ? false : draft.telegramOtpEnabled,
+                    fastAuthTelegramEnabled: unlink ? false : draft.fastAuthTelegramEnabled
+                };
+                if (!modeIsValid(snapshot, unlink) || (!snapshot.telegramEnabled && !canReceiveEmailAlerts()))
+                    return;
+                var proof = await reauthenticate(data);
+                if (controller.signal.aborted) return;
+                var saved = await BF.confirmations.call(
+                    unlink ? 'unlinkTelegram' : 'updateSecuritySettings',
+                    'UpdateSecuritySettingsRequest',
+                    {
+                        securityProof: proof,
+                        loginMode: snapshot.loginMode,
+                        preferredFactor: snapshot.preferredFactor,
+                        telegramEnabled: snapshot.telegramEnabled,
+                        telegramOtpEnabled: snapshot.telegramOtpEnabled,
+                        fastAuthTelegramEnabled: snapshot.fastAuthTelegramEnabled
+                    },
+                    options
+                );
+                try {
+                    await codes(saved.getRecoveryCodesList());
+                } catch (err) {
+                    if (err?.name !== 'AbortError') throw err;
+                }
+            }
+            sync();
+        }
+
+        async function load(draftOverlay) {
+            var generation = ++renderGeneration;
+            try {
+                var results = await Promise.all([
+                    BF.confirmations.call(
+                        'getSecuritySettings',
+                        'GetSecuritySettingsRequest',
+                        {},
+                        Object.assign({ read: true }, options)
+                    ),
+                    BF.confirmations.call(
+                        'getAuthCapabilities',
+                        'GetAuthCapabilitiesRequest',
+                        {},
+                        Object.assign({ read: true }, options)
+                    )
+                ]);
+                if (controller.signal.aborted || generation !== renderGeneration) return;
+                data = results[0].toObject();
+                capabilities = results[1];
+                draft = {
+                    loginMode: data.loginMode,
+                    preferredFactor: data.preferredFactor,
+                    telegramEnabled: data.telegramEnabled,
+                    telegramOtpEnabled: data.telegramOtpEnabled,
+                    fastAuthTelegramEnabled: data.fastAuthTelegramEnabled
+                };
+                if (draftOverlay) Object.assign(draft, draftOverlay);
+                createForm();
+            } catch (err) {
+                if (!controller.signal.aborted && generation === renderGeneration) {
+                    container.replaceChildren();
+                    var error = el('p', errorText(err), container);
+                    error.setAttribute('role', 'alert');
+                }
             }
         }
-        render();
+        load();
         return cleanup;
     }
     function cancelAll() {

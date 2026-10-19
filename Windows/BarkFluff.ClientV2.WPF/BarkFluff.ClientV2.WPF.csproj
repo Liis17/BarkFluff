@@ -16,10 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" Version="4.0.102.9" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <PackageReference Include="WPF-UI" Version="4.3.0" />
     <PackageReference Include="WPF-UI.Tray" Version="4.3.0" />
   </ItemGroup>
