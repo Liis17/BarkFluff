@@ -49,7 +49,10 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Конфигурация (`WebApplicationBuilderExtensions`)
 
-- `LoadConfiguration(ServiceId)` — wire-compatible gRPC-вызов к Settings service (адрес из `SETTINGS_SERVICE_URL` env или `SettingsServiceAddr`). Результат в `IConfiguration` как in-memory collection.
+- `LoadConfiguration(ServiceId)` — перед wire-compatible gRPC-вызовом к Settings проверяет внутреннюю готовность, описанную в [[Backend/Settings]]. Адрес выбирается по `SETTINGS_SERVICE_URL`, `CONFIGURATION_SERVICE_URL`, `SettingsServiceAddr`, `ConfigurationServiceAddr`, затем `http://localhost:7003`. Результат добавляется в `IConfiguration` как in-memory collection.
+- `ConfigurationStartupLoader` выполняет до пяти HTTP/2-проверок: первая сразу, четыре паузы по 5 секунд, таймаут запроса 5 секунд. HTTP 200 разрешает загрузку; сетевые ошибки, таймауты и HTTP 5xx повторяются; прочие HTTP-ответы и исчерпание попыток останавливают запуск. Ожидание занимает до примерно 45 секунд с учётом таймаутов. Логи попыток не содержат конфигурации или текста исключений.
+- `LoadConfiguration(ServiceId, requireValidSettings: false)` используется только [[Backend/AdminPanel]] для ожидания доступности данных без проверки ручных значений. Остальные 15 startup-потребителей требуют полной валидности. Navigator, ClientStorage, Setup и Web Shell/Proxy не используют этот загрузчик.
+- После успешной проверки `GetConfiguration` имеет deadline 5 секунд; его ошибка завершает запуск без повторения цикла readiness. Legacy Proto и общий `/health/ready` не меняются. Settings с новым endpoint должен быть развёрнут до обновлённых потребителей.
 - `SetRunningAddress()` — настраивает Kestrel из `RunSettings` (порт, опциональный HTTP/1 порт, TLS).
 - `AddSettings<T>(configuration, sectionName)` — регистрирует `IOptions<T>` и `T` как singleton.
 

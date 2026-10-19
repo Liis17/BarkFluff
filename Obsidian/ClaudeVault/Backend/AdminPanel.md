@@ -14,6 +14,11 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 ## Архитектура
 
+При запуске `Program.cs` вызывает `LoadConfiguration(ServiceId.Unknown, requireValidSettings: false)`.
+Панель ожидает доступности таблиц [[Backend/Settings]], но не валидности обязательных ручных
+значений, чтобы сохранять возможность их исправления. Лимит попыток и загрузка конфигурации
+описаны в [[Backend/GrpcServer]]. Остальные проверки собственных настроек панели сохраняются.
+
 ### Auth Flow (Telegram-based)
 
 Вход без пароля — через подтверждение в Telegram:
