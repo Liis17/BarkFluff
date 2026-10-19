@@ -1,0 +1,92 @@
+/* Email-first sign-in controls on the existing login card. */
+#loginForm [hidden] {
+    display: none !important;
+}
+
+.login-flow__identifier-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.login-flow__identifier-heading .form-label {
+    min-width: 0;
+}
+
+.login-flow__text-button {
+    flex: 0 0 auto;
+    margin: 0 0 8px;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: var(--link);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.login-flow__text-button:hover:not(:disabled) {
+    opacity: .75;
+}
+
+.login-flow__text-button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+#loginInput[readonly] {
+    cursor: default;
+}
+
+.login-flow__challenge {
+    margin: 0 0 20px;
+    padding: 16px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-input);
+    background: var(--input-bg);
+}
+
+.login-flow__status {
+    min-height: 1.5em;
+    margin: 0 0 12px;
+    color: var(--text-sub);
+    font-size: 13.5px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.login-flow__status.is-error {
+    color: var(--error);
+}
+
+.login-flow__challenge .form-group {
+    margin-bottom: 14px;
+}
+
+.login-flow__challenge .btn-primary {
+    margin-top: 6px;
+}
+
+.login-flow__action {
+    justify-content: center;
+    width: 100%;
+    margin-top: 10px;
+    overflow-wrap: anywhere;
+}
+
+#loginForm .checkbox-group[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 360px) {
+    .login-flow__challenge {
+        padding: 12px;
+    }
+
+    .login-flow__action {
+        padding-inline: 12px;
+    }
+}

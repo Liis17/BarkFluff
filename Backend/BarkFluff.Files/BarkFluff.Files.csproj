@@ -8,25 +8,26 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.Core" Version="4.0.7.4" />
-        <PackageReference Include="AWSSDK.S3" Version="4.0.23.5" />
-        <PackageReference Include="Google.Protobuf" Version="3.35.0" />
-        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.80.0" />
-        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.80.0" />
-        <PackageReference Include="Grpc.Tools" Version="2.80.0">
+        <PackageReference Include="AWSSDK.Core" Version="4.0.102.9" />
+        <PackageReference Include="AWSSDK.S3" Version="4.0.104.2" />
+        <PackageReference Include="Google.Protobuf" Version="3.36.2" />
+        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.84.0" />
+        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.84.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.84.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
         <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.9" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-        <PackageReference Include="FFMpegCore" Version="5.4.0" />
+        <PackageReference Include="FFMpegCore" Version="5.5.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     </ItemGroup>
 
     <ItemGroup>
