@@ -39,29 +39,12 @@
             android:orientation="vertical"
             android:paddingHorizontal="16dp">
 
-            <!-- Динамический logo-tile: цвет контейнера и glyph следуют Material You. -->
-            <FrameLayout
-                android:layout_width="72dp"
-                android:layout_height="72dp"
-                android:background="@drawable/bg_login_logo"
-                android:clipToOutline="true">
-
-                <ImageView
-                    android:id="@+id/logoImage"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/app_name"
-                    android:src="@drawable/ic_launcher_foreground"
-                    app:tint="?attr/colorPrimary" />
-
-            </FrameLayout>
-
             <!-- Hero-заголовок, left-aligned -->
             <TextView
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
+                android:layout_marginTop="48dp"
                 android:accessibilityHeading="true"
                 android:text="@string/login_welcome"
                 android:textAppearance="@style/TextAppearance.Barkfluff.Onboarding.Hero" />

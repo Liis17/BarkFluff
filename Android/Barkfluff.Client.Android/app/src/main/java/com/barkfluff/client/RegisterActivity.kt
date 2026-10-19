@@ -162,9 +162,6 @@ class RegisterActivity : AppCompatActivity() {
         // Создаем gRPC клиенты один раз при старте
         createGrpcClients()
 
-        // Отображаем имя сервера
-        binding.serverNameText.text = globalParam.serverName.ifBlank { getString(R.string.app_name) }
-
         // Восстанавливаем состояние если было
         savedInstanceState?.let {
             currentStep = it.getInt(KEY_CURRENT_STEP, 1)
