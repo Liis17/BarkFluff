@@ -60,15 +60,6 @@
                 android:minHeight="30dp"
                 android:importantForAccessibility="no" />
 
-            <!-- Логотип — векторный artwork без MaterialCardView и PNG-маски -->
-            <ImageView
-                android:id="@+id/logoImage"
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:layout_marginBottom="26dp"
-                android:contentDescription="@string/app_name"
-                android:src="@drawable/app_icon_vector" />
-
             <!-- Hero-заголовок: M3 Expressive Emphasized typography (увеличенный вес).
                  Guidelines §12: «Display + Headline — отличные кандидаты для Emphasized». -->
             <TextView
@@ -147,42 +138,69 @@
                 app:backgroundTint="?attr/colorPrimary"
                 app:cornerRadius="@dimen/shape_corner_full" />
 
-            <!-- Юридические документы открываются в режиме чтения -->
+            <!-- Фиксированная область: раскрытие ссылок не двигает hero и CTA. -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="96dp"
                 android:layout_marginTop="4dp"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/termsLink"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="0dp"
-                    android:layout_height="@dimen/button_height_default"
-                    android:layout_weight="1"
-                    android:minWidth="0dp"
-                    android:paddingStart="0dp"
-                    android:paddingEnd="0dp"
-                    android:text="@string/legal_tab_terms"
-                    android:textAllCaps="false"
-                    android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorPrimary" />
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/legalToggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/welcome_show_legal"
+                    android:padding="6dp"
+                    android:scaleType="centerInside"
+                    app:srcCompat="@drawable/ic_welcome_chevron"
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/privacyLink"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="0dp"
-                    android:layout_height="@dimen/button_height_default"
-                    android:layout_weight="1"
-                    android:minWidth="0dp"
-                    android:paddingStart="0dp"
-                    android:paddingEnd="0dp"
-                    android:text="@string/menu_privacy"
-                    android:textAllCaps="false"
-                    android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorPrimary" />
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:clipChildren="true">
 
+                    <LinearLayout
+                        android:id="@+id/legalLinks"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:alpha="0"
+                        android:baselineAligned="false"
+                        android:importantForAccessibility="noHideDescendants"
+                        android:visibility="invisible"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/termsLink"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:paddingStart="0dp"
+                            android:paddingEnd="0dp"
+                            android:text="@string/legal_tab_terms"
+                            android:textAllCaps="false"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textColor="?attr/colorPrimary" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/privacyLink"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:paddingStart="0dp"
+                            android:paddingEnd="0dp"
+                            android:text="@string/menu_privacy"
+                            android:textAllCaps="false"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textColor="?attr/colorPrimary" />
+
+                    </LinearLayout>
+                </FrameLayout>
             </LinearLayout>
 
         </LinearLayout>
