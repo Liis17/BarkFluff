@@ -44,6 +44,20 @@ Settings идемпотентно создаёт отсутствующие ба
 
 Поля без безопасного default создаются пустыми. `SettingsReadinessContributor` возвращает `degraded` и отсортированный список незаполненных или невалидных полей. Основные setup-поля: Beacon `ServerProps`/`ServerColor`, SMTP `Email`, Files `ExternalEndpoint:MediaHost`, S3/MinIO credentials, LiveKit credentials и federation domain/TLS/window parameters. Каталог setup содержит 37 полей: 36 обязательных manual-полей и переключатель федерации; federation-поля становятся обязательными только при `Federation:Enabled=true`.
 
+## Внутренняя готовность для загрузки конфигурации
+
+`Host/ConfigurationReadinessEndpoints.cs` публикует анонимный `GET /internal/configuration/ready`
+на внутреннем HTTP/2 listener Settings. Endpoint доступен после startup initializer, при каждом запросе
+проверяет чтение всех таблиц настроек и актуальные правила `SettingsReadinessContributor`.
+Успех — HTTP 200; недоступные таблицы, невалидные обязательные поля и ошибки проверки — HTTP 503
+без значений настроек и подробностей исключения. Состояние Complete Setup не требуется;
+условия SMTP, Telegram и федерации совпадают с существующим readiness contributor.
+
+`?requireValidSettings=false` пропускает проверку обязательных ручных значений, сохраняя проверку
+чтения таблиц. Этот режим использует [[Backend/AdminPanel]], чтобы исправлять настройки.
+Общий `/health/ready` сохраняет свою семантику и кэш. Правила ожидания потребителей описаны
+в [[Backend/GrpcServer]].
+
 ## Первичная настройка
 
 [[Backend/Setup]] поднимается отдельным Compose только вместе с PostgreSQL и
