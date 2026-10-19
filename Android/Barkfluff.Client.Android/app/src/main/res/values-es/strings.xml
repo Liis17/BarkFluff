@@ -76,7 +76,7 @@
     <string name="server_status_checking">Comprobando…</string>
     <string name="server_status_online">En línea</string>
     <string name="server_status_unavailable">No disponible</string>
-    <string name="server_response_ms">Respuesta %1$d ms</string>
+    <string name="server_response_ms">%1$d ms</string>
     <string name="self_hosted_title">Tu propio servidor</string>
     <string name="self_hosted_description">Despliega tu propio servidor BarkFluff</string>
     <string name="btn_learn_more_server">Saber más</string>
