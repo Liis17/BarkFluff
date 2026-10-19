@@ -1,4 +1,8 @@
 <resources>
+    <string name="legal_privacy_title">Datenschutz</string>
+    <string name="welcome_show_legal">Nutzungsbedingungen und Datenschutz anzeigen</string>
+    <string name="welcome_hide_legal">Nutzungsbedingungen und Datenschutz ausblenden</string>
+
     <string name="chat_draft_preview">Entwurf</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
