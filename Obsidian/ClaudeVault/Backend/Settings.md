@@ -21,6 +21,8 @@ CONFIGURATION_SERVICE_URL=http://settings:7003
 
 `ServiceId` существует только на границе compatibility API и в статическом каталоге маршрутизации. В базе колонки `ServiceId` нет. `GetConfiguration` объединяет глобальную и сервисную таблицы; сервисное значение перекрывает глобальное с тем же IConfiguration-путём. Live reload не реализован: после изменения потребитель требуется перезапустить.
 
+Глобальные параметры `Logging:Backend` (`Seq` по умолчанию, либо `Lognara`) и `Lognara:AgentUrl` (по умолчанию `http://127.0.0.1:7400/v1/logs`) задают backend сервисного логирования из [[Backend/GrpcServer]]. Seeder добавляет новые ключи без перезаписи текущих значений. Настройка агента Lognara выполняется отдельно; Seq-поиск и кеш метрик AdminPanel остаются зависимыми от Seq.
+
 ## Persistence
 
 PostgreSQL БД по умолчанию — `settings`. Docker `postgres-bootstrap` до запуска
