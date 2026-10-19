@@ -19,6 +19,8 @@ gRPC Reflection доступен только при `ASPNETCORE_ENVIRONMENT=Dev
 
 ### Outbox-диспетчер (`BackgroundServices/OutboxDispatcher.cs`)
 
+`OutboxWriter` сохраняет nullable `TraceParent`/`TraceState`/`CorrelationId` в `FederationOutbox`, отдельно от подписанного `PayloadBytes`. Миграция `20261019211114_AddOutboxTraceContext` добавляет эти text-колонки; signed payload и публичный S2S-контракт не меняются. Dispatcher группирует выбранные строки по полному контексту перед отправкой: один RPC имеет одного родителя, поэтому смешанные trace дают несколько RPC в пределах прежнего лимита выбранных строк/байтов. `Tracing.TraceContext` восстанавливает исходный TraceId с новым SpanId на каждую попытку; legacy-строки без контекста остаются доставляемыми. Claim, lease, per-chat порядок и retry-классификация сохраняются.
+
 `BackgroundService` с циклом 5 секунд:
 
 - **claim-then-send (масштабирование, docs/scaling/federation.md)**: в начале прохода reclaim возвращает застрявшие после крэша строки в Pending (`Processing` с истёкшим lease), затем батч атомарно «застолблен» статусом `Processing` (lease 2 мин в `NextAttemptAt`) — на PostgreSQL raw-SQL `SELECT … ORDER BY … LIMIT … FOR UPDATE SKIP LOCKED` в короткой транзакции (LINQ-расширения `ForUpdate()/SkipLocked()` в EFCore.PG 10 отсутствуют; precedent — `PrekeyStorage`), отправка — вне блокировки строк. Несколько инстансов делят работу без дублей забора;
