@@ -21,6 +21,8 @@ public sealed class ActivityLogEnricher : ILogEventEnricher
         var traceId = activity.TraceId.ToString();
         logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("TraceId", traceId));
         logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("SpanId", activity.SpanId.ToString()));
+        if (activity.ParentSpanId != default)
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("ParentSpanId", activity.ParentSpanId.ToString()));
         logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("CorrelationId", traceId));
     }
 }

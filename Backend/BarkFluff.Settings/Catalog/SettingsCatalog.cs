@@ -84,6 +84,9 @@ public static class SettingsCatalog
     {
         var entries = new List<SettingsCatalogEntry>();
 
+        AddLiteral(entries, ServiceId.Unknown, "Logging", "Backend", "Seq");
+        AddLiteral(entries, ServiceId.Unknown, "Lognara", "AgentUrl", "http://127.0.0.1:7400/v1/logs");
+
         AddDefault(entries, ServiceId.Unknown, "JwtSettings", "SecretKey", v => v.JwtSecret, true);
         AddDefault(entries, ServiceId.Unknown, "JwtSettings", "Issuer", v => v.JwtIssuer);
         AddDefault(entries, ServiceId.Unknown, "JwtSettings", "Audience", v => v.JwtAudience);

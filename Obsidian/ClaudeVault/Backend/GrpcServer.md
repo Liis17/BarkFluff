@@ -60,7 +60,9 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Логирование
 
-`AddBarkFluffSerilog(serviceName)` — Serilog → Console + Seq. Enrichers: MachineName, EnvironmentName, ThreadId, Application и `ActivityLogEnricher`. При наличии текущего W3C `Activity` каждый event получает `TraceId`, `SpanId` и fallback `CorrelationId`; явно заданный бизнес-correlation ID не затирается. `RequestContextInterceptor` добавляет `RequestId` (`HttpContext.TraceIdentifier`) в gRPC-логи и принимает явный `X-Correlation-ID`. Microsoft/EF Core/HttpClient логи подавлены до Warning. Seq sink дуральный с файловым буфером (`logs/seq-buffer`, лимит 100MB, batch 100 событий, flush каждые 2 секунды).
+`AddBarkFluffSerilog(serviceName)` — Serilog → Console + выбранный backend: `Logging:Backend=Seq` (по умолчанию) либо `Lognara`. Enrichers: MachineName, EnvironmentName, ThreadId, Application и `ActivityLogEnricher`. При наличии текущего W3C `Activity` каждый event получает `TraceId`, `SpanId`, доступный `ParentSpanId` и fallback `CorrelationId`; явно заданный бизнес-correlation ID не затирается. Console показывает trace/span ID. Microsoft/EF Core/HttpClient логи подавлены до Warning.
+
+Seq сохраняет прежние структурированные свойства и дисковый буфер `logs/seq-buffer` (100 MiB, batch 100 событий, flush 2 секунды). Lognara получает JSON-массивы через HTTP в `Lognara:AgentUrl` (по умолчанию локальный агент `http://127.0.0.1:7400/v1/logs`), с буфером `logs/lognara-buffer` (10 файлов примерно по 10 MiB). `LognaraJsonFormatter` переносит захваченные ID события в канонические `trace_id`/`span_id`/`parent_span_id`/`request_id`; остальные свойства сохраняет в `attributes`, включая `Metrics` schema v2. Exception сохраняется как `exception.type`/`exception.stacktrace` в attributes. Lognara-agent настраивается отдельно; `LOGNARA_SERVICE`, `LOGNARA_SERVER`, `LOGNARA_BACKEND` задают источник. При выборе Lognara-only Seq-страницы логов и агрегация метрик в [[Backend/AdminPanel]] не получают новые сервисные события.
 
 ## Зависимости
 
