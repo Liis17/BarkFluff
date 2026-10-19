@@ -80,7 +80,7 @@
     <string name="server_status_checking">Wird geprüft…</string>
     <string name="server_status_online">Online</string>
     <string name="server_status_unavailable">Nicht verfügbar</string>
-    <string name="server_response_ms">Antwort %1$d ms</string>
+    <string name="server_response_ms">%1$d ms</string>
     <string name="self_hosted_title">Eigener Server</string>
     <string name="self_hosted_description">Betreibe deinen eigenen BarkFluff-Server</string>
     <string name="btn_learn_more_server">Mehr erfahren</string>
