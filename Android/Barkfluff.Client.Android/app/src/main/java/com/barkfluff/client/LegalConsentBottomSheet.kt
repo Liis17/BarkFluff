@@ -45,7 +45,7 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
 
         binding.consentPanel.visibility = if (readOnly) View.GONE else View.VISIBLE
         binding.closeButton.visibility = if (readOnly) View.VISIBLE else View.GONE
-        binding.legalTabs.visibility = if (readOnly) View.VISIBLE else View.GONE
+        binding.legalTabsContainer.visibility = if (readOnly) View.VISIBLE else View.GONE
 
         binding.legalTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) = showDoc(tab.position)
@@ -84,7 +84,7 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
         (dialog as? BottomSheetDialog)?.let { sheetDialog ->
             sheetDialog.findViewById<FrameLayout>(com.google.android.material.R.id.design_bottom_sheet)
                 ?.let { sheet ->
-                    sheet.setBackgroundResource(R.drawable.bg_create_chat_sheet)
+                    sheet.setBackgroundResource(R.drawable.bg_legal_sheet)
                     // Документ длинный — открываем сразу развёрнутым и запрещаем сворачивание,
                     // иначе половина текста остаётся за краем экрана.
                     sheet.layoutParams = sheet.layoutParams.apply { height = ViewGroup.LayoutParams.MATCH_PARENT }
@@ -98,6 +98,8 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun showDoc(position: Int) {
+        binding.sheetTitle.setText(if (position == TAB_PRIVACY) R.string.legal_privacy_title else R.string.legal_sheet_title)
+        binding.documentIcon.setImageResource(if (position == TAB_PRIVACY) R.drawable.ic_security else R.drawable.ic_file)
         val doc = if (position == TAB_PRIVACY) LegalDocsRepository.DOC_PRIVACY else LegalDocsRepository.DOC_TERMS
         val text = runCatching { LegalDocsRepository.load(requireContext(), doc) }
             .getOrElse { getString(R.string.legal_load_error) }

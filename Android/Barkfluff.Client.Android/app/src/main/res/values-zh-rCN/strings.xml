@@ -1,4 +1,8 @@
 <resources>
+    <string name="legal_privacy_title">隐私政策</string>
+    <string name="welcome_show_legal">显示条款和隐私政策</string>
+    <string name="welcome_hide_legal">隐藏条款和隐私政策</string>
+
     <string name="chat_draft_preview">草稿</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
