@@ -74,6 +74,7 @@ public class Program
             app.MapGrpcReflectionService();
         app.MapGrpcService<SettingsApiService>();
         app.MapGrpcService<SettingsSetupApiService>();
+        app.MapConfigurationReadiness();
         GrpcServer::BarkFluff.GrpcServer.HealthEndpointExtensions.MapHealthEndpoints(app);
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
