@@ -133,6 +133,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 
 `MessagesStorage.AddMessageWithOutboxAsync` в одной PostgreSQL-транзакции сохраняет `Message` и сериализованный `NewMessageEvent` в `MessageOutbox`. Если вторая запись не удалась, транзакция откатывает и сообщение. У каждого события стабильный UUID `EventId`.
 
+Внутренние nullable-поля `TraceParent`, `TraceState`, `CorrelationId` в `MessageOutboxEntry` сохраняют контекст операции отдельно от event payload. Dispatcher восстанавливает его через `BarkFluff.GrpcServer.Tracing.TraceContext`: повторные попытки сохраняют TraceId, получая новый SpanId. Строки без контекста по-прежнему доставляются. Миграция `20261019211114_AddOutboxTraceContext` добавляет только nullable text-колонки.
+
 `MessageOutboxDispatcher` каждые 2 с атомарно claim'ит до 100 `Pending`-строк через `FOR UPDATE SKIP LOCKED`, переводит их в `Processing` с lease 2 минуты и публикует в RabbitMQ. Истёкший lease reclaim'ится. Ошибки повторяются с backoff 1 с → 5 с → 30 с → 2 мин → 10 мин → 30 мин; после 7 суток строка становится `DeadLetter`. `MessageOutboxJanitor` раз в час удаляет `Delivered` старше 7 суток.
 
 Гарантия — **at-least-once**: crash после publish, но до фиксации `Delivered` может опубликовать тот же `EventId` повторно. Exactly-once inbox консюмеров в этот контур не входит. Метрики: `message_outbox_pending`, `message_outbox_delivered`, `message_outbox_delivery_errors`, `message_outbox_dispatch_errors`, `message_outbox_reclaimed`, `message_outbox_deadletter`.
