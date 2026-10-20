@@ -1,56 +1,157 @@
 # Service logs and trace context
 
-Services using `AddBarkFluffSerilog` write to Console and one selected remote backend.
-Seq is the default. The selection is read at startup; restart consumers after changing it.
+Hosts using `AddBarkFluffSerilog` configure Console, Seq, and Lognara as independent sinks.
+The root-level flags default to Console on, Seq on, and Lognara off. The 15 Settings-backed
+services read the flags for their own `ServiceId`; there is no shared/global flag inheritance.
+Changes take effect at process startup, so restart the affected host after changing them.
 
-## Select the backend
+## Configure sinks
 
-The Settings global catalog exposes:
+The Settings catalog exposes these root-level flags in each of the 15 service scopes:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `Logging:Backend` | `Seq` | `Seq` or `Lognara`, case-insensitive. Unknown values fail startup. |
-| `Lognara:AgentUrl` | `http://127.0.0.1:7400/v1/logs` | HTTP(S) ingest URL of a separately deployed Lognara agent. |
+| `ConsoleOutput` | `true` | Write Information-and-higher events to the console. |
+| `SeqEnable` | `true` | Send events to Seq. |
+| `LognaraEnable` | `false` | Send events to the Lognara HTTP agent. |
 
-Change these keys through the existing Settings/AdminPanel configuration API. The insert-only
-seeder adds missing keys without changing saved values. Set `Logging:Backend` back to `Seq`
-and restart services to switch back. `Seq:ServerUrl` continues to work, defaulting to
-`http://seq:5341`. No real settings or deployments are changed by the code change.
+The flags are independent rather than a single backend selector, so any combination can be
+configured. For example, `SeqEnable=true` and `LognaraEnable=true` select both remote backends.
+Change them through
+the existing Settings/AdminPanel configuration API for Settings-backed hosts. Precedence for
+logging and agent configuration is command line, environment, matching Settings values, then local
+configuration; this applies only to logging flags and Lognara agent URL/executable keys. Container
+environment variables use the same root flag names, for example `SeqEnable=false`. `Seq:ServerUrl` continues
+to default to `http://seq:5341`.
 
-Settings itself initializes logging before its database is ready, so configure its logger
-through local configuration or environment (`Logging__Backend`, `Lognara__AgentUrl`).
-AdminPanel uses the shared logger after loading Settings and applying its environment overrides.
-The separate bootstrap Setup application retains its existing console logging and does not
-use the shared logging helper. Failures before shared logger initialization are outside its sinks.
+The 15 Settings-backed scopes are Identity, Users, Beacon, Notifications, Files, Messages,
+FastAuth, Updates, Onliner, CloudMessaging, Web, Developers, Calls, Bots, and Federation.
+Settings, Setup, Navigator, ClientStorage, and WebServer use local configuration; AdminPanel also
+uses local flags while loading `ServiceId.Unknown`. For these local-startup hosts, command-line
+and environment overrides still take precedence. The legacy `Logging:Backend` value is no longer
+used to choose sinks; its existing row and history are retained.
 
-Lognara-agent must be running at the configured URL. It forwards to relay/core using its own
-configuration and credentials; the application does not receive relay/core tokens. Configure
-`LOGNARA_SERVICE`, `LOGNARA_SERVER`, `LOGNARA_BACKEND`, and optional environment/instance identity
-on each agent. The default loopback URL assumes the agent runs in the application's container;
-use an explicit reachable agent URL for another topology. No agent installation or Docker
-topology change is included. Configure the agent to avoid also collecting the same application
-console events when using HTTP ingestion, otherwise those events can appear twice.
+Settings initializes its logger before the Settings database is ready, so startup events use its
+local flags; saved Settings values cannot retroactively change those events.
 
-## Event formats and buffering
+Each .NET container can run an embedded HTTP-only Lognara agent beside the application. The
+application sends events to `http://127.0.0.1:7400/v1/logs`; configure `Lognara:AgentExecutable`
+with the executable path to enable it. When unset, the application uses an externally managed agent.
+Compose explicitly sets this path to `/usr/local/bin/lognara-agent`. The agent gets its relay URL
+and relay token from native `LOGNARA_*` environment variables; Lognara core credentials stay with
+the relay. The application does not capture its own stdout. Agent diagnostics go to the container
+console only when `ConsoleOutput` is on, and are not sent back through the application's logger.
+The global `Lognara:AgentUrl` defaults to the loopback URL above and can be overridden locally or
+through CLI/environment configuration. When `Lognara:AgentExecutable` is set, this URL must remain
+the loopback endpoint; URL overrides apply when using an external agent.
 
-Seq keeps native trace IDs and existing `TraceId`, `SpanId`, `RequestId`, `CorrelationId` properties.
-Existing AdminPanel filters remain compatible. Lognara receives JSON arrays, with `timestamp`,
-`level`, `message`, `trace_id`, `span_id`, optional `parent_span_id`, and `request_id` at the top level.
-Additional properties are under `attributes`; `attributes.Metrics` retains the schema-v2 object
-required by Lognara's metric extractor. Exception type and stack trace use
-`attributes["exception.type"]` and `attributes["exception.stacktrace"]`.
+## Docker Compose deployment
 
-The formatter reads IDs captured on the event, rather than the shipping thread's Activity.
-Trace IDs are W3C 32-hex values and span IDs are 16 hex. A business CorrelationId remains a
-separate attribute and never replaces TraceId.
+The nightly Compose overlays use one `lognara-relay` for the installation and attach the service
+bundles to the external `barkfluff-network`. Create that network once if it does not exist:
 
-Both backends use disk buffering and batches of up to 100 events with a two-second shipping
-period. Seq retains its existing 100 MiB buffer. Lognara uses approximately ten 10 MiB rolled
-files under `logs/lognara-buffer`, a 1 MiB event limit and a 1.5 MiB batch payload limit, below
-the agent's 2 MiB HTTP body limit. Buffer limits can drop events on prolonged outages; oversized
-Lognara events are dropped. These are bounded delivery buffers, not an unlimited audit store.
-Preserve the `logs/` directory across container replacement if unsent events must survive it.
-Changing backends does not drain the inactive backend's buffer; restore that backend to replay it.
+```sh
+docker network create barkfluff-network
+```
+
+Start Lognara Core/Dock first, create a Relay connection there, then create a separate agent
+registration for every source and bind each agent to that relay. Put the Core URL and relay-to-Core
+token in the private Compose environment. Put each agent-to-relay token in the matching `*_LOGNARA_RELAY_TOKEN`
+entry from [`Docker/Lognara/lognara.env.example`](../Docker/Lognara/lognara.env.example). The
+template contains blank placeholders; keep real tokens in a private env file and do not commit it.
+Do not reuse agent tokens between sources. Compose does not create Core/Dock registrations.
+
+The relay requires `LOGNARA_CORE_URL` and `LOGNARA_CORE_TOKEN`. `LOGNARA_SERVER` is required for
+the captured sources. `LOGNARA_BACKEND` defaults to `barkfluff`, `LOGNARA_RELAY_URL` defaults to
+`http://lognara-relay:7401/v1/batches`, and `LOGNARA_ENVIRONMENT` is optional. Ensure the relay
+container can reach Core at the configured URL. The application agent receives the relay URL and
+its own source token; Core credentials are only configured on the relay. The app-to-agent HTTP
+endpoint and relay port are not published on the host: the app endpoint listens on loopback, and
+the relay is reachable to other bundles over `barkfluff-network`.
+
+Add the Lognara variables from the template to the existing private `.env` for each bundle, or pass
+that file with Compose's `--env-file` option. Run each command from its listed directory. For a
+first-time installation, from `Docker/nightly/barkfluff` start only the shared relay first:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d lognara-relay
+```
+
+Then run the Setup overlay when needed. After the existing Settings setup flow completes, start the
+full main bundle. On an already configured installation, start the full main bundle directly. The
+other bundles can then use its relay over `barkfluff-network`.
+
+| Bundle directory | Command |
+| --- | --- |
+| `Docker/nightly/barkfluff` | `docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d --build` |
+| `Docker/nightly/barkfluff` (Setup) | `docker compose -f docker-compose.setup.yml -f docker-compose.setup.lognara.yml up -d --build` |
+| `Docker/nightly/clientstorage` | `docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d` |
+| `Docker/nightly/website` | `docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d` |
+| `Docker/nightly/navigator/nginx` | `docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d --build` |
+| `Docker/nightly/nginx` | `docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d --build` |
+| `Docker/nightly/proxy` | `docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d --build` |
+
+The main overlay starts the relay and captures PostgreSQL/bootstrap, Redis, RabbitMQ, LiveKit, and
+Seq. MinIO capture is optional; start it from the main bundle directory with:
+
+```sh
+docker compose --profile lognara-minio -f docker-compose.yml -f docker-compose.lognara.yml up -d --build
+```
+
+The Setup overlay includes separate `setup`, `settings-setup`, `postgres-setup`, and
+`postgres-bootstrap-setup` sources and expects the main relay to be running. Each bundle has
+separate named volumes for the .NET sink buffer at `/app/logs` and the agent spool at
+`/var/lib/lognara-agent/spool`; the relay has its own spool volume. These volumes are separate from
+business data volumes. Preserve them across container replacement if queued events must survive.
+The base Setup Compose file does not include Seq but defaults `SETUP_SEQ_ENABLE` and
+`SETUP_SETTINGS_SEQ_ENABLE` to `true`; when running without the Lognara overlay, make Seq reachable
+externally or set the corresponding variable to `false`, otherwise events stay in the bounded
+100 MiB Seq buffers while Seq is unreachable.
+The slim .NET images remain non-root (UID 1654) and seed both writable paths with that owner. Their
+build installs static agent release `agent-20261018-041923-6db0c80dd298` and checks the published
+SHA-256 for amd64 and arm64. Infrastructure images run the agent around the original container
+entrypoint and command, preserving their arguments. The app, agent, and relay named volumes need no
+host-side permission changes or init container.
+
+Compose overrides each .NET service's flags to Lognara on, Seq off, and Console on. Set the
+service-prefixed variables in the private env file to change them, for example
+`BEACON_LOGNARA_ENABLE=false`, `BEACON_SEQ_ENABLE=true`, and `BEACON_CONSOLE_OUTPUT=true` to roll
+Beacon back to Seq. Apply the same three variables with the relevant service prefix, then rerun
+that bundle's `up -d` command to recreate its container. The default application flags outside the
+Lognara overlays remain Lognara off, Seq on, and Console on. Infrastructure capture in the main
+overlay remains enabled while that overlay is active.
+
+When Lognara is enabled with an embedded agent, its relay token must be configured; a missing
+token or agent readiness failure prevents the .NET host from starting. If the embedded agent exits
+unexpectedly, the host exits nonzero even when Seq or Console is enabled, and Docker restarts it
+under the service's existing restart policy. A relay/Core outage keeps events in the agent/relay
+spools for retries. During host shutdown, the other workers stop, Serilog flushes, and then the
+agent receives SIGTERM. Agent diagnostics appear directly in the Docker console only when
+`ConsoleOutput` is enabled; they do not re-enter the application logger.
+
+## Event format and buffering
+
+The shared logger uses `Serilog.Sinks.Lognara` 0.1.2 rather than a project-specific HTTP formatter.
+The sink sends the message, level, timestamp, exception, structured properties, and trace/span IDs
+when present. Its JSON events put canonical `trace_id` and `span_id` at the top level; parent span,
+request ID, and business correlation ID remain under `attributes`. Metrics remain under
+`attributes.Metrics` in schema v2. The exception is sent as a top-level string and stored under
+attributes by the relay. The existing activity enricher supplies W3C trace IDs when available.
+
+The sink batches events in the background (up to 100 events and a 1 MiB target payload) and retries
+delivery errors. BarkFluff configures a disk queue for the application sink at `logs/lognara-buffer`:
+up to four files of about 16 MiB each, plus bookkeeping files. The last event may slightly exceed
+the file size; when the file limit is reached, the oldest files are removed. Events larger than
+256 KiB UTF-8 are dropped. Without a disk path, the in-memory queue is limited to 16 MiB of
+serialized events and drops new events when full. The application queue is separate from the agent
+spool at `/var/lib/lognara-agent/spool`; the Seq sink retains its existing 100 MiB disk buffer.
+These are bounded delivery queues, not unlimited audit storage. Switching a sink off does not drain
+its queue.
+
+Version 0.1.2 fixes the LF/CRLF blank-line framing issue for new disk-buffer writes. Updating the
+package does not repair queue files already written by 0.1.1. If such files still contain unsent
+records, stop the application and preserve the complete buffer directory, including bookkeeping
+files, for separate recovery; do not expect the update to drain those old files.
 
 The AdminPanel's log browser, compression and metric rollups still read Seq. With Lognara-only
 selected, use Lognara Dock for new service logs and metrics; the panel is not a Lognara query client.
@@ -79,15 +180,3 @@ three nullable text columns. Their existing service startup applies pending migr
 schema upgrade before restarting these services. The development task generates and validates
 migrations without applying them to a working database. Existing binaries tolerate the added
 columns; legacy outbox rows remain deliverable.
-
-## Verification
-
-Targeted tests cover real loopback HTTP delivery to Seq/Lognara-compatible receivers, structured
-metric and exception serialization, real HTTP/2 gRPC unary/server/client/duplex calls, cancellation
-and unary exception logs, HTTP propagation, MassTransit in-memory publish/consume, outbox
-persistence/retry and mixed-trace federation delivery. Migration tests compare model snapshots
-and generate PostgreSQL SQL without connecting to a database.
-
-Actual RabbitMQ delivery and Lognara agent → relay → core → Dock search require a separately
-configured integration environment. A compatible HTTP receiver does not replace that deployment
-check. No client platform code or public protobuf contracts are changed.
