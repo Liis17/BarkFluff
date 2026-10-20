@@ -35,6 +35,11 @@ data class AuthenticationCapabilities(
     val telegramBotUsername: String,
 )
 
+data class SignInResolution(
+    val loginMode: AuthenticationLoginMode?,
+    val errorCode: String,
+)
+
 data class AuthenticationChallenge(
     val reference: AuthenticationChallengeReference,
     val state: AuthenticationChallengeState,
@@ -70,6 +75,7 @@ data class SignInRequest(
     val loginMode: AuthenticationLoginMode,
     val factor: AuthenticationFactor = AuthenticationFactor.NONE,
     val useRecoveryCode: Boolean = false,
+    val reportLoginModeMismatch: Boolean = false,
 )
 
 data class SecuritySettings(

@@ -1106,6 +1106,10 @@
     <string name="login_empty_login">Gib deinen Benutzernamen oder deine E-Mail ein</string>
     <string name="login_invalid_email">Ungültiges E-Mail-Format</string>
     <string name="login_username_too_short">Mindestens 3 Zeichen (Buchstaben, Zahlen, . und _)</string>
+    <string name="login_flow_continue">Weiter</string>
+    <string name="login_account_not_found">Konto nicht gefunden</string>
+    <string name="login_mode_changed">Die Anmeldemethode hat sich geändert. Bitte fahre fort.</string>
+    <string name="login_server_update_required">Aktualisiere den Server dieses Knotens, um dich anzumelden.</string>
     <string name="login_password_too_short">Mindestens %1$d Zeichen</string>
     <string name="settings_error_detail">Fehler: %1$s</string>
     <string name="account_username_taken">Benutzername ist bereits vergeben</string>
