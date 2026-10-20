@@ -7,6 +7,8 @@ import com.barkfluff.client.domain.gateway.MessageGateway
 import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.data.GlobalParam
+import io.grpc.Status
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlin.coroutines.coroutineContext
@@ -70,6 +72,9 @@ class RealtimeService(
     private val _allMessagesUnpinned = MutableSharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent>(extraBufferCapacity = 16)
     val allMessagesUnpinned: SharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent> = _allMessagesUnpinned
 
+    private val _chatHidden = MutableSharedFlow<UpdatesApiOuterClass.ChatHiddenEvent>(extraBufferCapacity = 16)
+    val chatHidden: SharedFlow<UpdatesApiOuterClass.ChatHiddenEvent> = _chatHidden
+
     // --- Приватные чаты (user-scope) ---
     private val _privateMessages = MutableSharedFlow<UpdatesApiOuterClass.NewEncryptedMessageEvent>(extraBufferCapacity = 64)
     val privateMessages: SharedFlow<UpdatesApiOuterClass.NewEncryptedMessageEvent> = _privateMessages
@@ -110,6 +115,9 @@ class RealtimeService(
     @Volatile
     private var hasEstablishedMessagesConnection = false
 
+    /** Поколение каналов: растёт при каждом recreateAllClients из стримов и resume(). */
+    private val clientsGeneration = AtomicInteger()
+
     // Online subscription state
     @Volatile
     private var subscribedUserIds: List<Long> = emptyList()
@@ -140,6 +148,7 @@ class RealtimeService(
 
         // Пересоздаём каналы принудительно — старые могли сломаться (DNS failure после фона)
         clientRegistry.recreateAllClients(globalParam, context)
+        clientsGeneration.incrementAndGet()
 
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
@@ -151,6 +160,8 @@ class RealtimeService(
         scope.launch { streamWithReconnect("MessagesPinned") { collectMessagesPinned() } }
         scope.launch { streamWithReconnect("MessagesUnpinned") { collectMessagesUnpinned() } }
         scope.launch { streamWithReconnect("AllMessagesUnpinned") { collectAllMessagesUnpinned() } }
+        // Ноды до DeleteChat не знают этот RPC — UNIMPLEMENTED завершает только этот стрим.
+        scope.launch { streamWithReconnect("ChatHidden", stopOnUnimplemented = true) { collectChatHidden() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
         scope.launch { streamWithReconnect("Typing") { collectTyping() } }
         // E2E приватные чаты (user-scope)
@@ -377,6 +388,16 @@ class RealtimeService(
         }
     }
 
+    private suspend fun collectChatHidden() {
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeChatHiddenRequest.getDefaultInstance()
+        client.subscribeChatHidden(request).collect { event ->
+            Log.d(TAG, "Chat hidden: chatId=${event.chatId}, contentWiped=${event.contentWiped}")
+            _chatHidden.emit(event)
+            sideEffects?.onChatChanged(event.chatId)
+        }
+    }
+
     private suspend fun collectPrivateMessages() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateMessagesRequest.getDefaultInstance()
@@ -536,10 +557,12 @@ class RealtimeService(
     private suspend fun streamWithReconnect(
         name: String,
         reportsConnectionState: Boolean = false,
+        stopOnUnimplemented: Boolean = false,
         block: suspend () -> Unit
     ) {
         var attempts = 0
         while (coroutineContext.isActive) {
+            val generation = clientsGeneration.get()
             try {
                 if (reportsConnectionState && hasEstablishedMessagesConnection) {
                     _connectionState.value = ConnectionState.CONNECTING
@@ -553,6 +576,10 @@ class RealtimeService(
             } catch (e: CancellationException) {
                 throw e // shutdown requested
             } catch (e: Exception) {
+                if (stopOnUnimplemented && Status.fromThrowable(e).code == Status.Code.UNIMPLEMENTED) {
+                    Log.i(TAG, "[$name] Not supported by server, stream disabled")
+                    return
+                }
                 attempts++
                 Log.w(TAG, "[$name] Stream error (attempt $attempts): ${e.message}")
 
@@ -572,8 +599,12 @@ class RealtimeService(
                 Log.v(TAG, "[$name] Waiting ${backoff}ms before reconnect")
                 delay(backoff)
 
-                // Переинициализируем клиенты (каналы могли сломаться)
-                clientRegistry.recreateAllClients(globalParam, context)
+                // Переинициализируем клиенты (каналы могли сломаться). Пересоздание закрывает
+                // старые каналы и роняет все стримы на них — пересоздаёт только первый упавший
+                // стрим поколения, остальные просто переподключаются, иначе каскад бесконечен.
+                if (clientsGeneration.compareAndSet(generation, generation + 1)) {
+                    clientRegistry.recreateAllClients(globalParam, context)
+                }
             }
         }
     }

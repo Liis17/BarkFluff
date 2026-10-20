@@ -29,6 +29,23 @@ class ChatListIntegrityTest {
         )
     }
 
+    @Test
+    fun partialSnapshotDropsCachedChatsMissingInsideLoadedWindow() {
+        val hidden = chat(id = "00000000-0000-0000-0000-000000000001", title = "deleted", lastActivityAt = 5L)
+        val newest = chat(id = "00000000-0000-0000-0000-000000000002", title = "new", lastActivityAt = 6L)
+        val oldestLoaded = chat(id = "00000000-0000-0000-0000-000000000003", title = "loaded", lastActivityAt = 3L)
+        val older = chat(id = "00000000-0000-0000-0000-000000000004", title = "older", lastActivityAt = 1L)
+
+        assertEquals(
+            listOf(newest, oldestLoaded, older),
+            reconcileChatList(
+                cachedChats = listOf(hidden, older),
+                remoteChats = listOf(newest, oldestLoaded),
+                isCompleteSnapshot = false,
+            )
+        )
+    }
+
     private fun chat(id: String, title: String, lastActivityAt: Long) = ChatSummary(
         id = id,
         title = title,
