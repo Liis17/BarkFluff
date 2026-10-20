@@ -80,6 +80,18 @@ class GrpcAuthenticationChallengeGateway(
             )
         }
 
+    override suspend fun resolveSignIn(login: String): Result<SignInResolution> =
+        grpc.resolveSignIn(
+            IdentityApiOuterClass.ResolveSignInRequest.newBuilder()
+                .setLogin(login)
+                .build(),
+        ).map { response ->
+            SignInResolution(
+                loginMode = response.loginMode.toResolvedDomain(),
+                errorCode = response.errorCode,
+            )
+        }
+
     override suspend fun beginRegistration(request: RegistrationRequest): Result<AuthenticationChallenge> =
         grpc.beginRegistration(
             IdentityApiOuterClass.BeginRegistrationRequest.newBuilder()
@@ -101,6 +113,7 @@ class GrpcAuthenticationChallengeGateway(
                 .setLoginMode(request.loginMode.toProto())
                 .setFactor(request.factor.toProto())
                 .setUseRecoveryCode(request.useRecoveryCode)
+                .setReportLoginModeMismatch(request.reportLoginModeMismatch)
                 .build(),
         ).map { it.toDomain() }
 
@@ -271,6 +284,13 @@ private fun IdentityApiOuterClass.AuthLoginMode.toDomain(): AuthenticationLoginM
     IdentityApiOuterClass.AuthLoginMode.TELEGRAM_LOGIN -> AuthenticationLoginMode.TELEGRAM_LOGIN
     IdentityApiOuterClass.AuthLoginMode.PASSWORD_SECOND_FACTOR -> AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
     else -> AuthenticationLoginMode.PASSWORD
+}
+
+private fun IdentityApiOuterClass.AuthLoginMode.toResolvedDomain(): AuthenticationLoginMode? = when (this) {
+    IdentityApiOuterClass.AuthLoginMode.PASSWORD -> AuthenticationLoginMode.PASSWORD
+    IdentityApiOuterClass.AuthLoginMode.TELEGRAM_LOGIN -> AuthenticationLoginMode.TELEGRAM_LOGIN
+    IdentityApiOuterClass.AuthLoginMode.PASSWORD_SECOND_FACTOR -> AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+    else -> null
 }
 
 private fun IdentityApiOuterClass.AuthChallengeState.toDomain(): AuthenticationChallengeState = when (this) {

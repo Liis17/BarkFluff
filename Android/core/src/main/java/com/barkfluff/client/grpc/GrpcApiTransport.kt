@@ -214,6 +214,11 @@ class GrpcApiTransport(context: Context) {
             client.getAuthCapabilities(IdentityApiOuterClass.GetAuthCapabilitiesRequest.getDefaultInstance())
         }
 
+    suspend fun resolveSignIn(
+        request: IdentityApiOuterClass.ResolveSignInRequest,
+    ): Result<IdentityApiOuterClass.ResolveSignInResponse> =
+        identityCall("ResolveSignIn") { client -> client.resolveSignIn(request) }
+
     suspend fun beginRegistration(
         request: IdentityApiOuterClass.BeginRegistrationRequest,
     ): Result<IdentityApiOuterClass.AuthChallengeResponse> =

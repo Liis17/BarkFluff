@@ -1098,6 +1098,10 @@
     <string name="login_empty_login">请输入用户名或邮箱</string>
     <string name="login_invalid_email">邮箱格式无效</string>
     <string name="login_username_too_short">至少 3 个字符（字母、数字、点和下划线）</string>
+    <string name="login_flow_continue">继续</string>
+    <string name="login_account_not_found">未找到账号</string>
+    <string name="login_mode_changed">登录方式已更改，请重新继续。</string>
+    <string name="login_server_update_required">请更新此节点的服务器后再登录。</string>
     <string name="login_password_too_short">至少需要 %1$d 个字符</string>
     <string name="settings_error_detail">错误：%1$s</string>
     <string name="account_username_taken">用户名已被占用</string>

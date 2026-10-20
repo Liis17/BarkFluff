@@ -75,7 +75,12 @@ class AuthenticationChallengeDialog(
         content.addView(error)
         content.addView(codeLayout)
         content.addView(telegram)
-        content.addView(resend)
+        content.addView(resend, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            topMargin = (12 * activity.resources.displayMetrics.density).toInt()
+        })
         content.addView(switchFactor)
 
         var completed = false
@@ -119,12 +124,12 @@ class AuthenticationChallengeDialog(
         lateinit var render: suspend (AuthenticationChallenge) -> Boolean
         render = { challenge ->
             if (challenge.errorCode.isNotBlank()) {
-                val message = if (challenge.errorCode == "login_mode_disabled") {
-                    activity.getString(R.string.auth_login_mode_disabled)
-                } else {
-                    activity.getString(R.string.auth_error)
+                val message = when (challenge.errorCode) {
+                    "account_not_found" -> activity.getString(R.string.login_account_not_found)
+                    "login_mode_disabled" -> activity.getString(R.string.auth_login_mode_disabled)
+                    else -> activity.getString(R.string.auth_error)
                 }
-                finish(Result.failure(IllegalStateException(message)))
+                finish(Result.failure(AuthenticationChallengeErrorException(challenge.errorCode, message)))
                 false
             } else {
                 status.text = when (challenge.state) {
@@ -241,6 +246,11 @@ class AuthenticationChallengeDialog(
         dialog.show()
     }
 }
+
+class AuthenticationChallengeErrorException(
+    val errorCode: String,
+    message: String,
+) : IllegalStateException(message)
 
 private fun AuthenticationFactor.labelRes(): Int = when (this) {
     AuthenticationFactor.AUTHENTICATOR -> R.string.auth_factor_authenticator
