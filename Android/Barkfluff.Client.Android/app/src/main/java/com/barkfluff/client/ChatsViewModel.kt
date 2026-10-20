@@ -69,7 +69,13 @@ internal fun reconcileChatList(
     val candidates = if (isCompleteSnapshot) {
         validRemoteChats
     } else {
-        validChatSummaries(cachedChats) + validRemoteChats
+        // Сервер отдаёт страницы по убыванию активности: кешированный чат новее последнего
+        // загруженного, но отсутствующий в ответе, скрыт или удалён (DeleteChat).
+        val remoteIds = validRemoteChats.mapTo(HashSet()) { it.id }
+        val oldestLoaded = validRemoteChats.minOfOrNull { it.lastActivityAt }
+        validChatSummaries(cachedChats).filter { cached ->
+            cached.id in remoteIds || oldestLoaded == null || cached.lastActivityAt < oldestLoaded
+        } + validRemoteChats
     }
     return candidates.associateBy { it.id }.values.sortedByDescending { it.lastActivityAt }
 }
@@ -260,6 +266,7 @@ class ChatsViewModel @Inject constructor(
                             totalCount = page.totalCount,
                             folders = foldersResult.getOrNull(),
                             replaceExisting = isCompleteSnapshot,
+                            removedChatIds = state.allChats.map { it.id } - merged.mapTo(HashSet()) { it.id },
                         )
                     }.onFailure { Log.w(TAG, "Не удалось сохранить кеш чатов", it) }
                 }
@@ -433,6 +440,11 @@ class ChatsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            realtimeService.chatHidden.collect { event ->
+                handleChatHidden(event.chatId, event.contentWiped)
+            }
+        }
+        viewModelScope.launch {
             realtimeService.privateMessagesRead.collect { event ->
                 if (event.userId == globalParam.userId) {
                     mirrorReadInAllChats(event.chatId)
@@ -495,6 +507,25 @@ class ChatsViewModel @Inject constructor(
         }
         applyFolderFilter()
         persistChatList()
+    }
+
+    /** DeleteChat на другом устройстве: чат исчезает из списка и кеша, как в веб-клиенте. */
+    private fun handleChatHidden(chatId: String, contentWiped: Boolean) {
+        val state = _uiState.value
+        val wasListed = state.allChats.any { it.id == chatId }
+        val totalCount = if (wasListed) (state.totalChatsCount - 1).coerceAtLeast(0) else state.totalChatsCount
+        if (wasListed) {
+            _uiState.value = state.copy(
+                allChats = state.allChats.filterNot { it.id == chatId },
+                totalChatsCount = totalCount,
+            )
+            applyFolderFilter()
+        }
+        val scope = cacheScope ?: return
+        viewModelScope.launch {
+            runCatching { chatCacheRepository.removeChat(scope, chatId, totalCount, contentWiped) }
+                .onFailure { Log.w(TAG, "Не удалось удалить чат из кеша", it) }
+        }
     }
 
     private fun mirrorNewMessageInAllChats(
