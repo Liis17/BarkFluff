@@ -1,28 +1,28 @@
 [English](../../../README.md) · [Русский](README.md)
 
 <p align="center">
-  <img src="../../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff.icon.white-512.png" width="112" alt="Лого">
+  <img src="../../../Windows/BarkFluff.Client.WPF/Resources/Images/barkfluff_logo.png" width="112" alt="Логотип BarkFluff">
 </p>
 
 <h1 align="center">BarkFluff</h1>
 
 <p align="center">
-  <strong>Self-hosted мессенджер, спроектированный как распределённая система реального времени.</strong>
+  <strong>Самостоятельно размещаемый мессенджер, спроектированный как распределённая система реального времени.</strong>
 </p>
 
 <p align="center">
   <a href="#скачать">Скачать</a> ·
   <a href="#что-внутри">Платформа</a> ·
   <a href="#клиенты">Клиенты</a> ·
-  <a href="../../README.md">Документация</a>
+  <a href="../../../Obsidian/ClaudeVault/Index.md">Заметки проекта</a>
 </p>
 
 <p align="center">
   <a href="../../../LICENSE"><img src="https://img.shields.io/github/license/Liis17/BarkFluff?style=flat-square&color=8A2BE2" alt="Лицензия MIT"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=dev" alt="Android CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml/badge.svg?branch=dev" alt="WinUI CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=dev" alt="macOS CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml/badge.svg?branch=dev" alt="Web CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=master" alt="Android CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml/badge.svg?branch=master" alt="WinUI CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=master" alt="macOS CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml/badge.svg?branch=master" alt="Web CI"></a>
 </p>
 
 ---
@@ -35,11 +35,7 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 ## Скачать
 
-<p align="center">
-  <a href="https://storage.barkfluff.com/get/barkfluffwindows/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/b80bc730dcb440049d4ad185932b5fca.png" alt="Download BarkFluff for Windows" height="88"></a>
-  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/193a7581c86a4c9baaa074e75c82465f.png" alt="Download BarkFluff for Android" height="88"></a>
-  <a href="https://storage.barkfluff.com/get/barkfluffmacos/release"><img src="https://github.com/Liis17/BarkFluff/blob/e379f4df43df7718bea2c0c68b694fad6590a05d/assets/2026-08/a2b538ab6c204981b7c0f58293a4a1f8.png" alt="Download BarkFluff for macOS" height="88"></a>
-</p>
+[Скачать для Windows](https://storage.barkfluff.com/get/barkfluffwindows/release) · [Скачать для Android](https://storage.barkfluff.com/get/barkfluffkotlin/release) · [Скачать для macOS](https://storage.barkfluff.com/get/barkfluffmacos/release)
 
 <p align="center">
   <sub>Релизные сборки для Windows, Android и macOS. Остальные клиенты доступны из исходников ниже.</sub>
@@ -47,7 +43,7 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 ## Что внутри
 
-**Единая точка входа.** Beacon даёт клиентам доверенный способ обнаружить платформу; Settings предоставляет реестр сервисов и runtime-настройки.
+**Единая точка входа.** Beacon возвращает клиентам адреса сервисов ноды, а Settings хранит их runtime-настройки.
 
 **Независимые продуктовые сервисы.** Авторизация, профили, сообщения, файлы, присутствие, звонки, боты, федерация и другое работают как сфокусированные .NET-сервисы — с CQRS и MediatR там, где это уместно.
 
@@ -55,16 +51,16 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 **Готовность к эксплуатации.** PostgreSQL хранит состояние, Redis обслуживает горячие данные, MinIO отвечает за объекты, а Docker запускает стек. Нативные и web-клиенты сделаны на Kotlin, WinUI, SwiftUI, Qt и web-технологиях.
 
-В [гайде по архитектуре](../../../Obsidian/ClaudeVault/Architecture.md) описаны порты, аутентификация, доставка событий и соглашения сервисов.
+В [заметках по архитектуре](../../../Obsidian/ClaudeVault/Architecture.md) описаны порты, аутентификация, доставка событий и соглашения сервисов.
 
 ## Клиенты
 
-- **Android** — Kotlin и gRPC-OkHttp · [инструкция по сборке](../../clients/android.md)
-- **Windows** — WinUI 3 и .NET · [инструкция по сборке](../../clients/windows.md) · устаревший WPF-клиент
-- **macOS** — SwiftUI и gRPC-Swift · [инструкция по сборке](../../clients/macos.md)
-- **iOS** — SwiftUI и gRPC-Swift · [инструкция по сборке](../../clients/ios.md)
-- **Linux** — Qt 6, C++20 и gRPC · [инструкция по сборке](../../clients/linux.md)
-- **Web** — gRPC-Web и vanilla-JS SPA · [инструкция по сборке](../../clients/web.md)
+- **Android** — Kotlin и gRPC-OkHttp · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Android.md)
+- **Windows** — WinUI 3 и .NET · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Windows-WinUI.md) · устаревший WPF-клиент
+- **macOS** — SwiftUI и gRPC-Swift · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/macOS.md)
+- **iOS** — SwiftUI и gRPC-Swift · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/iOS.md)
+- **Linux** — Qt 6, C++20 и gRPC · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Linux-Qt.md)
+- **Web** — gRPC-Web и vanilla-JS SPA · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Web.md)
 
 ## Исследовать репозиторий
 
@@ -75,30 +71,30 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 > В [`Android/`](../../../Android), [`Windows/`](../../../Windows), [`Mac/`](../../../Mac), [`iOS/`](../../../iOS) и [`Linux/`](../../../Linux) находятся нативные приложения. [`Frontend/`](../../../Frontend) содержит фронтенд портала для разработчиков.
 
 > ### ⚙️ Инфраструктура
-> В [`docker/`](../../../docker) лежат локальные стеки платформы и инфраструктуры. В [`Tests/`](../../../Tests) — автоматические и нагрузочные тесты.
+> В [`Docker/`](../../../Docker) лежат локальные стеки платформы и инфраструктуры. В [`Tests/`](../../../Tests) — автоматические и нагрузочные тесты.
 
 > ### 📖 Документация
-> [`.readme/`](../../) — публичный хаб запуска; [`Obsidian/ClaudeVault/`](../../../Obsidian/ClaudeVault) — база знаний проекта.
+> [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md) содержит заметки об архитектуре, компонентах и тестировании.
 
 ## Статус проекта
 
 
 > ### 🚧 Активная разработка
-> BarkFluff активно развивается. Android V1 — поддерживаемый Android-клиент; проект V2 на Jetpack Compose экспериментальный и должен меняться только в рамках отдельной задачи.
+> BarkFluff активно развивается. Android-клиент собирается из модуля `app-v1`; Jetpack Compose используется в отдельных экранах наряду с Views/XML.
 
 > ### ✅ Состояние сборок
-> Статус клиентских workflow показан выше. Полная матрица доступна в [GitHub Actions](https://github.com/Liis17/BarkFluff/actions).
+> Статусы выбранных workflow показаны выше. Полный список доступен в [GitHub Actions](https://github.com/Liis17/BarkFluff/actions).
 
 ## Справка и документация
 
 > ### 🛠️ Запуск и эксплуатация
-> [Инструкция по бэкенду](../../backend.md) · [Порты и переменные окружения](../../../Backend/PORTS_CONFIGURATION.md) · [Справка по Docker](../../../Backend/DOCKER_SETUP.md) · [Реестр метрик](../../../Backend/METRICS.md)
+> [Архитектура и развёртывание](../../../Obsidian/ClaudeVault/Architecture.md) · [Настройки](../../../Obsidian/ClaudeVault/Backend/Settings.md) · [Интерфейс первичной настройки](../../../Obsidian/ClaudeVault/Backend/Setup.md) · [Тестирование](../../../Obsidian/ClaudeVault/Testing.md)
 
 > ### 🤖 Интеграция бота
-> [Гайд по Bot API](../../bots.md) — возможности, аутентификация и REST-эндпоинты для внешних ботов.
+> [Заметки о Bot API и сервисе](../../../Obsidian/ClaudeVault/Backend/Bots.md) — возможности, аутентификация и REST-эндпоинты для внешних ботов.
 
 > ### 📚 Изучить систему
-> [Документационный хаб](../../README.md) · [Архитектура](../../../Obsidian/ClaudeVault/Architecture.md) · [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md)
+> [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md)
 
 > ### ⚖️ Лицензия
 > [Лицензия MIT](../../../LICENSE)
