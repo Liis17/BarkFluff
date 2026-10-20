@@ -62,6 +62,7 @@ interface ServerDiscoveryGateway {
 
 interface AuthGateway {
     suspend fun ensureValid(forceRefresh: Boolean = false): Boolean
+    suspend fun tokenValidity(forceRefresh: Boolean = false): com.barkfluff.client.grpc.TokenValidity
     suspend fun refresh(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<com.barkfluff.client.grpc.TokenRefreshResult>
     suspend fun logout(): Result<Unit>
     fun createIdentity(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit>
