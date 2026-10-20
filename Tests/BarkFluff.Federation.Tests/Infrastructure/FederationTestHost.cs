@@ -1,5 +1,6 @@
 using BarkFluff.Federation.Domain.Entities;
 using BarkFluff.Federation.Domain.Enums;
+using BarkFluff.Federation.Features.FederationS2SApi;
 using BarkFluff.Federation.Host;
 using BarkFluff.Federation.Persistence.Contexts;
 using BarkFluff.Federation.Services;
@@ -76,6 +77,7 @@ public sealed class FederationTestHost : IAsyncDisposable
                     });
 
                     services.AddDbContext<FederationContext>(o => o.UseInMemoryDatabase(dbName));
+                    services.AddScoped<FederationS2SApiHandler>();
                     services.AddScoped<SigningKeyService>();
                     services.AddSingleton<FederationSwitch>();
                     services.AddSingleton<MetricsCollector>();
