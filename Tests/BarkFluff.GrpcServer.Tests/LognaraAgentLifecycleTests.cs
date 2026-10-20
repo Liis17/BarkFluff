@@ -227,6 +227,75 @@ public sealed class LognaraAgentLifecycleTests
     }
 
     [LinuxProcessFact]
+    public async Task Readiness_deadline_throws_timeout_exception_and_cleans_up_process()
+    {
+        EnsureAgentPortAvailable();
+        var directory = CreateTempDirectory();
+        var script = CreateNonListeningAgentScript(directory);
+        using var environment = AgentEnvironment(Path.Combine(directory, "agent-capture.txt"), crashAfterReady: false);
+        var originalLogger = Log.Logger;
+        Log.Logger = new LoggerConfiguration().CreateLogger();
+        var service = CreateService(Options(lognaraEnable: true, executable: script), new TestLifetime());
+
+        try
+        {
+            var exception = await Assert.ThrowsAsync<TimeoutException>(
+                () => service.StartingAsync(CancellationToken.None));
+
+            Assert.Contains("did not become ready within 10 seconds", exception.Message);
+        }
+        finally
+        {
+            try
+            {
+                await service.DisposeAsync();
+                await Log.CloseAndFlushAsync();
+            }
+            finally
+            {
+                Log.Logger = originalLogger;
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [LinuxProcessFact]
+    public async Task Caller_cancellation_during_readiness_remains_operation_canceled()
+    {
+        EnsureAgentPortAvailable();
+        var directory = CreateTempDirectory();
+        var script = CreateNonListeningAgentScript(directory);
+        using var environment = AgentEnvironment(Path.Combine(directory, "agent-capture.txt"), crashAfterReady: false);
+        using var cancellation = new CancellationTokenSource();
+        var originalLogger = Log.Logger;
+        Log.Logger = new LoggerConfiguration().CreateLogger();
+        var service = CreateService(Options(lognaraEnable: true, executable: script), new TestLifetime());
+
+        try
+        {
+            var starting = service.StartingAsync(cancellation.Token);
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => starting);
+        }
+        finally
+        {
+            try
+            {
+                await service.DisposeAsync();
+                await Log.CloseAndFlushAsync();
+            }
+            finally
+            {
+                Log.Logger = originalLogger;
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [LinuxProcessFact]
     public async Task Unexpected_agent_exit_stops_application_with_nonzero_exit_code()
     {
         EnsureAgentPortAvailable();
@@ -352,6 +421,17 @@ public sealed class LognaraAgentLifecycleTests
                 UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
                 UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
         }
+        return script;
+    }
+
+    private static string CreateNonListeningAgentScript(string directory)
+    {
+        var script = Path.Combine(directory, "fake-lognara-agent-no-listener");
+        File.WriteAllText(script, "#!/usr/bin/python3\nimport time\ntime.sleep(60)\n");
+        File.SetUnixFileMode(script,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
         return script;
     }
 

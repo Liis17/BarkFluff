@@ -399,32 +399,29 @@ public class DockerService
             throw new InvalidOperationException("Не удалось определить реальные host-пути Docker Compose.");
         }
 
+        var composeFiles = await GetActiveComposeFilesAsync(composeFile);
         var dockerArguments = new List<string>
         {
             "run", "--rm", "--user", "root",
             "--mount", $"type=bind,src={dockerSocket},dst=/var/run/docker.sock",
-            "--mount", $"type=bind,src={projectDirectory},dst={projectDirectory},readonly",
         };
 
-        if (!string.Equals(Path.GetDirectoryName(envFile), projectDirectory, StringComparison.Ordinal))
-        {
-            dockerArguments.Add("--mount");
-            dockerArguments.Add($"type=bind,src={envFile},dst={envFile},readonly");
-        }
+        DockerComposeInvocation.AddReadOnlyMounts(dockerArguments, composeFiles, envFile);
 
         dockerArguments.Add("--entrypoint");
         dockerArguments.Add("docker");
         dockerArguments.Add(helperImage);
-        dockerArguments.Add("compose");
-        dockerArguments.Add("--project-name");
-        dockerArguments.Add("barkfluff");
-        dockerArguments.Add("--env-file");
-        dockerArguments.Add(envFile);
-        dockerArguments.Add("-f");
-        dockerArguments.Add(composeFile);
-        dockerArguments.AddRange(args);
+        dockerArguments.AddRange(DockerComposeInvocation.CreateCommandArguments(composeFiles, envFile, args));
 
         return await RunDockerCommandAsync(dockerArguments.ToArray());
+    }
+
+    private async Task<IReadOnlyList<string>> GetActiveComposeFilesAsync(string baseComposeFile)
+    {
+        const string configFilesLabel = "com.docker.compose.project.config_files";
+        var template = "{{if .Config.Labels}}{{index .Config.Labels \"" + configFilesLabel + "\"}}{{end}}";
+        var activeFiles = await RunDockerCommandAsync("inspect", "--format", template, "admin-panel");
+        return DockerComposeInvocation.ResolveFiles(baseComposeFile, activeFiles);
     }
 
     /// <summary>
@@ -573,23 +570,26 @@ public class DockerService
             var dockerSock = await GetMountSourceAsync("admin-panel", "/var/run/docker.sock");
             var composeFile = await GetMountSourceAsync("admin-panel", "/docker-compose.yml");
             var envFile = await GetMountSourceAsync("admin-panel", "/.env");
+            var composeFiles = await GetActiveComposeFilesAsync(composeFile);
 
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-updater");
 
-            // Монтируем compose и env по их РЕАЛЬНЫМ хостовым путям,
-            // чтобы относительные пути в compose-файле (./.env) разрешались корректно на хосте
-            await RunDockerCommandAsync(
+            var dockerArguments = new List<string>
+            {
                 "run", "-d", "--rm",
                 "--name", "admin-panel-updater",
                 "--user", "root",
-                "-v", $"{dockerSock}:/var/run/docker.sock",
-                "-v", $"{composeFile}:{composeFile}:ro",
-                "-v", $"{envFile}:{envFile}:ro",
-                "--entrypoint", "sh",
-                helperImage,
-                "-c", $"sleep 2 && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} pull admin-panel && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} up --force-recreate --no-deps -d admin-panel && docker image prune -f"
-            );
+                "--mount", $"type=bind,src={dockerSock},dst=/var/run/docker.sock",
+            };
+            DockerComposeInvocation.AddReadOnlyMounts(dockerArguments, composeFiles, envFile);
+            dockerArguments.AddRange(["--entrypoint", "sh", helperImage, "-c"]);
+            var pullCommand = DockerComposeInvocation.ToShellCommand(
+                DockerComposeInvocation.CreateCommandArguments(composeFiles, envFile, "pull", "admin-panel"));
+            var upCommand = DockerComposeInvocation.ToShellCommand(
+                DockerComposeInvocation.CreateCommandArguments(composeFiles, envFile, "up", "--force-recreate", "--no-deps", "-d", "admin-panel"));
+            dockerArguments.Add($"sleep 2 && docker {pullCommand} && docker {upCommand} && docker image prune -f");
+            await RunDockerCommandAsync(dockerArguments.ToArray());
 
             _logger.LogInformation("Helper-контейнер для обновления запущен");
 
