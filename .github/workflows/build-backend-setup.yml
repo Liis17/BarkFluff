@@ -12,6 +12,7 @@ on:
       - '.github/scripts/push-docker-image.sh'
       - 'global.json'
       - '.dockerignore'
+      - 'Docker/Lognara/**'
       - 'Shared/**'
       - 'Tests/BarkFluff.Setup.Tests/**'
   workflow_dispatch:
