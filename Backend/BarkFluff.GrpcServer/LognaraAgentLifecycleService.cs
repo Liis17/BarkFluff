@@ -227,7 +227,14 @@ internal sealed class LognaraAgentLifecycleService : IHostedLifecycleService, IA
                 // The per-request timeout expired; retry until the overall readiness deadline.
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(100), readinessCancellation.Token);
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100), readinessCancellation.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
 
         cancellationToken.ThrowIfCancellationRequested();
