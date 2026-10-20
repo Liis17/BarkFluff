@@ -18,6 +18,11 @@ on:
       - 'Docker/Lognara/**'
       - 'Shared/**'
       - 'Backend/BarkFluff.GrpcServer/**'
+      - 'Tests/BarkFluff.Notification.Tests/**'
+      - '.github/workflows/test-backend.yml'
+      - 'Tests/BarkFluff.GrpcServer.Tests/**'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -29,10 +34,19 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-backend.yml
+    with:
+      project: BarkFluff.Notification.Tests
+
   # ═══════════════════════════════════════════════════════════════
   #  2. dotnet publish → Docker build → Push
   # ═══════════════════════════════════════════════════════════════
   build:
+    needs: [tests, scripts]
     name: "🐳 Сборка и публикация BarkFluff.Notification"
     runs-on: ubuntu-latest
     steps:

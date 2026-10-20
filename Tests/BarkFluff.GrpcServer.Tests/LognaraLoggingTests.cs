@@ -14,6 +14,7 @@ using Serilog.Context;
 
 namespace BarkFluff.GrpcServer.Tests;
 
+[Collection("Process logging")]
 public sealed class LognaraLoggingTests
 {
     [Theory]

@@ -16,6 +16,10 @@ on:
       - 'Docker/Lognara/**'
       - 'Shared/**'
       - 'Tests/BarkFluff.Settings.Tests/**'
+      - '.github/workflows/test-backend.yml'
+      - 'Tests/BarkFluff.GrpcServer.Tests/**'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +31,16 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-backend.yml
+    with:
+      project: BarkFluff.Settings.Tests
+
   build:
+    needs: [tests, scripts]
     name: "🐳 Сборка и публикация BarkFluff.Settings"
     runs-on: ubuntu-latest
     steps:
@@ -36,8 +49,6 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - name: "🧪 Tests"
-        run: dotnet test Tests/BarkFluff.Settings.Tests/BarkFluff.Settings.Tests.csproj -c Release
       - name: "⚙️ dotnet publish (Linux Release)"
         run: |
           dotnet publish Backend/BarkFluff.Settings/BarkFluff.Settings.csproj \

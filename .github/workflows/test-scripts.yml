@@ -1,0 +1,24 @@
+name: Script tests
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: CI helper tests
+        run: python3 -m unittest discover -s .github/tests -p 'test_*.py'
+      - name: Web and AdminPanel JavaScript tests
+        run: |
+          for test in Backend/BarkFluff.Web/scripts/test-*.js Tests/BarkFluff.AdminPanel.Tests/Frontend/test-*.js; do
+            node "$test"
+          done

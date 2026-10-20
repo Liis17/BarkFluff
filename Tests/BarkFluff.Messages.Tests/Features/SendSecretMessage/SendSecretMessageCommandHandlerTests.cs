@@ -93,7 +93,7 @@ public class SendSecretMessageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PublishesMessageAndSilentPush()
+    public async Task Handle_PublishesMessageWithoutLegacySilentPush()
     {
         _buffer.Setup(b => b.EnqueueMessageAsync(It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<byte[]>()))
             .ReturnsAsync(("msg-1", DateTime.UtcNow.AddHours(24)));
@@ -107,6 +107,7 @@ public class SendSecretMessageCommandHandlerTests
         }, CancellationToken.None);
 
         _queueSender.Verify(q => q.SendMessage(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<byte[]>(), It.IsAny<DateTime>()), Times.Once);
-        _queueSender.Verify(q => q.SendSilentPush(2, It.IsAny<string>()), Times.Once);
+        // CloudMessaging consumes NewSecretMessageEvent; the legacy push would duplicate it.
+        _queueSender.Verify(q => q.SendSilentPush(It.IsAny<long>(), It.IsAny<string>()), Times.Never);
     }
 }

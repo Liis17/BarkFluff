@@ -23,6 +23,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Backend\BarkFluff.CloudMessaging\Barkfluff.CloudMessaging.csproj" />
+    <ProjectReference Include="..\..\Backend\Barkfluff.CloudMessaging\Barkfluff.CloudMessaging.csproj" />
   </ItemGroup>
 </Project>
