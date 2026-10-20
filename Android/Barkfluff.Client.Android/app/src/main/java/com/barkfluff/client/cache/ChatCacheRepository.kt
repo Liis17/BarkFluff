@@ -222,6 +222,15 @@ interface ChatCacheDao {
     @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId")
     suspend fun deleteChats(scopeId: String)
 
+    @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteChat(scopeId: String, chatId: String)
+
+    @Query("DELETE FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteChatMessages(scopeId: String, chatId: String)
+
+    @Query("DELETE FROM cached_private_messages WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteChatPrivateMessages(scopeId: String, chatId: String)
+
     @Query("SELECT * FROM cached_chat_folders WHERE scopeId = :scopeId ORDER BY sortOrder")
     suspend fun folders(scopeId: String): List<CachedChatFolderEntity>
 
@@ -372,12 +381,14 @@ class ChatCacheRepository(context: Context) {
         totalCount: Int,
         folders: List<ChatFolder>? = null,
         replaceExisting: Boolean = false,
+        removedChatIds: Collection<String> = emptyList(),
     ) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
             val dao = db.cacheDao()
             dao.upsertMeta(CachedChatMetaEntity(scope.id, totalCount, System.currentTimeMillis()))
             if (replaceExisting) dao.deleteChats(scope.id)
+            removedChatIds.forEach { dao.deleteChat(scope.id, it) }
             if (chats.isNotEmpty()) dao.upsertChats(chats.map { it.toEntity(scope.id) })
             if (folders != null) {
                 dao.deleteFolders(scope.id)
@@ -385,6 +396,21 @@ class ChatCacheRepository(context: Context) {
             }
         }
     }
+
+    /** DeleteChat: убирает чат из кешированного списка; при contentWiped — и его сообщения. */
+    suspend fun removeChat(scope: CacheScope, chatId: String, totalCount: Int, contentWiped: Boolean) =
+        withContext(Dispatchers.IO) {
+            val db = database()
+            db.withTransaction {
+                val dao = db.cacheDao()
+                dao.deleteChat(scope.id, chatId)
+                dao.upsertMeta(CachedChatMetaEntity(scope.id, totalCount, System.currentTimeMillis()))
+                if (contentWiped) {
+                    dao.deleteChatMessages(scope.id, chatId)
+                    dao.deleteChatPrivateMessages(scope.id, chatId)
+                }
+            }
+        }
 
     suspend fun saveDisplay(scope: CacheScope, chatId: String, display: CachedChatDisplay) =
         withContext(Dispatchers.IO) {
