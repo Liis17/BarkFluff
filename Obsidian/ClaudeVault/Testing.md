@@ -4,7 +4,11 @@ Parent: [[Index]]
 
 ## Где находятся проверки
 
-Backend unit/integration проекты находятся в `Tests/BarkFluff.*.Tests/` (проекты `.csproj`); не все сервисы выполняются в CI. Backend workflows запускают `dotnet test` для Settings, Setup и Developers. Прочие проверки запускать по затронутому компоненту; результаты и число пройденных тестов не хранить как постоянное свойство архитектуры.
+Backend unit/integration проекты находятся в `Tests/BarkFluff.*.Tests/` (проекты `.csproj`). `.github/workflows/pr-tests.yml` запускается для каждого PR в `nightly`, `dev`, `master` без фильтра путей. Reusable `test-backend.yml` обнаруживает все backend-проекты и запускает каждый отдельной matrix job; Windows-проекты исключаются по Windows TargetFramework. PostgreSQL 16 в service container включает Messages search и Developers concurrent seed через соответствующие env; рабочие БД не используются.
+
+`test-clients.yml` запускает Windows test projects на Windows, Android JVM tests (`:core:testDebugUnitTest`, `:app-v1:testNightlyDebugUnitTest`) и UI checker на Ubuntu, BFCore Swift tests на macOS 26. Android instrumented tests с эмулятором, iOS UI и Linux Qt в этот набор не входят. `test-scripts.yml` запускает Python CI helper tests и JavaScript-тесты Web/AdminPanel. TRX и Android XML сохраняются как artifacts.
+
+Единый PR check `Tests passed` выполняется с `always()` и успешен только при `success` всех трёх reusable-наборов: failure, cancellation и skipped не разрешают merge. Правило GitHub требует отдельной установки; порядок — [[Architecture#Развёртывание и CI]]. Push/manual workflows сборок сначала выполняют скриптовые проверки и тесты своего компонента; backend также проверяет GrpcServer. Для Beacon/WebServer без собственного test project используется GrpcServer. Это не означает наличие тестов бизнес-логики этих сервисов.
 
 ```bash
 dotnet test Tests/BarkFluff.Messages.Tests/BarkFluff.Messages.Tests.csproj
@@ -26,7 +30,7 @@ dotnet test Tests/BarkFluff.Messages.Tests/BarkFluff.Messages.Tests.csproj
 | Messages PostgreSQL search | `Tests/BarkFluff.Messages.Tests/Persistence/SearchMessagesPostgresTests.cs`: `BARKFLUFF_SEARCH_POSTGRES`, disposable DB и право CREATE DATABASE |
 | Developers concurrent seed | `Tests/BarkFluff.Developers.Tests/PostgresConcurrentSeedTests.cs`: `DEVELOPERS_TEST_POSTGRES`; инфраструктура — `TestInfrastructure.cs` |
 
-PostgreSQL integration-тесты условно пропускаются без соответствующих env. Их отсутствие в обычном прогоне не означает проверенную PostgreSQL-семантику. SQLite полезен и для Messages/Users, но не заменяет PostgreSQL-specific raw SQL.
+PostgreSQL integration-тесты условно пропускаются без соответствующих env; backend CI предоставляет обе переменные через изолированный PostgreSQL service. Их отсутствие в локальном прогоне не означает проверенную PostgreSQL-семантику. SQLite полезен и для Messages/Users, но не заменяет PostgreSQL-specific raw SQL.
 
 ## Известные ограничения
 
