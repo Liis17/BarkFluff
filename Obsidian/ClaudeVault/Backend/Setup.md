@@ -18,4 +18,9 @@ Docker/nightly/barkfluff/docker-compose.setup.yml публикует SETUP_PORT 
 
 Docker/setup/settings-setup.nginx.conf — шаблон внешнего HTTPS reverse proxy; перед установкой нужно задать домен/сертификат и проксировать на localhost:7032. Setup имеет собственный GET /health/live; общий readiness из GrpcServer не используется.
 
+Setup использует локальные root-level logging flags (`ConsoleOutput`, `SeqEnable`, `LognaraEnable`),
+поскольку не загружает Settings scope для `ServiceId`. Defaults: Console и Seq включены, Lognara выключен;
+для opt-in Lognara задайте локальные flags и путь к executable агента через конфигурацию или environment.
+Описание sinks и lifecycle embedded agent — [[Backend/GrpcServer]] и `Docs/Logging.md`.
+
 Сборка: dotnet build Backend/BarkFluff.Setup/BarkFluff.Setup.csproj.

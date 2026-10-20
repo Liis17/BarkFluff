@@ -14,6 +14,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${BEACON_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${BEACON_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${BEACON_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -34,6 +37,9 @@ services:
       SETTINGS_SETUP_MODE: "false"
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:?set RABBITMQ_DEFAULT_USER in .env}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in .env}"
+      LognaraEnable: "${SETTINGS_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${SETTINGS_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${SETTINGS_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -48,6 +54,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${FILES_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${FILES_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${FILES_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -59,6 +68,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${IDENTITY_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${IDENTITY_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${IDENTITY_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -70,6 +82,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${MESSAGES_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${MESSAGES_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${MESSAGES_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -81,6 +96,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${NOTIFICATION_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${NOTIFICATION_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${NOTIFICATION_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -92,6 +110,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${USERS_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${USERS_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${USERS_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -103,6 +124,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${FAST_AUTH_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${FAST_AUTH_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${FAST_AUTH_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -114,6 +138,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${UPDATES_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${UPDATES_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${UPDATES_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -125,6 +152,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${ONLINER_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${ONLINER_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${ONLINER_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -136,6 +166,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${FEDERATION_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${FEDERATION_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${FEDERATION_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -152,6 +185,9 @@ services:
       Firebase__PrivateKey: "${FIREBASE_PRIVATE_KEY}"
       Firebase__ClientEmail: "${FIREBASE_CLIENT_EMAIL}"
       Firebase__ClientId: "${FIREBASE_CLIENT_ID}"
+      LognaraEnable: "${CLOUD_MESSAGING_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${CLOUD_MESSAGING_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${CLOUD_MESSAGING_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -175,6 +211,9 @@ services:
       Web__Push__Firebase__StorageBucket: "${WEB_PUSH_FIREBASE_STORAGE_BUCKET}"
       Web__Push__Firebase__MessagingSenderId: "${WEB_PUSH_FIREBASE_MESSAGING_SENDER_ID}"
       Web__Push__Firebase__AppId: "${WEB_PUSH_FIREBASE_APP_ID}"
+      LognaraEnable: "${WEB_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${WEB_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${WEB_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -192,6 +231,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${DEVELOPERS_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${DEVELOPERS_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${DEVELOPERS_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -203,6 +245,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${CALLS_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${CALLS_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${CALLS_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -214,6 +259,9 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      LognaraEnable: "${BOTS_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${BOTS_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${BOTS_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
     depends_on:
@@ -266,6 +314,9 @@ services:
       Mail__Accounts__3__Password: "${MAIL_PRIVACY_PASSWORD:-}"
       Mail__Accounts__4__Address: "security@barkfluff.com"
       Mail__Accounts__4__Password: "${MAIL_SECURITY_PASSWORD:-}"
+      LognaraEnable: "${ADMIN_PANEL_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${ADMIN_PANEL_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${ADMIN_PANEL_CONSOLE_OUTPUT:-true}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./admindata:/app/db

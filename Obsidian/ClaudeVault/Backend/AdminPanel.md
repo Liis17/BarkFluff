@@ -27,4 +27,4 @@ Nightly compose запускает панель от root и монтирует 
 
 ## Логирование
 
-Собственные логи AdminPanel подключены к `AddBarkFluffSerilog("BarkFluff.AdminPanel")` после загрузки Settings и повторного наложения env; применяются общие request trace scopes и выбор `Logging:Backend` из [[Backend/GrpcServer]]. Чтение/сжатие логов и кеширование метрик панели остаются Seq-интеграцией. При Lognara-only новые сервисные логи и метрики видны в Lognara Dock; переключение UI панели на Lognara не реализовано.
+Собственные логи AdminPanel подключены к `AddBarkFluffSerilog("BarkFluff.AdminPanel")` после загрузки Settings и повторного наложения env; применяются общие request trace scopes и независимые root-level flags `ConsoleOutput`, `SeqEnable`, `LognaraEnable`. Панель использует `ServiceId.Unknown`, поэтому flags sinks задаются локально; `Lognara:AgentUrl` может поступить из global Settings. Defaults, priority и lifecycle embedded agent описаны в [[Backend/GrpcServer]]. Чтение/сжатие логов и кеширование метрик панели остаются Seq-интеграцией. При Lognara-only новые сервисные логи и метрики видны в Lognara Dock; переключение UI панели на Lognara не реализовано.

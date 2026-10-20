@@ -1,0 +1,12 @@
+ARG BASE_IMAGE
+
+FROM alpine:3.22 AS lognara-agent
+ARG TARGETARCH
+RUN apk add --no-cache ca-certificates coreutils curl
+COPY Docker/Lognara/agent/install-agent.sh /tmp/install-agent.sh
+COPY Docker/Lognara/agent/SHA256SUMS /tmp/SHA256SUMS
+RUN /bin/sh /tmp/install-agent.sh "$TARGETARCH"
+
+FROM ${BASE_IMAGE}
+COPY --from=lognara-agent --chmod=0755 /usr/local/bin/lognara-agent /usr/local/bin/lognara-agent
+COPY --chown=0:0 Docker/Lognara/runtime/agent-spool/ /var/lib/lognara-agent/spool/
