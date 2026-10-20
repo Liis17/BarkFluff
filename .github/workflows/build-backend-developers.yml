@@ -20,6 +20,10 @@ on:
       - 'Docker/Lognara/**'
       - 'Shared/**'
       - 'Backend/BarkFluff.GrpcServer/**'
+      - '.github/workflows/test-backend.yml'
+      - 'Tests/BarkFluff.GrpcServer.Tests/**'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -31,28 +35,21 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-backend.yml
+    with:
+      project: BarkFluff.Developers.Tests
+
   # ═══════════════════════════════════════════════════════════════
   #  2. dotnet publish → Docker build → Push
   # ═══════════════════════════════════════════════════════════════
   build:
+    needs: [tests, scripts]
     name: "🐳 Сборка и публикация Barkfluff.Developers"
     runs-on: ubuntu-latest
-    env:
-      DEVELOPERS_TEST_POSTGRES: Host=localhost;Port=5432;Database=developers_test;Username=postgres;Password=postgres
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: developers_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v7
 
@@ -60,9 +57,6 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-
-      - name: "🧪 Тесты Barkfluff.Developers"
-        run: dotnet test Tests/BarkFluff.Developers.Tests/BarkFluff.Developers.Tests.csproj -c Release --verbosity normal
 
       - name: Set up Node.js
         uses: actions/setup-node@v7

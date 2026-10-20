@@ -11,6 +11,7 @@ using Serilog;
 
 namespace BarkFluff.GrpcServer.Tests;
 
+[Collection("Process logging")]
 public sealed class LognaraAgentLifecycleTests
 {
     private static readonly Uri AgentUri = new("http://127.0.0.1:7400/v1/logs");

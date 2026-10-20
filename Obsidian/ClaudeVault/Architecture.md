@@ -99,7 +99,11 @@ Apple-клиенты разделяют BFCore и SwiftUI UI; iOS adaptive navig
 
 Канонический регистр каталога — `Docker/`. В репозитории deployment-конфиги находятся в `Docker/nightly/` и `Docker/setup/`; каталогов `Docker/dev/` и `Docker/master/` нет. CI публикует образы для каналов `dev`, `nightly`, `master` с суффиксами `-dev`, `-nightly`, без суффикса соответственно. Persistent host directories рядом с compose (`admindata/`, `data/`, `backups/`) не хранятся в Git. Конкретные mount/сети проверяй в compose; не меняй имена контейнеров только из-за image suffix.
 
-Backend workflows: `.github/workflows/build-backend-*.yml`, каждый на `ubuntu-latest`. SDK устанавливает `actions/setup-dotnet@v6` по `global.json`; затем publish в `publish/` и build/push `Dockerfile.slim`. Web дополнительно генерирует JS proto в Docker stage. Queue отдельная на workflow/сервис, общая для трёх веток: `cancel-in-progress: false`, `queue: max`. Тесты в backend CI явно запускают Settings, Setup и Developers; наличие тестового проекта не означает его запуск в CI.
+Backend workflows: `.github/workflows/build-backend-*.yml`, каждый на `ubuntu-latest`. Перед build job обязательны reusable tests: тесты компонента и GrpcServer из `test-backend.yml`, скриптовые проверки из `test-scripts.yml`. Beacon/WebServer без собственного test project проверяют GrpcServer. SDK устанавливает `actions/setup-dotnet@v6` по `global.json`; затем publish в `publish/` и build/push `Dockerfile.slim`. Web дополнительно генерирует JS proto в Docker stage. Queue отдельная на workflow/сервис, общая для трёх веток: `cancel-in-progress: false`, `queue: max`. Клиентские сборки аналогично зависят от `test-clients.yml` и скриптовых проверок. Фильтры push-путей сохранены и дополнены тестами/reusable workflows; manual run также не обходит тесты.
+
+`.github/workflows/pr-tests.yml` запускает backend, клиентские и скриптовые тесты для PR в `nightly`, `dev`, `master`, включая PR только с документацией. Единый check `Tests passed` требует успеха всех наборов; PR не публикует образы/клиенты и не получает deployment secrets. Подробности покрытия — [[Testing]]. Сборка дистрибутивов и публикация выполняются по push после merge с повторной проверкой соответствующего компонента на итоговом коммите.
+
+Запрет merge задаётся отдельно в GitHub: `.github/rulesets/required-tests.json` описывает активное правило `Required PR tests` для трёх веток, без bypass actors, с обязательным PR и `Tests passed` от GitHub Actions (App ID 15368). Strict checks требуют актуальности ветки PR относительно целевой. Существующие правила ревью `dev`/`master` действуют дополнительно. JSON в Git сам не применяет правила: после доставки четырёх test workflows во все три ветки администратор запускает `pwsh -File .github/scripts/set-required-tests.ps1`. Скрипт проверяет наличие workflows, затем создаёт/обновляет только этот ruleset; без workflows прекращает работу до изменения правил. При откате сначала отключи ruleset в GitHub, затем удаляй workflows, иначе PR останутся заблокированы отсутствующим check.
 
 Версии задаёт `.github/actions/docker-version/compute-version.sh`:
 
@@ -109,7 +113,7 @@ Backend workflows: `.github/workflows/build-backend-*.yml`, каждый на `u
 
 `.github/scripts/push-docker-image.sh` после workflow `PUSH_DELAY` выполняет login и `docker buildx build --push` с тремя дополнительными попытками. Buildx используется из-за документированного registry 401 при dockerd push; задержки распределяют нагрузку. Клиентские workflow отдельно собирают Android/macOS/WinUI и наследуют версии nightly → dev → master. Итоговые Telegram steps с `continue-on-error` не меняют результат сборки при ошибке доставки; approval job не требуется.
 
-Локальные регрессионные проверки `.github/tests/test_docker_version.py`, `test_client_version.py`, `test_send_telegram.py` работают без публикации/отправки сообщений; для PowerShell-кейсов нужен pwsh. Не выдавай их наличие за успешный прогон или автоматическое CI-покрытие. Общие тестовые ограничения — [[Testing]].
+Регрессионные проверки `.github/tests/test_docker_version.py`, `test_client_version.py`, `test_send_telegram.py` работают без публикации/отправки сообщений; для PowerShell-кейсов нужен pwsh. Их запускает `test-scripts.yml`; локальный прогон не заменяет проверку GitHub Actions. Общие тестовые ограничения — [[Testing]].
 
 ## Добавление значимого компонента
 

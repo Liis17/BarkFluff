@@ -23,6 +23,9 @@ on:
       - 'Android/gradlew.bat'
       - 'Android/tools/**'
       - '.github/scripts/client-version.sh'
+      - '.github/workflows/test-clients.yml'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -34,10 +37,19 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-clients.yml
+    with:
+      platform: android
+
   # ═══════════════════════════════════════════════════════════════
   #  Сборка APK + загрузка на сервер обновлений
   # ═══════════════════════════════════════════════════════════════
   build:
+    needs: [tests, scripts]
     name: "📱 Сборка Android Client"
     runs-on: ubuntu-latest
     defaults:

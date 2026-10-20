@@ -108,15 +108,20 @@ public class EmailSenderTests
             .WithMessage("Bad format");
     }
 
-    [Fact]
-    public async Task SendEmail_NullAddress_ThrowsArgumentNullException()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task SendEmail_MissingAddress_DoesNotParseOrSend(string? address)
     {
         var sender = CreateSender();
-        var notification = TestHelper.CreateEmailNotification(address: null!);
+        var notification = TestHelper.CreateEmailNotification(address: address!);
 
-        var act = () => sender.SendEmail(notification);
+        await sender.SendEmail(notification);
 
-        await act.Should().ThrowAsync<ArgumentNullException>();
+        _templateParserMock.Verify(
+            p => p.Parse(It.IsAny<NotificationType>(), It.IsAny<Dictionary<string, string>>()),
+            Times.Never);
     }
     
 
