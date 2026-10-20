@@ -12,9 +12,11 @@ import com.barkfluff.client.domain.model.OtpEnrollment
 import com.barkfluff.client.domain.model.RegistrationRequest
 import com.barkfluff.client.domain.model.SecuritySettings
 import com.barkfluff.client.domain.model.SecuritySettingsUpdate
+import com.barkfluff.client.domain.model.SignInResolution
 import com.barkfluff.client.domain.model.SignInRequest
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -51,6 +53,22 @@ class AuthenticationChallengeControllerTest {
 
         assertEquals(listOf("code-1"), completion.recoveryCodes)
         assertTrue(controller.resend().isFailure)
+    }
+
+    @Test
+    fun `begin does not retain a challenge when Identity returns an error code`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            currentChallenge = challenge.copy(
+                reference = AuthenticationChallengeReference("", ""),
+                errorCode = "login_mode_disabled",
+            )
+        }
+        val controller = AuthenticationChallengeController(gateway)
+
+        val result = controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+
+        assertTrue(result.isSuccess)
+        assertFalse(controller.hasActiveChallenge)
     }
 
     @Test
@@ -108,6 +126,8 @@ class AuthenticationChallengeControllerTest {
         var currentChallenge = challenge
 
         override suspend fun capabilities() = Result.success(AuthenticationCapabilities(false, false, ""))
+        override suspend fun resolveSignIn(login: String) =
+            Result.success(SignInResolution(AuthenticationLoginMode.PASSWORD, ""))
         override suspend fun beginRegistration(request: RegistrationRequest) = Result.success(currentChallenge)
         override suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge> {
             beginSignInCalls++

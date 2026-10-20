@@ -1106,6 +1106,10 @@
     <string name="login_empty_login">Introduce tu usuario o email</string>
     <string name="login_invalid_email">Formato de email no válido</string>
     <string name="login_username_too_short">Al menos 3 caracteres (letras, números, . y _)</string>
+    <string name="login_flow_continue">Continuar</string>
+    <string name="login_account_not_found">No se encontró la cuenta</string>
+    <string name="login_mode_changed">El método de acceso ha cambiado. Continúa de nuevo.</string>
+    <string name="login_server_update_required">Actualiza el servidor de este nodo para iniciar sesión.</string>
     <string name="login_password_too_short">Al menos %1$d caracteres</string>
     <string name="settings_error_detail">Error: %1$s</string>
     <string name="account_username_taken">El nombre de usuario ya está ocupado</string>

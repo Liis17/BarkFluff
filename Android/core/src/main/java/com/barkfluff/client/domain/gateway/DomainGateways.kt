@@ -15,6 +15,7 @@ import com.barkfluff.client.domain.model.AuthenticationFactor
 import com.barkfluff.client.domain.model.RegistrationRequest
 import com.barkfluff.client.domain.model.SecuritySettings
 import com.barkfluff.client.domain.model.SecuritySettingsUpdate
+import com.barkfluff.client.domain.model.SignInResolution
 import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.domain.model.OtpEnrollment
 import com.barkfluff.client.domain.model.ChatFolder
@@ -72,6 +73,7 @@ interface AuthGateway {
  */
 interface AuthenticationChallengeGateway {
     suspend fun capabilities(): Result<AuthenticationCapabilities>
+    suspend fun resolveSignIn(login: String): Result<SignInResolution>
     suspend fun beginRegistration(request: RegistrationRequest): Result<AuthenticationChallenge>
     suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge>
     suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>

@@ -1105,6 +1105,10 @@
     <string name="login_empty_login">Enter your username or email</string>
     <string name="login_invalid_email">Invalid email format</string>
     <string name="login_username_too_short">At least 3 characters (letters, numbers, . and _)</string>
+    <string name="login_flow_continue">Continue</string>
+    <string name="login_account_not_found">Account not found</string>
+    <string name="login_mode_changed">The sign-in method changed. Continue again.</string>
+    <string name="login_server_update_required">Update the node server before signing in.</string>
     <string name="login_password_too_short">At least %1$d characters</string>
     <string name="settings_error_detail">Error: %1$s</string>
     <string name="account_username_taken">Username is already taken</string>

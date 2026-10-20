@@ -1,5 +1,11 @@
 package com.barkfluff.client.domain.model
 
+/** Error-code values returned by Identity authentication calls. */
+object AuthenticationErrorCodes {
+    const val ACCOUNT_NOT_FOUND = "account_not_found"
+    const val LOGIN_MODE_DISABLED = "login_mode_disabled"
+}
+
 /** The account policy selected by the user and enforced by Identity. */
 enum class AuthenticationLoginMode {
     PASSWORD,
@@ -33,6 +39,11 @@ data class AuthenticationCapabilities(
     val emailAvailable: Boolean,
     val telegramAvailable: Boolean,
     val telegramBotUsername: String,
+)
+
+data class SignInResolution(
+    val loginMode: AuthenticationLoginMode?,
+    val errorCode: String,
 )
 
 data class AuthenticationChallenge(
@@ -70,6 +81,7 @@ data class SignInRequest(
     val loginMode: AuthenticationLoginMode,
     val factor: AuthenticationFactor = AuthenticationFactor.NONE,
     val useRecoveryCode: Boolean = false,
+    val reportLoginModeMismatch: Boolean = false,
 )
 
 data class SecuritySettings(
